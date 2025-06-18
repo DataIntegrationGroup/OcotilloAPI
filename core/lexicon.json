@@ -22,5 +22,16 @@
   {"term": "Approved", "definition": "Approved quality control status", "category": "quality_control_status"},
   {"term": "Rejected", "definition": "Rejected quality control status", "category": "quality_control_status"},
 
-  {"term": "mud", "definition": "drilling mud", "category":  "drilling_fluid"}
+  {"term": "mud", "definition": "drilling mud", "category":  "drilling_fluid"},
+
+  {"term": "Ar/Ar", "definition":  "Ar40/Ar39 geochronology", "category":  "geochronology"},
+  {"term": "AFT", "definition":  "apatite fission track", "category":  "geochronology"},
+  {"term": "K/Ar", "definition":  "Potassium-Argon dating", "category":  "geochronology"},
+  {"term": "U/Th", "definition":  "Uranium/Thorium dating", "category":  "geochronology"},
+  {"term": "Rb/Sr", "definition":  "Rubidium-Strontium dating", "category":  "geochronology"},
+  {"term": "U/Pb", "definition":  "Uranium/Lead dating", "category":  "geochronology"},
+  {"term": "Lu/Hf", "definition":  "Lutetium-Hafnium dating", "category":  "geochronology"},
+  {"term": "Re/Os", "definition":  "Rhenium-Osmium dating", "category":  "geochronology"},
+  {"term": "Sm/Nd", "definition":  "Samarium-Neodymium dating", "category":  "geochronology"}
+
 ]
