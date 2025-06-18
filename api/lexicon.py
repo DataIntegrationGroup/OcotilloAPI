@@ -13,24 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import String
-from sqlalchemy.orm import mapped_column
+from fastapi import APIRouter, Depends
+from fastapi import status
+from db import get_db_session
+from db.lexicon import Lexicon
+from schemas.lexicon import CreateLexiconTerm, LexiconTermResponse
 
-from models import AutoBaseMixin, Base
+router = APIRouter(
+    prefix="/lexicon",
+)
 
 
-class Lexicon(Base, AutoBaseMixin):
+@router.post(
+    "/add",
+    summary="Add term",
+    response_model=LexiconTermResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_term(term_data: CreateLexiconTerm, session=Depends(get_db_session)):
     """
-    Lexicon model for storing terms and their definitions.
-    This model can be extended to include additional fields as needed.
+    Endpoint to add a term to the lexicon.
     """
+    # Implementation for adding a term goes here
 
-    term = mapped_column(String(100), unique=True, nullable=False)
-    definition = mapped_column(String(255), nullable=False)
-    category = mapped_column(String(255), nullable=True)
-
-    def __repr__(self):
-        return f"<Lexicon(category={self.category}, term={self.term}, definition={self.definition})>"
+    data = term_data.model_dump()
+    term = Lexicon(**data)
+    session.add(term)
+    session.commit()
+    return term
 
 
 # ============= EOF =============================================

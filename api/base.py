@@ -22,8 +22,8 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 
-from models import get_db_session, adder
-from models.base import (
+from db import get_db_session, adder
+from db.base import (
     Well,
     SampleLocation,
     Group,
@@ -34,9 +34,9 @@ from models.base import (
     Spring,
     Equipment,
 )
-from routes.geospatial_helper import create_shapefile
-from routes.pagination import CustomPage
-from routes.regex import QUERY_REGEX
+from api.geospatial_helper import create_shapefile
+from api.pagination import CustomPage
+from services.regex import QUERY_REGEX
 from schemas.base_create import (
     CreateWell,
     CreateLocation,

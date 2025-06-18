@@ -16,7 +16,7 @@
 from sqlalchemy import Integer, ForeignKey, Float, String, DateTime, Text, Boolean
 from sqlalchemy.orm import mapped_column
 
-from models import AutoBaseMixin, Base
+from db import AutoBaseMixin, Base
 
 
 class GeothermalTemperatureProfile(Base, AutoBaseMixin):

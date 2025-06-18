@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declared_attr, relationship
 from sqlalchemy.testing.schema import mapped_column
 
-from models import AutoBaseMixin, Base, PropertiesMixin
+from db import AutoBaseMixin, Base, PropertiesMixin
 
 
 class TimeseriesMixin:

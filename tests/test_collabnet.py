@@ -17,10 +17,10 @@ from datetime import datetime
 
 import pytest
 
-from models import get_db_session, sqlalchemy_sessionmaker
-from models.base import SampleLocation, Well
-from models.collabnet import CollaborativeNetworkWell
-from models.timeseries import WellTimeseries, GroundwaterLevelObservation
+from db import get_db_session, sqlalchemy_sessionmaker
+from db.base import SampleLocation, Well
+from db.collabnet import CollaborativeNetworkWell
+from db.timeseries import WellTimeseries, GroundwaterLevelObservation
 from tests import client
 
 

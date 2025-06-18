@@ -18,9 +18,9 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from models import sqlalchemy_sessionmaker, engine, Base
-from models.lexicon import Lexicon
-from settings import settings
+from db import sqlalchemy_sessionmaker, engine, Base
+from db.lexicon import Lexicon
+from .settings import settings
 
 
 def init_db():
@@ -33,7 +33,7 @@ def init_db():
 
 
 def init_lexicon():
-    with open("lexicon.json") as f:
+    with open("./core/lexicon.json") as f:
         import json
 
         default_lexicon = json.load(f)

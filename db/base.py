@@ -28,8 +28,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, declared_attr, Mapped, mapped_column
 
-from models import Base, AutoBaseMixin
-from models.lexicon import Lexicon
+from db import Base, AutoBaseMixin
+from db.lexicon import Lexicon
 
 
 class SampleLocation(Base, AutoBaseMixin):

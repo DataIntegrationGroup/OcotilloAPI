@@ -13,16 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi.testclient import TestClient
+from sqlalchemy import Boolean, ForeignKey, Integer
+from sqlalchemy.orm import mapped_column, relationship
 
-from core.app import init_lexicon
-from main import app
-from db import Base, engine
+from db import AutoBaseMixin, Base
 
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
 
-init_lexicon()
+class CollaborativeNetworkWell(Base, AutoBaseMixin):
+    """ """
 
-client = TestClient(app)
+    actively_monitored = mapped_column(Boolean, default=False, nullable=False)
+    well_id = mapped_column(Integer, ForeignKey("well.id"), nullable=False)
+
+    well = relationship("Well")
+
+
 # ============= EOF =============================================

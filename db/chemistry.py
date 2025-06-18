@@ -17,7 +17,7 @@ from sqlalchemy import Integer, ForeignKey, Float, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing.schema import mapped_column
 
-from models import AutoBaseMixin, Base
+from db import AutoBaseMixin, Base
 
 
 class WaterChemistryAnalysis(Base, AutoBaseMixin):

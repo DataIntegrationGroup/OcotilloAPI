@@ -16,8 +16,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from models import get_db_session, adder
-from models.geothermal import (
+from db import get_db_session, adder
+from db.geothermal import (
     GeothermalTemperatureProfile,
     GeothermalTemperatureProfileObservation,
     GeothermalBottomHoleTemperature,

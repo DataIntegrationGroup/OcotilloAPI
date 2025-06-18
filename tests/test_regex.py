@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from routes.regex import QUERY_REGEX
+from services.regex import QUERY_REGEX
 
 
 def test_query_regex_eq():

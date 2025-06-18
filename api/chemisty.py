@@ -16,8 +16,8 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from models import adder, get_db_session
-from models.chemistry import WaterChemistryAnalysis, WaterChemistryAnalysisSet
+from db import adder, get_db_session
+from db.chemistry import WaterChemistryAnalysis, WaterChemistryAnalysisSet
 from schemas.chemistry_create import CreateWaterChemistryAnalysis, CreateAnalysisSet
 
 router = APIRouter(

@@ -17,9 +17,9 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
-from models import get_db_session
-from models.base import SampleLocation, Owner, Contact, Well, Group, GroupLocation
-from routes.base import simple_get_by_id, simple_get_by_name
+from db import get_db_session
+from db.base import SampleLocation, Owner, Contact, Well, Group, GroupLocation
+from api.base import simple_get_by_id, simple_get_by_name
 from schemas.form import (
     WellForm,
     WellFormResponse,

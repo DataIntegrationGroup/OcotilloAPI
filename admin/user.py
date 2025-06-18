@@ -22,8 +22,8 @@ from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 from sqlalchemy import Integer, Boolean, Text, String, update, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models import sqlalchemy_sessionmaker, Base
-from models.base import SampleLocation, User
+from db import sqlalchemy_sessionmaker, Base
+from db.base import SampleLocation, User
 
 
 @register(User, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)

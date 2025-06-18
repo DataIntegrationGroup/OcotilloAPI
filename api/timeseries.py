@@ -17,8 +17,8 @@ from typing import List
 
 from fastapi import APIRouter, Depends, status
 
-from models import get_db_session
-from models.timeseries import WellTimeseries, GroundwaterLevelObservation
+from db import get_db_session
+from db.timeseries import WellTimeseries, GroundwaterLevelObservation
 from schemas.timeseries import (
     CreateWellTimeseries,
     WellTimeseriesResponse,

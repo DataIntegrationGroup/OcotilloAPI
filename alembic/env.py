@@ -18,8 +18,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 
-from models import Base  # Import your Base from models/__init__.py
-from models.base import *
+from db import Base  # Import your Base from models/__init__.py
+from db.base import *
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata

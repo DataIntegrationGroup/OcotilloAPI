@@ -13,16 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi.testclient import TestClient
+from sqlalchemy import String
+from sqlalchemy.orm import mapped_column
 
-from core.app import init_lexicon
-from main import app
-from db import Base, engine
+from db import AutoBaseMixin, Base
 
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
 
-init_lexicon()
+class Lexicon(Base, AutoBaseMixin):
+    """
+    Lexicon model for storing terms and their definitions.
+    This model can be extended to include additional fields as needed.
+    """
 
-client = TestClient(app)
+    term = mapped_column(String(100), unique=True, nullable=False)
+    definition = mapped_column(String(255), nullable=False)
+    category = mapped_column(String(255), nullable=True)
+
+    def __repr__(self):
+        return f"<Lexicon(category={self.category}, term={self.term}, definition={self.definition})>"
+
+
 # ============= EOF =============================================
