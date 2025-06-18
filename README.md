@@ -48,7 +48,19 @@ cp .env.example .env
 # Edit `.env` to configure database connection and app settings
 
 # Run database migrations
-alembic upgrade head
+alembic upgrade head  
 
 # Start the development server
 uvicorn app.main:app --reload
+```
+
+### 🧭 Project Structure
+```text
+app/
+├── api/            # Route declarations
+├── core/           # Settings and application config
+├── db/             # Database models, sessions, migrations
+├── schemas/        # Pydantic data models
+├── services/       # Business logic and helpers
+└── main.py         # FastAPI entry point
+```

@@ -179,7 +179,11 @@ def create_equipment(
     return adder(session, Equipment, equipment_data)
 
 
-def make_query(table, query):
+def make_query(table, query: str):
+    # ensure the length of the query is reasonable
+    if len(query) > 1000:
+        raise ValueError("Query is too long")
+
     match = QUERY_REGEX.match(query)
     column = match.group("field")
     value = match.group("value")
