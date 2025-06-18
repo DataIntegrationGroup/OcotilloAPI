@@ -16,17 +16,14 @@
 
 from tests import client
 
+
 def test_add_geochronology_age():
     response = client.post(
         "/geochronology/age",
-        json={
-            "location_id": 1,
-            "age": 100.0,
-            "age_error": 5.0,
-            "method": "U/Pb"
-        }
+        json={"location_id": 1, "age": 100.0, "age_error": 5.0, "method": "U/Pb"},
     )
 
     assert response.status_code == 201
+
 
 # ============= EOF =============================================

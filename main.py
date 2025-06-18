@@ -20,6 +20,7 @@ from api.chemisty import router as chemistry_router
 from api.geothermal import router as geothermal_router
 from api.collabnet import router as collabnet_router
 from api.geochronology import router as geochronology_router
+
 app.mount("/admin", admin_app)
 
 app.include_router(base_router)

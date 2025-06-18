@@ -24,5 +24,7 @@ class GeochronologyAge(Base, AutoBaseMixin):
     age = mapped_column(Float, nullable=False)
     age_error = mapped_column(Float, nullable=True)
 
-    method = mapped_column(String(100), ForeignKey('lexicon.term'))
+    method = mapped_column(String(100), ForeignKey("lexicon.term"))
+
+
 # ============= EOF =============================================

@@ -26,4 +26,5 @@ class CreateGeochronologyAge(BaseModel):
     age_error: float
     method: str
 
+
 # ============= EOF =============================================

@@ -20,12 +20,13 @@ from schemas.geochronology_create import CreateGeochronologyAge
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-router = APIRouter(
-    prefix="/geochronology",
-    tags=["geochronology"])
+router = APIRouter(prefix="/geochronology", tags=["geochronology"])
+
 
 @router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED)
-async def create_age(age: CreateGeochronologyAge, session: Session = Depends(get_db_session)):
+async def create_age(
+    age: CreateGeochronologyAge, session: Session = Depends(get_db_session)
+):
     """
     Create a new geochronology age entry.
     """
@@ -35,7 +36,9 @@ async def create_age(age: CreateGeochronologyAge, session: Session = Depends(get
 
 
 @router.get("/age", tags=["geochronology"])
-async def get_geochronology_age(method: str = "arar", session: Session=Depends(get_db_session)):
+async def get_geochronology_age(
+    method: str = "arar", session: Session = Depends(get_db_session)
+):
     """
     Retrieve geochronology age data.
     """
@@ -44,4 +47,6 @@ async def get_geochronology_age(method: str = "arar", session: Session=Depends(g
 
     # Placeholder for actual implementation
     # return {"message": "Geochronology age data retrieved successfully."}
+
+
 # ============= EOF =============================================
