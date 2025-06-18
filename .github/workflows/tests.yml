@@ -1,0 +1,66 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Tests
+
+on:
+  push:
+  #   branches: [ "main",'pre-production', "dev/jir", "dev/jab"]
+  pull_request:
+    branches: [ "main",'pre-production']
+
+permissions:
+  contents: read
+
+#env:
+#  TEST_DB_USE_CLOUD: "TRUE"
+#  TEST_DB_SERVER_NAME: ${{ secrets.TEST_DB_SERVER_NAME }}
+#  TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+#  TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+#  TEST_DB_DATABASE: ${{ secrets.TEST_DB_DATABASE }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out source repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libproj-dev libgeos-dev libsqlite3-dev
+
+    - name: Install SpatiaLite
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-mod-spatialite libspatialite-dev
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version-file: "pyproject.toml"
+
+    - name: Install the project
+      run: uv sync --locked --all-extras --dev
+
+    - name: Run tests
+      env:
+        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
+      run: uv run pytest -vv --durations=20 --junitxml=junit.xml
+
+#    - name: Upload results to Codecov
+#      uses: codecov/codecov-action@v4
+#      with:
+#        token: ${{ secrets.CODECOV_TOKEN }}
+#
+#    - name: Upload test results to Codecov
+#      if: ${{ !cancelled() }}
+#      uses: codecov/test-results-action@v1
+#      with:
+#        token: ${{ secrets.CODECOV_TOKEN }}

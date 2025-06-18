@@ -14,3 +14,8 @@ wheels/
 .idea/
 
 # VS Code
+
+# local development files
+development.db
+.env
+reset_db.sh
