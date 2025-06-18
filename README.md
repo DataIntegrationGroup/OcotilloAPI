@@ -1,0 +1,49 @@
+# NMSampleLocations
+
+**Geospatial Sample Data Management System**  
+_New Mexico Bureau of Geology and Mineral Resources_
+
+NMSampleLocations is a FastAPI-based backend service designed to manage geospatial sample location data across New Mexico. It supports research, field operations, and public data delivery for the Bureau of Geology and Mineral Resources.
+
+---
+
+## 🚀 Features
+
+- 🌐 RESTful API for managing sample location data
+- 🗺️ Native GeoJSON support via PostGIS
+- 🔎 Filtering by location, date, type, and more
+- 📦 PostgreSQL + PostGIS database backend
+- 🔐 Optional authentication and role-based access
+- 🧾 Interactive API documentation via Swagger and ReDoc
+
+---
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL with PostGIS extension
+- [`uv`](https://github.com/astral-sh/uv) package manager
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/DataIntegrationGroup/NMSampleLocations.git
+cd NMSampleLocations
+
+# Set up virtual environment and install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit `.env` to configure database connection and app settings
+
+# Run database migrations
+alembic upgrade head
+
+# Start the development server
+uvicorn app.main:app --reload
