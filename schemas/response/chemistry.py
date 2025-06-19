@@ -23,9 +23,11 @@ class WaterChemistryAnalysisSetResponse(ORMBaseModel):
     # analyses: list  # List of WaterChemistryAnalysisResponse objects
     # id: int  # Unique identifier for the analysis set
 
+
 class WaterChemistryAnalysisResponse(ORMBaseModel):
     analysis_set_id: int
     value: float
     unit: str
+
 
 # ============= EOF =============================================

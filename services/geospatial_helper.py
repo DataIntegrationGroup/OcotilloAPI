@@ -35,7 +35,9 @@ def create_shapefile(locations, filename="locations.shp"):
             shp.record(loc.name)
 
 
-def make_within_wkt(sql: Select, wkt: str)-> Select:
+def make_within_wkt(sql: Select, wkt: str) -> Select:
     within = ST_GeomFromText(wkt)
     return sql.where(ST_Within(SampleLocation.point, within))
+
+
 # ============= EOF =============================================

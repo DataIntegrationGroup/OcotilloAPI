@@ -15,6 +15,7 @@
 # ===============================================================================
 from tests import client
 
+
 # add ===================
 def test_add_analysis_set():
     response = client.post(
@@ -80,38 +81,44 @@ def test_add_analysis():
     assert data["unit"] == "mg/L"
     assert data["analyte"] == "Na"
 
+
 # get ===================
+
 
 def test_get_chemistry_analysis_set():
     response = client.get("/chemistry/analysis_set")
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 2
-    item = data['items'][0]
-    assert item['well_id'] == 1
-    assert item['laboratory'] == 'Test Lab'
+    assert "items" in data
+    assert len(data["items"]) == 2
+    item = data["items"][0]
+    assert item["well_id"] == 1
+    assert item["laboratory"] == "Test Lab"
 
 
 def test_get_chemistry_analysis():
     response = client.get("/chemistry/analysis")
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 2
-    item = data['items'][0]
-    assert item['analysis_set_id'] == 1
-    assert item['value'] == 7.0
-    assert item['unit'] == 'mg/L'
+    assert "items" in data
+    assert len(data["items"]) == 2
+    item = data["items"][0]
+    assert item["analysis_set_id"] == 1
+    assert item["value"] == 7.0
+    assert item["unit"] == "mg/L"
 
 
 def test_geospatial_chemistry_analysis_set():
-    response = client.get("/chemistry/analysis_set",
-                          params={"within": 'POLYGON((10.0 10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, 10.0 10.0))'})
+    response = client.get(
+        "/chemistry/analysis_set",
+        params={
+            "within": "POLYGON((10.0 10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, 10.0 10.0))"
+        },
+    )
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 1
+    assert "items" in data
+    assert len(data["items"]) == 1
     # item = data['items'][0]
     # assert item['analysis_set_id'] == 1
     # assert item['value'] == 7.0
@@ -120,15 +127,21 @@ def test_geospatial_chemistry_analysis_set():
 
 
 def test_geospatial_chemistry_analysis():
-    response = client.get("/chemistry/analysis",
-                          params={"within": 'POLYGON((10.0 10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, 10.0 10.0))'})
+    response = client.get(
+        "/chemistry/analysis",
+        params={
+            "within": "POLYGON((10.0 10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, 10.0 10.0))"
+        },
+    )
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 1
+    assert "items" in data
+    assert len(data["items"]) == 1
     # item = data['items'][0]
     # assert item['analysis_set_id'] == 1
     # assert item['value'] == 7.0
     # assert item['unit'] == 'mg/L'
     # assert 'geometry' in item  # Assuming geometry is part of the response
+
+
 # ============= EOF =============================================

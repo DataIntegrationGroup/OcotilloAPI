@@ -16,7 +16,10 @@
 from api.pagination import CustomPage
 from db.base import SampleLocation, Well
 from fastapi import APIRouter, Depends, status
-from schemas.response.chemistry import WaterChemistryAnalysisResponse, WaterChemistryAnalysisSetResponse
+from schemas.response.chemistry import (
+    WaterChemistryAnalysisResponse,
+    WaterChemistryAnalysisSetResponse,
+)
 from services.geospatial_helper import make_within_wkt
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -30,12 +33,14 @@ router = APIRouter(
 )
 
 
-@router.get("/analysis_set",
-            response_model=CustomPage[WaterChemistryAnalysisSetResponse],
-            tags=["chemistry"])
+@router.get(
+    "/analysis_set",
+    response_model=CustomPage[WaterChemistryAnalysisSetResponse],
+    tags=["chemistry"],
+)
 async def get_chemistry_analysis_set(
-        within: str = None,
-        session: Session = Depends(get_db_session)):
+    within: str = None, session: Session = Depends(get_db_session)
+):
     """
     Retrieve chemistry analysis sets.
     """
@@ -48,10 +53,14 @@ async def get_chemistry_analysis_set(
     return paginate(conn=session, query=sql)
 
 
-@router.get("/analysis",
-            response_model=CustomPage[WaterChemistryAnalysisResponse],
-            tags=["chemistry"])
-async def get_chemistry_analysis(within: str = None, session: Session = Depends(get_db_session)):
+@router.get(
+    "/analysis",
+    response_model=CustomPage[WaterChemistryAnalysisResponse],
+    tags=["chemistry"],
+)
+async def get_chemistry_analysis(
+    within: str = None, session: Session = Depends(get_db_session)
+):
     """
     Retrieve chemistry analysis data.
     """
@@ -68,8 +77,7 @@ async def get_chemistry_analysis(within: str = None, session: Session = Depends(
 
 
 # ====== POST ===============
-@router.post("/analysis_set",
-             status_code=status.HTTP_201_CREATED)
+@router.post("/analysis_set", status_code=status.HTTP_201_CREATED)
 async def add_chemistry_analysis_set(
     analysis_set_data: CreateAnalysisSet, session: Session = Depends(get_db_session)
 ):
