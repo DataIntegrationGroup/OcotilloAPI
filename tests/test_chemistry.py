@@ -133,19 +133,21 @@ def test_geospatial_chemistry_analysis():
 
 
 def test_query_chemistry_analysis_set():
-    response = client.get("/chemistry/analysis_set",
-                          params={"query": "laboratory eq 'Test Lab1'"})
+    response = client.get(
+        "/chemistry/analysis_set", params={"query": "laboratory eq 'Test Lab1'"}
+    )
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 1  # Assuming both sets match the query
+    assert "items" in data
+    assert len(data["items"]) == 1  # Assuming both sets match the query
 
 
 def test_query_chemistry_analysis():
-    response = client.get("/chemistry/analysis",
-                          params={"query": "analyte eq 'Na'"})
+    response = client.get("/chemistry/analysis", params={"query": "analyte eq 'Na'"})
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data
-    assert len(data['items']) == 1  # Assuming both analyses match the query
+    assert "items" in data
+    assert len(data["items"]) == 1  # Assuming both analyses match the query
+
+
 # ============= EOF =============================================

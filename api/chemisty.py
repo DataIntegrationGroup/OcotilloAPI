@@ -40,9 +40,8 @@ router = APIRouter(
     tags=["chemistry"],
 )
 async def get_chemistry_analysis_set(
-        query: str = None,
-        within: str = None,
-        session: Session = Depends(get_db_session)):
+    query: str = None, within: str = None, session: Session = Depends(get_db_session)
+):
     """
     Retrieve chemistry analysis sets.
     """
@@ -64,9 +63,7 @@ async def get_chemistry_analysis_set(
     tags=["chemistry"],
 )
 async def get_chemistry_analysis(
-        query: str = None,
-        within: str = None,
-        session: Session = Depends(get_db_session)
+    query: str = None, within: str = None, session: Session = Depends(get_db_session)
 ):
     """
     Retrieve chemistry analysis data.
