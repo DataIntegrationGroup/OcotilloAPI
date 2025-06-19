@@ -21,7 +21,7 @@ from shapely.wkt import loads as wkt_loads
 from sqlalchemy import Select
 
 
-def create_shapefile(locations, filename="locations.shp"):
+def create_shapefile(locations: list, filename: str="locations.shp"):
     # Create a point shapefile
     with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
         shp.field("name", "C")

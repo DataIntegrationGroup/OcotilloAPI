@@ -13,22 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
-
 from schemas import ORMBaseModel
 
 
-class CreateLexiconTerm(BaseModel):
-    """
-    Pydantic model for creating a lexicon term.
-    This model can be extended to include additional fields as needed.
-    """
-
-    term: str
-    definition: str
-    category: str | None = None
-
-
+# ============= EOF =============================================
 class LexiconTermResponse(ORMBaseModel):
     """
     Pydantic model for the response of a lexicon term.
@@ -38,6 +26,3 @@ class LexiconTermResponse(ORMBaseModel):
     term: str
     definition: str
     category: str | None = None
-
-
-# ============= EOF =============================================

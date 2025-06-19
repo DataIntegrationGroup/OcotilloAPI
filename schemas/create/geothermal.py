@@ -147,6 +147,4 @@ class CreateHeatFlow(BaseModel):
     q_unit: str = "mW/m²"  # Assuming heat flow unit is a string (e.g., 'mW/m²', 'W/m²')
     pm: float  # Assuming pm is power measurement
     pm_unit: str = "mW/m²"  # Assuming pm unit is a string (e.g., 'mW/m²', 'W/m²')
-
-
 # ============= EOF =============================================

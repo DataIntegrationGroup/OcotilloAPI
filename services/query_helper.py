@@ -16,8 +16,7 @@
 from services.regex import QUERY_REGEX
 
 
-# ============= EOF =============================================
-def to_bool(value: str):
+def to_bool(value: str) -> bool | str:
     """Convert a string to a boolean."""
     if isinstance(value, bool):
         return value
@@ -28,6 +27,14 @@ def to_bool(value: str):
 
     return value
 
+
+def make_where(col, op: str, v: str):
+    if op == "like":
+        return col.like(v)
+    elif op == "between":
+        return col.between(*map(float, v.strip("[]").split(",")))
+    else:
+        return getattr(col, f"__{op}__")(v)
 
 def make_query(table, query: str):
     # ensure the length of the query is reasonable
@@ -45,14 +52,6 @@ def make_query(table, query: str):
     # Convert boolean strings to actual booleans
     value = to_bool(value)
 
-    def make_where(col, op, v):
-        if op == "like":
-            return col.like(v)
-        elif op == "between":
-            return col.between(*map(float, v.strip("[]").split(",")))
-        else:
-            return getattr(col, f"__{op}__")(v)
-
     if "." in column:
         # Handle nested attributes
         column_parts = column.split(".")
@@ -66,3 +65,5 @@ def make_query(table, query: str):
         w = make_where(column, operator, value)
 
     return w
+
+# ============= EOF =============================================

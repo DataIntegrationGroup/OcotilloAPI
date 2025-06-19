@@ -17,7 +17,8 @@ from fastapi import APIRouter, Depends
 from fastapi import status
 from db import get_db_session
 from db.lexicon import Lexicon
-from schemas.lexicon import CreateLexiconTerm, LexiconTermResponse
+from schemas.response.lexicon import LexiconTermResponse
+from schemas.create.lexicon import CreateLexiconTerm
 
 router = APIRouter(
     prefix="/lexicon",

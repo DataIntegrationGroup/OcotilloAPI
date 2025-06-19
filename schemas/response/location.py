@@ -13,33 +13,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
+from geoalchemy2 import WKBElement
+from geoalchemy2.shape import to_shape
+from pydantic import field_validator
 from schemas import ORMBaseModel
 
 
-class CreateSpring(ORMBaseModel):
+class SampleLocationResponse(ORMBaseModel):
     """
-    Schema for creating a spring.
+    Response schema for sample location details.
     """
 
+    id: int
+    name: str | None = None
+    description: str | None = None
+    point: str
+
+    @field_validator("point", mode="before")
+    def point_to_wkt(cls, value):
+        if isinstance(value, WKBElement):
+            return to_shape(value).wkt
+
+        # If the value is a string, assume it's already in WKT format
+        if isinstance(value, str):
+            return value
+
+
+class GroupLocationResponse(ORMBaseModel):
+    """
+    Response schema for group location details.
+    """
+
+    id: int
+    group_id: int
     location_id: int
-
-
-class CreateEquipment(ORMBaseModel):
-    """
-    Schema for creating equipment.
-    """
-
-    location_id: int
-
-    equipment_type: str
-    model: str | None = None
-    serial_no: str | None = None
-    date_installed: datetime | None = None  # ISO format date string
-    date_removed: datetime | None = None  # ISO format date string
-    recording_interval: int | None = None  # in seconds
-    equipment_notes: str | None = None
-
 
 # ============= EOF =============================================

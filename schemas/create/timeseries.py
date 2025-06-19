@@ -13,12 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
-class CreateCollaborativeNetworkWell(BaseModel):
-    well_id: int
-    actively_monitored: bool = False
-
-
 # ============= EOF =============================================
+class CreateWellTimeseries(BaseModel):
+    name: str
+    description: str | None = None
+    well_id: int
+
+
+class CreateGroundwaterLevelObservation(BaseModel):
+    timestamp: datetime  # ISO 8601 format
+    value: float
+    timeseries_id: int

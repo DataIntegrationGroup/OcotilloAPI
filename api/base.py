@@ -38,29 +38,19 @@ from db.base import (
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from api.pagination import CustomPage
 from schemas.base_create import (
-    CreateWell,
-    CreateLocation,
-    CreateGroup,
-    CreateGroupLocation,
-    CreateOwner,
-    CreateContact,
-    CreateScreenWell,
     CreateSpring,
     CreateEquipment,
 )
+from schemas.create.location import CreateLocation, CreateGroup, CreateGroupLocation, CreateOwner, CreateContact
+from schemas.create.well import CreateWell, CreateScreenWell
 from schemas.base_get import GetWell, GetLocation
 from schemas.base_responses import (
-    OwnerResponse,
-    SampleLocationResponse,
-    WellResponse,
-    GroupResponse,
-    ContactResponse,
-    WellScreenResponse,
-    GroupLocationResponse,
     SpringResponse,
     EquipmentResponse,
-    SampleLocationWellResponse,
 )
+from schemas.response.well import WellResponse, SampleLocationWellResponse, WellScreenResponse, GroupResponse, \
+    ContactResponse, OwnerResponse
+from schemas.response.location import SampleLocationResponse, GroupLocationResponse
 
 router = APIRouter(
     prefix="/base",

@@ -13,34 +13,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
 from schemas import ORMBaseModel
 
 
-class SpringResponse(ORMBaseModel):
+
+class CreateLocation(ORMBaseModel):
     """
-    Response schema for spring details.
+    Schema for creating a sample location.
     """
 
-    id: int
+    name: str
+    description: str | None = None
+    point: str = "POINT(0 0)"  # Default to a point at the origin
+    visible: bool = False
+
+
+class CreateGroup(ORMBaseModel):
+    """
+    Schema for creating a group.
+    """
+
+    name: str
+
+
+class CreateGroupLocation(ORMBaseModel):
+    """
+    Schema for creating a group location.
+    """
+
+    group_id: int
     location_id: int
+
+
+class CreateOwner(ORMBaseModel):
+    """
+    Schema for creating an owner.
+    """
+
+    name: str
     description: str | None = None
 
 
-class EquipmentResponse(ORMBaseModel):
+class CreateContact(ORMBaseModel):
     """
-    Response schema for equipment details.
+    Schema for creating a contact.
     """
 
-    id: int
-    location_id: int
-    equipment_type: str | None = None
-    model: str | None = None
-    serial_no: str | None = None
-    date_installed: str | None = None  # ISO format date string
-    date_removed: str | None = None  # ISO format date string
-    recording_interval: int | None = None
-    equipment_notes: str | None = None
+    owner_id: int
 
-
+    name: str | None = None
+    description: str | None = None
+    email: str | None = None
+    phone: str | None = None
 # ============= EOF =============================================
