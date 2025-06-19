@@ -13,23 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import shapefile
-from geoalchemy2.shape import to_shape
-from shapely.wkt import loads as wkt_loads
-
-
-def create_shapefile(locations, filename="locations.shp"):
-    # Create a point shapefile
-    with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
-        shp.field("name", "C")
-        for loc in locations:
-            # Assume loc.point is WKT or a Shapely geometry
-            if isinstance(loc.point, str):
-                geom = wkt_loads(loc.point)
-            else:
-                geom = to_shape(loc.point)
-            shp.point(geom.x, geom.y)
-            shp.record(loc.name)
-
 
 # ============= EOF =============================================

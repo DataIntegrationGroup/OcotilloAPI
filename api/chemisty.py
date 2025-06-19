@@ -13,29 +13,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from api.pagination import CustomPage
+from db.base import SampleLocation, Well
 from fastapi import APIRouter, Depends, status
+from schemas.response.chemistry import WaterChemistryAnalysisResponse, WaterChemistryAnalysisSetResponse
+from services.geospatial_helper import make_within_wkt
 from sqlalchemy.orm import Session
-
+from sqlalchemy import select
+from fastapi_pagination.ext.sqlalchemy import paginate
 from db import adder, get_db_session
 from db.chemistry import WaterChemistryAnalysis, WaterChemistryAnalysisSet
-from schemas.chemistry_create import CreateWaterChemistryAnalysis, CreateAnalysisSet
+from schemas.create.chemistry import CreateWaterChemistryAnalysis, CreateAnalysisSet
 
 router = APIRouter(
     prefix="/chemistry",
 )
 
 
-@router.get("/analysis", tags=["chemistry"])
-async def get_chemistry_analysis():
+@router.get("/analysis_set",
+            response_model=CustomPage[WaterChemistryAnalysisSetResponse],
+            tags=["chemistry"])
+async def get_chemistry_analysis_set(
+        within: str = None,
+        session: Session = Depends(get_db_session)):
+    """
+    Retrieve chemistry analysis sets.
+    """
+    sql = select(WaterChemistryAnalysisSet)
+    if within:
+        sql = sql.join(Well)
+        sql = sql.join(SampleLocation)
+        sql = make_within_wkt(sql, within)
+
+    return paginate(conn=session, query=sql)
+
+
+@router.get("/analysis",
+            response_model=CustomPage[WaterChemistryAnalysisResponse],
+            tags=["chemistry"])
+async def get_chemistry_analysis(within: str = None, session: Session = Depends(get_db_session)):
     """
     Retrieve chemistry analysis data.
     """
     # Placeholder for actual implementation
-    return {"message": "Chemistry analysis data retrieved successfully."}
+    # return {"message": "Chemistry analysis data retrieved successfully."}
+    sql = select(WaterChemistryAnalysis)
+    if within:
+        sql = sql.join(WaterChemistryAnalysisSet)
+        sql = sql.join(Well)
+        sql = sql.join(SampleLocation)
+        sql = make_within_wkt(sql, within)
+
+    return paginate(conn=session, query=sql)
 
 
 # ====== POST ===============
-@router.post("/analysis_set", status_code=status.HTTP_201_CREATED)
+@router.post("/analysis_set",
+             status_code=status.HTTP_201_CREATED)
 async def add_chemistry_analysis_set(
     analysis_set_data: CreateAnalysisSet, session: Session = Depends(get_db_session)
 ):

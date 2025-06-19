@@ -34,7 +34,7 @@ from db.base import (
     Spring,
     Equipment,
 )
-from api.geospatial_helper import create_shapefile
+from services.geospatial_helper import create_shapefile, make_within_wkt
 from api.pagination import CustomPage
 from services.regex import QUERY_REGEX
 from schemas.base_create import (
@@ -306,8 +306,7 @@ async def get_location(
             func.ST_Distance(SampleLocation.point, nearby_point) <= nearby_distance_km
         )
     elif within:
-        within = func.ST_GeomFromText(within)
-        sql = sql.where(func.ST_Within(SampleLocation.point, within))
+        sql = make_within_wkt(sql, within)
 
     if expand == "well":
         sql = sql.outerjoin(Well)

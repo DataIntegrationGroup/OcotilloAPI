@@ -1,9 +1,16 @@
 [
+  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_quality"},
+  {"term": "Na", "definition": "Sodium", "category": "water_quality"},
+  {"term": "Cl", "definition": "Chloride", "category": "water_quality"},
+  {"term": "Ca", "definition": "Calcium", "category": "water_quality"},
+  {"term": "Mg", "definition": "Magnesium", "category": "water_quality"},
+  {"term": "SO4", "definition": "Sulfate", "category": "water_quality"},
+  {"term": "HCO3", "definition": "Bicarbonate", "category": "water_quality"},
+
   {"term": "ft", "definition": "feet", "category": "unit"},
   {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},
   {"term": "F", "definition": "Fahrenheit", "category": "unit"},
   {"term": "mg/L", "definition": "Milligrams per Liter", "category": "unit"},
-  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_quality"},
   {"term":  "mW/m²", "definition": "milliwatts per square meter", "category": "unit"},
   {"term":  "W/m²", "definition": "watts per square meter", "category": "unit"},
   {"term":  "W/m·K", "definition":  "watts per meter Kelvin", "category": "unit"},
