@@ -19,4 +19,6 @@ from pydantic import BaseModel
 class CreateCollaborativeNetworkWell(BaseModel):
     well_id: int
     actively_monitored: bool = False
+
+
 # ============= EOF =============================================

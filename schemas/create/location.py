@@ -16,7 +16,6 @@
 from schemas import ORMBaseModel
 
 
-
 class CreateLocation(ORMBaseModel):
     """
     Schema for creating a sample location.
@@ -65,4 +64,6 @@ class CreateContact(ORMBaseModel):
     description: str | None = None
     email: str | None = None
     phone: str | None = None
+
+
 # ============= EOF =============================================

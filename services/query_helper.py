@@ -36,6 +36,7 @@ def make_where(col, op: str, v: str):
     else:
         return getattr(col, f"__{op}__")(v)
 
+
 def make_query(table, query: str):
     # ensure the length of the query is reasonable
     if len(query) > 1000:
@@ -65,5 +66,6 @@ def make_query(table, query: str):
         w = make_where(column, operator, value)
 
     return w
+
 
 # ============= EOF =============================================

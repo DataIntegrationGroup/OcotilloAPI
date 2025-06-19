@@ -27,9 +27,16 @@ from db.geothermal import (
     GeothermalSampleSet,
     GeothermalBottomHoleTemperatureHeader,
 )
-from schemas.create.geothermal import CreateTemperatureProfile, CreateTemperatureProfileObservation, \
-    CreateGeothermalSampleSet, CreateBottomHoleTemperatureHeader, CreateBottomHoleTemperature, CreateGeothermalInterval, \
-    CreateThermalConductivity, CreateHeatFlow
+from schemas.create.geothermal import (
+    CreateTemperatureProfile,
+    CreateTemperatureProfileObservation,
+    CreateGeothermalSampleSet,
+    CreateBottomHoleTemperatureHeader,
+    CreateBottomHoleTemperature,
+    CreateGeothermalInterval,
+    CreateThermalConductivity,
+    CreateHeatFlow,
+)
 
 router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 

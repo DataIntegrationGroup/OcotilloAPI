@@ -41,15 +41,27 @@ from schemas.base_create import (
     CreateSpring,
     CreateEquipment,
 )
-from schemas.create.location import CreateLocation, CreateGroup, CreateGroupLocation, CreateOwner, CreateContact
+from schemas.create.location import (
+    CreateLocation,
+    CreateGroup,
+    CreateGroupLocation,
+    CreateOwner,
+    CreateContact,
+)
 from schemas.create.well import CreateWell, CreateScreenWell
 from schemas.base_get import GetWell, GetLocation
 from schemas.base_responses import (
     SpringResponse,
     EquipmentResponse,
 )
-from schemas.response.well import WellResponse, SampleLocationWellResponse, WellScreenResponse, GroupResponse, \
-    ContactResponse, OwnerResponse
+from schemas.response.well import (
+    WellResponse,
+    SampleLocationWellResponse,
+    WellScreenResponse,
+    GroupResponse,
+    ContactResponse,
+    OwnerResponse,
+)
 from schemas.response.location import SampleLocationResponse, GroupLocationResponse
 
 router = APIRouter(

@@ -19,7 +19,6 @@ from schemas import ORMBaseModel
 from schemas.response.location import SampleLocationResponse
 
 
-
 class WellResponse(ORMBaseModel):
     """
     Response schema for well details.
@@ -85,4 +84,6 @@ class OwnerResponse(ORMBaseModel):
     contacts: List[ContactResponse] = []  # List of contacts associated with the owner
     # email: str | None = None
     # phone: str | None = None
+
+
 # ============= EOF =============================================

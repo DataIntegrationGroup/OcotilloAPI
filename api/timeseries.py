@@ -20,7 +20,10 @@ from fastapi import APIRouter, Depends, status
 from db import get_db_session
 from db.timeseries import WellTimeseries, GroundwaterLevelObservation
 from schemas.response.timeseries import WellTimeseriesResponse
-from schemas.create.timeseries import CreateWellTimeseries, CreateGroundwaterLevelObservation
+from schemas.create.timeseries import (
+    CreateWellTimeseries,
+    CreateGroundwaterLevelObservation,
+)
 
 router = APIRouter(
     prefix="/timeseries",
