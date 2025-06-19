@@ -30,7 +30,7 @@ class CreateWell(ORMBaseModel):
     construction_notes: str | None = None
 
 
-class CreateScreenWell(ORMBaseModel):
+class CreateWellScreen(ORMBaseModel):
     """
     Schema for creating a well screen.
     """

@@ -1,11 +1,11 @@
 [
-  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_quality"},
-  {"term": "Na", "definition": "Sodium", "category": "water_quality"},
-  {"term": "Cl", "definition": "Chloride", "category": "water_quality"},
-  {"term": "Ca", "definition": "Calcium", "category": "water_quality"},
-  {"term": "Mg", "definition": "Magnesium", "category": "water_quality"},
-  {"term": "SO4", "definition": "Sulfate", "category": "water_quality"},
-  {"term": "HCO3", "definition": "Bicarbonate", "category": "water_quality"},
+  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
+  {"term": "Na", "definition": "Sodium", "category": "water_chemistry"},
+  {"term": "Cl", "definition": "Chloride", "category": "water_chemistry"},
+  {"term": "Ca", "definition": "Calcium", "category": "water_chemistry"},
+  {"term": "Mg", "definition": "Magnesium", "category": "water_chemistry"},
+  {"term": "SO4", "definition": "Sulfate", "category": "water_chemistry"},
+  {"term": "HCO3", "definition": "Bicarbonate", "category": "water_chemistry"},
 
   {"term": "ft", "definition": "feet", "category": "unit"},
   {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},
@@ -20,6 +20,7 @@
   {"term": "Monitoring", "definition": "Monitoring", "category": "well_type"},
   {"term": "Production", "definition": "Production", "category": "well_type"},
   {"term": "Injection", "definition": "Injection", "category": "well_type"},
+
 
   {"term": "PVC", "definition": "Polyvinyl Chloride", "category": "casing_material"},
   {"term": "Steel", "definition": "Steel", "category": "casing_material"},

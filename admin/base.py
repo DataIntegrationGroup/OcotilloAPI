@@ -22,11 +22,11 @@ from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 from sqlalchemy import Integer, Boolean, Text, String, update, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import sqlalchemy_sessionmaker, Base
+from db import database_sessionmaker, Base
 from db.base import SampleLocation, Well
 
 
-@register(SampleLocation, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)
+@register(SampleLocation, sqlalchemy_sessionmaker=database_sessionmaker)
 class SampleLocationsAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for SampleLocations.
@@ -36,7 +36,7 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
     list_display = ("name",)
 
 
-@register(Well, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)
+@register(Well, sqlalchemy_sessionmaker=database_sessionmaker)
 class WellAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for Well.

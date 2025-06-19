@@ -22,6 +22,7 @@ from schemas.response.chemistry import (
     WaterChemistryAnalysisSetResponse,
 )
 from services.geospatial_helper import make_within_wkt
+from services.validation.chemistry import validate_analyte
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -94,7 +95,7 @@ async def add_chemistry_analysis_set(
 
 @router.post("/analysis", status_code=status.HTTP_201_CREATED, tags=["chemistry"])
 async def add_chemistry_analysis(
-    analysis_data: CreateWaterChemistryAnalysis,
+    analysis_data: CreateWaterChemistryAnalysis = Depends(validate_analyte),
     session: Session = Depends(get_db_session),
 ):
     """

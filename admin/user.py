@@ -22,11 +22,11 @@ from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 from sqlalchemy import Integer, Boolean, Text, String, update, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db import sqlalchemy_sessionmaker, Base
+from db import database_sessionmaker, Base
 from db.base import SampleLocation, User
 
 
-@register(User, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)
+@register(User, sqlalchemy_sessionmaker=database_sessionmaker)
 class UserModelAdmin(SqlAlchemyModelAdmin):
     list_display = ("id", "username", "is_superuser")
     list_display_links = ("id", "username")

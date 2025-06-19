@@ -15,15 +15,17 @@
 # ===============================================================================
 from typing import List, Union
 
+from db.lexicon import Lexicon
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from geoalchemy2 import functions as geofunc
 from services.query_helper import make_query
+from services.validation.well import validate_screens
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 
-from db import get_db_session, adder
+from db import get_db_session, adder, database_sessionmaker
 from db.base import (
     Well,
     SampleLocation,
@@ -48,7 +50,7 @@ from schemas.create.location import (
     CreateOwner,
     CreateContact,
 )
-from schemas.create.well import CreateWell, CreateScreenWell
+from schemas.create.well import CreateWell, CreateWellScreen
 from schemas.base_get import GetWell, GetLocation
 from schemas.base_responses import (
     SpringResponse,
@@ -104,7 +106,7 @@ def create_well(well_data: CreateWell, session: Session = Depends(get_db_session
     status_code=status.HTTP_201_CREATED,
 )
 def create_wellscreen(
-    well_screen_data: CreateScreenWell, session: Session = Depends(get_db_session)
+    well_screen_data: CreateWellScreen=Depends(validate_screens), session: Session = Depends(get_db_session)
 ):
     """
     Create a new well screen in the database.

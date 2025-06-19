@@ -18,7 +18,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from db import sqlalchemy_sessionmaker, engine, Base
+from db import database_sessionmaker, engine, Base
 from db.lexicon import Lexicon
 from .settings import settings
 
@@ -39,7 +39,7 @@ def init_lexicon():
         default_lexicon = json.load(f)
 
     # populate lexicon
-    with sqlalchemy_sessionmaker() as s:
+    with database_sessionmaker() as s:
         for term_dict in default_lexicon:
             s.add(Lexicon(**term_dict))
         s.commit()
@@ -48,7 +48,7 @@ def init_lexicon():
 def create_superuser():
     from admin.user import User
 
-    with sqlalchemy_sessionmaker() as s:
+    with database_sessionmaker() as s:
         user = User(
             username="admin",
             password="admin",

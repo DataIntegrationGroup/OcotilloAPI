@@ -53,11 +53,11 @@ listen(engine, "connect", on_connect)
 
 
 # sqlalchemy_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-sqlalchemy_sessionmaker = sessionmaker(engine, expire_on_commit=False)
+database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db_session():
-    session = sqlalchemy_sessionmaker()
+    session = database_sessionmaker()
     yield session
     session.close()
 
