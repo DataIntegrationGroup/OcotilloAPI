@@ -18,6 +18,7 @@ from typing import List, Union
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from geoalchemy2 import functions as geofunc
+from services.query_helper import make_query
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
@@ -36,7 +37,6 @@ from db.base import (
 )
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from api.pagination import CustomPage
-from services.regex import QUERY_REGEX
 from schemas.base_create import (
     CreateWell,
     CreateLocation,
@@ -177,47 +177,6 @@ def create_equipment(
     # Placeholder for actual equipment creation logic
     # return {"message": "This endpoint will create a new equipment."}
     return adder(session, Equipment, equipment_data)
-
-
-def make_query(table, query: str):
-    # ensure the length of the query is reasonable
-    if len(query) > 1000:
-        raise ValueError("Query is too long")
-
-    match = QUERY_REGEX.match(query)
-    column = match.group("field")
-    value = match.group("value")
-    operator = match.group("operator")
-    value = value.lower()
-    if value.startswith("'") and value.endswith("'"):
-        value = value[1:-1]
-
-    if value == "true":
-        value = True
-    elif value == "false":
-        value = False
-
-    def make_where(col, op, v):
-        if op == "like":
-            return col.like(v)
-        elif op == "between":
-            return col.between(*map(float, v.strip("[]").split(",")))
-        else:
-            return getattr(col, f"__{op}__")(v)
-
-    if "." in column:
-        # Handle nested attributes
-        column_parts = column.split(".")
-        rel = getattr(table, column_parts[0])
-        related_model = rel.property.mapper.class_
-        related_column = getattr(related_model, column_parts[1])
-        w = make_where(related_column, operator, value)
-        w = rel.any(w)
-    else:
-        column = getattr(table, column)
-        w = make_where(column, operator, value)
-
-    return w
 
 
 # ==== Get ============================================

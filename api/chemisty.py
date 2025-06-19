@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from services.query_helper import make_query
 from api.pagination import CustomPage
 from db.base import SampleLocation, Well
 from fastapi import APIRouter, Depends, status
@@ -39,8 +40,9 @@ router = APIRouter(
     tags=["chemistry"],
 )
 async def get_chemistry_analysis_set(
-    within: str = None, session: Session = Depends(get_db_session)
-):
+        query: str = None,
+        within: str = None,
+        session: Session = Depends(get_db_session)):
     """
     Retrieve chemistry analysis sets.
     """
@@ -49,6 +51,9 @@ async def get_chemistry_analysis_set(
         sql = sql.join(Well)
         sql = sql.join(SampleLocation)
         sql = make_within_wkt(sql, within)
+
+    if query:
+        sql = sql.where(make_query(WaterChemistryAnalysisSet, query))
 
     return paginate(conn=session, query=sql)
 
@@ -59,19 +64,22 @@ async def get_chemistry_analysis_set(
     tags=["chemistry"],
 )
 async def get_chemistry_analysis(
-    within: str = None, session: Session = Depends(get_db_session)
+        query: str = None,
+        within: str = None,
+        session: Session = Depends(get_db_session)
 ):
     """
     Retrieve chemistry analysis data.
     """
-    # Placeholder for actual implementation
-    # return {"message": "Chemistry analysis data retrieved successfully."}
     sql = select(WaterChemistryAnalysis)
     if within:
         sql = sql.join(WaterChemistryAnalysisSet)
         sql = sql.join(Well)
         sql = sql.join(SampleLocation)
         sql = make_within_wkt(sql, within)
+
+    if query:
+        sql = sql.where(make_query(WaterChemistryAnalysis, query))
 
     return paginate(conn=session, query=sql)
 
@@ -84,8 +92,6 @@ async def add_chemistry_analysis_set(
     """
     Add a set of new chemistry analyses.
     """
-    # Placeholder for actual implementation
-    # return {"message": "Chemistry analysis set added successfully.", "data": analysis_data}
     return adder(session, WaterChemistryAnalysisSet, analysis_set_data)
 
 
@@ -97,8 +103,6 @@ async def add_chemistry_analysis(
     """
     Add a new chemistry analysis.
     """
-    # Placeholder for actual implementation
-    # return {"message": "Chemistry analysis added successfully.", "data": analysis_data}
     return adder(session, WaterChemistryAnalysis, analysis_data)
 
 

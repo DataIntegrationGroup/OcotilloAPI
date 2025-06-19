@@ -36,7 +36,7 @@ def test_add_analysis_set():
         "/chemistry/analysis_set",
         json={
             "well_id": 2,
-            "laboratory": "Test Lab",
+            "laboratory": "Test Lab1",
             "collection_timestamp": "2025-01-01T12:00:00",
         },
     )
@@ -44,7 +44,7 @@ def test_add_analysis_set():
     assert response.status_code == 201
     data = response.json()
     assert data["well_id"] == 2
-    assert data["laboratory"] == "Test Lab"
+    assert data["laboratory"] == "Test Lab1"
 
 
 def test_add_analysis():
@@ -83,8 +83,6 @@ def test_add_analysis():
 
 
 # get ===================
-
-
 def test_get_chemistry_analysis_set():
     response = client.get("/chemistry/analysis_set")
     assert response.status_code == 200
@@ -119,11 +117,6 @@ def test_geospatial_chemistry_analysis_set():
     data = response.json()
     assert "items" in data
     assert len(data["items"]) == 1
-    # item = data['items'][0]
-    # assert item['analysis_set_id'] == 1
-    # assert item['value'] == 7.0
-    # assert item['unit'] == 'mg/L'
-    # assert 'geometry' in item  # Assuming geometry is part of the response
 
 
 def test_geospatial_chemistry_analysis():
@@ -137,11 +130,22 @@ def test_geospatial_chemistry_analysis():
     data = response.json()
     assert "items" in data
     assert len(data["items"]) == 1
-    # item = data['items'][0]
-    # assert item['analysis_set_id'] == 1
-    # assert item['value'] == 7.0
-    # assert item['unit'] == 'mg/L'
-    # assert 'geometry' in item  # Assuming geometry is part of the response
 
 
+def test_query_chemistry_analysis_set():
+    response = client.get("/chemistry/analysis_set",
+                          params={"query": "laboratory eq 'Test Lab1'"})
+    assert response.status_code == 200
+    data = response.json()
+    assert 'items' in data
+    assert len(data['items']) == 1  # Assuming both sets match the query
+
+
+def test_query_chemistry_analysis():
+    response = client.get("/chemistry/analysis",
+                          params={"query": "analyte eq 'Na'"})
+    assert response.status_code == 200
+    data = response.json()
+    assert 'items' in data
+    assert len(data['items']) == 1  # Assuming both analyses match the query
 # ============= EOF =============================================
