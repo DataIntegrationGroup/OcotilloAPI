@@ -23,7 +23,7 @@ async def validate_analyte(analysis_data: CreateWaterChemistryAnalysis):
     session = database_sessionmaker()
     with session:
         # get valid analytes from the database
-        valid_analytes = await get_category('water_chemistry')
+        valid_analytes = await get_category("water_chemistry")
 
         if analysis_data.analyte not in valid_analytes:
             raise ValueError(
@@ -31,4 +31,6 @@ async def validate_analyte(analysis_data: CreateWaterChemistryAnalysis):
                 f"Valid options are: {', '.join(valid_analytes)}."
             )
     return analysis_data
+
+
 # ============= EOF =============================================

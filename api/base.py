@@ -106,7 +106,8 @@ def create_well(well_data: CreateWell, session: Session = Depends(get_db_session
     status_code=status.HTTP_201_CREATED,
 )
 def create_wellscreen(
-    well_screen_data: CreateWellScreen=Depends(validate_screens), session: Session = Depends(get_db_session)
+    well_screen_data: CreateWellScreen = Depends(validate_screens),
+    session: Session = Depends(get_db_session),
 ):
     """
     Create a new well screen in the database.

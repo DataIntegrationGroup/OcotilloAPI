@@ -16,6 +16,7 @@
 from db import database_sessionmaker
 from db.lexicon import Lexicon
 
+
 async def get_category(category: str) -> list:
     """
     Fetches the categories from the database.
@@ -28,9 +29,9 @@ async def get_category(category: str) -> list:
     with session:
         categories = [
             lex.term
-            for lex in session.query(Lexicon)
-            .filter(Lexicon.category == category)
-            .all()
+            for lex in session.query(Lexicon).filter(Lexicon.category == category).all()
         ]
     return categories
+
+
 # ============= EOF =============================================
