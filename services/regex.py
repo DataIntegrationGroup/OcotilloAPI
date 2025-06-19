@@ -23,13 +23,13 @@ The pattern matches the following structure:
 """
 import re
 
-
 QUERY_REGEX = re.compile(
     r"(?P<field>[a-zA-Z_]+(?:\.[a-zA-Z_]+)?)\s+"
     r"(?P<operator>eq|ne|gt|lt|ge|le|like|between)\s+"
-    r"(?P<value>'[^']*'|"
+    r"(?P<value>'[^']{0,256}'|"
     r"true|"
-    r"false|\d+(\.\d+)?|"
-    r"\[\s*\d+(\.\d+)?\s*,\s*\d+(\.\d+)?\s*\])"
+    r"false|"
+    r"\d{1,10}(\.\d{1,10})?|"
+    r"\[\s*\d{1,10}(\.\d{1,10})?\s*,\s*\d{1,10}(\.\d{1,10})?\s*\])"
 )
 # ============= EOF =============================================
