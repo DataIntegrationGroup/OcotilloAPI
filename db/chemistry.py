@@ -31,10 +31,10 @@ class WaterChemistryAnalysis(Base, AutoBaseMixin):
         Integer, ForeignKey("water_chemistry_analysis_set.id")
     )
     value = mapped_column(Float)
-    unit = mapped_column(String(100), ForeignKey("lexicon.term"), nullable=True)
+    unit = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
     uncertainty = mapped_column(Float, nullable=True)
     method = mapped_column(String(100), nullable=True)
-    analyte = mapped_column(String(100), ForeignKey("lexicon.term"), nullable=False)
+    analyte = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
     analysis_timestamp = mapped_column(
         DateTime
     )  # Timestamp of when the analysis was performed
@@ -61,13 +61,13 @@ class WaterChemistryAnalysisSet(Base, AutoBaseMixin):
 
     collection_method = mapped_column(
         String(100),
-        ForeignKey("lexicon.term"),
+        ForeignKey("lexicon_term.term"),
         nullable=True,
     )  # Method used for sample collection
 
     sample_type = mapped_column(
         String(100),
-        ForeignKey("lexicon.term"),
+        ForeignKey("lexicon_term.term"),
         nullable=True,
     )  # Type of sample collected (e.g., groundwater, surface water)
 

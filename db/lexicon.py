@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import String
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy.orm import mapped_column, relationship
 
 from db import AutoBaseMixin, Base
 
@@ -24,13 +24,51 @@ class Lexicon(Base, AutoBaseMixin):
     Lexicon model for storing terms and their definitions.
     This model can be extended to include additional fields as needed.
     """
-
+    __tablename__ = 'lexicon_term'
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
-    category = mapped_column(String(255), nullable=True)
+
+    # category_id = mapped_column(Integer, nullable=False)
+    # category = mapped_column(String(255), nullable=True)
 
     def __repr__(self):
-        return f"<Lexicon(category={self.category}, term={self.term}, definition={self.definition})>"
+        return f"<Lexicon(category={self.category_id}, term={self.term}, definition={self.definition})>"
 
+
+class Category(Base, AutoBaseMixin):
+    """
+    Model for storing categories of terms.
+    This can be used to group terms into different categories.
+    """
+
+    __tablename__ = "lexicon_category"
+    name = mapped_column(String(100), unique=True, nullable=False)
+    description = mapped_column(String(255), nullable=True)
+
+    # terms = relationship(
+    #     "lexicon",
+    #     backref="category",
+    #     cascade="all, delete-orphan",
+    #     lazy="dynamic"
+    # )
+    def __repr__(self):
+        return f"<Category(name={self.name}, description={self.description})>"
+
+
+class CategoryLink(Base, AutoBaseMixin):
+    """
+    Model for linking terms to categories.
+    This can be used to create a many-to-many relationship between terms and categories.
+    """
+    __tablename__ = "lexicon_category_links"
+
+    lexicon_term = mapped_column(String(100), ForeignKey('lexicon_term.term'), nullable=False)
+    category_name = mapped_column(String(255), ForeignKey('lexicon_category.name'),nullable=False)
+
+    term = relationship("Lexicon")
+    category = relationship("Category")
+
+    def __repr__(self):
+        return f"<CategoryLink(term_id={self.term_id}, category_id={self.category_id})>"
 
 # ============= EOF =============================================

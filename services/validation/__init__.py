@@ -14,10 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 from db import database_sessionmaker
-from db.lexicon import Lexicon
+from db.lexicon import Lexicon, Category, CategoryLink
+from sqlalchemy import select
 
 
-async def get_category(category: str) -> list:
+def get_category(category: str) -> list:
     """
     Fetches the categories from the database.
 
@@ -27,10 +28,13 @@ async def get_category(category: str) -> list:
 
     session = database_sessionmaker()
     with session:
-        categories = [
-            lex.term
-            for lex in session.query(Lexicon).filter(Lexicon.category == category).all()
-        ]
+        sql = select(Lexicon)
+        sql = sql.join(CategoryLink)
+        sql = sql.join(Category)
+        sql = sql.filter(Category.name == category)
+
+        categories = [lex.term for lex in session.scalars(sql).all()]
+
     return categories
 
 

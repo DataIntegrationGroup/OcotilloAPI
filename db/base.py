@@ -94,7 +94,7 @@ class Well(Base, AutoBaseMixin):
     )
     well_type = Column(
         String(100),
-        ForeignKey("lexicon.term"),
+        ForeignKey("lexicon_term.term"),
         nullable=True,
     )  # e.g., "Production", "Observation", etc.
 
@@ -102,7 +102,7 @@ class Well(Base, AutoBaseMixin):
     casing_depth = Column(Float, info={"unit": "feet below ground surface"})
     casing_description = Column(String(50))
     construction_notes = Column(String(250))
-    formation_zone = Column(String(100), ForeignKey("lexicon.term"), nullable=True)
+    formation_zone = Column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
 
     location = relationship("SampleLocation", backref="well", uselist=False)
 
@@ -116,7 +116,7 @@ class WellScreen(Base, AutoBaseMixin):
         Float, nullable=False, info={"unit": "feet below ground surface"}
     )
     screen_type = Column(
-        String(100), ForeignKey("lexicon.term"), nullable=True
+        String(100), ForeignKey("lexicon_term.term"), nullable=True
     )  # e.g., "PVC", "Steel", etc.
 
     # Define a relationship to well if needed

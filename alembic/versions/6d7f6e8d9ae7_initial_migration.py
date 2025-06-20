@@ -320,7 +320,7 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["formation_zone"],
-            ["lexicon.term"],
+            ["lexicon_term.term"],
         ),
         sa.ForeignKeyConstraint(
             ["location_id"],
@@ -328,7 +328,7 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["well_type"],
-            ["lexicon.term"],
+            ["lexicon_term.term"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -353,7 +353,7 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["screen_type"],
-            ["lexicon.term"],
+            ["lexicon_term.term"],
         ),
         sa.ForeignKeyConstraint(
             ["well_id"],

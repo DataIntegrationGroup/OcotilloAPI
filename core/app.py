@@ -19,7 +19,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 
 from db import database_sessionmaker, engine, Base
-from db.lexicon import Lexicon
+from db.lexicon import Lexicon, Category, CategoryLink
+from services.lexicon import add_lexicon_term
 from .settings import settings
 
 
@@ -41,7 +42,8 @@ def init_lexicon():
     # populate lexicon
     with database_sessionmaker() as s:
         for term_dict in default_lexicon:
-            s.add(Lexicon(**term_dict))
+            add_lexicon_term(s, term_dict["term"], term_dict["definition"], term_dict["category"])
+            # s.add(Lexicon(**term_dict))
         s.commit()
 
 

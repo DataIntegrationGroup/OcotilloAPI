@@ -16,7 +16,6 @@
 from pydantic import BaseModel
 
 
-# ============= EOF =============================================
 class CreateLexiconTerm(BaseModel):
     """
     Pydantic model for creating a lexicon term.
@@ -25,4 +24,15 @@ class CreateLexiconTerm(BaseModel):
 
     term: str
     definition: str
-    category: str | None = None
+    category: str | int | None = None
+
+
+class CreateLexiconCategory(BaseModel):
+    """
+    Pydantic model for creating a lexicon category.
+    This model can be extended to include additional fields as needed.
+    """
+
+    name: str
+    description: str | None = None
+# ============= EOF =============================================
