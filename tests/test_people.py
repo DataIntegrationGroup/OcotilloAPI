@@ -43,7 +43,13 @@ def test_phone_validation_fail():
 
 def test_email_validation_fail():
 
-    for email in ["", "invalid-email", "invalid@domain", "invalid@domain.", "@domain.com"]:
+    for email in [
+        "",
+        "invalid-email",
+        "invalid@domain",
+        "invalid@domain.",
+        "@domain.com",
+    ]:
         response = client.post(
             "/base/contact",
             json={
@@ -67,4 +73,6 @@ def test_phone_validation_success():
         },
     )
     assert response.status_code == 201
+
+
 # ============= EOF =============================================

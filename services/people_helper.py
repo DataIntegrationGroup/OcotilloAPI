@@ -18,9 +18,12 @@ from schemas.create.location import CreateContact
 from sqlalchemy.orm import Session
 
 
-def add_contact(session: Session, contact_data: CreateContact|dict,
-                owner: Owner = None,
-                owner_id: int = None):
+def add_contact(
+    session: Session,
+    contact_data: CreateContact | dict,
+    owner: Owner = None,
+    owner_id: int = None,
+):
     """
     Add a new contact to the database.
     """
@@ -30,7 +33,7 @@ def add_contact(session: Session, contact_data: CreateContact|dict,
 
     if owner is None:
         if owner_id is None:
-            owner_id = contact_data.pop('owner_id')
+            owner_id = contact_data.pop("owner_id")
 
         owner = session.get(Owner, owner_id)
 
@@ -50,4 +53,6 @@ def add_contact(session: Session, contact_data: CreateContact|dict,
     session.commit()
 
     return contact
+
+
 # ============= EOF =============================================

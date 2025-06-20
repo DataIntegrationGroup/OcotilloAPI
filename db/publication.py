@@ -14,9 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db import AutoBaseMixin
-from sqlalchemy import (
-    Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
-)
+from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -24,10 +22,11 @@ Base = declarative_base()
 
 # Association tables
 publication_authors = Table(
-    'publication_authors', Base.metadata,
-    Column('publication_id', ForeignKey('publication.id'), primary_key=True),
-    Column('author_id', ForeignKey('author.id'), primary_key=True),
-    Column('author_order', Integer, nullable=False)
+    "publication_authors",
+    Base.metadata,
+    Column("publication_id", ForeignKey("publication.id"), primary_key=True),
+    Column("author_id", ForeignKey("author.id"), primary_key=True),
+    Column("author_order", Integer, nullable=False),
 )
 
 # publication_topics = Table(
@@ -50,13 +49,20 @@ class Publication(Base):
     publisher = Column(String)
     url = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
-    publication_type = Column(String(100), ForeignKey('lexicon_term.term'), nullable=False)
+    publication_type = Column(
+        String(100), ForeignKey("lexicon_term.term"), nullable=False
+    )
     # publication_type = relationship("PublicationType")
-    authors = relationship("Author", secondary=publication_authors, order_by=publication_authors.c.author_order)
+    authors = relationship(
+        "Author",
+        secondary=publication_authors,
+        order_by=publication_authors.c.author_order,
+    )
     # topics = relationship("Topic", secondary=publication_topics)
 
+
 class Author(Base, AutoBaseMixin):
-    __tablename__ = 'pub_author'
+    __tablename__ = "pub_author"
     # id = Column(Integer, primary_key=True)
     # first_name = Column(String, nullable=False)
     # last_name = Column(String, nullable=False)
@@ -66,10 +72,9 @@ class Author(Base, AutoBaseMixin):
 
 
 class AuthorContactAssociation(Base, AutoBaseMixin):
-    __tablename__ = 'pub_author_contact_association'
-    author_id = Column(Integer, ForeignKey('author.id'), nullable=False)
-    contact_id = Column(Integer, ForeignKey('contact.id'), nullable=False)
-
+    __tablename__ = "pub_author_contact_association"
+    author_id = Column(Integer, ForeignKey("author.id"), nullable=False)
+    contact_id = Column(Integer, ForeignKey("contact.id"), nullable=False)
 
 
 # class Topic(Base):

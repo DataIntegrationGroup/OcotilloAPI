@@ -62,9 +62,10 @@ class Owner(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
 
-    contacts = relationship("Contact",
-                            secondary='owner_contact_association',
-                            )
+    contacts = relationship(
+        "Contact",
+        secondary="owner_contact_association",
+    )
     # contacts = relationship(
     #     "Contact", back_populates="owner", cascade="all, delete-orphan"
     # )

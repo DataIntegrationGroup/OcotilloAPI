@@ -73,12 +73,14 @@ class CreateContact(ORMBaseModel):
     @field_validator("phone", mode="before")
     @classmethod
     def validate_phone(cls, phone_number_str):
-        region = 'US'
+        region = "US"
         try:
             parsed_number = phonenumbers.parse(phone_number_str, region)
             if phonenumbers.is_valid_number(parsed_number):
                 # You can also format the number if needed
-                formatted_number = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
+                formatted_number = phonenumbers.format_number(
+                    parsed_number, phonenumbers.PhoneNumberFormat.E164
+                )
                 return formatted_number
             else:
                 raise ValueError(f"Invalid phone number. {phone_number_str}")
@@ -104,4 +106,6 @@ class CreateContact(ORMBaseModel):
         #     if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", v):
         #         raise ValueError(f"Invalid email format. {v}")
         # return v
+
+
 # ============= EOF =============================================
