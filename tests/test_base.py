@@ -159,15 +159,15 @@ def test_add_contact():
         json={
             "owner_id": 1,
             "name": "Test Contact",
-            "email": "fasdfasdf",
-            "phone": "999-999-9999",
+            "email": "fasdfasdf@gmail.com",
+            "phone": "+12345678901",
         },
     )
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Contact"
-    assert data["email"] == "fasdfasdf"
+    assert data["email"] == "fasdfasdf@gmail.com"
 
 
 # GET tests ======================================================
@@ -340,5 +340,5 @@ def test_item_get_contact():
     data = response.json()
     assert data["id"] == 1
     assert data["name"] == "Test Contact"
-    assert data["email"] == "fasdfasdf"
-    assert data["phone"] == "999-999-9999"
+    assert data["email"] == "fasdfasdf@gmail.com"
+    assert data["phone"] == "+12345678901"

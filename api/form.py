@@ -26,6 +26,7 @@ from schemas.form import (
     GroundwaterLevelFormResponse,
     GroundwaterLevelForm,
 )
+from services.people_helper import add_contact
 
 router = APIRouter(prefix="/form")
 
@@ -60,11 +61,15 @@ async def well_form(form_data: WellForm, session=Depends(get_db_session)):
     existing_owner = simple_get_by_name(session, Owner, owner.name)
     if existing_owner is None:
         session.add(owner)
+        session.commit()
+        session.refresh(owner)
     else:
         owner = existing_owner
-
-    cs = [Contact(**contact) for contact in contact_data if contact is not None]
-    owner.contacts.extend(cs)
+    #
+    # cs = [Contact(**contact) for contact in contact_data if contact is not None]
+    # owner.contacts.extend(cs)
+    for ci in contact_data:
+        add_contact(session, ci, owner=owner)
 
     # add well to the database
     well_data = data.get("well", None)

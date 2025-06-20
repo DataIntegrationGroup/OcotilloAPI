@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db import database_sessionmaker
-from db.lexicon import Lexicon, Category, CategoryLink
+from db.lexicon import Lexicon, Category, TermCategoryAssociation
 from sqlalchemy import select
 
 
@@ -29,7 +29,7 @@ def get_category(category: str) -> list:
     session = database_sessionmaker()
     with session:
         sql = select(Lexicon)
-        sql = sql.join(CategoryLink)
+        sql = sql.join(TermCategoryAssociation)
         sql = sql.join(Category)
         sql = sql.filter(Category.name == category)
 

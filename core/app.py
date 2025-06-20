@@ -19,7 +19,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 
 from db import database_sessionmaker, engine, Base
-from db.lexicon import Lexicon, Category, CategoryLink
+from db.lexicon import Lexicon, Category, TermCategoryAssociation
 from services.lexicon import add_lexicon_term
 from .settings import settings
 

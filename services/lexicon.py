@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.lexicon import Category, Lexicon, CategoryLink
+from db.lexicon import Category, Lexicon, TermCategoryAssociation
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -39,7 +39,7 @@ def add_lexicon_term(session: Session, term: str, definition: str, category: str
     session.add(term)
 
     if dbcategory is not None:
-        link = CategoryLink()
+        link = TermCategoryAssociation()
 
         link.category = dbcategory
         link.term = term

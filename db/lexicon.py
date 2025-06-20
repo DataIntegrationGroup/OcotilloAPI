@@ -56,13 +56,13 @@ class Category(Base, AutoBaseMixin):
         return f"<Category(name={self.name}, description={self.description})>"
 
 
-class CategoryLink(Base, AutoBaseMixin):
+class TermCategoryAssociation(Base, AutoBaseMixin):
     """
     Model for linking terms to categories.
     This can be used to create a many-to-many relationship between terms and categories.
     """
 
-    __tablename__ = "lexicon_category_links"
+    __tablename__ = "lexicon_term_category_association"
 
     lexicon_term = mapped_column(
         String(100), ForeignKey("lexicon_term.term"), nullable=False
@@ -75,7 +75,7 @@ class CategoryLink(Base, AutoBaseMixin):
     category = relationship("Category")
 
     def __repr__(self):
-        return f"<CategoryLink(term_id={self.term_id}, category_id={self.category_id})>"
+        return f"<TermCategoryAssociation(term_id={self.term_id}, category_id={self.category_id})>"
 
 
 # ============= EOF =============================================

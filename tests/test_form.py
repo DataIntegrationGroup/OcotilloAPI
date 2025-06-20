@@ -59,8 +59,9 @@ def test_well_form():
 
     contacts = owner.get("contacts", [])
     assert len(contacts) == 3
-    assert contacts[0].get("name") == "Test Contact"
-    assert contacts[0].get("phone") == "999-999-9999"
+
+    assert contacts[1].get("name") == "John Doe"
+    assert contacts[1].get("phone") == "123-456-7890"
 
     # Ensure the second contact is also correct
     assert contacts[2].get("name") == "Jane Doe"

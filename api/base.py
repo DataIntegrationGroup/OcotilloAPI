@@ -19,6 +19,7 @@ from db.lexicon import Lexicon
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from geoalchemy2 import functions as geofunc
+from services.people_helper import add_contact
 from services.query_helper import make_query
 from services.validation.well import validate_screens
 from sqlalchemy import select, func
@@ -155,7 +156,10 @@ def create_owner(owner_data: CreateOwner, session: Session = Depends(get_db_sess
 def create_contact(
     contact_data: CreateContact, session: Session = Depends(get_db_session)
 ):
-    return adder(session, Contact, contact_data)
+
+    return add_contact(session, contact_data)
+
+    # return adder(session, Contact, contact_data)
 
 
 @router.post(

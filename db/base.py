@@ -62,9 +62,21 @@ class Owner(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
 
-    contacts = relationship(
-        "Contact", back_populates="owner", cascade="all, delete-orphan"
-    )
+    contacts = relationship("Contact",
+                            secondary='owner_contact_association',
+                            )
+    # contacts = relationship(
+    #     "Contact", back_populates="owner", cascade="all, delete-orphan"
+    # )
+
+
+class OwnerContactAssociation(Base, AutoBaseMixin):
+    __tablename__ = "owner_contact_association"
+    owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
+    contact_id = Column(Integer, ForeignKey("contact.id"), nullable=False)
+
+    # owner = relationship("Owner")
+    # contact = relationship("Contact")
 
 
 class Contact(Base, AutoBaseMixin):
@@ -72,9 +84,8 @@ class Contact(Base, AutoBaseMixin):
     description = Column(String(255), nullable=True)
     email = Column(String(100), nullable=True)
     phone = Column(String(20), nullable=True)
-    owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
-
-    owner = relationship("Owner")
+    # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
+    # owner = relationship("Owner")
 
 
 class Well(Base, AutoBaseMixin):

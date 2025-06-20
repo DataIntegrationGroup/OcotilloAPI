@@ -16,7 +16,7 @@
 from fastapi import APIRouter, Depends
 from fastapi import status
 from db import get_db_session
-from db.lexicon import Lexicon, Category, CategoryLink
+from db.lexicon import Lexicon, Category, TermCategoryAssociation
 from schemas.response.lexicon import LexiconTermResponse, LexiconCategoryResponse
 from schemas.create.lexicon import CreateLexiconTerm, CreateLexiconCategory
 from services.lexicon import add_lexicon_term
@@ -73,7 +73,7 @@ def add_term(term_data: CreateLexiconTerm, session=Depends(get_db_session)):
     # else:
     #     category_id = category
     #
-    # link = CategoryLink()
+    # link = TermCategoryAssociation()
     # link.category_id = category_id
     # link.term = term
     # session.add(link)
