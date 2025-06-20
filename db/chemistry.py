@@ -34,7 +34,9 @@ class WaterChemistryAnalysis(Base, AutoBaseMixin):
     unit = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
     uncertainty = mapped_column(Float, nullable=True)
     method = mapped_column(String(100), nullable=True)
-    analyte = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
+    analyte = mapped_column(
+        String(100), ForeignKey("lexicon_term.term"), nullable=False
+    )
     analysis_timestamp = mapped_column(
         DateTime
     )  # Timestamp of when the analysis was performed

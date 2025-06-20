@@ -18,8 +18,8 @@ from tests import client
 
 
 def test_add_lexicon_category():
-    name = 'Test Category'
-    description = 'This is a test category.'
+    name = "Test Category"
+    description = "This is a test category."
 
     response = client.post(
         "/lexicon/category/add",
@@ -49,6 +49,8 @@ def test_add_lexicon_term():
 
 
 def test_get_category():
-    items = get_category('casing_material')
+    items = get_category("casing_material")
     assert isinstance(items, list)
+
+
 # ============= EOF =============================================

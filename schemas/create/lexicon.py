@@ -35,4 +35,6 @@ class CreateLexiconCategory(BaseModel):
 
     name: str
     description: str | None = None
+
+
 # ============= EOF =============================================

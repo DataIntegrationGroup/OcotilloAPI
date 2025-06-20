@@ -16,7 +16,6 @@
 from schemas import ORMBaseModel
 
 
-
 class LexiconTermResponse(ORMBaseModel):
     """
     Pydantic model for the response of a lexicon term.
@@ -38,4 +37,6 @@ class LexiconCategoryResponse(ORMBaseModel):
     name: str
     description: str | None = None
     # terms: list[LexiconTermResponse] | None = None
+
+
 # ============= EOF =============================================

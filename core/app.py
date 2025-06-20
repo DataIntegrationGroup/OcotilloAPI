@@ -42,7 +42,9 @@ def init_lexicon():
     # populate lexicon
     with database_sessionmaker() as s:
         for term_dict in default_lexicon:
-            add_lexicon_term(s, term_dict["term"], term_dict["definition"], term_dict["category"])
+            add_lexicon_term(
+                s, term_dict["term"], term_dict["definition"], term_dict["category"]
+            )
             # s.add(Lexicon(**term_dict))
         s.commit()
 

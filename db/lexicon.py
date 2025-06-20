@@ -24,7 +24,8 @@ class Lexicon(Base, AutoBaseMixin):
     Lexicon model for storing terms and their definitions.
     This model can be extended to include additional fields as needed.
     """
-    __tablename__ = 'lexicon_term'
+
+    __tablename__ = "lexicon_term"
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
 
@@ -60,15 +61,21 @@ class CategoryLink(Base, AutoBaseMixin):
     Model for linking terms to categories.
     This can be used to create a many-to-many relationship between terms and categories.
     """
+
     __tablename__ = "lexicon_category_links"
 
-    lexicon_term = mapped_column(String(100), ForeignKey('lexicon_term.term'), nullable=False)
-    category_name = mapped_column(String(255), ForeignKey('lexicon_category.name'),nullable=False)
+    lexicon_term = mapped_column(
+        String(100), ForeignKey("lexicon_term.term"), nullable=False
+    )
+    category_name = mapped_column(
+        String(255), ForeignKey("lexicon_category.name"), nullable=False
+    )
 
     term = relationship("Lexicon")
     category = relationship("Category")
 
     def __repr__(self):
         return f"<CategoryLink(term_id={self.term_id}, category_id={self.category_id})>"
+
 
 # ============= EOF =============================================

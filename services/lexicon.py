@@ -17,7 +17,8 @@ from db.lexicon import Category, Lexicon, CategoryLink
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-def add_lexicon_term(session: Session, term: str, definition: str, category: str|int):
+
+def add_lexicon_term(session: Session, term: str, definition: str, category: str | int):
     """
     Add a term to the lexicon with its definition and category.
 
@@ -48,7 +49,6 @@ def add_lexicon_term(session: Session, term: str, definition: str, category: str
     session.commit()
 
     return term
-
 
 
 # ============= EOF =============================================
