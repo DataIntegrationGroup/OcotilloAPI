@@ -79,15 +79,7 @@ def adder(session, table, model, **kwargs):
     return obj
 
 
-class AutoBaseMixin:
-    @declared_attr
-    def __tablename__(self):
-        return self.__name__.lower()
-
-    @declared_attr
-    def id(self):
-        return Column(Integer, primary_key=True, autoincrement=True)
-
+class AuditMixin:
     @declared_attr
     def created_at(self):
         return Column(DateTime, nullable=False, server_default=func.now())
@@ -100,6 +92,17 @@ class AutoBaseMixin:
             server_default=func.now(),
             server_onupdate=func.now(),
         )
+
+
+class AutoBaseMixin(AuditMixin):
+    @declared_attr
+    def __tablename__(self):
+        return self.__name__.lower()
+
+    @declared_attr
+    def id(self):
+        return Column(Integer, primary_key=True, autoincrement=True)
+
 
 
 class PropertiesMixin:

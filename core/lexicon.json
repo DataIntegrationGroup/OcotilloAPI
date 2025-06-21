@@ -40,6 +40,16 @@
   {"term": "U/Pb", "definition":  "Uranium/Lead dating", "category":  "geochronology"},
   {"term": "Lu/Hf", "definition":  "Lutetium-Hafnium dating", "category":  "geochronology"},
   {"term": "Re/Os", "definition":  "Rhenium-Osmium dating", "category":  "geochronology"},
-  {"term": "Sm/Nd", "definition":  "Samarium-Neodymium dating", "category":  "geochronology"}
+  {"term": "Sm/Nd", "definition":  "Samarium-Neodymium dating", "category":  "geochronology"},
 
+  {"term": "Map", "definition": "Map", "category": "publication_type"},
+  {"term": "Report", "definition": "Report", "category": "publication_type"},
+  {"term": "Dataset", "definition": "Dataset", "category": "publication_type"},
+  {"term": "Model", "definition": "Model", "category": "publication_type"},
+  {"term": "Software", "definition": "Software", "category": "publication_type"},
+  {"term": "Paper", "definition": "Paper", "category": "publication_type"},
+  {"term": "Thesis", "definition": "Thesis", "category": "publication_type"},
+  {"term": "Book", "definition": "Book", "category": "publication_type"},
+  {"term": "Conference", "definition": "Conference", "category": "publication_type"},
+  {"term": "Webpage", "definition": "Webpage", "category": "publication_type"}
 ]
