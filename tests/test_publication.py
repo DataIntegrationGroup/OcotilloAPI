@@ -15,6 +15,7 @@
 # ===============================================================================
 from tests import client
 
+
 def test_add_publication():
     response = client.post(
         "/publication/add",
@@ -40,4 +41,6 @@ def test_add_publication():
     assert len(data["authors"]) == 2
     assert data["authors"][0]["name"] == "Author One"
     assert data["authors"][1]["name"] == "Author Two"
+
+
 # ============= EOF =============================================

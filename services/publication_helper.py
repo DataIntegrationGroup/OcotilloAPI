@@ -22,15 +22,15 @@ from sqlalchemy import select
 def add_publication(session: Session, publication_data: CreatePublication):
 
     publication_data = publication_data.model_dump()
-    authors = publication_data.pop('authors', [])
+    authors = publication_data.pop("authors", [])
 
     associations = []
     with session.no_autoflush:
-        for i,a in enumerate(authors):
+        for i, a in enumerate(authors):
             if isinstance(a, str):
                 sql = select(Author).where(Author.name == a)
                 dbauthor = session.scalars(sql).first()
-                print('asdf', a, dbauthor)
+                print("asdf", a, dbauthor)
                 if dbauthor is None:
                     dbauthor = Author(name=a)
                     session.add(dbauthor)
@@ -45,9 +45,10 @@ def add_publication(session: Session, publication_data: CreatePublication):
 
         publication = Publication(**publication_data)
         session.add(publication)
-        publication.author_associations=associations
+        publication.author_associations = associations
 
         session.commit()
         return publication
+
 
 # ============= EOF =============================================

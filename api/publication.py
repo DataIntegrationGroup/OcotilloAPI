@@ -24,14 +24,18 @@ from sqlalchemy.orm import Session
 
 router = APIRouter(
     prefix="/publication",
-    tags=["publication"],)
+    tags=["publication"],
+)
 
-@router.post("/add",
-             response_model=PublicationResponse,
-             status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/add", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED
+)
 async def post_publication(
     publication_data: CreatePublication,  # Replace with your actual schema
-    session: Session = Depends(get_db_session)  # Assuming get_db is defined in dependencies.py
+    session: Session = Depends(
+        get_db_session
+    ),  # Assuming get_db is defined in dependencies.py
 ):
     """
     Add a new publication.
@@ -39,4 +43,6 @@ async def post_publication(
     return add_publication(session, publication_data)
 
     # return adder(session, Publication, publication_data)
+
+
 # ============= EOF =============================================

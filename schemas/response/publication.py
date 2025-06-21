@@ -20,6 +20,7 @@ class AuthorResponse(BaseModel):
     """
     Schema for the response of an author.
     """
+
     id: int
     name: str
     email: str | None = None
@@ -30,6 +31,7 @@ class PublicationResponse(BaseModel):
     """
     Schema for the response of a publication.
     """
+
     id: int
     title: str
     authors: list[AuthorResponse]

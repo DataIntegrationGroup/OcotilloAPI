@@ -104,7 +104,6 @@ class AutoBaseMixin(AuditMixin):
         return Column(Integer, primary_key=True, autoincrement=True)
 
 
-
 class PropertiesMixin:
     @declared_attr
     def properties(self):

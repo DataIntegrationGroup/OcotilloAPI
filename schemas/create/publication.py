@@ -20,6 +20,7 @@ class CreatePublication(BaseModel):
     """
     Schema for creating a new publication.
     """
+
     title: str
     authors: list[str]
     year: int
@@ -27,5 +28,6 @@ class CreatePublication(BaseModel):
     url: str | None = None
 
     publication_type: str
+
 
 # ============= EOF =============================================
