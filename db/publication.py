@@ -87,7 +87,7 @@ class Author(Base, AutoBaseMixin):
     contact_associations = relationship(
         "AuthorContactAssociation",
         back_populates="author",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
     contacts = association_proxy("author_associations", "contact")
 

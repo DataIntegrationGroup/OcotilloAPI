@@ -52,10 +52,10 @@ def test_get_authors_publications():
     pub = data[0]
     assert pub["title"] == "Test Publication"
 
-
     # # Check if the first author has a name field
     # if data:
     #     assert "name" in data[0]
     #     assert isinstance(data[0]["name"], str)
+
 
 # ============= EOF =============================================

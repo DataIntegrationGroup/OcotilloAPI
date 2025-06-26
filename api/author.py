@@ -28,13 +28,13 @@ router = APIRouter(
     tags=["author"],
 )
 
+
 @router.get(
-    '/{author_id}/publications',
+    "/{author_id}/publications",
     response_model=list[PublicationResponse],
 )
 async def get_author_publications(
-    author_id: int,
-    session: Session = Depends(get_db_session)
+    author_id: int, session: Session = Depends(get_db_session)
 ):
     """
     Retrieve all publications for a specific author.
