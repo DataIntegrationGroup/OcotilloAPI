@@ -43,4 +43,19 @@ def test_add_publication():
     assert data["authors"][1]["name"] == "Author Two"
 
 
+def test_get_authors_publications():
+    response = client.get("/author/1/publications")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    pub = data[0]
+    assert pub["title"] == "Test Publication"
+
+
+    # # Check if the first author has a name field
+    # if data:
+    #     assert "name" in data[0]
+    #     assert isinstance(data[0]["name"], str)
+
 # ============= EOF =============================================

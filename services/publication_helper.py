@@ -30,12 +30,10 @@ def add_publication(session: Session, publication_data: CreatePublication):
             if isinstance(a, str):
                 sql = select(Author).where(Author.name == a)
                 dbauthor = session.scalars(sql).first()
-                print("asdf", a, dbauthor)
                 if dbauthor is None:
                     dbauthor = Author(name=a)
                     session.add(dbauthor)
-                    # session.commit()
-                    # session.refresh(dbauthor)
+
             elif isinstance(a, int):
                 dbauthor = session.get(Author, a)
 

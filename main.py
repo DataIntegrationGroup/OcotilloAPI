@@ -21,7 +21,7 @@ from api.geothermal import router as geothermal_router
 from api.collabnet import router as collabnet_router
 from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
-
+from api.author import router as author_router
 
 app.mount("/admin", admin_app)
 
@@ -34,7 +34,7 @@ app.include_router(geothermal_router)
 app.include_router(collabnet_router)
 app.include_router(geochronology_router)
 app.include_router(publication_router)
-
+app.include_router(author_router)
 
 app.add_middleware(
     CORSMiddleware,

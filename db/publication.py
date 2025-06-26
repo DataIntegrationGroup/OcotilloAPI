@@ -84,6 +84,13 @@ class Author(Base, AutoBaseMixin):
     )
     publications = association_proxy("publication_associations", "publication")
 
+    contact_associations = relationship(
+        "AuthorContactAssociation",
+        back_populates="author",
+        cascade="all, delete-orphan"
+    )
+    contacts = association_proxy("author_associations", "contact")
+
 
 class AuthorContactAssociation(Base, AuditMixin):
     __tablename__ = "pub_author_contact_association"
@@ -93,6 +100,9 @@ class AuthorContactAssociation(Base, AuditMixin):
     contact_id = Column(
         Integer, ForeignKey("contact.id"), nullable=False, primary_key=True
     )
+
+    author = relationship("Author", back_populates="contact_associations")
+    # contact = relationship("Contact", back_populates="author_associations")
 
 
 class PublicationAuthorAssociation(Base, AuditMixin):
