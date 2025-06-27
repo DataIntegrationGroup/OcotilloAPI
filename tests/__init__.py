@@ -14,15 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import configure_mappers
 
 from core.app import init_lexicon
 from main import app
 from db import Base, engine
 
 Base.metadata.drop_all(engine)
+
+configure_mappers()
 Base.metadata.create_all(engine)
 
 init_lexicon()
 
 client = TestClient(app)
+
 # ============= EOF =============================================

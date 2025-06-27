@@ -27,6 +27,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import relationship, declared_attr, Mapped, mapped_column
+from sqlalchemy_utils import TSVectorType
 
 from db import Base, AutoBaseMixin
 from db.lexicon import Lexicon
@@ -62,6 +63,8 @@ class Owner(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
 
+    search_vector = Column(TSVectorType("name", "description"))
+
     contacts = relationship(
         "Contact",
         secondary="owner_contact_association",
@@ -87,6 +90,8 @@ class Contact(Base, AutoBaseMixin):
     phone = Column(String(20), nullable=True)
     # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
     # owner = relationship("Owner")
+
+    search_vector = Column(TSVectorType("name", "description", "email", "phone"))
 
 
 class Well(Base, AutoBaseMixin):
@@ -117,6 +122,9 @@ class Well(Base, AutoBaseMixin):
     formation_zone = Column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
 
     location = relationship("SampleLocation", backref="well", uselist=False)
+
+    search_vector = Column(TSVectorType("ose_pod_id", "api_id", "usgs_id",
+                                        "well_type", "formation_zone", "construction_notes"))
 
 
 class WellScreen(Base, AutoBaseMixin):
