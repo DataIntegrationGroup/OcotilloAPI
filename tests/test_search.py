@@ -20,6 +20,9 @@ from db import database_sessionmaker
 from db.base import Owner, Contact, OwnerContactAssociation
 
 
+from tests import client
+
+
 def test_search_query():
     session = database_sessionmaker()
 
@@ -80,4 +83,55 @@ def test_search_owner_by_contact_phonenumber():
     session.close()
 
 
+def test_search_owner_by_contact_phonenumber_no_results():
+    session = database_sessionmaker()
+
+    vector = Contact.search_vector
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "NonExistentPhoneNumber",
+        vector=vector,
+    )
+    contact = session.scalars(query).first()
+    assert contact is None
+    session.close()
+
+
+def test_search_owner_by_phonelike():
+    session = database_sessionmaker()
+    vector = Contact.search_vector
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "+12%",
+        vector=vector,
+    )
+    contact = session.scalars(query).first()
+    assert contact is not None
+    session.close()
+
+
+def test_search_owner_by_phonelike_no_results():
+    session = database_sessionmaker()
+    vector = Contact.search_vector
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "NonExistentPhone%",
+        vector=vector,
+    )
+    contact = session.scalars(query).first()
+    assert contact is None
+    session.close()
+
+
+
+# API ===========================================================
+def test_search_owner_by_contact_name_api():
+    response = client.get("/base/owner", params={"search": '"Contact X"'})
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "Test Owner 1"
+
+    # assert len(data["items"]) > 0
+    # assert "Test Contact" in data["items"][0]["contacts"][0]["name"]
 # ============= EOF =============================================

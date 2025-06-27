@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from sqlalchemy import select
+from sqlalchemy_searchable import search as search_func
 from services.regex import QUERY_REGEX
 
 
@@ -69,3 +71,46 @@ def make_query(table, query: str):
 
 
 # ============= EOF =============================================
+def simple_get_by_name(session, table, name):
+    """
+    Helper function to get a record by name from the database.
+    """
+    sql = select(table).where(table.name == name)
+    result = session.execute(sql)
+    return result.scalar_one_or_none()
+
+
+def simple_get_by_id(session, table, item_id):
+    """
+    Helper function to get a record by ID from the database.
+    """
+    sql = select(table).where(table.id == item_id)
+    result = session.execute(sql)
+    return result.scalar_one_or_none()
+
+
+def simple_all_getter(session, table):
+    """
+    Helper function to get records from the database.
+    """
+    sql = select(table)
+    return session.scalars(sql).all()
+    # result = session.execute(sql)
+    # return result.scalars().all()
+
+
+def searchable_getter(session, table, search, vector=None, joins=None):
+    if vector is None:
+        vector = getattr(table, "search_vector", None)
+
+    q = select(table)
+    if joins:
+        for join in joins:
+            q = q.join(join)
+
+    q = search_func(
+        q,
+        search,
+        vector=vector,
+    )
+    return session.scalars(q).all()

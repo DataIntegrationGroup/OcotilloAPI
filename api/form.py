@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 
 from db import get_db_session
 from db.base import SampleLocation, Owner, Contact, Well, Group, GroupLocation
-from api.base import simple_get_by_id, simple_get_by_name
+from services.query_helper import simple_get_by_name, simple_get_by_id
 from schemas.form import (
     WellForm,
     WellFormResponse,

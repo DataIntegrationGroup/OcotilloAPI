@@ -34,7 +34,7 @@ def test_well_form():
             }
         ],
         "owner": {
-            "name": "Test Owner",
+            "name": "The Doe's",
             "contact": [
                 {"name": "John Doe", "phone": "123-456-7890", "email": "foo@gmail.com"},
                 {
@@ -55,17 +55,17 @@ def test_well_form():
 
     owner = data.get("owner", None)
     assert owner is not None
-    assert owner.get("name") == "Test Owner"
+    assert owner.get("name") == "The Doe's"
 
     contacts = owner.get("contacts", [])
-    assert len(contacts) == 3
+    assert len(contacts) == 2
 
-    assert contacts[1].get("name") == "John Doe"
-    assert contacts[1].get("phone") == "123-456-7890"
+    assert contacts[0].get("name") == "John Doe"
+    assert contacts[0].get("phone") == "123-456-7890"
 
     # Ensure the second contact is also correct
-    assert contacts[2].get("name") == "Jane Doe"
-    assert contacts[2].get("phone") == "913-356-7890"
+    assert contacts[1].get("name") == "Jane Doe"
+    assert contacts[1].get("phone") == "913-356-7890"
 
 
 # ============= EOF =============================================

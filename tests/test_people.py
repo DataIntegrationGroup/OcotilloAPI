@@ -32,8 +32,8 @@ def test_phone_validation_fail():
         response = client.post(
             "/base/contact",
             json={
-                "owner_id": 1,
-                "name": "Test Contact2",
+                "owner_id": 2,
+                "name": "Test Contact 2",
                 "email": "fasdfasdf@gmail.com",
                 "phone": phone,
             },
@@ -66,8 +66,8 @@ def test_phone_validation_success():
     response = client.post(
         "/base/contact",
         json={
-            "owner_id": 1,
-            "name": "Test Contact2",
+            "owner_id": 2,
+            "name": "Contact X",
             "email": "foobar@gmail.com",
             "phone": "+12345678901",
         },
