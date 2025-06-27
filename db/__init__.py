@@ -38,7 +38,7 @@ driver = os.environ.get("DB_DRIVER", "")
 if driver == "sqlite":
     name = os.environ.get("DB_NAME", "development.db")
     url = f"sqlite:///{name}"
-elif driver == 'test_postgres':
+elif driver == "test_postgres":
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
@@ -56,7 +56,7 @@ engine = create_engine(
     plugins=["geoalchemy2"],
 )
 
-if 'postgresql' not in url:
+if "postgresql" not in url:
 
     def on_connect(dbapi_connection, connection_record):
         """
@@ -67,7 +67,6 @@ if 'postgresql' not in url:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
-
 
     listen(engine, "connect", on_connect)
 
@@ -85,6 +84,7 @@ async def get_db_session():
 Base = declarative_base()
 
 make_searchable(Base.metadata)
+
 
 def adder(session, table, model, **kwargs):
     """

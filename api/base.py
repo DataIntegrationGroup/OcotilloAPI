@@ -273,7 +273,8 @@ async def get_location(
         nearby_point = func.ST_GeomFromText(nearby_point, SRID_WGS84)
         sql = sql.where(
             # func.ST_Distance(SampleLocation.point, nearby_point) <= nearby_distance_km
-            func.ST_Distance(nearby_point, SampleLocation.point) <= nearby_distance_km
+            func.ST_Distance(nearby_point, SampleLocation.point)
+            <= nearby_distance_km
         )
     elif within:
         sql = make_within_wkt(sql, within)
