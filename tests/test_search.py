@@ -28,6 +28,7 @@ def test_search_query():
     assert owner is not None
     session.close()
 
+
 def test_search_query_no_results():
     session = database_sessionmaker()
 
@@ -36,14 +37,16 @@ def test_search_query_no_results():
     assert owner is None
     session.close()
 
+
 def test_search_owner_by_contact_name():
     session = database_sessionmaker()
 
     vector = Contact.search_vector
-    query = search(select(Owner)
-                   .join(OwnerContactAssociation)
-                   .join(Contact), "Test Contact",
-                   vector=vector)
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "Test Contact",
+        vector=vector,
+    )
     owner = session.scalars(query).first()
     assert owner is not None
     session.close()
@@ -53,10 +56,11 @@ def test_search_owner_by_contact_name_no_results():
     session = database_sessionmaker()
 
     vector = Contact.search_vector
-    query = search(select(Owner)
-                   .join(OwnerContactAssociation)
-                   .join(Contact), "NonExistentContact",
-                   vector=vector)
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "NonExistentContact",
+        vector=vector,
+    )
     owner = session.scalars(query).first()
     assert owner is None
     session.close()
@@ -66,10 +70,11 @@ def test_search_owner_by_contact_phonenumber():
     session = database_sessionmaker()
 
     vector = Contact.search_vector
-    query = search(select(Owner)
-                   .join(OwnerContactAssociation)
-                   .join(Contact), "+12345678901",
-                   vector=vector)
+    query = search(
+        select(Owner).join(OwnerContactAssociation).join(Contact),
+        "+12345678901",
+        vector=vector,
+    )
     contact = session.scalars(query).first()
     assert contact is not None
     session.close()

@@ -123,8 +123,16 @@ class Well(Base, AutoBaseMixin):
 
     location = relationship("SampleLocation", backref="well", uselist=False)
 
-    search_vector = Column(TSVectorType("ose_pod_id", "api_id", "usgs_id",
-                                        "well_type", "formation_zone", "construction_notes"))
+    search_vector = Column(
+        TSVectorType(
+            "ose_pod_id",
+            "api_id",
+            "usgs_id",
+            "well_type",
+            "formation_zone",
+            "construction_notes",
+        )
+    )
 
 
 class WellScreen(Base, AutoBaseMixin):
