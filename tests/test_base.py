@@ -164,7 +164,6 @@ def test_add_owner():
         assert data["name"] == f"Test Owner {i}"
 
 
-
 def test_add_contact():
     response = client.post(
         "/base/contact",
@@ -189,7 +188,8 @@ def test_add_contact():
                 "name": f"Test Contact {i}",
                 "email": f"foo{i}@gmail.com",
                 "phone": f"+1234567890{i}",
-            })
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert "id" in data

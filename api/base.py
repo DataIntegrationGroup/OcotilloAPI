@@ -20,7 +20,12 @@ from fastapi import APIRouter, Depends, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from geoalchemy2 import functions as geofunc
 from services.people_helper import add_contact
-from services.query_helper import make_query, simple_get_by_id, simple_all_getter, searchable_getter
+from services.query_helper import (
+    make_query,
+    simple_get_by_id,
+    simple_all_getter,
+    searchable_getter,
+)
 from services.validation.well import validate_screens
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -36,7 +41,8 @@ from db.base import (
     Contact,
     WellScreen,
     Spring,
-    Equipment, OwnerContactAssociation,
+    Equipment,
+    OwnerContactAssociation,
 )
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from api.pagination import CustomPage
@@ -330,8 +336,9 @@ async def get_groups(session: Session = Depends(get_db_session)):
 
 @router.get("/owner", response_model=List[OwnerResponse], summary="Get owners")
 async def get_owners(
-        search: str = None,  # Optional search parameter
-        session: Session = Depends(get_db_session)):
+    search: str = None,  # Optional search parameter
+    session: Session = Depends(get_db_session),
+):
     """
     Retrieve all owners from the database.
     """
@@ -339,10 +346,13 @@ async def get_owners(
         # If no search parameter, return all owners
         return simple_all_getter(session, Owner)
 
-    return searchable_getter(session, Owner,
-                             search=search,
-                             vector = Owner.search_vector | Contact.search_vector,
-                             joins=[OwnerContactAssociation, Contact])
+    return searchable_getter(
+        session,
+        Owner,
+        search=search,
+        vector=Owner.search_vector | Contact.search_vector,
+        joins=[OwnerContactAssociation, Contact],
+    )
 
 
 @router.get("/contact", response_model=List[ContactResponse], summary="Get contacts")
@@ -537,5 +547,6 @@ async def get_contact_by_id(
     if not contact:
         return {"message": "Contact not found"}
     return contact
+
 
 # ============= EOF =============================================

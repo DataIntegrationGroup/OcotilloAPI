@@ -123,7 +123,6 @@ def test_search_owner_by_phonelike_no_results():
     session.close()
 
 
-
 # API ===========================================================
 def test_search_owner_by_contact_name_api():
     response = client.get("/base/owner", params={"search": '"Contact X"'})
@@ -134,4 +133,6 @@ def test_search_owner_by_contact_name_api():
 
     # assert len(data["items"]) > 0
     # assert "Test Contact" in data["items"][0]["contacts"][0]["name"]
+
+
 # ============= EOF =============================================
