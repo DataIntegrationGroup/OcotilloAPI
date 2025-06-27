@@ -15,6 +15,7 @@
 # ===============================================================================
 from typing import List, Union
 
+from constants import SRID_WGS84
 from db.lexicon import Lexicon
 from fastapi import APIRouter, Depends, status
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -269,9 +270,10 @@ async def get_location(
     if query:
         sql = sql.where(make_query(SampleLocation, query))
     elif nearby_point:
-        nearby_point = func.ST_GeomFromText(nearby_point)
+        nearby_point = func.ST_GeomFromText(nearby_point, SRID_WGS84)
         sql = sql.where(
-            func.ST_Distance(SampleLocation.point, nearby_point) <= nearby_distance_km
+            # func.ST_Distance(SampleLocation.point, nearby_point) <= nearby_distance_km
+            func.ST_Distance(nearby_point, SampleLocation.point) <= nearby_distance_km
         )
     elif within:
         sql = make_within_wkt(sql, within)

@@ -17,10 +17,10 @@ import os
 
 from geoalchemy2 import load_spatialite
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.event import listen
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, sessionmaker, declared_attr
+from sqlalchemy_searchable import make_searchable
+
 
 if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
     os.environ["SPATIALITE_LIBRARY_PATH"] = "/opt/homebrew/lib/mod_spatialite.dylib"
@@ -31,25 +31,45 @@ if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
 #     plugins=['geoalchemy2'],
 # )
 
+
+driver = os.environ.get("DB_DRIVER", "")
+
+
+if driver == "sqlite":
+    name = os.environ.get("DB_NAME", "development.db")
+    url = f"sqlite:///{name}"
+elif driver == 'test_postgres':
+    password = os.environ.get("POSTGRES_PASSWORD", "")
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    port = os.environ.get("POSTGRES_PORT", "5432")
+    user = os.environ.get("POSTGRES_USER", "postgres")
+
+    auth = f"{user}:{password}@" if user and password else ""
+    port_part = f":{port}" if port else ""
+    url = f"postgresql://{auth}{host}{port_part}/postgres"
+else:
+    url = "sqlite:///./development.db"
+
 engine = create_engine(
-    "sqlite:///./development.db",
+    url,
     # echo=True,
     plugins=["geoalchemy2"],
 )
 
+if 'postgresql' not in url:
 
-def on_connect(dbapi_connection, connection_record):
-    """
-    Event listener to load SpatiaLite on connection.
-    """
-    load_spatialite(dbapi_connection)
+    def on_connect(dbapi_connection, connection_record):
+        """
+        Event listener to load SpatiaLite on connection.
+        """
+        load_spatialite(dbapi_connection)
 
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
-listen(engine, "connect", on_connect)
+    listen(engine, "connect", on_connect)
 
 
 # sqlalchemy_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
@@ -64,6 +84,7 @@ async def get_db_session():
 
 Base = declarative_base()
 
+make_searchable(Base.metadata)
 
 def adder(session, table, model, **kwargs):
     """

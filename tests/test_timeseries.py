@@ -38,13 +38,13 @@ def test_add_well_observations():
                 "timestamp": datetime.datetime.now().isoformat(),
                 "value": 10.5,
                 "description": "Test observation for well.",
-                "timeseries_id": 1,
+                "timeseries_id": 2,
             },
             {
                 "timestamp": datetime.datetime.now().isoformat(),
                 "value": 11.5,
                 "description": "Test observation for well.",
-                "timeseries_id": 1,
+                "timeseries_id": 2,
             },
         ],
     )
