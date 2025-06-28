@@ -52,9 +52,14 @@ add_pagination(app)
 
 # setup depo
 from depot.manager import DepotManager
-storage_path = os.getenv("DEPOT_STORAGE_PATH", "./tests/uploads")
-DepotManager.configure('default', {'depot.storage_path': storage_path,})
 
+storage_path = os.getenv("DEPOT_STORAGE_PATH", "./tests/uploads")
+DepotManager.configure(
+    "default",
+    {
+        "depot.storage_path": storage_path,
+    },
+)
 
 
 if __name__ == "__main__":

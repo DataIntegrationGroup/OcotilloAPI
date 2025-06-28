@@ -528,7 +528,9 @@ async def get_group_location_by_id(
     """
     Retrieve a group location by ID from the database.
     """
-    group_location = simple_get_by_id(session, GroupLocationAssociation, group_location_id)
+    group_location = simple_get_by_id(
+        session, GroupLocationAssociation, group_location_id
+    )
     if not group_location:
         return {"message": "Group location not found"}
     return group_location

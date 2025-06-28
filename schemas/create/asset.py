@@ -19,5 +19,4 @@ from depot.fields.sqlalchemy import UploadedFileField
 from pydantic import BaseModel
 
 
-
 # ============= EOF =============================================

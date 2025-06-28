@@ -23,7 +23,9 @@ class CollaborativeNetworkWell(Base, AutoBaseMixin):
     """ """
 
     actively_monitored = mapped_column(Boolean, default=False, nullable=False)
-    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete='CASCADE'), nullable=False)
+    well_id = mapped_column(
+        Integer, ForeignKey("well.id", ondelete="CASCADE"), nullable=False
+    )
 
     well = relationship("Well")
 

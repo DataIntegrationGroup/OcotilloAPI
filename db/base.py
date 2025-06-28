@@ -40,12 +40,15 @@ class SampleLocation(Base, AutoBaseMixin):
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
     )
 
-    owner_id = Column(Integer, ForeignKey("owner.id", ondelete='CASCADE'), nullable=True)
+    owner_id = Column(
+        Integer, ForeignKey("owner.id", ondelete="CASCADE"), nullable=True
+    )
 
-    asset_associations = relationship("AssetLocationAssociation",
-                                      back_populates="location",
-                                      cascade="all, delete-orphan"
-                                      )
+    asset_associations = relationship(
+        "AssetLocationAssociation",
+        back_populates="location",
+        cascade="all, delete-orphan",
+    )
     assets = association_proxy("asset_associations", "asset")
 
 
@@ -85,7 +88,9 @@ class Contact(Base, AutoBaseMixin):
 
 
 class Well(Base, AutoBaseMixin):
-    location_id = Column(Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False)
+    location_id = Column(
+        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
+    )
 
     ose_pod_id = Column(String(50), nullable=True)
     api_id = Column(String(50), nullable=True, default="")  # API well number
@@ -126,7 +131,7 @@ class Well(Base, AutoBaseMixin):
 
 
 class WellScreen(Base, AutoBaseMixin):
-    well_id = Column(Integer, ForeignKey("well.id", ondelete='CASCADE'), nullable=False)
+    well_id = Column(Integer, ForeignKey("well.id", ondelete="CASCADE"), nullable=False)
     screen_depth_top = Column(
         Float, nullable=False, info={"unit": "feet below ground surface"}
     )
@@ -149,14 +154,18 @@ class Equipment(Base, AutoBaseMixin):
     date_removed = Column(DateTime)
     recording_interval = Column(Integer)
     equipment_notes = Column(String(50))
-    location_id = Column(Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False)
+    location_id = Column(
+        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
+    )
 
     location = relationship("SampleLocation")
 
 
 class Spring(Base, AutoBaseMixin):
     description = Column(String(255), nullable=True)
-    location_id = Column(Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False)
+    location_id = Column(
+        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Define a relationship to samplelocations if needed
     location = relationship("SampleLocation")
@@ -171,8 +180,12 @@ class Group(Base, AutoBaseMixin):
 
 
 class GroupLocationAssociation(Base, AutoBaseMixin):
-    group_id = Column(Integer, ForeignKey("group.id", ondelete='CASCADE'), nullable=False)
-    location_id = Column(Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(
+        Integer, ForeignKey("group.id", ondelete="CASCADE"), nullable=False
+    )
+    location_id = Column(
+        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
+    )
 
     # group = relationship("Group")
     # location = relationship("SampleLocation")

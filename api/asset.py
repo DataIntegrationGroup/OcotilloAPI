@@ -22,10 +22,9 @@ from db.asset import Asset
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 
+
 @router.get("/{asset_id}")
-async def get_asset(asset_id: int,
-                    database_session: Session = Depends(get_db_session)
-                    ):
+async def get_asset(asset_id: int, database_session: Session = Depends(get_db_session)):
     """
     Retrieve an asset by its ID.
     """
@@ -34,9 +33,9 @@ async def get_asset(asset_id: int,
 
 
 @router.post("/", status_code=201)
-async def add_asset(file: UploadFile,
-                    database_session: Session = Depends(get_db_session)
-                    ):
+async def add_asset(
+    file: UploadFile, database_session: Session = Depends(get_db_session)
+):
     """
     Add a new asset.
     """
@@ -46,10 +45,12 @@ async def add_asset(file: UploadFile,
 
     content = file.file.read()
     asset.content = content
-    if file.content_type.startswith('image/'):
+    if file.content_type.startswith("image/"):
         asset.photo = content
 
     database_session.add(asset)
     database_session.commit()
     return asset
+
+
 # ============= EOF =============================================

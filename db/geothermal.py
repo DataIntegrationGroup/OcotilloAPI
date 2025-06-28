@@ -23,7 +23,7 @@ class GeothermalTemperatureProfile(Base, AutoBaseMixin):
     """ """
 
     __tablename__ = "geothermal_temperature_profile"
-    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete='CASCADE'))
+    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete="CASCADE"))
 
     def __repr__(self):
         return f"<GeothermalTemperatureProfile(well_id={self.well_id})>"
@@ -33,7 +33,7 @@ class GeothermalSampleSet(Base, AutoBaseMixin):
 
     __tablename__ = "geothermal_sample_set"
 
-    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete='CASCADE'))
+    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete="CASCADE"))
 
     name = mapped_column(String(128))
     klass = mapped_column(String(24))

@@ -109,14 +109,13 @@ class AuditMixin:
 
 
 def pascal_to_snake(name):
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
 class AutoBaseMixin(AuditMixin):
     @declared_attr
     def __tablename__(self):
         return pascal_to_snake(self.__name__)
-
 
     @declared_attr
     def id(self):

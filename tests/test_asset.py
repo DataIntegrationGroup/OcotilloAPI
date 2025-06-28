@@ -17,20 +17,24 @@ from tests import client
 
 
 def test_get_asset():
-    response = client.get('/asset/1')
+    response = client.get("/asset/1")
     assert response.status_code == 200
 
-def test_add_asset():
-    path = 'tests/data/riochama.png'
 
-    with open(path, 'rb') as file:
-        response = client.post('/asset',
-                               files={'file': ('riochama.png', file, 'image/png')},
-                               # data={'name': 'riochama.png',
-                               #       'file_type': 'image/png'}
-              )
+def test_add_asset():
+    path = "tests/data/riochama.png"
+
+    with open(path, "rb") as file:
+        response = client.post(
+            "/asset",
+            files={"file": ("riochama.png", file, "image/png")},
+            # data={'name': 'riochama.png',
+            #       'file_type': 'image/png'}
+        )
 
         assert response.status_code == 201
         data = response.json()
-        assert data['name'] == 'riochama.png'
+        assert data["name"] == "riochama.png"
+
+
 # ============= EOF =============================================

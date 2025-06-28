@@ -65,10 +65,12 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
     __tablename__ = "lexicon_term_category_association"
 
     lexicon_term = mapped_column(
-        String(100), ForeignKey("lexicon_term.term", ondelete='CASCADE'), nullable=False
+        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
     )
     category_name = mapped_column(
-        String(255), ForeignKey("lexicon_category.name", ondelete='CASCADE'), nullable=False
+        String(255),
+        ForeignKey("lexicon_category.name", ondelete="CASCADE"),
+        nullable=False,
     )
 
     term = relationship("Lexicon")
