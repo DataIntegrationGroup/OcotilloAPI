@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import database_sessionmaker
-from db.lexicon import Lexicon, Category, TermCategoryAssociation
 from sqlalchemy import select
+
+from db import get_db_session
+from db.lexicon import Lexicon, Category, TermCategoryAssociation
 
 
 def get_category(category: str) -> list:
@@ -26,14 +27,14 @@ def get_category(category: str) -> list:
         list: A list of categories.
     """
 
-    session = database_sessionmaker()
-    with session:
-        sql = select(Lexicon)
-        sql = sql.join(TermCategoryAssociation)
-        sql = sql.join(Category)
-        sql = sql.filter(Category.name == category)
+    session = next(get_db_session())
 
-        categories = [lex.term for lex in session.scalars(sql).all()]
+    sql = select(Lexicon)
+    sql = sql.join(TermCategoryAssociation)
+    sql = sql.join(Category)
+    sql = sql.filter(Category.name == category)
+
+    categories = [lex.term for lex in session.scalars(sql).all()]
 
     return categories
 

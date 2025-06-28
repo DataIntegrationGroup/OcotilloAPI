@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import os
-
+import re
 from geoalchemy2 import load_spatialite
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
 from sqlalchemy.event import listen
@@ -75,10 +75,12 @@ if "postgresql" not in url:
 database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
 
 
-async def get_db_session():
+def get_db_session():
     session = database_sessionmaker()
-    yield session
-    session.close()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 Base = declarative_base()
@@ -105,20 +107,16 @@ class AuditMixin:
     def created_at(self):
         return Column(DateTime, nullable=False, server_default=func.now())
 
-    @declared_attr
-    def updated_at(self):
-        return Column(
-            DateTime,
-            nullable=False,
-            server_default=func.now(),
-            server_onupdate=func.now(),
-        )
+
+def pascal_to_snake(name):
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
 
 
 class AutoBaseMixin(AuditMixin):
     @declared_attr
     def __tablename__(self):
-        return self.__name__.lower()
+        return pascal_to_snake(self.__name__)
+
 
     @declared_attr
     def id(self):

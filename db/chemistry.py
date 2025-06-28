@@ -52,7 +52,7 @@ class WaterChemistryAnalysisSet(Base, AutoBaseMixin):
 
     __tablename__ = "water_chemistry_analysis_set"
 
-    well_id = mapped_column(Integer, ForeignKey("well.id"))
+    well_id = mapped_column(Integer, ForeignKey("well.id" , ondelete='CASCADE'))
     note = mapped_column(String(255), nullable=True)
 
     collection_timestamp = mapped_column(DateTime, nullable=False)

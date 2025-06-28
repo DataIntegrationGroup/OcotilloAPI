@@ -49,7 +49,7 @@ class QCMixin:
     @declared_attr
     def quality_control_user_id(self):
         return mapped_column(
-            Integer, ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+            Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=True
         )
 
 
@@ -82,7 +82,7 @@ class GroundwaterLevelObservation(Base, AutoBaseMixin, PropertiesMixin, QCMixin)
     timeseries_id = mapped_column(
         "timeseries_id",
         Integer,
-        ForeignKey("welltimeseries.id", ondelete="CASCADE"),
+        ForeignKey("well_timeseries.id", ondelete="CASCADE"),
         nullable=False,
     )
 

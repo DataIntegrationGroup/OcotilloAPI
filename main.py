@@ -22,6 +22,8 @@ from api.collabnet import router as collabnet_router
 from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
 from api.author import router as author_router
+from api.asset import router as asset_router
+
 
 app.mount("/admin", admin_app)
 
@@ -35,6 +37,7 @@ app.include_router(collabnet_router)
 app.include_router(geochronology_router)
 app.include_router(publication_router)
 app.include_router(author_router)
+app.include_router(asset_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,9 +47,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# setup pagination
 add_pagination(app)
 
-# import all the admin models
+# setup depo
+from depot.manager import DepotManager
+storage_path = os.getenv("DEPOT_STORAGE_PATH", "./tests/uploads")
+DepotManager.configure('default', {'depot.storage_path': storage_path,})
+
 
 
 if __name__ == "__main__":

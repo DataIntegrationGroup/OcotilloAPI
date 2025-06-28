@@ -18,7 +18,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from db import database_sessionmaker, engine, Base
+from db import database_sessionmaker, engine, Base, get_db_session
 from db.lexicon import Lexicon, Category, TermCategoryAssociation
 from services.lexicon import add_lexicon_term
 from .settings import settings
@@ -40,26 +40,28 @@ def init_lexicon():
         default_lexicon = json.load(f)
 
     # populate lexicon
-    with database_sessionmaker() as s:
-        for term_dict in default_lexicon:
-            add_lexicon_term(
-                s, term_dict["term"], term_dict["definition"], term_dict["category"]
-            )
-            # s.add(Lexicon(**term_dict))
-        s.commit()
+
+    session = next(get_db_session())
+
+    for term_dict in default_lexicon:
+        add_lexicon_term(
+            session, term_dict["term"], term_dict["definition"], term_dict["category"]
+        )
+        # s.add(Lexicon(**term_dict))
+    session.commit()
 
 
 def create_superuser():
     from admin.user import User
 
-    with database_sessionmaker() as s:
-        user = User(
-            username="admin",
-            password="admin",
-            is_superuser=True,
-        )
-        s.add(user)
-        s.commit()
+    session = next(get_db_session())
+    user = User(
+        username="admin",
+        password="admin",
+        is_superuser=True,
+    )
+    session.add(user)
+    session.commit()
 
 
 @asynccontextmanager

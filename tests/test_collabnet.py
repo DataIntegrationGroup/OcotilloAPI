@@ -47,7 +47,7 @@ def test_collabnet_wells():
 @pytest.fixture(scope="function")
 def add_timeseries_data():
     """Fixture to add timeseries data for testing."""
-    session = database_sessionmaker()
+    session = next(get_db_session())
     wts = WellTimeseries(well_id=2)
     session.add(wts)
     for i in range(10):

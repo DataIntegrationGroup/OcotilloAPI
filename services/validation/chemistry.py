@@ -20,16 +20,15 @@ from services.validation import get_category
 
 
 async def validate_analyte(analysis_data: CreateWaterChemistryAnalysis):
-    session = database_sessionmaker()
-    with session:
-        # get valid analytes from the database
-        valid_analytes = get_category("water_chemistry")
+    # get valid analytes from the database
+    valid_analytes = get_category("water_chemistry")
 
-        if analysis_data.analyte not in valid_analytes:
-            raise ValueError(
-                f"Invalid analyte: {analysis_data.analyte}. "
-                f"Valid options are: {', '.join(valid_analytes)}."
-            )
+    if analysis_data.analyte not in valid_analytes:
+        raise ValueError(
+            f"Invalid analyte: {analysis_data.analyte}. "
+            f"Valid options are: {', '.join(valid_analytes)}."
+        )
+
     return analysis_data
 
 

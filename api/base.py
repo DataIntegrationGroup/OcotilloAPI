@@ -36,7 +36,7 @@ from db.base import (
     Well,
     SampleLocation,
     Group,
-    GroupLocation,
+    GroupLocationAssociation,
     Owner,
     Contact,
     WellScreen,
@@ -143,7 +143,7 @@ def create_group_location(
     """
     Create a new group location association in the database.
     """
-    return adder(session, GroupLocation, group_location_data)
+    return adder(session, GroupLocationAssociation, group_location_data)
 
 
 @router.post(
@@ -384,7 +384,7 @@ async def get_group_locations(session: Session = Depends(get_db_session)):
     """
     Retrieve all group locations from the database.
     """
-    return simple_all_getter(session, GroupLocation)
+    return simple_all_getter(session, GroupLocationAssociation)
 
 
 @router.get(
@@ -528,7 +528,7 @@ async def get_group_location_by_id(
     """
     Retrieve a group location by ID from the database.
     """
-    group_location = simple_get_by_id(session, GroupLocation, group_location_id)
+    group_location = simple_get_by_id(session, GroupLocationAssociation, group_location_id)
     if not group_location:
         return {"message": "Group location not found"}
     return group_location

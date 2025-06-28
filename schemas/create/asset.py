@@ -13,19 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Boolean, ForeignKey, Integer
-from sqlalchemy.orm import mapped_column, relationship
+from typing import Any
 
-from db import AutoBaseMixin, Base
+from depot.fields.sqlalchemy import UploadedFileField
+from pydantic import BaseModel
 
-
-class CollaborativeNetworkWell(Base, AutoBaseMixin):
-    """ """
-
-    actively_monitored = mapped_column(Boolean, default=False, nullable=False)
-    well_id = mapped_column(Integer, ForeignKey("well.id", ondelete='CASCADE'), nullable=False)
-
-    well = relationship("Well")
 
 
 # ============= EOF =============================================

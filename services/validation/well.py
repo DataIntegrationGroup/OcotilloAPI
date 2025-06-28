@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import database_sessionmaker
+from db import database_sessionmaker, get_db_session
 from db.lexicon import Lexicon
 from schemas.create.well import CreateWellScreen
 from services.validation import get_category
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 
 async def validate_screens(well_screen_data: CreateWellScreen):
@@ -25,18 +27,18 @@ async def validate_screens(well_screen_data: CreateWellScreen):
     This function can be extended to include more complex validation logic.
     """
     # Here you can add any additional validation logic if needed
-    session = database_sessionmaker()
-    with session:
-        # get valid screen types from the database
-        valid_screen_types = get_category("casing_material")
-        if (
-            well_screen_data.screen_type
-            and well_screen_data.screen_type not in valid_screen_types
-        ):
-            raise ValueError(
-                f"Invalid screen_type: {well_screen_data.screen_type}. "
-                f"Valid options are: {', '.join(valid_screen_types)}."
-            )
+    # session = database_sessionmaker()
+    # with session:
+    # get valid screen types from the database
+    valid_screen_types = get_category("casing_material")
+    if (
+        well_screen_data.screen_type
+        and well_screen_data.screen_type not in valid_screen_types
+    ):
+        raise ValueError(
+            f"Invalid screen_type: {well_screen_data.screen_type}. "
+            f"Valid options are: {', '.join(valid_screen_types)}."
+        )
 
     return well_screen_data
 

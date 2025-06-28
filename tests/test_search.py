@@ -16,7 +16,7 @@
 from sqlalchemy import select
 from sqlalchemy_searchable import search
 
-from db import database_sessionmaker
+from db import database_sessionmaker, get_db_session
 from db.base import Owner, Contact, OwnerContactAssociation
 
 
@@ -24,7 +24,7 @@ from tests import client
 
 
 def test_search_query():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     query = search(select(Owner), "Test")
     owner = session.scalars(query).first()
@@ -33,7 +33,7 @@ def test_search_query():
 
 
 def test_search_query_no_results():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     query = search(select(Owner), "NonExistentOwner")
     owner = session.scalars(query).first()
@@ -42,7 +42,7 @@ def test_search_query_no_results():
 
 
 def test_search_owner_by_contact_name():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     vector = Contact.search_vector
     query = search(
@@ -56,7 +56,7 @@ def test_search_owner_by_contact_name():
 
 
 def test_search_owner_by_contact_name_no_results():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     vector = Contact.search_vector
     query = search(
@@ -70,7 +70,7 @@ def test_search_owner_by_contact_name_no_results():
 
 
 def test_search_owner_by_contact_phonenumber():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     vector = Contact.search_vector
     query = search(
@@ -84,7 +84,7 @@ def test_search_owner_by_contact_phonenumber():
 
 
 def test_search_owner_by_contact_phonenumber_no_results():
-    session = database_sessionmaker()
+    session = next(get_db_session())
 
     vector = Contact.search_vector
     query = search(
@@ -98,7 +98,7 @@ def test_search_owner_by_contact_phonenumber_no_results():
 
 
 def test_search_owner_by_phonelike():
-    session = database_sessionmaker()
+    session = next(get_db_session())
     vector = Contact.search_vector
     query = search(
         select(Owner).join(OwnerContactAssociation).join(Contact),
@@ -111,7 +111,7 @@ def test_search_owner_by_phonelike():
 
 
 def test_search_owner_by_phonelike_no_results():
-    session = database_sessionmaker()
+    session = next(get_db_session())
     vector = Contact.search_vector
     query = search(
         select(Owner).join(OwnerContactAssociation).join(Contact),
