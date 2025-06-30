@@ -23,11 +23,17 @@ from depot.fields.specialized.image import UploadedImageWithThumb
 
 
 class Asset(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=False, unique=True)
-    file_type = Column(String(50), nullable=False)
+    # name = Column(String(100), nullable=False, unique=True)
+    # file_type = Column(String(50), nullable=False)
+    #
+    # content = Column(UploadedFileField)
+    # photo = Column(UploadedFileField(upload_type=UploadedImageWithThumb))
 
-    content = Column(UploadedFileField)
-    photo = Column(UploadedFileField(upload_type=UploadedImageWithThumb))
+    filename = Column(String)
+    storage_service = Column(String)
+    storage_path = Column(String)
+    mime_type = Column(String)
+    size = Column(Integer)
 
 
 class AssetLocationAssociation(Base, AutoBaseMixin):

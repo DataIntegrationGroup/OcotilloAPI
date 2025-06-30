@@ -15,29 +15,42 @@
 # ===============================================================================
 import shutil
 
-from depot.manager import DepotManager
-
+from api.asset import get_storage_bucket
+from core.app import app
 from tests import client
 import pytest
 import os
 import glob
 
 
-@pytest.fixture(scope="module", autouse=True)
-def cleanup():
-    """
-    Fixture to clean up after tests.
-    This can be used to delete any assets created during the tests.
-    """
-    yield
-    depot = DepotManager.get()
-    for asset in depot.list():
-        depot.delete(asset)
+# @pytest.fixture(scope="module", autouse=True)
+# def cleanup():
+#     """
+#     Fixture to clean up after tests.
+#     This can be used to delete any assets created during the tests.
+#     """
+#     yield
+#     depot = DepotManager.get()
+#     for asset in depot.list():
+#         depot.delete(asset)
+class MockBlob:
+    def upload_from_file(self, *args, **kwargs):
+        pass
+    def generate_signed_url(self, *args, **kwargs):
+        return "https://storage.googleapis.com/mock-bucket/mock-asset"
+
+class MockStorageBucket:
+    def blob(self, *args, **kwargs):
+        return MockBlob()
 
 
-def test_get_asset():
-    response = client.get("/asset/1")
-    assert response.status_code == 200
+def mock_storage_bucket():
+    return MockStorageBucket()
+
+
+app.dependency_overrides = {
+    get_storage_bucket: mock_storage_bucket,
+}
 
 
 def test_add_asset():
@@ -51,7 +64,22 @@ def test_add_asset():
 
         assert response.status_code == 201
         data = response.json()
-        assert data["name"] == "riochama.png"
+        assert data["filename"] == "riochama.png"
+        url = data["url"]
+        assert url.startswith("https://storage.googleapis.com/")
 
 
+def test_get_asset():
+    response = client.get("/asset/1")
+    assert response.status_code == 200
+    data  = response.json()
+    assert data["id"] == 1
+    assert data["filename"] == "riochama.png"
+    assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
+
+
+def test_get_asset_not_found():
+    response = client.get("/asset/9999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Asset not found"}
 # ============= EOF =============================================
