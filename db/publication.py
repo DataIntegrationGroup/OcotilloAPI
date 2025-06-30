@@ -75,10 +75,16 @@ class Author(Base, AutoBaseMixin):
 class AuthorContactAssociation(Base, AuditMixin):
     __tablename__ = "pub_author_contact_association"
     author_id = Column(
-        Integer, ForeignKey("pub_author.id", ondelete='CASCADE'), nullable=False, primary_key=True
+        Integer,
+        ForeignKey("pub_author.id", ondelete="CASCADE"),
+        nullable=False,
+        primary_key=True,
     )
     contact_id = Column(
-        Integer, ForeignKey("contact.id", ondelete='CASCADE'), nullable=False, primary_key=True
+        Integer,
+        ForeignKey("contact.id", ondelete="CASCADE"),
+        nullable=False,
+        primary_key=True,
     )
 
     author = relationship("Author", back_populates="contact_associations")
@@ -87,11 +93,16 @@ class AuthorContactAssociation(Base, AuditMixin):
 
 class AuthorPublicationAssociation(Base, AuditMixin):
     __tablename__ = "pub_author_publication_association"
-    publication_id = Column(ForeignKey("publication.id", ondelete='CASCADE'), primary_key=True)
-    author_id = Column(ForeignKey("pub_author.id", ondelete='CASCADE'), primary_key=True)
+    publication_id = Column(
+        ForeignKey("publication.id", ondelete="CASCADE"), primary_key=True
+    )
+    author_id = Column(
+        ForeignKey("pub_author.id", ondelete="CASCADE"), primary_key=True
+    )
     author_order = Column(Integer, nullable=False)
 
     publication = relationship("Publication", back_populates="author_associations")
     author = relationship("Author", back_populates="publication_associations")
+
 
 # ============= EOF =============================================
