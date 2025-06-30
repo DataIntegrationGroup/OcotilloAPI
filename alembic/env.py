@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 
-#from db import Base  # Import your Base from models/__init__.py
+# from db import Base  # Import your Base from models/__init__.py
 from db.base import *
 from db.lexicon import *
 from db.publication import *
