@@ -50,4 +50,6 @@ class CreateTriple(BaseModel):
     # class Config:
     #     allow_population_by_field_name = True
     #     fields = {"object_": "object"}
+
+
 # ============= EOF =============================================

@@ -86,13 +86,19 @@ class LexiconTriple(Base, AutoBaseMixin):
     This can be used to represent relationships between terms.
     """
 
-    subject = mapped_column(String(100), ForeignKey("lexicon_term.term", ondelete='CASCADE'), nullable=False)
+    subject = mapped_column(
+        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
+    )
     predicate = mapped_column(String(100), nullable=False)
-    object_ = mapped_column(String(100), ForeignKey("lexicon_term.term", ondelete='CASCADE'), nullable=False)
+    object_ = mapped_column(
+        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
+    )
 
     subject_term = relationship("Lexicon", foreign_keys=[subject])
     object_term = relationship("Lexicon", foreign_keys=[object_])
 
     def __repr__(self):
         return f"<LexiconTriples(subject={self.subject}, predicate={self.predicate}, object_={self.object_})>"
+
+
 # ============= EOF =============================================

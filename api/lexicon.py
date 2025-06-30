@@ -18,7 +18,11 @@ from fastapi import status
 from db import get_db_session
 from db.lexicon import Lexicon, Category, TermCategoryAssociation, LexiconTriple
 from schemas.response.lexicon import LexiconTermResponse, LexiconCategoryResponse
-from schemas.create.lexicon import CreateLexiconTerm, CreateLexiconCategory, CreateTriple
+from schemas.create.lexicon import (
+    CreateLexiconTerm,
+    CreateLexiconCategory,
+    CreateTriple,
+)
 from services.lexicon import add_lexicon_term
 from sqlalchemy import select
 
@@ -73,18 +77,21 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     object_ = triple_data["object_"]
 
     if isinstance(subject, dict):
-        add_lexicon_term(session, subject["term"], subject["definition"], subject["category"])
+        add_lexicon_term(
+            session, subject["term"], subject["definition"], subject["category"]
+        )
         subject = subject["term"]
 
     if isinstance(object_, dict):
-        add_lexicon_term(session, object_["term"], object_["definition"], object_["category"])
+        add_lexicon_term(
+            session, object_["term"], object_["definition"], object_["category"]
+        )
         object_ = object_["term"]
 
-    triple = LexiconTriple(subject=subject,
-                           predicate=predicate,
-                           object_=object_)
+    triple = LexiconTriple(subject=subject, predicate=predicate, object_=object_)
     session.add(triple)
     session.commit()
     return triple
+
 
 # ============= EOF =============================================
