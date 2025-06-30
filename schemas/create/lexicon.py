@@ -37,4 +37,17 @@ class CreateLexiconCategory(BaseModel):
     description: str | None = None
 
 
+class CreateTriple(BaseModel):
+    """
+    Pydantic model for creating a triple.
+    This model can be extended to include additional fields as needed.
+    """
+
+    subject: CreateLexiconTerm
+    predicate: str
+    object_: CreateLexiconTerm
+
+    # class Config:
+    #     allow_population_by_field_name = True
+    #     fields = {"object_": "object"}
 # ============= EOF =============================================

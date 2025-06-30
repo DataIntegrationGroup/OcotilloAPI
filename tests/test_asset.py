@@ -12,8 +12,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ============================================================================riochama.png===
+# ===============================================================================
+import shutil
+
+from depot.manager import DepotManager
+
 from tests import client
+import pytest
+import os
+import glob
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+    """
+    Fixture to clean up after tests.
+    This can be used to delete any assets created during the tests.
+    """
+    yield
+    depot = DepotManager.get()
+    for asset in depot.list():
+        depot.delete(asset)
 
 
 def test_get_asset():
@@ -28,8 +47,6 @@ def test_add_asset():
         response = client.post(
             "/asset",
             files={"file": ("riochama.png", file, "image/png")},
-            # data={'name': 'riochama.png',
-            #       'file_type': 'image/png'}
         )
 
         assert response.status_code == 201

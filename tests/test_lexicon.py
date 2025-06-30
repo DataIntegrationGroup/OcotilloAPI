@@ -53,4 +53,25 @@ def test_get_category():
     assert isinstance(items, list)
 
 
+
+def test_add_triple():
+    subject = {"term": "MG-030", "definition":'magdalena well',"category": "location_identifier"}
+    predicate = "same_as"
+    object_ = {"term": "USGS1234", "definition":'magdalena well', "category": "location_identifier"}
+
+    response = client.post(
+        "/lexicon/triple/add",
+        json={
+            "subject": subject,
+            "predicate": predicate,
+            "object_": object_,
+        },
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["subject"] == subject["term"]
+    assert data["predicate"] == predicate
+    assert data["object_"] == object_["term"]
+
 # ============= EOF =============================================

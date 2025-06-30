@@ -16,9 +16,9 @@
 from fastapi import APIRouter, Depends
 from fastapi import status
 from db import get_db_session
-from db.lexicon import Lexicon, Category, TermCategoryAssociation
+from db.lexicon import Lexicon, Category, TermCategoryAssociation, LexiconTriple
 from schemas.response.lexicon import LexiconTermResponse, LexiconCategoryResponse
-from schemas.create.lexicon import CreateLexiconTerm, CreateLexiconCategory
+from schemas.create.lexicon import CreateLexiconTerm, CreateLexiconCategory, CreateTriple
 from services.lexicon import add_lexicon_term
 from sqlalchemy import select
 
@@ -37,7 +37,6 @@ def add_category(category_data: CreateLexiconCategory, session=Depends(get_db_se
     """
     Endpoint to add a category to the lexicon.
     """
-    # Implementation for adding a category goes here
     data = category_data.model_dump()
     name = data["name"]
     description = data.get("description", "")
@@ -46,7 +45,6 @@ def add_category(category_data: CreateLexiconCategory, session=Depends(get_db_se
     session.add(category)
     session.commit()
     return category
-    # return LexiconTermResponse.from_orm(category)
 
 
 @router.post(
@@ -59,28 +57,34 @@ def add_term(term_data: CreateLexiconTerm, session=Depends(get_db_session)):
     """
     Endpoint to add a term to the lexicon.
     """
-    # Implementation for adding a term goes here
-
     data = term_data.model_dump()
-    # category = data.pop("category")
-    # term = Lexicon(**data)
-    # if category is not None:
-    # if isinstance(category, str):
-    #     sql = select(Category).where(Category.name == category)
-    #     category = session.scalar(sql).one_or_none()
-    #     if category is not None:
-    #         category_id = category.id
-    # else:
-    #     category_id = category
-    #
-    # link = TermCategoryAssociation()
-    # link.category_id = category_id
-    # link.term = term
-    # session.add(link)
-
-    # session.add(term)
-    # session.commit()
     return add_lexicon_term(session, data["term"], data["definition"], data["category"])
 
+
+@router.post(
+    "/triple/add",
+    summary="Add triple",
+    status_code=status.HTTP_201_CREATED,
+)
+def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
+    triple_data = triple_data.model_dump()
+    subject = triple_data["subject"]
+    predicate = triple_data["predicate"]
+    object_ = triple_data["object_"]
+
+    if isinstance(subject, dict):
+        add_lexicon_term(session, subject["term"], subject["definition"], subject["category"])
+        subject = subject["term"]
+
+    if isinstance(object_, dict):
+        add_lexicon_term(session, object_["term"], object_["definition"], object_["category"])
+        object_ = object_["term"]
+
+    triple = LexiconTriple(subject=subject,
+                           predicate=predicate,
+                           object_=object_)
+    session.add(triple)
+    session.commit()
+    return triple
 
 # ============= EOF =============================================
