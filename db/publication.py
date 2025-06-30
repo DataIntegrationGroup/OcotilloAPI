@@ -18,26 +18,6 @@ from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, D
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from datetime import datetime
-
-# Association tables
-# publication_authors = Table(
-#     "publication_authors",
-#     Base.metadata,
-#     Column("publication_id", ForeignKey("publication.id"), primary_key=True),
-#     Column("author_id", ForeignKey("pub_author.id"), primary_key=True),
-#     Column("author_order", Integer, nullable=False),
-# )
-
-# publication_topics = Table(
-#     'publication_topics', Base.metadata,
-#     Column('publication_id', ForeignKey('publications.id'), primary_key=True),
-#     Column('topic_id', ForeignKey('topics.id'), primary_key=True)
-# )
-
-# class PublicationType(Base, AutoBaseMixin):
-#     name = Column(String, unique=True, nullable=False)
-
 
 class Publication(Base, AutoBaseMixin):
 
@@ -60,7 +40,7 @@ class Publication(Base, AutoBaseMixin):
     # )
     # topics = relationship("Topic", secondary=publication_topics)
     author_associations = relationship(
-        "PublicationAuthorAssociation",
+        "AuthorPublicationAssociation",
         back_populates="publication",
         cascade="all, delete-orphan",
     )
@@ -78,7 +58,7 @@ class Author(Base, AutoBaseMixin):
     affiliation = Column(String)
 
     publication_associations = relationship(
-        "PublicationAuthorAssociation",
+        "AuthorPublicationAssociation",
         back_populates="author",
         cascade="all, delete-orphan",
     )
@@ -95,29 +75,23 @@ class Author(Base, AutoBaseMixin):
 class AuthorContactAssociation(Base, AuditMixin):
     __tablename__ = "pub_author_contact_association"
     author_id = Column(
-        Integer, ForeignKey("pub_author.id"), nullable=False, primary_key=True
+        Integer, ForeignKey("pub_author.id", ondelete='CASCADE'), nullable=False, primary_key=True
     )
     contact_id = Column(
-        Integer, ForeignKey("contact.id"), nullable=False, primary_key=True
+        Integer, ForeignKey("contact.id", ondelete='CASCADE'), nullable=False, primary_key=True
     )
 
     author = relationship("Author", back_populates="contact_associations")
-    # contact = relationship("Contact", back_populates="author_associations")
+    contact = relationship("Contact", back_populates="author_associations")
 
 
-class PublicationAuthorAssociation(Base, AuditMixin):
-    __tablename__ = "pub_publication_author_association"
-    publication_id = Column(ForeignKey("publication.id"), primary_key=True)
-    author_id = Column(ForeignKey("pub_author.id"), primary_key=True)
+class AuthorPublicationAssociation(Base, AuditMixin):
+    __tablename__ = "pub_author_publication_association"
+    publication_id = Column(ForeignKey("publication.id", ondelete='CASCADE'), primary_key=True)
+    author_id = Column(ForeignKey("pub_author.id", ondelete='CASCADE'), primary_key=True)
     author_order = Column(Integer, nullable=False)
 
     publication = relationship("Publication", back_populates="author_associations")
     author = relationship("Author", back_populates="publication_associations")
-
-
-# class Topic(Base):
-#     __tablename__ = 'topics'
-#     id = Column(Integer, primary_key=True)
-#     name = Column(String, unique=True, nullable=False)
 
 # ============= EOF =============================================

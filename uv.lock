@@ -38,15 +38,6 @@ wheels = [
 ]
 
 [[package]]
-name = "anyascii"
-version = "0.3.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/52/93b9ea99063f7cf37fb67f5e3f49480686cbe7f228c48b9d713326223b6e/anyascii-0.3.2.tar.gz", hash = "sha256:9d5d32ef844fe225b8bc7cba7f950534fae4da27a9bf3a6bea2cb0ea46ce4730", size = 214052, upload-time = "2023-03-16T00:24:42.431Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/7b/a9a747e0632271d855da379532b05a62c58e979813814a57fa3b3afeb3a4/anyascii-0.3.2-py3-none-any.whl", hash = "sha256:3b3beef6fc43d9036d3b0529050b0c48bfad8bc960e9e562d7223cfb94fe45d4", size = 289923, upload-time = "2023-03-16T00:24:39.649Z" },
-]
-
-[[package]]
 name = "anyio"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -241,15 +232,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/19/25/fc3c9ed9d99df279a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/cb/cf2f10d4620b31a77705226c7292f39b4a191cef3485ea42561fc2e157d9/fastapi_pagination-0.13.2-py3-none-any.whl", hash = "sha256:d2ec66ffda5cd9c1d665521f3916b16ebbb15d5010a945449292540ef70c4d9a", size = 50404, upload-time = "2025-06-07T09:30:42.218Z" },
 ]
-
-[[package]]
-name = "filedepot"
-version = "0.11.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyascii" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/19/76/0128b0d2958b81a5f9738680af5b3ef9cdd31513e833ecbd67dcb3fa09f1/filedepot-0.11.0.tar.gz", hash = "sha256:26d4ca647383f08fb4dbdba4d1f92bd699a0dd1c230d90cf0766eb3b6aadc195", size = 43153, upload-time = "2024-02-22T21:48:13.39Z" }
 
 [[package]]
 name = "geoalchemy2"
@@ -495,7 +477,6 @@ dependencies = [
     { name = "fastadmin" },
     { name = "fastapi" },
     { name = "fastapi-pagination" },
-    { name = "filedepot" },
     { name = "geoalchemy2" },
     { name = "google-cloud-storage" },
     { name = "greenlet" },
@@ -524,7 +505,6 @@ requires-dist = [
     { name = "fastadmin", specifier = ">=0.2.22" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastapi-pagination", specifier = ">=0.13.2" },
-    { name = "filedepot", specifier = ">=0.11.0" },
     { name = "geoalchemy2", specifier = ">=0.17.1" },
     { name = "google-cloud-storage", specifier = ">=3.1.1" },
     { name = "greenlet", specifier = ">=3.2.2" },

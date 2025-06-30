@@ -86,6 +86,13 @@ class Contact(Base, AutoBaseMixin):
 
     search_vector = Column(TSVectorType("name", "description", "email", "phone"))
 
+    author_associations = relationship(
+        "AuthorContactAssociation",
+        back_populates="contact",
+        cascade="all, delete-orphan",
+    )
+    authors = association_proxy("author_associations", "author")
+
 
 class Well(Base, AutoBaseMixin):
     location_id = Column(

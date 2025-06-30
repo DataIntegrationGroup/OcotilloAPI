@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.publication import Author, Publication, PublicationAuthorAssociation
+from db.publication import Author, Publication, AuthorPublicationAssociation
 from schemas.create.publication import CreatePublication
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -37,7 +37,7 @@ def add_publication(session: Session, publication_data: CreatePublication):
             elif isinstance(a, int):
                 dbauthor = session.get(Author, a)
 
-            assoc = PublicationAuthorAssociation(author=dbauthor, author_order=i)
+            assoc = AuthorPublicationAssociation(author=dbauthor, author_order=i)
             associations.append(assoc)
         # print('dbauthors', dbauthors)
 

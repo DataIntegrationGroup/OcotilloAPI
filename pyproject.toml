@@ -12,7 +12,6 @@ dependencies = [
     "fastadmin>=0.2.22",
     "fastapi>=0.115.12",
     "fastapi-pagination>=0.13.2",
-    "filedepot>=0.11.0",
     "geoalchemy2>=0.17.1",
     "google-cloud-storage>=3.1.1",
     "greenlet>=3.2.2",

@@ -18,9 +18,6 @@ from sqlalchemy.orm import relationship
 
 from db import Base, AutoBaseMixin
 
-from depot.fields.sqlalchemy import UploadedFileField
-from depot.fields.specialized.image import UploadedImageWithThumb
-
 
 class Asset(Base, AutoBaseMixin):
     # name = Column(String(100), nullable=False, unique=True)
