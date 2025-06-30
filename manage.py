@@ -17,6 +17,7 @@ from core.app import init_lexicon
 
 import click
 
+
 @click.command()
 def initialize_lexicon():
     init_lexicon()

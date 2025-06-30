@@ -46,7 +46,10 @@ def init_lexicon():
     for term_dict in default_lexicon:
         try:
             add_lexicon_term(
-                session, term_dict["term"], term_dict["definition"], term_dict["category"]
+                session,
+                term_dict["term"],
+                term_dict["definition"],
+                term_dict["category"],
             )
         except DatabaseError:
             session.rollback()
