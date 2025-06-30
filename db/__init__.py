@@ -34,42 +34,71 @@ if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
 
 driver = os.environ.get("DB_DRIVER", "")
 
+if driver == "cloudsql":
+    from google.cloud.sql.connector import Connector
 
-if driver == "sqlite":
-    name = os.environ.get("DB_NAME", "development.db")
-    url = f"sqlite:///{name}"
-elif driver == "postgres":
-    password = os.environ.get("POSTGRES_PASSWORD", "")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    user = os.environ.get("POSTGRES_USER", "postgres")
-    name = os.environ.get("POSTGRES_DB", "development")
+    def init_connection_pool(connector):
+        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
+        user = os.environ.get("CLOUD_SQL_USER")
+        password = os.environ.get("CLOUD_SQL_PASSWORD")
+        database = os.environ.get("CLOUD_SQL_DATABASE")
 
-    auth = f"{user}:{password}@" if user and password else ""
-    port_part = f":{port}" if port else ""
-    url = f"postgresql://{auth}{host}{port_part}/{name}"
+        def getconn():
+            conn = connector.connect(
+                instance_name,  # The Cloud SQL instance name
+                "pg8000",
+                user=user,
+                password=password,
+                db=database,
+                ip_type="public",
+            )
+            return conn
+
+        engine = create_engine(
+            "postgresql+pg8000://",
+            creator=getconn,
+            echo=False,
+        )
+        return engine
+
+    connector = Connector()
+    engine = init_connection_pool(connector)
 else:
-    url = "sqlite:///./development.db"
+    if driver == "sqlite":
+        name = os.environ.get("DB_NAME", "development.db")
+        url = f"sqlite:///{name}"
+    elif driver == "postgres":
+        password = os.environ.get("POSTGRES_PASSWORD", "")
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        user = os.environ.get("POSTGRES_USER", "postgres")
+        name = os.environ.get("POSTGRES_DB", "development")
 
-engine = create_engine(
-    url,
-    # echo=True,
-    plugins=["geoalchemy2"],
-)
+        auth = f"{user}:{password}@" if user and password else ""
+        port_part = f":{port}" if port else ""
+        url = f"postgresql://{auth}{host}{port_part}/{name}"
+    else:
+        url = "sqlite:///./development.db"
 
-if "postgresql" not in url:
+    engine = create_engine(
+        url,
+        # echo=True,
+        plugins=["geoalchemy2"],
+    )
 
-    def on_connect(dbapi_connection, connection_record):
-        """
-        Event listener to load SpatiaLite on connection.
-        """
-        load_spatialite(dbapi_connection)
+    if "postgresql" not in url:
 
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+        def on_connect(dbapi_connection, connection_record):
+            """
+            Event listener to load SpatiaLite on connection.
+            """
+            load_spatialite(dbapi_connection)
 
-    listen(engine, "connect", on_connect)
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+        listen(engine, "connect", on_connect)
 
 
 # sqlalchemy_sessionmaker = async_sessionmaker(engine, expire_on_commit=False)

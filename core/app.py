@@ -17,9 +17,9 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from sqlalchemy.exc import DatabaseError
 
-from db import database_sessionmaker, engine, Base, get_db_session
-from db.lexicon import Lexicon, Category, TermCategoryAssociation
+from db import engine, Base, get_db_session
 from services.lexicon import add_lexicon_term
 from .settings import settings
 
@@ -44,11 +44,12 @@ def init_lexicon():
     session = next(get_db_session())
 
     for term_dict in default_lexicon:
-        add_lexicon_term(
-            session, term_dict["term"], term_dict["definition"], term_dict["category"]
-        )
-        # s.add(Lexicon(**term_dict))
-    session.commit()
+        try:
+            add_lexicon_term(
+                session, term_dict["term"], term_dict["definition"], term_dict["category"]
+            )
+        except DatabaseError:
+            session.rollback()
 
 
 def create_superuser():

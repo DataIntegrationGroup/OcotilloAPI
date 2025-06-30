@@ -31,9 +31,16 @@ def add_lexicon_term(session: Session, term: str, definition: str, category: str
             # Create a new category if it does not exist
             dbcategory = Category(name=category)
             session.add(dbcategory)
+            session.commit()
             session.flush()
     else:
         dbcategory = session.get(Category, category)
+
+    # Check if the term already exists
+    sql = select(Lexicon).where(Lexicon.term == term)
+    existing_term = session.scalars(sql).one_or_none()
+    if existing_term is not None:
+        return existing_term
 
     term = Lexicon(term=term, definition=definition)
     session.add(term)
