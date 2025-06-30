@@ -70,7 +70,7 @@ jobs:
         POSTGRES_HOST: localhost
         POSTGRES_PORT: 5432
         POSTGRES_PASSWORD: postgres
-        DB_DRIVER: test_postgres
+        DB_DRIVER: postgres
 #        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
 
       run: uv run pytest -vv --durations=20 --junitxml=junit.xml

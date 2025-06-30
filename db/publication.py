@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from sqlalchemy_utils import TSVectorType
+
 from db import AutoBaseMixin, Base, AuditMixin
 from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
@@ -46,6 +48,8 @@ class Publication(Base, AutoBaseMixin):
     )
     authors = association_proxy("author_associations", "author")
 
+    search_vector = Column(TSVectorType("title", "abstract", "doi", "publisher", "url"))
+
 
 class Author(Base, AutoBaseMixin):
     __tablename__ = "pub_author"
@@ -70,6 +74,8 @@ class Author(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     contacts = association_proxy("author_associations", "contact")
+
+    search_vector = Column(TSVectorType("name", "affiliation"))
 
 
 class AuthorContactAssociation(Base, AuditMixin):

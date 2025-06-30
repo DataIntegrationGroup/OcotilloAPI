@@ -38,15 +38,16 @@ driver = os.environ.get("DB_DRIVER", "")
 if driver == "sqlite":
     name = os.environ.get("DB_NAME", "development.db")
     url = f"sqlite:///{name}"
-elif driver == "test_postgres":
+elif driver == "postgres":
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
     user = os.environ.get("POSTGRES_USER", "postgres")
+    name = os.environ.get("POSTGRES_DB", "development")
 
     auth = f"{user}:{password}@" if user and password else ""
     port_part = f":{port}" if port else ""
-    url = f"postgresql://{auth}{host}{port_part}/postgres"
+    url = f"postgresql://{auth}{host}{port_part}/{name}"
 else:
     url = "sqlite:///./development.db"
 

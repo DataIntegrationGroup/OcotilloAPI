@@ -15,6 +15,7 @@
 # ===============================================================================
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy_utils import TSVectorType
 
 from db import Base, AutoBaseMixin
 
@@ -31,6 +32,8 @@ class Asset(Base, AutoBaseMixin):
     storage_path = Column(String)
     mime_type = Column(String)
     size = Column(Integer)
+
+    search_vector = Column(TSVectorType("filename", "mime_type", "storage_service", "storage_path"))
 
 
 class AssetLocationAssociation(Base, AutoBaseMixin):

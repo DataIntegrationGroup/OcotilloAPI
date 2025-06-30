@@ -19,7 +19,7 @@ import os
 class Settings:
 
     def __init__(self):
-        self.mode = os.getenv("MODE", "development")  # Default mode
+        self.mode = os.getenv("MODE", "")  # Default mode
 
     def get_enum(self, name: str):
         if name == "MODE":

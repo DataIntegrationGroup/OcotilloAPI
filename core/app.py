@@ -69,9 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Application lifespan event handler to initialize the database and lexicon.
     """
-    if settings.get_enum("MODE") == "production":
-        pass
-    else:
+    if settings.get_enum("MODE") == "development":
         init_db()
         create_superuser()
         init_lexicon()
