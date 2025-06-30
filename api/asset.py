@@ -27,6 +27,7 @@ from db.asset import Asset
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 
+
 def get_storage_bucket():
     from google.cloud import storage
 
@@ -34,11 +35,15 @@ def get_storage_bucket():
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket
 
+
 @router.get("/{asset_id}")
-async def get_asset(asset_id: int,
-                    database_session: Session = Depends(get_db_session),
-                    bucket = Depends(get_storage_bucket)  # Assuming get_storage_bucket is defined elsewhere
-                    ):
+async def get_asset(
+    asset_id: int,
+    database_session: Session = Depends(get_db_session),
+    bucket=Depends(
+        get_storage_bucket
+    ),  # Assuming get_storage_bucket is defined elsewhere
+):
     """
     Retrieve an asset by its ID.
     """
@@ -48,18 +53,15 @@ async def get_asset(asset_id: int,
         raise HTTPException(status_code=404, detail="Asset not found")
 
     blob = bucket.blob(asset.storage_path)
-    asset.url = blob.generate_signed_url(
-                        expiration=timedelta(minutes=10),
-                        method="GET"
-                    )
+    asset.url = blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET")
     return asset
 
 
 @router.post("/", status_code=201)
 async def add_asset(
     file: UploadFile = File(...),
-        database_session: Session = Depends(get_db_session),
-        bucket = Depends(get_storage_bucket)
+    database_session: Session = Depends(get_db_session),
+    bucket=Depends(get_storage_bucket),
 ):
     file_id = str(uuid4())
     blob_name = f"uploads/{file_id}_{file.filename}"
@@ -72,7 +74,7 @@ async def add_asset(
         storage_service="gcs",
         storage_path=blob_name,
         mime_type=file.content_type,
-        size=file.size
+        size=file.size,
     )
     database_session.add(asset)
     database_session.commit()
@@ -81,7 +83,7 @@ async def add_asset(
     return {
         "id": asset.id,
         "filename": asset.filename,
-        "url": f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{blob_name}"
+        "url": f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{blob_name}",
     }
 
 

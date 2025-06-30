@@ -36,8 +36,10 @@ import glob
 class MockBlob:
     def upload_from_file(self, *args, **kwargs):
         pass
+
     def generate_signed_url(self, *args, **kwargs):
         return "https://storage.googleapis.com/mock-bucket/mock-asset"
+
 
 class MockStorageBucket:
     def blob(self, *args, **kwargs):
@@ -72,7 +74,7 @@ def test_add_asset():
 def test_get_asset():
     response = client.get("/asset/1")
     assert response.status_code == 200
-    data  = response.json()
+    data = response.json()
     assert data["id"] == 1
     assert data["filename"] == "riochama.png"
     assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
@@ -82,4 +84,6 @@ def test_get_asset_not_found():
     response = client.get("/asset/9999")
     assert response.status_code == 404
     assert response.json() == {"detail": "Asset not found"}
+
+
 # ============= EOF =============================================
