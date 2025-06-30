@@ -24,3 +24,4 @@ tests/uploads
 
 # deployment files
 app.yaml
+alembic.ini

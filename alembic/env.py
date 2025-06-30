@@ -18,8 +18,17 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 
-from db import Base  # Import your Base from models/__init__.py
+#from db import Base  # Import your Base from models/__init__.py
 from db.base import *
+from db.lexicon import *
+from db.publication import *
+from db.geothermal import *
+from db.geochronology import *
+from db.collabnet import *
+from db.chemistry import *
+from db.asset import *
+from db.timeseries import *
+
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
