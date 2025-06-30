@@ -72,7 +72,7 @@ else:
         host = os.environ.get("POSTGRES_HOST", "localhost")
         port = os.environ.get("POSTGRES_PORT", "5432")
         user = os.environ.get("POSTGRES_USER", "postgres")
-        name = os.environ.get("POSTGRES_DB", "development")
+        name = os.environ.get("POSTGRES_DB", "postgres")
 
         auth = f"{user}:{password}@" if user and password else ""
         port_part = f":{port}" if port else ""
