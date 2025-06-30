@@ -33,7 +33,9 @@ class Asset(Base, AutoBaseMixin):
     mime_type = Column(String)
     size = Column(Integer)
 
-    search_vector = Column(TSVectorType("filename", "mime_type", "storage_service", "storage_path"))
+    search_vector = Column(
+        TSVectorType("filename", "mime_type", "storage_service", "storage_path")
+    )
 
 
 class AssetLocationAssociation(Base, AutoBaseMixin):
