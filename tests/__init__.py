@@ -18,13 +18,14 @@ from sqlalchemy.orm import configure_mappers
 
 from core.app import init_lexicon
 from main import app
-from db import Base, engine
-
-Base.metadata.drop_all(engine)
+from db import engine
+from db.base import Base
 
 configure_mappers()
+Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 
+# init_searchable()
 init_lexicon()
 
 client = TestClient(app)

@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 
 from db import engine, Base, get_db_session

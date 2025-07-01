@@ -20,7 +20,7 @@ from encodings import search_function
 
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, declared_attr
+from sqlalchemy.orm import declarative_base, sessionmaker, declared_attr, configure_mappers
 from sqlalchemy.util import await_only
 from sqlalchemy_searchable import make_searchable
 
@@ -120,7 +120,7 @@ else:
 
     auth = f"{user}:{password}@" if user and password else ""
     port_part = f":{port}" if port else ""
-    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
+    url = f"postgresql+psycopg2://{auth}{host}{port_part}/{name}"
     # else:
     #     url = "sqlite:///./development.db"
 
@@ -131,7 +131,7 @@ else:
     )
 
     async_engine = create_async_engine(
-        url.replace("postgresql+pg8000", "postgresql+asyncpg"),
+        url.replace("postgresql+psycopg2", "postgresql+asyncpg"),
         plugins=["geoalchemy2"],
     )
     # if "postgresql" not in url:
@@ -162,9 +162,7 @@ def get_db_session():
 
 
 Base = declarative_base()
-
 make_searchable(Base.metadata)
-
 
 def adder(session, table, model, **kwargs):
     """
