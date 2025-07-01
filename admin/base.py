@@ -29,6 +29,7 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
     """
 
     list_display = ("name",)
+
     async def serialize_obj(self, obj: Any, list_view: bool = False) -> dict:
         """
         Serialize the SampleLocation object for display.

@@ -38,6 +38,8 @@ if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
 driver = os.environ.get("DB_DRIVER", "")
 
 async_engine = None
+
+
 async def get_async_engine():
     """
     Asynchronous database session generator.
@@ -48,6 +50,7 @@ async def get_async_engine():
         from sqlalchemy.dialects.postgresql.asyncpg import (
             AsyncAdapt_asyncpg_connection,
         )
+
         instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
@@ -73,9 +76,9 @@ async def get_async_engine():
         creator=asyncify_connection,
     )
 
+
 if driver == "cloudsql":
     from google.cloud.sql.connector import Connector, create_async_connector
-
 
     def init_connection_pool(connector):
         instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")

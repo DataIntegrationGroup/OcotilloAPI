@@ -38,6 +38,7 @@ app.include_router(asset_router)
 
 from admin.user import *
 from admin.base import *
+
 app.mount("/admin", admin_app)
 
 
