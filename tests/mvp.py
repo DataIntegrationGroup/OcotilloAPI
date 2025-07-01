@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
+
 def test_add_location_minimum():
     location = {
         "name": "Test Location 1",
@@ -26,7 +27,7 @@ def test_add_location_all():
     location = {
         "name": "Test Location 1",
         "point": "POINT(10.1 10.1)",
-        "description": 'this is a test location',
+        "description": "this is a test location",
         "visible": True,
     }
 
@@ -48,10 +49,11 @@ def test_add_well_all():
         "hole_depth": 100.0,
         "casing_diameter": 10.0,
         "casing_depth": 20.0,
-        "casing_description": 'foo bar',
-        "formation_zone": 'San Andres',
+        "casing_description": "foo bar",
+        "formation_zone": "San Andres",
         "construction_notes": "this is a test of notes",
     }
+
 
 def test_add_well_screen_minimum():
     well_screen = {
@@ -66,7 +68,7 @@ def test_add_well_screen_all():
         "well_id": 1,
         "screen_depth_top": 100.0,
         "screen_depth_bottom": 120.0,
-        "screen_type": "PVC"
+        "screen_type": "PVC",
     }
 
 
@@ -85,31 +87,33 @@ def test_add_owner_with_contacts():
 
 
 def test_add_owner_without_contacts():
-    owner = {
-        "name": "Alice Bob"
-    }
+    owner = {"name": "Alice Bob"}
+
 
 def test_add_asset():
     asset = {
-        'filename': 'foo.png',
-        'storage_service': 'gcs',
-        'storage_path': 'gs://...',
-        'mime_type': 'image/png',
-        'size': 100,
+        "filename": "foo.png",
+        "storage_service": "gcs",
+        "storage_path": "gs://...",
+        "mime_type": "image/png",
+        "size": 100,
     }
 
 
 #  ============== optional ? =============
 def test_add_lexicon():
     formation = {
-        'term': 'San Andres',
-        'definition': 'Some sandstone unit',
-        'category': 'Formations'
+        "term": "San Andres",
+        "definition": "Some sandstone unit",
+        "category": "Formations",
     }
 
-    unit = {"term": "TDS",
-            "definition": "Total Dissolved Solids",
-            "category": "water_chemistry"}
+    unit = {
+        "term": "TDS",
+        "definition": "Total Dissolved Solids",
+        "category": "water_chemistry",
+    }
+
 
 def test_add_lexicon_triple():
     subject = {
@@ -124,19 +128,21 @@ def test_add_lexicon_triple():
         "category": "location_identifier",
     }
 
+
 def test_add_lexicon_triple_existing_subject():
-    subject = 'TDS'
+    subject = "TDS"
     predicate = "same_as"
     object_ = {
-        "term": 'Total Dissolved Solids',
-        "definition": 'all the solids dissolved in sample',
-        "category": "water_chemistry"
+        "term": "Total Dissolved Solids",
+        "definition": "all the solids dissolved in sample",
+        "category": "water_chemistry",
     }
 
+
 def test_add_lexicon_triple_existing():
-    subject = 'TDS'
+    subject = "TDS"
     predicate = "same_as"
-    object_ = 'Total Dissolved Solids'
+    object_ = "Total Dissolved Solids"
 
 
 # ============= EOF =============================================
