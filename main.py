@@ -24,9 +24,6 @@ from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
 
-
-app.mount("/admin", admin_app)
-
 app.include_router(base_router)
 app.include_router(form_router)
 app.include_router(timeseries_router)
@@ -38,6 +35,11 @@ app.include_router(geochronology_router)
 app.include_router(publication_router)
 app.include_router(author_router)
 app.include_router(asset_router)
+
+from admin.user import *
+from admin.base import *
+app.mount("/admin", admin_app)
+
 
 app.add_middleware(
     CORSMiddleware,

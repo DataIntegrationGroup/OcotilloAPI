@@ -16,17 +16,14 @@
 import uuid
 from typing import Any
 
-
-import bcrypt
 from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
-from sqlalchemy import Integer, Boolean, Text, String, update, select
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import update, select
 
-from db import database_sessionmaker, Base
-from db.base import SampleLocation, User
+from db import async_database_sessionmaker
+from db.base import User
 
 
-@register(User, sqlalchemy_sessionmaker=database_sessionmaker)
+@register(User, sqlalchemy_sessionmaker=async_database_sessionmaker)
 class UserModelAdmin(SqlAlchemyModelAdmin):
     list_display = ("id", "username", "is_superuser")
     list_display_links = ("id", "username")
