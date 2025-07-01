@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import select
+from sqlalchemy import select, Float, Integer
 from sqlalchemy_searchable import search as search_func
 from services.regex import QUERY_REGEX
 
@@ -55,16 +55,26 @@ def make_query(table, query: str):
     # Convert boolean strings to actual booleans
     value = to_bool(value)
 
+    def cast_value(col, val):
+        if isinstance(column.type, Float):
+            val = float(val)
+        elif isinstance(val, Integer):
+            val = int(val)
+        return val
+
     if "." in column:
         # Handle nested attributes
         column_parts = column.split(".")
         rel = getattr(table, column_parts[0])
         related_model = rel.property.mapper.class_
         related_column = getattr(related_model, column_parts[1])
+
+        value = cast_value(related_column, value)
         w = make_where(related_column, operator, value)
         w = rel.any(w)
     else:
         column = getattr(table, column)
+        value = cast_value(column, value)
         w = make_where(column, operator, value)
 
     return w
