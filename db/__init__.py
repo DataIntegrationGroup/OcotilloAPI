@@ -20,7 +20,12 @@ from encodings import search_function
 
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, declared_attr, configure_mappers
+from sqlalchemy.orm import (
+    declarative_base,
+    sessionmaker,
+    declared_attr,
+    configure_mappers,
+)
 from sqlalchemy.util import await_only
 from sqlalchemy_searchable import make_searchable
 
@@ -163,6 +168,7 @@ def get_db_session():
 
 Base = declarative_base()
 make_searchable(Base.metadata)
+
 
 def adder(session, table, model, **kwargs):
     """
