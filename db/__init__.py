@@ -37,6 +37,7 @@ if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
 
 driver = os.environ.get("DB_DRIVER", "")
 
+
 async def get_async_engine():
     """
     Asynchronous database session generator.

@@ -37,6 +37,7 @@ def make_where(col, op: str, v: str):
     elif op == "between":
         return col.between(*map(float, v.strip("[]").split(",")))
     else:
+
         def cast_value(col, val):
             if isinstance(col.type, Float):
                 val = float(val)
