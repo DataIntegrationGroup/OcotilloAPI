@@ -16,7 +16,6 @@
 import asyncio
 import os
 import re
-from encodings import search_function
 
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -24,21 +23,9 @@ from sqlalchemy.orm import (
     declarative_base,
     sessionmaker,
     declared_attr,
-    configure_mappers,
 )
 from sqlalchemy.util import await_only
 from sqlalchemy_searchable import make_searchable
-
-
-if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
-    os.environ["SPATIALITE_LIBRARY_PATH"] = "/opt/homebrew/lib/mod_spatialite.dylib"
-
-# engine = create_async_engine(
-#     "sqlite+aiosqlite:///./development.db",
-#     echo=True,
-#     plugins=['geoalchemy2'],
-# )
-
 
 driver = os.environ.get("DB_DRIVER", "")
 
@@ -92,7 +79,7 @@ if driver == "cloudsql":
         def getconn():
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
-                "pg8000",
+                "psycopg2",
                 user=user,
                 password=password,
                 db=database,
@@ -101,7 +88,7 @@ if driver == "cloudsql":
             return conn
 
         engine = create_engine(
-            "postgresql+pg8000://",
+            "postgresql+psycopg2://",
             creator=getconn,
             echo=False,
         )
