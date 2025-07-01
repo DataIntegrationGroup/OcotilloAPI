@@ -17,7 +17,8 @@ import asyncio
 import os
 import re
 
-from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
+from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON, desc, cast, Text
+from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import (
     declarative_base,
@@ -25,7 +26,7 @@ from sqlalchemy.orm import (
     declared_attr,
 )
 from sqlalchemy.util import await_only
-from sqlalchemy_searchable import make_searchable
+from sqlalchemy_searchable import make_searchable, inspect_search_vectors, search_manager
 
 driver = os.environ.get("DB_DRIVER", "")
 
@@ -112,7 +113,7 @@ else:
 
     auth = f"{user}:{password}@" if user and password else ""
     port_part = f":{port}" if port else ""
-    url = f"postgresql+psycopg2://{auth}{host}{port_part}/{name}"
+    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
     # else:
     #     url = "sqlite:///./development.db"
 
@@ -123,7 +124,7 @@ else:
     )
 
     async_engine = create_async_engine(
-        url.replace("postgresql+psycopg2", "postgresql+asyncpg"),
+        url.replace("postgresql+pg8000", "postgresql+asyncpg"),
         plugins=["geoalchemy2"],
     )
     # if "postgresql" not in url:
@@ -176,6 +177,27 @@ class AuditMixin:
     def created_at(self):
         return Column(DateTime, nullable=False, server_default=func.now())
 
+def search(query, search_query, vector=None, regconfig=None, sort=True):
+    if not search_query.strip():
+        return query
+
+    if vector is None:
+        entity = query.column_descriptions[0]["entity"]
+        search_vectors = inspect_search_vectors(entity)
+        vector = search_vectors[0]
+
+    if regconfig is None:
+        regconfig = search_manager.options["regconfig"]
+
+    query = query.filter(
+        vector.op("@@")(func.parse_websearch(cast(regconfig, REGCONFIG),  cast(search_query, Text)))
+    )
+    if sort:
+        query = query.order_by(
+            desc(func.ts_rank_cd(vector, func.parse_websearch(cast(search_query, Text))))
+        )
+
+    return query.params(term=search_query)
 
 def pascal_to_snake(name):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()

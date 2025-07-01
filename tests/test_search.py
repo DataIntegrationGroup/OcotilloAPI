@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import select
-from sqlalchemy_searchable import search
+from sqlalchemy import select, func, desc, cast, Text
+from sqlalchemy.dialects.postgresql import REGCONFIG
 
-from db import database_sessionmaker, get_db_session
+
+from db import database_sessionmaker, get_db_session, search
 from db.base import Owner, Contact, OwnerContactAssociation
 
 
 from tests import client
+
 
 
 def test_search_query():
@@ -31,7 +33,7 @@ def test_search_query():
     assert owner is not None
     session.close()
 
-
+#
 def test_search_query_no_results():
     session = next(get_db_session())
 
@@ -130,9 +132,6 @@ def test_search_owner_by_contact_name_api():
     data = response.json()
     assert len(data) == 1
     assert data[0]["name"] == "Test Owner 1"
-
-    # assert len(data["items"]) > 0
-    # assert "Test Contact" in data["items"][0]["contacts"][0]["name"]
 
 
 # ============= EOF =============================================

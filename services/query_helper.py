@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import select, Float, Integer
-from sqlalchemy_searchable import search as search_func
+from db import search as search_func
 from services.regex import QUERY_REGEX
 
 
