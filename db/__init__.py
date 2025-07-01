@@ -16,9 +16,9 @@
 import asyncio
 import os
 import re
-from geoalchemy2 import load_spatialite
+from encodings import search_function
+
 from sqlalchemy import create_engine, Column, Integer, DateTime, func, JSON
-from sqlalchemy.event import listen
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, declared_attr
 from sqlalchemy.util import await_only
@@ -36,9 +36,6 @@ if os.environ.get("SPATIALITE_LIBRARY_PATH") is None:
 
 
 driver = os.environ.get("DB_DRIVER", "")
-
-async_engine = None
-
 
 async def get_async_engine():
     """

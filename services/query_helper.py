@@ -31,12 +31,20 @@ def to_bool(value: str) -> bool | str:
 
 
 def make_where(col, op: str, v: str):
+
     if op == "like":
         return col.like(v)
     elif op == "between":
         return col.between(*map(float, v.strip("[]").split(",")))
     else:
-        return getattr(col, f"__{op}__")(v)
+        def cast_value(col, val):
+            if isinstance(col.type, Float):
+                val = float(val)
+            elif isinstance(col.type, Integer):
+                val = int(val)
+            return val
+
+        return getattr(col, f"__{op}__")(cast_value(col, v))
 
 
 def make_query(table, query: str):
@@ -55,26 +63,16 @@ def make_query(table, query: str):
     # Convert boolean strings to actual booleans
     value = to_bool(value)
 
-    def cast_value(col, val):
-        if isinstance(column.type, Float):
-            val = float(val)
-        elif isinstance(val, Integer):
-            val = int(val)
-        return val
-
     if "." in column:
         # Handle nested attributes
         column_parts = column.split(".")
         rel = getattr(table, column_parts[0])
         related_model = rel.property.mapper.class_
         related_column = getattr(related_model, column_parts[1])
-
-        value = cast_value(related_column, value)
         w = make_where(related_column, operator, value)
         w = rel.any(w)
     else:
         column = getattr(table, column)
-        value = cast_value(column, value)
         w = make_where(column, operator, value)
 
     return w
