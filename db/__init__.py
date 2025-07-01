@@ -79,7 +79,7 @@ if driver == "cloudsql":
         def getconn():
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
-                "psycopg2",
+                "pg8000",
                 user=user,
                 password=password,
                 db=database,
@@ -88,7 +88,7 @@ if driver == "cloudsql":
             return conn
 
         engine = create_engine(
-            "postgresql+psycopg2://",
+            "postgresql+pg8000://",
             creator=getconn,
             echo=False,
         )
