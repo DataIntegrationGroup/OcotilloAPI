@@ -85,10 +85,6 @@ jobs:
     - name: Install the project
       run: uv sync --locked --all-extras --dev
 
-    - name: Install extensions
-      run: |
-        psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-        psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
     - name: Run tests
       env:
         MODE: development

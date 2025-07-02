@@ -16,12 +16,15 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import configure_mappers
 
-from core.app import init_lexicon
+from core.app import init_lexicon, init_extensions
 from main import app
 from db import engine
 from db.base import Base
 
 configure_mappers()
+
+init_extensions()
+
 Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 

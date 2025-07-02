@@ -33,6 +33,18 @@ def init_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+def init_extensions():
+    """
+    Initialize database extensions such as TimescaleDB.
+    This function is called during application startup.
+    """
+    session = next(get_db_session())
+    try:
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb;"))
+        session.commit()
+    except DatabaseError:
+        session.rollback()
 
 def init_lexicon():
     with open("./core/lexicon.json") as f:
