@@ -23,7 +23,7 @@ from db.base import Base
 
 configure_mappers()
 
-init_extensions()
+# init_extensions()
 
 Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)

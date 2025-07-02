@@ -42,12 +42,25 @@ jobs:
     - name: Check out source repository
       uses: actions/checkout@v4
 
+
     - name: Install Postgis
       run: |
-        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
-        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        sudo apt-get update
-        sudo apt-get install -y postgis postgresql-17-postgis-3
+        # Detect installed PostgreSQL version (major only)
+        PG_VERSION=$(postgres --version | awk '{print $3}' | cut -d. -f1)
+        [[ "$PG_VERSION" =~ ^[0-9]+$ ]] || (echo "Failed to detect Postgres major version" && exit 1)
+        echo "Detected PostgreSQL major version: $PG_VERSION"
+        
+        # Install PostGIS
+        REPO_URL="https://apt.postgresql.org/pub/repos/apt/"
+        wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /usr/share/keyrings/postgresql.gpg >/dev/null
+        echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] $REPO_URL $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+        sudo apt update
+        sudo apt-get install postgresql-$PG_VERSION-postgis-3
+#      run: |
+#        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
+#        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+#        sudo apt-get update
+#        sudo apt-get install -y postgis postgresql-17-postgis-3
 #    - name: Install timescaledb
 #      run: |
 #        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
@@ -71,6 +84,9 @@ jobs:
 #      run: |
 #          sudo apt-get update
 #          sudo apt-get install -y libsqlite3-mod-spatialite libspatialite-dev
+    - name: Enable PostGIS extension
+      run: psql -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;' '${{ steps.pg.outputs.connection-uri }}'
+      shell: bash
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
