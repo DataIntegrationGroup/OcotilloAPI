@@ -69,18 +69,12 @@ class WellTimeseries(Base, TimeseriesMixin, AutoBaseMixin, PropertiesMixin):
 class GroundwaterLevelObservation(Base, AutoBaseMixin, PropertiesMixin, QCMixin):
     """ """
 
-    __table_args__ = ({
-        'timescaledb_hypertable': {
-            'time_column_name': 'timestamp'
-        }
-    })
+    __table_args__ = {"timescaledb_hypertable": {"time_column_name": "timestamp"}}
 
     # Define common fields for observations here
     timestamp = mapped_column(DateTime, nullable=False)
     value = mapped_column(Float, nullable=False)
-    unit = mapped_column(
-        String, nullable=False, default="ftbgs"
-    )
+    unit = mapped_column(String, nullable=False, default="ftbgs")
 
     data_quality = mapped_column(String(100), ForeignKey("lexicon_term.term"))
     level_status = mapped_column(String(100), ForeignKey("lexicon_term.term"))
