@@ -14,9 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import DateTime, Float, String, Integer, ForeignKey, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import declared_attr, relationship
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import declared_attr, relationship, mapped_column
 
 from db import AutoBaseMixin, Base, PropertiesMixin
 
@@ -69,7 +67,7 @@ class WellTimeseries(Base, TimeseriesMixin, AutoBaseMixin, PropertiesMixin):
 class GroundwaterLevelObservation(Base, AutoBaseMixin, PropertiesMixin, QCMixin):
     """ """
 
-    __table_args__ = {"timescaledb_hypertable": {"time_column_name": "timestamp"}}
+    # __table_args__ = {"timescaledb_hypertable": {"time_column_name": "timestamp"}}
 
     # Define common fields for observations here
     timestamp = mapped_column(DateTime, nullable=False)

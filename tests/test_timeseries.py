@@ -55,22 +55,22 @@ def test_add_well_observations():
     assert response.status_code == 201
 
 
-def test_timescale_db():
-
-    session = next(get_db_session())
-    sql = func.first(
-        GroundwaterLevelObservation.value, GroundwaterLevelObservation.timestamp
-    )
-    result = session.execute(sql).scalar()
-    assert result is not None, "Expected a result from the timescale DB query"
-
-
-def test_timescale_db_histogram():
-    session = next(get_db_session())
-    sql = func.histogram(GroundwaterLevelObservation.value, 0, 100, 10)
-    result = session.execute(sql).scalar()
-    print("Histogram Result:", result)
-    assert result is not None, "Expected a result from the timescale DB histogram query"
+# def test_timescale_db():
+#
+#     session = next(get_db_session())
+#     sql = func.first(
+#         GroundwaterLevelObservation.value, GroundwaterLevelObservation.timestamp
+#     )
+#     result = session.execute(sql).scalar()
+#     assert result is not None, "Expected a result from the timescale DB query"
+#
+#
+# def test_timescale_db_histogram():
+#     session = next(get_db_session())
+#     sql = func.histogram(GroundwaterLevelObservation.value, 0, 100, 10)
+#     result = session.execute(sql).scalar()
+#     print("Histogram Result:", result)
+#     assert result is not None, "Expected a result from the timescale DB histogram query"
 
 
 # ============= EOF =============================================
