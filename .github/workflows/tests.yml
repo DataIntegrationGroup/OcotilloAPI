@@ -51,8 +51,8 @@ jobs:
         sudo apt install timescaledb-2-postgresql-17 postgresql-client-17
 #        sudo timescaledb-tune --conf-path /etc/postgresql/17/main/postgresql.conf --quiet --yes
 
-    - name: Restart PostgreSQL
-      run: sudo systemctl restart postgresql
+#    - name: Restart PostgreSQL
+#      run: sudo systemctl restart postgresql
     - name: Get config
       run: psql -U postgres -c 'SHOW config_file'
       #    - name: Install dependencies
