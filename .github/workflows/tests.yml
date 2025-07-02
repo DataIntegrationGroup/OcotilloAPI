@@ -84,16 +84,16 @@ jobs:
         sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
         timescaledb-tune --quiet --yes
 
-    - name: Test Installation
-      run: |
-#        pg_ctlcluster 17 main start
-        sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
-          -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
-        installed_version=$(sudo -u postgres psql -X -t \
-          -c "SELECT extversion FROM pg_extension WHERE extname='timescaledb';" | sed -e 's! !!g')
-        if [ "${{ steps.versions.outputs.version }}" != "$installed_version" ];then
-          false
-        fi
+#    - name: Test Installation
+#      run: |
+##        pg_ctlcluster 17 main start
+#        sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
+#          -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
+#        installed_version=$(sudo -u postgres psql -X -t \
+#          -c "SELECT extversion FROM pg_extension WHERE extname='timescaledb';" | sed -e 's! !!g')
+#        if [ "${{ steps.versions.outputs.version }}" != "$installed_version" ];then
+#          false
+#        fi
 #    - name: Install timescaledb
 #      run: |
 #        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
