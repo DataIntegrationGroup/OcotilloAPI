@@ -34,8 +34,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          postgis/postgis:17-3.5
-          -c shared_preload_libraries=timescaledb
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
@@ -84,7 +82,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
-#        timescaledb-tune --quiet --yes
+        timescaledb-tune --quiet --yes --conf-path /var/lib/postgresql/data/postgresql.conf
 
 #    - name: Test Installation
 #      run: |
