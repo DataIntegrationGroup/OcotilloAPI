@@ -764,6 +764,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "shapely" },
     { name = "sqlalchemy-searchable" },
+    { name = "sqlalchemy-timescaledb" },
     { name = "uvicorn" },
 ]
 
@@ -796,6 +797,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "shapely", specifier = ">=2.1.1" },
     { name = "sqlalchemy-searchable", specifier = ">=2.1.0" },
+    { name = "sqlalchemy-timescaledb", specifier = ">=0.4.1" },
     { name = "uvicorn", specifier = ">=0.34.3" },
 ]
 
@@ -1231,6 +1233,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/d3/186a7d015516ec9bedb7a44b7161209e1659ddf9e75a2045fb2ac1f2b9de/sqlalchemy_searchable-2.1.0.tar.gz", hash = "sha256:89d120ed1a752d22e32b3f028f62cae571241ccce081df8d8a42e1fa9a53da93", size = 25743, upload-time = "2024-02-19T13:28:30.284Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/73/681d45ffb1c637f295f35ae4ded4fec7ba84d22738283a679a4c8ffbcb30/sqlalchemy_searchable-2.1.0-py3-none-any.whl", hash = "sha256:a4ef31d6ba60face514563beed6c4a72b5639add67503689e83d5f7d9a6c76ec", size = 8316, upload-time = "2024-02-19T13:28:28.129Z" },
+]
+
+[[package]]
+name = "sqlalchemy-timescaledb"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/f4/a06d88278eae468692667a1bf693212f0cb0d23cf1216d32f22cc006861a/sqlalchemy-timescaledb-0.4.1.tar.gz", hash = "sha256:43870866c6c951a71a5e83c74580574192baaf833a514eca4855ab8c48d15e0b", size = 5078, upload-time = "2023-07-03T11:15:28.763Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/e4/2a5c5cdd2b60574547c5b61699826358e6d41005ae72caf71ff1496e36ce/sqlalchemy_timescaledb-0.4.1-py3-none-any.whl", hash = "sha256:c2111a3c8f5f141bbe34a33319926a1427dc6bd8039a2fbbca1965894a1f3416", size = 4937, upload-time = "2023-07-03T11:15:26.99Z" },
 ]
 
 [[package]]

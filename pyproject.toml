@@ -27,6 +27,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "shapely>=2.1.1",
     "sqlalchemy-searchable>=2.1.0",
+    "sqlalchemy-timescaledb>=0.4.1",
     "uvicorn>=0.34.3",
 ]
 [tool.alembic]
