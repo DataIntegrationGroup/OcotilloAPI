@@ -33,6 +33,7 @@ def init_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+
 def init_extensions():
     """
     Initialize database extensions such as TimescaleDB.
@@ -45,6 +46,7 @@ def init_extensions():
         session.commit()
     except DatabaseError:
         session.rollback()
+
 
 def init_lexicon():
     with open("./core/lexicon.json") as f:
