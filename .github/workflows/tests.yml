@@ -34,6 +34,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          postgis/postgis:17-3.5
           -c shared_preload_libraries=timescaledb
         ports:
           # Maps tcp port 5432 on service container to the host
