@@ -77,11 +77,11 @@ jobs:
         echo "PostgreSQL config file: $(psql -X -t -c 'SHOW config_file;')"
         echo "PostgreSQL data directory: $(psql -X -t -c 'SHOW data_directory;')"
         echo "PostgreSQL version: $(psql -X -t -c 'SELECT version();')"
+
     - name: Install timescaledb
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          timescaledb-2-oss-postgresql-17 timescaledb-tools
+        sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
         timescaledb-tune --quiet --yes
 
     - name: Test Installation
