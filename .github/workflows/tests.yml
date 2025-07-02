@@ -57,14 +57,14 @@ jobs:
 #        sudo apt-get update
 #        sudo apt-get install -y postgis postgresql-17-postgis-3
 
-    - name: Add repositories
-      run: |
-        sudo apt-get update
-        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
-        echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
-        wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg
-        sudo apt update
+#    - name: Add repositories
+#      run: |
+#        sudo apt-get update
+#        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+#        echo "deb [signed-by=/etc/apt/trusted.gpg.d/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+#        echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
+#        wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg
+#        sudo apt update
 #        sudo apt-get update
 #        sudo apt-get install -y wget lsb-release gnupg apt-transport-https sudo postgresql-common
 #        yes | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
@@ -78,11 +78,11 @@ jobs:
 #        echo "PostgreSQL data directory: $(psql -X -t -c 'SHOW data_directory;')"
 #        echo "PostgreSQL version: $(psql -X -t -c 'SELECT version();')"
 #
-    - name: Install timescaledb
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
-        timescaledb-tune --quiet --yes --conf-path /var/lib/postgresql/data/postgresql.conf
+#    - name: Install timescaledb
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
+#        timescaledb-tune --quiet --yes --conf-path /var/lib/postgresql/data/postgresql.conf
 
 #    - name: Test Installation
 #      run: |
@@ -104,8 +104,8 @@ jobs:
 #        sudo apt install timescaledb-2-postgresql-17 postgresql-client-17
 #        sudo timescaledb-tune --conf-path /etc/postgresql/17/main/postgresql.conf --quiet --yes
 
-    - name: Restart PostgreSQL
-      run: sudo systemctl restart postgresql
+#    - name: Restart PostgreSQL
+#      run: sudo systemctl restart postgresql
 
 #    - name: Get config
 #      run: psql -U postgres -c 'SHOW config_file'
