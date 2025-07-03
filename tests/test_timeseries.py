@@ -63,6 +63,8 @@ def test_timescale_db():
     )
     result = session.execute(sql).scalar()
     assert result is not None, "Expected a result from the timescale DB query"
+
+
 #
 #
 def test_timescale_db_histogram():
