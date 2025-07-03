@@ -13,20 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import uuid
 from typing import Any
-
-
-import bcrypt
+from geoalchemy2.shape import to_shape
 from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
-from sqlalchemy import Integer, Boolean, Text, String, update, select
-from sqlalchemy.orm import Mapped, mapped_column
 
-from models import sqlalchemy_sessionmaker, Base
-from models.base import SampleLocation, Well
+from db import async_database_sessionmaker
+from db.base import SampleLocation, Well
 
 
-@register(SampleLocation, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)
+@register(SampleLocation, sqlalchemy_sessionmaker=async_database_sessionmaker)
 class SampleLocationsAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for SampleLocations.
@@ -35,8 +30,22 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
 
     list_display = ("name",)
 
+    async def serialize_obj(self, obj: Any, list_view: bool = False) -> dict:
+        """
+        Serialize the SampleLocation object for display.
+        This method can be customized to include additional fields or formatting.
+        """
+        print(f"Serializing SampleLocation object: {obj}")
+        return {
+            "id": obj.id,
+            "name": obj.name,
+            "description": obj.description,
+            "point": to_shape(obj.point).wkt if obj.point else None,
+            "created_at": obj.created_at.isoformat() if obj.created_at else None,
+        }
 
-@register(Well, sqlalchemy_sessionmaker=sqlalchemy_sessionmaker)
+
+@register(Well, sqlalchemy_sessionmaker=async_database_sessionmaker)
 class WellAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for Well.

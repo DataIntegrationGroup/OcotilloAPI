@@ -146,11 +146,22 @@ def test_add_group_location():
 
 
 def test_add_owner():
+
     response = client.post("/base/owner", json={"name": "Test Owner"})
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Owner"
+
+    for i in range(1, 4):
+        response = client.post(
+            "/base/owner",
+            json={"name": f"Test Owner {i}"},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["name"] == f"Test Owner {i}"
 
 
 def test_add_contact():
@@ -159,15 +170,32 @@ def test_add_contact():
         json={
             "owner_id": 1,
             "name": "Test Contact",
-            "email": "fasdfasdf",
-            "phone": "999-999-9999",
+            "email": "fasdfasdf@gmail.com",
+            "phone": "+12345678901",
         },
     )
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Contact"
-    assert data["email"] == "fasdfasdf"
+    assert data["email"] == "fasdfasdf@gmail.com"
+
+    for i in range(2, 5):
+        response = client.post(
+            "/base/contact",
+            json={
+                "owner_id": i,
+                "name": f"Test Contact {i}",
+                "email": f"foo{i}@gmail.com",
+                "phone": f"+1234567890{i}",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert "id" in data
+        assert data["name"] == f"Test Contact {i}"
+        assert data["email"] == f"foo{i}@gmail.com"
+        assert data["phone"] == f"+1234567890{i}"
 
 
 # GET tests ======================================================
@@ -340,5 +368,5 @@ def test_item_get_contact():
     data = response.json()
     assert data["id"] == 1
     assert data["name"] == "Test Contact"
-    assert data["email"] == "fasdfasdf"
-    assert data["phone"] == "999-999-9999"
+    assert data["email"] == "fasdfasdf@gmail.com"
+    assert data["phone"] == "+12345678901"

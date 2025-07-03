@@ -19,3 +19,9 @@ wheels/
 development.db
 .env
 reset_db.sh
+tests/uploads
+
+
+# deployment files
+app.yaml
+alembic.ini

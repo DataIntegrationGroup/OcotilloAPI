@@ -17,10 +17,10 @@ from datetime import datetime
 
 import pytest
 
-from models import get_db_session, sqlalchemy_sessionmaker
-from models.base import SampleLocation, Well
-from models.collabnet import CollaborativeNetworkWell
-from models.timeseries import WellTimeseries, GroundwaterLevelObservation
+from db import get_db_session, database_sessionmaker
+from db.base import SampleLocation, Well
+from db.collabnet import CollaborativeNetworkWell
+from db.timeseries import WellTimeseries, GroundwaterLevelObservation
 from tests import client
 
 
@@ -47,7 +47,7 @@ def test_collabnet_wells():
 @pytest.fixture(scope="function")
 def add_timeseries_data():
     """Fixture to add timeseries data for testing."""
-    session = sqlalchemy_sessionmaker()
+    session = next(get_db_session())
     wts = WellTimeseries(well_id=2)
     session.add(wts)
     for i in range(10):

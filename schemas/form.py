@@ -18,7 +18,8 @@ from typing import List
 
 from pydantic import BaseModel
 
-from schemas.base_responses import SampleLocationResponse, OwnerResponse
+from schemas.response.well import OwnerResponse
+from schemas.response.location import SampleLocationResponse
 
 
 class WFLocation(BaseModel):
