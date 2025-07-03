@@ -10,19 +10,12 @@ on:
 permissions:
   contents: read
 
-#env:
-#  TEST_DB_USE_CLOUD: "TRUE"
-#  TEST_DB_SERVER_NAME: ${{ secrets.TEST_DB_SERVER_NAME }}
-#  TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
-#  TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-#  TEST_DB_DATABASE: ${{ secrets.TEST_DB_DATABASE }}
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     services:
-      postgres:
+      postgis_timescaledb:
         image: ghcr.io/dataintegrationgroup/nmdms:latest
 #        image: postgres
 #        image: postgis/postgis:latest
@@ -43,85 +36,10 @@ jobs:
     - name: Check out source repository
       uses: actions/checkout@v4
 
-
-#    - name: Install Postgis
-#      run: |
-#        # Install PostGIS
-#        REPO_URL="https://apt.postgresql.org/pub/repos/apt/"
-#        wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /usr/share/keyrings/postgresql.gpg >/dev/null
-#        echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] $REPO_URL $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
-#        sudo apt update
-#        sudo apt-get install postgresql-17-postgis-3
-#      run: |
-#        curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
-#        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-#        sudo apt-get update
-#        sudo apt-get install -y postgis postgresql-17-postgis-3
-
-#    - name: Add repositories
-#      run: |
-#        sudo apt-get update
-#        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-#        echo "deb [signed-by=/etc/apt/trusted.gpg.d/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
-#        echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
-#        wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg
-#        sudo apt update
-#        sudo apt-get update
-#        sudo apt-get install -y wget lsb-release gnupg apt-transport-https sudo postgresql-common
-#        yes | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
-#        image_type=$(lsb_release -i -s | tr '[:upper:]' '[:lower:]')
-#        sudo echo "deb https://packagecloud.io/timescale/timescaledb/${image_type}/ $(lsb_release -c -s) main" \
-#        > /etc/apt/sources.list.d/timescaledb.list
-#        wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo apt-key add -
-#    - name: Find config
-#      run: |
-#        echo "PostgreSQL config file: $(psql -X -t -c 'SHOW config_file;')"
-#        echo "PostgreSQL data directory: $(psql -X -t -c 'SHOW data_directory;')"
-#        echo "PostgreSQL version: $(psql -X -t -c 'SELECT version();')"
-#
-#    - name: Install timescaledb
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get install -y --no-install-recommends timescaledb-2-oss-postgresql-17 timescaledb-tools
-#        timescaledb-tune --quiet --yes --conf-path /var/lib/postgresql/data/postgresql.conf
-
-#    - name: Test Installation
-#      run: |
-##        pg_ctlcluster 17 main start
-#        sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
-#          -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
-#        installed_version=$(sudo -u postgres psql -X -t \
-#          -c "SELECT extversion FROM pg_extension WHERE extname='timescaledb';" | sed -e 's! !!g')
-#        if [ "${{ steps.versions.outputs.version }}" != "$installed_version" ];then
-#          false
-#        fi
-#    - name: Install timescaledb
-#      run: |
-#        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-#        echo "deb [signed-by=/etc/apt/trusted.gpg.d/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
-#        echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main" | sudo tee /etc/apt/sources.list.d/timescaledb.list
-#        wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg
-#        sudo apt update
-#        sudo apt install timescaledb-2-postgresql-17 postgresql-client-17
-#        sudo timescaledb-tune --conf-path /etc/postgresql/17/main/postgresql.conf --quiet --yes
-
-#    - name: Restart PostgreSQL
-#      run: sudo systemctl restart postgresql
-
-#    - name: Get config
-#      run: psql -U postgres -c 'SHOW config_file'
-      #    - name: Install dependencies
-#      run: |
-#          sudo apt-get update
-#          sudo apt-get install -y build-essential pkg-config libproj-dev libgeos-dev libsqlite3-dev
-#
 #    - name: Install SpatiaLite
 #      run: |
 #          sudo apt-get update
 #          sudo apt-get install -y libsqlite3-mod-spatialite libspatialite-dev
-#    - name: Enable PostGIS extension
-#      run: psql -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;' '${{ steps.pg.outputs.connection-uri }}'
-#      shell: bash
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
