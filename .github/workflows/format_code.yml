@@ -1,6 +1,8 @@
 name: Code Format
 on:
   push:
+permissions:
+  contents: read
 jobs:
   flake8_py3:
     runs-on: ubuntu-latest
@@ -19,6 +21,9 @@ jobs:
           args: "--exit-zero --select=E"
   format:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
