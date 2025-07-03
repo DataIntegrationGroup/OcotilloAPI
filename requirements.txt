@@ -46,7 +46,7 @@ numpy==2.3.0
 packaging==25.0
 pg8000==1.31.2
 phonenumbers==9.0.7
-pillow==11.2.1
+pillow==11.3.0
 pluggy==1.6.0
 propcache==0.3.2
 proto-plus==1.26.1
