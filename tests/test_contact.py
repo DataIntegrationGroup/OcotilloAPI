@@ -15,26 +15,6 @@ from tests import client
 
 
 #  ADD tests ======================================================
-@pytest.mark.skip
-def test_add_group():
-    response = client.post("/base/group", json={"name": "Test Group"})
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["name"] == "Test Group"
-
-
-@pytest.mark.skip
-def test_add_group_location():
-    response = client.post(
-        "/base/group_location", json={"group_id": 1, "location_id": 1}
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["group_id"] == 1
-    assert data["location_id"] == 1
-
 
 @pytest.fixture(scope="function")
 def thing():
@@ -49,7 +29,7 @@ def thing():
 
 def test_add_contact(thing):
     response = client.post(
-        "/base/contact",
+        "/contact",
         json={
             "name": "Test Contact",
             "role": "Owner",
@@ -116,7 +96,7 @@ def test_phone_validation_fail():
     ]:
 
         response = client.post(
-            "/base/contact",
+            "/contact",
             json={
                 "name": "Test Contact 2",
                 "thing_id": 1,
@@ -153,7 +133,7 @@ def test_email_validation_fail():
         "@domain.com",
     ]:
         response = client.post(
-            "/base/contact",
+            "/contact",
             json={
                 "name": "Test ContactX",
                 "thing_id": 1,
@@ -189,90 +169,28 @@ def test_email_validation_fail():
 #     assert len(response.json()) > 0
 
 
-@pytest.mark.skip
-def test_get_groups():
-    response = client.get("/base/group")
-    assert response.status_code == 200
-    assert len(response.json()) > 0
-
-
 def test_get_contacts():
-    response = client.get("/base/contact")
+    response = client.get("/contact")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
-
-@pytest.mark.skip
-def test_get_group_locations():
-    response = client.get("/base/group_location")
-    assert response.status_code == 200
-    assert len(response.json()) > 0
 
 
 # test item retrieval via filter ===========================================
 
 
 # Test item retrieval ======================================================
-@pytest.mark.skip
-def test_item_get_spring():
-    response = client.get("/base/spring/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["location_id"] == 1
-
-
-@pytest.mark.skip
-def test_item_get_location():
-    response = client.get("/base/location/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Test Location 1"
-    assert "well" not in data
-
-
-@pytest.mark.skip
-def test_item_get_group():
-    response = client.get("/base/group/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Test Group"
-
-
-@pytest.mark.skip
-def test_item_get_wells():
-    response = client.get("/base/well/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["location_id"] == 1
-
-
-@pytest.mark.skip
-def test_item_get_well_screens():
-    response = client.get("/base/wellscreen/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["well_id"] == 1
-    assert data["screen_depth_top"] == 10.0
-    assert data["screen_depth_bottom"] == 20.0
-
-
-@pytest.mark.skip
-def test_item_get_group_locations():
-    response = client.get("/base/group_location/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["group_id"] == 1
-    assert data["location_id"] == 1
+# @pytest.mark.skip
+# def test_item_get_spring():
+#     response = client.get("/thing/spring/1")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
+#     assert data["location_id"] == 1
 
 
 def test_item_get_contact():
-    response = client.get("/base/contact/1")
+    response = client.get("/contact/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1

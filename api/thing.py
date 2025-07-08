@@ -21,7 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
-from api.base import router
 from api.pagination import CustomPage
 from db import (
     WellThing,
@@ -118,7 +117,7 @@ async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session
 
 
 @router.get(
-    "/wellscreen/{wellscreen_id}",
+    "/well/screen/{wellscreen_id}",
 )
 async def get_well_screen_by_id(
     wellscreen_id: int, session: Session = Depends(get_db_session)

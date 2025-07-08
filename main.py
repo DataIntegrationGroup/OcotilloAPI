@@ -12,7 +12,8 @@ from core.app import app
 
 from fastadmin import fastapi_app as admin_app
 
-from api.base import router as base_router
+from api.group import router as group_router
+from api.contact import router as contact_router
 from api.location import router as location_router
 from api.thing import router as thing_router
 from api.sensor import router as sensor_router
@@ -31,7 +32,9 @@ from api.author import router as author_router
 from api.asset import router as asset_router
 
 
-app.include_router(base_router)
+app.include_router(contact_router)
+app.include_router(group_router)
+
 app.include_router(location_router)
 app.include_router(thing_router)
 app.include_router(sensor_router)
