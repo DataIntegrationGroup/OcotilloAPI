@@ -18,7 +18,6 @@ from typing import List
 
 from pydantic import BaseModel
 
-from schemas.response.well import OwnerResponse
 from schemas.response.location import SampleLocationResponse
 
 
@@ -41,19 +40,6 @@ class WFContact(BaseModel):
     name: str
     phone: str  # Assuming phone is a string representation of a phone number
     email: str  # Assuming email is a string representation of an email address
-    # You can add more fields as necessary, such as address, etc.
-
-
-class WFOwner(BaseModel):
-    """
-    A class representing an owner of a well.
-    This class is used to validate and process owner data.
-    """
-
-    name: str
-    contact: list[
-        WFContact
-    ]  # Assuming contact is a list of dictionaries with phone and email information
     # You can add more fields as necessary, such as address, etc.
 
 
@@ -82,7 +68,6 @@ class WellForm(BaseModel):
     """
 
     location: WFLocation
-    owner: WFOwner
     well: WFWell
     groups: List[WFGroup] | None = None  # Optional group field
 
@@ -108,7 +93,6 @@ class WellFormResponse(BaseModel):
     """
 
     location: SampleLocationResponse
-    owner: OwnerResponse
     # You can add more fields to the response as necessary, such as status messages, etc.
 
 

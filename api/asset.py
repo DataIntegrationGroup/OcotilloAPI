@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db import get_db_session
+from db.engine import get_db_session
 from db.asset import Asset
 
 router = APIRouter(prefix="/asset", tags=["asset"])

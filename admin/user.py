@@ -19,7 +19,7 @@ from typing import Any
 from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 from sqlalchemy import update, select
 
-from db import async_database_sessionmaker
+from db.engine import async_database_sessionmaker
 from db.base import User
 
 

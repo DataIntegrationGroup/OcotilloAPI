@@ -16,7 +16,7 @@
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship
 
-from db import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base
 
 
 class Lexicon(Base, AutoBaseMixin):

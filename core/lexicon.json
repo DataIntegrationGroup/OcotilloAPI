@@ -1,4 +1,15 @@
 [
+  {"term":  "manual", "definition":  "manual sampling", "category":  "collection_method"},
+  {"term":  "continuous", "definition":  "continuous sampling", "category":  "collection_method"},
+
+  {"term":  "groundwater level", "definition":  "groundwater level measurement", "category":  "observed_property"},
+
+  {"term":  "Owner", "definition":  "Owner", "category": "role"},
+
+  {"term":  "Primary", "definition":  "Primary", "category":  "email_type"},
+  {"term":  "Primary", "definition":  "Primary", "category":  "address_type"},
+  {"term":  "Primary", "definition":  "Primary", "category":  "phone_type"},
+
   {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
   {"term": "Na", "definition": "Sodium", "category": "water_chemistry"},
   {"term": "Cl", "definition": "Chloride", "category": "water_chemistry"},

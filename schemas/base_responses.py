@@ -43,4 +43,51 @@ class EquipmentResponse(ORMBaseModel):
     equipment_notes: str | None = None
 
 
+class PhoneResponse(ORMBaseModel):
+    """
+    Response schema for phone details.
+    """
+
+    id: int
+    phone_number: str
+    phone_type: str  # e.g., 'mobile', 'landline', etc.
+
+
+class EmailResponse(ORMBaseModel):
+    """
+    Response schema for email details.
+    """
+
+    id: int
+    email: str
+    email_type: str  # e.g., 'personal', 'work', etc.
+
+
+class AddressResponse(ORMBaseModel):
+    """
+    Response schema for address details.
+    """
+
+    id: int
+    address_line_1: str
+    address_line_2: str | None = None
+    city: str
+    state: str
+    postal_code: str
+    country: str
+
+
+class ContactResponse(ORMBaseModel):
+    """
+    Response schema for contact details.
+    """
+
+    id: int
+    name: str
+    role: str
+    emails: list[EmailResponse] = []
+    phones: list[PhoneResponse] = []
+    addresses: list[AddressResponse] = []
+
+
 # ============= EOF =============================================

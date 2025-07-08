@@ -15,7 +15,7 @@
 # ===============================================================================
 from sqlalchemy import select
 
-from db import get_db_session
+from db.engine import get_db_session
 from db.lexicon import Lexicon, Category, TermCategoryAssociation
 
 

@@ -15,7 +15,7 @@
 # ===============================================================================
 from fastapi import APIRouter, Depends
 from fastapi import status
-from db import get_db_session
+from db.engine import get_db_session
 from db.lexicon import Lexicon, Category, TermCategoryAssociation, LexiconTriple
 from schemas.response.lexicon import LexiconTermResponse, LexiconCategoryResponse
 from schemas.create.lexicon import (

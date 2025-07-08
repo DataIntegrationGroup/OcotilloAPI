@@ -25,10 +25,9 @@ class WellResponse(ORMBaseModel):
     """
 
     id: int
-    location_id: int
-    api_id: str | None = None
-    ose_pod_id: str | None = None
-    usgs_id: str | None = None
+    # api_id: str | None = None
+    # ose_pod_id: str | None = None
+    # usgs_id: str | None = None
     construction_notes: str | None = None
 
     # Additional fields can be added as needed
@@ -61,29 +60,6 @@ class GroupResponse(ORMBaseModel):
     id: int
     name: str
     description: str | None = None
-
-
-class ContactResponse(ORMBaseModel):
-    """
-    Response schema for contact details.
-    """
-
-    id: int
-    name: str
-    email: str | None = None
-    phone: str | None = None
-
-
-class OwnerResponse(ORMBaseModel):
-    """
-    Response schema for owner details.
-    """
-
-    id: int
-    name: str
-    contacts: List[ContactResponse] = []  # List of contacts associated with the owner
-    # email: str | None = None
-    # phone: str | None = None
 
 
 # ============= EOF =============================================

@@ -18,14 +18,32 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-# ============= EOF =============================================
-class CreateWellTimeseries(BaseModel):
-    name: str
-    description: str | None = None
-    well_id: int
+class CreateTimeSeries(BaseModel):
+    observed_property: str
+    unit: str
 
 
-class CreateGroundwaterLevelObservation(BaseModel):
+class CreateSample(BaseModel):
+    collection_timestamp: datetime
+    collection_method: str
+    well_id: int | None = None
+
+
+class CreateTimeObservation(BaseModel):
     timestamp: datetime  # ISO 8601 format
     value: float
-    timeseries_id: int
+    sample_id: int
+    time_series_id: int
+
+
+# ============= EOF =============================================
+# class CreateWellTimeseries(BaseModel):
+#     name: str
+#     description: str | None = None
+#     well_id: int
+#
+#
+# class CreateGroundwaterLevelObservation(BaseModel):
+#     timestamp: datetime  # ISO 8601 format
+#     value: float
+#     timeseries_id: int

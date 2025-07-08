@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import get_db_session, adder
+from db import adder
+from db.engine import get_db_session
 from db.publication import Publication
 from fastapi import APIRouter, Depends, HTTPException, status
 from schemas.create.publication import CreatePublication

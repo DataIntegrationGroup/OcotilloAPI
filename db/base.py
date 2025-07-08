@@ -13,230 +13,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    Float,
-    Boolean,
-    Text,
-    DateTime,
-)
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy_utils import TSVectorType
+from sqlalchemy import Column, DateTime, func, Integer, JSON, String, Boolean, Text
+from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
+from sqlalchemy_searchable import make_searchable
 
-from db import Base, AutoBaseMixin
+import re
+
+Base = declarative_base()
+make_searchable(Base.metadata)
 
 
-class SampleLocation(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=True)
-    description = Column(String(255), nullable=True)
-    visible = Column(Boolean, default=False, nullable=False)
-
-    point: Mapped[WKBElement] = mapped_column(
-        Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
-    )
-
-    owner_id = Column(
-        Integer, ForeignKey("owner.id", ondelete="CASCADE"), nullable=True
-    )
-
-    asset_associations = relationship(
-        "AssetLocationAssociation",
-        back_populates="location",
-        cascade="all, delete-orphan",
-    )
-    assets = association_proxy("asset_associations", "asset")
+def pascal_to_snake(name):
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
-class Owner(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=False, unique=True)
-    description = Column(String(255), nullable=True)
-
-    search_vector = Column(TSVectorType("name", "description"))
-
-    contacts = relationship(
-        "Contact",
-        secondary="owner_contact_association",
-    )
-    # contacts = relationship(
-    #     "Contact", back_populates="owner", cascade="all, delete-orphan"
-    # )
+class AuditMixin:
+    @declared_attr
+    def created_at(self):
+        return Column(DateTime, nullable=False, server_default=func.now())
 
 
-class OwnerContactAssociation(Base, AutoBaseMixin):
-    __tablename__ = "owner_contact_association"
-    owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
-    contact_id = Column(Integer, ForeignKey("contact.id"), nullable=False)
+class AutoBaseMixin(AuditMixin):
+    @declared_attr
+    def __tablename__(self):
+        return pascal_to_snake(self.__name__)
 
-    # owner = relationship("Owner")
-    # contact = relationship("Contact")
-
-
-class Contact(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=False, unique=True)
-    description = Column(String(255), nullable=True)
-    email = Column(String(100), nullable=True)
-    phone = Column(String(20), nullable=True)
-    # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
-    # owner = relationship("Owner")
-
-    search_vector = Column(TSVectorType("name", "description", "email", "phone"))
-
-    author_associations = relationship(
-        "AuthorContactAssociation",
-        back_populates="contact",
-        cascade="all, delete-orphan",
-    )
-    authors = association_proxy("author_associations", "author")
+    @declared_attr
+    def id(self):
+        return Column(Integer, primary_key=True, autoincrement=True)
 
 
-class Well(Base, AutoBaseMixin):
-    location_id = Column(
-        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
-    )
-
-    ose_pod_id = Column(String(50), nullable=True)
-    api_id = Column(String(50), nullable=True, default="")  # API well number
-    usgs_id = Column(String(50), nullable=True)  # USGS well number
-
-    well_depth = Column(
-        Float,
-        nullable=True,
-        info={"unit": "feet below ground surface"},
-    )
-    hole_depth = Column(
-        Float, nullable=True, info={"unit": "feet below ground surface"}
-    )
-    well_type = Column(
-        String(100),
-        ForeignKey("lexicon_term.term"),
-        nullable=True,
-    )  # e.g., "Production", "Observation", etc.
-
-    casing_diameter = Column(Float, info={"unit": "inches"})
-    casing_depth = Column(Float, info={"unit": "feet below ground surface"})
-    casing_description = Column(String(50))
-    construction_notes = Column(String(250))
-    formation_zone = Column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
-
-    location = relationship("SampleLocation", backref="well", uselist=False)
-
-    search_vector = Column(
-        TSVectorType(
-            "ose_pod_id",
-            "api_id",
-            "usgs_id",
-            "well_type",
-            "formation_zone",
-            "construction_notes",
+class PropertiesMixin:
+    @declared_attr
+    def properties(self):
+        return Column(
+            "properties",
+            JSON,
+            nullable=True,
+            comment="JSONB column for storing additional properties",
         )
-    )
-
-
-class WellScreen(Base, AutoBaseMixin):
-    well_id = Column(Integer, ForeignKey("well.id", ondelete="CASCADE"), nullable=False)
-    screen_depth_top = Column(
-        Float, nullable=False, info={"unit": "feet below ground surface"}
-    )
-    screen_depth_bottom = Column(
-        Float, nullable=False, info={"unit": "feet below ground surface"}
-    )
-    screen_type = Column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=True
-    )  # e.g., "PVC", "Steel", etc.
-
-    # Define a relationship to well if needed
-    # well = relationship("Well")
-
-
-class Equipment(Base, AutoBaseMixin):
-    equipment_type = Column(String(50))
-    model = Column(String(50))
-    serial_no = Column(String(50))
-    date_installed = Column(DateTime)
-    date_removed = Column(DateTime)
-    recording_interval = Column(Integer)
-    equipment_notes = Column(String(50))
-    location_id = Column(
-        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
-    )
-
-    location = relationship("SampleLocation")
-
-
-class Spring(Base, AutoBaseMixin):
-    description = Column(String(255), nullable=True)
-    location_id = Column(
-        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
-    )
-
-    # Define a relationship to samplelocations if needed
-    location = relationship("SampleLocation")
-
-
-class Group(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=False, unique=True)
-    description = Column(String(255), nullable=True)
-
-    # Define a relationship to samplelocations if needed
-    locations = relationship("SampleLocation", secondary="group_location_association")
-
-
-class GroupLocationAssociation(Base, AutoBaseMixin):
-    group_id = Column(
-        Integer, ForeignKey("group.id", ondelete="CASCADE"), nullable=False
-    )
-    location_id = Column(
-        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
-    )
-
-    # group = relationship("Group")
-    # location = relationship("SampleLocation")
-
-
-# class Spring(Base):
-#     __tablename__ = 'Spring'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Stream(Base):
-#     __tablename__ = 'Stream'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Surface(Base):
-#     __tablename__ = 'Surface'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Subsurface(Base):
-#     __tablename__ = 'Subsurface'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
 
 
 class User(Base):

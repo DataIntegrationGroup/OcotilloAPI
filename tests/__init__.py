@@ -18,7 +18,7 @@ from sqlalchemy.orm import configure_mappers
 
 from core.app import init_lexicon
 from main import app
-from db import engine
+from db.engine import engine
 from db.base import Base
 
 configure_mappers()

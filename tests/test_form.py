@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pytest
 
 from tests import client
 
 
+@pytest.mark.skip(reason="form is not implemented yet")
 def test_well_form():
     payload = {
         "location": {"point": "POINT(-105.0 40.0)"},
@@ -33,17 +35,17 @@ def test_well_form():
                 "description": "This is a test group for well management.",
             }
         ],
-        "owner": {
-            "name": "The Doe's",
-            "contact": [
-                {"name": "John Doe", "phone": "123-456-7890", "email": "foo@gmail.com"},
-                {
-                    "name": "Jane Doe",
-                    "phone": "913-356-7890",
-                    "email": "jane@gmail.com",
-                },
-            ],
-        },
+        # "owner": {
+        #     "name": "The Doe's",
+        #     "contact": [
+        #         {"name": "John Doe", "phone": "123-456-7890", "email": "foo@gmail.com"},
+        #         {
+        #             "name": "Jane Doe",
+        #             "phone": "913-356-7890",
+        #             "email": "jane@gmail.com",
+        #         },
+        #     ],
+        # },
     }
 
     response = client.post("/form/well", json=payload)

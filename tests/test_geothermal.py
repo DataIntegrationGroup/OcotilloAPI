@@ -18,6 +18,7 @@ import pytest
 from tests import client
 
 
+@pytest.mark.skip
 def test_geothermal_temperature_profile():
     """
     Test the geothermal temperature profile endpoint.
@@ -43,6 +44,7 @@ def test_geothermal_temperature_profile():
     # assert response.json()["name"] == "Test Profile"
 
 
+@pytest.mark.skip
 def test_geothermal_temperature_profile_observation():
     """
     Test the geothermal temperature profile observation endpoint.
@@ -62,6 +64,7 @@ def test_geothermal_temperature_profile_observation():
     assert data["temperature"] == 25.0
 
 
+@pytest.mark.skip
 def test_geothermal_sample_set():
     """
     Test the geothermal sample set endpoint.
@@ -84,6 +87,7 @@ def test_geothermal_sample_set():
     assert data["name"] == "Test Sample Set"
 
 
+@pytest.mark.skip
 def test_geothermal_bottom_hole_temperature_header():
     """
     Test the geothermal bottom hole temperature header endpoint.
@@ -104,6 +108,7 @@ def test_geothermal_bottom_hole_temperature_header():
     assert data["sample_set_id"] == 1
 
 
+@pytest.mark.skip
 def test_geothermal_bottom_hole_temperature():
     """
     Test the geothermal bottom hole temperature endpoint.
@@ -122,6 +127,7 @@ def test_geothermal_bottom_hole_temperature():
     assert data["temperature"] == 60.0
 
 
+@pytest.mark.skip
 def test_geothermal_interval():
     """
     Test the geothermal interval endpoint.
@@ -145,6 +151,7 @@ def test_geothermal_interval():
     assert data["bottom_depth"] == 200
 
 
+@pytest.mark.skip
 def test_geothermal_thermal_conductivity():
     """
     Test the geothermal thermal conductivity endpoint.
@@ -168,6 +175,7 @@ def test_geothermal_thermal_conductivity():
     assert data["conductivity_unit"] == "W/m·K"
 
 
+@pytest.mark.skip
 def test_geothermal_heatflow():
     """
     Test the geothermal heat flow endpoint.

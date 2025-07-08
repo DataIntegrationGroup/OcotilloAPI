@@ -17,11 +17,12 @@ from typing import Any
 from geoalchemy2.shape import to_shape
 from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 
-from db import async_database_sessionmaker
-from db.base import SampleLocation, Well
+from db.engine import async_database_sessionmaker
+from db.location import Location
+from db.thing.well import WellThing
 
 
-@register(SampleLocation, sqlalchemy_sessionmaker=async_database_sessionmaker)
+@register(Location, sqlalchemy_sessionmaker=async_database_sessionmaker)
 class SampleLocationsAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for SampleLocations.
@@ -45,7 +46,7 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
         }
 
 
-@register(Well, sqlalchemy_sessionmaker=async_database_sessionmaker)
+@register(WellThing, sqlalchemy_sessionmaker=async_database_sessionmaker)
 class WellAdmin(SqlAlchemyModelAdmin):
     """
     Admin interface for Well.

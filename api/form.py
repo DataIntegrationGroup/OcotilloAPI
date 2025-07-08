@@ -16,8 +16,10 @@
 
 from fastapi import APIRouter, Depends, status
 
-from db import get_db_session
-from db.base import SampleLocation, Owner, Well, Group
+from db.engine import get_db_session
+from db.location import Location
+from db.group import Group
+from db.thing.well import WellThing
 from schemas.form import (
     WellForm,
     WellFormResponse,
@@ -40,9 +42,8 @@ async def well_form(form_data: WellForm, session=Depends(get_db_session)):
     # add location to the database
     data = form_data.model_dump()
     location_data = data.get("location", None)
-    owner_data = data.get("owner", None)
 
-    location = SampleLocation(**location_data)
+    location = Location(**location_data)
     session.add(location)
 
     groups = data.get("groups", None)
@@ -53,32 +54,30 @@ async def well_form(form_data: WellForm, session=Depends(get_db_session)):
 
             group.locations.append(location)
 
-    contact_data = owner_data.pop("contact", None)
-
     # add owner to the database
-    owner = Owner(**owner_data)
-    existing_owner = simple_get_by_name(session, Owner, owner.name)
-    if existing_owner is None:
-        session.add(owner)
-        session.commit()
-        session.refresh(owner)
-    else:
-        owner = existing_owner
+    # owner = Owner(**owner_data)
+    # existing_owner = simple_get_by_name(session, Owner, owner.name)
+    # if existing_owner is None:
+    #     session.add(owner)
+    #     session.commit()
+    #     session.refresh(owner)
+    # else:
+    #     owner = existing_owner
     #
     # cs = [Contact(**contact) for contact in contact_data if contact is not None]
     # owner.contacts.extend(cs)
-    for ci in contact_data:
-        add_contact(session, ci, owner=owner)
+    # for ci in contact_data:
+    #     add_contact(session, ci, owner=owner)
 
     # add well to the database
     well_data = data.get("well", None)
-    well = Well(**well_data)
+    well = WellThing(**well_data)
     well.location = location
     session.add(well)
 
     session.commit()
 
-    response_data = {"location": location, "owner": owner, "well": well}
+    response_data = {"location": location, "well": well}
     return response_data
 
 

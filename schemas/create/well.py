@@ -23,10 +23,11 @@ class CreateWell(ORMBaseModel):
     """
 
     location_id: int
-    api_id: str | None = None
-    ose_pod_id: str | None = None
+    # api_id: str | None = None
+    # ose_pod_id: str | None = None
     well_type: str | None = None
     well_depth: float | None = None  # in feet
+    hole_depth: float | None = None  # in feet
     construction_notes: str | None = None
 
 

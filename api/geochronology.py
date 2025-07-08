@@ -15,7 +15,8 @@
 # ===============================================================================
 from db.geochronology import GeochronologyAge
 from fastapi import APIRouter, Depends, status
-from db import get_db_session, adder
+from db import adder
+from db.engine import get_db_session
 from schemas.create.geochronology import CreateGeochronologyAge
 from sqlalchemy.orm import Session
 from sqlalchemy import select
