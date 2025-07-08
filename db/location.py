@@ -20,7 +20,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     Boolean,
-    DateTime,
+    DateTime, func,
 )
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -50,6 +50,9 @@ class LocationThingAssociation(Base, AutoBaseMixin):
     thing_id = Column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), primary_key=True
     )
+
+    effective_start = Column(DateTime, nullable=False, server_default=func.now())
+    effective_end = Column(DateTime, nullable=True)
 
     # location = relationship("Location", back_populates="thing")
     # thing = relationship("Thing", back_populates="locations")

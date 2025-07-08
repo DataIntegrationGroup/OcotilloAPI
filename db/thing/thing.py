@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey
+from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing.schema import mapped_column
@@ -28,6 +28,8 @@ class Thing(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")
+
+    release_status = mapped_column(String(100), ForeignKey("lexicon_term.term"))
     # location_id = mapped_column(
     #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     # )
