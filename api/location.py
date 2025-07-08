@@ -38,6 +38,7 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/location", tags=["location"])
 
+
 # ============= EOF =============================================
 @router.post(
     "/",
@@ -88,9 +89,7 @@ async def get_location_feature_collection(
     """
     Retrieve all sample locations as a GeoJSON FeatureCollection.
     """
-    sql = select(
-        Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson")
-    )
+    sql = select(Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson"))
     if query:
         sql = sql.where(make_query(Location, query))
 

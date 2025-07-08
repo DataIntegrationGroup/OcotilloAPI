@@ -45,8 +45,10 @@ class SeriesMixin:
     @declared_attr
     def series_id(self):
         return mapped_column(
-            Integer, ForeignKey("series.id", ondelete="CASCADE"), nullable=False,
-            unique=True
+            Integer,
+            ForeignKey("series.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
         )
 
 
@@ -59,16 +61,21 @@ class Series(Base, AutoBaseMixin):
     @declared_attr
     def observed_property(self):
         return mapped_column(
-            String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
+            String(100),
+            ForeignKey("lexicon_term.term", ondelete="CASCADE"),
+            nullable=False,
         )
 
     @declared_attr
     def unit(self):
-        return mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
+        return mapped_column(
+            String(100), ForeignKey("lexicon_term.term"), nullable=False
+        )
 
     @declared_attr
     def description(self):
         return mapped_column(Text, nullable=True)
+
 
 # class SampleWellAssociation(Base, AutoBaseMixin):
 #     sample_id = mapped_column(
@@ -146,9 +153,9 @@ class Series(Base, AutoBaseMixin):
 #         nullable=False,
 #     )
 
-    # sample_domain_series = relationship(
-    #     "SampleDomainSeries", back_populates="observations", cascade="all, delete-orphan"
-    # )
+# sample_domain_series = relationship(
+#     "SampleDomainSeries", back_populates="observations", cascade="all, delete-orphan"
+# )
 
 
 # class WellTimeseries(Base, TimeseriesMixin, AutoBaseMixin, PropertiesMixin):

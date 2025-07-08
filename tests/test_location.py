@@ -68,4 +68,6 @@ def test_get_location_expand():
     assert data["point"] == "POINT (10.1 10.1)"
     assert "well" in data
     assert len(data["well"]) == 1
+
+
 # ============= EOF =============================================

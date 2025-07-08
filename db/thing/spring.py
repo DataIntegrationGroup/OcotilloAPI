@@ -19,7 +19,6 @@ from sqlalchemy.orm import relationship
 from db.base import Base, AutoBaseMixin
 
 
-
 class SpringThing(Base, AutoBaseMixin):
     description = Column(String(255), nullable=True)
     location_id = Column(
@@ -28,4 +27,6 @@ class SpringThing(Base, AutoBaseMixin):
 
     # Define a relationship to samplelocations if needed
     location = relationship("Location")
+
+
 # ============= EOF =============================================

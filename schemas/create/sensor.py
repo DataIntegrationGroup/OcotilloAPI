@@ -20,6 +20,7 @@ class CreateSensor(BaseModel):
     """
     Schema for creating a new sensor.
     """
+
     name: str
     equipment_type: str | None = None
     model: str | None = None
@@ -28,4 +29,6 @@ class CreateSensor(BaseModel):
     date_removed: str | None = None  # ISO format date string
     recording_interval: int | None = None
     equipment_notes: str | None = None
+
+
 # ============= EOF =============================================

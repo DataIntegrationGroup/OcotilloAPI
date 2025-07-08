@@ -18,8 +18,10 @@ from api.thing import router as thing_router
 from api.sensor import router as sensor_router
 
 from api.form import router as form_router
+
 # from api.sample import router as sample_xrouter
 from api.lexicon import router as lexicon_router
+
 # from api.chemisty import router as chemistry_router
 from api.geothermal import router as geothermal_router
 from api.collabnet import router as collabnet_router
@@ -27,8 +29,6 @@ from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
-
-
 
 
 app.include_router(base_router)

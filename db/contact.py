@@ -80,4 +80,6 @@ class Address(Base, AutoBaseMixin):
     address_type = Column(String(50), ForeignKey("lexicon_term.term"), nullable=True)
 
     contact = relationship("Contact", back_populates="addresses")
+
+
 # ============= EOF =============================================

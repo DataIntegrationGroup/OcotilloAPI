@@ -23,4 +23,6 @@ class GeochemicalObservation(Base, AutoBaseMixin):
     observation_id = mapped_column(
         Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
     )
+
+
 # ============= EOF =============================================

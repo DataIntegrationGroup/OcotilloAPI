@@ -22,8 +22,8 @@ from db.base import Base, AutoBaseMixin
 
 class WellThing(Base, AutoBaseMixin):
     thing_id = Column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False,
-        unique=True)
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
     # location_id = Column(
     #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     # )
@@ -67,8 +67,9 @@ class WellThing(Base, AutoBaseMixin):
 
 
 class WellScreen(Base, AutoBaseMixin):
-    well_id = Column(Integer, ForeignKey("well_thing.id",
-                                               ondelete="CASCADE"), nullable=False)
+    well_id = Column(
+        Integer, ForeignKey("well_thing.id", ondelete="CASCADE"), nullable=False
+    )
     screen_depth_top = Column(
         Float, nullable=False, info={"unit": "feet below ground surface"}
     )
@@ -81,4 +82,6 @@ class WellScreen(Base, AutoBaseMixin):
 
     # Define a relationship to well if needed
     # well = relationship("Well")
+
+
 # ============= EOF =============================================

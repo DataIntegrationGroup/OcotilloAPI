@@ -28,7 +28,6 @@ def test_get_geojson():
     assert len(data["features"]) > 0  # Assuming there are features in the collection
 
 
-
 def test_get_shapefile():
     response = client.get("/location/shapefile")
     assert response.status_code == 200
@@ -57,7 +56,7 @@ def test_get_locations_expand():
     assert "well" in item
 
 
-@pytest.mark.skip('Needs fixture to ensure a location exists in this polygon')
+@pytest.mark.skip("Needs fixture to ensure a location exists in this polygon")
 def test_get_within_locations():
     response = client.get(
         "/location",
@@ -75,7 +74,8 @@ def test_get_within_locations():
     # assert len(data) == 1  # Assuming one location is within the distance
     # assert data[0]["name"] == "Test Location"  # Check if the correct location is returned
 
-@pytest.mark.skip('Needs fixture to ensure a location exists nearby the point')
+
+@pytest.mark.skip("Needs fixture to ensure a location exists nearby the point")
 def test_get_nearby_locations():
     response = client.get(
         "/location",

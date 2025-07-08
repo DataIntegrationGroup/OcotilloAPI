@@ -5,6 +5,7 @@ import pytest
 
 from db import Thing
 from db.engine import get_db_session
+
 # Base.metadata.drop_all(engine)
 # Base.metadata.create_all(engine)
 
@@ -35,7 +36,7 @@ def test_add_group_location():
     assert data["location_id"] == 1
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def thing():
     session = next(get_db_session())
     thing = Thing()
@@ -179,17 +180,14 @@ def test_email_validation_fail():
         assert detail["msg"] == f"Value error, Invalid email format. {email}"
 
 
-
 # GET tests ======================================================
-
-
-
 
 
 # def test_get_locations():
 #     response = client.get("/base/location")
 #     assert response.status_code == 200
 #     assert len(response.json()) > 0
+
 
 @pytest.mark.skip
 def test_get_groups():
@@ -204,8 +202,6 @@ def test_get_contacts():
     assert len(response.json()) > 0
 
 
-
-
 @pytest.mark.skip
 def test_get_group_locations():
     response = client.get("/base/group_location")
@@ -214,7 +210,6 @@ def test_get_group_locations():
 
 
 # test item retrieval via filter ===========================================
-
 
 
 # Test item retrieval ======================================================
@@ -226,6 +221,7 @@ def test_item_get_spring():
     assert data["id"] == 1
     assert data["location_id"] == 1
 
+
 @pytest.mark.skip
 def test_item_get_location():
     response = client.get("/base/location/1")
@@ -235,6 +231,7 @@ def test_item_get_location():
     assert data["name"] == "Test Location 1"
     assert "well" not in data
 
+
 @pytest.mark.skip
 def test_item_get_group():
     response = client.get("/base/group/1")
@@ -243,6 +240,7 @@ def test_item_get_group():
     assert data["id"] == 1
     assert data["name"] == "Test Group"
 
+
 @pytest.mark.skip
 def test_item_get_wells():
     response = client.get("/base/well/1")
@@ -250,6 +248,7 @@ def test_item_get_wells():
     data = response.json()
     assert data["id"] == 1
     assert data["location_id"] == 1
+
 
 @pytest.mark.skip
 def test_item_get_well_screens():
@@ -260,6 +259,7 @@ def test_item_get_well_screens():
     assert data["well_id"] == 1
     assert data["screen_depth_top"] == 10.0
     assert data["screen_depth_bottom"] == 20.0
+
 
 @pytest.mark.skip
 def test_item_get_group_locations():

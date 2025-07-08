@@ -19,6 +19,7 @@ from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import Base, AutoBaseMixin
 
+
 # ============= EOF =============================================
 class Sample(Base, AutoBaseMixin):
     collection_timestamp = mapped_column(DateTime, nullable=False)
@@ -26,8 +27,8 @@ class Sample(Base, AutoBaseMixin):
         String(100), ForeignKey("lexicon_term.term"), nullable=False
     )
 
-    thing_id = mapped_column(Integer,
-        ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    thing_id = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
     thing = relationship("Thing")
 

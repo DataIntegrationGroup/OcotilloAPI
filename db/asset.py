@@ -20,7 +20,6 @@ from sqlalchemy_utils import TSVectorType
 from db.base import Base, AutoBaseMixin
 
 
-
 class Asset(Base, AutoBaseMixin):
     # name = Column(String(100), nullable=False, unique=True)
     # file_type = Column(String(50), nullable=False)

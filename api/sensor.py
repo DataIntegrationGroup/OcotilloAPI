@@ -24,10 +24,10 @@ from db.engine import get_db_session
 from schemas.create.sensor import CreateSensor
 from services.query_helper import simple_all_getter
 
-router = APIRouter(prefix='/sensor', tags=['sensor'])
+router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_session)):
     """
     Add a sensor to the system.
@@ -35,7 +35,8 @@ def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_sess
     """
     return adder(session, Sensor, sensor_data)
 
-@router.get('/', status_code=status.HTTP_200_OK)
+
+@router.get("/", status_code=status.HTTP_200_OK)
 def get_sensors(session: Session = Depends(get_db_session)):
     """
     Retrieve all sensors from the system.
@@ -43,9 +44,11 @@ def get_sensors(session: Session = Depends(get_db_session)):
     """
     return simple_all_getter(session, Sensor)
 
-@router.get('/{sensor_id}', status_code=status.HTTP_200_OK)
+
+@router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
 def get_sensor(sensor_id: int, session: Session = Depends(get_db_session)):
     sensor = session.get(Sensor, sensor_id)
     return sensor
+
 
 # ============= EOF =============================================

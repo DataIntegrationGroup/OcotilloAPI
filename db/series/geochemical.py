@@ -19,4 +19,6 @@ from db.series.series import SeriesMixin
 
 class GeochemicalSeries(Base, AutoBaseMixin, SeriesMixin):
     pass
+
+
 # ============= EOF =============================================

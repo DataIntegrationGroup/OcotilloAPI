@@ -24,6 +24,7 @@ from db.engine import get_db_session
 # from db.timeseries import GroundwaterLevelObservation
 from tests import client
 
+
 @pytest.mark.skip
 def test_add_sample():
     response = client.post(
@@ -40,6 +41,7 @@ def test_add_sample():
     # assert "id" in data, "Expected 'id' in response data"
     # assert data["collection_method"] == "manual", "Expected 'method' to be 'manual'"
 
+
 @pytest.mark.skip
 def test_add_sample_timeseries():
     response = client.post(
@@ -55,6 +57,7 @@ def test_add_sample_timeseries():
     assert (
         data["observed_property"] == "groundwater level"
     ), "Expected 'observed_property' to be 'groundwater level'"
+
 
 @pytest.mark.skip
 def test_add_sample_observation():
@@ -78,12 +81,14 @@ def test_add_sample_observation():
     assert data[0]["sample_id"] == 1, "Expected observation sample_id to be 1"
     assert data[0]["time_series_id"] == 1, "Expected observation time_series_id to be 1"
 
+
 @pytest.mark.skip
 def test_sample_timeseries():
     response = client.get("/sample/time_series/well/1")
-    data  = response.json()
+    data = response.json()
     assert response.status_code == 200
-    assert len(data) == 1 , "Expected at least one timeseries for the well"
+    assert len(data) == 1, "Expected at least one timeseries for the well"
+
 
 @pytest.mark.skip
 def test_sample_timeseries_observations():
@@ -92,7 +97,6 @@ def test_sample_timeseries_observations():
     assert response.status_code == 200
     assert isinstance(data, list), "Expected a list of observations"
     assert len(data) == 1, "Expected at least one observation for the timeseries"
-
 
 
 # def test_add_timeseries():

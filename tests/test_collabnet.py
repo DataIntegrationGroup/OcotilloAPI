@@ -19,6 +19,7 @@ import pytest
 
 from db import Location
 from db.engine import get_db_session
+
 # from db import get_db_session, database_sessionmaker
 # from db.base import Location
 from db.thing.well import WellThing
@@ -35,10 +36,12 @@ def well():
     session.add(loc)
     session.commit()
 
-
-    wt = add_well(session, {
-        "location_id": 1,
-    })
+    wt = add_well(
+        session,
+        {
+            "location_id": 1,
+        },
+    )
 
     yield wt
 

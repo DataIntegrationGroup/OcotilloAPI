@@ -76,9 +76,7 @@ def location_stats(session: Session = Depends(get_db_session)):
 def get_location(session: Session = Depends(get_db_session)):
     """ """
 
-    sql = select(
-        Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson")
-    )
+    sql = select(Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson"))
     sql = sql.join(WellThing)
     sql = sql.join(CollaborativeNetworkWell)
 

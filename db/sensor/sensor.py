@@ -18,13 +18,15 @@ from sqlalchemy.orm import declared_attr
 
 from db.base import Base, AutoBaseMixin
 
+
 class SensorMixin:
     @declared_attr
     def sensor_id(self):
         return Column(
-            Integer, ForeignKey("sensor.id", ondelete="CASCADE"),
+            Integer,
+            ForeignKey("sensor.id", ondelete="CASCADE"),
             nullable=False,
-            unique=True
+            unique=True,
         )
 
 
@@ -43,4 +45,6 @@ class Sensor(Base, AutoBaseMixin):
     date_removed = Column(DateTime)
     recording_interval = Column(Integer)
     equipment_notes = Column(String(50))
+
+
 # ============= EOF =============================================

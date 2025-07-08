@@ -92,7 +92,6 @@ def create_contact(
     # return adder(session, Contact, contact_data)
 
 
-
 # @router.post(
 #     "/equipment", summary="Create a new equipment", status_code=status.HTTP_201_CREATED
 # )
@@ -129,9 +128,6 @@ async def get_contacts(session: Session = Depends(get_db_session)):
     :return:
     """
     return simple_all_getter(session, Contact)
-
-
-
 
 
 # @router.get(

@@ -42,6 +42,7 @@ class Location(Base, AutoBaseMixin):
     #     Integer, ForeignKey("owner.id", ondelete="CASCADE"), nullable=True
     # )
 
+
 class LocationThingAssociation(Base, AutoBaseMixin):
     location_id = Column(
         Integer, ForeignKey("location.id", ondelete="CASCADE"), primary_key=True
@@ -52,7 +53,6 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 
     # location = relationship("Location", back_populates="thing")
     # thing = relationship("Thing", back_populates="locations")
-
 
 
 # class Owner(Base, AutoBaseMixin):
@@ -123,8 +123,6 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 #     # Define a relationship to samplelocation if needed
 #     location = relationship("samplelocation")
 #
-
-
 
 
 # ============= EOF =============================================

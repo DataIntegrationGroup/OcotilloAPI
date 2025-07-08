@@ -20,7 +20,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 
-from db.base import  Base
+from db.base import Base
 from db.engine import engine, get_db_session
 from services.lexicon import add_lexicon_term
 from .settings import settings

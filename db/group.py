@@ -37,4 +37,6 @@ class GroupThingAssociation(Base, AutoBaseMixin):
 
     # group = relationship("Group")
     # location = relationship("SampleLocation")
+
+
 # ============= EOF =============================================

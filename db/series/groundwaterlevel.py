@@ -30,4 +30,6 @@ class GroundwaterLevelSeries(Base, AutoBaseMixin, SeriesMixin):
     # Relationships can be defined here if needed
     # e.g., relationship to Location model if it exists
     pass
+
+
 # ============= EOF =============================================

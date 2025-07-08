@@ -23,7 +23,14 @@ from starlette import status
 
 from api.base import router
 from api.pagination import CustomPage
-from db import WellThing, WellScreen, SpringThing, adder, LocationThingAssociation, Thing
+from db import (
+    WellThing,
+    WellScreen,
+    SpringThing,
+    adder,
+    LocationThingAssociation,
+    Thing,
+)
 from db.engine import get_db_session
 from schemas.base_create import CreateSpring
 from schemas.base_get import GetWell
@@ -34,7 +41,7 @@ from services.query_helper import make_query, simple_all_getter, simple_get_by_i
 from services.thing_helper import add_well
 from services.validation.well import validate_screens
 
-router = APIRouter(prefix='/thing', tags=['thing'])
+router = APIRouter(prefix="/thing", tags=["thing"])
 
 
 @router.get("/well", response_model=CustomPage[WellResponse], summary="Get all wells")
@@ -63,6 +70,8 @@ async def get_wells(
 
     # result = session.execute(sql)
     # return result.scalars().all()
+
+
 @router.get(
     "/well/screen", response_model=List[WellScreenResponse], summary="Get well screens"
 )
@@ -112,7 +121,7 @@ async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session
     "/wellscreen/{wellscreen_id}",
 )
 async def get_well_screen_by_id(
-        wellscreen_id: int, session: Session = Depends(get_db_session)
+    wellscreen_id: int, session: Session = Depends(get_db_session)
 ):
     """
     Retrieve a well screen by ID from the database.
@@ -158,7 +167,7 @@ def create_wellscreen(
     "/spring", summary="Create a new spring", status_code=status.HTTP_201_CREATED
 )
 def create_spring(
-        spring_data: CreateSpring, session: Session = Depends(get_db_session)
+    spring_data: CreateSpring, session: Session = Depends(get_db_session)
 ):
     """
     Create a new spring in the database.

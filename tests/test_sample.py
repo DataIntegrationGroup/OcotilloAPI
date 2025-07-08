@@ -18,4 +18,6 @@ from tests import client
 
 def test_get_all_samples_for_well():
     response = client.get("/samples/well/1")
+
+
 # ============= EOF =============================================

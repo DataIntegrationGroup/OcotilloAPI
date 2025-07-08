@@ -31,4 +31,6 @@ class Thing(Base, AutoBaseMixin):
     # location_id = mapped_column(
     #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     # )
+
+
 # ============= EOF =============================================

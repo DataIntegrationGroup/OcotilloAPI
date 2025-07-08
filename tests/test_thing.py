@@ -93,10 +93,12 @@ def test_get_wells():
     assert response.status_code == 200
     assert len(response.json()) > 0
 
+
 def test_get_springs():
     response = client.get("/thing/spring")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
 
 def test_get_well_by_id():
     response = client.get("/thing/well/1")
@@ -119,6 +121,7 @@ def test_item_get_well_filter():
     assert len(data["items"]) == 1
     # assert "api_id" in data["items"][0]
     # assert data["items"][0]["api_id"] == "1001-0002"
+
 
 # @pytest.mark.skip
 def test_item_get_well_filter_nonexistent():

@@ -67,4 +67,5 @@ class User(Base):
     def __str__(self):
         return self.username
 
+
 # ============= EOF =============================================

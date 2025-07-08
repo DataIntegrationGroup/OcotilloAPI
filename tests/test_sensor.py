@@ -15,6 +15,7 @@
 # ===============================================================================
 from tests import client
 
+
 def test_add_sensor():
     response = client.post(
         "/sensor",
@@ -46,6 +47,7 @@ def test_get_sensors():
         assert "name" in data[0], "Expected 'name' in sensor data"
         assert "equipment_type" in data[0], "Expected 'equipment_type' in sensor data"
 
+
 def test_get_sensor():
     # Assuming the first sensor has an ID of 1
     response = client.get("/sensor/1")
@@ -55,4 +57,6 @@ def test_get_sensor():
     assert data["id"] == 1, "Expected sensor ID to be 1"
     assert "name" in data, "Expected 'name' in sensor data"
     assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
+
+
 # ============= EOF =============================================

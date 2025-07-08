@@ -43,4 +43,5 @@ class CreateGroupThing(ORMBaseModel):
     group_id: int
     location_id: int
 
+
 # ============= EOF =============================================

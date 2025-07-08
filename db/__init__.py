@@ -55,8 +55,6 @@ from sqlalchemy_searchable import (
 )
 
 
-
-
 def adder(session, table, model, **kwargs):
     """
     Helper function to add a new record to the database.
@@ -97,11 +95,6 @@ def search(query, search_query, vector=None, regconfig=None, sort=True):
         )
 
     return query.params(term=search_query)
-
-
-
-
-
 
 
 # ============= EOF =============================================
