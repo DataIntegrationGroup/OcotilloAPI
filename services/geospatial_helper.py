@@ -16,7 +16,7 @@
 import shapefile
 
 import constants
-from db.base import SampleLocation
+from db.location import Location
 from geoalchemy2.functions import ST_GeomFromText, ST_Within
 from geoalchemy2.shape import to_shape
 from shapely.wkt import loads as wkt_loads
@@ -39,7 +39,7 @@ def create_shapefile(locations: list, filename: str = "locations.shp"):
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:
     within = ST_GeomFromText(wkt, constants.SRID_WGS84)  # Assuming WGS84 (SRID 4326)
-    return sql.where(ST_Within(SampleLocation.point, within))
+    return sql.where(ST_Within(Location.point, within))
 
 
 # ============= EOF =============================================

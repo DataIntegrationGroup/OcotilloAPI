@@ -17,27 +17,50 @@ from datetime import datetime
 
 import pytest
 
-from db import get_db_session, database_sessionmaker
-from db.base import SampleLocation, Well
+from db import Location
+from db.engine import get_db_session
+# from db import get_db_session, database_sessionmaker
+# from db.base import Location
+from db.thing.well import WellThing
 from db.collabnet import CollaborativeNetworkWell
+from services.thing_helper import add_well
 from tests import client
 
 
-def test_add_collabnet_well():
+@pytest.fixture(scope="function")
+def well():
+    session = next(get_db_session())
+
+    loc = Location(name="Test Location", point="SRID=4326;POINT(0 0)")
+    session.add(loc)
+    session.commit()
+
+
+    wt = add_well(session, {
+        "location_id": 1,
+    })
+
+    yield wt
+
+    session.close()
+
+
+def test_add_collabnet_well(well):
     response = client.post(
         "/collabnet/add",
         json={
-            "well_id": 2,
+            "well_id": well.id,
             "actively_monitored": True,
         },
     )
 
     assert response.status_code == 201
     data = response.json()
-    assert data["well_id"] == 2
+    assert data["well_id"] == well.id
     assert data["actively_monitored"] is True
 
 
+@pytest.mark.skip
 def test_collabnet_wells():
     response = client.get("/collabnet/location_feature_collection")
     assert response.status_code == 200

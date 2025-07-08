@@ -13,20 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, Float
-from sqlalchemy.orm import mapped_column
-
-from db import Base, AutoBaseMixin
-from db.series import QCMixin
+from db import LocationThingAssociation, Thing, WellThing
 
 
-class GroundwaterLevelObservation(Base, AutoBaseMixin, QCMixin):
-    time_observation_id = mapped_column(
-        "time_observation_id",
-        Integer,
-        ForeignKey("time_observation.id", ondelete="CASCADE"),
-    )
-    measuring_point_height = mapped_column(Float, nullable=False)
+def add_well(session, data):
+    location_id = data.pop("location_id", None)
+    assoc = LocationThingAssociation()
 
+    thing = Thing()
+    session.add(thing)
+    session.commit()
+    session.refresh(thing)
 
+    well = WellThing(**data)
+    well.thing_id = thing.id
+    session.add(well)
+    session.commit()
+    session.refresh(well)
+
+    assoc.location_id = location_id
+    assoc.thing_id = thing.id
+    session.add(assoc)
+    session.commit()
+    return well
 # ============= EOF =============================================

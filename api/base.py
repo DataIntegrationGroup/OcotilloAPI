@@ -13,61 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, Union
+from typing import List
 
-from constants import SRID_WGS84
 from fastapi import APIRouter, Depends, status
-from fastapi_pagination.ext.sqlalchemy import paginate
-from geoalchemy2 import functions as geofunc
+
+from db import adder
+from db.contact import Contact
+from db.group import Group, GroupThingAssociation
 from services.people_helper import add_contact
 from services.query_helper import (
-    make_query,
     simple_get_by_id,
     simple_all_getter,
-    searchable_getter,
 )
-from services.validation.well import validate_screens
-from sqlalchemy import select, func
 from sqlalchemy.orm import Session
-from starlette.responses import FileResponse
 
-from db import get_db_session, adder
-from db.base import (
-    Well,
-    SampleLocation,
-    Group,
-    GroupLocationAssociation,
-    Contact,
-    WellScreen,
-    Spring,
-    Equipment,
-)
-from services.geospatial_helper import create_shapefile, make_within_wkt
-from api.pagination import CustomPage
+from db.engine import get_db_session
+from db.thing import SpringThing
+
 from schemas.base_create import (
     CreateSpring,
-    CreateEquipment,
 )
 from schemas.create.location import (
-    CreateLocation,
     CreateGroup,
-    CreateGroupLocation,
-    CreateContact,
+    CreateGroupThing,
 )
-from schemas.create.well import CreateWell, CreateWellScreen
-from schemas.base_get import GetWell, GetLocation
+from schemas.create.contact import CreateContact
 from schemas.base_responses import (
-    SpringResponse,
-    EquipmentResponse,
     ContactResponse,
 )
 from schemas.response.well import (
-    WellResponse,
-    SampleLocationWellResponse,
-    WellScreenResponse,
     GroupResponse,
 )
-from schemas.response.location import SampleLocationResponse, GroupLocationResponse
 
 router = APIRouter(
     prefix="/base",
@@ -75,47 +51,6 @@ router = APIRouter(
 
 
 # ============= Create ============================================
-@router.post(
-    "/location",
-    response_model=GetLocation,
-    summary="Create a new sample location",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_location(
-    location_data: CreateLocation, session: Session = Depends(get_db_session)
-):
-    """
-    Create a new sample location in the database.
-    """
-    return adder(session, SampleLocation, location_data)
-
-
-@router.post(
-    "/well",
-    response_model=GetWell,
-    summary="Create a new well",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_well(well_data: CreateWell, session: Session = Depends(get_db_session)):
-    """
-    Create a new well in the database.
-    """
-    return adder(session, Well, well_data)
-
-
-@router.post(
-    "/wellscreen",
-    summary="Create a new well screen",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_wellscreen(
-    well_screen_data: CreateWellScreen = Depends(validate_screens),
-    session: Session = Depends(get_db_session),
-):
-    """
-    Create a new well screen in the database.
-    """
-    return adder(session, WellScreen, well_screen_data)
 
 
 @router.post(
@@ -129,17 +64,17 @@ def create_group(group_data: CreateGroup, session: Session = Depends(get_db_sess
 
 
 @router.post(
-    "/group_location",
-    summary="Create a new group location",
+    "/group_thing",
+    summary="Create a new group thing",
     status_code=status.HTTP_201_CREATED,
 )
-def create_group_location(
-    group_location_data: CreateGroupLocation, session: Session = Depends(get_db_session)
+def create_group_thing(
+    group_location_data: CreateGroupThing, session: Session = Depends(get_db_session)
 ):
     """
     Create a new group location association in the database.
     """
-    return adder(session, GroupLocationAssociation, group_location_data)
+    return adder(session, GroupThingAssociation, group_location_data)
 
 
 @router.post(
@@ -157,159 +92,22 @@ def create_contact(
     # return adder(session, Contact, contact_data)
 
 
-@router.post(
-    "/spring", summary="Create a new spring", status_code=status.HTTP_201_CREATED
-)
-def create_spring(
-    spring_data: CreateSpring, session: Session = Depends(get_db_session)
-):
-    """
-    Create a new spring in the database.
-    """
-    return adder(session, Spring, spring_data)
 
-
-@router.post(
-    "/equipment", summary="Create a new equipment", status_code=status.HTTP_201_CREATED
-)
-def create_equipment(
-    equipment_data: CreateEquipment, session: Session = Depends(get_db_session)
-):
-    """
-    Create a new equipment in the database.
-    """
-    # Placeholder for actual equipment creation logic
-    # return {"message": "This endpoint will create a new equipment."}
-    return adder(session, Equipment, equipment_data)
-
+# @router.post(
+#     "/equipment", summary="Create a new equipment", status_code=status.HTTP_201_CREATED
+# )
+# def create_equipment(
+#     equipment_data: CreateEquipment, session: Session = Depends(get_db_session)
+# ):
+#     """
+#     Create a new equipment in the database.
+#     """
+#     # Placeholder for actual equipment creation logic
+#     # return {"message": "This endpoint will create a new equipment."}
+#     return adder(session, Equipment, equipment_data)
+#
 
 # ==== Get ============================================
-@router.get("/location/shapefile", summary="Get location as shapefile")
-async def get_location_shapefile(
-    query: str = None, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve all sample locations as a shapefile.
-    """
-    sql = select(SampleLocation)
-    if query:
-        sql = sql.where(make_query(SampleLocation, query))
-
-    result = session.execute(sql)
-    locations = result.scalars().all()
-    # create a shapefile from the locations
-
-    create_shapefile(locations, "locations.shp")
-    # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
-    import zipfile
-
-    with zipfile.ZipFile("locations.zip", "w") as zf:
-        for ext in ["shp", "shx", "dbf"]:
-            zf.write(f"locations.{ext}")
-    return FileResponse(
-        "locations.zip", media_type="application/zip", filename="locations.zip"
-    )
-
-
-@router.get("/location/feature_collection", summary="Get location feature collection")
-async def get_location_feature_collection(
-    query: str = None, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve all sample locations as a GeoJSON FeatureCollection.
-    """
-    sql = select(
-        SampleLocation, geofunc.ST_AsGeoJSON(SampleLocation.point).label("geojson")
-    )
-    if query:
-        sql = sql.where(make_query(SampleLocation, query))
-
-    result = session.execute(sql)
-    locations = result.all()
-
-    features = []
-    for location, geojson in locations:
-        feature = {
-            "type": "Feature",
-            "geometry": geojson,
-        }
-        features.append(feature)
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
-
-
-@router.get(
-    "/location",
-    response_model=CustomPage[
-        Union[SampleLocationResponse, SampleLocationWellResponse]
-    ],
-    summary="Get all locations",
-)
-async def get_location(
-    nearby_point: str = None,
-    nearby_distance_km: float = 1,
-    within: str = None,
-    query: str = None,
-    expand: str = None,
-    session: Session = Depends(get_db_session),
-):
-    """
-    Retrieve all wells from the database.
-    """
-    sql = select(SampleLocation)
-
-    if query:
-        sql = sql.where(make_query(SampleLocation, query))
-    elif nearby_point:
-        nearby_point = func.ST_GeomFromText(nearby_point, SRID_WGS84)
-        sql = sql.where(
-            # func.ST_Distance(SampleLocation.point, nearby_point) <= nearby_distance_km
-            func.ST_Distance(nearby_point, SampleLocation.point)
-            <= nearby_distance_km
-        )
-    elif within:
-        sql = make_within_wkt(sql, within)
-
-    if expand == "well":
-        sql = sql.outerjoin(Well)
-
-    def transformer(items):
-        if expand == "well":
-            return [SampleLocationWellResponse.model_validate(item) for item in items]
-        return [SampleLocationResponse.model_validate(item) for item in items]
-
-    return paginate(query=sql, conn=session, transformer=transformer)
-
-
-@router.get("/well", response_model=CustomPage[WellResponse], summary="Get all wells")
-async def get_wells(
-    api_id: str = None,
-    ose_pod_id: str = None,
-    query: str = None,
-    session: Session = Depends(get_db_session),
-):
-    """
-    Retrieve all wells from the database.
-    """
-
-    if api_id:
-        sql = select(Well).where(Well.api_id == api_id)
-    elif ose_pod_id:
-        sql = select(Well).where(Well.ose_pod_id == ose_pod_id)
-    elif query:
-        sql = select(Well).where(make_query(Well, query))
-    else:
-        sql = select(Well)
-
-    return paginate(query=sql, conn=session)
-    # If no parameters, return all wells
-    # return simple_all_getter(session, Well)
-
-    # result = session.execute(sql)
-    # return result.scalars().all()
 
 
 @router.get("/group", response_model=List[GroupResponse], summary="Get groups")
@@ -333,130 +131,58 @@ async def get_contacts(session: Session = Depends(get_db_session)):
     return simple_all_getter(session, Contact)
 
 
-@router.get(
-    "/wellscreen", response_model=List[WellScreenResponse], summary="Get well screens"
-)
-async def get_well_screens(session: Session = Depends(get_db_session)):
-    """
-    Retrieve all well screens from the database.
-    """
-    return simple_all_getter(session, WellScreen)
 
 
-@router.get(
-    "/group_location",
-    response_model=List[GroupLocationResponse],
-    summary="Get group locations",
-)
-async def get_group_locations(session: Session = Depends(get_db_session)):
-    """
-    Retrieve all group locations from the database.
-    """
-    return simple_all_getter(session, GroupLocationAssociation)
+
+# @router.get(
+#     "/group_location",
+#     response_model=List[GroupLocationResponse],
+#     summary="Get group locations",
+# )
+# async def get_group_locations(session: Session = Depends(get_db_session)):
+#     """
+#     Retrieve all group locations from the database.
+#     """
+#     return simple_all_getter(session, GroupLocationAssociation)
+#
+
+# @router.get(
+#     "/spring",
+#     response_model=List[SpringResponse],
+# )
+# async def get_springs(session: Session = Depends(get_db_session)):
+#     """
+#     Retrieve all springs from the database.
+#     """
+#     return simple_all_getter(session, SpringThing)
 
 
-@router.get(
-    "/spring",
-    response_model=List[SpringResponse],
-)
-async def get_springs(session: Session = Depends(get_db_session)):
-    """
-    Retrieve all springs from the database.
-    """
-    return simple_all_getter(session, Spring)
-
-
-@router.get(
-    "/equipment", response_model=List[EquipmentResponse], summary="Get equipment"
-)
-async def get_equipment(session: Session = Depends(get_db_session)):
-    """
-    Retrieve all equipment from the database.
-    """
-    return simple_all_getter(session, Equipment)
+# @router.get(
+#     "/equipment", response_model=List[EquipmentResponse], summary="Get equipment"
+# )
+# async def get_equipment(session: Session = Depends(get_db_session)):
+#     """
+#     Retrieve all equipment from the database.
+#     """
+#     return simple_all_getter(session, Equipment)
 
 
 # ============= Get by ID ============================================
-@router.get(
-    "/equipment/{equipment_id}",
-    response_model=EquipmentResponse,
-    summary="Get equipment by ID",
-)
-async def get_equipment_by_id(
-    equipment_id: int, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve an equipment by ID from the database.
-    """
-    equipment = simple_get_by_id(session, Equipment, equipment_id)
-    if not equipment:
-        return {"message": "Equipment not found"}
-    return equipment
-
-
-@router.get(
-    "/spring/{spring_id}", response_model=SpringResponse, summary="Get spring by ID"
-)
-async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)):
-    """
-    Retrieve a spring by ID from the database.
-    """
-    spring = simple_get_by_id(session, Spring, spring_id)
-    if not spring:
-        return {"message": "Spring not found"}
-    return spring
-
-
-@router.get(
-    "/location/{location_id}",
-    response_model=Union[SampleLocationResponse, SampleLocationWellResponse],
-    summary="Get location by ID",
-)
-async def get_location_by_id(
-    location_id: int, expand: str = None, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve a sample location by ID from the database.
-    """
-    sql = select(SampleLocation).where(SampleLocation.id == location_id)
-
-    result = session.execute(sql)
-    location = result.scalar_one_or_none()
-
-    if not location:
-        return {"message": "Location not found"}
-
-    response_klass = SampleLocationResponse
-    if expand == "well":
-        response_klass = SampleLocationWellResponse
-
-    return response_klass.model_validate(location)
-
-
-@router.get("/well/{well_id}", response_model=WellResponse, summary="Get well by ID")
-async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session)):
-    """
-    Retrieve a well by ID from the database.
-    """
-    well = simple_get_by_id(session, Well, well_id)
-    if not well:
-        return {"message": "Well not found"}
-    return well
-
-
-@router.get(
-    "/wellscreen/{wellscreen_id}",
-)
-async def get_well_screen_by_id(
-    wellscreen_id: int, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve a well screen by ID from the database.
-    """
-    well_screen = simple_get_by_id(session, WellScreen, wellscreen_id)
-    if not well_screen:
-        return {"message": "Well screen not found"}
-    return well_screen
+# @router.get(
+#     "/equipment/{equipment_id}",
+#     response_model=EquipmentResponse,
+#     summary="Get equipment by ID",
+# )
+# async def get_equipment_by_id(
+#     equipment_id: int, session: Session = Depends(get_db_session)
+# ):
+#     """
+#     Retrieve an equipment by ID from the database.
+#     """
+#     equipment = simple_get_by_id(session, Equipment, equipment_id)
+#     if not equipment:
+#         return {"message": "Equipment not found"}
+#     return equipment
 
 
 @router.get(
@@ -472,23 +198,23 @@ async def get_group_by_id(group_id: int, session: Session = Depends(get_db_sessi
     return group
 
 
-@router.get(
-    "/group_location/{group_location_id}",
-    response_model=GroupLocationResponse,
-    summary="Get group location by ID",
-)
-async def get_group_location_by_id(
-    group_location_id: int, session: Session = Depends(get_db_session)
-):
-    """
-    Retrieve a group location by ID from the database.
-    """
-    group_location = simple_get_by_id(
-        session, GroupLocationAssociation, group_location_id
-    )
-    if not group_location:
-        return {"message": "Group location not found"}
-    return group_location
+# @router.get(
+#     "/group_location/{group_location_id}",
+#     response_model=GroupLocationResponse,
+#     summary="Get group location by ID",
+# )
+# async def get_group_location_by_id(
+#     group_location_id: int, session: Session = Depends(get_db_session)
+# ):
+#     """
+#     Retrieve a group location by ID from the database.
+#     """
+#     group_location = simple_get_by_id(
+#         session, GroupLocationAssociation, group_location_id
+#     )
+#     if not group_location:
+#         return {"message": "Group location not found"}
+#     return group_location
 
 
 @router.get(

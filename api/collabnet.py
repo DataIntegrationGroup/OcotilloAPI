@@ -20,8 +20,10 @@ from sqlalchemy.orm import Session
 from geoalchemy2 import functions as geofunc
 
 
-from db import get_db_session, adder
-from db.base import SampleLocation, Well
+from db.engine import get_db_session
+from db import adder
+from db.location import Location
+from db.thing import WellThing
 from db.collabnet import CollaborativeNetworkWell
 from schemas.create.collabnet import CreateCollaborativeNetworkWell
 
@@ -57,7 +59,7 @@ def location_stats(session: Session = Depends(get_db_session)):
     # print(sql)
     # stats = session.execute(sql).all()
 
-    sql = select(Well, CollaborativeNetworkWell)
+    sql = select(WellThing, CollaborativeNetworkWell)
     sql = sql.join(CollaborativeNetworkWell)
 
     wells = session.execute(sql).all()
@@ -75,9 +77,9 @@ def get_location(session: Session = Depends(get_db_session)):
     """ """
 
     sql = select(
-        SampleLocation, geofunc.ST_AsGeoJSON(SampleLocation.point).label("geojson")
+        Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson")
     )
-    sql = sql.join(Well)
+    sql = sql.join(WellThing)
     sql = sql.join(CollaborativeNetworkWell)
 
     # if query:
@@ -85,7 +87,7 @@ def get_location(session: Session = Depends(get_db_session)):
 
     locations = session.execute(sql).all()
 
-    def make_feature(location: SampleLocation, geojson: str):
+    def make_feature(location: Location, geojson: str):
         """
         Create a GeoJSON feature from a SampleLocation and its geojson representation.
         """

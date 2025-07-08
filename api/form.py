@@ -16,8 +16,10 @@
 
 from fastapi import APIRouter, Depends, status
 
-from db import get_db_session
-from db.base import SampleLocation, Well, Group
+from db.engine import get_db_session
+from db.location import Location
+from db.group import Group
+from db.thing.well import WellThing
 from schemas.form import (
     WellForm,
     WellFormResponse,
@@ -41,7 +43,7 @@ async def well_form(form_data: WellForm, session=Depends(get_db_session)):
     data = form_data.model_dump()
     location_data = data.get("location", None)
 
-    location = SampleLocation(**location_data)
+    location = Location(**location_data)
     session.add(location)
 
     groups = data.get("groups", None)
@@ -69,7 +71,7 @@ async def well_form(form_data: WellForm, session=Depends(get_db_session)):
 
     # add well to the database
     well_data = data.get("well", None)
-    well = Well(**well_data)
+    well = WellThing(**well_data)
     well.location = location
     session.add(well)
 

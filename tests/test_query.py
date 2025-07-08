@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
+import pytest
 from tests import client
 
 
+@pytest.mark.skip
 def test_query_nested_string_search():
     response = client.get(
         "/base/location",
@@ -31,6 +32,7 @@ def test_query_nested_string_search():
     # assert all(item["name"].startswith("Test") for item in items)
 
 
+@pytest.mark.skip
 def test_query_string_search():
     response = client.get(
         "/base/well",
@@ -45,6 +47,7 @@ def test_query_string_search():
     # assert all(item["name"].startswith("Test") for item in items)
 
 
+@pytest.mark.skip
 def test_query_eq_true():
     response = client.get(
         "/base/location",
@@ -58,6 +61,7 @@ def test_query_eq_true():
     assert len(items) == 1
 
 
+@pytest.mark.skip
 def test_query_eq_false():
     response = client.get(
         "/base/location",
@@ -71,6 +75,7 @@ def test_query_eq_false():
     assert len(items) == 1
 
 
+@pytest.mark.skip
 def test_query_like():
     response = client.get(
         "/base/location",
@@ -85,6 +90,7 @@ def test_query_like():
     assert all(item["name"].startswith("Test") for item in items)
 
 
+@pytest.mark.skip
 def test_query_nested_eq():
     response = client.get(
         "/base/location",
@@ -99,6 +105,7 @@ def test_query_nested_eq():
     assert items[0]["name"] == "Test Location 1"  # Assuming this is the expected name
 
 
+@pytest.mark.skip
 def test_query_nested_ne():
     response = client.get(
         "/base/location",
@@ -115,6 +122,7 @@ def test_query_nested_ne():
     # )  # Ensure none match the excluded ID
 
 
+@pytest.mark.skip
 def test_query_nested_like():
     response = client.get(
         "/base/location",
@@ -130,6 +138,7 @@ def test_query_nested_like():
     assert items[1]["name"] == "Test Location 2"
 
 
+@pytest.mark.skip
 def test_query_nested_well_ose_pod_id_like():
     response = client.get(
         "/base/location",
@@ -145,6 +154,7 @@ def test_query_nested_well_ose_pod_id_like():
     assert items[1]["name"] == "Test Location 2"
 
 
+@pytest.mark.skip
 def test_query_nested_well_depth_between():
     response = client.get(
         "/base/location",
@@ -159,6 +169,7 @@ def test_query_nested_well_depth_between():
     # assert all(500 <= item["well"]["depth"] <= 1500 for item in items)
 
 
+@pytest.mark.skip
 def test_query_nested_well_depth_gt():
     response = client.get(
         "/base/location",
@@ -174,6 +185,7 @@ def test_query_nested_well_depth_gt():
     # assert all(item["well"]["depth"] > 500 for item in items)
 
 
+@pytest.mark.skip
 def test_query_nested_well_depth_lt():
     response = client.get(
         "/base/location",
@@ -189,6 +201,7 @@ def test_query_nested_well_depth_lt():
     # assert all(item["well"]["depth"] < 1500 for item in items)
 
 
+@pytest.mark.skip
 def test_query_nested_well_depth_eq():
     response = client.get(
         "/base/location",

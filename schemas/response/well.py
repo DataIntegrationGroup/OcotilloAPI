@@ -25,10 +25,9 @@ class WellResponse(ORMBaseModel):
     """
 
     id: int
-    location_id: int
-    api_id: str | None = None
-    ose_pod_id: str | None = None
-    usgs_id: str | None = None
+    # api_id: str | None = None
+    # ose_pod_id: str | None = None
+    # usgs_id: str | None = None
     construction_notes: str | None = None
 
     # Additional fields can be added as needed

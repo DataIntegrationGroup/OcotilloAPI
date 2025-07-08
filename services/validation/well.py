@@ -13,12 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import database_sessionmaker, get_db_session
-from db.lexicon import Lexicon
 from schemas.create.well import CreateWellScreen
 from services.validation import get_category
-from fastapi import Depends
-from sqlalchemy.orm import Session
 
 
 async def validate_screens(well_screen_data: CreateWellScreen):

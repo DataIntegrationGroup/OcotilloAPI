@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.base import Contact, Email, Phone, Address, LocationContactAssociation
-from schemas.create.location import CreateContact
+from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
+from schemas.create.contact import CreateContact
 from sqlalchemy.orm import Session
 
 
@@ -52,8 +52,8 @@ def add_contact(
     session.commit()
     session.refresh(contact)
 
-    location_contact_association = LocationContactAssociation()
-    location_contact_association.location_id = contact_data.get("location_id")
+    location_contact_association = ThingContactAssociation()
+    location_contact_association.thing_id = contact_data.get("thing_id")
     location_contact_association.contact_id = contact.id
 
     session.add(location_contact_association)

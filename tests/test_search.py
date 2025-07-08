@@ -17,8 +17,8 @@ from sqlalchemy import select, func, desc, cast, Text
 from sqlalchemy.dialects.postgresql import REGCONFIG
 
 
-from db import database_sessionmaker, get_db_session, search
-from db.base import Contact
+from db.engine import database_sessionmaker, get_db_session
+from db.contact import Contact
 
 
 from tests import client

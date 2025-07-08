@@ -13,15 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import get_db_session, adder
-from db.publication import Publication, Author
-from fastapi import APIRouter, Depends, HTTPException, status
-from schemas.create.publication import CreatePublication
-from schemas.response.publication import PublicationResponse
-from services.publication_helper import add_publication
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from db.engine import get_db_session
+from db.publication import Author
+from schemas.response.publication import PublicationResponse
 
 router = APIRouter(
     prefix="/author",

@@ -13,15 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import DateTime, String, ForeignKey
+from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.orm import mapped_column
 
-from db import Base, AutoBaseMixin
+from db.base import AutoBaseMixin, Base
 
 
-# ============= EOF =============================================
-class Sample(Base, AutoBaseMixin):
-    collection_timestamp = mapped_column(DateTime, nullable=False)
-    collection_method = mapped_column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=False
+class GeochemicalObservation(Base, AutoBaseMixin):
+    observation_id = mapped_column(
+        Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
     )
+# ============= EOF =============================================

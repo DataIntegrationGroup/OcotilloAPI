@@ -13,15 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.asset import *
-from db.base import *
-from db.chemistry import *
-from db.collabnet import *
-from db.geothermal import *
-from db.geochronology import *
-from db.lexicon import *
-from db.publication import *
-from db.series import *
-from db.groundwaterlevel import *
+from sqlalchemy import ForeignKey, Integer
+from sqlalchemy.orm import mapped_column
 
+from db.base import AutoBaseMixin, Base
+
+
+class GeothermalObservation(Base, AutoBaseMixin):
+    observation_id = mapped_column(
+        Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
+    )
 # ============= EOF =============================================

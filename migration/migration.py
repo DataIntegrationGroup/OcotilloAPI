@@ -20,11 +20,9 @@ from shapely import Point
 from shapely.ops import transform
 from sqlalchemy.exc import ProgrammingError
 
-import db
-import os
-
-from db import get_db_session
+from db.engine import get_db_session
 from db.all_models import *
+from db.thing.well import WellThing
 from services.lexicon import add_lexicon_term
 
 TRANSFORMERS = {}
@@ -91,7 +89,7 @@ def load_locations(sess, df):
             point, source_srid=26913, target_srid=4326  # WGS84 SRID
         )
 
-        sl = SampleLocation(
+        sl = Location(
             name=row_dict["PointID"],
             point=transformed_point.wkt,
             visible=row_dict["PublicRelease"],
@@ -118,11 +116,11 @@ def load_wells(sess, df):
         row_dict = row._asdict()
 
         location = (
-            sess.query(SampleLocation).filter_by(name=row_dict["PointID"]).one_or_none()
+            sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
         )
 
         if location:
-            well = Well()
+            well = WellThing()
             well.location = location
             well.well_depth = row_dict["WellDepth"]
             well.hole_depth = row_dict["HoleDepth"]

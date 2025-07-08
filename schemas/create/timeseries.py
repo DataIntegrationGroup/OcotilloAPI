@@ -26,6 +26,7 @@ class CreateTimeSeries(BaseModel):
 class CreateSample(BaseModel):
     collection_timestamp: datetime
     collection_method: str
+    well_id: int | None = None
 
 
 class CreateTimeObservation(BaseModel):

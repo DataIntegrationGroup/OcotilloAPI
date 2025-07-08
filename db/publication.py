@@ -15,7 +15,7 @@
 # ===============================================================================
 from sqlalchemy_utils import TSVectorType
 
-from db import AutoBaseMixin, Base, AuditMixin
+from db.base import AutoBaseMixin, Base, AuditMixin
 from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import association_proxy

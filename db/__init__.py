@@ -13,8 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import asyncio
-import os
+from db.base import Base
+from db.asset import *
+from db.location import *
+from db.collabnet import *
+from db.geochronology import *
+from db.lexicon import *
+from db.publication import *
+
+from db.sample import *
+from db.thing import *
+from db.series import *
+from db.observation import *
+from db.sensor import *
+
 import re
 
 from sqlalchemy import (
@@ -42,134 +54,7 @@ from sqlalchemy_searchable import (
     search_manager,
 )
 
-driver = os.environ.get("DB_DRIVER", "")
 
-
-async def get_async_engine():
-    """
-    Asynchronous database session generator.
-    """
-    connector = await create_async_connector()
-
-    def asyncify_connection():
-        from sqlalchemy.dialects.postgresql.asyncpg import (
-            AsyncAdapt_asyncpg_connection,
-        )
-
-        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
-        user = os.environ.get("CLOUD_SQL_USER")
-        password = os.environ.get("CLOUD_SQL_PASSWORD")
-        database = os.environ.get("CLOUD_SQL_DATABASE")
-
-        connection = connector.connect_async(
-            instance_name,
-            "asyncpg",
-            db=database,
-            password=password,
-            user=user,
-        )
-
-        return AsyncAdapt_asyncpg_connection(
-            engine.dialect.dbapi,
-            await_only(connection),
-            prepared_statement_cache_size=100,
-        )
-
-    return create_async_engine(
-        "postgresql+asyncpg://",
-        echo=True,
-        creator=asyncify_connection,
-    )
-
-
-if driver == "cloudsql":
-    from google.cloud.sql.connector import Connector, create_async_connector
-
-    def init_connection_pool(connector):
-        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
-        user = os.environ.get("CLOUD_SQL_USER")
-        password = os.environ.get("CLOUD_SQL_PASSWORD")
-        database = os.environ.get("CLOUD_SQL_DATABASE")
-
-        def getconn():
-            conn = connector.connect(
-                instance_name,  # The Cloud SQL instance name
-                "pg8000",
-                user=user,
-                password=password,
-                db=database,
-                ip_type="public",
-            )
-            return conn
-
-        engine = create_engine(
-            "postgresql+pg8000://",
-            creator=getconn,
-            echo=False,
-        )
-        return engine
-
-    connector = Connector()
-    engine = init_connection_pool(connector)
-
-    async_engine = asyncio.run(get_async_engine())
-
-else:
-    # if driver == "sqlite":
-    #     name = os.environ.get("DB_NAME", "development.db")
-    #     url = f"sqlite:///{name}"
-    # elif driver == "postgres":
-    password = os.environ.get("POSTGRES_PASSWORD", "")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    user = os.environ.get("POSTGRES_USER", "postgres")
-    name = os.environ.get("POSTGRES_DB", "postgres")
-
-    auth = f"{user}:{password}@" if user and password else ""
-    port_part = f":{port}" if port else ""
-    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
-    # else:
-    #     url = "sqlite:///./development.db"
-
-    engine = create_engine(
-        url,
-        # echo=True,
-        plugins=["geoalchemy2"],
-    )
-
-    async_engine = create_async_engine(
-        url.replace("postgresql+pg8000", "postgresql+asyncpg"),
-        plugins=["geoalchemy2"],
-    )
-    # if "postgresql" not in url:
-    #
-    #     def on_connect(dbapi_connection, connection_record):
-    #         """
-    #         Event listener to load SpatiaLite on connection.
-    #         """
-    #         load_spatialite(dbapi_connection)
-    #
-    #         cursor = dbapi_connection.cursor()
-    #         cursor.execute("PRAGMA foreign_keys=ON")
-    #         cursor.close()
-    #
-    #     listen(engine, "connect", on_connect)
-
-
-async_database_sessionmaker = async_sessionmaker(async_engine)
-database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
-
-
-def get_db_session():
-    session = database_sessionmaker()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-Base = declarative_base()
-make_searchable(Base.metadata)
 
 
 def adder(session, table, model, **kwargs):
@@ -183,13 +68,8 @@ def adder(session, table, model, **kwargs):
     obj = table(**md)
     session.add(obj)
     session.commit()
+    session.refresh(obj)
     return obj
-
-
-class AuditMixin:
-    @declared_attr
-    def created_at(self):
-        return Column(DateTime, nullable=False, server_default=func.now())
 
 
 def search(query, search_query, vector=None, regconfig=None, sort=True):
@@ -219,29 +99,9 @@ def search(query, search_query, vector=None, regconfig=None, sort=True):
     return query.params(term=search_query)
 
 
-def pascal_to_snake(name):
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
-class AutoBaseMixin(AuditMixin):
-    @declared_attr
-    def __tablename__(self):
-        return pascal_to_snake(self.__name__)
 
-    @declared_attr
-    def id(self):
-        return Column(Integer, primary_key=True, autoincrement=True)
-
-
-class PropertiesMixin:
-    @declared_attr
-    def properties(self):
-        return Column(
-            "properties",
-            JSON,
-            nullable=True,
-            comment="JSONB column for storing additional properties",
-        )
 
 
 # ============= EOF =============================================

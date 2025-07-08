@@ -17,7 +17,8 @@ from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import TSVectorType
 
-from db import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin
+
 
 
 class Asset(Base, AutoBaseMixin):
@@ -38,16 +39,16 @@ class Asset(Base, AutoBaseMixin):
     )
 
 
-class AssetLocationAssociation(Base, AutoBaseMixin):
+class AssetThingAssociation(Base, AutoBaseMixin):
 
     asset_id = Column(
         Integer, ForeignKey("asset.id", ondelete="CASCADE"), nullable=False
     )
-    location_id = Column(
-        Integer, ForeignKey("sample_location.id", ondelete="CASCADE"), nullable=False
+    thing_id = Column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    location = relationship("SampleLocation", back_populates="asset_associations")
+    thing = relationship("Thing", back_populates="asset_associations")
 
     # publication = relationship("Publication", back_populates="author_associations")
     # author = relationship("Author", back_populates="publication_associations")
