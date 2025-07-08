@@ -20,7 +20,8 @@ from sqlalchemy import (
     String,
     ForeignKey,
     Boolean,
-    DateTime, func,
+    DateTime,
+    func,
 )
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
