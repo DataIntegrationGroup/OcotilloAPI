@@ -67,4 +67,6 @@ async def get_contact_by_id(
     if not contact:
         return {"message": "Contact not found"}
     return contact
+
+
 # ============= EOF =============================================

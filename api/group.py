@@ -28,9 +28,8 @@ from services.query_helper import simple_all_getter, simple_get_by_id
 
 router = APIRouter(prefix="/group", tags=["group"])
 
-@router.post(
-    "/", summary="Create a new group", status_code=status.HTTP_201_CREATED
-)
+
+@router.post("/", summary="Create a new group", status_code=status.HTTP_201_CREATED)
 def create_group(group_data: CreateGroup, session: Session = Depends(get_db_session)):
     """
     Create a new group in the database.
@@ -64,9 +63,7 @@ async def get_groups(session: Session = Depends(get_db_session)):
     return simple_all_getter(session, Group)
 
 
-@router.get(
-    "/{group_id}", response_model=GroupResponse, summary="Get group by ID"
-)
+@router.get("/{group_id}", response_model=GroupResponse, summary="Get group by ID")
 async def get_group_by_id(group_id: int, session: Session = Depends(get_db_session)):
     """
     Retrieve a group by ID from the database.
@@ -88,5 +85,6 @@ async def get_group_thing_by_id(
     Retrieve a group-thing association by ID from the database.
     """
     return simple_get_by_id(session, GroupThingAssociation, association_id)
+
 
 # ============= EOF =============================================

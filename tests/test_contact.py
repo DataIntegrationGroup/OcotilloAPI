@@ -16,6 +16,7 @@ from tests import client
 
 #  ADD tests ======================================================
 
+
 @pytest.fixture(scope="function")
 def thing():
     session = next(get_db_session())
@@ -173,7 +174,6 @@ def test_get_contacts():
     response = client.get("/contact")
     assert response.status_code == 200
     assert len(response.json()) > 0
-
 
 
 # test item retrieval via filter ===========================================

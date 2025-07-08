@@ -16,12 +16,14 @@ from tests import client
 
 #  ADD tests ======================================================
 
+
 def test_add_group():
     response = client.post("/group", json={"name": "Test Group"})
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Group"
+
 
 @pytest.fixture(scope="function")
 def thing():
@@ -47,6 +49,7 @@ def test_add_group_thing(thing):
 
 
 # GET tests ======================================================
+
 
 def test_get_groups():
     response = client.get("/group")
@@ -82,7 +85,6 @@ def test_item_get_group():
     assert data["name"] == "Test Group"
 
 
-
 def test_item_get_group_thing():
     response = client.get("/group/association/1")
     assert response.status_code == 200
@@ -90,5 +92,3 @@ def test_item_get_group_thing():
     assert data["id"] == 1
     assert data["group_id"] == 1
     assert data["thing_id"] == 3
-
-

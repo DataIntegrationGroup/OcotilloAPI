@@ -140,12 +140,14 @@ def test_item_get_wells():
     assert data["id"] == 1
     # assert data["location_id"] == 1
 
+
 def test_item_get_spring():
     response = client.get("/thing/spring/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
     # assert data["location_id"] == 1
+
 
 # @pytest.mark.skip
 def test_item_get_well_screens():
@@ -156,4 +158,6 @@ def test_item_get_well_screens():
     assert data["well_id"] == 1
     assert data["screen_depth_top"] == 10.0
     assert data["screen_depth_bottom"] == 20.0
+
+
 # ============= EOF =============================================
