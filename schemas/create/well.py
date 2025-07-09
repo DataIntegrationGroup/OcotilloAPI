@@ -23,6 +23,7 @@ class CreateWell(ORMBaseModel):
     """
 
     location_id: int
+    name: str
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     well_type: str | None = None

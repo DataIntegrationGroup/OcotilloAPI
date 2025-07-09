@@ -24,6 +24,7 @@ class CreateSpring(ORMBaseModel):
     """
 
     location_id: int
+    name: str
 
 
 class CreateEquipment(ORMBaseModel):

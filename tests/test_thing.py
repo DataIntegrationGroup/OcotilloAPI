@@ -32,6 +32,7 @@ def test_add_well():
         "/thing/well",
         json={
             "location_id": 1,
+            "name": "Test Well",
             "api_id": "1001-0001",
             "ose_pod_id": "RA-0001",
             "well_type": "Monitoring",
@@ -47,6 +48,7 @@ def test_add_well():
         "/thing/well",
         json={
             "location_id": 2,
+            "name": "Test Well 2",
             "api_id": "1001-0002",
             "ose_pod_id": "RA-0002",
             "well_type": "Production",
@@ -59,7 +61,9 @@ def test_add_well():
 
 
 def test_add_spring():
-    response = client.post("/thing/spring", json={"location_id": 1})
+    response = client.post("/thing/spring",
+                           json={"location_id": 1,
+                                 'name': 'Test Spring',})
     assert response.status_code == 201
     data = response.json()
     assert "id" in data

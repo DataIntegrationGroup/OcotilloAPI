@@ -35,6 +35,7 @@ def _add_child_thing(session, table, data):
     assoc = LocationThingAssociation()
 
     thing = Thing()
+    thing.name = data.pop("name")
     session.add(thing)
     session.commit()
     session.refresh(thing)

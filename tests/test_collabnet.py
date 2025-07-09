@@ -40,6 +40,7 @@ def well():
         session,
         {
             "location_id": 1,
+            "name": "Collabnet Test Well",
         },
     )
 

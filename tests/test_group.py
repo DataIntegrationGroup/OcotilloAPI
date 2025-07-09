@@ -29,6 +29,7 @@ def test_add_group():
 def thing():
     session = next(get_db_session())
     thing = Thing()
+    thing.name = "Test Thing"
     session.add(thing)
     session.commit()
     yield thing

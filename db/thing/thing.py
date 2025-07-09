@@ -31,6 +31,8 @@ class ThingChildMixin:
 
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
+    name = mapped_column(String(255), nullable=False)
+
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
