@@ -1,5 +1,8 @@
 [
 
+  {"term": "draft", "definition": "draft version", "category": "release_status"},
+
+
   {"term":  "USGS", "definition":  "US Geological Survey", "category":  "organization"},
 
 
@@ -9,13 +12,17 @@
   {"term":  "manual", "definition":  "manual sampling", "category":  "collection_method"},
   {"term":  "continuous", "definition":  "continuous sampling", "category":  "collection_method"},
 
+
   {"term":  "groundwater level", "definition":  "groundwater level measurement", "category":  "observed_property"},
 
+
   {"term":  "Owner", "definition":  "Owner", "category": "role"},
+
 
   {"term":  "Primary", "definition":  "Primary", "category":  "email_type"},
   {"term":  "Primary", "definition":  "Primary", "category":  "address_type"},
   {"term":  "Primary", "definition":  "Primary", "category":  "phone_type"},
+
 
   {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
   {"term": "Na", "definition": "Sodium", "category": "water_chemistry"},
@@ -25,6 +32,7 @@
   {"term": "SO4", "definition": "Sulfate", "category": "water_chemistry"},
   {"term": "HCO3", "definition": "Bicarbonate", "category": "water_chemistry"},
 
+
   {"term": "ft", "definition": "feet", "category": "unit"},
   {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},
   {"term": "F", "definition": "Fahrenheit", "category": "unit"},
@@ -33,6 +41,7 @@
   {"term":  "W/m²", "definition": "watts per square meter", "category": "unit"},
   {"term":  "W/m·K", "definition":  "watts per meter Kelvin", "category": "unit"},
   {"term":  "m²/s", "definition": "square meters per second", "category": "unit"},
+
 
   {"term": "Exploration", "definition": "Exploration well", "category": "well_type"},
   {"term": "Monitoring", "definition": "Monitoring", "category": "well_type"},
@@ -44,11 +53,14 @@
   {"term": "Steel", "definition": "Steel", "category": "casing_material"},
   {"term": "Concrete", "definition": "Concrete", "category": "casing_material"},
 
+
   {"term": "Provisional", "definition": "Provisional quality control status", "category": "quality_control_status"},
   {"term": "Approved", "definition": "Approved quality control status", "category": "quality_control_status"},
   {"term": "Rejected", "definition": "Rejected quality control status", "category": "quality_control_status"},
 
+
   {"term": "mud", "definition": "drilling mud", "category":  "drilling_fluid"},
+
 
   {"term": "Ar/Ar", "definition":  "Ar40/Ar39 geochronology", "category":  "geochronology"},
   {"term": "AFT", "definition":  "apatite fission track", "category":  "geochronology"},
@@ -59,6 +71,7 @@
   {"term": "Lu/Hf", "definition":  "Lutetium-Hafnium dating", "category":  "geochronology"},
   {"term": "Re/Os", "definition":  "Rhenium-Osmium dating", "category":  "geochronology"},
   {"term": "Sm/Nd", "definition":  "Samarium-Neodymium dating", "category":  "geochronology"},
+
 
   {"term": "Map", "definition": "Map", "category": "publication_type"},
   {"term": "Report", "definition": "Report", "category": "publication_type"},

@@ -15,24 +15,18 @@
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import relationship, mapped_column
 
-from db.base import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
-class Thing(Base, AutoBaseMixin):
+class Thing(Base, AutoBaseMixin, ReleaseMixin):
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")
-
-    release_status = mapped_column(String(100), ForeignKey("lexicon_term.term"))
-    # location_id = mapped_column(
-    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    # )
 
 
 class ThingIdLink(Base, AutoBaseMixin):

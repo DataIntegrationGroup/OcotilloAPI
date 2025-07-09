@@ -16,7 +16,7 @@
 from sqlalchemy import DateTime, Float, String, Integer, ForeignKey, Text, func
 from sqlalchemy.orm import declared_attr, mapped_column, relationship
 
-from db.base import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
 class QCMixin:
@@ -52,7 +52,7 @@ class SeriesMixin:
         )
 
 
-class Series(Base, AutoBaseMixin):
+class Series(Base, AutoBaseMixin, ReleaseMixin):
     """
     Base class for series that can be associated with samples.
     This class can be extended to create specific series types.

@@ -23,7 +23,11 @@ class Group(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
 
-    # Define a relationship to samplelocations if needed
+    parent_group_id = Column(
+        Integer, ForeignKey("group.id", ondelete="CASCADE"), nullable=True
+    )
+
+
     things = relationship("Thing", secondary="group_thing_association")
 
 
@@ -34,9 +38,6 @@ class GroupThingAssociation(Base, AutoBaseMixin):
     thing_id = Column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
-
-    # group = relationship("Group")
-    # location = relationship("SampleLocation")
 
 
 # ============= EOF =============================================

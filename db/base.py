@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, DateTime, func, Integer, JSON, String, Boolean, Text
+from sqlalchemy import Column, DateTime, func, Integer, JSON, String, Boolean, Text, ForeignKey
 from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
 from sqlalchemy_searchable import make_searchable
 
@@ -25,6 +25,14 @@ make_searchable(Base.metadata)
 
 def pascal_to_snake(name):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+class ReleaseMixin:
+    @declared_attr
+    def release_status(self):
+        return mapped_column(
+            String(100), ForeignKey("lexicon_term.term"), default="draft"
+        )
 
 
 class AuditMixin:
