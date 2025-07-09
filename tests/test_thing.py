@@ -61,9 +61,13 @@ def test_add_well():
 
 
 def test_add_spring():
-    response = client.post("/thing/spring",
-                           json={"location_id": 1,
-                                 'name': 'Test Spring',})
+    response = client.post(
+        "/thing/spring",
+        json={
+            "location_id": 1,
+            "name": "Test Spring",
+        },
+    )
     assert response.status_code == 201
     data = response.json()
     assert "id" in data

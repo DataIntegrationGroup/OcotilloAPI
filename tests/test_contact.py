@@ -20,7 +20,7 @@ from tests import client
 @pytest.fixture(scope="function")
 def thing():
     session = next(get_db_session())
-    thing = Thing(name='Test Thing')
+    thing = Thing(name="Test Thing")
     session.add(thing)
     session.commit()
     yield
