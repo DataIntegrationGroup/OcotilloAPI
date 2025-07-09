@@ -34,5 +34,15 @@ class Thing(Base, AutoBaseMixin):
     #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     # )
 
+class ThingIdLink(Base, AutoBaseMixin):
+    """
+    Represents a link associated with a Thing.
+    """
 
+    thing_id = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"))
+    relation = mapped_column(String(100), ForeignKey('lexicon_term.term'), nullable=False)
+    alternate_id = mapped_column(String(100), nullable=False)
+    alternate_organization = mapped_column(String(100), ForeignKey('lexicon_term.term'), nullable=False)
+
+    # thing = relationship("Thing", back_populates="links")
 # ============= EOF =============================================

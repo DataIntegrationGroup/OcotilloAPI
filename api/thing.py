@@ -31,9 +31,11 @@ from db import (
     Thing,
 )
 from db.engine import get_db_session
+from db.thing.thing import ThingIdLink
 from schemas.base_create import CreateSpring
 from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
+from schemas.create.thing import CreateThingIdLink
 from schemas.create.well import CreateWell, CreateWellScreen
 from schemas.response.well import WellResponse, WellScreenResponse
 from services.query_helper import make_query, simple_all_getter, simple_get_by_id
@@ -132,6 +134,20 @@ async def get_well_screen_by_id(
 
 
 #  ===== POST =============
+
+@router.post('/link',
+             status_code=status.HTTP_201_CREATED,
+             summary="Create a new thing link")
+def create_thing_id_link(
+    link_data: CreateThingIdLink,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Create a new link between a thing and an alternate ID.
+    """
+    return adder(session, ThingIdLink, link_data)
+
+
 @router.post(
     "/well",
     response_model=GetWell,

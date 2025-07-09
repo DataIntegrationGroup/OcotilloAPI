@@ -87,6 +87,22 @@ def test_add_well_screen():
     assert data["well_id"] == 1
 
 
+def test_add_thing_link():
+    response = client.post(
+        "/thing/link",
+        json={
+            "thing_id": 1,
+            "relation": 'same_as',
+            "alternate_id": "4321-1234",
+            "alternate_organization": "USGS",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["thing_id"] == 1
+    assert data["alternate_id"] == "4321-1234"
+
 # ===================== get ==========================
 def test_get_wells():
     response = client.get("/thing/well")

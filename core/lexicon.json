@@ -1,4 +1,11 @@
 [
+
+  {"term":  "USGS", "definition":  "US Geological Survey", "category":  "organization"},
+
+
+  {"term":  "same_as", "definition":  "same as", "category":  "relation"},
+
+
   {"term":  "manual", "definition":  "manual sampling", "category":  "collection_method"},
   {"term":  "continuous", "definition":  "continuous sampling", "category":  "collection_method"},
 
