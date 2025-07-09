@@ -29,4 +29,5 @@ class CreateSeries(BaseModel):
     observed_property: str
     unit: str
 
+
 # ============= EOF =============================================

@@ -24,6 +24,7 @@ from db.engine import get_db_session
 # from db.timeseries import GroundwaterLevelObservation
 from tests import client
 
+
 def test_add_series():
     response = client.post(
         "/series",
@@ -39,7 +40,9 @@ def test_add_series():
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test Series", "Expected 'name' to be 'Test Series'"
-    assert data["observed_property"] == "groundwater level", "Expected 'observed_property' to be 'groundwater_level'"
+    assert (
+        data["observed_property"] == "groundwater level"
+    ), "Expected 'observed_property' to be 'groundwater_level'"
 
 
 def test_get_series():
@@ -57,6 +60,7 @@ def test_get_series_by_id():
     assert isinstance(data, dict), "Expected a dictionary for series details"
     assert data["id"] == 1, "Expected series id to be 1"
     assert data["name"] == "Test Series", "Expected series name to be 'Test Series'"
+
 
 # ============= EOF =============================================
 
@@ -228,4 +232,3 @@ def test_get_series_by_id():
 #         results[0][1], float
 #     ), "Expected a datetime result from the time bucket query"
 #
-

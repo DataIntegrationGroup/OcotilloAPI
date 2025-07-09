@@ -25,7 +25,8 @@ from services.query_helper import simple_all_getter
 
 router = APIRouter(
     prefix="/series",
-    tags=["series"],)
+    tags=["series"],
+)
 
 
 # ============= Get ==============================================
@@ -36,13 +37,15 @@ def get_series(session: Session = Depends(get_db_session)):
     """
     return simple_all_getter(session, Series)
 
-@router.get('/{series_id}')
+
+@router.get("/{series_id}")
 def get_series_by_id(series_id: int, session: Session = Depends(get_db_session)):
     """
     Endpoint to retrieve a specific series by its ID.
     """
 
     return session.get(Series, series_id)
+
 
 # ============= Post =============================================
 @router.post("/", status_code=HTTP_201_CREATED)
@@ -51,5 +54,6 @@ def add_series(series_data: CreateSeries, session: Session = Depends(get_db_sess
     Endpoint to add a new series.
     """
     return adder(session, Series, series_data)
+
 
 # ============= EOF =============================================

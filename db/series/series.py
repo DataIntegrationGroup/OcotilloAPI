@@ -59,14 +59,12 @@ class Series(Base, AutoBaseMixin):
     """
 
     observed_property = mapped_column(
-            String(100),
-            ForeignKey("lexicon_term.term", ondelete="CASCADE"),
-            nullable=False,
-        )
+        String(100),
+        ForeignKey("lexicon_term.term", ondelete="CASCADE"),
+        nullable=False,
+    )
 
-    unit = mapped_column(
-            String(100), ForeignKey("lexicon_term.term"), nullable=False
-        )
+    unit = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
 
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(Text, nullable=True)
