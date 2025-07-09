@@ -13,7 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, DateTime, func, Integer, JSON, String, Boolean, Text, ForeignKey
+from sqlalchemy import (
+    Column,
+    DateTime,
+    func,
+    Integer,
+    JSON,
+    String,
+    Boolean,
+    Text,
+    ForeignKey,
+)
 from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
 from sqlalchemy_searchable import make_searchable
 

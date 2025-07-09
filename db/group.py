@@ -27,7 +27,6 @@ class Group(Base, AutoBaseMixin):
         Integer, ForeignKey("group.id", ondelete="CASCADE"), nullable=True
     )
 
-
     things = relationship("Thing", secondary="group_thing_association")
 
 

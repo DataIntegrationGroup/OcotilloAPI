@@ -28,7 +28,9 @@ class CreateSeries(BaseModel):
     sensor_id: int
     observed_property: str
     unit: str
-    release_status: str | None = 'draft'  # Default to 'draft', can be 'published' or 'archived'
+    release_status: str | None = (
+        "draft"  # Default to 'draft', can be 'published' or 'archived'
+    )
 
 
 # ============= EOF =============================================
