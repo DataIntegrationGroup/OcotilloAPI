@@ -13,7 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import ForeignKey, Integer, DateTime, TIMESTAMP, PrimaryKeyConstraint, ForeignKeyConstraint
+from sqlalchemy import (
+    ForeignKey,
+    Integer,
+    DateTime,
+    TIMESTAMP,
+    PrimaryKeyConstraint,
+    ForeignKeyConstraint,
+)
 from sqlalchemy.orm import declared_attr, mapped_column
 
 from db import AutoBaseMixin, Base
@@ -37,26 +44,27 @@ class ObservationMixin:
 
     @declared_attr
     def __table_args__(self):
-        return (ForeignKeyConstraint(
-            ['observation_id', 'observation_timestamp'],
-            ['observation.id', 'observation.observation_timestamp'],
-            ondelete="CASCADE"
-        ), {})
+        return (
+            ForeignKeyConstraint(
+                ["observation_id", "observation_timestamp"],
+                ["observation.id", "observation.observation_timestamp"],
+                ondelete="CASCADE",
+            ),
+            {},
+        )
 
     @declared_attr
     def observation_id(self):
         return mapped_column(
             Integer,
             # ForeignKey("observation.id", ondelete="CASCADE"),
-            nullable=False
+            nullable=False,
         )
 
     @declared_attr
     def observation_timestamp(self):
         return mapped_column(
-            TIMESTAMP,
-            nullable=False,
-            doc="Timestamp of the observation"
+            TIMESTAMP, nullable=False, doc="Timestamp of the observation"
         )
 
 
@@ -64,9 +72,12 @@ class Observation(Base, ReleaseMixin):
     __tablename__ = "observation"
 
     __table_args__ = (
-        PrimaryKeyConstraint("id",
-                             "observation_timestamp",),
-        {})
+        PrimaryKeyConstraint(
+            "id",
+            "observation_timestamp",
+        ),
+        {},
+    )
 
     id = mapped_column(
         Integer,
@@ -77,12 +88,10 @@ class Observation(Base, ReleaseMixin):
         Integer,
         ForeignKey("series.id", ondelete="CASCADE"),
         nullable=False,
-
     )
 
     observation_timestamp = mapped_column(
-        TIMESTAMP,
-        nullable=False, doc="Timestamp of the observation"
+        TIMESTAMP, nullable=False, doc="Timestamp of the observation"
     )
 
 

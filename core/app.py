@@ -45,13 +45,12 @@ def init_hypertables():
     # Create hypertables for time-series data
     with session_ctx() as session:
         session.execute(
-            text(
-                "select create_hypertable('observation', 'observation_timestamp');"
-            )
+            text("select create_hypertable('observation', 'observation_timestamp');")
         )
 
     # session.commit()
     # session.close()
+
 
 def init_lexicon():
     with open("./core/lexicon.json") as f:
@@ -84,7 +83,6 @@ def create_superuser():
             is_superuser=True,
         )
         session.add(user)
-
 
 
 @asynccontextmanager
