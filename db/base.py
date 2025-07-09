@@ -26,8 +26,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
 from sqlalchemy_searchable import make_searchable
-
+from sqlalchemy_continuum import make_versioned
 import re
+
+
+
+make_versioned()
+
 
 Base = declarative_base()
 make_searchable(Base.metadata)

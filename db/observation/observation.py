@@ -71,6 +71,8 @@ class ObservationMixin:
 class Observation(Base, ReleaseMixin):
     __tablename__ = "observation"
 
+    __versioned__ = {}
+
     __table_args__ = (
         PrimaryKeyConstraint(
             "id",
