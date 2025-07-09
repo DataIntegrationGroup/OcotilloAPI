@@ -16,33 +16,104 @@
 from sqlalchemy import select, func, desc, cast, Text
 from sqlalchemy.dialects.postgresql import REGCONFIG
 
-
-from db.engine import database_sessionmaker, get_db_session
-from db.contact import Contact
-
+from db import search
+from db.engine import database_sessionmaker, get_db_session, session_ctx
+from db.contact import Contact, Phone, Email
 
 from tests import client
 
 
-# def test_search_query():
-#     session = next(get_db_session())
-#
-#     # query = search(select(Owner), "Test")
-#     # owner = session.scalars(query).first()
-#     # assert owner is not None
-#     session.close()
+def test_search_contact():
+    with session_ctx() as session:
+        query = search(select(Contact), "Test")
+
+        contact = session.scalars(query).first()
+        assert contact is not None
 
 
-#
-# def test_search_query_no_results():
-#     session = next(get_db_session())
-#
-#     query = search(select(Owner), "NonExistentOwner")
-#     owner = session.scalars(query).first()
-#     assert owner is None
-#     session.close()
-#
-#
+def test_search_contact_no_results():
+    with session_ctx() as session:
+        query = search(select(Contact), "NonExistent")
+        contact = session.scalars(query).first()
+        assert contact is None
+
+
+def test_search_contact_like():
+    with session_ctx() as session:
+        query = search(select(Contact), "Te")
+        contact = session.scalars(query).first()
+        assert contact is not None
+
+
+def test_search_contact_by_email():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Email.search_vector
+        query = search(
+            select(Contact).join(Email),
+            "fasdfasdf@gmail.co"
+            , vector=vector,
+        )
+
+        contact = session.scalars(query).first()
+        assert contact is not None
+
+
+def test_search_contact_by_email_no_results():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Email.search_vector
+        query = search(
+            select(Contact).join(Email),
+            "foo",
+            vector=vector,
+        )
+        contact = session.scalars(query).first()
+        assert contact is None
+
+
+def test_search_contact_by_phone_number():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Phone.search_vector
+        query = search(
+            select(Contact).join(Phone),
+            "+12345678901",
+            vector=vector,
+        )
+        contact = session.scalars(query).first()
+        assert contact is not None
+
+def test_search_contact_by_phone_number_no_results():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Phone.search_vector
+        query = search(
+            select(Contact).join(Phone),
+            "+12345678902",
+            vector=vector,
+        )
+        contact = session.scalars(query).first()
+        assert contact is None
+
+def test_search_contact_by_phone_like():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Phone.search_vector
+        query = search(
+            select(Contact).join(Phone),
+            "+12",
+            vector=vector,
+        )
+        contact = session.scalars(query).first()
+        assert contact is not None
+
+
+def test_search_contact_by_phone_like_no_results():
+    with session_ctx() as session:
+        vector = Contact.search_vector|Phone.search_vector
+        query = search(
+            select(Contact).join(Phone),
+            "+99",
+            vector=vector,
+        )
+        contact = session.scalars(query).first()
+        assert contact is None
 # def test_search_owner_by_contact_name():
 #     session = next(get_db_session())
 #

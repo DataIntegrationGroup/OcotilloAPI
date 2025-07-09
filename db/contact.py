@@ -16,6 +16,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
+from sqlalchemy_utils import TSVectorType
 
 from db.base import Base, AutoBaseMixin, lexicon_term
 
@@ -37,7 +38,7 @@ class Contact(Base, AutoBaseMixin):
     # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
     # owner = relationship("Owner")
 
-    # search_vector = Column(TSVectorType("name", "description", "email", "phone"))
+    search_vector = Column(TSVectorType("name", "role"))
 
     author_associations = relationship(
         "AuthorContactAssociation",
@@ -55,6 +56,7 @@ class Phone(Base, AutoBaseMixin):
     phone_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="phones")
+    search_vector = Column(TSVectorType("phone_number"))
 
 
 class Email(Base, AutoBaseMixin):
@@ -65,6 +67,8 @@ class Email(Base, AutoBaseMixin):
     email_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="emails")
+
+    search_vector = Column(TSVectorType("email"))
 
 
 class Address(Base, AutoBaseMixin):
