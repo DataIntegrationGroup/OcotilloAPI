@@ -92,7 +92,7 @@ def test_add_thing_link():
         "/thing/link",
         json={
             "thing_id": 1,
-            "relation": 'same_as',
+            "relation": "same_as",
             "alternate_id": "4321-1234",
             "alternate_organization": "USGS",
         },
@@ -102,6 +102,7 @@ def test_add_thing_link():
     assert "id" in data
     assert data["thing_id"] == 1
     assert data["alternate_id"] == "4321-1234"
+
 
 # ===================== get ==========================
 def test_get_wells():

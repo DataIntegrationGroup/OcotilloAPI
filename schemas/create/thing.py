@@ -25,4 +25,6 @@ class CreateThingIdLink(BaseModel):
     relation: str
     alternate_id: str
     alternate_organization: str
+
+
 # ============= EOF =============================================

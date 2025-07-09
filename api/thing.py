@@ -135,9 +135,10 @@ async def get_well_screen_by_id(
 
 #  ===== POST =============
 
-@router.post('/link',
-             status_code=status.HTTP_201_CREATED,
-             summary="Create a new thing link")
+
+@router.post(
+    "/link", status_code=status.HTTP_201_CREATED, summary="Create a new thing link"
+)
 def create_thing_id_link(
     link_data: CreateThingIdLink,
     session: Session = Depends(get_db_session),
