@@ -14,14 +14,14 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import ForeignKey, Integer
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import AutoBaseMixin, Base
 from db.observation.observation import ObservationMixin
 
 
 class GeothermalObservation(Base, AutoBaseMixin, ObservationMixin):
-    pass
+    observation = relationship("Observation")
 
 
 # ============= EOF =============================================

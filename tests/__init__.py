@@ -16,16 +16,18 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import configure_mappers
 
-from core.app import init_lexicon
+from core.app import init_lexicon, init_hypertables
 from main import app
-from db.engine import engine
 from db.base import Base
+from db import *
+from db.engine import engine
 
 configure_mappers()
 
 Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 
+init_hypertables()
 init_lexicon()
 
 client = TestClient(app)

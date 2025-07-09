@@ -61,7 +61,9 @@ def test_add_observation():
 def test_add_groundwater_observation():
     response = client.post(
         "/observation/groundwater-level",
-        json={"observation_id": 1, "depth_to_water": 10, "measuring_point_height": 5},
+        json={"observation_id": 1,
+              "observation_timestamp": "2025-01-01T00:00:00Z",
+              "depth_to_water": 10, "measuring_point_height": 5},
     )
     assert response.status_code == 201
     data = response.json()
@@ -87,7 +89,9 @@ def test_add_groundwater_observation_direct():
 
 
 def test_add_geothermal_observation():
-    response = client.post("/observation/geothermal", json={"observation_id": 1})
+    response = client.post("/observation/geothermal", json={"observation_id": 1,
+                                                            "observation_timestamp": "2025-01-01T00:00:00Z",
+                                                            })
     assert response.status_code == 201
     data = response.json()
     assert data["observation_id"] == 1

@@ -31,12 +31,14 @@ class CreateGroundwaterLevelObservationDirect(CreateObservation):
 
 class CreateGroundwaterLevelObservation(BaseModel):
     observation_id: int
+    observation_timestamp: datetime
     depth_to_water: float
     measuring_point_height: float
 
 
 class CreateGeothermalObservation(BaseModel):
     observation_id: int
+    observation_timestamp: datetime
 
 
 class CreateGeothermalObservationDirect(CreateObservation):

@@ -16,7 +16,7 @@
 
 import asyncio
 import os
-
+from contextlib import contextmanager
 from sqlalchemy import (
     create_engine,
 )
@@ -145,11 +145,18 @@ database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
 
 
 def get_db_session():
-    session = database_sessionmaker()
-    try:
-        yield session
-    finally:
-        session.close()
+    with database_sessionmaker() as session:
+        try:
+            yield session
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
 
 
+
+@contextmanager
+def session_ctx():
+    yield from get_db_session()
 # ============= EOF =============================================

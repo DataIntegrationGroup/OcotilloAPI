@@ -24,13 +24,13 @@ from db.contact import Contact
 from tests import client
 
 
-def test_search_query():
-    session = next(get_db_session())
-
-    # query = search(select(Owner), "Test")
-    # owner = session.scalars(query).first()
-    # assert owner is not None
-    session.close()
+# def test_search_query():
+#     session = next(get_db_session())
+#
+#     # query = search(select(Owner), "Test")
+#     # owner = session.scalars(query).first()
+#     # assert owner is not None
+#     session.close()
 
 
 #

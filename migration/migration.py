@@ -20,8 +20,8 @@ from shapely import Point
 from shapely.ops import transform
 from sqlalchemy.exc import ProgrammingError
 
-from db.engine import get_db_session
-from db.all_models import *
+from db import Location
+from db.engine import session_ctx
 from db.thing.well import WellThing
 from services.lexicon import add_lexicon_term
 
@@ -162,8 +162,8 @@ def well_etl(sess):
 
 
 if __name__ == "__main__":
-    session = next(get_db_session())
-    # location_etl(session)
-    well_etl(session)
-    session.close()
+    with session_ctx() as session:
+        # location_etl(session)
+        well_etl(session)
+        session.close()
 # ============= EOF =============================================
