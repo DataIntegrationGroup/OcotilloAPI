@@ -30,7 +30,6 @@ from sqlalchemy_continuum import make_versioned
 import re
 
 
-
 make_versioned()
 
 
