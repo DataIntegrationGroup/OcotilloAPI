@@ -50,7 +50,7 @@ class ThingIdLink(Base, AutoBaseMixin):
     thing_id = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"))
     relation = lexicon_term(nullable=False)
     alternate_id = mapped_column(String(100), nullable=False)
-    alternate_organization =lexicon_term(nullable=False)
+    alternate_organization = lexicon_term(nullable=False)
 
     # thing = relationship("Thing", back_populates="links")
 

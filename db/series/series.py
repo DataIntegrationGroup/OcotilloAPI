@@ -22,7 +22,7 @@ from db.base import AutoBaseMixin, Base, ReleaseMixin, lexicon_term
 class QCMixin:
     @declared_attr
     def quality_control_status(self):
-        return lexicon_term(default='Provisional')
+        return lexicon_term(default="Provisional")
 
     @declared_attr
     def quality_control_notes(self):
@@ -64,7 +64,6 @@ class Series(Base, AutoBaseMixin, ReleaseMixin):
 
     observed_property = lexicon_term(nullable=False)
     unit = lexicon_term(nullable=False)
-
 
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(Text, nullable=True)

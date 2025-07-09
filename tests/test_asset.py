@@ -41,7 +41,6 @@ app.dependency_overrides = {
 }
 
 
-
 def test_add_asset(thing):
     path = "tests/data/riochama.png"
 
