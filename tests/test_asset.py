@@ -13,26 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import shutil
-
 from api.asset import get_storage_bucket
 from core.app import app
-from tests import client
+from tests import client, thing
 import pytest
-import os
-import glob
 
 
-# @pytest.fixture(scope="module", autouse=True)
-# def cleanup():
-#     """
-#     Fixture to clean up after tests.
-#     This can be used to delete any assets created during the tests.
-#     """
-#     yield
-#     depot = DepotManager.get()
-#     for asset in depot.list():
-#         depot.delete(asset)
 class MockBlob:
     def upload_from_file(self, *args, **kwargs):
         pass
@@ -55,17 +41,19 @@ app.dependency_overrides = {
 }
 
 
-def test_add_asset():
+
+def test_add_asset(thing):
     path = "tests/data/riochama.png"
 
     with open(path, "rb") as file:
         response = client.post(
             "/asset",
+            params={"thing_id": thing.id},
             files={"file": ("riochama.png", file, "image/png")},
         )
 
-        assert response.status_code == 201
         data = response.json()
+        assert response.status_code == 201
         assert data["filename"] == "riochama.png"
         url = data["url"]
         assert url.startswith("https://storage.googleapis.com/")

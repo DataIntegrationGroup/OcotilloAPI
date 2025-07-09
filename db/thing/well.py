@@ -17,6 +17,7 @@ from sqlalchemy import Column, Integer, ForeignKey, String, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import TSVectorType
 
+from db import lexicon_term
 from db.base import Base, AutoBaseMixin
 from db.thing.thing import ThingChildMixin
 
@@ -39,11 +40,8 @@ class WellThing(Base, AutoBaseMixin, ThingChildMixin):
     hole_depth = Column(
         Float, nullable=True, info={"unit": "feet below ground surface"}
     )
-    well_type = Column(
-        String(100),
-        ForeignKey("lexicon_term.term"),
-        nullable=True,
-    )  # e.g., "Production", "Observation", etc.
+    well_type = lexicon_term()
+    # e.g., "Production", "Observation", etc.
     #
     # casing_diameter = Column(Float, info={"unit": "inches"})
     # casing_depth = Column(Float, info={"unit": "feet below ground surface"})
@@ -75,9 +73,7 @@ class WellScreen(Base, AutoBaseMixin):
     screen_depth_bottom = Column(
         Float, nullable=False, info={"unit": "feet below ground surface"}
     )
-    screen_type = Column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=True
-    )  # e.g., "PVC", "Steel", etc.
+    screen_type = lexicon_term()  # e.g., "PVC", "Steel", etc.
 
     # Define a relationship to well if needed
     # well = relationship("Well")

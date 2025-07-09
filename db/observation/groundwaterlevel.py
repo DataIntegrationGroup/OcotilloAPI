@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import ForeignKey, Integer, Float
+from sqlalchemy import ForeignKey, Integer, Float, String
 from sqlalchemy.orm import mapped_column, relationship
 
-from db.base import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base, lexicon_term
 from db.observation.observation import ObservationMixin
 
 
@@ -34,6 +34,8 @@ class GroundwaterLevelObservation(Base, AutoBaseMixin, ObservationMixin):
         doc="Height of the measuring point above the ground surface in ft",
         info={"unit": "ft"},
     )
+
+    level_status = lexicon_term()
 
     observation = relationship("Observation")
 

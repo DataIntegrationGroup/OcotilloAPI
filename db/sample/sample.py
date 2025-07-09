@@ -17,6 +17,7 @@ from sqlalchemy import DateTime, String, ForeignKey, Integer
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import mapped_column, relationship, declared_attr
 
+from db import lexicon_term
 from db.base import Base, AutoBaseMixin
 
 
@@ -32,9 +33,7 @@ class SampleChildMixin:
 
 class Sample(Base, AutoBaseMixin):
     collection_timestamp = mapped_column(DateTime, nullable=False)
-    collection_method = mapped_column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=False
-    )
+    collection_method = lexicon_term(nullable=False)
 
     thing_id = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False

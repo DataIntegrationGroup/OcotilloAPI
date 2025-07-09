@@ -17,6 +17,7 @@ from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, mapped_column
 
+from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
@@ -47,13 +48,9 @@ class ThingIdLink(Base, AutoBaseMixin):
     """
 
     thing_id = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"))
-    relation = mapped_column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=False
-    )
+    relation = lexicon_term(nullable=False)
     alternate_id = mapped_column(String(100), nullable=False)
-    alternate_organization = mapped_column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=False
-    )
+    alternate_organization =lexicon_term(nullable=False)
 
     # thing = relationship("Thing", back_populates="links")
 

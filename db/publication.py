@@ -15,6 +15,7 @@
 # ===============================================================================
 from sqlalchemy_utils import TSVectorType
 
+from db import lexicon_term
 from db.base import AutoBaseMixin, Base, AuditMixin
 from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
@@ -31,9 +32,7 @@ class Publication(Base, AutoBaseMixin):
     publisher = Column(String)
     url = Column(String)
 
-    publication_type = Column(
-        String(100), ForeignKey("lexicon_term.term"), nullable=False
-    )
+    publication_type = lexicon_term(nullable=False)
     # publication_type = relationship("PublicationType")
     # authors = relationship(
     #     "Author",

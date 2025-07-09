@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import configure_mappers
 
@@ -20,7 +21,7 @@ from core.app import init_lexicon, init_hypertables
 from main import app
 from db.base import Base
 from db import *
-from db.engine import engine
+from db.engine import engine, session_ctx
 
 configure_mappers()
 
@@ -32,4 +33,15 @@ init_lexicon()
 
 client = TestClient(app)
 
+
+@pytest.fixture(scope="function")
+def thing():
+    with session_ctx() as session:
+        thing = Thing()
+        thing.name = "Test Thing"
+        session.add(thing)
+        session.commit()
+        yield thing
+
+        session.close()
 # ============= EOF =============================================

@@ -16,15 +16,13 @@
 from sqlalchemy import DateTime, Float, String, Integer, ForeignKey, Text, func
 from sqlalchemy.orm import declared_attr, mapped_column, relationship
 
-from db.base import AutoBaseMixin, Base, ReleaseMixin
+from db.base import AutoBaseMixin, Base, ReleaseMixin, lexicon_term
 
 
 class QCMixin:
     @declared_attr
     def quality_control_status(self):
-        return mapped_column(
-            String(100), ForeignKey("lexicon_term.term"), default="Provisional"
-        )
+        return lexicon_term(default='Provisional')
 
     @declared_attr
     def quality_control_notes(self):
@@ -58,13 +56,15 @@ class Series(Base, AutoBaseMixin, ReleaseMixin):
     This class can be extended to create specific series types.
     """
 
-    observed_property = mapped_column(
-        String(100),
-        ForeignKey("lexicon_term.term", ondelete="CASCADE"),
-        nullable=False,
-    )
+    # observed_property = mapped_column(
+    #     String(100),
+    #     ForeignKey("lexicon_term.term", ondelete="CASCADE"),
+    #     nullable=False,
+    # )
 
-    unit = mapped_column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
+    observed_property = lexicon_term(nullable=False)
+    unit = lexicon_term(nullable=False)
+
 
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(Text, nullable=True)

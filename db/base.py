@@ -32,6 +32,9 @@ import re
 Base = declarative_base()
 make_searchable(Base.metadata)
 
+def lexicon_term(**kw):
+    return mapped_column(String(100), ForeignKey("lexicon_term.term"),**kw)
+
 
 def pascal_to_snake(name):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
@@ -40,9 +43,7 @@ def pascal_to_snake(name):
 class ReleaseMixin:
     @declared_attr
     def release_status(self):
-        return mapped_column(
-            String(100), ForeignKey("lexicon_term.term"), default="draft"
-        )
+        return lexicon_term(default="draft")
 
 
 class AuditMixin:

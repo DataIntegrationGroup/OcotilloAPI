@@ -21,8 +21,9 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from db import Thing
 from db.engine import get_db_session
-from db.asset import Asset
+from db.asset import Asset, AssetThingAssociation
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
@@ -59,8 +60,9 @@ async def get_asset(
 
 @router.post("/", status_code=201)
 async def add_asset(
+    thing_id: int = None,
     file: UploadFile = File(...),
-    database_session: Session = Depends(get_db_session),
+    session: Session = Depends(get_db_session),
     bucket=Depends(get_storage_bucket),
 ):
     file_id = str(uuid4())
@@ -76,9 +78,16 @@ async def add_asset(
         mime_type=file.content_type,
         size=file.size,
     )
-    database_session.add(asset)
-    database_session.commit()
-    database_session.refresh(asset)
+    if thing_id:
+        assoc = AssetThingAssociation()
+        thing = session.get(Thing, thing_id)
+        assoc.thing = thing
+        assoc.asset = asset
+        session.add(assoc)
+
+    session.add(asset)
+    session.commit()
+    session.refresh(asset)
 
     return {
         "id": asset.id,

@@ -48,7 +48,7 @@ class AssetThingAssociation(Base, AutoBaseMixin):
     )
 
     thing = relationship("Thing", back_populates="asset_associations")
-
+    asset = relationship("Asset")
     # publication = relationship("Publication", back_populates="author_associations")
     # author = relationship("Author", back_populates="publication_associations")
 

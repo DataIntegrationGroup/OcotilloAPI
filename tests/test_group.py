@@ -11,7 +11,7 @@ from db.engine import get_db_session
 
 # client = TestClient(app)
 
-from tests import client
+from tests import client, thing
 
 
 #  ADD tests ======================================================
@@ -23,18 +23,6 @@ def test_add_group():
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Group"
-
-
-@pytest.fixture(scope="function")
-def thing():
-    session = next(get_db_session())
-    thing = Thing()
-    thing.name = "Test Thing"
-    session.add(thing)
-    session.commit()
-    yield thing
-
-    session.close()
 
 
 def test_add_group_thing(thing):
@@ -92,4 +80,4 @@ def test_item_get_group_thing():
     data = response.json()
     assert data["id"] == 1
     assert data["group_id"] == 1
-    assert data["thing_id"] == 3
+    assert data["thing_id"] == 4
