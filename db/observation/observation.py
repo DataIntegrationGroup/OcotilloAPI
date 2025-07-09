@@ -27,13 +27,18 @@ class ObservationMixin:
             Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
         )
 
+
 class Observation(Base, AutoBaseMixin, ReleaseMixin):
 
     series_id = mapped_column(
-        Integer, ForeignKey("series.id", ondelete="CASCADE"), nullable=False,
+        Integer,
+        ForeignKey("series.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     observation_timestamp = mapped_column(
         DateTime, nullable=False, index=True, doc="Timestamp of the observation"
     )
+
+
 # ============= EOF =============================================

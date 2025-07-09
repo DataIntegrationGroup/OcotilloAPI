@@ -42,4 +42,5 @@ class CreateGeothermalObservation(BaseModel):
 class CreateGeothermalObservationDirect(CreateObservation):
     pass
 
+
 # ============= EOF =============================================

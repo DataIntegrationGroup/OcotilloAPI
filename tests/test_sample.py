@@ -23,10 +23,10 @@ def test_add_sample():
     response = client.post(
         "/sample",
         json={
-            'thing_id': 1,
-            'collection_timestamp': '2025-01-01T00:00:00Z',
-            'collection_method': 'manual',
-            'release_status': 'draft',
+            "thing_id": 1,
+            "collection_timestamp": "2025-01-01T00:00:00Z",
+            "collection_method": "manual",
+            "release_status": "draft",
         },
     )
     data = response.json()
@@ -42,7 +42,7 @@ def test_add_geochemical_sample():
     response = client.post(
         "/sample/geochemical",
         json={
-            'sample_id': 1,
+            "sample_id": 1,
         },
     )
     assert response.status_code == 201
@@ -58,14 +58,13 @@ def test_add_geothermal_sample():
     response = client.post(
         "/sample/geothermal",
         json={
-            'sample_id': 1,
+            "sample_id": 1,
         },
     )
     assert response.status_code == 201
     data = response.json()
     assert data["id"] is not None
     assert data["sample_id"] == 1
-
 
 
 #  ============= Get tests for samples =============================================
@@ -88,4 +87,6 @@ def test_get_sample_by_id():
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
+
+
 # ============= EOF =============================================

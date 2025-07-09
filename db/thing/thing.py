@@ -23,7 +23,10 @@ from db.base import AutoBaseMixin, Base, ReleaseMixin
 class ThingChildMixin:
     def thing_id(self):
         return mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False, unique=True
+            Integer,
+            ForeignKey("thing.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
         )
 
 

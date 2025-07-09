@@ -22,9 +22,13 @@ from db.engine import get_db_session
 from db.observation.geothermal import GeothermalObservation
 from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation.observation import Observation
-from schemas.create.observation import CreateObservation, CreateGroundwaterLevelObservation, \
-    CreateGeothermalObservation, \
-    CreateGroundwaterLevelObservationDirect, CreateGeothermalObservationDirect
+from schemas.create.observation import (
+    CreateObservation,
+    CreateGroundwaterLevelObservation,
+    CreateGeothermalObservation,
+    CreateGroundwaterLevelObservationDirect,
+    CreateGeothermalObservationDirect,
+)
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -39,9 +43,11 @@ def direct_adder(session: Session, model, data):
     session.commit()
     session.refresh(obs)
 
-    model_obj = model(**data.model_dump(exclude={'series_id',
-                                                 'observation_timestamp',
-                                                 'release_status'}))
+    model_obj = model(
+        **data.model_dump(
+            exclude={"series_id", "observation_timestamp", "release_status"}
+        )
+    )
     model_obj.observation = obs
     session.add(model_obj)
     session.commit()
@@ -50,8 +56,10 @@ def direct_adder(session: Session, model, data):
 
 
 # ============= Post =============================================
-@router.post('/', status_code=HTTP_201_CREATED)
-def add_observation(obs_data: CreateObservation, session: Session = Depends(get_db_session)):
+@router.post("/", status_code=HTTP_201_CREATED)
+def add_observation(
+    obs_data: CreateObservation, session: Session = Depends(get_db_session)
+):
     """
     Add a new observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
@@ -59,12 +67,13 @@ def add_observation(obs_data: CreateObservation, session: Session = Depends(get_
     return adder(session, Observation, obs_data)
 
 
-
-@router.post('/groundwater-level', status_code=HTTP_201_CREATED)
-def add_groundwater_level_observation(obs_data: CreateGroundwaterLevelObservation |
-                                             CreateGroundwaterLevelObservationDirect,
-                                session: Session = Depends(
-    get_db_session)):
+@router.post("/groundwater-level", status_code=HTTP_201_CREATED)
+def add_groundwater_level_observation(
+    obs_data: (
+        CreateGroundwaterLevelObservation | CreateGroundwaterLevelObservationDirect
+    ),
+    session: Session = Depends(get_db_session),
+):
     """
     Add a new groundwater observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
@@ -76,10 +85,11 @@ def add_groundwater_level_observation(obs_data: CreateGroundwaterLevelObservatio
         return adder(session, GroundwaterLevelObservation, obs_data)
 
 
-@router.post('/geothermal', status_code=HTTP_201_CREATED)
-def add_geothermal_observation(obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect, session: Session
-= Depends(
-    get_db_session)):
+@router.post("/geothermal", status_code=HTTP_201_CREATED)
+def add_geothermal_observation(
+    obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
+    session: Session = Depends(get_db_session),
+):
     """
     Add a new geothermal observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
@@ -88,5 +98,7 @@ def add_geothermal_observation(obs_data: CreateGeothermalObservation | CreateGeo
         return direct_adder(session, GeothermalObservation, obs_data)
     else:
         return adder(session, GeothermalObservation, obs_data)
+
+
 # ============= Get ==============================================
 # ============= EOF =============================================

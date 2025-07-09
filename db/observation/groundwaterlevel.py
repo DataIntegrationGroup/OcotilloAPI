@@ -35,6 +35,7 @@ class GroundwaterLevelObservation(Base, AutoBaseMixin, ObservationMixin):
         info={"unit": "ft"},
     )
 
-    observation = relationship('Observation')
+    observation = relationship("Observation")
+
 
 # ============= EOF =============================================

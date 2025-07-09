@@ -25,15 +25,20 @@ from db.engine import get_db_session
 from db.sample.geothermal import GeothermalSample
 from db.sample.geochemical import GeochemicalSample
 from db.sample.sample import Sample
-from schemas.create.sample import CreateSample, CreateGeochemicalSample, CreateGeothermalSample
+from schemas.create.sample import (
+    CreateSample,
+    CreateGeochemicalSample,
+    CreateGeothermalSample,
+)
 from services.query_helper import simple_all_getter
 
 router = APIRouter(
     prefix="/sample",
 )
 
+
 # ============= Post =============================================
-@router.post('/', status_code=HTTP_201_CREATED)
+@router.post("/", status_code=HTTP_201_CREATED)
 def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_session)):
     """
     Endpoint to add a sample.
@@ -43,7 +48,7 @@ def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_sess
     return adder(session, Sample, sample_data)
 
 
-@router.post('/geochemical', status_code=HTTP_201_CREATED)
+@router.post("/geochemical", status_code=HTTP_201_CREATED)
 def add_geochemical_sample(
     sample_data: CreateGeochemicalSample, session: Session = Depends(get_db_session)
 ):
@@ -55,7 +60,7 @@ def add_geochemical_sample(
     return adder(session, GeochemicalSample, sample_data)
 
 
-@router.post('/geothermal', status_code=HTTP_201_CREATED)
+@router.post("/geothermal", status_code=HTTP_201_CREATED)
 def add_geothermal_sample(
     sample_data: CreateGeothermalSample, session: Session = Depends(get_db_session)
 ):
@@ -65,8 +70,10 @@ def add_geothermal_sample(
     # Assuming sample_data is a dictionary with the necessary fields
     # You would typically validate and process this data before adding it to the database
     return adder(session, GeothermalSample, sample_data)
+
+
 # ============= Get =============================================
-@router.get('/', summary="Get Samples")
+@router.get("/", summary="Get Samples")
 def get_samples(
     session: Session = Depends(get_db_session),
 ):
@@ -76,7 +83,7 @@ def get_samples(
     return simple_all_getter(session, Sample)
 
 
-@router.get('/geochemical', summary="Get Geochemical Samples")
+@router.get("/geochemical", summary="Get Geochemical Samples")
 def get_geochemical_samples(
     session: Session = Depends(get_db_session),
 ):
@@ -86,7 +93,7 @@ def get_geochemical_samples(
     return simple_all_getter(session, GeochemicalSample)
 
 
-@router.get('/geothermal', summary="Get Geothermal Samples")
+@router.get("/geothermal", summary="Get Geothermal Samples")
 def get_geothermal_samples(
     session: Session = Depends(get_db_session),
 ):
@@ -97,7 +104,7 @@ def get_geothermal_samples(
 
 
 # ============= Get by ID =============================================
-@router.get('/{sample_id}', summary="Get Sample by ID")
+@router.get("/{sample_id}", summary="Get Sample by ID")
 def get_sample_by_id(
     sample_id: int,
     session: Session = Depends(get_db_session),
@@ -107,10 +114,11 @@ def get_sample_by_id(
     """
     return session.get(Sample, sample_id)
 
-@router.get('/{sample_id}', summary="Get Geochemical Sample by ID")
+
+@router.get("/{sample_id}", summary="Get Geochemical Sample by ID")
 def get_geochemical_sample_by_id(
-        sample_id: int,
-        session: Session = Depends(get_db_session),
+    sample_id: int,
+    session: Session = Depends(get_db_session),
 ):
     """
     Endpoint to retrieve a sample by its ID.
@@ -118,15 +126,16 @@ def get_geochemical_sample_by_id(
     return session.get(GeochemicalSample, sample_id)
 
 
-@router.get('/{sample_id}', summary="Get Geothermal Sample by ID")
+@router.get("/{sample_id}", summary="Get Geothermal Sample by ID")
 def get_geothermal_sample_by_id(
-        sample_id: int,
-        session: Session = Depends(get_db_session),
+    sample_id: int,
+    session: Session = Depends(get_db_session),
 ):
     """
     Endpoint to retrieve a sample by its ID.
     """
     return session.get(GeothermalSample, sample_id)
+
 
 #
 # @router.post(

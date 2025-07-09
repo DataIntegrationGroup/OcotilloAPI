@@ -21,11 +21,13 @@ from db.base import Base, AutoBaseMixin
 
 
 class SampleChildMixin:
-    """
-    """
+    """ """
+
     @declared_attr
     def sample_id(self):
-        return mapped_column(Integer, ForeignKey("sample.id", ondelete="CASCADE"), nullable=False)
+        return mapped_column(
+            Integer, ForeignKey("sample.id", ondelete="CASCADE"), nullable=False
+        )
 
 
 class Sample(Base, AutoBaseMixin):
@@ -40,4 +42,6 @@ class Sample(Base, AutoBaseMixin):
     thing = relationship("Thing")
 
     # wells = association_proxy("author_associations", "author")
+
+
 # ============= EOF =============================================

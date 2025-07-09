@@ -26,4 +26,6 @@ class GeothermalSample(Base, AutoBaseMixin, SampleChildMixin):
     # Additional fields specific to geochemical samples can be added here
     # e.g., chemical composition, analysis method, etc.
     pass
+
+
 # ============= EOF =============================================

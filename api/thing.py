@@ -95,8 +95,7 @@ async def get_springs(session: Session = Depends(get_db_session)):
 
 
 @router.get(
-    "/spring/{spring_id}",
-    response_model=SpringResponse, summary="Get spring by ID"
+    "/spring/{spring_id}", response_model=SpringResponse, summary="Get spring by ID"
 )
 async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)):
     """
