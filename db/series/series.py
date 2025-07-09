@@ -58,23 +58,30 @@ class Series(Base, AutoBaseMixin):
     This class can be extended to create specific series types.
     """
 
-    @declared_attr
-    def observed_property(self):
-        return mapped_column(
+    observed_property = mapped_column(
             String(100),
             ForeignKey("lexicon_term.term", ondelete="CASCADE"),
             nullable=False,
         )
 
-    @declared_attr
-    def unit(self):
-        return mapped_column(
+    unit = mapped_column(
             String(100), ForeignKey("lexicon_term.term"), nullable=False
         )
 
-    @declared_attr
-    def description(self):
-        return mapped_column(Text, nullable=True)
+    name = mapped_column(String(255), nullable=False)
+    description = mapped_column(Text, nullable=True)
+
+    sensor_id = mapped_column(
+        Integer,
+        ForeignKey("sensor.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    thing_id = mapped_column(
+        Integer,
+        ForeignKey("thing.id", ondelete="CASCADE"),
+        nullable=False,
+    )
 
 
 # class SampleWellAssociation(Base, AutoBaseMixin):

@@ -24,80 +24,116 @@ from db.engine import get_db_session
 # from db.timeseries import GroundwaterLevelObservation
 from tests import client
 
-
-@pytest.mark.skip
-def test_add_sample():
+def test_add_series():
     response = client.post(
-        "/sample/add",
+        "/series",
         json={
-            "collection_timestamp": datetime.datetime.now().isoformat(),
-            "collection_method": "manual",
-            "well_id": 1,
-        },
-    )
-
-    assert response.status_code == 201
-    # data = response.json()
-    # assert "id" in data, "Expected 'id' in response data"
-    # assert data["collection_method"] == "manual", "Expected 'method' to be 'manual'"
-
-
-@pytest.mark.skip
-def test_add_sample_timeseries():
-    response = client.post(
-        "/sample/time_series/add",
-        json={
-            "name": "Test Sample Timeseries",
+            "name": "Test Series",
+            "description": "A test series for groundwater level.",
             "observed_property": "groundwater level",
+            "sensor_id": 1,
+            "thing_id": 1,
             "unit": "ft",
         },
     )
     assert response.status_code == 201
     data = response.json()
-    assert (
-        data["observed_property"] == "groundwater level"
-    ), "Expected 'observed_property' to be 'groundwater level'"
+    assert data["name"] == "Test Series", "Expected 'name' to be 'Test Series'"
+    assert data["observed_property"] == "groundwater level", "Expected 'observed_property' to be 'groundwater_level'"
 
 
-@pytest.mark.skip
-def test_add_sample_observation():
-    response = client.post(
-        "/sample/time_series/observations/add",
-        json=[
-            {
-                "timestamp": datetime.datetime.now().isoformat(),
-                "value": 10.5,
-                "sample_id": 1,
-                "time_series_id": 1,
-            }
-        ],
-    )
-
-    assert response.status_code == 201
-    data = response.json()
-    assert isinstance(data, list), "Expected a list of observations"
-    assert len(data) == 1, "Expected one observation to be added"
-    assert data[0]["value"] == 10.5, "Expected observation value to be 10.5"
-    assert data[0]["sample_id"] == 1, "Expected observation sample_id to be 1"
-    assert data[0]["time_series_id"] == 1, "Expected observation time_series_id to be 1"
-
-
-@pytest.mark.skip
-def test_sample_timeseries():
-    response = client.get("/sample/time_series/well/1")
-    data = response.json()
+def test_get_series():
+    response = client.get("/series")
     assert response.status_code == 200
-    assert len(data) == 1, "Expected at least one timeseries for the well"
-
-
-@pytest.mark.skip
-def test_sample_timeseries_observations():
-    response = client.get("/sample/time_series/1/observations")
     data = response.json()
-    assert response.status_code == 200
-    assert isinstance(data, list), "Expected a list of observations"
-    assert len(data) == 1, "Expected at least one observation for the timeseries"
+    assert isinstance(data, list), "Expected a list of series"
+    assert len(data) > 0, "Expected at least one series in the response"
 
+
+def test_get_series_by_id():
+    response = client.get("/series/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict), "Expected a dictionary for series details"
+    assert data["id"] == 1, "Expected series id to be 1"
+    assert data["name"] == "Test Series", "Expected series name to be 'Test Series'"
+
+# ============= EOF =============================================
+
+
+# @pytest.mark.skip
+# def test_add_sample():
+#     response = client.post(
+#         "/sample/add",
+#         json={
+#             "collection_timestamp": datetime.datetime.now().isoformat(),
+#             "collection_method": "manual",
+#             "well_id": 1,
+#         },
+#     )
+#
+#     assert response.status_code == 201
+#     # data = response.json()
+#     # assert "id" in data, "Expected 'id' in response data"
+#     # assert data["collection_method"] == "manual", "Expected 'method' to be 'manual'"
+#
+#
+# @pytest.mark.skip
+# def test_add_sample_timeseries():
+#     response = client.post(
+#         "/sample/time_series/add",
+#         json={
+#             "name": "Test Sample Timeseries",
+#             "observed_property": "groundwater level",
+#             "unit": "ft",
+#         },
+#     )
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert (
+#         data["observed_property"] == "groundwater level"
+#     ), "Expected 'observed_property' to be 'groundwater level'"
+#
+#
+# @pytest.mark.skip
+# def test_add_sample_observation():
+#     response = client.post(
+#         "/sample/time_series/observations/add",
+#         json=[
+#             {
+#                 "timestamp": datetime.datetime.now().isoformat(),
+#                 "value": 10.5,
+#                 "sample_id": 1,
+#                 "time_series_id": 1,
+#             }
+#         ],
+#     )
+#
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert isinstance(data, list), "Expected a list of observations"
+#     assert len(data) == 1, "Expected one observation to be added"
+#     assert data[0]["value"] == 10.5, "Expected observation value to be 10.5"
+#     assert data[0]["sample_id"] == 1, "Expected observation sample_id to be 1"
+#     assert data[0]["time_series_id"] == 1, "Expected observation time_series_id to be 1"
+#
+#
+# @pytest.mark.skip
+# def test_sample_timeseries():
+#     response = client.get("/sample/time_series/well/1")
+#     data = response.json()
+#     assert response.status_code == 200
+#     assert len(data) == 1, "Expected at least one timeseries for the well"
+#
+#
+# @pytest.mark.skip
+# def test_sample_timeseries_observations():
+#     response = client.get("/sample/time_series/1/observations")
+#     data = response.json()
+#     assert response.status_code == 200
+#     assert isinstance(data, list), "Expected a list of observations"
+#     assert len(data) == 1, "Expected at least one observation for the timeseries"
+#
 
 # def test_add_timeseries():
 #     response = client.post(
@@ -193,4 +229,3 @@ def test_sample_timeseries_observations():
 #     ), "Expected a datetime result from the time bucket query"
 #
 
-# ============= EOF =============================================
