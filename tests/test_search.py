@@ -47,11 +47,11 @@ def test_search_contact_like():
 
 def test_search_contact_by_email():
     with session_ctx() as session:
-        vector = Contact.search_vector|Email.search_vector
+        vector = Contact.search_vector | Email.search_vector
         query = search(
             select(Contact).join(Email),
-            "fasdfasdf@gmail.co"
-            , vector=vector,
+            "fasdfasdf@gmail.co",
+            vector=vector,
         )
 
         contact = session.scalars(query).first()
@@ -60,7 +60,7 @@ def test_search_contact_by_email():
 
 def test_search_contact_by_email_no_results():
     with session_ctx() as session:
-        vector = Contact.search_vector|Email.search_vector
+        vector = Contact.search_vector | Email.search_vector
         query = search(
             select(Contact).join(Email),
             "foo",
@@ -72,7 +72,7 @@ def test_search_contact_by_email_no_results():
 
 def test_search_contact_by_phone_number():
     with session_ctx() as session:
-        vector = Contact.search_vector|Phone.search_vector
+        vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
             "+12345678901",
@@ -81,9 +81,10 @@ def test_search_contact_by_phone_number():
         contact = session.scalars(query).first()
         assert contact is not None
 
+
 def test_search_contact_by_phone_number_no_results():
     with session_ctx() as session:
-        vector = Contact.search_vector|Phone.search_vector
+        vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
             "+12345678902",
@@ -92,9 +93,10 @@ def test_search_contact_by_phone_number_no_results():
         contact = session.scalars(query).first()
         assert contact is None
 
+
 def test_search_contact_by_phone_like():
     with session_ctx() as session:
-        vector = Contact.search_vector|Phone.search_vector
+        vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
             "+12",
@@ -106,7 +108,7 @@ def test_search_contact_by_phone_like():
 
 def test_search_contact_by_phone_like_no_results():
     with session_ctx() as session:
-        vector = Contact.search_vector|Phone.search_vector
+        vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
             "+99",
@@ -114,6 +116,8 @@ def test_search_contact_by_phone_like_no_results():
         )
         contact = session.scalars(query).first()
         assert contact is None
+
+
 # def test_search_owner_by_contact_name():
 #     session = next(get_db_session())
 #
