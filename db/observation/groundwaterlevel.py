@@ -13,16 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import ForeignKey, Integer
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import ForeignKey, Integer, Float
+from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import AutoBaseMixin, Base
+from db.observation.observation import ObservationMixin
 
 
-class GroundwaterLevelObservation(Base, AutoBaseMixin):
-    observation_id = mapped_column(
-        Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
+class GroundwaterLevelObservation(Base, AutoBaseMixin, ObservationMixin):
+    depth_to_water = mapped_column(
+        Float,
+        nullable=False,
+        doc="Depth to water level in ft below measuring point",
+        info={"unit": "ft"},
     )
 
+    measuring_point_height = mapped_column(
+        Float,
+        nullable=False,
+        doc="Height of the measuring point above the ground surface in ft",
+        info={"unit": "ft"},
+    )
+
+    observation = relationship('Observation')
 
 # ============= EOF =============================================

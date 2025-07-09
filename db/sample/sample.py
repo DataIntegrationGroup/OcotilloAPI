@@ -15,12 +15,19 @@
 # ===============================================================================
 from sqlalchemy import DateTime, String, ForeignKey, Integer
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import mapped_column, relationship
+from sqlalchemy.orm import mapped_column, relationship, declared_attr
 
 from db.base import Base, AutoBaseMixin
 
 
-# ============= EOF =============================================
+class SampleChildMixin:
+    """
+    """
+    @declared_attr
+    def sample_id(self):
+        return mapped_column(Integer, ForeignKey("sample.id", ondelete="CASCADE"), nullable=False)
+
+
 class Sample(Base, AutoBaseMixin):
     collection_timestamp = mapped_column(DateTime, nullable=False)
     collection_method = mapped_column(
@@ -33,3 +40,4 @@ class Sample(Base, AutoBaseMixin):
     thing = relationship("Thing")
 
     # wells = association_proxy("author_associations", "author")
+# ============= EOF =============================================

@@ -13,21 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from datetime import datetime
 
-from db.base import Base, AutoBaseMixin
-from db.thing.thing import ThingChildMixin
+from pydantic import BaseModel
 
 
-class SpringThing(Base, AutoBaseMixin, ThingChildMixin):
-    description = Column(String(255), nullable=True)
-    # location_id = Column(
-    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    # )
-    #
-    # # Define a relationship to samplelocations if needed
-    # location = relationship("Location")
+class CreateObservation(BaseModel):
+    series_id: int
+    release_status: str
+    observation_timestamp: datetime
 
+
+class CreateGroundwaterLevelObservationDirect(CreateObservation):
+    depth_to_water: float
+    measuring_point_height: float
+
+
+class CreateGroundwaterLevelObservation(BaseModel):
+    observation_id: int
+    depth_to_water: float
+    measuring_point_height: float
+
+
+class CreateGeothermalObservation(BaseModel):
+    observation_id: int
+
+
+class CreateGeothermalObservationDirect(CreateObservation):
+    pass
 
 # ============= EOF =============================================

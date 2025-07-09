@@ -18,6 +18,8 @@ from api.location import router as location_router
 from api.thing import router as thing_router
 from api.sensor import router as sensor_router
 from api.series import router as series_router
+from api.sample import router as sample_router
+from api.observation import router as observation_router
 
 from api.form import router as form_router
 
@@ -32,7 +34,6 @@ from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
 
-
 app.include_router(contact_router)
 app.include_router(group_router)
 
@@ -40,6 +41,8 @@ app.include_router(location_router)
 app.include_router(thing_router)
 app.include_router(sensor_router)
 app.include_router(series_router)
+app.include_router(sample_router)
+app.include_router(observation_router)
 
 app.include_router(form_router)
 # app.include_router(sample_router)

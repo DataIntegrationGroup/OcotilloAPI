@@ -13,21 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import DateTime, String, ForeignKey, Integer
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import Base, AutoBaseMixin
-from db.thing.thing import ThingChildMixin
+from db.sample.sample import SampleChildMixin
 
 
-class SpringThing(Base, AutoBaseMixin, ThingChildMixin):
-    description = Column(String(255), nullable=True)
-    # location_id = Column(
-    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    # )
-    #
-    # # Define a relationship to samplelocations if needed
-    # location = relationship("Location")
+class GeochemicalSample(Base, AutoBaseMixin, SampleChildMixin):
+    """
+    Represents a geochemical sample in the collaborative network.
+    """
 
+    # Define the columns for the geochemical sample
+    # sample = relationship("Sample", back_populates="geochemical_samples")
 
+    # Additional fields specific to geochemical samples can be added here
+    # e.g., chemical composition, analysis method, etc.
+    pass
 # ============= EOF =============================================

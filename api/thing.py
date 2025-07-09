@@ -39,7 +39,7 @@ from schemas.create.thing import CreateThingIdLink
 from schemas.create.well import CreateWell, CreateWellScreen
 from schemas.response.well import WellResponse, WellScreenResponse
 from services.query_helper import make_query, simple_all_getter, simple_get_by_id
-from services.thing_helper import add_well
+from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
 
 router = APIRouter(prefix="/thing", tags=["thing"])
@@ -95,7 +95,8 @@ async def get_springs(session: Session = Depends(get_db_session)):
 
 
 @router.get(
-    "/spring/{spring_id}", response_model=SpringResponse, summary="Get spring by ID"
+    "/spring/{spring_id}",
+    response_model=SpringResponse, summary="Get spring by ID"
 )
 async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)):
     """
@@ -159,8 +160,7 @@ def create_well(well_data: CreateWell, session: Session = Depends(get_db_session
     """
     Create a new well in the database.
     """
-    data = well_data.model_dump()
-    well = add_well(session, data)
+    well = add_well(session, well_data)
     return well
 
 
@@ -188,7 +188,8 @@ def create_spring(
     """
     Create a new spring in the database.
     """
-    return adder(session, SpringThing, spring_data)
+    return add_spring(session, spring_data)
+    # return adder(session, SpringThing, spring_data)
 
 
 # ============= EOF =============================================

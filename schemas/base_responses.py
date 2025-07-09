@@ -23,7 +23,6 @@ class SpringResponse(ORMBaseModel):
     """
 
     id: int
-    location_id: int
     description: str | None = None
 
 

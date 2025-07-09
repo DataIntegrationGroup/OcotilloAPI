@@ -18,12 +18,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy_utils import TSVectorType
 
 from db.base import Base, AutoBaseMixin
+from db.thing.thing import ThingChildMixin
 
 
-class WellThing(Base, AutoBaseMixin):
-    thing_id = Column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False, unique=True
-    )
+class WellThing(Base, AutoBaseMixin, ThingChildMixin):
+
     # location_id = Column(
     #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     # )

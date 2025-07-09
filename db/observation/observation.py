@@ -13,21 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey, Integer, DateTime
+from sqlalchemy.orm import declared_attr, mapped_column
 
-from db.base import Base, AutoBaseMixin
-from db.thing.thing import ThingChildMixin
-
-
-class SpringThing(Base, AutoBaseMixin, ThingChildMixin):
-    description = Column(String(255), nullable=True)
-    # location_id = Column(
-    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    # )
-    #
-    # # Define a relationship to samplelocations if needed
-    # location = relationship("Location")
+from db import AutoBaseMixin, Base
+from db.base import ReleaseMixin
 
 
+class ObservationMixin:
+    @declared_attr
+    def observation_id(self):
+        return mapped_column(
+            Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
+        )
+
+class Observation(Base, AutoBaseMixin, ReleaseMixin):
+
+    series_id = mapped_column(
+        Integer, ForeignKey("series.id", ondelete="CASCADE"), nullable=False,
+    )
+
+    observation_timestamp = mapped_column(
+        DateTime, nullable=False, index=True, doc="Timestamp of the observation"
+    )
 # ============= EOF =============================================

@@ -18,23 +18,28 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class CreateTimeSeries(BaseModel):
-    observed_property: str
-    unit: str
 
 
 class CreateSample(BaseModel):
     collection_timestamp: datetime
     collection_method: str
-    well_id: int | None = None
+    thing_id: int
 
 
-class CreateTimeObservation(BaseModel):
-    timestamp: datetime  # ISO 8601 format
-    value: float
+class CreateGeochemicalSample(BaseModel):
+    """
+    Represents a geochemical sample in the collaborative network.
+    """
+
     sample_id: int
-    time_series_id: int
 
+
+class CreateGeothermalSample(BaseModel):
+    """
+    Represents a geothermal sample in the collaborative network.
+    """
+
+    sample_id: int
 
 # ============= EOF =============================================
 # class CreateWellTimeseries(BaseModel):

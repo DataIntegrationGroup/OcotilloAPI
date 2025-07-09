@@ -17,12 +17,11 @@ from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.orm import mapped_column
 
 from db.base import AutoBaseMixin, Base
+from db.observation.observation import ObservationMixin
 
 
-class GeothermalObservation(Base, AutoBaseMixin):
-    observation_id = mapped_column(
-        Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
-    )
+class GeothermalObservation(Base, AutoBaseMixin, ObservationMixin):
+    pass
 
 
 # ============= EOF =============================================

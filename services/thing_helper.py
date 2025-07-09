@@ -13,10 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import LocationThingAssociation, Thing, WellThing
+from pydantic import BaseModel
+
+from db import LocationThingAssociation, Thing, WellThing, SpringThing
 
 
 def add_well(session, data):
+    return _add_child_thing(session, WellThing, data)
+
+
+def add_spring(session, data):
+    return _add_child_thing(session, SpringThing, data)
+
+
+def _add_child_thing(session, table, data):
+
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
+
     location_id = data.pop("location_id", None)
     assoc = LocationThingAssociation()
 
@@ -25,17 +39,15 @@ def add_well(session, data):
     session.commit()
     session.refresh(thing)
 
-    well = WellThing(**data)
-    well.thing_id = thing.id
-    session.add(well)
+    obj = table(**data)
+    obj.thing_id = thing.id
+    session.add(obj)
     session.commit()
-    session.refresh(well)
+    session.refresh(obj)
 
     assoc.location_id = location_id
     assoc.thing_id = thing.id
     session.add(assoc)
     session.commit()
-    return well
-
-
+    return obj
 # ============= EOF =============================================
