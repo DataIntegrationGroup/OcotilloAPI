@@ -21,19 +21,21 @@ from sqlalchemy import (
     ForeignKey,
     Boolean,
     DateTime,
-    func,
+    func, Text,
 )
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Location(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=True)
-    description = Column(String(255), nullable=True)
-    visible = Column(Boolean, default=False, nullable=False)
+class Location(Base, AutoBaseMixin, ReleaseMixin):
+    # name = Column(String(100), nullable=True)
+    # description = Column(String(255), nullable=True)
+    # visible = Column(Boolean, default=False, nullable=False)
+    __versioned__ = {}
 
+    notes = mapped_column(Text, nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
     )

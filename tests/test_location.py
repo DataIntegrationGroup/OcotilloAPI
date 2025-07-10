@@ -22,9 +22,9 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            "name": "Test Location 1",
+            # "name": "Test Location 1",
             "point": "POINT(10.1 10.1)",
-            "visible": True,
+            # "visible": True,
         },
     )
     assert response.status_code == 201
@@ -34,9 +34,9 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            "name": "Test Location 2",
+            # "name": "Test Location 2",
             "point": "POINT(50.0 50.0)",
-            "visible": False,
+            # "visible": False,
         },
     )
     assert response.status_code == 201

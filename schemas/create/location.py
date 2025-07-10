@@ -21,10 +21,9 @@ class CreateLocation(ORMBaseModel):
     Schema for creating a sample location.
     """
 
-    name: str
-    description: str | None = None
+    notes: str | None = None
     point: str = "POINT(0 0)"  # Default to a point at the origin
-    visible: bool = False
+    release_status: str | None = 'draft'
 
 
 class CreateGroup(ORMBaseModel):

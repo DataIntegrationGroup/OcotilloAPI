@@ -26,7 +26,7 @@ from sqlalchemy import Select
 def create_shapefile(locations: list, filename: str = "locations.shp"):
     # Create a point shapefile
     with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
-        shp.field("name", "C")
+        shp.field("id", "L")
         for loc in locations:
             # Assume loc.point is WKT or a Shapely geometry
             if isinstance(loc.point, str):
@@ -34,7 +34,7 @@ def create_shapefile(locations: list, filename: str = "locations.shp"):
             else:
                 geom = to_shape(loc.point)
             shp.point(geom.x, geom.y)
-            shp.record(loc.name)
+            shp.record(loc.id)
 
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:

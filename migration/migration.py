@@ -20,7 +20,8 @@ from shapely import Point
 from shapely.ops import transform
 from sqlalchemy.exc import ProgrammingError
 
-from db import Location
+from db import *
+from db.location import Location
 from db.engine import session_ctx
 from db.thing.well import WellThing
 from services.lexicon import add_lexicon_term
@@ -90,9 +91,9 @@ def load_locations(sess, df):
         )
 
         sl = Location(
-            name=row_dict["PointID"],
+            # name=row_dict["PointID"],
             point=transformed_point.wkt,
-            visible=row_dict["PublicRelease"],
+            # visible=row_dict["PublicRelease"],
         )
 
         sess.add(sl)
@@ -163,7 +164,7 @@ def well_etl(sess):
 
 if __name__ == "__main__":
     with session_ctx() as session:
-        # location_etl(session)
-        well_etl(session)
+        location_etl(session)
+        # well_etl(session)
         session.close()
 # ============= EOF =============================================
