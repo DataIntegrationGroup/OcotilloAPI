@@ -33,6 +33,7 @@ GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 
 from google.cloud import storage
 
+
 def get_storage_bucket() -> storage.Bucket:
 
     client = storage.Client()

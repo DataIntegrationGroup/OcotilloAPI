@@ -24,4 +24,6 @@ class AssetResponse(BaseModel):
     mime_type: str
     size: int
     url: str
+
+
 # ============= EOF =============================================

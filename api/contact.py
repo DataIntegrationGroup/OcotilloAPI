@@ -49,7 +49,9 @@ def create_contact(
 
 
 @router.get("/", summary="Get contacts")
-async def get_contacts(session: Session = Depends(get_db_session)) -> CustomPage[ContactResponse]:
+async def get_contacts(
+    session: Session = Depends(get_db_session),
+) -> CustomPage[ContactResponse]:
     """
     Retrieve all contacts from the database.
     :param session:
@@ -58,9 +60,7 @@ async def get_contacts(session: Session = Depends(get_db_session)) -> CustomPage
     return paginated_all_getter(session, Contact)
 
 
-@router.get(
-    "/{contact_id}", summary="Get contact by ID"
-)
+@router.get("/{contact_id}", summary="Get contact by ID")
 async def get_contact_by_id(
     contact_id: int, session: Session = Depends(get_db_session)
 ) -> ContactResponse:

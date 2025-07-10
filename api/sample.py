@@ -145,5 +145,4 @@ def get_geothermal_sample_by_id(
     return session.get(GeothermalSample, sample_id)
 
 
-
 # # ============= EOF =============================================

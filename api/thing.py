@@ -82,7 +82,9 @@ async def get_wells(
     "/well/screen",
     summary="Get well screens",
 )
-async def get_well_screens(session: Session = Depends(get_db_session)) -> CustomPage[WellScreenResponse]:
+async def get_well_screens(
+    session: Session = Depends(get_db_session),
+) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
     """
@@ -92,17 +94,19 @@ async def get_well_screens(session: Session = Depends(get_db_session)) -> Custom
 @router.get(
     "/spring",
 )
-async def get_springs(session: Session = Depends(get_db_session)) -> CustomPage[SpringResponse]:
+async def get_springs(
+    session: Session = Depends(get_db_session),
+) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
     return paginated_all_getter(session, SpringThing)
 
 
-@router.get(
-    "/spring/{spring_id}", summary="Get spring by ID"
-)
-async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)) -> SpringResponse:
+@router.get("/spring/{spring_id}", summary="Get spring by ID")
+async def get_spring_by_id(
+    spring_id: int, session: Session = Depends(get_db_session)
+) -> SpringResponse:
     """
     Retrieve a spring by ID from the database.
     """
@@ -110,7 +114,9 @@ async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_ses
 
 
 @router.get("/well/{well_id}", summary="Get well by ID")
-async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session))-> WellResponse:
+async def get_well_by_id(
+    well_id: int, session: Session = Depends(get_db_session)
+) -> WellResponse:
     """
     Retrieve a well by ID from the database.
     """
@@ -156,7 +162,9 @@ def create_thing_id_link(
     summary="Create a new well",
     status_code=status.HTTP_201_CREATED,
 )
-def create_well(well_data: CreateWell, session: Session = Depends(get_db_session))-> WellResponse:
+def create_well(
+    well_data: CreateWell, session: Session = Depends(get_db_session)
+) -> WellResponse:
     """
     Create a new well in the database.
     """

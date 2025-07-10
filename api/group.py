@@ -25,7 +25,11 @@ from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
 from schemas.create.location import CreateGroup, CreateGroupThing
 from schemas.response.well import GroupResponse
-from services.query_helper import simple_all_getter, simple_get_by_id, paginated_all_getter
+from services.query_helper import (
+    simple_all_getter,
+    simple_get_by_id,
+    paginated_all_getter,
+)
 
 router = APIRouter(prefix="/group", tags=["group"])
 
@@ -54,7 +58,9 @@ def create_group_thing(
 
 # ============= Get =============================================
 @router.get("/", summary="Get groups")
-async def get_groups(session: Session = Depends(get_db_session)) -> CustomPage[GroupResponse]:
+async def get_groups(
+    session: Session = Depends(get_db_session),
+) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
     """
@@ -62,11 +68,13 @@ async def get_groups(session: Session = Depends(get_db_session)) -> CustomPage[G
 
 
 @router.get("/{group_id}", summary="Get group by ID")
-async def get_group_by_id(group_id: int, session: Session = Depends(get_db_session)) -> GroupResponse:
+async def get_group_by_id(
+    group_id: int, session: Session = Depends(get_db_session)
+) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
     """
-    return  simple_get_by_id(session, Group, group_id)
+    return simple_get_by_id(session, Group, group_id)
 
 
 @router.get(
