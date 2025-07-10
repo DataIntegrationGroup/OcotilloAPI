@@ -120,8 +120,8 @@ def test_get_observation_by_series_id():
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
-    items  = data['items']
-    assert len(items)>0, "Expected at least one observation for the series"
+    items = data["items"]
+    assert len(items) > 0, "Expected at least one observation for the series"
     # assert isinstance(data, list), "Expected a list of observations"
     # assert len(data) == 1, "Expected at least one observation for the series"
 
@@ -131,8 +131,10 @@ def test_get_groundwater_observation_by_series_id():
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
-    items = data['items']
-    assert len(items) > 0, "Expected at least one groundwater observation for the series"
+    items = data["items"]
+    assert (
+        len(items) > 0
+    ), "Expected at least one groundwater observation for the series"
 
 
 def test_get_geothermal_observation_by_series_id():
@@ -140,6 +142,8 @@ def test_get_geothermal_observation_by_series_id():
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
-    items = data['items']
+    items = data["items"]
     assert len(items) > 0, "Expected at least one geothermal observation for the series"
+
+
 # ============= EOF =============================================

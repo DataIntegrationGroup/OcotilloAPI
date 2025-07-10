@@ -32,8 +32,11 @@ from schemas.create.observation import (
     CreateGroundwaterLevelObservationDirect,
     CreateGeothermalObservationDirect,
 )
-from schemas.response.observation import ObservationResponse, GroundwaterLevelObservationResponse, \
-    GeothermalObservationResponse
+from schemas.response.observation import (
+    ObservationResponse,
+    GroundwaterLevelObservationResponse,
+    GeothermalObservationResponse,
+)
 from services.query_helper import paginated_all_getter
 
 router = APIRouter(prefix="/observation", tags=["observation"])
@@ -62,9 +65,7 @@ def direct_adder(session: Session, model, data):
 
 
 # ============= Post =============================================
-@router.post("/",
-             response_model=ObservationResponse,
-             status_code=HTTP_201_CREATED)
+@router.post("/", response_model=ObservationResponse, status_code=HTTP_201_CREATED)
 def add_observation(
     obs_data: CreateObservation, session: Session = Depends(get_db_session)
 ):
@@ -111,7 +112,7 @@ def add_geothermal_observation(
 # ============= Get ==============================================
 @router.get("/", response_model=CustomPage[ObservationResponse])
 def get_observations(
-        series_id: int | None = None,
+    series_id: int | None = None,
     session: Session = Depends(get_db_session),
 ):
     """
@@ -124,7 +125,9 @@ def get_observations(
         return paginated_all_getter(session, Observation)
 
 
-@router.get("/groundwater-level", response_model=CustomPage[GroundwaterLevelObservationResponse])
+@router.get(
+    "/groundwater-level", response_model=CustomPage[GroundwaterLevelObservationResponse]
+)
 def get_groundwater_level_observations(
     series_id: int | None = None, session: Session = Depends(get_db_session)
 ):
@@ -132,11 +135,11 @@ def get_groundwater_level_observations(
     Retrieve all groundwater level observations from the database.
     """
     if series_id is not None:
-        sql = (select(GroundwaterLevelObservation)
-        .join(Observation)
-        .where(
-            Observation.series_id == series_id
-        ))
+        sql = (
+            select(GroundwaterLevelObservation)
+            .join(Observation)
+            .where(Observation.series_id == series_id)
+        )
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, GroundwaterLevelObservation)
@@ -144,19 +147,20 @@ def get_groundwater_level_observations(
 
 @router.get("/geothermal", response_model=CustomPage[GeothermalObservationResponse])
 def get_groundwater_level_observations(
-        series_id: int | None = None, session: Session = Depends(get_db_session)
+    series_id: int | None = None, session: Session = Depends(get_db_session)
 ):
     """
     Retrieve all groundwater level observations from the database.
     """
     if series_id is not None:
-        sql = (select(GeothermalObservation)
-        .join(Observation)
-        .where(
-            Observation.series_id == series_id
-        ))
+        sql = (
+            select(GeothermalObservation)
+            .join(Observation)
+            .where(Observation.series_id == series_id)
+        )
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, GeothermalObservation)
+
 
 # ============= EOF =============================================

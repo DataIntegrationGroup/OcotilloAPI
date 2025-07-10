@@ -22,6 +22,7 @@ class ObservationResponse(BaseModel):
     id: int
     observation_timestamp: datetime
 
+
 class GroundwaterLevelObservationResponse(BaseModel):
     observation_id: int
     observation_timestamp: datetime
@@ -35,4 +36,6 @@ class GeothermalObservationResponse(BaseModel):
 
     temperature: float
     depth: float
+
+
 # ============= EOF =============================================

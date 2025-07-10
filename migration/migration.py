@@ -92,7 +92,6 @@ def load_locations(sess, df):
             point, source_srid=26913, target_srid=4326  # WGS84 SRID
         )
 
-
         sl = Location(
             # name=row_dict["PointID"],
             point=transformed_point.wkt,
@@ -106,17 +105,20 @@ def load_locations(sess, df):
         #     print(f"skipping row due to ProgrammingError. {row_dict['PointID']}")
         #     sess.rollback()
         # Remove the index from the dictionary
+
     loader(df, sess, f)
 
 
 def loader(df, sess, function):
     n = len(df)
     st = time.time()
-    prev  = st
+    prev = st
     g = 175
     for i, row in enumerate(df.itertuples()):
         if not i % g:
-            print(f"Processing row {i} of {n}, {g/(time.time()-prev)}  rate: {i / (time.time() - st):.2f} rows/sec")
+            print(
+                f"Processing row {i} of {n}, {g/(time.time()-prev)}  rate: {i / (time.time() - st):.2f} rows/sec"
+            )
             prev = time.time()
         function(row)
 
@@ -125,6 +127,8 @@ def loader(df, sess, function):
 
 
 ADDED = []
+
+
 def load_wells(sess, df):
     def f(row):
         row_dict = row._asdict()
@@ -132,8 +136,6 @@ def load_wells(sess, df):
         # location = (
         #     sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
         # )
-
-
 
         # location = sess.query(Location).filter_by(point=row_dict["PointID"]).one_or_none()
 

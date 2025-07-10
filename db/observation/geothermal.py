@@ -22,8 +22,18 @@ from db.observation.observation import ObservationMixin
 
 class GeothermalObservation(Base, AutoBaseMixin, ObservationMixin):
     observation = relationship("Observation")
-    depth = mapped_column(Float, nullable=False, info={'unit': 'feet'}, doc="Depth of the geothermal observation in feet")
-    temperature = mapped_column(Float, nullable=False,
-                                info={'unit': 'degC'},
-                                doc="Temperature of the geothermal observation in degrees Celsius")
+    depth = mapped_column(
+        Float,
+        nullable=False,
+        info={"unit": "feet"},
+        doc="Depth of the geothermal observation in feet",
+    )
+    temperature = mapped_column(
+        Float,
+        nullable=False,
+        info={"unit": "degC"},
+        doc="Temperature of the geothermal observation in degrees Celsius",
+    )
+
+
 # ============= EOF =============================================
