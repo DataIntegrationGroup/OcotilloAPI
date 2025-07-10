@@ -20,4 +20,5 @@ class SensorResponse(BaseModel):
     id: int
     name: str
 
+
 # ============= EOF =============================================

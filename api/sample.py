@@ -75,9 +75,7 @@ def add_geothermal_sample(
 
 
 # ============= Get =============================================
-@router.get("/",
-            response_model=CustomPage[SampleResponse],
-            summary="Get Samples")
+@router.get("/", response_model=CustomPage[SampleResponse], summary="Get Samples")
 def get_samples(
     session: Session = Depends(get_db_session),
 ):
@@ -87,7 +85,11 @@ def get_samples(
     return paginated_all_getter(session, Sample)
 
 
-@router.get("/geochemical",response_model=CustomPage[SampleResponse], summary="Get Geochemical Samples")
+@router.get(
+    "/geochemical",
+    response_model=CustomPage[SampleResponse],
+    summary="Get Geochemical Samples",
+)
 def get_geochemical_samples(
     session: Session = Depends(get_db_session),
 ):
@@ -97,7 +99,11 @@ def get_geochemical_samples(
     return paginated_all_getter(session, GeochemicalSample)
 
 
-@router.get("/geothermal",response_model=CustomPage[SampleResponse], summary="Get Geothermal Samples")
+@router.get(
+    "/geothermal",
+    response_model=CustomPage[SampleResponse],
+    summary="Get Geothermal Samples",
+)
 def get_geothermal_samples(
     session: Session = Depends(get_db_session),
 ):

@@ -108,6 +108,7 @@ def simple_all_getter(session, table):
     # result = session.execute(sql)
     # return result.scalars().all()
 
+
 def paginated_all_getter(session, table):
     """
     Helper function to get all records from the database with pagination.
@@ -116,6 +117,7 @@ def paginated_all_getter(session, table):
     # return session.scalars(sql).all()
     return paginate(query=sql, conn=session)
     # return paginate(query=sql, conn=session, transformer=lambda items: items)
+
 
 def searchable_getter(session, table, search, vector=None, joins=None):
     if vector is None:

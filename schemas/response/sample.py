@@ -19,4 +19,5 @@ from pydantic import BaseModel
 class SampleResponse(BaseModel):
     id: int
 
+
 # ============= EOF =============================================

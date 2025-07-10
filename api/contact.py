@@ -25,7 +25,11 @@ from db.engine import get_db_session
 from schemas.base_responses import ContactResponse
 from schemas.create.contact import CreateContact
 from services.people_helper import add_contact
-from services.query_helper import simple_all_getter, simple_get_by_id, paginated_all_getter
+from services.query_helper import (
+    simple_all_getter,
+    simple_get_by_id,
+    paginated_all_getter,
+)
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 

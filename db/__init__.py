@@ -41,8 +41,6 @@ from sqlalchemy_searchable import (
 )
 
 
-
-
 def adder(session, table, model, **kwargs):
     """
     Helper function to add a new record to the database.

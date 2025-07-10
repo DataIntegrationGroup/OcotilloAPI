@@ -38,9 +38,9 @@ def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_sess
     return adder(session, Sensor, sensor_data)
 
 
-@router.get("/",
-            response_model=CustomPage[SensorResponse],
-            status_code=status.HTTP_200_OK)
+@router.get(
+    "/", response_model=CustomPage[SensorResponse], status_code=status.HTTP_200_OK
+)
 def get_sensors(session: Session = Depends(get_db_session)):
     """
     Retrieve all sensors from the system.

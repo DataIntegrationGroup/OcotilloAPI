@@ -49,8 +49,8 @@ def test_get_series():
     response = client.get("/series")
     assert response.status_code == 200
     data = response.json()
-    assert 'items' in data, "Expected 'items' in response data"
-    items = data['items']
+    assert "items" in data, "Expected 'items' in response data"
+    items = data["items"]
     assert isinstance(items, list), "Expected a list of series"
     assert len(items) > 0, "Expected at least one series in the response"
 

@@ -42,8 +42,8 @@ def test_get_sensors():
     assert response.status_code == 200
     data = response.json()
     # assert isinstance(items, list), "Expected a list of sensors"
-    assert 'items' in data
-    items = data['items']
+    assert "items" in data
+    items = data["items"]
     assert "id" in items[0], "Expected 'id' in sensor items"
     # assert "name" in items[0], "Expected 'name' in sensor items"
     # assert "equipment_type" in items[0], "Expected 'equipment_type' in sensor items"

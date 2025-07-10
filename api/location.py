@@ -111,9 +111,7 @@ async def get_location_feature_collection(
 
 @router.get(
     "/",
-    response_model=CustomPage[
-        Union[LocationResponse, LocationWellResponse]
-    ],
+    response_model=CustomPage[Union[LocationResponse, LocationWellResponse]],
     summary="Get all locations",
 )
 async def get_location(
@@ -176,4 +174,6 @@ async def get_location_by_id(
         response_klass = LocationWellResponse
 
     return response_klass.model_validate(location)
+
+
 # ============= EOF =============================================

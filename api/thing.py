@@ -38,7 +38,12 @@ from schemas.base_responses import SpringResponse
 from schemas.create.thing import CreateThingIdLink
 from schemas.create.well import CreateWell, CreateWellScreen
 from schemas.response.well import WellResponse, WellScreenResponse
-from services.query_helper import make_query, simple_all_getter, simple_get_by_id, paginated_all_getter
+from services.query_helper import (
+    make_query,
+    simple_all_getter,
+    simple_get_by_id,
+    paginated_all_getter,
+)
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
 
@@ -74,7 +79,9 @@ async def get_wells(
 
 
 @router.get(
-    "/well/screen", response_model=CustomPage[WellScreenResponse], summary="Get well screens"
+    "/well/screen",
+    response_model=CustomPage[WellScreenResponse],
+    summary="Get well screens",
 )
 async def get_well_screens(session: Session = Depends(get_db_session)):
     """

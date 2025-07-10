@@ -32,8 +32,10 @@ router = APIRouter(
 
 
 # ============= Get ==============================================
-@router.get("/",
-            response_model=CustomPage[SeriesResponse],)
+@router.get(
+    "/",
+    response_model=CustomPage[SeriesResponse],
+)
 def get_series(session: Session = Depends(get_db_session)):
     """
     Endpoint to retrieve series data.
