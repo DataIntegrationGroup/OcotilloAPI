@@ -19,12 +19,13 @@ from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session
 from starlette import status
 
+from api.pagination import CustomPage
 from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
 from schemas.create.location import CreateGroup, CreateGroupThing
 from schemas.response.well import GroupResponse
-from services.query_helper import simple_all_getter, simple_get_by_id
+from services.query_helper import simple_all_getter, simple_get_by_id, paginated_all_getter
 
 router = APIRouter(prefix="/group", tags=["group"])
 
@@ -52,26 +53,20 @@ def create_group_thing(
 
 
 # ============= Get =============================================
-@router.get("/", response_model=List[GroupResponse], summary="Get groups")
-async def get_groups(session: Session = Depends(get_db_session)):
+@router.get("/", summary="Get groups")
+async def get_groups(session: Session = Depends(get_db_session)) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
     """
-    # sql = select(Group)
-    # result = db.execute(sql)
-    # return result.all()
-    return simple_all_getter(session, Group)
+    return paginated_all_getter(session, Group)
 
 
-@router.get("/{group_id}", response_model=GroupResponse, summary="Get group by ID")
-async def get_group_by_id(group_id: int, session: Session = Depends(get_db_session)):
+@router.get("/{group_id}", summary="Get group by ID")
+async def get_group_by_id(group_id: int, session: Session = Depends(get_db_session)) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
     """
-    group = simple_get_by_id(session, Group, group_id)
-    if not group:
-        return {"message": "Group not found"}
-    return group
+    return  simple_get_by_id(session, Group, group_id)
 
 
 @router.get(

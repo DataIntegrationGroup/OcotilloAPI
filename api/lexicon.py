@@ -35,9 +35,8 @@ router = APIRouter(
 @router.post(
     "/category/add",
     status_code=status.HTTP_201_CREATED,
-    response_model=LexiconCategoryResponse,
 )
-def add_category(category_data: CreateLexiconCategory, session=Depends(get_db_session)):
+def add_category(category_data: CreateLexiconCategory, session=Depends(get_db_session)) -> LexiconCategoryResponse:
     """
     Endpoint to add a category to the lexicon.
     """
@@ -54,10 +53,9 @@ def add_category(category_data: CreateLexiconCategory, session=Depends(get_db_se
 @router.post(
     "/add",
     summary="Add term",
-    response_model=LexiconTermResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def add_term(term_data: CreateLexiconTerm, session=Depends(get_db_session)):
+def add_term(term_data: CreateLexiconTerm, session=Depends(get_db_session)) -> LexiconTermResponse:
     """
     Endpoint to add a term to the lexicon.
     """

@@ -30,7 +30,7 @@ router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_session)):
+def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_session)) -> SensorResponse:
     """
     Add a sensor to the system.
     This endpoint is a placeholder and should be implemented with actual logic.
@@ -39,9 +39,9 @@ def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_sess
 
 
 @router.get(
-    "/", response_model=CustomPage[SensorResponse], status_code=status.HTTP_200_OK
+    "/", status_code=status.HTTP_200_OK
 )
-def get_sensors(session: Session = Depends(get_db_session)):
+def get_sensors(session: Session = Depends(get_db_session)) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
@@ -50,7 +50,8 @@ def get_sensors(session: Session = Depends(get_db_session)):
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
-def get_sensor(sensor_id: int, session: Session = Depends(get_db_session)):
+def get_sensor(sensor_id: int, session: Session = Depends(get_db_session)) -> SensorResponse:
+
     sensor = session.get(Sensor, sensor_id)
     return sensor
 

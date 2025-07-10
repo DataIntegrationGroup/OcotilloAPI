@@ -21,13 +21,12 @@ def test_add_sensor():
         "/sensor",
         json={
             "name": "Test Sensor",
-            "equipment_type": "Pump",
             "model": "Model X",
             "serial_no": "123456",
             "date_installed": "2023-01-01T00:00:00",
             # "date_removed": None,
             "recording_interval": 60,
-            "equipment_notes": "Test equipment",
+            "notes": "Test equipment",
             # "location_id": 2,
         },
     )
@@ -57,7 +56,7 @@ def test_get_sensor():
     assert "id" in data, "Expected 'id' in sensor data"
     assert data["id"] == 1, "Expected sensor ID to be 1"
     assert "name" in data, "Expected 'name' in sensor data"
-    assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
+    # assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
 
 
 # ============= EOF =============================================

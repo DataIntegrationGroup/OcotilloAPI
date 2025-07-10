@@ -16,10 +16,12 @@
 from pydantic import BaseModel
 
 
-class SeriesResponse(BaseModel):
+class AssetResponse(BaseModel):
     id: int
-    name: str
-    observed_property: str
-
-
+    filename: str
+    storage_service: str
+    storage_path: str
+    mime_type: str
+    size: int
+    url: str
 # ============= EOF =============================================

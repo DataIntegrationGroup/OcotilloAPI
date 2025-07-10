@@ -50,13 +50,13 @@ from services.validation.well import validate_screens
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
-@router.get("/well", response_model=CustomPage[WellResponse], summary="Get all wells")
+@router.get("/well", summary="Get all wells")
 async def get_wells(
     # api_id: str = None,
     # ose_pod_id: str = None,
     query: str = None,
     session: Session = Depends(get_db_session),
-):
+) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
     """
@@ -80,10 +80,9 @@ async def get_wells(
 
 @router.get(
     "/well/screen",
-    response_model=CustomPage[WellScreenResponse],
     summary="Get well screens",
 )
-async def get_well_screens(session: Session = Depends(get_db_session)):
+async def get_well_screens(session: Session = Depends(get_db_session)) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
     """
@@ -92,9 +91,8 @@ async def get_well_screens(session: Session = Depends(get_db_session)):
 
 @router.get(
     "/spring",
-    response_model=CustomPage[SpringResponse],
 )
-async def get_springs(session: Session = Depends(get_db_session)):
+async def get_springs(session: Session = Depends(get_db_session)) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
@@ -102,20 +100,17 @@ async def get_springs(session: Session = Depends(get_db_session)):
 
 
 @router.get(
-    "/spring/{spring_id}", response_model=SpringResponse, summary="Get spring by ID"
+    "/spring/{spring_id}", summary="Get spring by ID"
 )
-async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)):
+async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)) -> SpringResponse:
     """
     Retrieve a spring by ID from the database.
     """
-    spring = simple_get_by_id(session, SpringThing, spring_id)
-    if not spring:
-        return {"message": "Spring not found"}
-    return spring
+    return simple_get_by_id(session, SpringThing, spring_id)
 
 
-@router.get("/well/{well_id}", response_model=WellResponse, summary="Get well by ID")
-async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session)):
+@router.get("/well/{well_id}", summary="Get well by ID")
+async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session))-> WellResponse:
     """
     Retrieve a well by ID from the database.
     """
@@ -130,7 +125,7 @@ async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session
 )
 async def get_well_screen_by_id(
     wellscreen_id: int, session: Session = Depends(get_db_session)
-):
+) -> WellScreenResponse:
     """
     Retrieve a well screen by ID from the database.
     """
@@ -158,11 +153,10 @@ def create_thing_id_link(
 
 @router.post(
     "/well",
-    response_model=GetWell,
     summary="Create a new well",
     status_code=status.HTTP_201_CREATED,
 )
-def create_well(well_data: CreateWell, session: Session = Depends(get_db_session)):
+def create_well(well_data: CreateWell, session: Session = Depends(get_db_session))-> WellResponse:
     """
     Create a new well in the database.
     """
@@ -178,7 +172,7 @@ def create_well(well_data: CreateWell, session: Session = Depends(get_db_session
 def create_wellscreen(
     well_screen_data: CreateWellScreen = Depends(validate_screens),
     session: Session = Depends(get_db_session),
-):
+) -> WellScreenResponse:
     """
     Create a new well screen in the database.
     """
@@ -190,7 +184,7 @@ def create_wellscreen(
 )
 def create_spring(
     spring_data: CreateSpring, session: Session = Depends(get_db_session)
-):
+) -> SpringResponse:
     """
     Create a new spring in the database.
     """

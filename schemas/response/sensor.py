@@ -13,12 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
 class SensorResponse(BaseModel):
     id: int
     name: str
-
+    model: str | None    #= Column(String(50))
+    serial_no: str | None   #= Column(String(50))
+    date_installed: datetime | None   #= Column(DateTime)
+    date_removed: datetime  | None  #= Column(DateTime)
+    recording_interval: int | None   #= Column(Integer)
+    notes: str | None    #= Column(String(50))
 
 # ============= EOF =============================================

@@ -34,9 +34,8 @@ router = APIRouter(
 # ============= Get ==============================================
 @router.get(
     "/",
-    response_model=CustomPage[SeriesResponse],
 )
-def get_series(session: Session = Depends(get_db_session)):
+def get_series(session: Session = Depends(get_db_session)) -> CustomPage[SeriesResponse]:
     """
     Endpoint to retrieve series data.
     """
@@ -44,7 +43,7 @@ def get_series(session: Session = Depends(get_db_session)):
 
 
 @router.get("/{series_id}")
-def get_series_by_id(series_id: int, session: Session = Depends(get_db_session)):
+def get_series_by_id(series_id: int, session: Session = Depends(get_db_session)) -> SeriesResponse:
     """
     Endpoint to retrieve a specific series by its ID.
     """
@@ -54,7 +53,7 @@ def get_series_by_id(series_id: int, session: Session = Depends(get_db_session))
 
 # ============= Post =============================================
 @router.post("/", status_code=HTTP_201_CREATED)
-def add_series(series_data: CreateSeries, session: Session = Depends(get_db_session)):
+def add_series(series_data: CreateSeries, session: Session = Depends(get_db_session)) -> SeriesResponse:
     """
     Endpoint to add a new series.
     """

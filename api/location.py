@@ -41,13 +41,13 @@ router = APIRouter(prefix="/location", tags=["location"])
 
 @router.post(
     "/",
-    response_model=GetLocation,
+    # response_model=GetLocation,
     summary="Create a new sample location",
     status_code=status.HTTP_201_CREATED,
 )
 def create_location(
     location_data: CreateLocation, session: Session = Depends(get_db_session)
-):
+) -> LocationResponse:
     """
     Create a new sample location in the database.
     """
@@ -57,7 +57,7 @@ def create_location(
 @router.get("/shapefile", summary="Get location as shapefile")
 async def get_location_shapefile(
     query: str = None, session: Session = Depends(get_db_session)
-):
+) -> FileResponse:
     """
     Retrieve all sample locations as a shapefile.
     """
@@ -84,7 +84,7 @@ async def get_location_shapefile(
 @router.get("/feature_collection", summary="Get location feature collection")
 async def get_location_feature_collection(
     query: str = None, session: Session = Depends(get_db_session)
-):
+) -> dict:
     """
     Retrieve all sample locations as a GeoJSON FeatureCollection.
     """
@@ -111,7 +111,6 @@ async def get_location_feature_collection(
 
 @router.get(
     "/",
-    response_model=CustomPage[Union[LocationResponse, LocationWellResponse]],
     summary="Get all locations",
 )
 async def get_location(
@@ -121,7 +120,7 @@ async def get_location(
     query: str = None,
     expand: str = None,
     session: Session = Depends(get_db_session),
-):
+) -> CustomPage[Union[LocationResponse, LocationWellResponse]]:
     """
     Retrieve all wells from the database.
     """
@@ -152,12 +151,11 @@ async def get_location(
 
 @router.get(
     "/{location_id}",
-    response_model=Union[LocationResponse, LocationWellResponse],
     summary="Get location by ID",
 )
 async def get_location_by_id(
     location_id: int, expand: str = None, session: Session = Depends(get_db_session)
-):
+) -> LocationResponse | LocationWellResponse:
     """
     Retrieve a sample location by ID from the database.
     """

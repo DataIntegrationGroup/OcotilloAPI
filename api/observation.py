@@ -65,10 +65,10 @@ def direct_adder(session: Session, model, data):
 
 
 # ============= Post =============================================
-@router.post("/", response_model=ObservationResponse, status_code=HTTP_201_CREATED)
+@router.post("/", status_code=HTTP_201_CREATED)
 def add_observation(
     obs_data: CreateObservation, session: Session = Depends(get_db_session)
-):
+) -> ObservationResponse:
     """
     Add a new observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
@@ -110,11 +110,11 @@ def add_geothermal_observation(
 
 
 # ============= Get ==============================================
-@router.get("/", response_model=CustomPage[ObservationResponse])
+@router.get("/")
 def get_observations(
     series_id: int | None = None,
     session: Session = Depends(get_db_session),
-):
+) -> CustomPage[ObservationResponse]:
     """
     Retrieve all observations from the database.
     """
@@ -126,11 +126,11 @@ def get_observations(
 
 
 @router.get(
-    "/groundwater-level", response_model=CustomPage[GroundwaterLevelObservationResponse]
+    "/groundwater-level",
 )
 def get_groundwater_level_observations(
     series_id: int | None = None, session: Session = Depends(get_db_session)
-):
+) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.
     """
@@ -145,10 +145,10 @@ def get_groundwater_level_observations(
         return paginated_all_getter(session, GroundwaterLevelObservation)
 
 
-@router.get("/geothermal", response_model=CustomPage[GeothermalObservationResponse])
+@router.get("/geothermal")
 def get_groundwater_level_observations(
     series_id: int | None = None, session: Session = Depends(get_db_session)
-):
+) -> CustomPage[GeothermalObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.
     """

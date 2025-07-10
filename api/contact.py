@@ -38,19 +38,18 @@ router = APIRouter(prefix="/contact", tags=["contact"])
     "/",
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
-    response_model=ContactResponse,
 )
 def create_contact(
     contact_data: CreateContact, session: Session = Depends(get_db_session)
-):
+) -> ContactResponse:
 
     return add_contact(session, contact_data)
 
     # return adder(session, Contact, contact_data)
 
 
-@router.get("/", response_model=CustomPage[ContactResponse], summary="Get contacts")
-async def get_contacts(session: Session = Depends(get_db_session)):
+@router.get("/", summary="Get contacts")
+async def get_contacts(session: Session = Depends(get_db_session)) -> CustomPage[ContactResponse]:
     """
     Retrieve all contacts from the database.
     :param session:
@@ -60,11 +59,11 @@ async def get_contacts(session: Session = Depends(get_db_session)):
 
 
 @router.get(
-    "/{contact_id}", response_model=ContactResponse, summary="Get contact by ID"
+    "/{contact_id}", summary="Get contact by ID"
 )
 async def get_contact_by_id(
     contact_id: int, session: Session = Depends(get_db_session)
-):
+) -> ContactResponse:
     """
     Retrieve a contact by ID from the database.
     """

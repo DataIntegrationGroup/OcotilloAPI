@@ -20,17 +20,20 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_201_CREATED
 
 from db import Thing
 from db.engine import get_db_session
 from db.asset import Asset, AssetThingAssociation
+from schemas.response.asset import AssetResponse
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 
 
-def get_storage_bucket():
-    from google.cloud import storage
+from google.cloud import storage
+
+def get_storage_bucket() -> storage.Bucket:
 
     client = storage.Client()
     bucket = client.bucket(GCS_BUCKET_NAME)
@@ -44,7 +47,7 @@ async def get_asset(
     bucket=Depends(
         get_storage_bucket
     ),  # Assuming get_storage_bucket is defined elsewhere
-):
+) -> AssetResponse:
     """
     Retrieve an asset by its ID.
     """
@@ -58,13 +61,13 @@ async def get_asset(
     return asset
 
 
-@router.post("/", status_code=201)
+@router.post("/", status_code=HTTP_201_CREATED)
 async def add_asset(
     thing_id: int = None,
     file: UploadFile = File(...),
     session: Session = Depends(get_db_session),
     bucket=Depends(get_storage_bucket),
-):
+) -> dict:
     file_id = str(uuid4())
     blob_name = f"uploads/{file_id}_{file.filename}"
     blob = bucket.blob(blob_name)
