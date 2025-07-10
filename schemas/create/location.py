@@ -23,7 +23,7 @@ class CreateLocation(ORMBaseModel):
 
     notes: str | None = None
     point: str = "POINT(0 0)"  # Default to a point at the origin
-    release_status: str | None = 'draft'
+    release_status: str | None = "draft"
 
 
 class CreateGroup(ORMBaseModel):

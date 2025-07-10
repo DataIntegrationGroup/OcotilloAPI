@@ -21,7 +21,8 @@ from sqlalchemy import (
     ForeignKey,
     Boolean,
     DateTime,
-    func, Text,
+    func,
+    Text,
 )
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
