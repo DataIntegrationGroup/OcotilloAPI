@@ -19,12 +19,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette import status
 
+from api.pagination import CustomPage
 from db.contact import Contact
 from db.engine import get_db_session
 from schemas.base_responses import ContactResponse
 from schemas.create.contact import CreateContact
 from services.people_helper import add_contact
-from services.query_helper import simple_all_getter, simple_get_by_id
+from services.query_helper import simple_all_getter, simple_get_by_id, paginated_all_getter
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 
@@ -44,14 +45,14 @@ def create_contact(
     # return adder(session, Contact, contact_data)
 
 
-@router.get("/", response_model=List[ContactResponse], summary="Get contacts")
+@router.get("/", response_model=CustomPage[ContactResponse], summary="Get contacts")
 async def get_contacts(session: Session = Depends(get_db_session)):
     """
     Retrieve all contacts from the database.
     :param session:
     :return:
     """
-    return simple_all_getter(session, Contact)
+    return paginated_all_getter(session, Contact)
 
 
 @router.get(

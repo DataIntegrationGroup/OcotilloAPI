@@ -13,40 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from geoalchemy2 import WKBElement
-from geoalchemy2.shape import to_shape
-from pydantic import field_validator
-from schemas import ORMBaseModel
+from pydantic import BaseModel
 
 
-class LocationResponse(ORMBaseModel):
-    """
-    Response schema for sample location details.
-    """
-
+class SensorResponse(BaseModel):
     id: int
-    name: str | None = None
-    description: str | None = None
-    point: str
-
-    @field_validator("point", mode="before")
-    def point_to_wkt(cls, value):
-        if isinstance(value, WKBElement):
-            return to_shape(value).wkt
-
-        # If the value is a string, assume it's already in WKT format
-        if isinstance(value, str):
-            return value
-
-
-class GroupLocationResponse(ORMBaseModel):
-    """
-    Response schema for group location details.
-    """
-
-    id: int
-    group_id: int
-    location_id: int
-
+    name: str
 
 # ============= EOF =============================================

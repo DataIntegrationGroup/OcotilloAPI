@@ -75,8 +75,29 @@ def test_get_samples():
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert 'items' in data
+    assert len(data['items']) > 0
+
+def test_get_geochemical_samples():
+    """
+    Test retrieving geochemical samples from the collaborative network.
+    """
+    response = client.get("/sample/geochemical")
+    assert response.status_code == 200
+    data = response.json()
+    assert 'items' in data
+    assert len(data['items']) > 0
+
+
+def test_get_geothermal_samples():
+    """
+    Test retrieving geothermal samples from the collaborative network.
+    """
+    response = client.get("/sample/geothermal")
+    assert response.status_code == 200
+    data = response.json()
+    assert 'items' in data
+    assert len(data['items']) > 0
 
 
 def test_get_sample_by_id():

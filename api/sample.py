@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
+from api.pagination import CustomPage
 from db import adder
 from db.engine import get_db_session
 from db.sample.geothermal import GeothermalSample
@@ -30,7 +31,8 @@ from schemas.create.sample import (
     CreateGeochemicalSample,
     CreateGeothermalSample,
 )
-from services.query_helper import simple_all_getter
+from schemas.response.sample import SampleResponse
+from services.query_helper import simple_all_getter, paginated_all_getter
 
 router = APIRouter(
     prefix="/sample",
@@ -73,34 +75,36 @@ def add_geothermal_sample(
 
 
 # ============= Get =============================================
-@router.get("/", summary="Get Samples")
+@router.get("/",
+            response_model=CustomPage[SampleResponse],
+            summary="Get Samples")
 def get_samples(
     session: Session = Depends(get_db_session),
 ):
     """
     Endpoint to retrieve samples.
     """
-    return simple_all_getter(session, Sample)
+    return paginated_all_getter(session, Sample)
 
 
-@router.get("/geochemical", summary="Get Geochemical Samples")
+@router.get("/geochemical",response_model=CustomPage[SampleResponse], summary="Get Geochemical Samples")
 def get_geochemical_samples(
     session: Session = Depends(get_db_session),
 ):
     """
     Endpoint to retrieve geochemical samples.
     """
-    return simple_all_getter(session, GeochemicalSample)
+    return paginated_all_getter(session, GeochemicalSample)
 
 
-@router.get("/geothermal", summary="Get Geothermal Samples")
+@router.get("/geothermal",response_model=CustomPage[SampleResponse], summary="Get Geothermal Samples")
 def get_geothermal_samples(
     session: Session = Depends(get_db_session),
 ):
     """
     Endpoint to retrieve geothermal samples.
     """
-    return simple_all_getter(session, GeothermalSample)
+    return paginated_all_getter(session, GeothermalSample)
 
 
 # ============= Get by ID =============================================

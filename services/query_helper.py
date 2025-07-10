@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, Float, Integer
 from db import search as search_func
 from services.regex import QUERY_REGEX
@@ -107,6 +108,14 @@ def simple_all_getter(session, table):
     # result = session.execute(sql)
     # return result.scalars().all()
 
+def paginated_all_getter(session, table):
+    """
+    Helper function to get all records from the database with pagination.
+    """
+    sql = select(table)
+    # return session.scalars(sql).all()
+    return paginate(query=sql, conn=session)
+    # return paginate(query=sql, conn=session, transformer=lambda items: items)
 
 def searchable_getter(session, table, search, vector=None, joins=None):
     if vector is None:

@@ -16,7 +16,7 @@
 from typing import List
 
 from schemas import ORMBaseModel
-from schemas.response.location import SampleLocationResponse
+from schemas.response.location import LocationResponse
 
 
 class WellResponse(ORMBaseModel):
@@ -33,7 +33,7 @@ class WellResponse(ORMBaseModel):
     # Additional fields can be added as needed
 
 
-class SampleLocationWellResponse(SampleLocationResponse):
+class LocationWellResponse(LocationResponse):
     """
     Response schema for sample location with well details.
     """

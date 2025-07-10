@@ -17,11 +17,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
+from api.pagination import CustomPage
 from db import adder
 from db.engine import get_db_session
 from db.series.series import Series
 from schemas.create.series import CreateSeries
-from services.query_helper import simple_all_getter
+from schemas.response.series import SeriesResponse
+from services.query_helper import simple_all_getter, paginated_all_getter
 
 router = APIRouter(
     prefix="/series",
@@ -30,12 +32,13 @@ router = APIRouter(
 
 
 # ============= Get ==============================================
-@router.get("/")
+@router.get("/",
+            response_model=CustomPage[SeriesResponse],)
 def get_series(session: Session = Depends(get_db_session)):
     """
     Endpoint to retrieve series data.
     """
-    return simple_all_getter(session, Series)
+    return paginated_all_getter(session, Series)
 
 
 @router.get("/{series_id}")

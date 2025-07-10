@@ -18,11 +18,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette import status
 
+from api.pagination import CustomPage
 from db import adder
 from db.sensor import Sensor
 from db.engine import get_db_session
 from schemas.create.sensor import CreateSensor
-from services.query_helper import simple_all_getter
+from schemas.response.sensor import SensorResponse
+from services.query_helper import simple_all_getter, paginated_all_getter
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
@@ -36,13 +38,15 @@ def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_sess
     return adder(session, Sensor, sensor_data)
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/",
+            response_model=CustomPage[SensorResponse],
+            status_code=status.HTTP_200_OK)
 def get_sensors(session: Session = Depends(get_db_session)):
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
     """
-    return simple_all_getter(session, Sensor)
+    return paginated_all_getter(session, Sensor)
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)

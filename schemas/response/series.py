@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from schemas import ORMBaseModel
+from pydantic import BaseModel
+
+
+class SeriesResponse(BaseModel):
+    id: int
 
 
 # ============= EOF =============================================
-class WellTimeseriesResponse(ORMBaseModel):
-    name: str
-    description: str | None = None
-    well_id: int

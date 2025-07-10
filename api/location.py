@@ -28,8 +28,8 @@ from db import adder, Location, WellThing
 from db.engine import get_db_session
 from schemas.base_get import GetLocation
 from schemas.create.location import CreateLocation
-from schemas.response.location import SampleLocationResponse
-from schemas.response.well import SampleLocationWellResponse
+from schemas.response.location import LocationResponse
+from schemas.response.well import LocationWellResponse
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from services.query_helper import make_query
 
@@ -39,7 +39,6 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/location", tags=["location"])
 
 
-# ============= EOF =============================================
 @router.post(
     "/",
     response_model=GetLocation,
@@ -113,7 +112,7 @@ async def get_location_feature_collection(
 @router.get(
     "/",
     response_model=CustomPage[
-        Union[SampleLocationResponse, SampleLocationWellResponse]
+        Union[LocationResponse, LocationWellResponse]
     ],
     summary="Get all locations",
 )
@@ -147,15 +146,15 @@ async def get_location(
 
     def transformer(items):
         if expand == "well":
-            return [SampleLocationWellResponse.model_validate(item) for item in items]
-        return [SampleLocationResponse.model_validate(item) for item in items]
+            return [LocationWellResponse.model_validate(item) for item in items]
+        return [LocationResponse.model_validate(item) for item in items]
 
     return paginate(query=sql, conn=session, transformer=transformer)
 
 
 @router.get(
     "/{location_id}",
-    response_model=Union[SampleLocationResponse, SampleLocationWellResponse],
+    response_model=Union[LocationResponse, LocationWellResponse],
     summary="Get location by ID",
 )
 async def get_location_by_id(
@@ -172,8 +171,9 @@ async def get_location_by_id(
     if not location:
         return {"message": "Location not found"}
 
-    response_klass = SampleLocationResponse
+    response_klass = LocationResponse
     if expand == "well":
-        response_klass = SampleLocationWellResponse
+        response_klass = LocationWellResponse
 
     return response_klass.model_validate(location)
+# ============= EOF =============================================
