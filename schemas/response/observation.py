@@ -18,41 +18,21 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class GroundwaterLevelMixin:
-    depth_to_water: float
-    measuring_point_height: float
-
-
-class GeothermalMixin:
-    depth: float
-    temperature: float
-
-
-class CreateObservation(BaseModel):
-    series_id: int
-    release_status: str
+class ObservationResponse(BaseModel):
+    id: int
     observation_timestamp: datetime
 
-
-class ChildObservationModel(BaseModel):
+class GroundwaterLevelObservationResponse(BaseModel):
     observation_id: int
     observation_timestamp: datetime
 
-
-class CreateGroundwaterLevelObservation(ChildObservationModel, GroundwaterLevelMixin):
-    pass
+    depth_to_water: float
 
 
-class CreateGeothermalObservation(ChildObservationModel, GeothermalMixin):
-    pass
+class GeothermalObservationResponse(BaseModel):
+    observation_id: int
+    observation_timestamp: datetime
 
-
-class CreateGroundwaterLevelObservationDirect(CreateObservation, GroundwaterLevelMixin):
-    pass
-
-
-class CreateGeothermalObservationDirect(CreateObservation, GeothermalMixin):
-    pass
-
-
+    temperature: float
+    depth: float
 # ============= EOF =============================================

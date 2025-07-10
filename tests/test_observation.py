@@ -97,6 +97,8 @@ def test_add_geothermal_observation():
         json={
             "observation_id": 1,
             "observation_timestamp": "2025-01-01T00:00:00Z",
+            "depth": 100,
+            "temperature": 25.5,
         },
     )
     assert response.status_code == 201
@@ -113,10 +115,31 @@ def test_add_geochemical_observation():
 
 
 # ============= Get tests =================
+def test_get_observation_by_series_id():
+    response = client.get("/observation", params={"series_id": 1})
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items  = data['items']
+    assert len(items)>0, "Expected at least one observation for the series"
+    # assert isinstance(data, list), "Expected a list of observations"
+    # assert len(data) == 1, "Expected at least one observation for the series"
 
 
-def test_get_observation():
-    pass
+def test_get_groundwater_observation_by_series_id():
+    response = client.get("/observation/groundwater-level", params={"series_id": 1})
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data['items']
+    assert len(items) > 0, "Expected at least one groundwater observation for the series"
 
 
+def test_get_geothermal_observation_by_series_id():
+    response = client.get("/observation/geothermal", params={"series_id": 1})
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data['items']
+    assert len(items) > 0, "Expected at least one geothermal observation for the series"
 # ============= EOF =============================================

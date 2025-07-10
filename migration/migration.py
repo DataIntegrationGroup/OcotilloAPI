@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import time
+
 import numpy as np
 import pandas as pd
 import pyproj
@@ -79,7 +81,7 @@ def transform_wells(df):
 
 
 def load_locations(sess, df):
-    for row in df.itertuples():
+    def f(row):
         # Convert the row to a dictionary
         row_dict = row._asdict()
 
@@ -90,6 +92,7 @@ def load_locations(sess, df):
             point, source_srid=26913, target_srid=4326  # WGS84 SRID
         )
 
+
         sl = Location(
             # name=row_dict["PointID"],
             point=transformed_point.wkt,
@@ -97,32 +100,46 @@ def load_locations(sess, df):
         )
 
         sess.add(sl)
-        try:
-            sess.commit()  # Commit the changes to the database
-        except ProgrammingError:
-            print(f"skipping row due to ProgrammingError. {row_dict['PointID']}")
-            sess.rollback()
+        # try:
+        #     sess.commit()  # Commit the changes to the database
+        # except ProgrammingError:
+        #     print(f"skipping row due to ProgrammingError. {row_dict['PointID']}")
+        #     sess.rollback()
         # Remove the index from the dictionary
+    loader(df, sess, f)
 
 
-def load_wells(sess, df):
-
-    # print(df.head())
+def loader(df, sess, function):
     n = len(df)
-
+    st = time.time()
+    prev  = st
+    g = 175
     for i, row in enumerate(df.itertuples()):
-        if not i % 100:
-            print(f"Processing row {i} of {n}")
+        if not i % g:
+            print(f"Processing row {i} of {n}, {g/(time.time()-prev)}  rate: {i / (time.time() - st):.2f} rows/sec")
+            prev = time.time()
+        function(row)
 
+        if not i % g:
+            sess.commit()
+
+
+ADDED = []
+def load_wells(sess, df):
+    def f(row):
         row_dict = row._asdict()
 
-        location = (
-            sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
-        )
+        # location = (
+        #     sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
+        # )
+
+
+
+        # location = sess.query(Location).filter_by(point=row_dict["PointID"]).one_or_none()
 
         if location:
             well = WellThing()
-            well.location = location
+            # well.location = location
             well.well_depth = row_dict["WellDepth"]
             well.hole_depth = row_dict["HoleDepth"]
             well.ose_pod_id = row_dict["OSEWellID"]
@@ -131,17 +148,52 @@ def load_wells(sess, df):
             well.casing_description = row_dict["CasingDescription"]
 
             wt = row_dict["Meaning"]
-
-            add_lexicon_term(
-                sess, wt, "Current use of the well, aka well type", "current_use"
-            )
+            if wt not in ADDED:
+                add_lexicon_term(
+                    sess, wt, "Current use of the well, aka well type", "current_use"
+                )
+                ADDED.append(wt)
 
             well.well_type = wt
 
-            # print(row_dict)
             sess.add(well)
-            sess.commit()
-            # break
+
+    loader(df, sess, f)
+    # print(df.head())
+    # n = len(df)
+    #
+    # for i, row in enumerate(df.itertuples()):
+    #     if not i % 100:
+    #         print(f"Processing row {i} of {n}")
+    #
+    #     row_dict = row._asdict()
+    #
+    #     location = (
+    #         sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
+    #     )
+    #
+    #     if location:
+    #         well = WellThing()
+    #         well.location = location
+    #         well.well_depth = row_dict["WellDepth"]
+    #         well.hole_depth = row_dict["HoleDepth"]
+    #         well.ose_pod_id = row_dict["OSEWellID"]
+    #         well.casing_depth = row_dict["CasingDepth"]
+    #         well.casing_diameter = row_dict["CasingDiameter"]
+    #         well.casing_description = row_dict["CasingDescription"]
+    #
+    #         wt = row_dict["Meaning"]
+    #
+    #         add_lexicon_term(
+    #             sess, wt, "Current use of the well, aka well type", "current_use"
+    #         )
+    #
+    #         well.well_type = wt
+    #
+    #         # print(row_dict)
+    #         sess.add(well)
+    #         sess.commit()
+    #         # break
 
 
 def location_etl(sess):
