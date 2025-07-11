@@ -182,4 +182,46 @@ def test_get_groundwater_observation_by_polygon():
     ), "Expected at least one groundwater observation within the polygon"
 
 
+def test_get_groundwater_observation_by_polygon_nonexistent():
+    response = client.get(
+        "/observation/groundwater-level",
+        params={
+            "polygon": "POLYGON((-100.0 -100.0, -90.0 -90.0, -90.0 -80.0, -100.0 -80.0, -100.0 -100.0))",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert len(items) == 0, "Expected no groundwater observations within the polygon"
+
+
+def test_get_groundwater_observation_by_time_range():
+    response = client.get(
+        "/observation/groundwater-level",
+        params={
+            "start_time": "2025-01-01T00:00:00Z",
+            "end_time": "2025-01-02T00:00:00Z",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert len(items) > 0, "Expected at least one groundwater observation in the time range"
+
+
+def test_get_groundwater_observation_by_time_range_nonexistent():
+    response = client.get(
+        "/observation/groundwater-level",
+        params={
+            "start_time": "2020-01-01T00:00:00Z",
+            "end_time": "2020-01-02T00:00:00Z",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert len(items) == 0, "Expected no groundwater observations in the time range"
 # ============= EOF =============================================

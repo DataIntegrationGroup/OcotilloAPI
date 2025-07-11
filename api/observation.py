@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
@@ -134,6 +136,8 @@ def get_groundwater_level_observations(
     series_id: int | None = None,
     thing_id: int | None = None,
     polygon: str | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
     session: Session = Depends(get_db_session),
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
@@ -165,6 +169,16 @@ def get_groundwater_level_observations(
             .join(Location)
         )
         sql = make_within_wkt(sql, polygon)
+        return paginate(query=sql, conn=session)
+    elif start_time is not None and end_time is not None:
+        sql = (
+            select(GroundwaterLevelObservation)
+            .join(Observation)
+            .where(
+                Observation.observation_timestamp >= start_time,
+                Observation.observation_timestamp <= end_time,
+            )
+        )
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, GroundwaterLevelObservation)
