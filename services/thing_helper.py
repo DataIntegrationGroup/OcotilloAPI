@@ -14,19 +14,20 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from db import LocationThingAssociation, Thing, WellThing, SpringThing
+from db import LocationThingAssociation, Thing, WellThing, SpringThing, Base
 
 
-def add_well(session, data):
+def add_well(session: Session, data: BaseModel | dict) -> WellThing:
     return _add_child_thing(session, WellThing, data)
 
 
-def add_spring(session, data):
+def add_spring(session: Session, data: BaseModel | dict) -> SpringThing:
     return _add_child_thing(session, SpringThing, data)
 
 
-def _add_child_thing(session, table, data):
+def _add_child_thing(session: Session, table, data: BaseModel | dict) -> Base:
 
     if isinstance(data, BaseModel):
         data = data.model_dump()

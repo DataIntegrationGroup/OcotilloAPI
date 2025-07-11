@@ -13,8 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Any
+
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer
+from sqlalchemy import select, Float, Integer, Column
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql.elements import OperatorExpression
+
 from db import search as search_func
 from services.regex import QUERY_REGEX
 
@@ -31,7 +36,7 @@ def to_bool(value: str) -> bool | str:
     return value
 
 
-def make_where(col, op: str, v: str):
+def make_where(col: Column, op: str, v: str) -> OperatorExpression:
 
     if op == "like":
         return col.like(v)
@@ -49,7 +54,7 @@ def make_where(col, op: str, v: str):
         return getattr(col, f"__{op}__")(cast_value(col, v))
 
 
-def make_query(table, query: str):
+def make_query(table: DeclarativeBase, query: str) -> OperatorExpression:
     # ensure the length of the query is reasonable
     if len(query) > 1000:
         raise ValueError("Query is too long")
@@ -81,7 +86,7 @@ def make_query(table, query: str):
 
 
 # ============= EOF =============================================
-def simple_get_by_name(session, table, name):
+def simple_get_by_name(session, table, name) -> object | None:
     """
     Helper function to get a record by name from the database.
     """
@@ -90,7 +95,7 @@ def simple_get_by_name(session, table, name):
     return result.scalar_one_or_none()
 
 
-def simple_get_by_id(session, table, item_id):
+def simple_get_by_id(session, table, item_id) -> object | None:
     """
     Helper function to get a record by ID from the database.
     """
@@ -99,7 +104,7 @@ def simple_get_by_id(session, table, item_id):
     return result.scalar_one_or_none()
 
 
-def simple_all_getter(session, table):
+def simple_all_getter(session, table) -> list[object]:
     """
     Helper function to get records from the database.
     """
@@ -109,7 +114,7 @@ def simple_all_getter(session, table):
     # return result.scalars().all()
 
 
-def paginated_all_getter(session, table):
+def paginated_all_getter(session, table) -> Any :
     """
     Helper function to get all records from the database with pagination.
     """
@@ -119,7 +124,7 @@ def paginated_all_getter(session, table):
     # return paginate(query=sql, conn=session, transformer=lambda items: items)
 
 
-def searchable_getter(session, table, search, vector=None, joins=None):
+def searchable_getter(session, table, search, vector=None, joins=None) -> list[object]:
     if vector is None:
         vector = getattr(table, "search_vector", None)
 

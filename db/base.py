@@ -24,7 +24,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
 )
-from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
 from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
 import re
@@ -32,8 +32,10 @@ import re
 
 make_versioned()
 
+class Base(DeclarativeBase):
+    pass
 
-Base = declarative_base()
+
 make_searchable(Base.metadata)
 
 

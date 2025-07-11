@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 def add_contact(
     session: Session,
     contact_data: CreateContact | dict,
-):
+) -> Contact:
     """
     Add a new contact to the database.
     """
