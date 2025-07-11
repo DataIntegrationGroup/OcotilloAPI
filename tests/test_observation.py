@@ -152,9 +152,7 @@ def test_get_groundwater_observation_by_thing():
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
-    assert (
-        len(items) > 0
-    ), "Expected at least one groundwater observation for the thing"
+    assert len(items) > 0, "Expected at least one groundwater observation for the thing"
 
 
 def test_get_groundwater_observation_by_thing_nonexistent():
@@ -163,21 +161,26 @@ def test_get_groundwater_observation_by_thing_nonexistent():
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
-    assert len(items) == 0, "Expected no groundwater observations for a non-existent thing"
+    assert (
+        len(items) == 0
+    ), "Expected no groundwater observations for a non-existent thing"
+
 
 @pytest.mark.skip(reason="not implemented yet")
 def test_get_groundwater_observation_by_polygon():
     response = client.get(
         "/observation/groundwater-level",
         params={
-            'polygon': 'POLYGON((-10.0 -10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, -10.0 -10.0))',
+            "polygon": "POLYGON((-10.0 -10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, -10.0 -10.0))",
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
-    assert len(items) > 0, "Expected at least one groundwater observation within the polygon"
+    assert (
+        len(items) > 0
+    ), "Expected at least one groundwater observation within the polygon"
 
 
 # ============= EOF =============================================

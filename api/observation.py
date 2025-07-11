@@ -134,7 +134,7 @@ def get_groundwater_level_observations(
     series_id: int | None = None,
     thing_id: int | None = None,
     polygon: str | None = None,
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_db_session),
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.
@@ -163,7 +163,6 @@ def get_groundwater_level_observations(
             .join(Thing)
             .join(LocationThingAssociation)
             .join(Location)
-
         )
         sql = make_within_wkt(sql, polygon)
         print(sql)

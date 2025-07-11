@@ -55,6 +55,7 @@ def test_get_locations_expand():
     item = data["items"][0]
     assert "well" in item
 
+
 @pytest.fixture(scope="module", autouse=True)
 def location_fixture():
     client.post(
