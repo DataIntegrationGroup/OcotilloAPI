@@ -35,7 +35,7 @@ def series():
     session.add(
         Series(
             name="Test Series",
-            thing_id=1,
+            thing_id=2,
             sensor_id=sensor.id,
             unit="ft",
             observed_property="groundwater level",
@@ -147,7 +147,7 @@ def test_get_geothermal_observation_by_series_id():
 
 
 def test_get_groundwater_observation_by_thing():
-    response = client.get("/observation/groundwater-level", params={"thing_id": 1})
+    response = client.get("/observation/groundwater-level", params={"thing_id": 2})
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
@@ -166,7 +166,6 @@ def test_get_groundwater_observation_by_thing_nonexistent():
     ), "Expected no groundwater observations for a non-existent thing"
 
 
-@pytest.mark.skip(reason="not implemented yet")
 def test_get_groundwater_observation_by_polygon():
     response = client.get(
         "/observation/groundwater-level",

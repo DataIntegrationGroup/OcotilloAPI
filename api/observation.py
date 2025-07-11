@@ -165,7 +165,6 @@ def get_groundwater_level_observations(
             .join(Location)
         )
         sql = make_within_wkt(sql, polygon)
-        print(sql)
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, GroundwaterLevelObservation)
