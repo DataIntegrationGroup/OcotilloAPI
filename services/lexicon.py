@@ -18,7 +18,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 
-def add_lexicon_term(session: Session, term: str, definition: str, category: str | int) -> Lexicon:
+def add_lexicon_term(
+    session: Session, term: str, definition: str, category: str | int
+) -> Lexicon:
     """
     Add a term to the lexicon with its definition and category.
 

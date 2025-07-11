@@ -114,7 +114,7 @@ def simple_all_getter(session, table) -> list[object]:
     # return result.scalars().all()
 
 
-def paginated_all_getter(session, table) -> Any :
+def paginated_all_getter(session, table) -> Any:
     """
     Helper function to get all records from the database with pagination.
     """

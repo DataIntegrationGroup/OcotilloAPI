@@ -32,6 +32,7 @@ import re
 
 make_versioned()
 
+
 class Base(DeclarativeBase):
     pass
 
