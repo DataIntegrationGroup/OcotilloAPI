@@ -55,8 +55,17 @@ def test_get_locations_expand():
     item = data["items"][0]
     assert "well" in item
 
+@pytest.fixture(scope="module", autouse=True)
+def location_fixture():
+    client.post(
+        "/location",
+        json={
+            "point": "POINT(10.1 10.1)",
+        },
+    )
 
-@pytest.mark.skip("Needs fixture to ensure a location exists in this polygon")
+
+# @pytest.mark.skip("Needs fixture to ensure a location exists in this polygon")
 def test_get_within_locations():
     response = client.get(
         "/location",

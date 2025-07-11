@@ -20,11 +20,12 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
-from db import adder
+from db import adder, Thing, Location, LocationThingAssociation
 from db.engine import get_db_session
 from db.observation.geothermal import GeothermalObservation
 from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation.observation import Observation
+from db.series.series import Series
 from schemas.create.observation import (
     CreateObservation,
     CreateGroundwaterLevelObservation,
@@ -37,6 +38,7 @@ from schemas.response.observation import (
     GroundwaterLevelObservationResponse,
     GeothermalObservationResponse,
 )
+from services.geospatial_helper import make_within_wkt
 from services.query_helper import paginated_all_getter
 
 router = APIRouter(prefix="/observation", tags=["observation"])
@@ -129,7 +131,10 @@ def get_observations(
     "/groundwater-level",
 )
 def get_groundwater_level_observations(
-    series_id: int | None = None, session: Session = Depends(get_db_session)
+    series_id: int | None = None,
+    thing_id: int | None = None,
+    polygon: str | None = None,
+    session: Session = Depends(get_db_session)
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.
@@ -140,6 +145,28 @@ def get_groundwater_level_observations(
             .join(Observation)
             .where(Observation.series_id == series_id)
         )
+        return paginate(query=sql, conn=session)
+    elif thing_id is not None:
+        sql = (
+            select(GroundwaterLevelObservation)
+            .join(Observation)
+            .join(Series)
+            .join(Thing)
+            .where(Thing.id == thing_id)
+        )
+        return paginate(query=sql, conn=session)
+    elif polygon is not None:
+        sql = (
+            select(GroundwaterLevelObservation)
+            .join(Observation)
+            .join(Series)
+            .join(Thing)
+            .join(LocationThingAssociation)
+            .join(Location)
+
+        )
+        sql = make_within_wkt(sql, polygon)
+        print(sql)
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, GroundwaterLevelObservation)
