@@ -208,7 +208,9 @@ def test_get_groundwater_observation_by_time_range():
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
-    assert len(items) > 0, "Expected at least one groundwater observation in the time range"
+    assert (
+        len(items) > 0
+    ), "Expected at least one groundwater observation in the time range"
 
 
 def test_get_groundwater_observation_by_time_range_nonexistent():
@@ -224,4 +226,6 @@ def test_get_groundwater_observation_by_time_range_nonexistent():
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
     assert len(items) == 0, "Expected no groundwater observations in the time range"
+
+
 # ============= EOF =============================================
