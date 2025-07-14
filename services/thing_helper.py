@@ -33,7 +33,6 @@ def _add_child_thing(session: Session, table, data: BaseModel | dict) -> Base:
         data = data.model_dump()
 
     location_id = data.pop("location_id", None)
-    assoc = LocationThingAssociation()
 
     thing = Thing()
     thing.name = data.pop("name")
@@ -47,9 +46,13 @@ def _add_child_thing(session: Session, table, data: BaseModel | dict) -> Base:
     session.commit()
     session.refresh(obj)
 
-    assoc.location_id = location_id
-    assoc.thing_id = thing.id
-    session.add(assoc)
+    if location_id is not None:
+        assoc = LocationThingAssociation()
+
+        assoc.location_id = location_id
+        assoc.thing_id = thing.id
+        session.add(assoc)
+
     session.commit()
     return obj
 
