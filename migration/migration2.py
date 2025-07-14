@@ -70,8 +70,8 @@ def make_location(row):
 
 
 def load_water_levels(session):
-    wd = pd.read_csv("data/water_levels.csv")
-    p = pd.read_csv("data/welldata.csv")
+    wd = pd.read_csv("./migration/data/water_levels.csv")
+    p = pd.read_csv("./migration/data/welldata.csv")
     # get first 100 rows
     pointids = p["PointID"].unique()[:100]
 
@@ -152,8 +152,8 @@ ADDED = []
 
 
 def load_wells(session):
-    wdf = pd.read_csv("data/welldata.csv")
-    ldf = pd.read_csv("data/location.csv")
+    wdf = pd.read_csv("./migration/data/welldata.csv")
+    ldf = pd.read_csv("./migration/data/location.csv")
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})

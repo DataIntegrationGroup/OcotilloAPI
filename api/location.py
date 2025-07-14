@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 from typing import Union
 
 from fastapi import Depends
@@ -99,7 +100,7 @@ async def get_location_feature_collection(
     for location, geojson in locations:
         feature = {
             "type": "Feature",
-            "geometry": geojson,
+            "geometry": json.loads(geojson),
         }
         features.append(feature)
 
