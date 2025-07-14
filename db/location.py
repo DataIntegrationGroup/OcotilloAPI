@@ -58,6 +58,8 @@ class LocationThingAssociation(Base, AutoBaseMixin):
     effective_start = Column(DateTime, nullable=False, server_default=func.now())
     effective_end = Column(DateTime, nullable=True)
 
+    location = relationship("Location")
+    thing = relationship("Thing")
     # location = relationship("Location", back_populates="thing")
     # thing = relationship("Thing", back_populates="locations")
 

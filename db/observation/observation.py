@@ -21,7 +21,7 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
     ForeignKeyConstraint,
 )
-from sqlalchemy.orm import declared_attr, mapped_column
+from sqlalchemy.orm import declared_attr, mapped_column, relationship
 
 from db import AutoBaseMixin, Base
 from db.base import ReleaseMixin
@@ -95,6 +95,8 @@ class Observation(Base, ReleaseMixin):
     observation_timestamp = mapped_column(
         TIMESTAMP, nullable=False, doc="Timestamp of the observation"
     )
+
+    series = relationship("Series")
 
 
 # ============= EOF =============================================

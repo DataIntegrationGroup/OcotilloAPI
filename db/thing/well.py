@@ -43,9 +43,10 @@ class WellThing(Base, AutoBaseMixin, ThingChildMixin):
     well_type = lexicon_term()
     # e.g., "Production", "Observation", etc.
     #
-    # casing_diameter = Column(Float, info={"unit": "inches"})
-    # casing_depth = Column(Float, info={"unit": "feet below ground surface"})
-    # casing_description = Column(String(50))
+    casing_diameter = Column(Float, info={"unit": "inches"})
+    casing_depth = Column(Float, info={"unit": "feet below ground surface"})
+    casing_description = Column(String(50))
+
     construction_notes = Column(String(250))
     # formation_zone = Column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
     #

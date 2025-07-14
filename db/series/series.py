@@ -49,6 +49,10 @@ class SeriesMixin:
             unique=True,
         )
 
+    @declared_attr
+    def series(self):
+        return relationship("Series")
+
 
 class Series(Base, AutoBaseMixin, ReleaseMixin):
     """
@@ -79,6 +83,9 @@ class Series(Base, AutoBaseMixin, ReleaseMixin):
         ForeignKey("thing.id", ondelete="CASCADE"),
         nullable=False,
     )
+
+    sensor = relationship("Sensor")
+    thing = relationship("Thing")
 
 
 # class SampleWellAssociation(Base, AutoBaseMixin):
