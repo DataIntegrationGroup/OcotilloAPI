@@ -76,5 +76,5 @@ starlette==0.46.2
 typing-extensions==4.14.0
 typing-inspection==0.4.1
 urllib3==2.5.0
-uvicorn==0.34.3
+uvicorn==0.35.0
 yarl==1.20.1
