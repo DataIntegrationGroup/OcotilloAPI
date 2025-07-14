@@ -17,7 +17,7 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 click==8.2.1
 cloud-sql-python-connector==1.18.2
-cryptography==45.0.4
+cryptography==45.0.5
 dnspython==2.7.0
 email-validator==2.2.0
 fastadmin==0.2.22
