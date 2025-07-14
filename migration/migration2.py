@@ -70,15 +70,14 @@ def make_location(row):
 
 
 def load_water_levels(session):
-    wd = pd.read_csv('data/water_levels.csv')
-    p = pd.read_csv('data/welldata.csv')
+    wd = pd.read_csv("data/water_levels.csv")
+    p = pd.read_csv("data/welldata.csv")
     # get first 100 rows
-    pointids = p['PointID'].unique()[:100]
+    pointids = p["PointID"].unique()[:100]
 
+    wd = wd[wd["PointID"].isin(pointids)]
 
-    wd = wd[wd['PointID'].isin(pointids)]
-
-    gwd = wd.groupby(['PointID'])
+    gwd = wd.groupby(["PointID"])
 
     sensor = Sensor()
     sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
@@ -91,14 +90,14 @@ def load_water_levels(session):
         # add a series
         # add a groundwater level series
         thing = session.query(Thing).filter_by(name=index[0]).first()
-        print('Processing PointID:', index, thing)
+        print("Processing PointID:", index, thing)
         if not thing:
             continue
 
-        print('found thing:',index, thing.id)
-        series = Series(name='Groundwater Level Series')
+        print("found thing:", index, thing.id)
+        series = Series(name="Groundwater Level Series")
         series.observed_property = "groundwater level"
-        series.unit = 'ft'
+        series.unit = "ft"
 
         series.sensor = sensor
         series.thing = thing
@@ -113,7 +112,7 @@ def load_water_levels(session):
             obs = Observation()
             obs.series = series
             obs.observation_timestamp = datetime.fromisoformat(row.DateMeasured)
-            print('rw', row.DateMeasured, row.TimeMeasured)
+            print("rw", row.DateMeasured, row.TimeMeasured)
             gwl_obs = GroundwaterLevelObservation()
             gwl_obs.observation = obs
             gwl_obs.depth_to_water = row.DepthToWater
@@ -128,40 +127,38 @@ def load_water_levels(session):
         # print('--------------------------------------------')
         # break
         # for index, row in group:
-            # print(index, row)
-            # print(row.PointID, row.TimeMeasured)
-            # print(row.PointID, row.WaterLevel, row.WaterLevelDate)
-            # if pd.isna(row.WaterLevel) or pd.isna(row.WaterLevelDate):
-            #     continue
-            #
-            # obs = add_groundwater_level_observation(
-            #     session,
-            #     {
-            #         "point_id": row.PointID,
-            #         "water_level": row.WaterLevel,
-            #         "water_level_date": row.WaterLevelDate,
-            #     },
-            # )
-            # print(obs)
+        # print(index, row)
+        # print(row.PointID, row.TimeMeasured)
+        # print(row.PointID, row.WaterLevel, row.WaterLevelDate)
+        # if pd.isna(row.WaterLevel) or pd.isna(row.WaterLevelDate):
+        #     continue
+        #
+        # obs = add_groundwater_level_observation(
+        #     session,
+        #     {
+        #         "point_id": row.PointID,
+        #         "water_level": row.WaterLevel,
+        #         "water_level_date": row.WaterLevelDate,
+        #     },
+        # )
+        # print(obs)
 
         # print(index, row)
 
         # obs = Observation()
 
 
-
-
-
 ADDED = []
-def load_wells(session):
-    wdf = pd.read_csv('data/welldata.csv')
-    ldf = pd.read_csv('data/location.csv')
 
+
+def load_wells(session):
+    wdf = pd.read_csv("data/welldata.csv")
+    ldf = pd.read_csv("data/location.csv")
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
 
-    wdf = wdf.join(ldf.set_index('PointID'), on='PointID')
+    wdf = wdf.join(ldf.set_index("PointID"), on="PointID")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
@@ -169,8 +166,10 @@ def load_wells(session):
     start_time = time.time()
 
     for i, row in enumerate(wdf.itertuples()):
-        if i and not i%100:
-            print(f'Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}')
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
             session.commit()
             break
 
@@ -186,7 +185,6 @@ def load_wells(session):
                 "casing_diameter": row.CasingDiameter,
                 "casing_depth": row.CasingDepth,
                 "casing_description": row.CasingDescription,
-
             },
         )
         wt = row.Meaning
@@ -216,7 +214,7 @@ def load_wells(session):
 #     init_lexicon()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
         # load_wells(sess)

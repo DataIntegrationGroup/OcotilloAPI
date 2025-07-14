@@ -48,11 +48,11 @@ class SeriesMixin:
             nullable=False,
             unique=True,
         )
+
     @declared_attr
     def series(self):
-        return relationship(
-            "Series"
-        )
+        return relationship("Series")
+
 
 class Series(Base, AutoBaseMixin, ReleaseMixin):
     """

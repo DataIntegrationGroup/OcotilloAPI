@@ -96,7 +96,7 @@ class Observation(Base, ReleaseMixin):
         TIMESTAMP, nullable=False, doc="Timestamp of the observation"
     )
 
-    series = relationship('Series')
+    series = relationship("Series")
 
 
 # ============= EOF =============================================
