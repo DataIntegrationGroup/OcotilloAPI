@@ -22,8 +22,9 @@ from db.contact import Contact, Phone, Email
 
 from tests import client
 
+
 def test_search_api():
-    response = client.get('/search', params={'q': 'Test'})
+    response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     print(response.json())
 

@@ -49,7 +49,9 @@ class WellThing(Base, AutoBaseMixin, ThingChildMixin):
 
     construction_notes = Column(String(250))
 
-    search_vector = Column(TSVectorType("construction_notes", "well_type", "casing_description"))
+    search_vector = Column(
+        TSVectorType("construction_notes", "well_type", "casing_description")
+    )
     # formation_zone = Column(String(100), ForeignKey("lexicon_term.term"), nullable=True)
     #
     # location = relationship("SampleLocation", backref="well", uselist=False)
