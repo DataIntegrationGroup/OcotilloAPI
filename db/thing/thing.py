@@ -43,6 +43,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
+        overlaps="things",
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")

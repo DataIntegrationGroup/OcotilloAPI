@@ -35,17 +35,12 @@ from db.engine import get_db_session
 router = APIRouter(prefix="/search", tags=["search"])
 
 
-@router.get("/")
-def search_api(q: str, session: Session = Depends(get_db_session)):
-    """
-    Search endpoint for the collaborative network.
-    This endpoint can be used to search for wells, springs, and other entities in the collaborative network.
-    """
+def _get_contact_results(session: Session, q: str)-> list[dict]:
     vector = (
-        Contact.search_vector
-        | Email.search_vector
-        | Phone.search_vector
-        | Address.search_vector
+            Contact.search_vector
+            | Email.search_vector
+            | Phone.search_vector
+            | Address.search_vector
     )
 
     query = search(
@@ -67,20 +62,62 @@ def search_api(q: str, session: Session = Depends(get_db_session)):
         for c in contacts
     ]
 
-    # vector = Thing.search_vector | WellThing.search_vector | Asset.search_vector
-    # query = search(select(WellThing).join(Thing)
-    #                .join(Asset)
-    #                .join(AssetThingAssociation)
-    #                .join(LocationThingAssociation)
-    #                .join(Location), q, vector=vector)
-    # things = session.scalars(query).all()
-    # thing_results = [{'label': t.name,
-    #             'group': 'Wells',
-    #             'properties': {
-    #                 'well_depth': t.well_depth,
-    #                 'hole_depth': t.hole_depth,
-    #             }} for t in things]
-    # results.extend(thing_results)
+    return results
+
+
+def _get_thing_results(session: Session, q: str) -> list[dict]:
+    vector = Thing.search_vector | WellThing.search_vector
+    query = search(select(WellThing).join(Thing), q, vector=vector)
+
+    wells = session.scalars(query).all()
+    results = [
+        {
+            "label": w.thing.name,
+            "group": "Things",
+            "properties": {
+                "type": w.well_type,
+            },
+        }
+        for w in wells
+    ]
+
+    return results
+
+
+def _get_asset_results(session: Session, q: str) -> list[dict]:
+    vector = Asset.search_vector
+    query = search(select(Asset)
+                   .join(AssetThingAssociation)
+                   .join(Thing), q, vector=vector)
+
+    assets = session.scalars(query).all()
+    results = [
+        {
+            "label": a.filename,
+            "group": "Assets",
+            "properties": {
+                "things": [t.name for t in a.things],
+                "storage_service": a.storage_service,
+                "storage_path": a.storage_path,
+                "mime_type": a.mime_type,
+                "size": a.size,
+            },
+        }
+        for a in assets
+    ]
+
+    return results
+
+
+@router.get("/")
+def search_api(q: str, session: Session = Depends(get_db_session)):
+    """
+    Search endpoint for the collaborative network.
+    """
+
+    results = _get_contact_results(session, q)
+    results.extend(_get_thing_results(session, q))
+    results.extend(_get_asset_results(session, q))
 
     return results
 

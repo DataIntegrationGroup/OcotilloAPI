@@ -37,6 +37,8 @@ class Asset(Base, AutoBaseMixin):
         TSVectorType("filename", "mime_type", "storage_service", "storage_path")
     )
 
+    things = relationship("Thing", secondary="asset_thing_association")
+
 
 class AssetThingAssociation(Base, AutoBaseMixin):
 
@@ -47,8 +49,8 @@ class AssetThingAssociation(Base, AutoBaseMixin):
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    thing = relationship("Thing", back_populates="asset_associations")
-    asset = relationship("Asset")
+    thing = relationship("Thing", back_populates="asset_associations", overlaps='things')
+    asset = relationship("Asset", overlaps='things')
     # publication = relationship("Publication", back_populates="author_associations")
     # author = relationship("Author", back_populates="publication_associations")
 
