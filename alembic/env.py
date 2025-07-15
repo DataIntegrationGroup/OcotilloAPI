@@ -37,7 +37,6 @@ host = environ.get("POSTGRES_HOST", "db")
 port = environ.get("POSTGRES_PORT", "5432")
 
 SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
-print(SQLALCHEMY_DATABASE_URL)
 config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
 
 
