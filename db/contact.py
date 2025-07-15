@@ -84,6 +84,6 @@ class Address(Base, AutoBaseMixin):
     address_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="addresses")
-
+    search_vector = Column(TSVectorType("address_line_1", "address_line_2", "city", "state", "postal_code", "country"))
 
 # ============= EOF =============================================

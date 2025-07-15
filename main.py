@@ -33,6 +33,7 @@ from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
+from api.search import router as search_router
 
 app.include_router(contact_router)
 app.include_router(group_router)
@@ -43,6 +44,7 @@ app.include_router(sensor_router)
 app.include_router(series_router)
 app.include_router(sample_router)
 app.include_router(observation_router)
+app.include_router(search_router)
 
 app.include_router(form_router)
 # app.include_router(sample_router)
