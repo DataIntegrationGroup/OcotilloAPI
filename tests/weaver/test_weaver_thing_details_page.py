@@ -4,7 +4,7 @@ from tests import client
 
 #NOTE: I've been thinking about the locations details in the way Weaver dealt with the previous API, in that each location was a single thing. This is not the case anymore, so "thing" should be the center item displayed on the "thing" details page.
 #get location details by id
-def test_weaver_location_details_by_id():
+def test_weaver_thing_details_by_id():
     response = client.get("/thing/1?format=geojson") #TODO: same note as in the map thing dialog test, do we need a thing/well endpoint? Or can we just use the thing id and get all properties?
     assert response.status_code == 200
     data = response.json()
@@ -37,14 +37,14 @@ def test_weaver_groundwater_observations_by_thing_id():
         assert isinstance(data["items"][0], dict)
 
 #get contact info by thing id
-def test_weaver_location_contact_info_by_id():
+def test_weaver_thing_contact_info_by_id():
     response = client.get("/contact?thing_id=1") #or something like this
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict) # just assume data dictionary for now used by Weaver (previously Owner)
 
 #get location equipment(sensor) by location id
-def test_weaver_location_equipment_by_id():
+def test_weaver_thing_equipment_by_id():
     response = client.get("/sensor?thing_id=1") #or something like this
     assert response.status_code == 200
     data = response.json()
@@ -53,7 +53,7 @@ def test_weaver_location_equipment_by_id():
 #get location photos
 #skip for now - not implemented yet
 @pytest.mark.skip
-def test_weaver_location_photos_by_id():
+def test_weaver_thing_photos_by_id():
     response = client.get("/photo?thing_id=1") #or something like this
     assert response.status_code == 200
     data = response.json()
