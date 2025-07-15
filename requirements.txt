@@ -48,7 +48,7 @@ pg8000==1.31.2
 phonenumbers==9.0.7
 pillow==11.3.0
 pluggy==1.6.0
-pre-commit
+pre-commit>=4.2.0
 propcache==0.3.2
 proto-plus==1.26.1
 protobuf==6.31.1
@@ -63,7 +63,7 @@ pyjwt==2.10.1
 pyshp==2.3.1
 pytest==8.4.0
 python-dateutil==2.9.0.post0
-python-dotenv
+python-dotenv>=1.0.0
 python-multipart==0.0.20
 requests==2.32.4
 rsa==4.9.1
