@@ -32,6 +32,16 @@ def test_weaver_spring_by_id():
     assert "properties" in data
     assert "id" in data["properties"] or "name" in data["properties"]
 
+#get groundwater levels return for hydrograph on dialog
+def test_weaver_groundwater_observations_by_thing_id():
+    response = client.get("/observation/groundwater-level?thing_id=1") 
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    if data["items"]:
+        assert isinstance(data["items"][0], dict)
+
 #get water chemistry by well id
 #skip for now - not implemented yet
 @pytest.mark.skip
