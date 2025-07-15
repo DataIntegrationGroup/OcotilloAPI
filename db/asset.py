@@ -49,8 +49,10 @@ class AssetThingAssociation(Base, AutoBaseMixin):
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    thing = relationship("Thing", back_populates="asset_associations", overlaps='things')
-    asset = relationship("Asset", overlaps='things')
+    thing = relationship(
+        "Thing", back_populates="asset_associations", overlaps="things"
+    )
+    asset = relationship("Asset", overlaps="things")
     # publication = relationship("Publication", back_populates="author_associations")
     # author = relationship("Author", back_populates="publication_associations")
 

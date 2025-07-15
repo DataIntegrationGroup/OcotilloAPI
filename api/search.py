@@ -35,12 +35,12 @@ from db.engine import get_db_session
 router = APIRouter(prefix="/search", tags=["search"])
 
 
-def _get_contact_results(session: Session, q: str)-> list[dict]:
+def _get_contact_results(session: Session, q: str) -> list[dict]:
     vector = (
-            Contact.search_vector
-            | Email.search_vector
-            | Phone.search_vector
-            | Address.search_vector
+        Contact.search_vector
+        | Email.search_vector
+        | Phone.search_vector
+        | Address.search_vector
     )
 
     query = search(
@@ -86,9 +86,9 @@ def _get_thing_results(session: Session, q: str) -> list[dict]:
 
 def _get_asset_results(session: Session, q: str) -> list[dict]:
     vector = Asset.search_vector
-    query = search(select(Asset)
-                   .join(AssetThingAssociation)
-                   .join(Thing), q, vector=vector)
+    query = search(
+        select(Asset).join(AssetThingAssociation).join(Thing), q, vector=vector
+    )
 
     assets = session.scalars(query).all()
     results = [
