@@ -53,7 +53,7 @@ def create_contact(
 
 @router.get("/", summary="Get contacts")
 async def get_contacts(
-        thing_id: int | None = None,
+    thing_id: int | None = None,
     session: Session = Depends(get_db_session),
 ) -> CustomPage[ContactResponse]:
     """

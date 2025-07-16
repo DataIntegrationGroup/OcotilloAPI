@@ -17,6 +17,7 @@ import pytest
 
 from tests import client
 
+
 def test_add_group():
     response = client.post(
         "/group",
@@ -207,13 +208,12 @@ def test_weaver_get_wells_geojson():
     assert "type" in data
     assert data["type"] == "FeatureCollection"
     assert len(data["features"]) > 0
-    assert 'id' in data["features"][0]["properties"]
+    assert "id" in data["features"][0]["properties"]
 
 
 def test_weaver_get_all_collabnet_wells():
     response = client.get(
-        "/thing",
-        params={"type": "well", "group": "collabnet", "format": "geojson"}
+        "/thing", params={"type": "well", "group": "collabnet", "format": "geojson"}
     )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
     assert response.status_code == 200
     data = response.json()
@@ -234,22 +234,19 @@ def test_weaver_thing_contact_info_by_id():
     response = client.get("/contact?thing_id=1")  # or something like this
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(
-        data, dict
-    )
-    assert 'items' in data
-    assert len(data['items']) > 0
-    item = data['items'][0]
-    assert 'id' in item
-    assert 'name' in item
-    assert 'addresses' in item
-    assert 'emails' in item
-    assert 'phones' in item
+    assert isinstance(data, dict)
+    assert "items" in data
+    assert len(data["items"]) > 0
+    item = data["items"][0]
+    assert "id" in item
+    assert "name" in item
+    assert "addresses" in item
+    assert "emails" in item
+    assert "phones" in item
 
-    assert isinstance(item['addresses'], list)
-    assert isinstance(item['emails'], list)
-    assert isinstance(item['phones'], list)
-
+    assert isinstance(item["addresses"], list)
+    assert isinstance(item["emails"], list)
+    assert isinstance(item["phones"], list)
 
 
 # ============= EOF =============================================

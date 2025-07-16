@@ -57,8 +57,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         cascade="all, delete-orphan",
         order_by="LocationThingAssociation.effective_start.desc()",
     )
-    locations = association_proxy("location_associations",
-                                  "location")
+    locations = association_proxy("location_associations", "location")
 
 
 class ThingIdLink(Base, AutoBaseMixin):

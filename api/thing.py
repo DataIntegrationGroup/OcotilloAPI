@@ -38,7 +38,13 @@ from schemas.base_create import CreateSpring
 from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
 from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
-from schemas.response.thing import WellResponse, WellScreenResponse, ThingResponse, FeatureCollectionResponse, Feature
+from schemas.response.thing import (
+    WellResponse,
+    WellScreenResponse,
+    ThingResponse,
+    FeatureCollectionResponse,
+    Feature,
+)
 from services.query_helper import (
     make_query,
     simple_all_getter,
@@ -58,17 +64,27 @@ def wkb_to_geojson(wkb_element):
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
-@router.get('/')
-def get_things(thing_type: Annotated[str, Query(title="thing type", description="thing type", alias='type')] = None,
-               group: Annotated[str, Query(title="group", description="group", alias='group')] = None,
-               response_format: Annotated[str, Query(title="response format", description="response format", alias='format')] = 'json',
-               session: Session = Depends(get_db_session)) -> Union[List[ThingResponse], FeatureCollectionResponse]:
+
+@router.get("/")
+def get_things(
+    thing_type: Annotated[
+        str, Query(title="thing type", description="thing type", alias="type")
+    ] = None,
+    group: Annotated[
+        str, Query(title="group", description="group", alias="group")
+    ] = None,
+    response_format: Annotated[
+        str,
+        Query(title="response format", description="response format", alias="format"),
+    ] = "json",
+    session: Session = Depends(get_db_session),
+) -> Union[List[ThingResponse], FeatureCollectionResponse]:
     """
     Retrieve all things or filter by type.
     """
-    if thing_type == 'well':
+    if thing_type == "well":
         sql = select(Thing).join(WellThing)
-    elif thing_type == 'spring':
+    elif thing_type == "spring":
         sql = select(Thing).join(SpringThing)
     else:
         sql = select(Thing)
@@ -76,11 +92,11 @@ def get_things(thing_type: Annotated[str, Query(title="thing type", description=
     if group:
         sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
 
-    if response_format == 'geojson':
-        #todo: implement geojson response
+    if response_format == "geojson":
+        # todo: implement geojson response
         def make_feature(thing: Thing) -> Feature:
 
-            #todo: get latest location
+            # todo: get latest location
             geometry = thing.locations[0].point
             # Convert geometry to GeoJSON format
 

@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from schemas import ORMBaseModel
 from schemas.response.location import LocationResponse
 
+
 class ThingResponse(ORMBaseModel):
     name: str
 
@@ -77,7 +78,9 @@ class GeoJSONGeometry(BaseModel):
     """
 
     type: str
-    coordinates: List[float] | List[List[float]] | List[List[List[float]]]  # Supports Point, LineString, Polygon, etc.
+    coordinates: (
+        List[float] | List[List[float]] | List[List[List[float]]]
+    )  # Supports Point, LineString, Polygon, etc.
 
 
 class Feature(BaseModel):
@@ -97,4 +100,6 @@ class FeatureCollectionResponse(BaseModel):
 
     type: str = "FeatureCollection"
     features: List[Feature] = []
+
+
 # ============= EOF =============================================
