@@ -38,6 +38,14 @@ def test_search_api2():
     assert data[0]["label"] == "riochama.png"
 
 
+def test_search_api3():
+    response = client.get("/search", params={"q": "nonexistent"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
 def test_search_contact():
     with session_ctx() as session:
         query = search(select(Contact), "Test")
