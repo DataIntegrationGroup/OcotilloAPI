@@ -16,10 +16,13 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
+from fastapi_pagination.ext.sqlalchemy import paginate
+from db import ThingContactAssociation, Thing
 from db.contact import Contact
 from db.engine import get_db_session
 from schemas.base_responses import ContactResponse
@@ -50,6 +53,7 @@ def create_contact(
 
 @router.get("/", summary="Get contacts")
 async def get_contacts(
+        thing_id: int | None = None,
     session: Session = Depends(get_db_session),
 ) -> CustomPage[ContactResponse]:
     """
@@ -57,7 +61,13 @@ async def get_contacts(
     :param session:
     :return:
     """
-    return paginated_all_getter(session, Contact)
+    if thing_id:
+        sql = select(Contact)
+        sql = sql.join(ThingContactAssociation).join(Thing)
+        sql = sql.where(Thing.id == thing_id)
+        return paginate(query=sql, conn=session)
+    else:
+        return paginated_all_getter(session, Contact)
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")

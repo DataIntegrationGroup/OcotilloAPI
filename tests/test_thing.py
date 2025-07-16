@@ -228,4 +228,28 @@ def test_weaver_get_all_collabnet_wells():
         assert "coordinates" in feature["geometry"]
         assert "id" in feature or "name" in feature["properties"]
         assert "group" in feature["properties"]
+
+
+def test_weaver_thing_contact_info_by_id():
+    response = client.get("/contact?thing_id=1")  # or something like this
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(
+        data, dict
+    )
+    assert 'items' in data
+    assert len(data['items']) > 0
+    item = data['items'][0]
+    assert 'id' in item
+    assert 'name' in item
+    assert 'addresses' in item
+    assert 'emails' in item
+    assert 'phones' in item
+
+    assert isinstance(item['addresses'], list)
+    assert isinstance(item['emails'], list)
+    assert isinstance(item['phones'], list)
+
+
+
 # ============= EOF =============================================

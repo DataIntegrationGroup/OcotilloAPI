@@ -17,7 +17,6 @@ from typing import List, Annotated, Union
 from shapely.geometry import mapping
 from shapely import wkb
 from fastapi import APIRouter, Depends, Query
-from fastapi_pagination import add_pagination
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
