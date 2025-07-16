@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List
-
-from fastapi import APIRouter, Depends
+from typing import List, Annotated, Union
+from shapely.geometry import mapping
+from shapely import wkb
+from fastapi import APIRouter, Depends, Query
+from fastapi_pagination import add_pagination
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,13 +33,13 @@ from db import (
     Thing,
 )
 from db.engine import get_db_session
+from db.group import GroupThingAssociation, Group
 from db.thing.thing import ThingIdLink
 from schemas.base_create import CreateSpring
 from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
-from schemas.create.thing import CreateThingIdLink
-from schemas.create.well import CreateWell, CreateWellScreen
-from schemas.response.well import WellResponse, WellScreenResponse
+from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
+from schemas.response.thing import WellResponse, WellScreenResponse, ThingResponse, FeatureCollectionResponse, Feature
 from services.query_helper import (
     make_query,
     simple_all_getter,
@@ -47,7 +49,56 @@ from services.query_helper import (
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
 
+
+def wkb_to_geojson(wkb_element):
+    if wkb_element is None:
+        return None
+    geom = wkb.loads(bytes(wkb_element.data))
+    return mapping(geom)
+
+
 router = APIRouter(prefix="/thing", tags=["thing"])
+
+@router.get('/')
+def get_things(thing_type: Annotated[str, Query(title="thing type", description="thing type", alias='type')] = None,
+               group: Annotated[str, Query(title="group", description="group", alias='group')] = None,
+               response_format: Annotated[str, Query(title="response format", description="response format", alias='format')] = 'json',
+               session: Session = Depends(get_db_session)) -> Union[List[ThingResponse], FeatureCollectionResponse]:
+    """
+    Retrieve all things or filter by type.
+    """
+    if thing_type == 'well':
+        sql = select(Thing).join(WellThing)
+    elif thing_type == 'spring':
+        sql = select(Thing).join(SpringThing)
+    else:
+        sql = select(Thing)
+
+    if group:
+        sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
+
+    if response_format == 'geojson':
+        #todo: implement geojson response
+        def make_feature(thing: Thing) -> Feature:
+
+            #todo: get latest location
+            geometry = thing.locations[0].point
+            # Convert geometry to GeoJSON format
+
+            geojson_geometry = wkb_to_geojson(geometry)
+            properties = {
+                "id": thing.id,
+                "name": thing.name,
+                "type": thing_type,
+            }
+            return Feature(geometry=geojson_geometry, properties=properties)
+
+        things = session.execute(sql).scalars().all()
+        features = [make_feature(thing) for thing in things]
+        return FeatureCollectionResponse(features=features)
+    else:
+        # return paginate(query=sql, conn=session)
+        return session.execute(sql).scalars().all()
 
 
 @router.get("/well", summary="Get all wells")

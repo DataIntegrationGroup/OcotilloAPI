@@ -30,7 +30,7 @@ from db.engine import get_db_session
 from schemas.base_get import GetLocation
 from schemas.create.location import CreateLocation
 from schemas.response.location import LocationResponse
-from schemas.response.well import LocationWellResponse
+from schemas.response.thing import LocationWellResponse
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from services.query_helper import make_query
 

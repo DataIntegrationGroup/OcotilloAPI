@@ -185,4 +185,13 @@ def test_item_get_well_screens():
     assert data["screen_depth_bottom"] == 20.0
 
 
+# weaver tests
+def test_get_wells_geojson():
+    response = client.get("/thing", params={"type": "well", "format": "geojson"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "type" in data
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) > 0
+    assert 'id' in data["features"][0]["properties"]
 # ============= EOF =============================================

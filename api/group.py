@@ -24,7 +24,7 @@ from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
 from schemas.create.location import CreateGroup, CreateGroupThing
-from schemas.response.well import GroupResponse
+from schemas.response.thing import GroupResponse
 from services.query_helper import (
     simple_all_getter,
     simple_get_by_id,
