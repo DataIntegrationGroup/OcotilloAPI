@@ -90,15 +90,16 @@ def get_things(thing_type: Annotated[str, Query(title="thing type", description=
                 "id": thing.id,
                 "name": thing.name,
                 "type": thing_type,
+                "group": group,
             }
             return Feature(geometry=geojson_geometry, properties=properties)
 
-        things = session.execute(sql).scalars().all()
+        things = session.scalars(sql).all()
         features = [make_feature(thing) for thing in things]
         return FeatureCollectionResponse(features=features)
     else:
         # return paginate(query=sql, conn=session)
-        return session.execute(sql).scalars().all()
+        return session.scalars(sql).all()
 
 
 @router.get("/well", summary="Get all wells")

@@ -44,6 +44,8 @@ class CreateWell(ORMBaseModel):
     hole_depth: float | None = None  # in feet
     construction_notes: str | None = None
 
+    group: str | None = None  # Optional group for the well
+
 
 class CreateWellScreen(ORMBaseModel):
     """

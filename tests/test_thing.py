@@ -17,6 +17,19 @@ import pytest
 
 from tests import client
 
+def test_add_group():
+    response = client.post(
+        "/group",
+        json={
+            "name": "collabnet",
+            "description": "CollabNet Group for testing",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["name"] == "collabnet"
+
 
 def test_add_well():
     # response = client.post(
@@ -53,6 +66,7 @@ def test_add_well():
             "ose_pod_id": "RA-0002",
             "well_type": "Production",
             "well_depth": 1200.0,
+            "group": "collabnet",
         },
     )
     assert response.status_code == 201
@@ -186,7 +200,7 @@ def test_item_get_well_screens():
 
 
 # weaver tests
-def test_get_wells_geojson():
+def test_weaver_get_wells_geojson():
     response = client.get("/thing", params={"type": "well", "format": "geojson"})
     assert response.status_code == 200
     data = response.json()
@@ -194,4 +208,24 @@ def test_get_wells_geojson():
     assert data["type"] == "FeatureCollection"
     assert len(data["features"]) > 0
     assert 'id' in data["features"][0]["properties"]
+
+
+def test_weaver_get_all_collabnet_wells():
+    response = client.get(
+        "/thing",
+        params={"type": "well", "group": "collabnet", "format": "geojson"}
+    )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "features" in data
+    assert len(data["features"]) > 0
+    for feature in data["features"]:
+        assert "geometry" in feature
+        assert isinstance(feature["geometry"], dict)
+        assert "properties" in feature
+        assert isinstance(feature["properties"], dict)
+        assert "coordinates" in feature["geometry"]
+        assert "id" in feature or "name" in feature["properties"]
+        assert "group" in feature["properties"]
 # ============= EOF =============================================
