@@ -78,11 +78,11 @@ async def get_location_shapefile(
     # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
     import zipfile
 
-    with zipfile.ZipFile("locations.zip", "w") as zf:
+    with zipfile.ZipFile("things.zip", "w") as zf:
         for ext in ["shp", "shx", "dbf"]:
-            zf.write(f"locations.{ext}")
+            zf.write(f"things.{ext}")
     return FileResponse(
-        "locations.zip", media_type="application/zip", filename="locations.zip"
+        "things.zip", media_type="application/zip", filename="things.zip"
     )
 
 
