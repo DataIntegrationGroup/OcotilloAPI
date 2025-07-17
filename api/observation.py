@@ -86,7 +86,7 @@ def add_groundwater_level_observation(
     obs_data: (
         CreateGroundwaterLevelObservation | CreateGroundwaterLevelObservationDirect
     ),
-    session: session_dependency
+    session: session_dependency,
 ):
     """
     Add a new groundwater observation to the database.
@@ -102,7 +102,7 @@ def add_groundwater_level_observation(
 @router.post("/geothermal", status_code=HTTP_201_CREATED)
 def add_geothermal_observation(
     obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
-    session: session_dependency
+    session: session_dependency,
 ):
     """
     Add a new geothermal observation to the database.

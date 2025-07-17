@@ -32,8 +32,7 @@ router = APIRouter(prefix="/collabnet", tags=["collabnet"])
 
 @router.post("/add", status_code=status.HTTP_201_CREATED, deprecated=True)
 def add_collabnet_well(
-    data: CreateCollaborativeNetworkWell,
-    session: session_dependency
+    data: CreateCollaborativeNetworkWell, session: session_dependency
 ):
     """
     Add a well to the collaborative network.

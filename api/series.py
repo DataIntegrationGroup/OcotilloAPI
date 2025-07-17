@@ -36,9 +36,7 @@ router = APIRouter(
 @router.get(
     "/",
 )
-def get_series(
-    session: session_dependency
-) -> CustomPage[SeriesResponse]:
+def get_series(session: session_dependency) -> CustomPage[SeriesResponse]:
     """
     Endpoint to retrieve series data.
     """

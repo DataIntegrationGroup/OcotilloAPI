@@ -42,9 +42,7 @@ def add_sensor(
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-def get_sensors(
-    session: session_dependency
-) -> CustomPage[SensorResponse]:
+def get_sensors(session: session_dependency) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.

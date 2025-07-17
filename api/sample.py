@@ -77,9 +77,7 @@ def add_geothermal_sample(
 
 # ============= Get =============================================
 @router.get("/", summary="Get Samples")
-def get_samples(
-    session: session_dependency
-) -> CustomPage[SampleResponse]:
+def get_samples(session: session_dependency) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve samples.
     """
@@ -90,9 +88,7 @@ def get_samples(
     "/geochemical",
     summary="Get Geochemical Samples",
 )
-def get_geochemical_samples(
-    session: session_dependency
-) -> CustomPage[SampleResponse]:
+def get_geochemical_samples(session: session_dependency) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve geochemical samples.
     """
@@ -103,9 +99,7 @@ def get_geochemical_samples(
     "/geothermal",
     summary="Get Geothermal Samples",
 )
-def get_geothermal_samples(
-    session: session_dependency
-) -> CustomPage[SampleResponse]:
+def get_geothermal_samples(session: session_dependency) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve geothermal samples.
     """
@@ -114,10 +108,7 @@ def get_geothermal_samples(
 
 # ============= Get by ID =============================================
 @router.get("/{sample_id}", summary="Get Sample by ID")
-def get_sample_by_id(
-    sample_id: int,
-    session: session_dependency
-) -> SampleResponse:
+def get_sample_by_id(sample_id: int, session: session_dependency) -> SampleResponse:
     """
     Endpoint to retrieve a sample by its ID.
     """
@@ -126,8 +117,7 @@ def get_sample_by_id(
 
 @router.get("/{sample_id}", summary="Get Geochemical Sample by ID")
 def get_geochemical_sample_by_id(
-    sample_id: int,
-    session: session_dependency
+    sample_id: int, session: session_dependency
 ) -> SampleResponse:
     """
     Endpoint to retrieve a sample by its ID.
@@ -137,8 +127,7 @@ def get_geochemical_sample_by_id(
 
 @router.get("/{sample_id}", summary="Get Geothermal Sample by ID")
 def get_geothermal_sample_by_id(
-    sample_id: int,
-    session: session_dependency
+    sample_id: int, session: session_dependency
 ) -> SampleResponse:
     """
     Endpoint to retrieve a sample by its ID.
