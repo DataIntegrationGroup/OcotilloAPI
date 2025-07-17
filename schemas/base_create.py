@@ -15,10 +15,12 @@
 # ===============================================================================
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from schemas import ORMBaseModel
 
 
-class CreateSpring(ORMBaseModel):
+class CreateSpring(BaseModel):
     """
     Schema for creating a spring.
     """
@@ -27,7 +29,7 @@ class CreateSpring(ORMBaseModel):
     name: str
 
 
-class CreateEquipment(ORMBaseModel):
+class CreateEquipment(BaseModel):
     """
     Schema for creating equipment.
     """

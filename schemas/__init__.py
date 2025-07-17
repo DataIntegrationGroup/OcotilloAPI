@@ -17,6 +17,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ORMBaseModel(BaseModel):
+    id: int # every ORM model should have an id field
+
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,

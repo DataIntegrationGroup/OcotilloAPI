@@ -15,8 +15,6 @@
 # ===============================================================================
 from pydantic import BaseModel, model_validator
 
-from schemas import ORMBaseModel
-
 
 class CreateThingIdLink(BaseModel):
     """
@@ -29,8 +27,7 @@ class CreateThingIdLink(BaseModel):
     alternate_organization: str
 
 
-# ============= EOF =============================================
-class CreateWell(ORMBaseModel):
+class CreateWell(BaseModel):
     """
     Schema for creating a well.
     """
@@ -47,7 +44,7 @@ class CreateWell(ORMBaseModel):
     group: str | None = None  # Optional group for the well
 
 
-class CreateWellScreen(ORMBaseModel):
+class CreateWellScreen(BaseModel):
     """
     Schema for creating a well screen.
     """
@@ -78,3 +75,4 @@ class CreateWellScreen(ORMBaseModel):
                 "screen_depth_bottom must be greater than screen_depth_top"
             )
         return self
+# ============= EOF =============================================

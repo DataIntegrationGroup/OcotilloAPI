@@ -22,7 +22,6 @@ from schemas.response.location import LocationResponse
 
 
 class ThingResponse(ORMBaseModel):
-    id: int
     name: str
 
 
@@ -35,7 +34,6 @@ class WellResponse(ORMBaseModel):
     Response schema for well details.
     """
 
-    id: int
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
@@ -57,7 +55,6 @@ class WellScreenResponse(ORMBaseModel):
     Response schema for well screen details.
     """
 
-    id: int
     well_id: int
     screen_depth_bottom: float
     screen_depth_top: float
@@ -68,7 +65,6 @@ class GroupResponse(ORMBaseModel):
     Response schema for group details.
     """
 
-    id: int
     name: str
     description: str | None = None
 
