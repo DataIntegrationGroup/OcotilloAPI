@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import adder, Thing, Location, LocationThingAssociation
 from db.engine import get_db_session
 from db.observation.geothermal import GeothermalObservation
@@ -85,7 +86,7 @@ def add_groundwater_level_observation(
     obs_data: (
         CreateGroundwaterLevelObservation | CreateGroundwaterLevelObservationDirect
     ),
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ):
     """
     Add a new groundwater observation to the database.
@@ -101,7 +102,7 @@ def add_groundwater_level_observation(
 @router.post("/geothermal", status_code=HTTP_201_CREATED)
 def add_geothermal_observation(
     obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ):
     """
     Add a new geothermal observation to the database.
@@ -116,8 +117,8 @@ def add_geothermal_observation(
 # ============= Get ==============================================
 @router.get("/")
 def get_observations(
+    session: session_dependency,
     series_id: int | None = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[ObservationResponse]:
     """
     Retrieve all observations from the database.
@@ -133,12 +134,12 @@ def get_observations(
     "/groundwater-level",
 )
 def get_groundwater_level_observations(
+    session: session_dependency,
     series_id: int | None = None,
     thing_id: int | None = None,
     polygon: str | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.

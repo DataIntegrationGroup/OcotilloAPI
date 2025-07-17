@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import adder
 from db.sensor import Sensor
 from db.engine import get_db_session
@@ -42,7 +43,7 @@ def add_sensor(
 
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_sensors(
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.

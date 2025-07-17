@@ -22,6 +22,8 @@ from starlette import status
 
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
+
+from core.dependencies import session_dependency
 from db import ThingContactAssociation, Thing
 from db.contact import Contact
 from db.engine import get_db_session
@@ -53,8 +55,8 @@ def create_contact(
 
 @router.get("/", summary="Get contacts")
 async def get_contacts(
+    session: session_dependency,
     thing_id: int | None = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[ContactResponse]:
     """
     Retrieve all contacts from the database.

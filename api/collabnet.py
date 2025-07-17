@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from geoalchemy2 import functions as geofunc
 
-
+from core.dependencies import session_dependency
 from db.engine import get_db_session
 from db import adder
 from db.location import Location
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/collabnet", tags=["collabnet"])
 @router.post("/add", status_code=status.HTTP_201_CREATED, deprecated=True)
 def add_collabnet_well(
     data: CreateCollaborativeNetworkWell,
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ):
     """
     Add a well to the collaborative network.

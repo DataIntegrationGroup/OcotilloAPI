@@ -22,6 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
+from core.dependencies import session_dependency
 from db import Thing
 from db.engine import get_db_session
 from db.asset import Asset, AssetThingAssociation
@@ -44,7 +45,7 @@ def get_storage_bucket() -> storage.Bucket:
 @router.get("/{asset_id}")
 async def get_asset(
     asset_id: int,
-    database_session: Session = Depends(get_db_session),
+    session: session_dependency,
     bucket=Depends(
         get_storage_bucket
     ),  # Assuming get_storage_bucket is defined elsewhere
@@ -53,7 +54,7 @@ async def get_asset(
     Retrieve an asset by its ID.
     """
     sql = select(Asset).where(Asset.id == asset_id)
-    asset = database_session.scalars(sql).one_or_none()
+    asset = session.scalars(sql).one_or_none()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
@@ -64,9 +65,9 @@ async def get_asset(
 
 @router.post("/", status_code=HTTP_201_CREATED)
 async def add_asset(
+    session: session_dependency,
     thing_id: int = None,
     file: UploadFile = File(...),
-    session: Session = Depends(get_db_session),
     bucket=Depends(get_storage_bucket),
 ) -> dict:
     file_id = str(uuid4())

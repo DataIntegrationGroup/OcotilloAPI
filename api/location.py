@@ -25,6 +25,7 @@ from starlette import status
 from starlette.responses import FileResponse
 from api.pagination import CustomPage
 from constants import SRID_WGS84
+from core.dependencies import session_dependency
 from db import adder, Location, WellThing
 from db.engine import get_db_session
 from schemas.base_get import GetLocation
@@ -115,12 +116,12 @@ async def get_location_feature_collection(
     summary="Get all locations",
 )
 async def get_location(
+    session: session_dependency,
     nearby_point: str = None,
     nearby_distance_km: float = 1,
     within: str = None,
     query: str = None,
     expand: str = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[Union[LocationResponse, LocationWellResponse]]:
     """
     Retrieve all wells from the database.
