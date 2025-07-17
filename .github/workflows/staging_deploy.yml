@@ -1,0 +1,60 @@
+name: CD (Dev)
+
+on:
+  push:
+    branches: [pre-production]
+
+jobs:
+    staging-deploy:
+
+        runs-on: ubuntu-latest
+        environment: staging
+
+        steps:
+        - name: Check out source repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Authenticate to Google Cloud
+          uses: 'google-github-actions/auth@v2'
+          with:
+            credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
+
+        # Uses Google Cloud Secret Manager to store secret credentials
+        - name: Create app.yaml
+          run: |
+            echo "service: nmsamplelocations" > app.yaml
+            echo "runtime: python310" >> app.yaml
+            echo "entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app" >> app.yaml
+            echo "instance_class: F4" >> app.yaml
+            echo "" >> app.yaml
+            echo "env_variables:" >> app.yaml
+            echo "  MODE: \"production\"" >> app.yaml
+            echo "  DB_DRIVER: \"cloudsql\"" >> app.yaml
+            echo "" >> app.yaml
+            echo "secret_environment_variables:" >> app.yaml
+            echo "  CLOUD_SQL_INSTANCE_NAME: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-instance-name/versions/latest\"" >> app.yaml
+            echo "  CLOUD_SQL_DATABASE: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-database/versions/latest\"" >> app.yaml
+            echo "  CLOUD_SQL_USER: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-user/versions/latest\"" >> app.yaml
+            echo "  CLOUD_SQL_PASSWORD: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-pw/versions/latest\"" >> app.yaml
+
+        - name: Deploy to Google Cloud
+          run: |
+            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }}
+
+        - name: Remove app.yaml
+          run: |
+            rm app.yaml
+
+        # Use PR author's username as git user name
+        - name: Set up git user
+          run: |
+            git config --global user.name "${{ github.actor }}"
+            git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+        # ":" are not alloed in git tags, so replace with "-"
+        - name: Tag commit
+          run: |
+            git tag -a "staging-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "staging gcloud deployment: $(date -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
+            git push origin --tags
