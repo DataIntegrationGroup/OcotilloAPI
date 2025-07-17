@@ -1,4 +1,4 @@
-name: CD (Dev)
+name: CD (Staging)
 
 on:
   push:
@@ -32,12 +32,10 @@ jobs:
             echo "env_variables:" >> app.yaml
             echo "  MODE: \"production\"" >> app.yaml
             echo "  DB_DRIVER: \"cloudsql\"" >> app.yaml
-            echo "" >> app.yaml
-            echo "secret_environment_variables:" >> app.yaml
-            echo "  CLOUD_SQL_INSTANCE_NAME: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-instance-name/versions/latest\"" >> app.yaml
-            echo "  CLOUD_SQL_DATABASE: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-database/versions/latest\"" >> app.yaml
-            echo "  CLOUD_SQL_USER: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-user/versions/latest\"" >> app.yaml
-            echo "  CLOUD_SQL_PASSWORD: \"projects/${{ secrets.GCP_PROJECT_ID }}/secrets/nmsample-stage-cloud-sql-pw/versions/latest\"" >> app.yaml
+            echo "  CLOUD_SQL_INSTANCE_NAME: \"${{ secrets.CLOUD_SQL_INSTANCE_NAME }}\"" >> app.yaml
+            echo "  CLOUD_SQL_DATABASE: \"${{ secrets.CLOUD_SQL_DATABASE }}\"" >> app.yaml
+            echo "  CLOUD_SQL_USER: \"${{ secrets.CLOUD_SQL_USER }}\"" >> app.yaml
+            echo "  CLOUD_SQL_PASSWORD: \"${{ secrets.CLOUD_SQL_PASSWORD }}\"" >> app.yaml
 
         - name: Deploy to Google Cloud
           run: |
