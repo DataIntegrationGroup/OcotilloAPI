@@ -22,7 +22,9 @@ from schemas.response.location import LocationResponse
 
 
 class ThingResponse(ORMBaseModel):
+    id: int
     name: str
+
 
 
 class SpringResponse(ORMBaseModel):
