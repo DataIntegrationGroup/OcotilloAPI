@@ -75,4 +75,6 @@ class CreateWellScreen(BaseModel):
                 "screen_depth_bottom must be greater than screen_depth_top"
             )
         return self
+
+
 # ============= EOF =============================================
