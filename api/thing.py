@@ -151,7 +151,7 @@ async def get_wells(
     summary="Get well screens",
 )
 async def get_well_screens(
-    session: session_dependency
+    session: session_dependency,
 ) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
@@ -162,9 +162,7 @@ async def get_well_screens(
 @router.get(
     "/spring",
 )
-async def get_springs(
-    session: session_dependency
-) -> CustomPage[SpringResponse]:
+async def get_springs(session: session_dependency) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
@@ -215,10 +213,7 @@ async def get_well_screen_by_id(
 @router.post(
     "/link", status_code=status.HTTP_201_CREATED, summary="Create a new thing link"
 )
-def create_thing_id_link(
-    link_data: CreateThingIdLink,
-    session: session_dependency
-):
+def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependency):
     """
     Create a new link between a thing and an alternate ID.
     """
