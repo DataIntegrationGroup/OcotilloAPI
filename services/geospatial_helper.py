@@ -30,27 +30,31 @@ from shapely.wkt import loads as wkt_loads
 from sqlalchemy import Select, select
 
 
-def get_thing_features(session, thing_type: str | None, group: str|int|None) -> list:
-    sql = (select(Thing, ST_AsGeoJSON(Location.point).label('geojson'))
-           .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
-           .join(Location, LocationThingAssociation.location_id == Location.id)
-           )
+def get_thing_features(
+    session, thing_type: str | None, group: str | int | None
+) -> list:
+    sql = (
+        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
+        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+        .join(Location, LocationThingAssociation.location_id == Location.id)
+    )
 
-    selection_args = [Thing, ST_AsGeoJSON(Location.point).label('geojson')]
+    selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
     if thing_type == "well":
         selection_args.append(WellThing)
     elif thing_type == "spring":
         selection_args.append(SpringThing)
 
-    sql = (select(*selection_args)
-           .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
-           .join(Location, LocationThingAssociation.location_id == Location.id))
+    sql = (
+        select(*selection_args)
+        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+        .join(Location, LocationThingAssociation.location_id == Location.id)
+    )
 
     if thing_type == "well":
         sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
     elif thing_type == "spring":
         sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
-
 
     if group:
         sql = sql.join(GroupThingAssociation).join(Group)
@@ -80,7 +84,6 @@ def create_shapefile(things: list, filename: str = "things.shp") -> None:
 
             shp.point(geom.x, geom.y)
             shp.record(thing.id, thing.name)
-
 
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:

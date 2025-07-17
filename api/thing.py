@@ -108,6 +108,7 @@ def get_things(
     #     return session.scalars(sql).all()
     return paginated_all_getter(session, Thing)
 
+
 @router.get("/well", summary="Get all wells")
 async def get_wells(
     # api_id: str = None,

@@ -29,6 +29,7 @@ from geoalchemy2 import functions as geofunc
 #         },
 #     )
 
+
 @pytest.fixture(autouse=True, scope="module")
 def populate():
     with session_ctx() as session:
@@ -37,7 +38,6 @@ def populate():
         thing2 = Thing(name="Thing 2")
         session.add(thing1)
         session.add(thing2)
-
 
         session.commit()
 
@@ -54,7 +54,6 @@ def populate():
         session.add(well1)
         session.add(well2)
         session.commit()
-
 
 
 def test_get_geojson():
@@ -93,9 +92,6 @@ def test_get_locations_expand():
     assert len(data["items"]) == 1
     item = data["items"][0]
     assert "well" in item
-
-
-
 
 
 # @pytest.mark.skip("Needs fixture to ensure a location exists in this polygon")

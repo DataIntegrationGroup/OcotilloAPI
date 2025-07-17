@@ -29,7 +29,7 @@ def test_add_location():
     )
     assert response.status_code == 201
     data = response.json()
-    assert 'id' in data
+    assert "id" in data
 
     response = client.post(
         "/location",
@@ -41,7 +41,7 @@ def test_add_location():
     )
     assert response.status_code == 201
     data = response.json()
-    assert 'id' in data
+    assert "id" in data
 
 
 @pytest.mark.skip

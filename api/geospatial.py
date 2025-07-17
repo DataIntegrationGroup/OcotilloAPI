@@ -31,14 +31,16 @@ from services.geospatial_helper import create_shapefile, get_thing_features
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 
-@router.get('/feature-collection')
-async def get_feature_collection(session: session_dependency,
+@router.get("/feature-collection")
+async def get_feature_collection(
+    session: session_dependency,
     thing_type: Annotated[
         str, Query(title="thing type", description="thing type", alias="type")
     ] = None,
     group: Annotated[
-    str|int, Query(title="group", description="group", alias="group")
-] = None) -> FeatureCollectionResponse:
+        str | int, Query(title="group", description="group", alias="group")
+    ] = None,
+) -> FeatureCollectionResponse:
     """
     Endpoint to retrieve a GeoJSON FeatureCollection.
     """
@@ -48,13 +50,10 @@ async def get_feature_collection(session: session_dependency,
     def make_feature_dict(thing, geometry, *other):
         return {
             "type": "Feature",
-            "properties": {
-                "id": thing.id,
-                "name": thing.name,
-                "group": group
-            },
+            "properties": {"id": thing.id, "name": thing.name, "group": group},
             "geometry": json.loads(geometry),
         }
+
     features = [make_feature_dict(*item) for item in things]
 
     return {
@@ -63,13 +62,11 @@ async def get_feature_collection(session: session_dependency,
     }
 
 
-
-
 @router.get("/shapefile", summary="Get location as shapefile")
 async def get_location_shapefile(
-        session: session_dependency,
-        thing_type: str | None = None,
-        group: str | int | None = None,
+    session: session_dependency,
+    thing_type: str | None = None,
+    group: str | int | None = None,
 ) -> FileResponse:
     """
     Retrieve all sample locations as a shapefile.
@@ -87,5 +84,6 @@ async def get_location_shapefile(
     return FileResponse(
         "locations.zip", media_type="application/zip", filename="locations.zip"
     )
+
 
 # ============= EOF =============================================
