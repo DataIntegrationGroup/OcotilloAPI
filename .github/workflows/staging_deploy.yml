@@ -41,7 +41,7 @@ jobs:
 
         - name: Deploy to Google Cloud
           run: |
-            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }}
+            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }} --no-promote
 
         - name: Remove app.yaml
           run: |
