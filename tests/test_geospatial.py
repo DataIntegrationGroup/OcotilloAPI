@@ -72,8 +72,7 @@ def test_get_shapefile():
     assert response.headers["Content-Type"] == "application/zip"
     assert "Content-Disposition" in response.headers
     assert (
-        'attachment; filename="things.zip"'
-        == response.headers["Content-Disposition"]
+        'attachment; filename="things.zip"' == response.headers["Content-Disposition"]
     )
 
 
