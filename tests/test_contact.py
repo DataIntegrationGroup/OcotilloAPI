@@ -50,7 +50,6 @@ def test_add_contact(thing):
         },
     )
     data = response.json()
-    print(data)
     assert response.status_code == 201
     assert "id" in data
     assert data["name"] == "Test Contact"

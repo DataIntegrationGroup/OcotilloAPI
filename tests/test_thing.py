@@ -202,7 +202,7 @@ def test_item_get_well_screens():
 
 # weaver tests
 def test_weaver_get_wells_geojson():
-    response = client.get("/thing", params={"type": "well", "format": "geojson"})
+    response = client.get("/geospatial/feature-collection", params={"type": "well"})
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
@@ -213,7 +213,7 @@ def test_weaver_get_wells_geojson():
 
 def test_weaver_get_all_collabnet_wells():
     response = client.get(
-        "/thing", params={"type": "well", "group": "collabnet", "format": "geojson"}
+        "/geospatial/feature-collection", params={"type": "well", "group": "collabnet"}
     )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
     assert response.status_code == 200
     data = response.json()

@@ -68,55 +68,45 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 
 @router.get("/")
 def get_things(
-    thing_type: Annotated[
-        str, Query(title="thing type", description="thing type", alias="type")
-    ] = None,
-    group: Annotated[
-        str, Query(title="group", description="group", alias="group")
-    ] = None,
-    response_format: Annotated[
-        str,
-        Query(title="response format", description="response format", alias="format"),
-    ] = "json",
-    session: session_dependency = None,
-) -> Union[List[ThingResponse], FeatureCollectionResponse]:
+    session: session_dependency,
+) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
     """
-    if thing_type == "well":
-        sql = select(Thing).join(WellThing)
-    elif thing_type == "spring":
-        sql = select(Thing).join(SpringThing)
-    else:
-        sql = select(Thing)
-
-    if group:
-        sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
-
-    if response_format == "geojson":
-        # todo: implement geojson response
-        def make_feature(thing: Thing) -> Feature:
-
-            # todo: get latest location
-            geometry = thing.locations[0].point
-            # Convert geometry to GeoJSON format
-
-            geojson_geometry = wkb_to_geojson(geometry)
-            properties = {
-                "id": thing.id,
-                "name": thing.name,
-                "type": thing_type,
-                "group": group,
-            }
-            return Feature(geometry=geojson_geometry, properties=properties)
-
-        things = session.scalars(sql).all()
-        features = [make_feature(thing) for thing in things]
-        return FeatureCollectionResponse(features=features)
-    else:
-        # return paginate(query=sql, conn=session)
-        return session.scalars(sql).all()
-
+    # if thing_type == "well":
+    #     sql = select(Thing).join(WellThing)
+    # elif thing_type == "spring":
+    #     sql = select(Thing).join(SpringThing)
+    # else:
+    #     sql = select(Thing)
+    #
+    # if group:
+    #     sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
+    #
+    # if response_format == "geojson":
+    #     # todo: implement geojson response
+    #     def make_feature(thing: Thing) -> Feature:
+    #
+    #         # todo: get latest location
+    #         geometry = thing.locations[0].point
+    #         # Convert geometry to GeoJSON format
+    #
+    #         geojson_geometry = wkb_to_geojson(geometry)
+    #         properties = {
+    #             "id": thing.id,
+    #             "name": thing.name,
+    #             "type": thing_type,
+    #             "group": group,
+    #         }
+    #         return Feature(geometry=geojson_geometry, properties=properties)
+    #
+    #     things = session.scalars(sql).all()
+    #     features = [make_feature(thing) for thing in things]
+    #     return FeatureCollectionResponse(features=features)
+    # else:
+    #     # return paginate(query=sql, conn=session)
+    #     return session.scalars(sql).all()
+    return paginated_all_getter(session, Thing)
 
 @router.get("/well", summary="Get all wells")
 async def get_wells(

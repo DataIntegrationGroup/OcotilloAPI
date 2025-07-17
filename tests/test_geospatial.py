@@ -15,11 +15,50 @@
 # ===============================================================================
 import pytest
 
+from db import Thing, Location, LocationThingAssociation, WellThing
+from db.engine import session_ctx
 from tests import client
+from geoalchemy2 import functions as geofunc
+
+# @pytest.fixture(scope="module", autouse=True)
+# def location_fixture():
+#     client.post(
+#         "/location",
+#         json={
+#             "point": "POINT(10.1 10.1)",
+#         },
+#     )
+
+@pytest.fixture(autouse=True, scope="module")
+def populate():
+    with session_ctx() as session:
+        # Create some sample data
+        thing1 = Thing(name="Thing 1")
+        thing2 = Thing(name="Thing 2")
+        session.add(thing1)
+        session.add(thing2)
+
+
+        session.commit()
+
+        loc1 = Location(point=geofunc.ST_GeomFromText("POINT(10.1 10.1)", srid=4326))
+        loc2 = Location(point=geofunc.ST_GeomFromText("POINT(20 20)", srid=4326))
+        session.add(loc1)
+        session.add(loc2)
+        session.commit()
+
+        session.add(LocationThingAssociation(location_id=loc1.id, thing_id=thing1.id))
+        session.add(LocationThingAssociation(location_id=loc2.id, thing_id=thing2.id))
+        well1 = WellThing(thing_id=thing1.id)
+        well2 = WellThing(thing_id=thing2.id)
+        session.add(well1)
+        session.add(well2)
+        session.commit()
+
 
 
 def test_get_geojson():
-    response = client.get("/location/feature_collection")
+    response = client.get("/geospatial/feature-collection")
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
@@ -29,7 +68,7 @@ def test_get_geojson():
 
 
 def test_get_shapefile():
-    response = client.get("/location/shapefile")
+    response = client.get("/geospatial/shapefile")
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/zip"
     assert "Content-Disposition" in response.headers
@@ -56,14 +95,7 @@ def test_get_locations_expand():
     assert "well" in item
 
 
-@pytest.fixture(scope="module", autouse=True)
-def location_fixture():
-    client.post(
-        "/location",
-        json={
-            "point": "POINT(10.1 10.1)",
-        },
-    )
+
 
 
 # @pytest.mark.skip("Needs fixture to ensure a location exists in this polygon")
