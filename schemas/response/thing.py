@@ -26,7 +26,6 @@ class ThingResponse(ORMBaseModel):
     name: str
 
 
-
 class SpringResponse(ORMBaseModel):
     pass
 
