@@ -23,12 +23,9 @@ from api.observation import router as observation_router
 
 from api.form import router as form_router
 
-# from api.sample import router as sample_xrouter
 from api.lexicon import router as lexicon_router
 
-# from api.chemisty import router as chemistry_router
 from api.geothermal import router as geothermal_router
-from api.collabnet import router as collabnet_router
 from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
 from api.author import router as author_router
@@ -47,11 +44,8 @@ app.include_router(observation_router)
 app.include_router(search_router)
 
 app.include_router(form_router)
-# app.include_router(sample_router)
 app.include_router(lexicon_router)
-# app.include_router(chemistry_router)
 app.include_router(geothermal_router)
-app.include_router(collabnet_router)
 app.include_router(geochronology_router)
 app.include_router(publication_router)
 app.include_router(author_router)
