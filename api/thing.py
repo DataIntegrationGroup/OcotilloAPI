@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import (
     WellThing,
     WellScreen,
@@ -77,7 +78,7 @@ def get_things(
         str,
         Query(title="response format", description="response format", alias="format"),
     ] = "json",
-    session: Session = Depends(get_db_session),
+    session: session_dependency = None,
 ) -> Union[List[ThingResponse], FeatureCollectionResponse]:
     """
     Retrieve all things or filter by type.
@@ -121,8 +122,8 @@ def get_things(
 async def get_wells(
     # api_id: str = None,
     # ose_pod_id: str = None,
+    session: session_dependency,
     query: str = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
@@ -150,7 +151,7 @@ async def get_wells(
     summary="Get well screens",
 )
 async def get_well_screens(
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
@@ -162,7 +163,7 @@ async def get_well_screens(
     "/spring",
 )
 async def get_springs(
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
@@ -216,7 +217,7 @@ async def get_well_screen_by_id(
 )
 def create_thing_id_link(
     link_data: CreateThingIdLink,
-    session: Session = Depends(get_db_session),
+    session: session_dependency
 ):
     """
     Create a new link between a thing and an alternate ID.
@@ -245,8 +246,8 @@ def create_well(
     status_code=status.HTTP_201_CREATED,
 )
 def create_wellscreen(
+    session: session_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
-    session: Session = Depends(get_db_session),
 ) -> WellScreenResponse:
     """
     Create a new well screen in the database.

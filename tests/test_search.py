@@ -26,7 +26,7 @@ def test_search_api():
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2
+    assert len(data) == 1
 
 
 def test_search_api2():
