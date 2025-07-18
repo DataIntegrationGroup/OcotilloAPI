@@ -15,8 +15,18 @@
 # ===============================================================================
 from typing import List
 
+from pydantic import BaseModel
+
 from schemas import ORMBaseModel
-from schemas.response.location import SampleLocationResponse
+from schemas.response.location import LocationResponse
+
+
+class ThingResponse(ORMBaseModel):
+    name: str
+
+
+class SpringResponse(ORMBaseModel):
+    pass
 
 
 class WellResponse(ORMBaseModel):
@@ -24,7 +34,6 @@ class WellResponse(ORMBaseModel):
     Response schema for well details.
     """
 
-    id: int
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
@@ -33,7 +42,7 @@ class WellResponse(ORMBaseModel):
     # Additional fields can be added as needed
 
 
-class SampleLocationWellResponse(SampleLocationResponse):
+class LocationWellResponse(LocationResponse):
     """
     Response schema for sample location with well details.
     """
@@ -46,7 +55,6 @@ class WellScreenResponse(ORMBaseModel):
     Response schema for well screen details.
     """
 
-    id: int
     well_id: int
     screen_depth_bottom: float
     screen_depth_top: float
@@ -57,9 +65,38 @@ class GroupResponse(ORMBaseModel):
     Response schema for group details.
     """
 
-    id: int
     name: str
     description: str | None = None
+
+
+class GeoJSONGeometry(BaseModel):
+    """
+    Geometry schema for GeoJSON response.
+    """
+
+    type: str
+    coordinates: (
+        List[float] | List[List[float]] | List[List[List[float]]]
+    )  # Supports Point, LineString, Polygon, etc.
+
+
+class Feature(BaseModel):
+    """
+    Feature schema for GeoJSON response.
+    """
+
+    type: str = "Feature"
+    geometry: GeoJSONGeometry
+    properties: dict = {}
+
+
+class FeatureCollectionResponse(BaseModel):
+    """
+    Response schema for GeoJSON FeatureCollection.
+    """
+
+    type: str = "FeatureCollection"
+    features: List[Feature] = []
 
 
 # ============= EOF =============================================

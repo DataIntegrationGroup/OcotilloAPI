@@ -13,26 +13,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, Column
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import relationship, mapped_column, declared_attr
+from sqlalchemy_utils import TSVectorType
 
-from db.base import AutoBaseMixin, Base
+from db import lexicon_term
+from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
-class Thing(Base, AutoBaseMixin):
+class ThingChildMixin:
+    @declared_attr
+    def thing_id(self):
+        return mapped_column(
+            Integer,
+            ForeignKey("thing.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+        )
+
+    @declared_attr
+    def thing(self):
+        return relationship("Thing")
+
+
+class Thing(Base, AutoBaseMixin, ReleaseMixin):
+    name = mapped_column(String(255), nullable=False)
+
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
+        overlaps="things",
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")
 
-    release_status = mapped_column(String(100), ForeignKey("lexicon_term.term"))
-    # location_id = mapped_column(
-    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    # )
+    search_vector = Column(TSVectorType("name"))
+
+    location_associations = relationship(
+        "LocationThingAssociation",
+        back_populates="thing",
+        overlaps="location",
+        cascade="all, delete-orphan",
+        order_by="LocationThingAssociation.effective_start.desc()",
+    )
+    locations = association_proxy("location_associations", "location")
+
+
+class ThingIdLink(Base, AutoBaseMixin):
+    """
+    Represents a link associated with a Thing.
+    """
+
+    thing_id = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"))
+    relation = lexicon_term(nullable=False)
+    alternate_id = mapped_column(String(100), nullable=False)
+    alternate_organization = lexicon_term(nullable=False)
+
+    # thing = relationship("Thing", back_populates="links")
 
 
 # ============= EOF =============================================

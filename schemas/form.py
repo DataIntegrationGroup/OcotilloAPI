@@ -18,7 +18,7 @@ from typing import List
 
 from pydantic import BaseModel
 
-from schemas.response.location import SampleLocationResponse
+from schemas.response.location import LocationResponse
 
 
 class WFLocation(BaseModel):
@@ -92,7 +92,7 @@ class WellFormResponse(BaseModel):
     This class is used to structure the response data after a successful submission.
     """
 
-    location: SampleLocationResponse
+    location: LocationResponse
     # You can add more fields to the response as necessary, such as status messages, etc.
 
 

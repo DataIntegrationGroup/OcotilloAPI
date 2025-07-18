@@ -21,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 
 from db.base import Base
-from db.engine import engine, get_db_session
+from db.engine import engine, session_ctx
 from services.lexicon import add_lexicon_term
 from .settings import settings
 
@@ -31,8 +31,25 @@ def init_db():
     Initialize the database by creating all tables.
     This function is called during application startup.
     """
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+
+
+def init_hypertables():
+    """
+    Initialize hypertables for time-series data.
+    This function is called during application startup.
+    """
+    # session = next(get_db_session())
+    # Create hypertables for time-series data
+    with session_ctx() as session:
+        session.execute(
+            text("select create_hypertable('observation', 'observation_timestamp');")
+        )
+
+    # session.commit()
+    # session.close()
 
 
 def init_lexicon():
@@ -43,31 +60,29 @@ def init_lexicon():
 
     # populate lexicon
 
-    session = next(get_db_session())
-
-    for term_dict in default_lexicon:
-        try:
-            add_lexicon_term(
-                session,
-                term_dict["term"],
-                term_dict["definition"],
-                term_dict["category"],
-            )
-        except DatabaseError:
-            session.rollback()
+    with session_ctx() as session:
+        for term_dict in default_lexicon:
+            try:
+                add_lexicon_term(
+                    session,
+                    term_dict["term"],
+                    term_dict["definition"],
+                    term_dict["category"],
+                )
+            except DatabaseError:
+                session.rollback()
 
 
 def create_superuser():
     from admin.user import User
 
-    session = next(get_db_session())
-    user = User(
-        username="admin",
-        password="admin",
-        is_superuser=True,
-    )
-    session.add(user)
-    session.commit()
+    with session_ctx() as session:
+        user = User(
+            username="admin",
+            password="admin",
+            is_superuser=True,
+        )
+        session.add(user)
 
 
 @asynccontextmanager

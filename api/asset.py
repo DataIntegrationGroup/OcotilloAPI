@@ -20,16 +20,22 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_201_CREATED
 
+from core.dependencies import session_dependency
+from db import Thing
 from db.engine import get_db_session
-from db.asset import Asset
+from db.asset import Asset, AssetThingAssociation
+from schemas.response.asset import AssetResponse
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 
 
-def get_storage_bucket():
-    from google.cloud import storage
+from google.cloud import storage
+
+
+def get_storage_bucket() -> storage.Bucket:
 
     client = storage.Client()
     bucket = client.bucket(GCS_BUCKET_NAME)
@@ -39,16 +45,16 @@ def get_storage_bucket():
 @router.get("/{asset_id}")
 async def get_asset(
     asset_id: int,
-    database_session: Session = Depends(get_db_session),
+    session: session_dependency,
     bucket=Depends(
         get_storage_bucket
     ),  # Assuming get_storage_bucket is defined elsewhere
-):
+) -> AssetResponse:
     """
     Retrieve an asset by its ID.
     """
     sql = select(Asset).where(Asset.id == asset_id)
-    asset = database_session.scalars(sql).one_or_none()
+    asset = session.scalars(sql).one_or_none()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
@@ -57,12 +63,13 @@ async def get_asset(
     return asset
 
 
-@router.post("/", status_code=201)
+@router.post("/", status_code=HTTP_201_CREATED)
 async def add_asset(
+    session: session_dependency,
+    thing_id: int = None,
     file: UploadFile = File(...),
-    database_session: Session = Depends(get_db_session),
     bucket=Depends(get_storage_bucket),
-):
+) -> dict:
     file_id = str(uuid4())
     blob_name = f"uploads/{file_id}_{file.filename}"
     blob = bucket.blob(blob_name)
@@ -76,9 +83,16 @@ async def add_asset(
         mime_type=file.content_type,
         size=file.size,
     )
-    database_session.add(asset)
-    database_session.commit()
-    database_session.refresh(asset)
+    if thing_id:
+        assoc = AssetThingAssociation()
+        thing = session.get(Thing, thing_id)
+        assoc.thing = thing
+        assoc.asset = asset
+        session.add(assoc)
+
+    session.add(asset)
+    session.commit()
+    session.refresh(asset)
 
     return {
         "id": asset.id,

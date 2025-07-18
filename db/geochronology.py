@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.base import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base, lexicon_term
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship, backref, mapped_column
 
@@ -24,7 +24,7 @@ class GeochronologyAge(Base, AutoBaseMixin):
     age = mapped_column(Float, nullable=False)
     age_error = mapped_column(Float, nullable=True)
 
-    method = mapped_column(String(100), ForeignKey("lexicon_term.term"))
+    method = lexicon_term()
 
 
 # ============= EOF =============================================

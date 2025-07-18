@@ -16,12 +16,12 @@
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
-from pydantic import field_validator
+from pydantic import field_validator, BaseModel
 
 from schemas import ORMBaseModel
 
 
-class CreateEmail(ORMBaseModel):
+class CreateEmail(BaseModel):
     """
     Schema for creating an email.
     """
@@ -39,7 +39,7 @@ class CreateEmail(ORMBaseModel):
             raise ValueError(f"Invalid email format. {email}")
 
 
-class CreatePhone(ORMBaseModel):
+class CreatePhone(BaseModel):
     """
     Schema for creating a phone number.
     """
@@ -64,7 +64,7 @@ class CreatePhone(ORMBaseModel):
             raise ValueError(f"Invalid phone number. {phone_number_str}")
 
 
-class CreateAddress(ORMBaseModel):
+class CreateAddress(BaseModel):
     """
     Schema for creating an address.
     """
@@ -78,7 +78,7 @@ class CreateAddress(ORMBaseModel):
     address_type: str | None = None  # Optional (e.g., "Primary", "Billing", "Shipping")
 
 
-class CreateContact(ORMBaseModel):
+class CreateContact(BaseModel):
     """
     Schema for creating a contact.
     """
