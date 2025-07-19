@@ -24,7 +24,7 @@ from db.engine import get_db_session
 session_dependency = Annotated[Session, Depends(get_db_session)]
 
 # authentication functions
-well_user_function = authenticated(permissions=['well:read', 'well:write'])
+well_user_function = authenticated(permissions=["well:read", "well:write"])
 
 # permissions dependencies
 well_user_dependency = Annotated[Callable, Depends(well_user_function)]

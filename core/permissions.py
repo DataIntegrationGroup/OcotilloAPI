@@ -33,13 +33,20 @@ scheme = OAuth2AuthorizationCodeBearer(
     auto_error=False,
 )
 
-def authenticated(optional: bool = False,
-                  scope: Optional[List[str]] = None,
-                  permissions: Optional[List[str]] = None,):
 
-    def _authenicated(request: Request, response: Response, token: TokenType=Depends(cast(Callable, scheme))):
-    # def _authenicated(request: Request, response: Response):
-    # def _authenicated():
+def authenticated(
+    optional: bool = False,
+    scope: Optional[List[str]] = None,
+    permissions: Optional[List[str]] = None,
+):
+
+    def _authenicated(
+        request: Request,
+        response: Response,
+        token: TokenType = Depends(cast(Callable, scheme)),
+    ):
+        # def _authenicated(request: Request, response: Response):
+        # def _authenicated():
         """
         A placeholder for the authentication logic.
         This function should check if the user is authenticated and has the required permissions.
@@ -59,7 +66,9 @@ def authenticated(optional: bool = False,
     return _authenicated
 
 
-def verify_token(token: TokenType, scope: Optional[List[str]], permissions: Optional[List[str]]) -> bool:
+def verify_token(
+    token: TokenType, scope: Optional[List[str]], permissions: Optional[List[str]]
+) -> bool:
     """
     Placeholder function to verify the token.
     This should contain the logic to check if the token is valid and has the required permissions.
@@ -67,4 +76,6 @@ def verify_token(token: TokenType, scope: Optional[List[str]], permissions: Opti
     # Implement your token verification logic here
     # For now, we will just return True for demonstration purposes
     return True
+
+
 # ============= EOF =============================================
