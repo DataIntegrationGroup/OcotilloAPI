@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
+from core.dependencies import session_dependency, well_user_function, well_user_dependency
 from db import (
     WellThing,
     WellScreen,
@@ -217,11 +217,13 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
     status_code=status.HTTP_201_CREATED,
 )
 def create_well(
-    well_data: CreateWell, session: Session = Depends(get_db_session)
+    well_data: CreateWell, session: Session = Depends(get_db_session),
+        # user = well_user_dependency
 ) -> WellResponse:
     """
     Create a new well in the database.
     """
+    # print("Creating well with data:", well_data, user)
     well = add_well(session, well_data)
     return well
 
@@ -233,6 +235,7 @@ def create_well(
 )
 def create_wellscreen(
     session: session_dependency,
+    user: well_user_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
 ) -> WellScreenResponse:
     """
