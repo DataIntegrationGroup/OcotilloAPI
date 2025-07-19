@@ -16,6 +16,20 @@
 import pytest
 
 from tests import client
+from main import app
+from core.dependencies import well_user_function
+
+
+def override_authentication():
+    """
+    Override the authentication dependency for testing purposes.
+    This allows all users to be considered authenticated.
+    """
+    print("Overriding authentication")
+    return True
+
+
+app.dependency_overrides[well_user_function] = override_authentication
 
 
 def test_add_group():
@@ -103,6 +117,7 @@ def test_add_well_screen():
             "screen_type": "PVC",
         },
     )
+    print(response.json())
 
     assert response.status_code == 201
     data = response.json()
