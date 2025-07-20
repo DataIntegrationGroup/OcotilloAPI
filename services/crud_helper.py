@@ -19,7 +19,9 @@ from sqlalchemy.orm import Session, DeclarativeBase
 from services.query_helper import simple_get_by_id
 
 
-def model_patcher(session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel):
+def model_patcher(
+    session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel
+):
     item = simple_get_by_id(session, model, item_id)
     if not item:
         return {"message": f"{model.__name__} {item_id} not found"}
@@ -30,5 +32,6 @@ def model_patcher(session: Session, model: DeclarativeBase, item_id: int, payloa
     session.commit()
     session.refresh(item)
     return item
+
 
 # ============= EOF =============================================

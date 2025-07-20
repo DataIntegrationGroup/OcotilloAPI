@@ -41,4 +41,5 @@ class EquipmentResponse(ORMBaseModel):
     recording_interval: int | None = None
     equipment_notes: str | None = None
 
+
 # ============= EOF =============================================

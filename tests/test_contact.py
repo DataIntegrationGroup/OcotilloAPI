@@ -175,14 +175,14 @@ def test_get_contacts():
     assert response.status_code == 200
 
     data = response.json()
-    assert 'items' in data, "Expected 'items' in response"
-    items = data['items']
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
     assert isinstance(items, list), "'items' should be a list"
     assert len(items) > 0, "'items' should not be empty"
     item = items[0]
-    assert 'id' in item, "Expected 'id' in contact item"
-    assert 'name' in item, "Expected 'name' in contact item"
-    assert 'role' in item, "Expected 'role' in contact item"
+    assert "id" in item, "Expected 'id' in contact item"
+    assert "name" in item, "Expected 'name' in contact item"
+    assert "role" in item, "Expected 'role' in contact item"
     assert "emails" in item, "Expected 'emails' in contact item"
     assert "phones" in item, "Expected 'phones' in contact item"
     assert "addresses" in item, "Expected 'addresses' in contact item"
@@ -190,10 +190,8 @@ def test_get_contacts():
     assert isinstance(item["phones"], list), "'phones' should be a list"
     assert isinstance(item["addresses"], list), "'addresses' should be a list"
     assert len(item["emails"]) == 1, "'emails' should not be empty"
-    assert len(item["phones"]) ==1 , "'phones' should not be empty"
-    assert len(item["addresses"])==1, "'addresses' should not be empty"
-
-
+    assert len(item["phones"]) == 1, "'phones' should not be empty"
+    assert len(item["addresses"]) == 1, "'addresses' should not be empty"
 
     # print(response.json())
     # assert len(response.json()) > 0
@@ -242,7 +240,7 @@ def test_item_edit_contact_name():
         "/contact/1",
         json={
             "name": "Updated Contact",
-        }
+        },
     )
 
     assert response.status_code == 200
@@ -256,28 +254,20 @@ def test_item_edit_contact_name():
         "/contact/1",
         json={
             "name": "Test Contact",
-        }
+        },
     )
     assert response.status_code == 200
 
 
 def test_edit_contact_email():
-    response = client.patch(
-        "/contact/email/1",
-        json={
-            "email": "boo@bar.com"
-        })
+    response = client.patch("/contact/email/1", json={"email": "boo@bar.com"})
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == 1
     assert data["email"] == "boo@bar.com"
 
     # put contact email back to original
-    response = client.patch(
-        "/contact/email/1",
-        json={
-            "email": "fasdfasdf@gmail.com"
-        })
+    response = client.patch("/contact/email/1", json={"email": "fasdfasdf@gmail.com"})
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == 1
@@ -285,22 +275,14 @@ def test_edit_contact_email():
 
 
 def test_edit_contact_phone():
-    response = client.patch(
-        "/contact/phone/1",
-        json={
-            "phone_number": "+19876543210"
-        })
+    response = client.patch("/contact/phone/1", json={"phone_number": "+19876543210"})
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == 1
     assert data["phone_number"] == "+19876543210"
 
     # put contact phone back to original
-    response = client.patch(
-        "/contact/phone/1",
-        json={
-            "phone_number": "+12345678901"
-        })
+    response = client.patch("/contact/phone/1", json={"phone_number": "+12345678901"})
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == 1

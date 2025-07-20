@@ -29,9 +29,19 @@ from core.dependencies import session_dependency
 from db import ThingContactAssociation, Thing
 from db.contact import Contact, Email, Phone, Address
 from db.engine import get_db_session
-from schemas.response.contact import EmailResponse, ContactResponse, AddressResponse, PhoneResponse
+from schemas.response.contact import (
+    EmailResponse,
+    ContactResponse,
+    AddressResponse,
+    PhoneResponse,
+)
 from schemas.create.contact import CreateContact
-from schemas.update.contact import UpdateContact, UpdateEmail, UpdatePhone, UpdateAddress
+from schemas.update.contact import (
+    UpdateContact,
+    UpdateEmail,
+    UpdatePhone,
+    UpdateAddress,
+)
 from services.crud_helper import model_patcher
 from services.people_helper import add_contact
 from services.query_helper import (
@@ -56,8 +66,8 @@ def create_contact(
 
     # return adder(session, Contact, contact_data)
 
-@router.patch("/{contact_id}",
-            summary="Update contact")
+
+@router.patch("/{contact_id}", summary="Update contact")
 def update_contact(
     contact_id: int,
     contact_data: UpdateContact,
@@ -84,7 +94,9 @@ def update_contact(
     return model_patcher(session, Contact, contact_id, contact_data)
 
 
-@router.patch("/email/{email_id}",)
+@router.patch(
+    "/email/{email_id}",
+)
 def update_contact_email(
     email_id: int,
     email_data: UpdateEmail,
@@ -96,7 +108,9 @@ def update_contact_email(
     return model_patcher(session, Email, email_id, email_data)
 
 
-@router.patch('/phone/{phone_id}',)
+@router.patch(
+    "/phone/{phone_id}",
+)
 def update_contact_phone(
     phone_id: int,
     phone_data: UpdatePhone,
@@ -112,7 +126,10 @@ def update_contact_phone(
     """
     return model_patcher(session, Phone, phone_id, phone_data)
 
-@router.patch('/address/{address_id}',)
+
+@router.patch(
+    "/address/{address_id}",
+)
 def update_contact_address(
     address_id: int,
     address_data: UpdateAddress,
@@ -127,8 +144,6 @@ def update_contact_address(
     :return:
     """
     return model_patcher(session, Address, address_id, address_data)
-
-
 
 
 @router.get("/", summary="Get contacts")

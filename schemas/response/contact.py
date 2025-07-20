@@ -62,4 +62,6 @@ class ContactResponse(ORMBaseModel):
     emails: list[EmailResponse] = []
     phones: list[PhoneResponse] = []
     addresses: list[AddressResponse] = []
+
+
 # ============= EOF =============================================
