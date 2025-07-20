@@ -173,27 +173,135 @@ def test_email_validation_fail():
 def test_get_contacts():
     response = client.get("/contact")
     assert response.status_code == 200
-    assert len(response.json()) > 0
+
+    data = response.json()
+    assert 'items' in data, "Expected 'items' in response"
+    items = data['items']
+    assert isinstance(items, list), "'items' should be a list"
+    assert len(items) > 0, "'items' should not be empty"
+    item = items[0]
+    assert 'id' in item, "Expected 'id' in contact item"
+    assert 'name' in item, "Expected 'name' in contact item"
+    assert 'role' in item, "Expected 'role' in contact item"
+    assert "emails" in item, "Expected 'emails' in contact item"
+    assert "phones" in item, "Expected 'phones' in contact item"
+    assert "addresses" in item, "Expected 'addresses' in contact item"
+    assert isinstance(item["emails"], list), "'emails' should be a list"
+    assert isinstance(item["phones"], list), "'phones' should be a list"
+    assert isinstance(item["addresses"], list), "'addresses' should be a list"
+    assert len(item["emails"]) == 1, "'emails' should not be empty"
+    assert len(item["phones"]) ==1 , "'phones' should not be empty"
+    assert len(item["addresses"])==1, "'addresses' should not be empty"
+
+
+
+    # print(response.json())
+    # assert len(response.json()) > 0
 
 
 # test item retrieval via filter ===========================================
 
 
 # Test item retrieval ======================================================
-# @pytest.mark.skip
-# def test_item_get_spring():
-#     response = client.get("/thing/spring/1")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["location_id"] == 1
-
-
 def test_item_get_contact():
     response = client.get("/contact/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
     assert data["name"] == "Test Contact"
-    # assert data["email"] == "fasdfasdf@gmail.com"
-    # assert data["phone"] == "+12345678901"
+
+    assert "emails" in data
+    emails = data["emails"]
+    assert len(emails) == 1
+    email = emails[0]
+    assert email["email"] == "fasdfasdf@gmail.com"
+    assert email["email_type"] == "Primary"
+
+    assert "phones" in data
+    phones = data["phones"]
+    assert len(phones) == 1
+    phone = phones[0]
+    assert phone["phone_number"] == "+12345678901"
+    assert phone["phone_type"] == "Primary"
+
+    assert "addresses" in data
+    addresses = data["addresses"]
+    assert len(addresses) == 1
+    address = addresses[0]
+    assert address["address_line_1"] == "123 Main St"
+    assert address["city"] == "Test City"
+    assert address["state"] == "NM"
+    assert address["postal_code"] == "87501"
+    assert address["country"] == "US"
+    assert address["address_type"] == "Primary"
+
+
+# Test item edit ==========================================================
+def test_item_edit_contact_name():
+    response = client.patch(
+        "/contact/1",
+        json={
+            "name": "Updated Contact",
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["name"] == "Updated Contact"
+    assert data["role"] == "Owner"
+
+    # put contact name back to original
+    response = client.patch(
+        "/contact/1",
+        json={
+            "name": "Test Contact",
+        }
+    )
+    assert response.status_code == 200
+
+
+def test_edit_contact_email():
+    response = client.patch(
+        "/contact/email/1",
+        json={
+            "email": "boo@bar.com"
+        })
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == 1
+    assert data["email"] == "boo@bar.com"
+
+    # put contact email back to original
+    response = client.patch(
+        "/contact/email/1",
+        json={
+            "email": "fasdfasdf@gmail.com"
+        })
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == 1
+    assert data["email"] == "fasdfasdf@gmail.com"
+
+
+def test_edit_contact_phone():
+    response = client.patch(
+        "/contact/phone/1",
+        json={
+            "phone_number": "+19876543210"
+        })
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == 1
+    assert data["phone_number"] == "+19876543210"
+
+    # put contact phone back to original
+    response = client.patch(
+        "/contact/phone/1",
+        json={
+            "phone_number": "+12345678901"
+        })
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == 1
+    assert data["phone_number"] == "+12345678901"

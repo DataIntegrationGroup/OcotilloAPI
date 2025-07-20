@@ -13,32 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from pydantic import BaseModel
+from sqlalchemy.orm import Session, DeclarativeBase
 
-from schemas import ORMBaseModel
-
-
-class SpringResponse(ORMBaseModel):
-    """
-    Response schema for spring details.
-    """
-
-    id: int
-    description: str | None = None
+from services.query_helper import simple_get_by_id
 
 
-class EquipmentResponse(ORMBaseModel):
-    """
-    Response schema for equipment details.
-    """
+def model_patcher(session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel):
+    item = simple_get_by_id(session, model, item_id)
+    if not item:
+        return {"message": f"{model.__name__} {item_id} not found"}
 
-    id: int
-    location_id: int
-    equipment_type: str | None = None
-    model: str | None = None
-    serial_no: str | None = None
-    date_installed: str | None = None  # ISO format date string
-    date_removed: str | None = None  # ISO format date string
-    recording_interval: int | None = None
-    equipment_notes: str | None = None
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, key, value)
+
+    session.commit()
+    session.refresh(item)
+    return item
 
 # ============= EOF =============================================

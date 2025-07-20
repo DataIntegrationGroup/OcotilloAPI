@@ -16,6 +16,8 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
@@ -25,10 +27,12 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 
 from core.dependencies import session_dependency
 from db import ThingContactAssociation, Thing
-from db.contact import Contact
+from db.contact import Contact, Email, Phone, Address
 from db.engine import get_db_session
-from schemas.base_responses import ContactResponse
+from schemas.response.contact import EmailResponse, ContactResponse, AddressResponse, PhoneResponse
 from schemas.create.contact import CreateContact
+from schemas.update.contact import UpdateContact, UpdateEmail, UpdatePhone, UpdateAddress
+from services.crud_helper import model_patcher
 from services.people_helper import add_contact
 from services.query_helper import (
     simple_all_getter,
@@ -45,12 +49,86 @@ router = APIRouter(prefix="/contact", tags=["contact"])
     status_code=status.HTTP_201_CREATED,
 )
 def create_contact(
-    contact_data: CreateContact, session: Session = Depends(get_db_session)
+    contact_data: CreateContact, session: session_dependency
 ) -> ContactResponse:
 
     return add_contact(session, contact_data)
 
     # return adder(session, Contact, contact_data)
+
+@router.patch("/{contact_id}",
+            summary="Update contact")
+def update_contact(
+    contact_id: int,
+    contact_data: UpdateContact,
+    session: session_dependency,
+) -> ContactResponse:
+    """
+    Update an existing contact in the database.
+    :param contact_id: ID of the contact to update
+    :param contact_data: Data to update the contact with
+    :param session: Database session
+    :return: Updated contact response
+    """
+    # contact = simple_get_by_id(session, Contact, contact_id)
+    # if not contact:
+    #     return {"message": "Contact not found"}
+    #
+    # for key, value in contact_data.model_dump().items():
+    #     setattr(contact, key, value)
+    #
+    # session.commit()
+    # session.refresh(contact)
+
+    # return contact
+    return model_patcher(session, Contact, contact_id, contact_data)
+
+
+@router.patch("/email/{email_id}",)
+def update_contact_email(
+    email_id: int,
+    email_data: UpdateEmail,
+    session: session_dependency,
+) -> EmailResponse:
+    """
+    Update an existing contact's email in the database.
+    """
+    return model_patcher(session, Email, email_id, email_data)
+
+
+@router.patch('/phone/{phone_id}',)
+def update_contact_phone(
+    phone_id: int,
+    phone_data: UpdatePhone,
+    session: session_dependency,
+) -> PhoneResponse:
+    """
+    Update an existing contact's phone number in the database.
+    :param contact_id: ID of the contact to update
+    :param phone_type: Type of the phone to update
+    :param phone_number: New phone number
+    :param session: Database session
+    :return: Updated contact response
+    """
+    return model_patcher(session, Phone, phone_id, phone_data)
+
+@router.patch('/address/{address_id}',)
+def update_contact_address(
+    address_id: int,
+    address_data: UpdateAddress,
+    session: session_dependency,
+) -> AddressResponse:
+    """
+    Update an existing contact's address in the database.
+
+    :param address_id:
+    :param address_data:
+    :param session:
+    :return:
+    """
+    return model_patcher(session, Address, address_id, address_data)
+
+
 
 
 @router.get("/", summary="Get contacts")
@@ -74,7 +152,7 @@ async def get_contacts(
 
 @router.get("/{contact_id}", summary="Get contact by ID")
 async def get_contact_by_id(
-    contact_id: int, session: Session = Depends(get_db_session)
+    contact_id: int, session: session_dependency
 ) -> ContactResponse:
     """
     Retrieve a contact by ID from the database.
