@@ -4,6 +4,9 @@ on:
   push:
     branches: [pre-production]
 
+permissions:
+  contents: write
+
 jobs:
     staging-deploy:
 
