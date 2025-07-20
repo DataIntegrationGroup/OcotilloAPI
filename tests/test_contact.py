@@ -265,6 +265,7 @@ def test_edit_contact_email():
     assert response.status_code == 200
     assert data["id"] == 1
     assert data["email"] == "boo@bar.com"
+    assert data["email_type"] == "Primary"
 
     # put contact email back to original
     response = client.patch("/contact/email/1", json={"email": "fasdfasdf@gmail.com"})
@@ -287,3 +288,39 @@ def test_edit_contact_phone():
     assert response.status_code == 200
     assert data["id"] == 1
     assert data["phone_number"] == "+12345678901"
+
+
+def test_edit_contact_address():
+    response = client.patch(
+        "/contact/address/1",
+        json={
+            "address_line_1": "456 Elm St",
+            "city": "Updated City",
+            "postal_code": "90210",
+            "country": "US",
+        },
+    )
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == 1
+    assert data["address_line_1"] == "456 Elm St"
+    assert data["city"] == "Updated City"
+    assert data["state"] == "NM"
+    assert data["postal_code"] == "90210"
+    assert data["country"] == "US"
+    assert data["address_type"] == "Primary"
+
+    # put contact address back to original
+    response = client.patch(
+        "/contact/address/1",
+        json={
+            "address_line_1": "123 Main St",
+            "city": "Test City",
+            "state": "NM",
+            "postal_code": "87501",
+            "country": "US",
+            "address_type": "Primary",
+        },
+    )
+    data = response.json()
+    assert response.status_code == 200
