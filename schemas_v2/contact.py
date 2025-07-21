@@ -97,7 +97,6 @@ class CreateContact(BaseModel):
     addresses: list[CreateAddress]
 
 
-
 #
 #
 # @field_validator("phone", mode="before")
@@ -228,4 +227,6 @@ class UpdateAddress(BaseModel):
     postal_code: Optional[str] = None
     country: Optional[str] = None
     address_type: Optional[str] = None
+
+
 # ============= EOF =============================================

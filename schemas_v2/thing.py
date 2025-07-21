@@ -185,4 +185,6 @@ class UpdateWell(BaseModel):
     construction_notes: str | None = None
 
     # group: str | None = None  # Optional group for the well
+
+
 # ============= EOF =============================================

@@ -34,7 +34,9 @@ from schemas_v2.observation import (
     CreateGroundwaterLevelObservation,
     CreateGeothermalObservation,
     CreateGroundwaterLevelObservationDirect,
-    CreateGeothermalObservationDirect, ObservationResponse, GroundwaterLevelObservationResponse,
+    CreateGeothermalObservationDirect,
+    ObservationResponse,
+    GroundwaterLevelObservationResponse,
     GeothermalObservationResponse,
 )
 from services.geospatial_helper import make_within_wkt

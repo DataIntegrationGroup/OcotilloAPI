@@ -20,7 +20,9 @@ from db.lexicon import Category, LexiconTriple
 from schemas_v2.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
-    CreateTriple, LexiconTermResponse, LexiconCategoryResponse,
+    CreateTriple,
+    LexiconTermResponse,
+    LexiconCategoryResponse,
 )
 from services.lexicon import add_lexicon_term
 

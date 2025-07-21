@@ -36,8 +36,16 @@ from db.engine import get_db_session
 from db.thing.thing import ThingIdLink
 from schemas.base_create import CreateSpring
 from schemas.base_responses import SpringResponse
-from schemas_v2.thing import CreateThingIdLink, CreateWell, CreateWellScreen, ThingResponse, WellResponse, \
-    WellScreenResponse, UpdateThing, UpdateWell
+from schemas_v2.thing import (
+    CreateThingIdLink,
+    CreateWell,
+    CreateWellScreen,
+    ThingResponse,
+    WellResponse,
+    WellScreenResponse,
+    UpdateThing,
+    UpdateWell,
+)
 from schemas_v2.location import LocationResponse
 from schema_v2.location import UpdateLocation
 from services.crud_helper import model_patcher
