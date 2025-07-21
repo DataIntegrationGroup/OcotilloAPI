@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, Annotated, Union
-from shapely.geometry import mapping
-from shapely import wkb
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
+from shapely import wkb
+from shapely.geometry import mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
@@ -25,7 +24,6 @@ from starlette import status
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
-    well_user_function,
     well_user_dependency,
 )
 from db import (
@@ -33,26 +31,20 @@ from db import (
     WellScreen,
     SpringThing,
     adder,
-    LocationThingAssociation,
     Thing,
 )
 from db.engine import get_db_session
-from db.group import GroupThingAssociation, Group
 from db.thing.thing import ThingIdLink
 from schemas.base_create import CreateSpring
-from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
 from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
 from schemas.response.thing import (
     WellResponse,
     WellScreenResponse,
     ThingResponse,
-    FeatureCollectionResponse,
-    Feature,
 )
 from services.query_helper import (
     make_query,
-    simple_all_getter,
     simple_get_by_id,
     paginated_all_getter,
 )
@@ -223,7 +215,7 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
 def create_well(
     well_data: CreateWell,
     session: Session = Depends(get_db_session),
-    # user = well_user_dependency
+    user = well_user_dependency
 ) -> WellResponse:
     """
     Create a new well in the database.
