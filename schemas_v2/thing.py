@@ -20,7 +20,7 @@ from pydantic import BaseModel, model_validator
 from schemas import ORMBaseModel
 from schemas_v2.location import LocationResponse
 
-
+# Thing
 class CreateThingIdLink(BaseModel):
     """
     Schema for creating a link between a thing and its ID.
@@ -31,7 +31,22 @@ class CreateThingIdLink(BaseModel):
     alternate_id: str
     alternate_organization: str
 
+class ThingResponse(ORMBaseModel):
+    name: str
 
+
+class UpdateThing(BaseModel):
+    """
+    Schema for updating a thing.
+    """
+
+    # location_id: int | None = None  # Optional location ID for the thing
+    name: str | None = None  # Optional name for the thing
+    # group: str | None = None  # Optional group for the thing
+    # description: str | None = None  # Optional description of the thing
+    # tags: list[str] | None = None  # Optional tags associated with the thing
+
+# Well
 class CreateWell(BaseModel):
     """
     Schema for creating a well.
@@ -82,14 +97,6 @@ class CreateWellScreen(BaseModel):
         return self
 
 
-class ThingResponse(ORMBaseModel):
-    name: str
-
-
-class SpringResponse(ORMBaseModel):
-    pass
-
-
 class WellResponse(ORMBaseModel):
     """
     Response schema for well details.
@@ -121,6 +128,36 @@ class WellScreenResponse(ORMBaseModel):
     well_id: int
     screen_depth_bottom: float
     screen_depth_top: float
+
+class UpdateWell(BaseModel):
+    # location_id: int | None = None  # Optional location ID for the well
+    # name: str | None = None  # Optional name for the well
+    # api_id: str | None = None
+    # ose_pod_id: str | None = None
+    well_type: str | None = None
+    well_depth: float | None = None  # in feet
+    hole_depth: float | None = None  # in feet
+    construction_notes: str | None = None
+
+    # group: str | None = None  # Optional group for the well
+
+# Spring
+class SpringResponse(ORMBaseModel):
+    """
+    Response schema for spring details.
+    """
+
+    id: int
+    description: str | None = None
+
+class CreateSpring(BaseModel):
+    """
+    Schema for creating a spring.
+    """
+
+    location_id: int
+    name: str
+
 
 
 class GroupResponse(ORMBaseModel):
@@ -162,16 +199,6 @@ class FeatureCollectionResponse(BaseModel):
     features: List[Feature] = []
 
 
-class UpdateThing(BaseModel):
-    """
-    Schema for updating a thing.
-    """
-
-    # location_id: int | None = None  # Optional location ID for the thing
-    name: str | None = None  # Optional name for the thing
-    # group: str | None = None  # Optional group for the thing
-    # description: str | None = None  # Optional description of the thing
-    # tags: list[str] | None = None  # Optional tags associated with the thing
 
 
 class UpdateWell(BaseModel):
