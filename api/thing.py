@@ -30,7 +30,8 @@ from db import (
     SpringThing,
     adder,
     LocationThingAssociation,
-    Thing, Location,
+    Thing,
+    Location,
 )
 from db.engine import get_db_session
 from db.group import GroupThingAssociation, Group
@@ -271,7 +272,7 @@ def update_thing(
     return model_patcher(session, Thing, thing_id, thing_data)
 
 
-@router.patch('/{thing_id}/location', summary="Update thing location")
+@router.patch("/{thing_id}/location", summary="Update thing location")
 def update_thing_location(
     thing_id: int,
     location_data: UpdateLocation,
@@ -291,7 +292,7 @@ def update_thing_location(
     return model_patcher(session, Location, location_id, location_data)
 
 
-@router.patch('/{thing_id}/well', summary="Update well by parent thing ID")
+@router.patch("/{thing_id}/well", summary="Update well by parent thing ID")
 def update_well(
     thing_id: int,
     well_data: UpdateWell,
@@ -309,7 +310,7 @@ def update_well(
     return model_patcher(session, WellThing, well_thing_id, well_data)
 
 
-@router.patch('/well/{well_id}', summary="Update well by well ID")
+@router.patch("/well/{well_id}", summary="Update well by well ID")
 def update_well_by_id(
     well_id: int,
     well_data: UpdateWell,
@@ -319,4 +320,6 @@ def update_well_by_id(
     Update an existing well by its ID.
     """
     return model_patcher(session, WellThing, well_id, well_data)
+
+
 # ============= EOF =============================================

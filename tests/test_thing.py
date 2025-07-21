@@ -295,12 +295,13 @@ def test_patch_thing_location():
     response = client.patch(
         "/thing/3/location",
         json={
-            "point": 'POINT(-106.61 35.08)',
+            "point": "POINT(-106.61 35.08)",
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
-    assert data["point"] == 'POINT (-106.61 35.08)'
+    assert data["point"] == "POINT (-106.61 35.08)"
+
 
 # ============= EOF =============================================

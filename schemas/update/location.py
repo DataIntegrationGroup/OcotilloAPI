@@ -20,7 +20,10 @@ class UpdateLocation(BaseModel):
     """
     Schema for updating a location.
     """
+
     notes: str | None = None
     point: str | None = None
     release_status: str | None = None
+
+
 # ============= EOF =============================================

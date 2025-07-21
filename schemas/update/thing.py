@@ -20,6 +20,7 @@ class UpdateThing(BaseModel):
     """
     Schema for updating a thing.
     """
+
     # location_id: int | None = None  # Optional location ID for the thing
     name: str | None = None  # Optional name for the thing
     # group: str | None = None  # Optional group for the thing
@@ -38,4 +39,6 @@ class UpdateWell(BaseModel):
     construction_notes: str | None = None
 
     # group: str | None = None  # Optional group for the well
+
+
 # ============= EOF =============================================
