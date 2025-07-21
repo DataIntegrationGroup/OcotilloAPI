@@ -13,12 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Annotated
+from typing import Annotated, Callable
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from core.permissions import authenticated
 from db.engine import get_db_session
 
 session_dependency = Annotated[Session, Depends(get_db_session)]
+
+# authentication functions
+well_user_function = authenticated(permissions=["well:read", "well:write"])
+
+# permissions dependencies
+well_user_dependency = Annotated[Callable, Depends(well_user_function)]
 # ============= EOF =============================================
