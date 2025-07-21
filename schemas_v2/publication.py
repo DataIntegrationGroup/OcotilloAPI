@@ -15,7 +15,22 @@
 # ===============================================================================
 from pydantic import BaseModel
 
+# -------- CREATE ----------
+class CreatePublication(BaseModel):
+    """
+    Schema for creating a new publication.
+    """
 
+    title: str
+    authors: list[str]
+    year: int
+    doi: str | None = None
+    url: str | None = None
+
+    publication_type: str
+
+
+# -------- RESPONSE ----------
 class AuthorResponse(BaseModel):
     """
     Schema for the response of an author.
@@ -40,17 +55,5 @@ class PublicationResponse(BaseModel):
     url: str | None = None
     publication_type: str
 
-
+# -------- UPDATE ----------
 # ============= EOF =============================================
-class CreatePublication(BaseModel):
-    """
-    Schema for creating a new publication.
-    """
-
-    title: str
-    authors: list[str]
-    year: int
-    doi: str | None = None
-    url: str | None = None
-
-    publication_type: str

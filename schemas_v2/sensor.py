@@ -17,19 +17,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-
-class SensorResponse(BaseModel):
-    id: int
-    name: str
-    model: str | None  # = Column(String(50))
-    serial_no: str | None  # = Column(String(50))
-    date_installed: datetime | None  # = Column(DateTime)
-    date_removed: datetime | None  # = Column(DateTime)
-    recording_interval: int | None  # = Column(Integer)
-    notes: str | None  # = Column(String(50))
-
-
-# ============= EOF =============================================
+# -------- CREATE ----------
 class CreateSensor(BaseModel):
     """
     Schema for creating a new sensor.
@@ -43,3 +31,20 @@ class CreateSensor(BaseModel):
     date_removed: str | None = None  # ISO format date string
     recording_interval: int | None = None
     notes: str | None = None
+
+
+# -------- RESPONSE ----------
+class SensorResponse(BaseModel):
+    id: int
+    name: str
+    model: str | None  # = Column(String(50))
+    serial_no: str | None  # = Column(String(50))
+    date_installed: datetime | None  # = Column(DateTime)
+    date_removed: datetime | None  # = Column(DateTime)
+    recording_interval: int | None  # = Column(Integer)
+    notes: str | None  # = Column(String(50))
+
+# -------- UPDATE ----------
+
+# ============= EOF =============================================
+

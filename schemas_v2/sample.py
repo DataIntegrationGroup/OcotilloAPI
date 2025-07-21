@@ -18,11 +18,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class SampleResponse(BaseModel):
-    id: int
-
-
-# ============= EOF =============================================
+# -------- CREATE ----------
 class CreateSample(BaseModel):
     collection_timestamp: datetime
     collection_method: str
@@ -43,3 +39,12 @@ class CreateGeothermalSample(BaseModel):
     """
 
     sample_id: int
+
+
+# -------- RESPONSE ----------
+class SampleResponse(BaseModel):
+    id: int
+
+# -------- UPDATE ----------
+
+# ============= EOF =============================================

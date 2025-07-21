@@ -28,14 +28,14 @@ class GeothermalMixin:
     temperature: float
 
 
+class ChildObservationModel(BaseModel):
+    observation_id: int
+    observation_timestamp: datetime
+
+# -------- CREATE ----------
 class CreateObservation(BaseModel):
     series_id: int
     release_status: str
-    observation_timestamp: datetime
-
-
-class ChildObservationModel(BaseModel):
-    observation_id: int
     observation_timestamp: datetime
 
 
@@ -54,8 +54,7 @@ class CreateGroundwaterLevelObservationDirect(CreateObservation, GroundwaterLeve
 class CreateGeothermalObservationDirect(CreateObservation, GeothermalMixin):
     pass
 
-
-# ============= EOF =============================================
+# -------- RESPONSE ----------
 class ObservationResponse(BaseModel):
     id: int
     observation_timestamp: datetime
@@ -74,3 +73,6 @@ class GeothermalObservationResponse(BaseModel):
 
     temperature: float
     depth: float
+
+# -------- UPDATE ----------
+# ============= EOF =============================================
