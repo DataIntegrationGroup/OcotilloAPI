@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 # -------- CREATE ----------
 
+
 # -------- RESPONSE --------
 class AssetResponse(BaseModel):
     id: int
@@ -26,6 +27,7 @@ class AssetResponse(BaseModel):
     mime_type: str
     size: int
     url: str
+
 
 # -------- UPDATE ----------
 

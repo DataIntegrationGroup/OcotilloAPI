@@ -45,6 +45,7 @@ class CreateGeothermalSample(BaseModel):
 class SampleResponse(BaseModel):
     id: int
 
+
 # -------- UPDATE ----------
 
 # ============= EOF =============================================

@@ -20,6 +20,7 @@ from pydantic import BaseModel, model_validator
 from schemas import ORMBaseModel
 from schemas_v2.location import LocationResponse
 
+
 # -------- CREATE ----------
 class CreateThingIdLink(BaseModel):
     """
@@ -128,6 +129,7 @@ class WellScreenResponse(ORMBaseModel):
     screen_depth_bottom: float
     screen_depth_top: float
 
+
 class SpringResponse(ORMBaseModel):
     """
     Response schema for spring details.
@@ -135,6 +137,7 @@ class SpringResponse(ORMBaseModel):
 
     id: int
     description: str | None = None
+
 
 class GroupResponse(ORMBaseModel):
     """
@@ -152,7 +155,7 @@ class GeoJSONGeometry(BaseModel):
 
     type: str
     coordinates: (
-            List[float] | List[List[float]] | List[List[List[float]]]
+        List[float] | List[List[float]] | List[List[List[float]]]
     )  # Supports Point, LineString, Polygon, etc.
 
 
@@ -173,6 +176,7 @@ class FeatureCollectionResponse(BaseModel):
 
     type: str = "FeatureCollection"
     features: List[Feature] = []
+
 
 # -------- UPDATE ------------
 class UpdateThing(BaseModel):
@@ -198,5 +202,6 @@ class UpdateWell(BaseModel):
     construction_notes: str | None = None
 
     # group: str | None = None  # Optional group for the well
+
 
 # ============= EOF =============================================

@@ -15,6 +15,7 @@
 # ===============================================================================
 from pydantic import BaseModel
 
+
 # -------- CREATE ----------
 class CreateSeries(BaseModel):
     """
@@ -32,11 +33,14 @@ class CreateSeries(BaseModel):
         "draft"  # Default to 'draft', can be 'published' or 'archived'
     )
 
+
 # -------- RESPONSE --------
 class SeriesResponse(BaseModel):
     id: int
     name: str
     observed_property: str
+
+
 # -------- UPDATE ----------
 
 # ============= EOF =============================================

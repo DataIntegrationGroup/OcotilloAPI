@@ -19,6 +19,7 @@ from pydantic import BaseModel, field_validator
 
 from schemas import ORMBaseModel
 
+
 # -------- CREATE ----------
 class CreateLocation(BaseModel):
     """
@@ -45,6 +46,7 @@ class CreateGroupThing(BaseModel):
 
     group_id: int
     thing_id: int
+
 
 # -------- RESPONSE ----------
 class LocationResponse(ORMBaseModel):
@@ -76,6 +78,7 @@ class GroupLocationResponse(ORMBaseModel):
     group_id: int
     location_id: int
 
+
 # -------- UPDATE ----------
 class UpdateLocation(BaseModel):
     """
@@ -85,4 +88,6 @@ class UpdateLocation(BaseModel):
     notes: str | None = None
     point: str | None = None
     release_status: str | None = None
+
+
 # ============= EOF =============================================

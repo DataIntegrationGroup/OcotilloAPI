@@ -22,6 +22,7 @@ from pydantic import field_validator, BaseModel
 
 from schemas import ORMBaseModel
 
+
 # -------- CREATE ----------
 class CreateEmail(BaseModel):
     """
@@ -135,6 +136,7 @@ class CreateContact(BaseModel):
 #     #     if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", v):
 #     #         raise ValueError(f"Invalid email format. {v}")
 #     # return v
+
 
 # -------- RESPONSE ----------
 class PhoneResponse(ORMBaseModel):

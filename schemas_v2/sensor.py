@@ -17,6 +17,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+
 # -------- CREATE ----------
 class CreateSensor(BaseModel):
     """
@@ -44,7 +45,7 @@ class SensorResponse(BaseModel):
     recording_interval: int | None  # = Column(Integer)
     notes: str | None  # = Column(String(50))
 
+
 # -------- UPDATE ----------
 
 # ============= EOF =============================================
-

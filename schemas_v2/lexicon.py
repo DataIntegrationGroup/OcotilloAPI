@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from schemas import ORMBaseModel
 
+
 # -------- CREATE ----------
 class CreateLexiconTerm(BaseModel):
     """
@@ -72,6 +73,7 @@ class LexiconCategoryResponse(ORMBaseModel):
     name: str
     description: str | None = None
     # terms: list[LexiconTermResponse] | None = None
+
 
 # -------- UPDATE ----------
 # ============= EOF =============================================

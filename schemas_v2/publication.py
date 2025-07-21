@@ -15,6 +15,7 @@
 # ===============================================================================
 from pydantic import BaseModel
 
+
 # -------- CREATE ----------
 class CreatePublication(BaseModel):
     """
@@ -54,6 +55,7 @@ class PublicationResponse(BaseModel):
     doi: str | None = None
     url: str | None = None
     publication_type: str
+
 
 # -------- UPDATE ----------
 # ============= EOF =============================================
