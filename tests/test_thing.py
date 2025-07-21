@@ -249,4 +249,58 @@ def test_weaver_thing_contact_info_by_id():
     assert isinstance(item["phones"], list)
 
 
+# Patch tests
+def test_patch_thing():
+    response = client.patch(
+        "/thing/1",
+        json={
+            "name": "Updated Test Thing",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["name"] == "Updated Test Thing"
+
+
+def test_patch_well():
+    response = client.patch(
+        "/thing/well/1",
+        json={
+            "name": "Updated Test Well",
+            "well_depth": 150.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["well_depth"] == 150.0
+
+
+def test_patch_well_by_thing_id():
+    response = client.patch(
+        "/thing/4/well",
+        json={
+            "name": "Updated Test Well by Thing ID",
+            "well_depth": 200.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 2
+    assert data["well_depth"] == 200.0
+
+
+def test_patch_thing_location():
+    response = client.patch(
+        "/thing/3/location",
+        json={
+            "point": 'POINT(-106.61 35.08)',
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["point"] == 'POINT (-106.61 35.08)'
+
 # ============= EOF =============================================

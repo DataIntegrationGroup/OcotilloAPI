@@ -30,7 +30,7 @@ from db import (
     SpringThing,
     adder,
     LocationThingAssociation,
-    Thing,
+    Thing, Location,
 )
 from db.engine import get_db_session
 from db.group import GroupThingAssociation, Group
@@ -39,6 +39,7 @@ from schemas.base_create import CreateSpring
 from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
 from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
+from schemas.response.location import LocationResponse
 from schemas.response.thing import (
     WellResponse,
     WellScreenResponse,
@@ -46,6 +47,9 @@ from schemas.response.thing import (
     FeatureCollectionResponse,
     Feature,
 )
+from schemas.update.location import UpdateLocation
+from schemas.update.thing import UpdateThing, UpdateWell
+from services.crud_helper import model_patcher
 from services.query_helper import (
     make_query,
     simple_all_getter,
@@ -254,4 +258,65 @@ def create_spring(
     # return adder(session, SpringThing, spring_data)
 
 
+@router.patch("/{thing_id}", summary="Update thing")
+def update_thing(
+    thing_id: int,
+    thing_data: UpdateThing,
+    session: Session = Depends(get_db_session),
+) -> ThingResponse:
+    """
+    Update an existing thing by ID.
+    """
+
+    return model_patcher(session, Thing, thing_id, thing_data)
+
+
+@router.patch('/{thing_id}/location', summary="Update thing location")
+def update_thing_location(
+    thing_id: int,
+    location_data: UpdateLocation,
+    session: session_dependency,
+) -> LocationResponse:
+    """
+    Update the location of an existing thing by ID.
+    """
+
+    # get active location associated with the thing
+    location_id = session.execute(
+        select(LocationThingAssociation.location_id)
+        .where(LocationThingAssociation.thing_id == thing_id)
+        .order_by(LocationThingAssociation.effective_start.desc())
+    ).scalar_one_or_none()
+
+    return model_patcher(session, Location, location_id, location_data)
+
+
+@router.patch('/{thing_id}/well', summary="Update well by parent thing ID")
+def update_well(
+    thing_id: int,
+    well_data: UpdateWell,
+    session: session_dependency,
+) -> WellResponse:
+    """
+    Update an existing well by ID.
+    """
+
+    # get the WellThing associated with the Thing ID
+    well_thing_id = session.execute(
+        select(WellThing.id).join(Thing).where(Thing.id == thing_id)
+    ).scalar_one_or_none()
+
+    return model_patcher(session, WellThing, well_thing_id, well_data)
+
+
+@router.patch('/well/{well_id}', summary="Update well by well ID")
+def update_well_by_id(
+    well_id: int,
+    well_data: UpdateWell,
+    session: session_dependency,
+) -> WellResponse:
+    """
+    Update an existing well by its ID.
+    """
+    return model_patcher(session, WellThing, well_id, well_data)
 # ============= EOF =============================================
