@@ -13,29 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
 from pydantic import BaseModel
 
 
-class ObservationResponse(BaseModel):
-    id: int
-    observation_timestamp: datetime
-
-
-class GroundwaterLevelObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
-    depth_to_water: float
-
-
-class GeothermalObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
-    temperature: float
-    depth: float
-
-
 # ============= EOF =============================================
+class UpdateLocation(BaseModel):
+    """
+    Schema for updating a location.
+    """
+
+    notes: str | None = None
+    point: str | None = None
+    release_status: str | None = None

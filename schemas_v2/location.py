@@ -15,10 +15,39 @@
 # ===============================================================================
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
+
 from schemas import ORMBaseModel
 
 
+class CreateLocation(BaseModel):
+    """
+    Schema for creating a sample location.
+    """
+
+    notes: str | None = None
+    point: str = "POINT(0 0)"  # Default to a point at the origin
+    release_status: str | None = "draft"
+
+
+class CreateGroup(BaseModel):
+    """
+    Schema for creating a group.
+    """
+
+    name: str
+
+
+class CreateGroupThing(BaseModel):
+    """
+    Schema for creating a group location.
+    """
+
+    group_id: int
+    thing_id: int
+
+
+# ============= EOF =============================================
 class LocationResponse(ORMBaseModel):
     """
     Response schema for sample location details.
@@ -47,6 +76,3 @@ class GroupLocationResponse(ORMBaseModel):
     id: int
     group_id: int
     location_id: int
-
-
-# ============= EOF =============================================

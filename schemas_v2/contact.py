@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Optional
+
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
@@ -95,7 +97,6 @@ class CreateContact(BaseModel):
     addresses: list[CreateAddress]
 
 
-# ============= EOF =============================================
 
 #
 #
@@ -135,3 +136,96 @@ class CreateContact(BaseModel):
 #     #     if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", v):
 #     #         raise ValueError(f"Invalid email format. {v}")
 #     # return v
+class PhoneResponse(ORMBaseModel):
+    """
+    Response schema for phone details.
+    """
+
+    id: int
+    phone_number: str
+    phone_type: str  # e.g., 'mobile', 'landline', etc.
+
+
+class EmailResponse(ORMBaseModel):
+    """
+    Response schema for email details.
+    """
+
+    id: int
+    email: str
+    email_type: str  # e.g., 'personal', 'work', etc.
+
+
+class AddressResponse(ORMBaseModel):
+    """
+    Response schema for address details.
+    """
+
+    id: int
+    address_line_1: str
+    address_line_2: str | None = None
+    city: str
+    state: str
+    postal_code: str
+    country: str
+    address_type: str
+
+
+class ContactResponse(ORMBaseModel):
+    """
+    Response schema for contact details.
+    """
+
+    id: int
+    name: str
+    role: str
+    emails: list[EmailResponse] = []
+    phones: list[PhoneResponse] = []
+    addresses: list[AddressResponse] = []
+
+
+class UpdateContact(BaseModel):
+    """
+    Schema for updating contact information.
+    """
+
+    name: Optional[str] = None
+    # thing_id: int | None = None
+    # email: str | None = None
+    # phone: str | None = None
+    # address: str | None = None
+
+
+class UpdateEmail(BaseModel):
+    """
+    Schema for updating email information.
+    """
+
+    # email: Annotated[Optional[str], None]
+    # email_type: Annotated[Optional[str], None]
+    email: Optional[str] = None  # None
+    email_type: Optional[str] = None  # None
+
+
+class UpdatePhone(BaseModel):
+    """
+    Schema for updating phone information.
+    """
+
+    phone_number: Optional[str] = None
+    phone_type: Optional[str] = None
+
+
+class UpdateAddress(BaseModel):
+    """
+    Schema for updating address information.
+    """
+
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    address_type: Optional[str] = None
+# ============= EOF =============================================
