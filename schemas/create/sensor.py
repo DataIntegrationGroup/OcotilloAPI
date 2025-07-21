@@ -22,13 +22,13 @@ class CreateSensor(BaseModel):
     """
 
     name: str
-    equipment_type: str | None = None
+    # equipment_type: str | None = None
     model: str | None = None
     serial_no: str | None = None
     date_installed: str | None = None  # ISO format date string
     date_removed: str | None = None  # ISO format date string
     recording_interval: int | None = None
-    equipment_notes: str | None = None
+    notes: str | None = None
 
 
 # ============= EOF =============================================

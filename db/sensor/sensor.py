@@ -38,13 +38,12 @@ class Sensor(Base, AutoBaseMixin):
 
     # Define common attributes for sensors here
     name = Column(String(255), nullable=False)
-    equipment_type = Column(String(50))
     model = Column(String(50))
     serial_no = Column(String(50))
     date_installed = Column(DateTime)
     date_removed = Column(DateTime)
     recording_interval = Column(Integer)
-    equipment_notes = Column(String(50))
+    notes = Column(String(50))
 
 
 # ============= EOF =============================================

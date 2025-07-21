@@ -13,44 +13,105 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List
-
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
+from shapely import wkb
+from shapely.geometry import mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
-from api.base import router
 from api.pagination import CustomPage
+from core.dependencies import (
+    session_dependency,
+    well_user_dependency,
+)
 from db import (
     WellThing,
     WellScreen,
     SpringThing,
     adder,
-    LocationThingAssociation,
     Thing,
 )
 from db.engine import get_db_session
+from db.thing.thing import ThingIdLink
 from schemas.base_create import CreateSpring
-from schemas.base_get import GetWell
 from schemas.base_responses import SpringResponse
-from schemas.create.well import CreateWell, CreateWellScreen
-from schemas.response.well import WellResponse, WellScreenResponse
-from services.query_helper import make_query, simple_all_getter, simple_get_by_id
-from services.thing_helper import add_well
+from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
+from schemas.response.thing import (
+    WellResponse,
+    WellScreenResponse,
+    ThingResponse,
+)
+from services.query_helper import (
+    make_query,
+    simple_get_by_id,
+    paginated_all_getter,
+)
+from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
+
+
+def wkb_to_geojson(wkb_element):
+    if wkb_element is None:
+        return None
+    geom = wkb.loads(bytes(wkb_element.data))
+    return mapping(geom)
+
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
-@router.get("/well", response_model=CustomPage[WellResponse], summary="Get all wells")
+@router.get("/")
+def get_things(
+    session: session_dependency,
+) -> CustomPage[ThingResponse]:
+    """
+    Retrieve all things or filter by type.
+    """
+    # if thing_type == "well":
+    #     sql = select(Thing).join(WellThing)
+    # elif thing_type == "spring":
+    #     sql = select(Thing).join(SpringThing)
+    # else:
+    #     sql = select(Thing)
+    #
+    # if group:
+    #     sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
+    #
+    # if response_format == "geojson":
+    #     # todo: implement geojson response
+    #     def make_feature(thing: Thing) -> Feature:
+    #
+    #         # todo: get latest location
+    #         geometry = thing.locations[0].point
+    #         # Convert geometry to GeoJSON format
+    #
+    #         geojson_geometry = wkb_to_geojson(geometry)
+    #         properties = {
+    #             "id": thing.id,
+    #             "name": thing.name,
+    #             "type": thing_type,
+    #             "group": group,
+    #         }
+    #         return Feature(geometry=geojson_geometry, properties=properties)
+    #
+    #     things = session.scalars(sql).all()
+    #     features = [make_feature(thing) for thing in things]
+    #     return FeatureCollectionResponse(features=features)
+    # else:
+    #     # return paginate(query=sql, conn=session)
+    #     return session.scalars(sql).all()
+    return paginated_all_getter(session, Thing)
+
+
+@router.get("/well", summary="Get all wells")
 async def get_wells(
     # api_id: str = None,
     # ose_pod_id: str = None,
+    session: session_dependency,
     query: str = None,
-    session: Session = Depends(get_db_session),
-):
+) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
     """
@@ -73,41 +134,42 @@ async def get_wells(
 
 
 @router.get(
-    "/well/screen", response_model=List[WellScreenResponse], summary="Get well screens"
+    "/well/screen",
+    summary="Get well screens",
 )
-async def get_well_screens(session: Session = Depends(get_db_session)):
+async def get_well_screens(
+    session: session_dependency,
+) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
     """
-    return simple_all_getter(session, WellScreen)
+    return paginated_all_getter(session, WellScreen)
 
 
 @router.get(
     "/spring",
-    response_model=List[SpringResponse],
 )
-async def get_springs(session: Session = Depends(get_db_session)):
+async def get_springs(session: session_dependency) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
-    return simple_all_getter(session, SpringThing)
+    return paginated_all_getter(session, SpringThing)
 
 
-@router.get(
-    "/spring/{spring_id}", response_model=SpringResponse, summary="Get spring by ID"
-)
-async def get_spring_by_id(spring_id: int, session: Session = Depends(get_db_session)):
+@router.get("/spring/{spring_id}", summary="Get spring by ID")
+async def get_spring_by_id(
+    spring_id: int, session: Session = Depends(get_db_session)
+) -> SpringResponse:
     """
     Retrieve a spring by ID from the database.
     """
-    spring = simple_get_by_id(session, SpringThing, spring_id)
-    if not spring:
-        return {"message": "Spring not found"}
-    return spring
+    return simple_get_by_id(session, SpringThing, spring_id)
 
 
-@router.get("/well/{well_id}", response_model=WellResponse, summary="Get well by ID")
-async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session)):
+@router.get("/well/{well_id}", summary="Get well by ID")
+async def get_well_by_id(
+    well_id: int, session: Session = Depends(get_db_session)
+) -> WellResponse:
     """
     Retrieve a well by ID from the database.
     """
@@ -118,11 +180,11 @@ async def get_well_by_id(well_id: int, session: Session = Depends(get_db_session
 
 
 @router.get(
-    "/wellscreen/{wellscreen_id}",
+    "/well/screen/{wellscreen_id}",
 )
 async def get_well_screen_by_id(
     wellscreen_id: int, session: Session = Depends(get_db_session)
-):
+) -> WellScreenResponse:
     """
     Retrieve a well screen by ID from the database.
     """
@@ -133,18 +195,33 @@ async def get_well_screen_by_id(
 
 
 #  ===== POST =============
+
+
+@router.post(
+    "/link", status_code=status.HTTP_201_CREATED, summary="Create a new thing link"
+)
+def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependency):
+    """
+    Create a new link between a thing and an alternate ID.
+    """
+    return adder(session, ThingIdLink, link_data)
+
+
 @router.post(
     "/well",
-    response_model=GetWell,
     summary="Create a new well",
     status_code=status.HTTP_201_CREATED,
 )
-def create_well(well_data: CreateWell, session: Session = Depends(get_db_session)):
+def create_well(
+    well_data: CreateWell,
+    session: Session = Depends(get_db_session),
+    user=well_user_dependency,
+) -> WellResponse:
     """
     Create a new well in the database.
     """
-    data = well_data.model_dump()
-    well = add_well(session, data)
+    # print("Creating well with data:", well_data, user)
+    well = add_well(session, well_data)
     return well
 
 
@@ -154,9 +231,10 @@ def create_well(well_data: CreateWell, session: Session = Depends(get_db_session
     status_code=status.HTTP_201_CREATED,
 )
 def create_wellscreen(
+    session: session_dependency,
+    user: well_user_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
-    session: Session = Depends(get_db_session),
-):
+) -> WellScreenResponse:
     """
     Create a new well screen in the database.
     """
@@ -168,11 +246,12 @@ def create_wellscreen(
 )
 def create_spring(
     spring_data: CreateSpring, session: Session = Depends(get_db_session)
-):
+) -> SpringResponse:
     """
     Create a new spring in the database.
     """
-    return adder(session, SpringThing, spring_data)
+    return add_spring(session, spring_data)
+    # return adder(session, SpringThing, spring_data)
 
 
 # ============= EOF =============================================

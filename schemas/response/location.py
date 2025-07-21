@@ -19,7 +19,7 @@ from pydantic import field_validator
 from schemas import ORMBaseModel
 
 
-class SampleLocationResponse(ORMBaseModel):
+class LocationResponse(ORMBaseModel):
     """
     Response schema for sample location details.
     """

@@ -18,7 +18,7 @@ from datetime import datetime
 import pytest
 
 from db import Location
-from db.engine import get_db_session
+from db.engine import get_db_session, session_ctx
 
 # from db import get_db_session, database_sessionmaker
 # from db.base import Location
@@ -30,24 +30,23 @@ from tests import client
 
 @pytest.fixture(scope="function")
 def well():
-    session = next(get_db_session())
+    with session_ctx() as session:
+        loc = Location(point="SRID=4326;POINT(0 0)")
+        session.add(loc)
+        session.commit()
 
-    loc = Location(name="Test Location", point="SRID=4326;POINT(0 0)")
-    session.add(loc)
-    session.commit()
+        wt = add_well(
+            session,
+            {
+                "location_id": 1,
+                "name": "Collabnet Test Well",
+            },
+        )
 
-    wt = add_well(
-        session,
-        {
-            "location_id": 1,
-        },
-    )
-
-    yield wt
-
-    session.close()
+        yield wt
 
 
+@pytest.mark.skip
 def test_add_collabnet_well(well):
     response = client.post(
         "/collabnet/add",

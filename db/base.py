@@ -13,18 +13,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, DateTime, func, Integer, JSON, String, Boolean, Text
-from sqlalchemy.orm import declarative_base, declared_attr, Mapped, mapped_column
+from sqlalchemy import (
+    Column,
+    DateTime,
+    func,
+    Integer,
+    JSON,
+    String,
+    Boolean,
+    Text,
+    ForeignKey,
+)
+from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
 from sqlalchemy_searchable import make_searchable
-
+from sqlalchemy_continuum import make_versioned
 import re
 
-Base = declarative_base()
+
+make_versioned()
+
+
+class Base(DeclarativeBase):
+    pass
+
+
 make_searchable(Base.metadata)
+
+
+def lexicon_term(**kw):
+    return mapped_column(String(100), ForeignKey("lexicon_term.term"), **kw)
 
 
 def pascal_to_snake(name):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+class ReleaseMixin:
+    @declared_attr
+    def release_status(self):
+        return lexicon_term(default="draft")
 
 
 class AuditMixin:

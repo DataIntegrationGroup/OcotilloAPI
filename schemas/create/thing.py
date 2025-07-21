@@ -13,16 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import model_validator
-from schemas import ORMBaseModel
+from pydantic import BaseModel, model_validator
 
 
-class CreateWell(ORMBaseModel):
+class CreateThingIdLink(BaseModel):
+    """
+    Schema for creating a link between a thing and its ID.
+    """
+
+    thing_id: int
+    relation: str
+    alternate_id: str
+    alternate_organization: str
+
+
+class CreateWell(BaseModel):
     """
     Schema for creating a well.
     """
 
     location_id: int
+    name: str
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     well_type: str | None = None
@@ -30,8 +41,10 @@ class CreateWell(ORMBaseModel):
     hole_depth: float | None = None  # in feet
     construction_notes: str | None = None
 
+    group: str | None = None  # Optional group for the well
 
-class CreateWellScreen(ORMBaseModel):
+
+class CreateWellScreen(BaseModel):
     """
     Schema for creating a well screen.
     """

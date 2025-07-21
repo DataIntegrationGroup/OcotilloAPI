@@ -22,18 +22,21 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     func,
+    Text,
 )
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Location(Base, AutoBaseMixin):
-    name = Column(String(100), nullable=True)
-    description = Column(String(255), nullable=True)
-    visible = Column(Boolean, default=False, nullable=False)
+class Location(Base, AutoBaseMixin, ReleaseMixin):
+    # name = Column(String(100), nullable=True)
+    # description = Column(String(255), nullable=True)
+    # visible = Column(Boolean, default=False, nullable=False)
+    __versioned__ = {}
 
+    notes = mapped_column(Text, nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
     )
@@ -55,6 +58,8 @@ class LocationThingAssociation(Base, AutoBaseMixin):
     effective_start = Column(DateTime, nullable=False, server_default=func.now())
     effective_end = Column(DateTime, nullable=True)
 
+    location = relationship("Location")
+    thing = relationship("Thing")
     # location = relationship("Location", back_populates="thing")
     # thing = relationship("Thing", back_populates="locations")
 

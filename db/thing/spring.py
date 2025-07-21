@@ -17,16 +17,17 @@ from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
 from db.base import Base, AutoBaseMixin
+from db.thing.thing import ThingChildMixin
 
 
-class SpringThing(Base, AutoBaseMixin):
+class SpringThing(Base, AutoBaseMixin, ThingChildMixin):
     description = Column(String(255), nullable=True)
-    location_id = Column(
-        Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-    )
-
-    # Define a relationship to samplelocations if needed
-    location = relationship("Location")
+    # location_id = Column(
+    #     Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
+    # )
+    #
+    # # Define a relationship to samplelocations if needed
+    # location = relationship("Location")
 
 
 # ============= EOF =============================================

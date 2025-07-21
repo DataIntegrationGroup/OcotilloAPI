@@ -15,31 +15,34 @@
 # ===============================================================================
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from schemas import ORMBaseModel
 
 
-class CreateSpring(ORMBaseModel):
+class CreateSpring(BaseModel):
     """
     Schema for creating a spring.
     """
 
     location_id: int
+    name: str
 
 
-class CreateEquipment(ORMBaseModel):
+class CreateEquipment(BaseModel):
     """
     Schema for creating equipment.
     """
 
     location_id: int
 
-    equipment_type: str
+    # equipment_type: str
     model: str | None = None
     serial_no: str | None = None
     date_installed: datetime | None = None  # ISO format date string
     date_removed: datetime | None = None  # ISO format date string
     recording_interval: int | None = None  # in seconds
-    equipment_notes: str | None = None
+    notes: str | None = None
 
 
 # ============= EOF =============================================

@@ -1,0 +1,68 @@
+# ===============================================================================
+# Copyright 2025 ross
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from starlette.status import HTTP_201_CREATED
+
+from api.pagination import CustomPage
+from core.dependencies import session_dependency
+from db import adder
+from db.engine import get_db_session
+from db.series.series import Series
+from schemas.create.series import CreateSeries
+from schemas.response.series import SeriesResponse
+from services.query_helper import simple_all_getter, paginated_all_getter
+
+router = APIRouter(
+    prefix="/series",
+    tags=["series"],
+)
+
+
+# ============= Get ==============================================
+@router.get(
+    "/",
+)
+def get_series(session: session_dependency) -> CustomPage[SeriesResponse]:
+    """
+    Endpoint to retrieve series data.
+    """
+    return paginated_all_getter(session, Series)
+
+
+@router.get("/{series_id}")
+def get_series_by_id(
+    series_id: int, session: Session = Depends(get_db_session)
+) -> SeriesResponse:
+    """
+    Endpoint to retrieve a specific series by its ID.
+    """
+
+    return session.get(Series, series_id)
+
+
+# ============= Post =============================================
+@router.post("/", status_code=HTTP_201_CREATED)
+def add_series(
+    series_data: CreateSeries, session: Session = Depends(get_db_session)
+) -> SeriesResponse:
+    """
+    Endpoint to add a new series.
+    """
+    return adder(session, Series, series_data)
+
+
+# ============= EOF =============================================
