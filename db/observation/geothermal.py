@@ -13,15 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import ForeignKey, Integer
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import ForeignKey, Integer, Float
+from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import AutoBaseMixin, Base
+from db.observation.observation import ObservationMixin
 
 
-class GeothermalObservation(Base, AutoBaseMixin):
-    observation_id = mapped_column(
-        Integer, ForeignKey("observation.id", ondelete="CASCADE"), nullable=False
+class GeothermalObservation(Base, AutoBaseMixin, ObservationMixin):
+    observation = relationship("Observation")
+    depth = mapped_column(
+        Float,
+        nullable=False,
+        info={"unit": "feet"},
+        doc="Depth of the geothermal observation in feet",
+    )
+    temperature = mapped_column(
+        Float,
+        nullable=False,
+        info={"unit": "degC"},
+        doc="Temperature of the geothermal observation in degrees Celsius",
     )
 
 

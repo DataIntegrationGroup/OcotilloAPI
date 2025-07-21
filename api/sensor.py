@@ -18,17 +18,22 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette import status
 
+from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import adder
 from db.sensor import Sensor
 from db.engine import get_db_session
 from schemas.create.sensor import CreateSensor
-from services.query_helper import simple_all_getter
+from schemas.response.sensor import SensorResponse
+from services.query_helper import simple_all_getter, paginated_all_getter
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_session)):
+def add_sensor(
+    sensor_data: CreateSensor, session: Session = Depends(get_db_session)
+) -> SensorResponse:
     """
     Add a sensor to the system.
     This endpoint is a placeholder and should be implemented with actual logic.
@@ -37,16 +42,19 @@ def add_sensor(sensor_data: CreateSensor, session: Session = Depends(get_db_sess
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-def get_sensors(session: Session = Depends(get_db_session)):
+def get_sensors(session: session_dependency) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
     """
-    return simple_all_getter(session, Sensor)
+    return paginated_all_getter(session, Sensor)
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
-def get_sensor(sensor_id: int, session: Session = Depends(get_db_session)):
+def get_sensor(
+    sensor_id: int, session: Session = Depends(get_db_session)
+) -> SensorResponse:
+
     sensor = session.get(Sensor, sensor_id)
     return sensor
 

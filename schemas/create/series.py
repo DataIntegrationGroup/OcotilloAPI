@@ -13,37 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
 from pydantic import BaseModel
 
 
-class CreateTimeSeries(BaseModel):
+class CreateSeries(BaseModel):
+    """
+    Schema for creating a new series.
+    This schema can be extended with additional fields as needed.
+    """
+
+    name: str
+    description: str | None = None
+    thing_id: int
+    sensor_id: int
     observed_property: str
     unit: str
-
-
-class CreateSample(BaseModel):
-    collection_timestamp: datetime
-    collection_method: str
-    well_id: int | None = None
-
-
-class CreateTimeObservation(BaseModel):
-    timestamp: datetime  # ISO 8601 format
-    value: float
-    sample_id: int
-    time_series_id: int
+    release_status: str | None = (
+        "draft"  # Default to 'draft', can be 'published' or 'archived'
+    )
 
 
 # ============= EOF =============================================
-# class CreateWellTimeseries(BaseModel):
-#     name: str
-#     description: str | None = None
-#     well_id: int
-#
-#
-# class CreateGroundwaterLevelObservation(BaseModel):
-#     timestamp: datetime  # ISO 8601 format
-#     value: float
-#     timeseries_id: int

@@ -13,5 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from .geochemical import *
+from .geothermal import *
+from .groundwaterlevel import *
+from .series import *
 
 # ============= EOF =============================================

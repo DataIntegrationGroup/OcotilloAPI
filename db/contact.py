@@ -16,8 +16,9 @@
 from sqlalchemy import Column, Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
+from sqlalchemy_utils import TSVectorType
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, lexicon_term
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -27,7 +28,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 
 class Contact(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False)
-    role = Column(String(100), ForeignKey("lexicon_term.term"), nullable=False)
+    role = lexicon_term(nullable=False)
 
     phones = relationship("Phone", back_populates="contact")
     emails = relationship("Email", back_populates="contact")
@@ -37,7 +38,7 @@ class Contact(Base, AutoBaseMixin):
     # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
     # owner = relationship("Owner")
 
-    # search_vector = Column(TSVectorType("name", "description", "email", "phone"))
+    search_vector = Column(TSVectorType("name", "role"))
 
     author_associations = relationship(
         "AuthorContactAssociation",
@@ -52,9 +53,10 @@ class Phone(Base, AutoBaseMixin):
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     phone_number = Column(String(20), nullable=False)
-    phone_type = Column(String(50), ForeignKey("lexicon_term.term"), nullable=True)
+    phone_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="phones")
+    search_vector = Column(TSVectorType("phone_number"))
 
 
 class Email(Base, AutoBaseMixin):
@@ -62,9 +64,11 @@ class Email(Base, AutoBaseMixin):
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     email = Column(String(100), nullable=False)
-    email_type = Column(String(50), ForeignKey("lexicon_term.term"), nullable=True)
+    email_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="emails")
+
+    search_vector = Column(TSVectorType("email"))
 
 
 class Address(Base, AutoBaseMixin):
@@ -77,9 +81,19 @@ class Address(Base, AutoBaseMixin):
     state = Column(String(50), nullable=False)
     postal_code = Column(String(20), nullable=False)
     country = Column(String(100), nullable=True)
-    address_type = Column(String(50), ForeignKey("lexicon_term.term"), nullable=True)
+    address_type = lexicon_term(nullable=True)
 
     contact = relationship("Contact", back_populates="addresses")
+    search_vector = Column(
+        TSVectorType(
+            "address_line_1",
+            "address_line_2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+        )
+    )
 
 
 # ============= EOF =============================================

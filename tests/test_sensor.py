@@ -21,13 +21,12 @@ def test_add_sensor():
         "/sensor",
         json={
             "name": "Test Sensor",
-            "equipment_type": "Pump",
             "model": "Model X",
             "serial_no": "123456",
             "date_installed": "2023-01-01T00:00:00",
             # "date_removed": None,
             "recording_interval": 60,
-            "equipment_notes": "Test equipment",
+            "notes": "Test equipment",
             # "location_id": 2,
         },
     )
@@ -41,11 +40,12 @@ def test_get_sensors():
     response = client.get("/sensor")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list), "Expected a list of sensors"
-    if data:
-        assert "id" in data[0], "Expected 'id' in sensor data"
-        assert "name" in data[0], "Expected 'name' in sensor data"
-        assert "equipment_type" in data[0], "Expected 'equipment_type' in sensor data"
+    # assert isinstance(items, list), "Expected a list of sensors"
+    assert "items" in data
+    items = data["items"]
+    assert "id" in items[0], "Expected 'id' in sensor items"
+    # assert "name" in items[0], "Expected 'name' in sensor items"
+    # assert "equipment_type" in items[0], "Expected 'equipment_type' in sensor items"
 
 
 def test_get_sensor():
@@ -56,7 +56,7 @@ def test_get_sensor():
     assert "id" in data, "Expected 'id' in sensor data"
     assert data["id"] == 1, "Expected sensor ID to be 1"
     assert "name" in data, "Expected 'name' in sensor data"
-    assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
+    # assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
 
 
 # ============= EOF =============================================

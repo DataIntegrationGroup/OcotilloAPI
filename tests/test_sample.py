@@ -16,8 +16,99 @@
 from tests import client
 
 
-def test_get_all_samples_for_well():
-    response = client.get("/samples/well/1")
+def test_add_sample():
+    """
+    Test adding a sample to the collaborative network.
+    """
+    response = client.post(
+        "/sample",
+        json={
+            "thing_id": 1,
+            "collection_timestamp": "2025-01-01T00:00:00Z",
+            "collection_method": "manual",
+            "release_status": "draft",
+        },
+    )
+    data = response.json()
+    assert response.status_code == 201
+    assert data["id"] is not None
+    assert data["thing_id"] == 1
+
+
+def test_add_geochemical_sample():
+    """
+    Test adding a geochemical sample to the collaborative network.
+    """
+    response = client.post(
+        "/sample/geochemical",
+        json={
+            "sample_id": 1,
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] is not None
+    assert data["sample_id"] == 1
+
+
+def test_add_geothermal_sample():
+    """
+    Test adding a geothermal sample to the collaborative network.
+    """
+    response = client.post(
+        "/sample/geothermal",
+        json={
+            "sample_id": 1,
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] is not None
+    assert data["sample_id"] == 1
+
+
+#  ============= Get tests for samples =============================================
+def test_get_samples():
+    """
+    Test retrieving samples from the collaborative network.
+    """
+    response = client.get("/sample")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert len(data["items"]) > 0
+
+
+def test_get_geochemical_samples():
+    """
+    Test retrieving geochemical samples from the collaborative network.
+    """
+    response = client.get("/sample/geochemical")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert len(data["items"]) > 0
+
+
+def test_get_geothermal_samples():
+    """
+    Test retrieving geothermal samples from the collaborative network.
+    """
+    response = client.get("/sample/geothermal")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert len(data["items"]) > 0
+
+
+def test_get_sample_by_id():
+    """
+    Test retrieving a sample from the collaborative network.
+    """
+    response = client.get("/sample/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
 
 
 # ============= EOF =============================================

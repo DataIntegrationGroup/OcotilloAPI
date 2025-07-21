@@ -13,43 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.base import Base
+
 from db.asset import *
-from db.location import *
+from db.base import Base
 from db.collabnet import *
 from db.geochronology import *
 from db.lexicon import *
-from db.publication import *
-
-from db.sample import *
-from db.thing import *
-from db.series import *
+from db.location import *
 from db.observation import *
+from db.publication import *
+from db.sample import *
 from db.sensor import *
+from db.series import *
+from db.thing import *
+from db.contact import *
 
-import re
 
 from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    DateTime,
     func,
-    JSON,
     desc,
     cast,
     Text,
 )
 from sqlalchemy.dialects.postgresql import REGCONFIG
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import (
-    declarative_base,
-    sessionmaker,
-    declared_attr,
-)
-from sqlalchemy.util import await_only
 from sqlalchemy_searchable import (
-    make_searchable,
     inspect_search_vectors,
     search_manager,
 )
