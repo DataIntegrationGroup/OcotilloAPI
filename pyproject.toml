@@ -52,7 +52,7 @@ dependencies = [
     "numpy==2.3.1",
     "packaging==25.0",
     "pandas==2.3.0",
-    "pg8000==1.31.2",
+    "pg8000==1.31.4",
     "phonenumbers==9.0.8",
     "pillow==11.3.0",
     "pluggy==1.6.0",
