@@ -76,3 +76,13 @@ class GroupLocationResponse(ORMBaseModel):
     id: int
     group_id: int
     location_id: int
+
+
+class UpdateLocation(BaseModel):
+    """
+    Schema for updating a location.
+    """
+
+    notes: str | None = None
+    point: str | None = None
+    release_status: str | None = None
