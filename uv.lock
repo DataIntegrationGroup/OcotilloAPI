@@ -882,7 +882,7 @@ requires-dist = [
     { name = "numpy", specifier = "==2.3.1" },
     { name = "packaging", specifier = "==25.0" },
     { name = "pandas", specifier = "==2.3.0" },
-    { name = "pg8000", specifier = "==1.31.2" },
+    { name = "pg8000", specifier = "==1.31.4" },
     { name = "phonenumbers", specifier = "==9.0.8" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "pluggy", specifier = "==1.6.0" },
@@ -993,15 +993,15 @@ wheels = [
 
 [[package]]
 name = "pg8000"
-version = "1.31.2"
+version = "1.31.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
     { name = "scramp" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/d7/0554640cbe3e193184796bedb6de23f797c03958425176faf0e694c06eb0/pg8000-1.31.2.tar.gz", hash = "sha256:1ea46cf09d8eca07fe7eaadefd7951e37bee7fabe675df164f1a572ffb300876", size = 113513, upload-time = "2024-04-28T16:57:47.611Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/dd/bcf762fca8768973ffe3e9f0ef9809c11ff95e6f80115bc8c7b2492a969e/pg8000-1.31.4.tar.gz", hash = "sha256:e7ecce4339891f27b0b22e2f79eb9efe44118bd384207359fc18350f788ace00", size = 115515, upload-time = "2025-07-20T17:18:37.92Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/a0/2b30d52017c4ced8fc107386666ea7573954eb708bf66121f0229df05d41/pg8000-1.31.2-py3-none-any.whl", hash = "sha256:436c771ede71af4d4c22ba867a30add0bc5c942d7ab27fadbb6934a487ecc8f6", size = 54494, upload-time = "2024-04-28T16:57:44.431Z" },
+    { url = "https://files.pythonhosted.org/packages/65/da/0fc4596b75f07a93dacb322063a5d139aefbe1b5b68997bf1e9c4aa86667/pg8000-1.31.4-py3-none-any.whl", hash = "sha256:d14fb2054642ee80f9a216721892e99e19db60a005358460ffa48872351423d4", size = 55407, upload-time = "2025-07-20T17:18:36.151Z" },
 ]
 
 [[package]]
