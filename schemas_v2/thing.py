@@ -20,6 +20,7 @@ from pydantic import BaseModel, model_validator
 from schemas import ORMBaseModel
 from schemas_v2.location import LocationResponse
 
+
 # Thing
 class CreateThingIdLink(BaseModel):
     """
@@ -30,6 +31,7 @@ class CreateThingIdLink(BaseModel):
     relation: str
     alternate_id: str
     alternate_organization: str
+
 
 class ThingResponse(ORMBaseModel):
     name: str
@@ -45,6 +47,7 @@ class UpdateThing(BaseModel):
     # group: str | None = None  # Optional group for the thing
     # description: str | None = None  # Optional description of the thing
     # tags: list[str] | None = None  # Optional tags associated with the thing
+
 
 # Well
 class CreateWell(BaseModel):
@@ -129,6 +132,7 @@ class WellScreenResponse(ORMBaseModel):
     screen_depth_bottom: float
     screen_depth_top: float
 
+
 class UpdateWell(BaseModel):
     # location_id: int | None = None  # Optional location ID for the well
     # name: str | None = None  # Optional name for the well
@@ -141,6 +145,7 @@ class UpdateWell(BaseModel):
 
     # group: str | None = None  # Optional group for the well
 
+
 # Spring
 class SpringResponse(ORMBaseModel):
     """
@@ -150,6 +155,7 @@ class SpringResponse(ORMBaseModel):
     id: int
     description: str | None = None
 
+
 class CreateSpring(BaseModel):
     """
     Schema for creating a spring.
@@ -157,7 +163,6 @@ class CreateSpring(BaseModel):
 
     location_id: int
     name: str
-
 
 
 class GroupResponse(ORMBaseModel):
@@ -197,8 +202,6 @@ class FeatureCollectionResponse(BaseModel):
 
     type: str = "FeatureCollection"
     features: List[Feature] = []
-
-
 
 
 class UpdateWell(BaseModel):
