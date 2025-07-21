@@ -50,17 +50,6 @@ jobs:
           run: |
             gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }} --no-promote
 
-        # Clean up old versions - delete only the oldest version, one created and one destroyed
-        - name: Clean up old versions
-          run: |
-            OLDEST_VERSION=$(gcloud app versions list --service=nmsamplelocations --project ${{ secrets.GCP_PROJECT_ID }} --format="value(id)" --sort-by="version.createTime" | head -n 1)
-            if [ ! -z "$OLDEST_VERSION" ]; then
-              echo "Deleting oldest version: $OLDEST_VERSION"
-              gcloud app versions delete $OLDEST_VERSION --service=nmsamplelocations --project ${{ secrets.GCP_PROJECT_ID }} --quiet
-            else
-              echo "No versions to delete"
-            fi
-
         - name: Remove app.yaml
           run: |
             rm app.yaml
