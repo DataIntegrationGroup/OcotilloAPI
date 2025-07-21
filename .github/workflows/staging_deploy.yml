@@ -48,7 +48,7 @@ jobs:
 
         - name: Deploy to Google Cloud
           run: |
-            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }} --no-promote
+            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }}
 
         # Clean up old versions - delete only the oldest version, one created and one destroyed
         - name: Clean up oldest version
