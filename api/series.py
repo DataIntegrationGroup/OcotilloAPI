@@ -22,9 +22,8 @@ from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.series.series import Series
-from schemas.create.series import CreateSeries
-from schemas.response.series import SeriesResponse
-from services.query_helper import simple_all_getter, paginated_all_getter
+from schemas_v2.series import SeriesResponse, CreateSeries
+from services.query_helper import paginated_all_getter
 
 router = APIRouter(
     prefix="/series",

@@ -23,9 +23,8 @@ from core.dependencies import session_dependency
 from db import adder
 from db.sensor import Sensor
 from db.engine import get_db_session
-from schemas.create.sensor import CreateSensor
-from schemas.response.sensor import SensorResponse
-from services.query_helper import simple_all_getter, paginated_all_getter
+from schemas_v2.sensor import SensorResponse, CreateSensor
+from services.query_helper import paginated_all_getter
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 

@@ -13,13 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
-class SeriesResponse(BaseModel):
+class SensorResponse(BaseModel):
     id: int
     name: str
-    observed_property: str
+    model: str | None  # = Column(String(50))
+    serial_no: str | None  # = Column(String(50))
+    date_installed: datetime | None  # = Column(DateTime)
+    date_removed: datetime | None  # = Column(DateTime)
+    recording_interval: int | None  # = Column(Integer)
+    notes: str | None  # = Column(String(50))
 
 
 # ============= EOF =============================================
+class CreateSensor(BaseModel):
+    """
+    Schema for creating a new sensor.
+    """
+
+    name: str
+    # equipment_type: str | None = None
+    model: str | None = None
+    serial_no: str | None = None
+    date_installed: str | None = None  # ISO format date string
+    date_removed: str | None = None  # ISO format date string
+    recording_interval: int | None = None
+    notes: str | None = None

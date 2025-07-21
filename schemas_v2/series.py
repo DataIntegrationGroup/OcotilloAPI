@@ -16,6 +16,13 @@
 from pydantic import BaseModel
 
 
+class SeriesResponse(BaseModel):
+    id: int
+    name: str
+    observed_property: str
+
+
+# ============= EOF =============================================
 class CreateSeries(BaseModel):
     """
     Schema for creating a new series.
@@ -31,6 +38,3 @@ class CreateSeries(BaseModel):
     release_status: str | None = (
         "draft"  # Default to 'draft', can be 'published' or 'archived'
     )
-
-
-# ============= EOF =============================================
