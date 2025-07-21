@@ -167,7 +167,7 @@ def migrate_wells(session, limit=1000):
 
     for i, row in enumerate(wdf.itertuples()):
         if i >= limit:
-            print('Reached limit of', limit, 'rows. Stopping migration.')
+            print("Reached limit of", limit, "rows. Stopping migration.")
             break
 
         if i and not i % 100:
@@ -175,7 +175,6 @@ def migrate_wells(session, limit=1000):
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
-
 
         location = make_location(row)
         session.add(location)

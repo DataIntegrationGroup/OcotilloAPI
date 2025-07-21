@@ -25,7 +25,12 @@ from db.engine import get_db_session
 from db.sample.geothermal import GeothermalSample
 from db.sample.geochemical import GeochemicalSample
 from db.sample.sample import Sample
-from schemas_v2.sample import SampleResponse, CreateSample, CreateGeochemicalSample, CreateGeothermalSample
+from schemas_v2.sample import (
+    SampleResponse,
+    CreateSample,
+    CreateGeochemicalSample,
+    CreateGeothermalSample,
+)
 from services.query_helper import paginated_all_getter
 
 router = APIRouter(
