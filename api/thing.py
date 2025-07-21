@@ -215,7 +215,7 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
 def create_well(
     well_data: CreateWell,
     session: Session = Depends(get_db_session),
-    user = well_user_dependency
+    user=well_user_dependency,
 ) -> WellResponse:
     """
     Create a new well in the database.
