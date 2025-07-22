@@ -16,14 +16,31 @@
 from pydantic import BaseModel
 
 
-class AssetResponse(BaseModel):
-    id: int
-    filename: str
-    storage_service: str
-    storage_path: str
-    mime_type: str
-    size: int
-    url: str
+# -------- CREATE ----------
+class CreateSeries(BaseModel):
+    """
+    Schema for creating a new series.
+    This schema can be extended with additional fields as needed.
+    """
 
+    name: str
+    description: str | None = None
+    thing_id: int
+    sensor_id: int
+    observed_property: str
+    unit: str
+    release_status: str | None = (
+        "draft"  # Default to 'draft', can be 'published' or 'archived'
+    )
+
+
+# -------- RESPONSE --------
+class SeriesResponse(BaseModel):
+    id: int
+    name: str
+    observed_property: str
+
+
+# -------- UPDATE ----------
 
 # ============= EOF =============================================

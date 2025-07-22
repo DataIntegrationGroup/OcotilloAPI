@@ -29,14 +29,12 @@ from db.observation.geothermal import GeothermalObservation
 from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation.observation import Observation
 from db.series.series import Series
-from schemas.create.observation import (
+from schemas_v2.observation import (
     CreateObservation,
     CreateGroundwaterLevelObservation,
     CreateGeothermalObservation,
     CreateGroundwaterLevelObservationDirect,
     CreateGeothermalObservationDirect,
-)
-from schemas.response.observation import (
     ObservationResponse,
     GroundwaterLevelObservationResponse,
     GeothermalObservationResponse,

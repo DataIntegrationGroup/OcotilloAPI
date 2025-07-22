@@ -18,8 +18,8 @@ from typing import List, Annotated
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from pydantic_core import PydanticUndefined
+from fastapi import APIRouter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
@@ -28,15 +28,12 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from core.dependencies import session_dependency
 from db import ThingContactAssociation, Thing
 from db.contact import Contact, Email, Phone, Address
-from db.engine import get_db_session
-from schemas.response.contact import (
-    EmailResponse,
-    ContactResponse,
-    AddressResponse,
+from schemas_v2.contact import (
+    CreateContact,
     PhoneResponse,
-)
-from schemas.create.contact import CreateContact
-from schemas.update.contact import (
+    EmailResponse,
+    AddressResponse,
+    ContactResponse,
     UpdateContact,
     UpdateEmail,
     UpdatePhone,
@@ -45,7 +42,6 @@ from schemas.update.contact import (
 from services.crud_helper import model_patcher
 from services.people_helper import add_contact
 from services.query_helper import (
-    simple_all_getter,
     simple_get_by_id,
     paginated_all_getter,
     order_sort_filter,

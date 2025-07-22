@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List
 
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session
@@ -24,10 +23,9 @@ from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
-from schemas.create.location import CreateGroup, CreateGroupThing
-from schemas.response.thing import GroupResponse
+from schemas_v2.location import CreateGroup, CreateGroupThing
+from schemas_v2.thing import GroupResponse
 from services.query_helper import (
-    simple_all_getter,
     simple_get_by_id,
     paginated_all_getter,
 )

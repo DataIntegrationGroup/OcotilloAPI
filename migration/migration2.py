@@ -69,11 +69,11 @@ def make_location(row):
     )
 
 
-def load_water_levels(session):
+def migrate_water_levels(session, limit=800):
     wd = pd.read_csv("./migration/data/water_levels.csv")
     p = pd.read_csv("./migration/data/welldata.csv")
     # get first 100 rows
-    pointids = p["PointID"].unique()[:100]
+    pointids = p["PointID"].unique()[:limit]
 
     wd = wd[wd["PointID"].isin(pointids)]
 
@@ -112,7 +112,7 @@ def load_water_levels(session):
             obs = Observation()
             obs.series = series
             obs.observation_timestamp = datetime.fromisoformat(row.DateMeasured)
-            print("rw", row.DateMeasured, row.TimeMeasured)
+            # print("rw", row.DateMeasured, row.TimeMeasured)
             gwl_obs = GroundwaterLevelObservation()
             gwl_obs.observation = obs
             gwl_obs.depth_to_water = row.DepthToWater
@@ -151,7 +151,7 @@ def load_water_levels(session):
 ADDED = []
 
 
-def load_wells(session):
+def migrate_wells(session, limit=1000):
     wdf = pd.read_csv("./migration/data/welldata.csv")
     ldf = pd.read_csv("./migration/data/location.csv")
 
@@ -166,12 +166,15 @@ def load_wells(session):
     start_time = time.time()
 
     for i, row in enumerate(wdf.itertuples()):
+        if i >= limit:
+            print("Reached limit of", limit, "rows. Stopping migration.")
+            break
+
         if i and not i % 100:
             print(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
-            break
 
         location = make_location(row)
         session.add(location)
@@ -217,7 +220,7 @@ def load_wells(session):
 if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
-        # load_wells(sess)
-        load_water_levels(sess)
+        migrate_wells(sess)
+        migrate_water_levels(sess)
 
 # ============= EOF =============================================

@@ -13,34 +13,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from schemas.base import BaseRecord
+from datetime import datetime
+
+from pydantic import BaseModel
 
 
-class GetLocation(BaseRecord):
+# -------- CREATE ----------
+class CreateSample(BaseModel):
+    collection_timestamp: datetime
+    collection_method: str
+    thing_id: int
+
+
+class CreateGeochemicalSample(BaseModel):
     """
-    Schema for a sample location.
+    Represents a geochemical sample in the collaborative network.
     """
 
-    name: str | None = None
-    description: str | None = None
+    sample_id: int
 
 
-class GetWell(BaseRecord):
+class CreateGeothermalSample(BaseModel):
     """
-    Schema for a well.
+    Represents a geothermal sample in the collaborative network.
     """
 
+    sample_id: int
+
+
+# -------- RESPONSE ----------
+class SampleResponse(BaseModel):
     id: int
 
 
-class GetGroup(BaseRecord):
-    """
-    Schema for a group.
-    """
-
-    id: int
-    # name: str | None = None
-    # description: str | None = None
-
+# -------- UPDATE ----------
 
 # ============= EOF =============================================

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
-from schemas.create.contact import CreateContact
+from schemas_v2.contact import CreateContact
 from sqlalchemy.orm import Session
 
 

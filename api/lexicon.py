@@ -16,16 +16,15 @@
 from fastapi import APIRouter, Depends
 from fastapi import status
 from db.engine import get_db_session
-from db.lexicon import Lexicon, Category, TermCategoryAssociation, LexiconTriple
-from schemas.response.lexicon import LexiconTermResponse, LexiconCategoryResponse
-from schemas.create.lexicon import (
+from db.lexicon import Category, LexiconTriple
+from schemas_v2.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
     CreateTriple,
+    LexiconTermResponse,
+    LexiconCategoryResponse,
 )
 from services.lexicon import add_lexicon_term
-from sqlalchemy import select
-
 
 router = APIRouter(
     prefix="/lexicon",

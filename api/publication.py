@@ -13,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import adder
 from db.engine import get_db_session
-from db.publication import Publication
-from fastapi import APIRouter, Depends, HTTPException, status
-from schemas.create.publication import CreatePublication
-from schemas.response.publication import PublicationResponse
+from fastapi import APIRouter, Depends, status
+from schemas_v2.publication import PublicationResponse, CreatePublication
 from services.publication_helper import add_publication
 from sqlalchemy.orm import Session
 

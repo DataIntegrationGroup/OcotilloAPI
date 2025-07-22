@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from shapely.geometry import mapping
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import Field
 from shapely import wkb
+from fastapi import APIRouter, Depends
+from fastapi_pagination.ext.sqlalchemy import paginate
 from shapely.geometry import mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,18 +39,21 @@ from core.dependencies import (
     well_user_dependency,
 )
 from db.engine import get_db_session
-
-from schemas.base_create import CreateSpring
-from schemas.base_responses import SpringResponse
-from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
-from schemas.response.location import LocationResponse
-from schemas.response.thing import (
+from db.thing.thing import ThingIdLink
+from schemas_v2.thing import (
+    CreateThingIdLink,
+    CreateWell,
+    CreateWellScreen,
+    ThingResponse,
     WellResponse,
     WellScreenResponse,
-    ThingResponse,
+    UpdateThing,
+    UpdateWell,
+    SpringResponse,
+    CreateSpring,
 )
-from schemas.update.location import UpdateLocation
-from schemas.update.thing import UpdateThing, UpdateWell
+from schemas_v2.location import LocationResponse, UpdateLocation
+
 from services.crud_helper import model_patcher
 from services.query_helper import (
     make_query,

@@ -13,26 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import json
 from typing import Union
 
 from fastapi import Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
-from geoalchemy2 import functions as geofunc
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette import status
-from starlette.responses import FileResponse
 from api.pagination import CustomPage
 from constants import SRID_WGS84
 from core.dependencies import session_dependency
 from db import adder, Location, WellThing
 from db.engine import get_db_session
-from schemas.base_get import GetLocation
-from schemas.create.location import CreateLocation
-from schemas.response.location import LocationResponse
-from schemas.response.thing import LocationWellResponse
-from services.geospatial_helper import create_shapefile, make_within_wkt
+from schemas_v2.location import CreateLocation, LocationResponse
+from schemas_v2.thing import LocationWellResponse
+from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query
 
 

@@ -19,14 +19,12 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
 from core.dependencies import session_dependency
 from db import Thing
-from db.engine import get_db_session
 from db.asset import Asset, AssetThingAssociation
-from schemas.response.asset import AssetResponse
+from schemas_v2.asset import AssetResponse
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")

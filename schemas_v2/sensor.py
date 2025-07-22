@@ -18,24 +18,34 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class ObservationResponse(BaseModel):
+# -------- CREATE ----------
+class CreateSensor(BaseModel):
+    """
+    Schema for creating a new sensor.
+    """
+
+    name: str
+    # equipment_type: str | None = None
+    model: str | None = None
+    serial_no: str | None = None
+    date_installed: str | None = None  # ISO format date string
+    date_removed: str | None = None  # ISO format date string
+    recording_interval: int | None = None
+    notes: str | None = None
+
+
+# -------- RESPONSE ----------
+class SensorResponse(BaseModel):
     id: int
-    observation_timestamp: datetime
+    name: str
+    model: str | None  # = Column(String(50))
+    serial_no: str | None  # = Column(String(50))
+    date_installed: datetime | None  # = Column(DateTime)
+    date_removed: datetime | None  # = Column(DateTime)
+    recording_interval: int | None  # = Column(Integer)
+    notes: str | None  # = Column(String(50))
 
 
-class GroundwaterLevelObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
-    depth_to_water: float
-
-
-class GeothermalObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
-    temperature: float
-    depth: float
-
+# -------- UPDATE ----------
 
 # ============= EOF =============================================

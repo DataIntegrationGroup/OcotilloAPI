@@ -13,14 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from core.app import init_lexicon
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import click
+from core.app import init_lexicon
+from db.engine import session_ctx
+
+
+from migration.migration2 import migrate_wells, migrate_water_levels
+
+
+def wells():
+    with session_ctx() as sess:
+        migrate_wells(sess, 1000)
+
+
+def waterlevels():
+    with session_ctx() as sess:
+        migrate_water_levels(sess, 800)
 
 
 @click.command()
 def initialize_lexicon():
     init_lexicon()
 
+
+if __name__ == "__main__":
+    waterlevels()
 
 # ============= EOF =============================================
