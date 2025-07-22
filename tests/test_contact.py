@@ -196,7 +196,50 @@ def test_get_contacts():
     # print(response.json())
     # assert len(response.json()) > 0
 
+def test_get_email_by_contact_id():
+    response = client.get("/contact/1/email")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict), "Expected a paginated response"
+    assert "items" in data, "Expected 'items' in response"
+    data = data["items"]
+    assert len(data) == 1, "Expected one phone number"
+    email = data[0]
+    assert "id" in email, "Expected 'id' in email item"
+    assert "email" in email, "Expected 'email' in email item"
+    assert "email_type" in email, "Expected 'email_type' in email item"
 
+
+def test_get_phone_by_contact_id():
+    response = client.get("/contact/1/phone")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict), "Expected a paginated response"
+    assert "items" in data, "Expected 'items' in response"
+    data = data["items"]
+    assert len(data) == 1, "Expected one phone number"
+    phone = data[0]
+    assert "id" in phone, "Expected 'id' in phone item"
+    assert "phone_number" in phone, "Expected 'phone_number' in phone item"
+    assert "phone_type" in phone, "Expected 'phone_type' in phone item"
+
+
+def test_get_address_by_contact_id():
+    response = client.get("/contact/1/address")
+    data = response.json()
+    assert response.status_code == 200
+    assert isinstance(data, dict), "Expected a paginated response"
+    assert "items" in data, "Expected 'items' in response"
+    data = data["items"]
+    assert len(data) == 1, "Expected one phone number"
+    address = data[0]
+    assert "id" in address, "Expected 'id' in address item"
+    assert "address_line_1" in address, "Expected 'address_line_1' in address item"
+    assert "city" in address, "Expected 'city' in address item"
+    assert "state" in address, "Expected 'state' in address item"
+    assert "postal_code" in address, "Expected 'postal_code' in address item"
+    assert "country" in address, "Expected 'country' in address item"
+    assert "address_type" in address, "Expected 'address_type' in address item"
 # test item retrieval via filter ===========================================
 
 
