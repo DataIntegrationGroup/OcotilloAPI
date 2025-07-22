@@ -114,8 +114,10 @@ def simple_all_getter(session, table) -> list[object]:
 def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
     if order:
         if not sort:
-            raise ValueError("Sort parameter is required when order is specified. "
-                             f"The sort parameter should be a column name in the table {table}.")
+            raise ValueError(
+                "Sort parameter is required when order is specified. "
+                f"The sort parameter should be a column name in the table {table}."
+            )
         attr = getattr(table, sort)
         if order.lower() == "asc":
             sql = sql.order_by(attr.asc())
@@ -132,9 +134,7 @@ def paginated_all_getter(session, table, sort=None, order=None, filter_=None) ->
     """
 
     sql = select(table)
-    sql = order_sort_filter(
-        sql, table, sort, order, filter_
-    )
+    sql = order_sort_filter(sql, table, sort, order, filter_)
     # return session.scalars(sql).all()
     return paginate(query=sql, conn=session)
     # return paginate(query=sql, conn=session, transformer=lambda items: items)
@@ -155,4 +155,6 @@ def searchable_getter(session, table, search, vector=None, joins=None) -> list[o
         vector=vector,
     )
     return session.scalars(q).all()
+
+
 # ============= EOF =============================================

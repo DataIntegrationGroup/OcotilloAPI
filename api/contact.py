@@ -47,7 +47,8 @@ from services.people_helper import add_contact
 from services.query_helper import (
     simple_all_getter,
     simple_get_by_id,
-    paginated_all_getter, order_sort_filter,
+    paginated_all_getter,
+    order_sort_filter,
 )
 
 router = APIRouter(prefix="/contact", tags=["contact"])
@@ -149,9 +150,9 @@ def update_contact_address(
 @router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,
-        sort: str = None,
-        order: str = None,
-        filter_: Annotated[str, Field(alias="filter")] = None,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
     thing_id: int | None = None,
 ) -> CustomPage[ContactResponse]:
     """
@@ -164,9 +165,7 @@ async def get_contacts(
         sql = sql.join(ThingContactAssociation).join(Thing)
         sql = sql.where(Thing.id == thing_id)
 
-        sql = order_sort_filter(
-            sql, Contact, sort=sort, order=order, filter_=filter_
-        )
+        sql = order_sort_filter(sql, Contact, sort=sort, order=order, filter_=filter_)
         return paginate(query=sql, conn=session)
     else:
         return paginated_all_getter(session, Contact, sort, order, filter_)
