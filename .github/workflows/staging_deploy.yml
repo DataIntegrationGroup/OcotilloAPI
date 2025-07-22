@@ -23,7 +23,7 @@ jobs:
 
         - name: Generate requirements.txt
           run: |
-            uv pip freeze > requirements.txt
+            uv export -o requirements.txt
 
         - name: Authenticate to Google Cloud
           uses: 'google-github-actions/auth@v2'
