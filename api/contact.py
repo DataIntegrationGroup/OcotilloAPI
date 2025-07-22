@@ -195,6 +195,7 @@ async def get_contact_emails(
 
     return paginate(query=sql, conn=session)
 
+
 @router.get("/{contact_id}/phone", summary="Get contact phones")
 async def get_contact_phones(
     contact_id: int, session: session_dependency
@@ -221,4 +222,6 @@ async def get_contact_addresses(
         return {"message": "Contact not found"}
     sql = select(Address).where(Address.contact_id == contact_id)
     return paginate(query=sql, conn=session)
+
+
 # ============= EOF =============================================
