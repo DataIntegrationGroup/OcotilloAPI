@@ -180,6 +180,7 @@ class ContactResponse(ORMBaseModel):
     """
     Response schema for contact details.
     """
+
     things: List[ThingResponse] = []  # List of related things
     id: int
     name: str
