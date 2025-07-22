@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 from typing import Optional
 
 import phonenumbers
@@ -185,7 +186,7 @@ class ContactResponse(ORMBaseModel):
     emails: list[EmailResponse] = []
     phones: list[PhoneResponse] = []
     addresses: list[AddressResponse] = []
-
+    created_at: datetime
 
 # -------- UPDATE ----------
 class UpdateContact(BaseModel):

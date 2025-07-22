@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel, model_validator
@@ -105,6 +106,7 @@ class WellResponse(ORMBaseModel):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
+    thing: ThingResponse
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet

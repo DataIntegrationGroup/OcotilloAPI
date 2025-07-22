@@ -117,7 +117,6 @@ def test_add_well_screen():
             "screen_type": "PVC",
         },
     )
-    print(response.json())
 
     assert response.status_code == 201
     data = response.json()
