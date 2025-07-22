@@ -34,7 +34,7 @@ router = APIRouter(
 
 # ============= Get ==============================================
 @router.get(
-    "/",
+    "",
 )
 def get_series(session: session_dependency) -> CustomPage[SeriesResponse]:
     """
@@ -55,7 +55,7 @@ def get_series_by_id(
 
 
 # ============= Post =============================================
-@router.post("/", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED)
 def add_series(
     series_data: CreateSeries, session: Session = Depends(get_db_session)
 ) -> SeriesResponse:

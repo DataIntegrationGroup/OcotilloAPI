@@ -70,7 +70,7 @@ def direct_adder(session: Session, model, data):
 
 
 # ============= Post =============================================
-@router.post("/", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED)
 def add_observation(
     obs_data: CreateObservation, session: Session = Depends(get_db_session)
 ) -> ObservationResponse:
@@ -115,7 +115,7 @@ def add_geothermal_observation(
 
 
 # ============= Get ==============================================
-@router.get("/")
+@router.get("")
 def get_observations(
     session: session_dependency,
     series_id: int | None = None,

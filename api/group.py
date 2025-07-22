@@ -35,7 +35,7 @@ from services.query_helper import (
 router = APIRouter(prefix="/group", tags=["group"])
 
 
-@router.post("/", summary="Create a new group", status_code=status.HTTP_201_CREATED)
+@router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
 def create_group(group_data: CreateGroup, session: Session = Depends(get_db_session)):
     """
     Create a new group in the database.
@@ -58,7 +58,7 @@ def create_group_thing(
 
 
 # ============= Get =============================================
-@router.get("/", summary="Get groups")
+@router.get("", summary="Get groups")
 async def get_groups(session: session_dependency) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.

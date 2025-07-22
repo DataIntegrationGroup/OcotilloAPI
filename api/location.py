@@ -42,7 +42,7 @@ router = APIRouter(prefix="/location", tags=["location"])
 
 
 @router.post(
-    "/",
+    "",
     # response_model=GetLocation,
     summary="Create a new sample location",
     status_code=status.HTTP_201_CREATED,
@@ -112,7 +112,7 @@ def create_location(
 
 
 @router.get(
-    "/",
+    "",
     summary="Get all locations",
 )
 async def get_location(

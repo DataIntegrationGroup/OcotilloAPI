@@ -30,7 +30,7 @@ from services.query_helper import simple_all_getter, paginated_all_getter
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def add_sensor(
     sensor_data: CreateSensor, session: Session = Depends(get_db_session)
 ) -> SensorResponse:
@@ -41,7 +41,7 @@ def add_sensor(
     return adder(session, Sensor, sensor_data)
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("", status_code=status.HTTP_200_OK)
 def get_sensors(session: session_dependency) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.

@@ -24,7 +24,6 @@ from starlette import status
 from api.pagination import CustomPage
 from db import adder
 
-from db.engine import get_db_session
 from db.thing.thing import ThingIdLink, Thing
 from db.location import LocationThingAssociation, Location
 from db.thing.well import WellThing, WellScreen

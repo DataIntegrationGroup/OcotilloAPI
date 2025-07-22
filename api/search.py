@@ -109,7 +109,7 @@ def _get_asset_results(session: Session, q: str) -> list[dict]:
     return results
 
 
-@router.get("/")
+@router.get("")
 def search_api(q: str, session: Session = Depends(get_db_session)):
     """
     Search endpoint for the collaborative network.
