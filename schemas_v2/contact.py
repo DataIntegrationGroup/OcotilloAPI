@@ -73,7 +73,8 @@ class CreateAddress(BaseModel):
     """
     Schema for creating an address.
     """
-    #todo: use a postal API to validate address and suggest corrections
+
+    # todo: use a postal API to validate address and suggest corrections
     address_line_1: str  # Required (e.g., "123 Main St")
     address_line_2: str | None = None  # Optional (e.g., "Apt 4B", "Suite 200")
     city: str
@@ -175,7 +176,6 @@ class AddressResponse(ORMBaseModel):
     postal_code: str
     country: str
     address_type: str
-
 
 
 class ContactResponse(ORMBaseModel):
