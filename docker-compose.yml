@@ -2,7 +2,7 @@
 
 services:
   db:
-    image: postgis/postgis:16-master
+    image: postgis/postgis:17-3.5
     platform: linux/amd64
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
