@@ -5,8 +5,6 @@ until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h db -p 5432 -U "$POSTGRES_USE
   sleep 2
 done
 
-echo "Creating initial migration script..."
-alembic revision --autogenerate -m "Initial migration"
 echo "Applying migrations..."
 alembic upgrade head
 echo "Starting the application..."
