@@ -27,7 +27,7 @@ class CreateLocation(BaseModel):
     """
 
     notes: str | None = None
-    point: str # point is required and should be in WKT format
+    point: str  # point is required and should be in WKT format
     release_status: str | None = "draft"
 
 
