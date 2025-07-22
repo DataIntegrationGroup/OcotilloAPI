@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from schemas import ORMBaseModel
+from pydantic import BaseModel
 
 
-class CreateLocation(ORMBaseModel):
+class CreateLocation(BaseModel):
     """
     Schema for creating a sample location.
     """
@@ -26,7 +26,7 @@ class CreateLocation(ORMBaseModel):
     release_status: str | None = "draft"
 
 
-class CreateGroup(ORMBaseModel):
+class CreateGroup(BaseModel):
     """
     Schema for creating a group.
     """
@@ -34,7 +34,7 @@ class CreateGroup(ORMBaseModel):
     name: str
 
 
-class CreateGroupThing(ORMBaseModel):
+class CreateGroupThing(BaseModel):
     """
     Schema for creating a group location.
     """

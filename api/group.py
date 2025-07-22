@@ -20,11 +20,12 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
 from schemas.create.location import CreateGroup, CreateGroupThing
-from schemas.response.well import GroupResponse
+from schemas.response.thing import GroupResponse
 from services.query_helper import (
     simple_all_getter,
     simple_get_by_id,
@@ -58,9 +59,7 @@ def create_group_thing(
 
 # ============= Get =============================================
 @router.get("/", summary="Get groups")
-async def get_groups(
-    session: Session = Depends(get_db_session),
-) -> CustomPage[GroupResponse]:
+async def get_groups(session: session_dependency) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
     """

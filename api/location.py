@@ -25,12 +25,13 @@ from starlette import status
 from starlette.responses import FileResponse
 from api.pagination import CustomPage
 from constants import SRID_WGS84
+from core.dependencies import session_dependency
 from db import adder, Location, WellThing
 from db.engine import get_db_session
 from schemas.base_get import GetLocation
 from schemas.create.location import CreateLocation
 from schemas.response.location import LocationResponse
-from schemas.response.well import LocationWellResponse
+from schemas.response.thing import LocationWellResponse
 from services.geospatial_helper import create_shapefile, make_within_wkt
 from services.query_helper import make_query
 
@@ -55,59 +56,59 @@ def create_location(
     return adder(session, Location, location_data)
 
 
-@router.get("/shapefile", summary="Get location as shapefile")
-async def get_location_shapefile(
-    query: str = None, session: Session = Depends(get_db_session)
-) -> FileResponse:
-    """
-    Retrieve all sample locations as a shapefile.
-    """
-    sql = select(Location)
-    if query:
-        sql = sql.where(make_query(Location, query))
+# @router.get("/shapefile", summary="Get location as shapefile")
+# async def get_location_shapefile(
+#     query: str = None, session: Session = Depends(get_db_session)
+# ) -> FileResponse:
+#     """
+#     Retrieve all sample locations as a shapefile.
+#     """
+#     sql = select(Location)
+#     if query:
+#         sql = sql.where(make_query(Location, query))
+#
+#     result = session.execute(sql)
+#     locations = result.scalars().all()
+#     # create a shapefile from the locations
+#
+#     create_shapefile(locations, "locations.shp")
+#     # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
+#     import zipfile
+#
+#     with zipfile.ZipFile("locations.zip", "w") as zf:
+#         for ext in ["shp", "shx", "dbf"]:
+#             zf.write(f"locations.{ext}")
+#     return FileResponse(
+#         "locations.zip", media_type="application/zip", filename="locations.zip"
+#     )
 
-    result = session.execute(sql)
-    locations = result.scalars().all()
-    # create a shapefile from the locations
 
-    create_shapefile(locations, "locations.shp")
-    # Return the shapefile as a zip (optional: zip the .shp, .shx, .dbf files)
-    import zipfile
-
-    with zipfile.ZipFile("locations.zip", "w") as zf:
-        for ext in ["shp", "shx", "dbf"]:
-            zf.write(f"locations.{ext}")
-    return FileResponse(
-        "locations.zip", media_type="application/zip", filename="locations.zip"
-    )
-
-
-@router.get("/feature_collection", summary="Get location feature collection")
-async def get_location_feature_collection(
-    query: str = None, session: Session = Depends(get_db_session)
-) -> dict:
-    """
-    Retrieve all sample locations as a GeoJSON FeatureCollection.
-    """
-    sql = select(Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson"))
-    if query:
-        sql = sql.where(make_query(Location, query))
-
-    result = session.execute(sql)
-    locations = result.all()
-
-    features = []
-    for location, geojson in locations:
-        feature = {
-            "type": "Feature",
-            "geometry": json.loads(geojson),
-        }
-        features.append(feature)
-
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-    }
+# @router.get("/feature_collection", summary="Get location feature collection")
+# async def get_location_feature_collection(
+#     query: str = None, session: Session = Depends(get_db_session)
+# ) -> dict:
+#     """
+#     Retrieve all sample locations as a GeoJSON FeatureCollection.
+#     """
+#     sql = select(Location, geofunc.ST_AsGeoJSON(Location.point).label("geojson"))
+#     if query:
+#         sql = sql.where(make_query(Location, query))
+#
+#     result = session.execute(sql)
+#     locations = result.all()
+#
+#     features = []
+#     for location, geojson in locations:
+#         feature = {
+#             "type": "Feature",
+#             "geometry": json.loads(geojson),
+#         }
+#         features.append(feature)
+#
+#     return {
+#         "type": "FeatureCollection",
+#         "features": features,
+#     }
 
 
 @router.get(
@@ -115,12 +116,12 @@ async def get_location_feature_collection(
     summary="Get all locations",
 )
 async def get_location(
+    session: session_dependency,
     nearby_point: str = None,
     nearby_distance_km: float = 1,
     within: str = None,
     query: str = None,
     expand: str = None,
-    session: Session = Depends(get_db_session),
 ) -> CustomPage[Union[LocationResponse, LocationWellResponse]]:
     """
     Retrieve all wells from the database.

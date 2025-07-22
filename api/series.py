@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.series.series import Series
@@ -35,9 +36,7 @@ router = APIRouter(
 @router.get(
     "/",
 )
-def get_series(
-    session: Session = Depends(get_db_session),
-) -> CustomPage[SeriesResponse]:
+def get_series(session: session_dependency) -> CustomPage[SeriesResponse]:
     """
     Endpoint to retrieve series data.
     """

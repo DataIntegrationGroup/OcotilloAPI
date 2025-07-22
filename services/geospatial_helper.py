@@ -13,28 +13,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
+
 import shapefile
+from shapely.errors import GEOSException
+from geoalchemy2 import functions as geofunc
+from shapely.io import from_geojson
 
 import constants
-from db.location import Location
-from geoalchemy2.functions import ST_GeomFromText, ST_Within
+from db import Thing, WellThing, SpringThing
+from db.group import GroupThingAssociation, Group
+from db.location import Location, LocationThingAssociation
+from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
 from geoalchemy2.shape import to_shape
 from shapely.wkt import loads as wkt_loads
-from sqlalchemy import Select
+from sqlalchemy import Select, select
 
 
-def create_shapefile(locations: list, filename: str = "locations.shp") -> None:
+def get_thing_features(
+    session, thing_type: str | None, group: str | int | None
+) -> list:
+    sql = (
+        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
+        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+        .join(Location, LocationThingAssociation.location_id == Location.id)
+    )
+
+    selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
+    if thing_type == "well":
+        selection_args.append(WellThing)
+    elif thing_type == "spring":
+        selection_args.append(SpringThing)
+
+    sql = (
+        select(*selection_args)
+        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+        .join(Location, LocationThingAssociation.location_id == Location.id)
+    )
+
+    if thing_type == "well":
+        sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
+    elif thing_type == "spring":
+        sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
+
+    if group:
+        sql = sql.join(GroupThingAssociation).join(Group)
+        if isinstance(group, str):
+            sql = sql.where(Group.name == group)
+        else:
+            sql = sql.where(Group.id == group)
+
+    return session.execute(sql).all()
+
+
+def create_shapefile(things: list, filename: str = "things.shp") -> None:
     # Create a point shapefile
     with shapefile.Writer(filename, shapeType=shapefile.POINT) as shp:
         shp.field("id", "L")
-        for loc in locations:
-            # Assume loc.point is WKT or a Shapely geometry
-            if isinstance(loc.point, str):
-                geom = wkt_loads(loc.point)
+        shp.field("name", "C")
+
+        for thing, point in things:
+            # Assume loc.point is WKT or a Shapely geometry or GeoJSON
+            if isinstance(point, str):
+                try:
+                    geom = wkt_loads(point)
+                except GEOSException:
+                    geom = from_geojson(point)
             else:
-                geom = to_shape(loc.point)
+                geom = to_shape(point)
+
             shp.point(geom.x, geom.y)
-            shp.record(loc.id)
+            shp.record(thing.id, thing.name)
 
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:

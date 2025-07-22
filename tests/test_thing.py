@@ -16,6 +16,34 @@
 import pytest
 
 from tests import client
+from main import app
+from core.dependencies import well_user_function
+
+
+def override_authentication():
+    """
+    Override the authentication dependency for testing purposes.
+    This allows all users to be considered authenticated.
+    """
+    print("Overriding authentication")
+    return True
+
+
+app.dependency_overrides[well_user_function] = override_authentication
+
+
+def test_add_group():
+    response = client.post(
+        "/group",
+        json={
+            "name": "collabnet",
+            "description": "CollabNet Group for testing",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["name"] == "collabnet"
 
 
 def test_add_well():
@@ -53,6 +81,7 @@ def test_add_well():
             "ose_pod_id": "RA-0002",
             "well_type": "Production",
             "well_depth": 1200.0,
+            "group": "collabnet",
         },
     )
     assert response.status_code == 201
@@ -88,6 +117,7 @@ def test_add_well_screen():
             "screen_type": "PVC",
         },
     )
+    print(response.json())
 
     assert response.status_code == 201
     data = response.json()
@@ -183,6 +213,55 @@ def test_item_get_well_screens():
     assert data["well_id"] == 1
     assert data["screen_depth_top"] == 10.0
     assert data["screen_depth_bottom"] == 20.0
+
+
+# weaver tests
+def test_weaver_get_wells_geojson():
+    response = client.get("/geospatial/feature-collection", params={"type": "well"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "type" in data
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) > 0
+    assert "id" in data["features"][0]["properties"]
+
+
+def test_weaver_get_all_collabnet_wells():
+    response = client.get(
+        "/geospatial/feature-collection", params={"type": "well", "group": "collabnet"}
+    )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "features" in data
+    assert len(data["features"]) > 0
+    for feature in data["features"]:
+        assert "geometry" in feature
+        assert isinstance(feature["geometry"], dict)
+        assert "properties" in feature
+        assert isinstance(feature["properties"], dict)
+        assert "coordinates" in feature["geometry"]
+        assert "id" in feature or "name" in feature["properties"]
+        assert "group" in feature["properties"]
+
+
+def test_weaver_thing_contact_info_by_id():
+    response = client.get("/contact?thing_id=1")  # or something like this
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict)
+    assert "items" in data
+    assert len(data["items"]) > 0
+    item = data["items"][0]
+    assert "id" in item
+    assert "name" in item
+    assert "addresses" in item
+    assert "emails" in item
+    assert "phones" in item
+
+    assert isinstance(item["addresses"], list)
+    assert isinstance(item["emails"], list)
+    assert isinstance(item["phones"], list)
 
 
 # ============= EOF =============================================

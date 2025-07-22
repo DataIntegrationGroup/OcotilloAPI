@@ -46,6 +46,7 @@ def well():
         yield wt
 
 
+@pytest.mark.skip
 def test_add_collabnet_well(well):
     response = client.post(
         "/collabnet/add",

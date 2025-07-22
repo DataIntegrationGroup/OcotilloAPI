@@ -86,7 +86,7 @@ router = APIRouter(
 # @router.post("/analysis", status_code=status.HTTP_201_CREATED, tags=["chemistry"])
 # async def add_chemistry_analysis(
 #     analysis_data: CreateWaterChemistryAnalysis = Depends(validate_analyte),
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new chemistry analysis.

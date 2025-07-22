@@ -43,11 +43,21 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
+        overlaps="things",
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")
 
     search_vector = Column(TSVectorType("name"))
+
+    location_associations = relationship(
+        "LocationThingAssociation",
+        back_populates="thing",
+        overlaps="location",
+        cascade="all, delete-orphan",
+        order_by="LocationThingAssociation.effective_start.desc()",
+    )
+    locations = association_proxy("location_associations", "location")
 
 
 class ThingIdLink(Base, AutoBaseMixin):

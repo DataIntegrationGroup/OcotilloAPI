@@ -13,36 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from typing import Annotated, Callable
 
-from pydantic import BaseModel
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
-from schemas import ORMBaseModel
+from core.permissions import authenticated
+from db.engine import get_db_session
 
+session_dependency = Annotated[Session, Depends(get_db_session)]
 
-class CreateSpring(BaseModel):
-    """
-    Schema for creating a spring.
-    """
+# authentication functions
+well_user_function = authenticated(permissions=["well:read", "well:write"])
 
-    location_id: int
-    name: str
-
-
-class CreateEquipment(BaseModel):
-    """
-    Schema for creating equipment.
-    """
-
-    location_id: int
-
-    # equipment_type: str
-    model: str | None = None
-    serial_no: str | None = None
-    date_installed: datetime | None = None  # ISO format date string
-    date_removed: datetime | None = None  # ISO format date string
-    recording_interval: int | None = None  # in seconds
-    notes: str | None = None
-
-
+# permissions dependencies
+well_user_dependency = Annotated[Callable, Depends(well_user_function)]
 # ============= EOF =============================================
