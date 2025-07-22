@@ -180,4 +180,45 @@ async def get_contact_by_id(
     return contact
 
 
+@router.get("/{contact_id}/email", summary="Get contact emails")
+async def get_contact_emails(
+    contact_id: int, session: session_dependency
+) -> CustomPage[EmailResponse]:
+    """
+    Retrieve all emails associated with a contact.
+    """
+    contact = simple_get_by_id(session, Contact, contact_id)
+    if not contact:
+        return {"message": "Contact not found"}
+
+    sql = select(Email).where(Email.contact_id == contact_id)
+
+    return paginate(query=sql, conn=session)
+
+@router.get("/{contact_id}/phone", summary="Get contact phones")
+async def get_contact_phones(
+    contact_id: int, session: session_dependency
+) -> CustomPage[PhoneResponse]:
+    """
+    Retrieve all phone numbers associated with a contact.
+    """
+    contact = simple_get_by_id(session, Contact, contact_id)
+    if not contact:
+        return {"message": "Contact not found"}
+    sql = select(Phone).where(Phone.contact_id == contact_id)
+    return paginate(query=sql, conn=session)
+
+
+@router.get("/{contact_id}/address", summary="Get contact addresses")
+async def get_contact_addresses(
+    contact_id: int, session: session_dependency
+) -> CustomPage[AddressResponse]:
+    """
+    Retrieve all addresses associated with a contact.
+    """
+    contact = simple_get_by_id(session, Contact, contact_id)
+    if not contact:
+        return {"message": "Contact not found"}
+    sql = select(Address).where(Address.contact_id == contact_id)
+    return paginate(query=sql, conn=session)
 # ============= EOF =============================================
