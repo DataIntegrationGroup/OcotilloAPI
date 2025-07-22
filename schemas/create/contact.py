@@ -90,9 +90,9 @@ class CreateContact(BaseModel):
     # email: str | None = None
     # phone: str | None = None
 
-    emails: list[CreateEmail]
-    phones: list[CreatePhone]
-    addresses: list[CreateAddress]
+    emails: list[CreateEmail] | None = None
+    phones: list[CreatePhone] | None = None
+    addresses: list[CreateAddress] | None = None
 
 
 # ============= EOF =============================================

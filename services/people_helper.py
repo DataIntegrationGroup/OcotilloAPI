@@ -27,7 +27,7 @@ def add_contact(
     """
 
     if isinstance(contact_data, CreateContact):
-        contact_data = contact_data.model_dump()
+        contact_data = contact_data.model_dump(exclude_unset=True)
 
     contact = Contact(
         name=contact_data["name"],

@@ -54,7 +54,7 @@ router = APIRouter(prefix="/contact", tags=["contact"])
 
 
 @router.post(
-    "/",
+    "",
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
 )
@@ -146,7 +146,7 @@ def update_contact_address(
     return model_patcher(session, Address, address_id, address_data)
 
 
-@router.get("/", summary="Get contacts")
+@router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,
     thing_id: int | None = None,

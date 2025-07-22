@@ -71,7 +71,7 @@ def wkb_to_geojson(wkb_element):
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
-@router.get("/")
+@router.get("")
 def get_things(
     session: session_dependency,
 ) -> CustomPage[ThingResponse]:
