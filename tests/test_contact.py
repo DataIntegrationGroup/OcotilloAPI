@@ -196,6 +196,7 @@ def test_get_contacts():
     # print(response.json())
     # assert len(response.json()) > 0
 
+
 def test_get_email_by_contact_id():
     response = client.get("/contact/1/email")
     assert response.status_code == 200
@@ -240,6 +241,8 @@ def test_get_address_by_contact_id():
     assert "postal_code" in address, "Expected 'postal_code' in address item"
     assert "country" in address, "Expected 'country' in address item"
     assert "address_type" in address, "Expected 'address_type' in address item"
+
+
 # test item retrieval via filter ===========================================
 
 
