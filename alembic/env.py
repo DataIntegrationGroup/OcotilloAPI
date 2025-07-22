@@ -24,6 +24,7 @@ from db import Base
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+model_tables = set(target_metadata.tables.keys())
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -43,50 +44,9 @@ config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    # List of tables to exclude from Alembic autogenerate
-    # these tables are created by PostGIS and TIGER geocoder
-    # and should not be included in migration upgrades or downgrades
-    excluded_tables = {
-        "loader_lookuptables",
-        "addr",
-        "county",
-        "featnames",
-        "state_lookup",
-        "place_lookup",
-        "zip_state",
-        "secondary_unit_lookup",
-        "state",
-        "addrfeat",
-        "direction_lookup",
-        "faces",
-        "bg",
-        "zip_lookup_all",
-        "cousub",
-        "pagc_rules",
-        "zcta5",
-        "zip_lookup",
-        "county_lookup",
-        "edges",
-        "tabblock20",
-        "loader_variables",
-        "pagc_gaz",
-        "street_type_lookup",
-        "geocode_settings_default",
-        "geocode_settings",
-        "zip_state_loc",
-        "tract",
-        "tabblock",
-        "spatial_ref_sys",
-        "topology",
-        "pagc_lex",
-        "loader_platform",
-        "zip_lookup_base",
-        "place",
-        "countysub_lookup",
-        "layer",
-    }
-    if type_ == "table" and name in excluded_tables:
-        return False
+    # only include tables in sql alchemy model, not auto-generated tables from PostGIS or TIGER
+    if type_ == "table":
+        return name in model_tables
     return True
 
 

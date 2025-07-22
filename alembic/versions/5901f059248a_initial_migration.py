@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: fb089dbbfc43
+Revision ID: 5901f059248a
 Revises: 
-Create Date: 2025-07-22 11:12:10.398798
+Create Date: 2025-07-22 11:32:48.826352
 
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy_utils
 
 
 # revision identifiers, used by Alembic.
-revision: str = "fb089dbbfc43"
+revision: str = "5901f059248a"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -225,7 +225,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.execute("DROP INDEX IF EXISTS idx_location_point;")
     op.create_index(
         "idx_location_point",
         "location",
