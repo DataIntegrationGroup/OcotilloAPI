@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
+from pydantic import Field
 from shapely import wkb
 from shapely.geometry import mapping
 from sqlalchemy import select
@@ -49,7 +52,7 @@ from services.crud_helper import model_patcher
 from services.query_helper import (
     make_query,
     simple_get_by_id,
-    paginated_all_getter,
+    paginated_all_getter, order_sort_filter,
 )
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
@@ -110,9 +113,12 @@ def get_things(
 
 @router.get("/well", summary="Get all wells")
 async def get_wells(
+    session: session_dependency,
     # api_id: str = None,
     # ose_pod_id: str = None,
-    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
     query: str = None,
 ) -> CustomPage[WellResponse]:
     """
@@ -128,6 +134,7 @@ async def get_wells(
     else:
         sql = select(WellThing)
 
+    sql = order_sort_filter(sql, WellThing, sort, order, filter_)
     return paginate(query=sql, conn=session)
     # If no parameters, return all wells
     # return simple_all_getter(session, Well)
