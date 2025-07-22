@@ -52,7 +52,8 @@ from services.crud_helper import model_patcher
 from services.query_helper import (
     make_query,
     simple_get_by_id,
-    paginated_all_getter, order_sort_filter,
+    paginated_all_getter,
+    order_sort_filter,
 )
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
