@@ -50,7 +50,7 @@ class CreatePhone(BaseModel):
     """
 
     phone_number: str
-    phone_type: str | None = None
+    phone_type: str = "Primary"  # Default to 'Primary'
 
     @field_validator("phone_number", mode="before")
     @classmethod
@@ -73,14 +73,15 @@ class CreateAddress(BaseModel):
     """
     Schema for creating an address.
     """
-
+    #todo: use a postal API to validate address and suggest corrections
     address_line_1: str  # Required (e.g., "123 Main St")
     address_line_2: str | None = None  # Optional (e.g., "Apt 4B", "Suite 200")
     city: str
+    # todo: add validation.  Should state be required? what about foreign addresses?
     state: str = "NM"  # Default to New Mexico
     postal_code: str
-    country: str = "US"  # Default to United States
-    address_type: str | None = None  # Optional (e.g., "Primary", "Billing", "Shipping")
+    country: str = "United States"  # Default to United States
+    address_type: str = "Primary"
 
 
 class CreateContact(BaseModel):
@@ -176,19 +177,20 @@ class AddressResponse(ORMBaseModel):
     address_type: str
 
 
+
 class ContactResponse(ORMBaseModel):
     """
     Response schema for contact details.
     """
 
-    things: List[ThingResponse] = []  # List of related things
     id: int
     name: str
     role: str
+    created_at: datetime
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
-    created_at: datetime
+    things: List[ThingResponse] = []  # List of related things
 
 
 # -------- UPDATE ----------
@@ -198,6 +200,7 @@ class UpdateContact(BaseModel):
     """
 
     name: Optional[str] = None
+    role: Optional[str] = None
     # thing_id: int | None = None
     # email: str | None = None
     # phone: str | None = None
