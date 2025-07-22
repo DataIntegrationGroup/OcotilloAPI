@@ -22,7 +22,6 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
 from db import adder
 
 from db.engine import get_db_session
@@ -30,6 +29,12 @@ from db.thing.thing import ThingIdLink, Thing
 from db.location import LocationThingAssociation, Location
 from db.thing.well import WellThing, WellScreen
 from db.thing.spring import SpringThing
+from core.dependencies import (
+    session_dependency,
+    well_user_dependency,
+)
+from db.engine import get_db_session
+
 from schemas.base_create import CreateSpring
 from schemas.base_responses import SpringResponse
 from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
@@ -212,11 +217,14 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
     status_code=status.HTTP_201_CREATED,
 )
 def create_well(
-    well_data: CreateWell, session: Session = Depends(get_db_session)
+    well_data: CreateWell,
+    session: Session = Depends(get_db_session),
+    user=well_user_dependency,
 ) -> WellResponse:
     """
     Create a new well in the database.
     """
+    # print("Creating well with data:", well_data, user)
     well = add_well(session, well_data)
     return well
 
@@ -228,6 +236,7 @@ def create_well(
 )
 def create_wellscreen(
     session: session_dependency,
+    user: well_user_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
 ) -> WellScreenResponse:
     """

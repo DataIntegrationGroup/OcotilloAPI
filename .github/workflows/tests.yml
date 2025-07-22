@@ -11,14 +11,14 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  run-tests:
     runs-on: ubuntu-latest
 
     services:
-      postgis_timescaledb:
-        image: ghcr.io/dataintegrationgroup/nmdms:latest
+      postgis:
+#        image: ghcr.io/dataintegrationgroup/nmdms:latest
 #        image: postgres
-#        image: postgis/postgis:latest
+        image: postgis/postgis:latest
 #        image: postgis/postgis:17-3.5
 #        image: timescale/timescaledb:2.18.0-pg17
         env:
