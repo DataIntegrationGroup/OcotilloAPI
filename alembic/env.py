@@ -42,6 +42,54 @@ SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port
 config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    # List of tables to exclude from Alembic autogenerate
+    # these tables are created by PostGIS and TIGER geocoder
+    # and should not be included in migration upgrades or downgrades
+    excluded_tables = {
+        "loader_lookuptables",
+        "addr",
+        "county",
+        "featnames",
+        "state_lookup",
+        "place_lookup",
+        "zip_state",
+        "secondary_unit_lookup",
+        "state",
+        "addrfeat",
+        "direction_lookup",
+        "faces",
+        "bg",
+        "zip_lookup_all",
+        "cousub",
+        "pagc_rules",
+        "zcta5",
+        "zip_lookup",
+        "county_lookup",
+        "edges",
+        "tabblock20",
+        "loader_variables",
+        "pagc_gaz",
+        "street_type_lookup",
+        "geocode_settings_default",
+        "geocode_settings",
+        "zip_state_loc",
+        "tract",
+        "tabblock",
+        "spatial_ref_sys",
+        "topology",
+        "pagc_lex",
+        "loader_platform",
+        "zip_lookup_base",
+        "place",
+        "countysub_lookup",
+        "layer",
+    }
+    if type_ == "table" and name in excluded_tables:
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
@@ -50,7 +98,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        # include_object=include_object,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -74,7 +122,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            # include_object=include_object,
+            include_object=include_object,
         )
         with context.begin_transaction():
             context.run_migrations()
