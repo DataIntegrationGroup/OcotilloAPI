@@ -188,6 +188,7 @@ class ContactResponse(ORMBaseModel):
     addresses: list[AddressResponse] = []
     created_at: datetime
 
+
 # -------- UPDATE ----------
 class UpdateContact(BaseModel):
     """
