@@ -13,14 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import select, func, desc, cast, Text
-from sqlalchemy.dialects.postgresql import REGCONFIG
+from sqlalchemy import select
 
 from db import search
-from db.engine import database_sessionmaker, get_db_session, session_ctx
 from db.contact import Contact, Phone, Email
-
+from db.engine import session_ctx
 from tests import client
+
+
+def test_search_api():
+    response = client.get("/search", params={"q": "Test"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+
+
+def test_search_api2():
+    response = client.get("/search", params={"q": "riochama"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["label"] == "riochama.png"
+
+
+def test_search_api3():
+    response = client.get("/search", params={"q": "nonexistent"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
 
 
 def test_search_contact():

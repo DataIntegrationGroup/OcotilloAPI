@@ -14,9 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation, Thing, WellThing, SpringThing, Base
+from db.group import Group, GroupThingAssociation
 
 
 def add_well(session: Session, data: BaseModel | dict) -> WellThing:
@@ -34,11 +36,28 @@ def _add_child_thing(session: Session, table, data: BaseModel | dict) -> Base:
 
     location_id = data.pop("location_id", None)
 
+    group_id = data.pop("group_id", None)
+    if not group_id:
+        group_name = data.pop("group", None)
+        if group_name is not None:
+            sql = select(Group).where(Group.name == group_name)
+            dbg = session.scalars(sql).one_or_none()
+            if dbg:
+                group_id = dbg.id
+            else:
+                raise ValueError(f"Group '{group_name}' not found.")
+
     thing = Thing()
     thing.name = data.pop("name")
     session.add(thing)
     session.commit()
     session.refresh(thing)
+
+    if group_id:
+        assoc = GroupThingAssociation()
+        assoc.group_id = group_id
+        assoc.thing_id = thing.id
+        session.add(assoc)
 
     obj = table(**data)
     obj.thing_id = thing.id

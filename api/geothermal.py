@@ -47,7 +47,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/sample_set", status_code=status.HTTP_201_CREATED)
 # async def add_geothermal_sample_set(
 #     sample_set_data: CreateGeothermalSampleSet,  # Replace with appropriate schema
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new geothermal sample set.
@@ -59,7 +59,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/bottom_hole_temperature_header", status_code=status.HTTP_201_CREATED)
 # async def add_bottom_hole_temperature_header(
 #     bottom_hole_temperature_header_data: CreateBottomHoleTemperatureHeader,
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new bottom hole temperature header.
@@ -75,7 +75,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/temperature_profile", status_code=status.HTTP_201_CREATED)
 # async def add_temperature_profile(
 #     temperature_profile_data: CreateTemperatureProfile,
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new temperature profile.
@@ -86,7 +86,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/temperature_profile_observation", status_code=status.HTTP_201_CREATED)
 # async def add_temperature_profile_observation(
 #     temperature_profile_observation_data: CreateTemperatureProfileObservation,
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new temperature profile observation.
@@ -101,7 +101,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/bottom_hole_temperature", status_code=status.HTTP_201_CREATED)
 # async def add_bottom_hole_temperature(
 #     bottom_hole_temperature_data: CreateBottomHoleTemperature,
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new bottom hole temperature.
@@ -116,7 +116,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/interval", status_code=status.HTTP_201_CREATED)
 # async def add_geothermal_interval(
 #     interval_data: CreateGeothermalInterval,  # Replace with appropriate schema
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new geothermal interval.
@@ -128,7 +128,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/thermal_conductivity", status_code=status.HTTP_201_CREATED)
 # async def add_thermal_conductivity(
 #     thermal_conductivity_data: CreateThermalConductivity,  # Replace with appropriate schema
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new geothermal thermal conductivity.
@@ -140,7 +140,7 @@ router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 # @router.post("/heat_flow", status_code=status.HTTP_201_CREATED)
 # async def add_heat_flow(
 #     heat_flow_data: CreateHeatFlow,
-#     session: Session = Depends(get_db_session),
+#     session: session_dependency
 # ):
 #     """
 #     Add a new geothermal heat flow.

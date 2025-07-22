@@ -28,7 +28,7 @@ configure_mappers()
 Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 
-init_hypertables()
+# init_hypertables()
 init_lexicon()
 
 client = TestClient(app)

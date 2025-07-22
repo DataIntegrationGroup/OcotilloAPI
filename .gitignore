@@ -20,6 +20,7 @@ development.db
 .env
 reset_db.sh
 tests/uploads
+migrate.sh
 
 
 # deployment files

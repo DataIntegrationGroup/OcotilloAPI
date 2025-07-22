@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, Column
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, mapped_column, declared_attr
+from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
@@ -42,9 +43,21 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
+        overlaps="things",
         cascade="all, delete-orphan",
     )
     assets = association_proxy("asset_associations", "asset")
+
+    search_vector = Column(TSVectorType("name"))
+
+    location_associations = relationship(
+        "LocationThingAssociation",
+        back_populates="thing",
+        overlaps="location",
+        cascade="all, delete-orphan",
+        order_by="LocationThingAssociation.effective_start.desc()",
+    )
+    locations = association_proxy("location_associations", "location")
 
 
 class ThingIdLink(Base, AutoBaseMixin):
