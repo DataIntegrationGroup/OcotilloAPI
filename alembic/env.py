@@ -1,9 +1,10 @@
+from alembic import context
+from dotenv import load_dotenv
 from logging.config import fileConfig
-
+from os import environ
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,35 +20,46 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 
 # from db import Base  # Import your Base from models/__init__.py
-from db import *
+from db import Base
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+model_tables = set(target_metadata.tables.keys())
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+load_dotenv()
+
+# Fallback to environment variables for PostgreSQL connection
+user = environ.get("POSTGRES_USER", None)
+password = environ.get("POSTGRES_PASSWORD", None)
+db = environ.get("POSTGRES_DB", None)
+host = environ.get("POSTGRES_HOST", None)
+port = environ.get("POSTGRES_PORT", None)
+SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+
+config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    # only include tables in sql alchemy model, not auto-generated tables from PostGIS or TIGER
+    if type_ == "table":
+        return name in model_tables
+    return True
+
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -68,8 +80,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
         with context.begin_transaction():
             context.run_migrations()
 

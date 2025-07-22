@@ -25,4 +25,3 @@ migrate.sh
 
 # deployment files
 app.yaml
-alembic.ini

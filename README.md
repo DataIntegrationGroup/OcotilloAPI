@@ -43,6 +43,9 @@ uv venv
 source .venv/bin/activate
 uv pip install -r requirements.txt
 
+# Set up pre-commit hooks
+pre-commit install
+
 # Set up environment variables
 cp .env.example .env
 # Edit `.env` to configure database connection and app settings

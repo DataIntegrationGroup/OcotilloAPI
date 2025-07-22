@@ -15,6 +15,7 @@
 # ===============================================================================
 
 import asyncio
+from dotenv import load_dotenv
 import os
 from contextlib import contextmanager
 from sqlalchemy import (
@@ -26,6 +27,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.util import await_only
 
+load_dotenv()
 driver = os.environ.get("DB_DRIVER", "")
 
 
