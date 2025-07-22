@@ -4,6 +4,7 @@ until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h db -p 5432 -U "$POSTGRES_USE
   echo "Waiting for postgres..."
   sleep 2
 done
+echo "PostgreSQL is ready!"
 
 echo "Applying migrations..."
 alembic upgrade head
