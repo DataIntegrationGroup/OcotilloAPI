@@ -21,7 +21,7 @@ COPY . .
 
 # install dependencies using uv
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
-RUN uv sync --locked --no-dev
+RUN uv sync --locked
 
 # expose FastAPI's default dev port
 EXPOSE 8000
