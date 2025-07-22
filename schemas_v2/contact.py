@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
@@ -22,6 +22,7 @@ from phonenumbers import NumberParseException
 from pydantic import field_validator, BaseModel
 
 from schemas import ORMBaseModel
+from schemas_v2.thing import ThingResponse
 
 
 # -------- CREATE ----------
@@ -179,13 +180,13 @@ class ContactResponse(ORMBaseModel):
     """
     Response schema for contact details.
     """
-
+    things: List[ThingResponse] = []  # List of related things
     id: int
     name: str
     role: str
-    emails: list[EmailResponse] = []
-    phones: list[PhoneResponse] = []
-    addresses: list[AddressResponse] = []
+    emails: List[EmailResponse] = []
+    phones: List[PhoneResponse] = []
+    addresses: List[AddressResponse] = []
     created_at: datetime
 
 

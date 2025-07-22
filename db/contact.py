@@ -46,6 +46,7 @@ class Contact(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     authors = association_proxy("author_associations", "author")
+    things = relationship('Thing', secondary='thing_contact_association')
 
 
 class Phone(Base, AutoBaseMixin):
