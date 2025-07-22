@@ -16,6 +16,7 @@
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
+from shapely import wkt
 
 from schemas import ORMBaseModel
 
@@ -29,6 +30,17 @@ class CreateLocation(BaseModel):
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     release_status: str | None = "draft"
+
+    @classmethod
+    @field_validator("point")
+    def validate_point_is_wkt(cls, point):
+        try:
+            geometry = wkt.loads(point)
+            if not geometry.is_valid:
+                raise ValueError("WKT geometry is not topologically valid")
+            return point
+        except Exception as e:
+            raise ValueError(f"Invalid WKT geometry: {e}")
 
 
 class CreateGroup(BaseModel):
