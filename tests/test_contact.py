@@ -43,7 +43,7 @@ def test_add_contact(thing):
                     "city": "Test City",
                     "state": "NM",
                     "postal_code": "87501",
-                    "country": "US",
+                    "country": "United States",
                     "address_type": "Primary",
                 }
             ],
@@ -110,7 +110,7 @@ def test_phone_validation_fail():
                         "city": "Test City",
                         "state": "NM",
                         "postal_code": "87501",
-                        "country": "US",
+                        "country": "United States",
                         "address_type": "Primary",
                     }
                 ],
@@ -147,7 +147,7 @@ def test_email_validation_fail():
                         "city": "Test City",
                         "state": "NM",
                         "postal_code": "87501",
-                        "country": "US",
+                        "country": "United States",
                         "address_type": "Primary",
                     }
                 ],
@@ -276,7 +276,7 @@ def test_item_get_contact():
     assert address["city"] == "Test City"
     assert address["state"] == "NM"
     assert address["postal_code"] == "87501"
-    assert address["country"] == "US"
+    assert address["country"] == "United States"
     assert address["address_type"] == "Primary"
 
 
@@ -343,7 +343,7 @@ def test_edit_contact_address():
             "address_line_1": "456 Elm St",
             "city": "Updated City",
             "postal_code": "90210",
-            "country": "US",
+            "country": "United States",
         },
     )
     data = response.json()
@@ -353,7 +353,7 @@ def test_edit_contact_address():
     assert data["city"] == "Updated City"
     assert data["state"] == "NM"
     assert data["postal_code"] == "90210"
-    assert data["country"] == "US"
+    assert data["country"] == "United States"
     assert data["address_type"] == "Primary"
 
     # put contact address back to original
@@ -364,7 +364,7 @@ def test_edit_contact_address():
             "city": "Test City",
             "state": "NM",
             "postal_code": "87501",
-            "country": "US",
+            "country": "United States",
             "address_type": "Primary",
         },
     )

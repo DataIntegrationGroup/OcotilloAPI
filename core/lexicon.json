@@ -15,13 +15,37 @@
 
   {"term":  "groundwater level", "definition":  "groundwater level measurement", "category":  "observed_property"},
 
+  {"term":  "United States", "definition":  "United States of America", "category":  "country"},
+  {"term":  "Canada", "definition":  "Canada", "category":  "country"},
+  {"term":  "Mexico", "definition":  "Mexico", "category":  "country"},
+  {"term":  "United Kingdom", "definition":  "United Kingdom of Great Britain and Northern Ireland", "category":  "country"},
+  {"term":  "Australia", "definition":  "Australia", "category":  "country"},
+  {"term":  "Germany", "definition":  "Germany", "category":  "country"},
+  {"term":  "France", "definition":  "France", "category":  "country"},
+  {"term":  "Japan", "definition":  "Japan", "category":  "country"},
+
 
   {"term":  "Owner", "definition":  "Owner", "category": "role"},
+  {"term":  "Manager", "definition":  "Manager", "category": "role"},
+    {"term":  "Operator", "definition":  "Operator", "category": "role"},
+    {"term":  "Driller", "definition":  "Driller", "category": "role"},
+    {"term":  "Geologist", "definition":  "Geologist", "category": "role"},
+    {"term":  "Hydrologist", "definition":  "Hydrologist", "category": "role"},
+    {"term":  "Hydrogeologist", "definition":  "Hydrogeologist", "category": "role"},
+    {"term":  "Engineer", "definition":  "Engineer", "category": "role"},
+    {"term":  "Technician", "definition":  "Technician", "category": "role"},
 
 
   {"term":  "Primary", "definition":  "Primary", "category":  "email_type"},
+  {"term":  "Work", "definition":  "Primary", "category":  "email_type"},
+  {"term":  "Personal", "definition":  "Primary", "category":  "email_type"},
   {"term":  "Primary", "definition":  "Primary", "category":  "address_type"},
+  {"term":  "Work", "definition":  "Primary", "category":  "address_type"},
+  {"term":  "Personal", "definition":  "Primary", "category":  "address_type"},
   {"term":  "Primary", "definition":  "Primary", "category":  "phone_type"},
+  {"term":  "Work", "definition":  "Primary", "category":  "phone_type"},
+  {"term":  "Home", "definition":  "Primary", "category":  "phone_type"},
+  {"term":  "Mobile", "definition":  "Primary", "category":  "phone_type"},
 
 
   {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
