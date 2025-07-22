@@ -27,7 +27,7 @@ class CreateLocation(BaseModel):
     """
 
     notes: str | None = None
-    point: str = "POINT(0 0)"  # Default to a point at the origin
+    point: str # point is required and should be in WKT format
     release_status: str | None = "draft"
 
 
@@ -37,6 +37,7 @@ class CreateGroup(BaseModel):
     """
 
     name: str
+    description: str | None = None
 
 
 class CreateGroupThing(BaseModel):
@@ -55,9 +56,8 @@ class LocationResponse(ORMBaseModel):
     """
 
     id: int
-    name: str | None = None
-    description: str | None = None
     point: str
+    release_status: str
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
