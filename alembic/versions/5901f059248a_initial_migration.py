@@ -225,6 +225,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.execute("DROP INDEX IF EXISTS idx_location_point;")
     op.create_index(
         "idx_location_point",
         "location",
