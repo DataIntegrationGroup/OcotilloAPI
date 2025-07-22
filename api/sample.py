@@ -39,7 +39,7 @@ router = APIRouter(
 
 
 # ============= Post =============================================
-@router.post("/", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED)
 def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_session)):
     """
     Endpoint to add a sample.
@@ -74,7 +74,7 @@ def add_geothermal_sample(
 
 
 # ============= Get =============================================
-@router.get("/", summary="Get Samples")
+@router.get("", summary="Get Samples")
 def get_samples(session: session_dependency) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve samples.

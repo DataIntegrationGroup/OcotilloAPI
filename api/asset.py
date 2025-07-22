@@ -61,7 +61,7 @@ async def get_asset(
     return asset
 
 
-@router.post("/", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
     session: session_dependency,
     thing_id: int = None,

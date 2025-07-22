@@ -14,23 +14,29 @@
 # limitations under the License.
 # ===============================================================================
 from shapely.geometry import mapping
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from fastapi_pagination.ext.sqlalchemy import paginate
+from pydantic import Field
 from shapely import wkb
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
+from shapely.geometry import mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
-from db import (
-    WellThing,
-    WellScreen,
-    SpringThing,
-    adder,
-    LocationThingAssociation,
-    Thing,
-    Location,
+from db import adder
+
+from db.thing.thing import ThingIdLink, Thing
+from db.location import LocationThingAssociation, Location
+from db.thing.well import WellThing, WellScreen
+from db.thing.spring import SpringThing
+from core.dependencies import (
+    session_dependency,
+    well_user_dependency,
 )
 from db.engine import get_db_session
 from db.thing.thing import ThingIdLink
@@ -53,6 +59,7 @@ from services.query_helper import (
     make_query,
     simple_get_by_id,
     paginated_all_getter,
+    order_sort_filter,
 )
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
@@ -68,7 +75,7 @@ def wkb_to_geojson(wkb_element):
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
-@router.get("/")
+@router.get("")
 def get_things(
     session: session_dependency,
 ) -> CustomPage[ThingResponse]:
@@ -113,9 +120,12 @@ def get_things(
 
 @router.get("/well", summary="Get all wells")
 async def get_wells(
+    session: session_dependency,
     # api_id: str = None,
     # ose_pod_id: str = None,
-    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
     query: str = None,
 ) -> CustomPage[WellResponse]:
     """
@@ -131,6 +141,7 @@ async def get_wells(
     else:
         sql = select(WellThing)
 
+    sql = order_sort_filter(sql, WellThing, sort, order, filter_)
     return paginate(query=sql, conn=session)
     # If no parameters, return all wells
     # return simple_all_getter(session, Well)
@@ -219,11 +230,14 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
     status_code=status.HTTP_201_CREATED,
 )
 def create_well(
-    well_data: CreateWell, session: Session = Depends(get_db_session)
+    well_data: CreateWell,
+    session: Session = Depends(get_db_session),
+    user=well_user_dependency,
 ) -> WellResponse:
     """
     Create a new well in the database.
     """
+    # print("Creating well with data:", well_data, user)
     well = add_well(session, well_data)
     return well
 
@@ -235,6 +249,7 @@ def create_well(
 )
 def create_wellscreen(
     session: session_dependency,
+    user: well_user_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
 ) -> WellScreenResponse:
     """

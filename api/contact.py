@@ -13,7 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import List, Annotated
 
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+from pydantic_core import PydanticUndefined
 from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
@@ -40,13 +44,14 @@ from services.people_helper import add_contact
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
+    order_sort_filter,
 )
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 
 
 @router.post(
-    "/",
+    "",
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
 )
@@ -138,9 +143,12 @@ def update_contact_address(
     return model_patcher(session, Address, address_id, address_data)
 
 
-@router.get("/", summary="Get contacts")
+@router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
     thing_id: int | None = None,
 ) -> CustomPage[ContactResponse]:
     """
@@ -152,9 +160,11 @@ async def get_contacts(
         sql = select(Contact)
         sql = sql.join(ThingContactAssociation).join(Thing)
         sql = sql.where(Thing.id == thing_id)
+
+        sql = order_sort_filter(sql, Contact, sort=sort, order=order, filter_=filter_)
         return paginate(query=sql, conn=session)
     else:
-        return paginated_all_getter(session, Contact)
+        return paginated_all_getter(session, Contact, sort, order, filter_)
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")
