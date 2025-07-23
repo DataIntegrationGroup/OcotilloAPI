@@ -3,12 +3,12 @@ import pytest
 from tests import client
 
 
-# NOTE: I've been thinking about the locations details in the way Weaver dealt with the previous API, in that each location was a single thing. This is not the case anymore, so "thing" should be the center item displayed on the "thing" details page.
 # get location details by id
-def test_weaver_thing_details_by_id():
+# TODO: Can we use the thing_id filter on the geospatial endpoint?
+def test_weaver_well_thing_by_id():
     response = client.get(
-        "/thing/1?format=geojson"
-    )  # TODO: same note as in the map thing dialog test, do we need a thing/well endpoint? Or can we just use the thing id and get all properties?
+        "/geospatial/feature-collection?thing_id=1"
+    )
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
@@ -16,24 +16,22 @@ def test_weaver_thing_details_by_id():
     assert "geometry" in data
     assert "coordinates" in data["geometry"]
 
-
-# get well details by location id TODO: this is not needed if the above thing returns well details (or spring details etc)
-# def test_weaver_location_well_details_by_id():
-#     response = client.get("/location/1?expand=well")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert "type" in data
-#     assert "properties" in data
-#     assert "geometry" in data
-#     assert "coordinates" in data["geometry"]
-#     assert "id" in data["properties"] or "name" in data["properties"]
-#     assert "well" in data
-
+#TODO: will the feature collection above return the thing-specific details?
 
 # get groundwater observations by thing id
-# This should pass right now
 def test_weaver_groundwater_observations_by_thing_id():
     response = client.get("/observation/groundwater-level?thing_id=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    if data["items"]:
+        assert isinstance(data["items"][0], dict)
+
+#Another way to get groundwater levels is to use the observation with observed_property=groundwater-level
+#TODO: Do we want this endpoint and the one above for groundwater levels?
+def test_weaver_groundwater_observations_by_thing_id_and_property():
+    response = client.get("/observation?thing_id=1&observed_property=groundwater-level")
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
@@ -44,7 +42,7 @@ def test_weaver_groundwater_observations_by_thing_id():
 
 # get contact info by thing id
 def test_weaver_thing_contact_info_by_id():
-    response = client.get("/contact?thing_id=1")  # or something like this
+    response = client.get("/contact?thing_id=1")  
     assert response.status_code == 200
     data = response.json()
     assert isinstance(
@@ -53,7 +51,7 @@ def test_weaver_thing_contact_info_by_id():
 
 
 # get location equipment(sensor) by location id
-def test_weaver_thing_equipment_by_id():
+def test_weaver_thing_sensors_by_id():
     response = client.get("/sensor?thing_id=1")  # or something like this
     assert response.status_code == 200
     data = response.json()
@@ -63,21 +61,19 @@ def test_weaver_thing_equipment_by_id():
 
 
 # get location photos
-# skip for now - not implemented yet
-@pytest.mark.skip
-def test_weaver_thing_photos_by_id():
-    response = client.get("/photo?thing_id=1")  # or something like this
+def test_weaver_thing_assets_by_id():
+    response = client.get("/asset?thing_id=1")  # or something like this
     assert response.status_code == 200
     data = response.json()
     # TODO: implement this
 
 
-# skip for now - not implemented yet
-@pytest.mark.skip
-def test_weaver_water_chemistry_by_well_id():
+# get water chemistry using crosstab endpoint
+#TODO: Implement a crosstab endpoing of some kind
+def test_weaver_water_chemistry_crosstab_by_thing_id():
     response = client.get(
-        "/observation/water-chemistry?thing_id=1"
-    )  # again not sure this is the right endpoint
+        "/water-chemistry-crosstab?thing_id=1"
+    )
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)  # should be a dict of dicts (one for each analysis)

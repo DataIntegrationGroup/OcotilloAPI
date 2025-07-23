@@ -3,7 +3,7 @@ import pytest
 from tests import client
 
 
-# get all nmbgmr wells for groundwater map as feature collection
+# get all nmbgmr wells for groundwater map as feature collection on map
 def test_weaver_get_all_wells():
     response = client.get(
         "/thing?type=well"
