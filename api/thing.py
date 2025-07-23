@@ -78,6 +78,7 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 @router.get("")
 def get_things(
     session: session_dependency,
+    thing_id: int = None,
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
@@ -115,10 +116,15 @@ def get_things(
     # else:
     #     # return paginate(query=sql, conn=session)
     #     return session.scalars(sql).all()
-    return paginated_all_getter(session, Thing)
+    if thing_id:
+        sql = select(Thing).where(Thing.id == thing_id)
+        return paginate(query=sql, conn=session)
+    else:
+
+        return paginated_all_getter(session, Thing)
 
 
-@router.get("/{thing_id}", summary="Get thing by ID")
+@router.get("", summary="Get thing by ID")
 async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
     """
     Retrieve a thing by ID from the database.
