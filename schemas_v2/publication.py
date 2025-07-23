@@ -16,21 +16,46 @@
 from pydantic import BaseModel
 
 
-class CreateSeries(BaseModel):
+# -------- CREATE ----------
+class CreatePublication(BaseModel):
     """
-    Schema for creating a new series.
-    This schema can be extended with additional fields as needed.
+    Schema for creating a new publication.
     """
 
+    title: str
+    authors: list[str]
+    year: int
+    doi: str | None = None
+    url: str | None = None
+
+    publication_type: str
+
+
+# -------- RESPONSE ----------
+class AuthorResponse(BaseModel):
+    """
+    Schema for the response of an author.
+    """
+
+    id: int
     name: str
-    description: str | None = None
-    thing_id: int
-    sensor_id: int
-    observed_property: str
-    unit: str
-    release_status: str | None = (
-        "draft"  # Default to 'draft', can be 'published' or 'archived'
-    )
+    email: str | None = None
+    affiliation: str | None = None
 
 
+class PublicationResponse(BaseModel):
+    """
+    Schema for the response of a publication.
+    """
+
+    id: int
+    title: str
+    authors: list[AuthorResponse]
+    year: int
+    doi: str | None = None
+    url: str | None = None
+    publication_type: str
+
+
+# -------- UPDATE ----------
 # ============= EOF =============================================

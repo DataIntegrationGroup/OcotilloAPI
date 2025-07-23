@@ -13,34 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from schemas.base import BaseRecord
+from pydantic import BaseModel
+from sqlalchemy.orm import Session, DeclarativeBase
+
+from services.query_helper import simple_get_by_id
 
 
-class GetLocation(BaseRecord):
-    """
-    Schema for a sample location.
-    """
+def model_patcher(
+    session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel
+):
+    item = simple_get_by_id(session, model, item_id)
+    if not item:
+        return {"message": f"{model.__name__} {item_id} not found"}
 
-    name: str | None = None
-    description: str | None = None
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, key, value)
 
-
-class GetWell(BaseRecord):
-    """
-    Schema for a well.
-    """
-
-    id: int
-
-
-class GetGroup(BaseRecord):
-    """
-    Schema for a group.
-    """
-
-    id: int
-    # name: str | None = None
-    # description: str | None = None
+    session.commit()
+    session.refresh(item)
+    return item
 
 
 # ============= EOF =============================================

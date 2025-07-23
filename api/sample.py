@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List
 
-from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
@@ -27,13 +25,13 @@ from db.engine import get_db_session
 from db.sample.geothermal import GeothermalSample
 from db.sample.geochemical import GeochemicalSample
 from db.sample.sample import Sample
-from schemas.create.sample import (
+from schemas_v2.sample import (
+    SampleResponse,
     CreateSample,
     CreateGeochemicalSample,
     CreateGeothermalSample,
 )
-from schemas.response.sample import SampleResponse
-from services.query_helper import simple_all_getter, paginated_all_getter
+from services.query_helper import paginated_all_getter
 
 router = APIRouter(
     prefix="/sample",
@@ -41,7 +39,7 @@ router = APIRouter(
 
 
 # ============= Post =============================================
-@router.post("/", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED)
 def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_session)):
     """
     Endpoint to add a sample.
@@ -76,7 +74,7 @@ def add_geothermal_sample(
 
 
 # ============= Get =============================================
-@router.get("/", summary="Get Samples")
+@router.get("", summary="Get Samples")
 def get_samples(session: session_dependency) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve samples.

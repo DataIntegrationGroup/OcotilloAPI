@@ -46,6 +46,7 @@ class Contact(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     authors = association_proxy("author_associations", "author")
+    things = relationship("Thing", secondary="thing_contact_association")
 
 
 class Phone(Base, AutoBaseMixin):
@@ -53,7 +54,7 @@ class Phone(Base, AutoBaseMixin):
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     phone_number = Column(String(20), nullable=False)
-    phone_type = lexicon_term(nullable=True)
+    phone_type = lexicon_term(nullable=False)
 
     contact = relationship("Contact", back_populates="phones")
     search_vector = Column(TSVectorType("phone_number"))
@@ -64,7 +65,7 @@ class Email(Base, AutoBaseMixin):
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     email = Column(String(100), nullable=False)
-    email_type = lexicon_term(nullable=True)
+    email_type = lexicon_term(nullable=False)
 
     contact = relationship("Contact", back_populates="emails")
 
@@ -80,8 +81,8 @@ class Address(Base, AutoBaseMixin):
     city = Column(String(100), nullable=False)
     state = Column(String(50), nullable=False)
     postal_code = Column(String(20), nullable=False)
-    country = Column(String(100), nullable=True)
-    address_type = lexicon_term(nullable=True)
+    country = lexicon_term(nullable=False, default="United States")
+    address_type = lexicon_term(nullable=False)
 
     contact = relationship("Contact", back_populates="addresses")
     search_vector = Column(

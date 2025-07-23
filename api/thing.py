@@ -13,40 +13,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from shapely.geometry import mapping
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
+from pydantic import Field
 from shapely import wkb
+from fastapi import APIRouter, Depends
+from fastapi_pagination.ext.sqlalchemy import paginate
 from shapely.geometry import mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
+from db import adder
+
+from db.thing.thing import ThingIdLink, Thing
+from db.location import LocationThingAssociation, Location
+from db.thing.well import WellThing, WellScreen
+from db.thing.spring import SpringThing
 from core.dependencies import (
     session_dependency,
     well_user_dependency,
 )
-from db import (
-    WellThing,
-    WellScreen,
-    SpringThing,
-    adder,
-    Thing,
-)
 from db.engine import get_db_session
 from db.thing.thing import ThingIdLink
-from schemas.base_create import CreateSpring
-from schemas.base_responses import SpringResponse
-from schemas.create.thing import CreateThingIdLink, CreateWell, CreateWellScreen
-from schemas.response.thing import (
+from schemas_v2.thing import (
+    CreateThingIdLink,
+    CreateWell,
+    CreateWellScreen,
+    ThingResponse,
     WellResponse,
     WellScreenResponse,
-    ThingResponse,
+    UpdateThing,
+    UpdateWell,
+    SpringResponse,
+    CreateSpring,
 )
+from schemas_v2.location import LocationResponse, UpdateLocation
+
+from services.crud_helper import model_patcher
 from services.query_helper import (
     make_query,
     simple_get_by_id,
     paginated_all_getter,
+    order_sort_filter,
 )
 from services.thing_helper import add_well, add_spring
 from services.validation.well import validate_screens
@@ -62,7 +75,7 @@ def wkb_to_geojson(wkb_element):
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
-@router.get("/")
+@router.get("")
 def get_things(
     session: session_dependency,
 ) -> CustomPage[ThingResponse]:
@@ -105,11 +118,22 @@ def get_things(
     return paginated_all_getter(session, Thing)
 
 
+@router.get("/{thing_id}", summary="Get thing by ID")
+async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
+    """
+    Retrieve a thing by ID from the database.
+    """
+    return simple_get_by_id(session, Thing, thing_id)
+
+
 @router.get("/well", summary="Get all wells")
 async def get_wells(
+    session: session_dependency,
     # api_id: str = None,
     # ose_pod_id: str = None,
-    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
     query: str = None,
 ) -> CustomPage[WellResponse]:
     """
@@ -125,6 +149,7 @@ async def get_wells(
     else:
         sql = select(WellThing)
 
+    sql = order_sort_filter(sql, WellThing, sort, order, filter_)
     return paginate(query=sql, conn=session)
     # If no parameters, return all wells
     # return simple_all_getter(session, Well)
@@ -252,6 +277,69 @@ def create_spring(
     """
     return add_spring(session, spring_data)
     # return adder(session, SpringThing, spring_data)
+
+
+@router.patch("/{thing_id}", summary="Update thing")
+def update_thing(
+    thing_id: int,
+    thing_data: UpdateThing,
+    session: Session = Depends(get_db_session),
+) -> ThingResponse:
+    """
+    Update an existing thing by ID.
+    """
+
+    return model_patcher(session, Thing, thing_id, thing_data)
+
+
+@router.patch("/{thing_id}/location", summary="Update thing location")
+def update_thing_location(
+    thing_id: int,
+    location_data: UpdateLocation,
+    session: session_dependency,
+) -> LocationResponse:
+    """
+    Update the location of an existing thing by ID.
+    """
+
+    # get active location associated with the thing
+    location_id = session.execute(
+        select(LocationThingAssociation.location_id)
+        .where(LocationThingAssociation.thing_id == thing_id)
+        .order_by(LocationThingAssociation.effective_start.desc())
+    ).scalar_one_or_none()
+
+    return model_patcher(session, Location, location_id, location_data)
+
+
+@router.patch("/{thing_id}/well", summary="Update well by parent thing ID")
+def update_well(
+    thing_id: int,
+    well_data: UpdateWell,
+    session: session_dependency,
+) -> WellResponse:
+    """
+    Update an existing well by ID.
+    """
+
+    # get the WellThing associated with the Thing ID
+    well_thing_id = session.execute(
+        select(WellThing.id).join(Thing).where(Thing.id == thing_id)
+    ).scalar_one_or_none()
+
+    return model_patcher(session, WellThing, well_thing_id, well_data)
+
+
+@router.patch("/well/{well_id}", summary="Update well by well ID")
+def update_well_by_id(
+    well_id: int,
+    well_data: UpdateWell,
+    session: session_dependency,
+) -> WellResponse:
+    """
+    Update an existing well by its ID.
+    """
+    return model_patcher(session, WellThing, well_id, well_data)
 
 
 # ============= EOF =============================================

@@ -15,7 +15,10 @@
 # ===============================================================================
 from pydantic import BaseModel
 
+from schemas import ORMBaseModel
 
+
+# -------- CREATE ----------
 class CreateLexiconTerm(BaseModel):
     """
     Pydantic model for creating a lexicon term.
@@ -47,9 +50,30 @@ class CreateTriple(BaseModel):
     predicate: str
     object_: CreateLexiconTerm
 
-    # class Config:
-    #     allow_population_by_field_name = True
-    #     fields = {"object_": "object"}
+
+# -------- RESPONSE ----------
+class LexiconTermResponse(ORMBaseModel):
+    """
+    Pydantic model for the response of a lexicon term.
+    This model can be extended to include additional fields as needed.
+    """
+
+    term: str
+    definition: str
+    category: str | None = None
 
 
+class LexiconCategoryResponse(ORMBaseModel):
+    """
+    Pydantic model for the response of a lexicon category.
+    This model can be extended to include additional fields as needed.
+    """
+
+    id: int
+    name: str
+    description: str | None = None
+    # terms: list[LexiconTermResponse] | None = None
+
+
+# -------- UPDATE ----------
 # ============= EOF =============================================

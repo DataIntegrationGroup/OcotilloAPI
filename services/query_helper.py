@@ -16,7 +16,7 @@
 from typing import Any
 
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column
+from sqlalchemy import select, Float, Integer, Column, Select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.elements import OperatorExpression
 
@@ -85,7 +85,6 @@ def make_query(table: DeclarativeBase, query: str) -> OperatorExpression:
     return w
 
 
-# ============= EOF =============================================
 def simple_get_by_name(session, table, name) -> object | None:
     """
     Helper function to get a record by name from the database.
@@ -110,15 +109,32 @@ def simple_all_getter(session, table) -> list[object]:
     """
     sql = select(table)
     return session.scalars(sql).all()
-    # result = session.execute(sql)
-    # return result.scalars().all()
 
 
-def paginated_all_getter(session, table) -> Any:
+def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
+    if order:
+        if not sort:
+            raise ValueError(
+                "Sort parameter is required when order is specified. "
+                f"The sort parameter should be a column name in the table {table}."
+            )
+        attr = getattr(table, sort)
+        if order.lower() == "asc":
+            sql = sql.order_by(attr.asc())
+        elif order.lower() == "desc":
+            sql = sql.order_by(attr.desc())
+        else:
+            raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
+    return sql
+
+
+def paginated_all_getter(session, table, sort=None, order=None, filter_=None) -> Any:
     """
     Helper function to get all records from the database with pagination.
     """
+
     sql = select(table)
+    sql = order_sort_filter(sql, table, sort, order, filter_)
     # return session.scalars(sql).all()
     return paginate(query=sql, conn=session)
     # return paginate(query=sql, conn=session, transformer=lambda items: items)
@@ -139,3 +155,6 @@ def searchable_getter(session, table, search, vector=None, joins=None) -> list[o
         vector=vector,
     )
     return session.scalars(q).all()
+
+
+# ============= EOF =============================================

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
-from schemas.create.contact import CreateContact
+from schemas_v2.contact import CreateContact
 from sqlalchemy.orm import Session
 
 
@@ -27,7 +27,7 @@ def add_contact(
     """
 
     if isinstance(contact_data, CreateContact):
-        contact_data = contact_data.model_dump()
+        contact_data = contact_data.model_dump(exclude_unset=True)
 
     contact = Contact(
         name=contact_data["name"],

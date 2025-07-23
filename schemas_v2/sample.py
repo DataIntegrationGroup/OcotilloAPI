@@ -18,6 +18,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+# -------- CREATE ----------
 class CreateSample(BaseModel):
     collection_timestamp: datetime
     collection_method: str
@@ -40,14 +41,11 @@ class CreateGeothermalSample(BaseModel):
     sample_id: int
 
 
+# -------- RESPONSE ----------
+class SampleResponse(BaseModel):
+    id: int
+
+
+# -------- UPDATE ----------
+
 # ============= EOF =============================================
-# class CreateWellTimeseries(BaseModel):
-#     name: str
-#     description: str | None = None
-#     well_id: int
-#
-#
-# class CreateGroundwaterLevelObservation(BaseModel):
-#     timestamp: datetime  # ISO 8601 format
-#     value: float
-#     timeseries_id: int

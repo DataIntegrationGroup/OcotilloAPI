@@ -21,6 +21,7 @@ development.db
 reset_db.sh
 tests/uploads
 migrate.sh
+launcher.sh
 
 
 # deployment files

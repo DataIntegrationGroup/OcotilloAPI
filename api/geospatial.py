@@ -25,7 +25,7 @@ from starlette.responses import FileResponse
 from core.dependencies import session_dependency
 from db import Thing, Location, LocationThingAssociation, WellThing
 from db.engine import session_ctx
-from schemas.response.thing import FeatureCollectionResponse
+from schemas_v2.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])

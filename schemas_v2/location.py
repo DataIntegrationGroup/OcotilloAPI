@@ -15,19 +15,61 @@
 # ===============================================================================
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
+from shapely import wkt
+
 from schemas import ORMBaseModel
 
 
+# -------- CREATE ----------
+class CreateLocation(BaseModel):
+    """
+    Schema for creating a sample location.
+    """
+
+    notes: str | None = None
+    point: str  # point is required and should be in WKT format
+    release_status: str | None = "draft"
+
+    @classmethod
+    @field_validator("point")
+    def validate_point_is_wkt(cls, point):
+        try:
+            geometry = wkt.loads(point)
+            if not geometry.is_valid:
+                raise ValueError("WKT geometry is not topologically valid")
+            return point
+        except Exception as e:
+            raise ValueError(f"Invalid WKT geometry: {e}")
+
+
+class CreateGroup(BaseModel):
+    """
+    Schema for creating a group.
+    """
+
+    name: str
+    description: str | None = None
+
+
+class CreateGroupThing(BaseModel):
+    """
+    Schema for creating a group location.
+    """
+
+    group_id: int
+    thing_id: int
+
+
+# -------- RESPONSE ----------
 class LocationResponse(ORMBaseModel):
     """
     Response schema for sample location details.
     """
 
     id: int
-    name: str | None = None
-    description: str | None = None
     point: str
+    release_status: str
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
@@ -47,6 +89,17 @@ class GroupLocationResponse(ORMBaseModel):
     id: int
     group_id: int
     location_id: int
+
+
+# -------- UPDATE ----------
+class UpdateLocation(BaseModel):
+    """
+    Schema for updating a location.
+    """
+
+    notes: str | None = None
+    point: str | None = None
+    release_status: str | None = None
 
 
 # ============= EOF =============================================
