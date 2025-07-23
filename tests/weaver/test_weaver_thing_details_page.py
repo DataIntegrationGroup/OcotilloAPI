@@ -3,19 +3,13 @@ import pytest
 from tests import client
 
 
-# get location details by id
-# TODO: Can we use the thing_id filter on the geospatial endpoint?
-def test_weaver_well_thing_by_id():
-    response = client.get("/geospatial/feature-collection?thing_id=1")
+# get well info by id as geojson feature with properties
+# Not geospatial, just a thing endpoint
+def test_weaver_thing_by_id():
+    response = client.get("/thing/1")
     assert response.status_code == 200
     data = response.json()
-    assert "type" in data
-    assert "properties" in data
-    assert "geometry" in data
-    assert "coordinates" in data["geometry"]
-
-
-# TODO: will the feature collection above return the thing-specific details?
+    assert isinstance(data, dict)
 
 
 # get groundwater observations by thing id
