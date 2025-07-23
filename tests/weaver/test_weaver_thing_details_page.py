@@ -6,9 +6,7 @@ from tests import client
 # get location details by id
 # TODO: Can we use the thing_id filter on the geospatial endpoint?
 def test_weaver_well_thing_by_id():
-    response = client.get(
-        "/geospatial/feature-collection?thing_id=1"
-    )
+    response = client.get("/geospatial/feature-collection?thing_id=1")
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
@@ -16,7 +14,9 @@ def test_weaver_well_thing_by_id():
     assert "geometry" in data
     assert "coordinates" in data["geometry"]
 
-#TODO: will the feature collection above return the thing-specific details?
+
+# TODO: will the feature collection above return the thing-specific details?
+
 
 # get groundwater observations by thing id
 def test_weaver_groundwater_observations_by_thing_id():
@@ -28,8 +28,9 @@ def test_weaver_groundwater_observations_by_thing_id():
     if data["items"]:
         assert isinstance(data["items"][0], dict)
 
-#Another way to get groundwater levels is to use the observation with observed_property=groundwater-level
-#TODO: Do we want this endpoint and the one above for groundwater levels?
+
+# Another way to get groundwater levels is to use the observation with observed_property=groundwater-level
+# TODO: Do we want this endpoint and the one above for groundwater levels?
 def test_weaver_groundwater_observations_by_thing_id_and_property():
     response = client.get("/observation?thing_id=1&observed_property=groundwater-level")
     assert response.status_code == 200
@@ -42,7 +43,7 @@ def test_weaver_groundwater_observations_by_thing_id_and_property():
 
 # get contact info by thing id
 def test_weaver_thing_contact_info_by_id():
-    response = client.get("/contact?thing_id=1")  
+    response = client.get("/contact?thing_id=1")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(
@@ -69,11 +70,9 @@ def test_weaver_thing_assets_by_id():
 
 
 # get water chemistry using crosstab endpoint
-#TODO: Implement a crosstab endpoing of some kind
+# TODO: Implement a crosstab endpoing of some kind
 def test_weaver_water_chemistry_crosstab_by_thing_id():
-    response = client.get(
-        "/water-chemistry-crosstab?thing_id=1"
-    )
+    response = client.get("/water-chemistry-crosstab?thing_id=1")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)  # should be a dict of dicts (one for each analysis)
