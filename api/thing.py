@@ -78,53 +78,11 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 @router.get("")
 def get_things(
     session: session_dependency,
-    thing_id: int = None,
 ) -> CustomPage[ThingResponse]:
-    """
-    Retrieve all things or filter by type.
-    """
-    # if thing_type == "well":
-    #     sql = select(Thing).join(WellThing)
-    # elif thing_type == "spring":
-    #     sql = select(Thing).join(SpringThing)
-    # else:
-    #     sql = select(Thing)
-    #
-    # if group:
-    #     sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
-    #
-    # if response_format == "geojson":
-    #     # todo: implement geojson response
-    #     def make_feature(thing: Thing) -> Feature:
-    #
-    #         # todo: get latest location
-    #         geometry = thing.locations[0].point
-    #         # Convert geometry to GeoJSON format
-    #
-    #         geojson_geometry = wkb_to_geojson(geometry)
-    #         properties = {
-    #             "id": thing.id,
-    #             "name": thing.name,
-    #             "type": thing_type,
-    #             "group": group,
-    #         }
-    #         return Feature(geometry=geojson_geometry, properties=properties)
-    #
-    #     things = session.scalars(sql).all()
-    #     features = [make_feature(thing) for thing in things]
-    #     return FeatureCollectionResponse(features=features)
-    # else:
-    #     # return paginate(query=sql, conn=session)
-    #     return session.scalars(sql).all()
-    if thing_id:
-        sql = select(Thing).where(Thing.id == thing_id)
-        return paginate(query=sql, conn=session)
-    else:
-
-        return paginated_all_getter(session, Thing)
+    return paginated_all_getter(session, Thing)
 
 
-@router.get("", summary="Get thing by ID")
+@router.get("/base/{thing_id}", summary="Get thing by ID")
 async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
     """
     Retrieve a thing by ID from the database.

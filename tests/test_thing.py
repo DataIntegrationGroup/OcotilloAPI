@@ -143,14 +143,15 @@ def test_add_thing_link():
 
 # ===================== get ==========================
 def test_get_thing_by_id():
-    response = client.get("/thing?thing_id=1")
+    # response = client.get("/thing?thing_id=1")
+    response = client.get("/thing/base/1")
     assert response.status_code == 200
     data = response.json()
-    assert "items" in data
-    items = data["items"]
-    assert len(items) == 1
-    assert items[0]["id"] == 1
-    assert items[0]["name"] == "Test Thing"
+    # assert "items" in data
+    # items = data["items"]
+    # assert len(items) == 1
+    assert data["id"] == 1
+    assert data["name"] == "Test Thing"
 
 
 def test_get_wells():
