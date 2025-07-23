@@ -119,9 +119,7 @@ def get_things(
 
 
 @router.get("/{thing_id}", summary="Get thing by ID")
-async def get_thing_by_id(
-    thing_id: int, session: session_dependency
-) -> ThingResponse:
+async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
     """
     Retrieve a thing by ID from the database.
     """
