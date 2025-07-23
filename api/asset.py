@@ -47,11 +47,19 @@ async def get_asset(
     bucket=Depends(
         get_storage_bucket
     ),  # Assuming get_storage_bucket is defined elsewhere
+    thing_id: int = None,
 ) -> AssetResponse:
     """
     Retrieve an asset by its ID.
     """
-    sql = select(Asset).where(Asset.id == asset_id)
+    sql = select(Asset)
+    if thing_id:
+        sql = sql.join(AssetThingAssociation).where(
+            AssetThingAssociation.thing_id == thing_id
+        )
+    else:
+        sql = sql.where(Asset.id == asset_id)
+
     asset = session.scalars(sql).one_or_none()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")

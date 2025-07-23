@@ -118,6 +118,16 @@ def get_things(
     return paginated_all_getter(session, Thing)
 
 
+@router.get("/{thing_id}", summary="Get thing by ID")
+async def get_thing_by_id(
+    thing_id: int, session: session_dependency
+) -> ThingResponse:
+    """
+    Retrieve a thing by ID from the database.
+    """
+    return simple_get_by_id(session, Thing, thing_id)
+
+
 @router.get("/well", summary="Get all wells")
 async def get_wells(
     session: session_dependency,
