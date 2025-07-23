@@ -5,9 +5,7 @@ from tests import client
 
 # get all nmbgmr wells for groundwater map as feature collection on map
 def test_weaver_get_all_wells():
-    response = client.get(
-        "/geospatial/feature-collection?type=well"
-    ) 
+    response = client.get("/geospatial/feature-collection?type=well")
     assert response.status_code == 200
     data = response.json()
     assert "features" in data
@@ -21,9 +19,7 @@ def test_weaver_get_all_wells():
 
 # get all nmbgmr springs for the groundwater map as feature collection
 def test_weaver_get_all_springs():
-    response = client.get(
-        "/geospatial/feature-collection?type=spring"
-    ) 
+    response = client.get("/geospatial/feature-collection?type=spring")
     assert response.status_code == 200
     data = response.json()
     assert "features" in data
@@ -36,9 +32,7 @@ def test_weaver_get_all_springs():
 
 # get all collabnet wells for the groundwater map as feature collection
 def test_weaver_get_all_collabnet_wells():
-    response = client.get(
-        "/geospatial/feature-collection?type=well&group=collabnet"
-    ) 
+    response = client.get("/geospatial/feature-collection?type=well&group=collabnet")
     assert response.status_code == 200
     data = response.json()
     assert "features" in data
@@ -50,11 +44,10 @@ def test_weaver_get_all_collabnet_wells():
         assert "coordinates" in feature["geometry"]
         assert "id" in feature or "name" in feature["properties"]
 
+
 # get all geothermal wells for the groundwater map as feature collection
 def test_weaver_get_all_geothermal_wells():
-    response = client.get(
-        "/geospatial/feature-collection?type=well&group=geothermal"
-    ) 
+    response = client.get("/geospatial/feature-collection?type=well&group=geothermal")
     assert response.status_code == 200
     data = response.json()
     assert "features" in data
@@ -87,4 +80,3 @@ def test_weaver_get_all_well_trends():
         # just an example of trend property
         if "manual_trend" in feature["properties"]:
             assert "trend" in feature["properties"]["manual_trend"]
-
