@@ -18,6 +18,7 @@ from typing import Annotated, List, Union
 
 from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
+
 # from starlette.responses import FileResponse
 
 from core.dependencies import session_dependency
@@ -29,20 +30,20 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 @router.get("")
 async def get_geospatial(
-        session: session_dependency,
-        thing_type: List[str] | None = None,
-        group: Annotated[
-            str | int, Query(title="group", description="group", alias="group")
-        ] = None,
-        format_: Annotated[
-            str,
-            Query(
-                title="format",
-                description="Format of the response. 'geojson' for GeoJSON FeatureCollection, 'shapefile' for a shapefile.",
-                alias="format",
-                regex="^(geojson|shapefile)$",
-            ),
-        ] = "geojson",
+    session: session_dependency,
+    thing_type: List[str] | None = None,
+    group: Annotated[
+        str | int, Query(title="group", description="group", alias="group")
+    ] = None,
+    format_: Annotated[
+        str,
+        Query(
+            title="format",
+            description="Format of the response. 'geojson' for GeoJSON FeatureCollection, 'shapefile' for a shapefile.",
+            alias="format",
+            regex="^(geojson|shapefile)$",
+        ),
+    ] = "geojson",
 ):
     """
     Endpoint to retrieve a GeoJSON FeatureCollection or a shapefile.
