@@ -69,6 +69,11 @@
   {"term":  "W/m·K", "definition":  "watts per meter Kelvin", "category": "unit"},
   {"term":  "m²/s", "definition": "square meters per second", "category": "unit"},
 
+  {"term": "Artesian", "definition": "artesian spring", "category": "spring_type"},
+  {"term": "Ephemeral", "definition": "ephemeral spring", "category": "spring_type"},
+  {"term": "Perennial", "definition": "perennial spring", "category": "spring_type"},
+  {"term": "Thermal", "definition": "thermal spring", "category": "spring_type"},
+  {"term": "Mineral", "definition": "mineral spring", "category": "spring_type"},
 
   {"term": "Exploration", "definition": "Exploration well", "category": "well_type"},
   {"term": "Monitoring", "definition": "Monitoring", "category": "well_type"},

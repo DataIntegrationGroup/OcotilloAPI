@@ -42,7 +42,7 @@ class CreateThing(BaseModel):
     location_id: int | None = None  # Optional location ID for the thing
     name: str  # Name of the thing
     group: str | None = None  # Optional group ID for the thing
-    thing_type: str
+    thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
 
 
 class CreateWell(CreateThing):
@@ -96,11 +96,16 @@ class CreateSpring(CreateThing):
     Schema for creating a spring.
     """
 
-    pass
+    spring_type: str | None = None
 
 
 # ------ RESPONSE ----------
-class WellResponse(ORMBaseModel):
+class BaseThingResponse(ORMBaseModel):
+    name: str
+    thing_type: str
+    id: int
+
+class WellResponse(BaseThingResponse):
     """
     Response schema for well details.
     """
@@ -108,23 +113,21 @@ class WellResponse(ORMBaseModel):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
-    name: str
-    thing_type: str
-    id: int
 
-    well_type: str | None = None
+
+    well_type: str | None = None  # e.g., "Production", "Observation", etc.
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
     # Additional fields can be added as needed
 
 
-class SpringResponse(ORMBaseModel):
+class SpringResponse(BaseThingResponse):
     """
     Response schema for spring details.
     """
 
-    pass
+    spring_type: str | None = None  # e.g., "Natural", "Artifical", etc.
 
 
 class ThingResponse(WellResponse, SpringResponse):

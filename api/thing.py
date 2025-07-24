@@ -45,7 +45,7 @@ from schemas_v2.thing import (
     UpdateThing,
     UpdateWell,
     SpringResponse,
-    CreateSpring,
+    CreateSpring, CreateThing,
 )
 from schemas_v2.location import LocationResponse, UpdateLocation
 
@@ -83,73 +83,12 @@ def get_things(
     """
     Retrieve all things or filter by type.
     """
-    # if thing_type == "well":
-    #     sql = select(Thing).join(WellThing)
-    # elif thing_type == "spring":
-    #     sql = select(Thing).join(SpringThing)
-    # else:
-    #     sql = select(Thing)
-    #
-    # if group:
-    #     sql = sql.join(GroupThingAssociation).join(Group).where(Group.name == group)
-    #
-    # if response_format == "geojson":
-    #     # todo: implement geojson response
-    #     def make_feature(thing: Thing) -> Feature:
-    #
-    #         # todo: get latest location
-    #         geometry = thing.locations[0].point
-    #         # Convert geometry to GeoJSON format
-    #
-    #         geojson_geometry = wkb_to_geojson(geometry)
-    #         properties = {
-    #             "id": thing.id,
-    #             "name": thing.name,
-    #             "type": thing_type,
-    #             "group": group,
-    #         }
-    #         return Feature(geometry=geojson_geometry, properties=properties)
-    #
-    #     things = session.scalars(sql).all()
-    #     features = [make_feature(thing) for thing in things]
-    #     return FeatureCollectionResponse(features=features)
-    # else:
-    #     # return paginate(query=sql, conn=session)
-    #     return session.scalars(sql).all()
 
-    # sql = None
     if thing_id:
         sql = select(Thing).where(Thing.id == thing_id)
         return paginate(query=sql, conn=session)
-    # elif thing_type:
-    #     sql = select(Thing)
-    #     if isinstance(thing_type, str):
-    #         thing_type = thing_type.lower()
-    #         sql = sql.where(Thing.thing_type == thing_type)
-    #     elif isinstance(thing_type, list):
-    #         thing_type = [t.lower() for t in thing_type]
-    #         sql = sql.where(Thing.thing_type.in_(thing_type))
-    #     else:
-    #         raise ValueError("thing_type must be a string or a list of strings")
-    #
-    # if query:
-    #     if sql is None:
-    #         sql = select(Thing)
-    #     sql = sql.where(make_query(Thing, query))
-    # print(f"SQL Query: {sql}")
-    # if sql is not None:
-    #     return paginate(query=sql, conn=session)
-    # else:
-    #     return paginated_all_getter(session, Thing)
-    return get_db_things(filter_, order, query, session, sort, thing_type)
-
-
-# @router.get("", summary="Get thing by ID")
-# async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
-#     """
-#     Retrieve a thing by ID from the database.
-#     """
-#     return simple_get_by_id(session, Thing, thing_id)
+    else:
+        return get_db_things(filter_, order, query, session, sort, thing_type)
 
 
 @router.get("/well", summary="Get all wells")
@@ -235,15 +174,48 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
 
 
 @router.post(
+    "/well",
+    summary="Create a well",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_well(
+        thing_data: CreateWell,
+        session: Session = Depends(get_db_session),
+        user=well_user_dependency,
+) -> WellResponse:
+    """
+    Create a new well in the database.
+    """
+    # print("Creating well with data:", well_data, user)
+
+    return add_thing(session, thing_data, thing_type="water well")
+
+@router.post(
+    "/spring",
+    summary="Create a new spring",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_sprint(
+        thing_data: CreateSpring,
+        session: session_dependency,
+        user=well_user_dependency,
+) -> SpringResponse:
+    """
+    Create a new well in the database.
+    """
+    return add_thing(session, thing_data, thing_type="spring")
+
+
+@router.post(
     "",
     summary="Create a new thing",
     status_code=status.HTTP_201_CREATED,
 )
 def create_thing(
-    thing_data: CreateWell,
-    session: Session = Depends(get_db_session),
+    thing_data: CreateThing,
+    session: session_dependency,
     user=well_user_dependency,
-) -> WellResponse | SpringResponse:
+) -> ThingResponse:
     """
     Create a new well in the database.
     """

@@ -40,7 +40,8 @@ class ThingChildMixin:
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(String(500))
-    thing_type = lexicon_term(nullable=False)
+    thing_type = lexicon_term(nullable=True)
+    spring_type = lexicon_term(nullable=True)
 
     asset_associations = relationship(
         "AssetThingAssociation",
