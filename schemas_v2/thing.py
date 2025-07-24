@@ -108,6 +108,7 @@ class ThingResponse(ORMBaseModel):
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
 
+
 class WellResponse(ORMBaseModel):
     """
     Response schema for well details.

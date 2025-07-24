@@ -74,12 +74,11 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 def get_things(
     session: session_dependency,
     thing_id: int = None,
-    thing_type: List[str]|str = Query(default=[]),
+    thing_type: List[str] | str = Query(default=[]),
     query: str = None,
-        sort: str = None,
-        order: str = None,
-        filter_: Annotated[str, Field(alias="filter")] = None,
-
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
@@ -186,8 +185,7 @@ async def get_springs(
     sort: str = None,
     order: str = None,
     filter_: Annotated[str, Field(alias="filter")] = None,
-        thing_type: List[str] | str = Query(default="water well"),
-
+    thing_type: List[str] | str = Query(default="water well"),
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.

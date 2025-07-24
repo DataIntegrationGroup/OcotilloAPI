@@ -31,7 +31,7 @@ from sqlalchemy import Select, select
 
 
 def get_thing_features(
-    session, thing_type: list| str | None, group: str | int | None
+    session, thing_type: list | str | None, group: str | int | None
 ) -> list:
     # sql = (
     #     select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))

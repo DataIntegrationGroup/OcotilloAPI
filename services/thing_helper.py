@@ -23,7 +23,9 @@ from db.group import Group, GroupThingAssociation
 from services.query_helper import make_query, order_sort_filter
 
 
-def get_db_things(filter_, order, query, session, sort, thing_type: str | list[str] = None):
+def get_db_things(
+    filter_, order, query, session, sort, thing_type: str | list[str] = None
+):
     if query:
         sql = select(Thing).where(make_query(Thing, query))
     else:
