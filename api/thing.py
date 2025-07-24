@@ -221,8 +221,6 @@ def create_thing(
     """
     Create a new well in the database.
     """
-    # print("Creating well with data:", well_data, user)
-
     return add_thing(session, thing_data)
 
 
