@@ -105,6 +105,7 @@ class BaseThingResponse(ORMBaseModel):
     thing_type: str
     id: int
 
+
 class WellResponse(BaseThingResponse):
     """
     Response schema for well details.
@@ -113,7 +114,6 @@ class WellResponse(BaseThingResponse):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
-
 
     well_type: str | None = None  # e.g., "Production", "Observation", etc.
     well_depth: float | None = None  # in feet

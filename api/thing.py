@@ -45,7 +45,8 @@ from schemas_v2.thing import (
     UpdateThing,
     UpdateWell,
     SpringResponse,
-    CreateSpring, CreateThing,
+    CreateSpring,
+    CreateThing,
 )
 from schemas_v2.location import LocationResponse, UpdateLocation
 
@@ -179,9 +180,9 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
     status_code=status.HTTP_201_CREATED,
 )
 def create_well(
-        thing_data: CreateWell,
-        session: Session = Depends(get_db_session),
-        user=well_user_dependency,
+    thing_data: CreateWell,
+    session: Session = Depends(get_db_session),
+    user=well_user_dependency,
 ) -> WellResponse:
     """
     Create a new well in the database.
@@ -190,15 +191,16 @@ def create_well(
 
     return add_thing(session, thing_data, thing_type="water well")
 
+
 @router.post(
     "/spring",
     summary="Create a new spring",
     status_code=status.HTTP_201_CREATED,
 )
 def create_sprint(
-        thing_data: CreateSpring,
-        session: session_dependency,
-        user=well_user_dependency,
+    thing_data: CreateSpring,
+    session: session_dependency,
+    user=well_user_dependency,
 ) -> SpringResponse:
     """
     Create a new well in the database.
