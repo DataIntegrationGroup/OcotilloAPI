@@ -44,6 +44,21 @@ def test_add_location():
     assert "id" in data
 
 
+def test_update_location():
+    response = client.patch(
+        "/location/1",
+        json={
+            "point": "POINT (10.1 20.2)",
+            "release_status": "draft",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert data["point"] == "POINT (10.1 20.2)"
+    assert data["release_status"] == "draft"
+
+
 @pytest.mark.skip
 def test_get_locations_expand():
     response = client.get("/base/location?expand=well")
