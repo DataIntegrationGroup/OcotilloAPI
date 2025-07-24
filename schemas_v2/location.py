@@ -26,7 +26,7 @@ class CreateLocation(BaseModel):
     """
     Schema for creating a sample location.
     """
-
+    name: str | None = None
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     release_status: str | None = "draft"
@@ -68,6 +68,7 @@ class LocationResponse(ORMBaseModel):
     """
 
     id: int
+    name: str | None = None
     point: str
     release_status: str
 

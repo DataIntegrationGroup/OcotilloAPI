@@ -41,8 +41,10 @@ def populate():
 
         session.commit()
 
-        loc1 = Location(point=geofunc.ST_GeomFromText("POINT(10.1 10.1)", srid=4326))
-        loc2 = Location(point=geofunc.ST_GeomFromText("POINT(20 20)", srid=4326))
+        loc1 = Location(name='Test Location 1',
+                        point=geofunc.ST_GeomFromText("POINT(10.1 10.1)", srid=4326))
+        loc2 = Location(name='Test Location 2',
+                        point=geofunc.ST_GeomFromText("POINT(20 20)", srid=4326))
         session.add(loc1)
         session.add(loc2)
 
