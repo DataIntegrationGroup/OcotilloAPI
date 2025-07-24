@@ -58,7 +58,7 @@ def populate():
 
 
 def test_get_geojson():
-    response = client.get("/geospatial/feature-collection")
+    response = client.get("/geospatial", params={"format": "geojson"})
     assert response.status_code == 200
     data = response.json()
     assert "type" in data
@@ -68,7 +68,7 @@ def test_get_geojson():
 
 
 def test_get_shapefile():
-    response = client.get("/geospatial/shapefile")
+    response = client.get("/geospatial", params={"format": "shapefile"})
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/zip"
     assert "Content-Disposition" in response.headers
