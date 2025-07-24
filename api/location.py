@@ -50,6 +50,7 @@ def create_location(
     """
     return adder(session, Location, location_data)
 
+
 @router.patch(
     "/{location_id}",
     summary="Update a location",
@@ -63,6 +64,7 @@ def update_location(
     Update a sample location in the database.
     """
     return model_patcher(session, Location, location_id, location_data)
+
 
 # @router.get("/shapefile", summary="Get location as shapefile")
 # async def get_location_shapefile(

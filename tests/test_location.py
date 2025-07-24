@@ -43,6 +43,7 @@ def test_add_location():
     data = response.json()
     assert "id" in data
 
+
 def test_update_location():
     response = client.patch(
         "/location/1",
