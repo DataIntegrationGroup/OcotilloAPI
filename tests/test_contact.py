@@ -20,8 +20,7 @@ from tests import client
 @pytest.fixture(scope="function")
 def thing():
     with session_ctx() as session:
-        thing = Thing(name="Test Thing",
-                      thing_type="water well")
+        thing = Thing(name="Test Thing", thing_type="water well")
         session.add(thing)
         session.commit()
         yield

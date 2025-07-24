@@ -33,6 +33,7 @@ class CreateThingIdLink(BaseModel):
     alternate_id: str
     alternate_organization: str
 
+
 class CreateThing(BaseModel):
     """
     Schema for creating a thing.
@@ -43,11 +44,11 @@ class CreateThing(BaseModel):
     group: str | None = None  # Optional group ID for the thing
     thing_type: str
 
+
 class CreateWell(CreateThing):
     """
     Schema for creating a well.
     """
-
 
     # api_id: str | None = None
     # ose_pod_id: str | None = None
@@ -55,7 +56,6 @@ class CreateWell(CreateThing):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
-
 
 
 class CreateWellScreen(BaseModel):
@@ -95,6 +95,7 @@ class CreateSpring(CreateThing):
     """
     Schema for creating a spring.
     """
+
     pass
 
 

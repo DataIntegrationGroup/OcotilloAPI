@@ -45,7 +45,4 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
         }
 
 
-
-
-
 # ============= EOF =============================================

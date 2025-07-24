@@ -59,7 +59,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     )
     locations = association_proxy("location_associations", "location")
 
-
     # Well fields
     well_depth = Column(
         Float,
@@ -80,12 +79,12 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
 
     # Spring fields
 
-
-
     search_vector = Column(
-        TSVectorType("name", "well_construction_notes",
-                     "well_type", "well_casing_description")
+        TSVectorType(
+            "name", "well_construction_notes", "well_type", "well_casing_description"
+        )
     )
+
 
 class ThingIdLink(Base, AutoBaseMixin):
     """

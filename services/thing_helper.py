@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db import LocationThingAssociation, Thing,  Base
+from db import LocationThingAssociation, Thing, Base
 from db.group import Group, GroupThingAssociation
 from services.query_helper import make_query, order_sort_filter
 
@@ -33,7 +33,7 @@ def get_db_things(filter_, order, query, session, sort, thing_type: str):
     return paginate(query=sql, conn=session)
 
 
-def add_thing(session: Session, data: BaseModel | dict, thing_type: str=None) -> Base:
+def add_thing(session: Session, data: BaseModel | dict, thing_type: str = None) -> Base:
 
     if isinstance(data, BaseModel):
         data = data.model_dump()

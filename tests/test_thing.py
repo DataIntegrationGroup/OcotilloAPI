@@ -201,7 +201,6 @@ def test_item_get_well_filter_nonexistent():
     assert len(data["items"]) == 0
 
 
-
 # @pytest.mark.skip
 def test_item_get_well_screens():
     response = client.get("/thing/well-screen/1")

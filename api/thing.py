@@ -164,16 +164,18 @@ async def get_wells(
     # result = session.execute(sql)
     # return result.scalars().all()
 
+
 @router.get("/spring", summary="Get all springs")
-async def get_springs(session: session_dependency,
-                      sort: str = None,
-                      order: str = None,
-                      filter_: Annotated[str, Field(alias="filter")] = None) -> CustomPage[SpringResponse]:
+async def get_springs(
+    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
+) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
     return get_db_things(filter_, order, None, session, sort, "spring")
-
 
 
 @router.get(
@@ -254,7 +256,7 @@ def create_wellscreen(
 @router.patch("/{thing_id}", summary="Update thing")
 def update_thing(
     thing_id: int,
-    thing_data: UpdateWell|UpdateThing,
+    thing_data: UpdateWell | UpdateThing,
     session: Session = Depends(get_db_session),
 ) -> ThingResponse:
     """
