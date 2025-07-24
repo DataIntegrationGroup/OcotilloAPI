@@ -45,7 +45,10 @@ async def get_feature_collection(
     def make_feature_dict(thing, geometry, *other):
         return {
             "type": "Feature",
-            "properties": {"id": thing.id, "name": thing.name, "group": group},
+            "properties": {"id": thing.id,
+                           "thing_type": thing.thing_type,
+                           "name": thing.name,
+                           "group": group},
             "geometry": json.loads(geometry),
         }
 

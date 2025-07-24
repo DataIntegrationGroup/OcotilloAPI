@@ -51,6 +51,8 @@ def get_thing_features(
         .join(Location, LocationThingAssociation.location_id == Location.id)
     )
 
+    if thing_type:
+        sql = sql.where(Thing.thing_type == thing_type)
     # if thing_type == "well":
     #     sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
     # elif thing_type == "spring":
