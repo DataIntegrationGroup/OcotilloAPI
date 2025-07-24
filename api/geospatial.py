@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import json
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Query
 from starlette.responses import FileResponse
@@ -29,9 +29,7 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 @router.get("/feature-collection")
 async def get_feature_collection(
     session: session_dependency,
-    thing_type: Annotated[
-        str, Query(title="thing type", description="thing type", alias="type")
-    ] = None,
+    thing_type: List[str] | None = None,
     group: Annotated[
         str | int, Query(title="group", description="group", alias="group")
     ] = None,

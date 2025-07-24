@@ -31,13 +31,13 @@ from sqlalchemy import Select, select
 
 
 def get_thing_features(
-    session, thing_type: str | None, group: str | int | None
+    session, thing_type: list| str | None, group: str | int | None
 ) -> list:
-    sql = (
-        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
-        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
-        .join(Location, LocationThingAssociation.location_id == Location.id)
-    )
+    # sql = (
+    #     select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
+    #     .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+    #     .join(Location, LocationThingAssociation.location_id == Location.id)
+    # )
 
     # selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
     # if thing_type == "well":
@@ -52,11 +52,14 @@ def get_thing_features(
     )
 
     if thing_type:
-        sql = sql.where(Thing.thing_type == thing_type)
-    # if thing_type == "well":
-    #     sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
-    # elif thing_type == "spring":
-    #     sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
+        if isinstance(thing_type, str):
+            thing_type = thing_type.lower()
+            sql = sql.where(Thing.thing_type == thing_type)
+        elif isinstance(thing_type, list):
+            thing_type = [t.lower() for t in thing_type]
+            sql = sql.where(Thing.thing_type.in_(thing_type))
+        else:
+            raise ValueError("thing_type must be a string or a list of strings")
 
     if group:
         sql = sql.join(GroupThingAssociation).join(Group)

@@ -23,12 +23,19 @@ from db.group import Group, GroupThingAssociation
 from services.query_helper import make_query, order_sort_filter
 
 
-def get_db_things(filter_, order, query, session, sort, thing_type: str):
+def get_db_things(filter_, order, query, session, sort, thing_type: str | list[str] = None):
     if query:
         sql = select(Thing).where(make_query(Thing, query))
     else:
         sql = select(Thing)
-    sql = sql.where(Thing.thing_type == thing_type)
+
+    if isinstance(thing_type, str):
+        thing_type = thing_type.lower()
+        thing_type = [thing_type]
+    elif isinstance(thing_type, list):
+        thing_type = [t.lower() for t in thing_type]
+
+    sql = sql.where(Thing.thing_type.in_(thing_type)) if thing_type else sql
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
     return paginate(query=sql, conn=session)
 

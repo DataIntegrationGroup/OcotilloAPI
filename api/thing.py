@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Annotated
+from typing import Annotated, List
 
 from pydantic import Field
 from shapely import wkb
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from shapely.geometry import mapping
 from sqlalchemy import select
@@ -74,8 +74,12 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 def get_things(
     session: session_dependency,
     thing_id: int = None,
-    thing_type: str = None,
+    thing_type: List[str]|str = Query(default=[]),
     query: str = None,
+        sort: str = None,
+        order: str = None,
+        filter_: Annotated[str, Field(alias="filter")] = None,
+
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
@@ -114,29 +118,39 @@ def get_things(
     #     # return paginate(query=sql, conn=session)
     #     return session.scalars(sql).all()
 
-    sql = None
+    # sql = None
     if thing_id:
         sql = select(Thing).where(Thing.id == thing_id)
-    elif thing_type:
-        sql = select(Thing).where(Thing.thing_type == thing_type)
-
-    if query:
-        if sql is None:
-            sql = select(Thing)
-        sql = sql.where(make_query(Thing, query))
-
-    if sql is not None:
         return paginate(query=sql, conn=session)
-    else:
-        return paginated_all_getter(session, Thing)
+    # elif thing_type:
+    #     sql = select(Thing)
+    #     if isinstance(thing_type, str):
+    #         thing_type = thing_type.lower()
+    #         sql = sql.where(Thing.thing_type == thing_type)
+    #     elif isinstance(thing_type, list):
+    #         thing_type = [t.lower() for t in thing_type]
+    #         sql = sql.where(Thing.thing_type.in_(thing_type))
+    #     else:
+    #         raise ValueError("thing_type must be a string or a list of strings")
+    #
+    # if query:
+    #     if sql is None:
+    #         sql = select(Thing)
+    #     sql = sql.where(make_query(Thing, query))
+    # print(f"SQL Query: {sql}")
+    # if sql is not None:
+    #     return paginate(query=sql, conn=session)
+    # else:
+    #     return paginated_all_getter(session, Thing)
+    return get_db_things(filter_, order, query, session, sort, thing_type)
 
 
-@router.get("", summary="Get thing by ID")
-async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
-    """
-    Retrieve a thing by ID from the database.
-    """
-    return simple_get_by_id(session, Thing, thing_id)
+# @router.get("", summary="Get thing by ID")
+# async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
+#     """
+#     Retrieve a thing by ID from the database.
+#     """
+#     return simple_get_by_id(session, Thing, thing_id)
 
 
 @router.get("/well", summary="Get all wells")
@@ -147,6 +161,7 @@ async def get_wells(
     sort: str = None,
     order: str = None,
     filter_: Annotated[str, Field(alias="filter")] = None,
+    thing_type: List[str] | str = Query(default="water well"),
     query: str = None,
 ) -> CustomPage[WellResponse]:
     """
@@ -157,7 +172,7 @@ async def get_wells(
     #     sql = select(WellThing).where(WellThing.api_id == api_id)
     # elif ose_pod_id:
     #     sql = select(WellThing).where(WellThing.ose_pod_id == ose_pod_id)
-    return get_db_things(filter_, order, query, session, sort, "well")
+    return get_db_things(filter_, order, query, session, sort, thing_type)
     # If no parameters, return all wells
     # return simple_all_getter(session, Well)
 
@@ -171,11 +186,13 @@ async def get_springs(
     sort: str = None,
     order: str = None,
     filter_: Annotated[str, Field(alias="filter")] = None,
+        thing_type: List[str] | str = Query(default="water well"),
+
 ) -> CustomPage[SpringResponse]:
     """
     Retrieve all springs from the database.
     """
-    return get_db_things(filter_, order, None, session, sort, "spring")
+    return get_db_things(filter_, order, None, session, sort, thing_type)
 
 
 @router.get(

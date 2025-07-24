@@ -108,7 +108,6 @@ class ThingResponse(ORMBaseModel):
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
 
-
 class WellResponse(ORMBaseModel):
     """
     Response schema for well details.
@@ -117,6 +116,7 @@ class WellResponse(ORMBaseModel):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
+    thing_type: str
 
     well_type: str | None = None
     well_depth: float | None = None  # in feet
@@ -149,7 +149,7 @@ class SpringResponse(ORMBaseModel):
     """
 
     id: int
-    description: str | None = None
+    thing_type: str
 
 
 class GroupResponse(ORMBaseModel):
