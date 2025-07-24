@@ -15,8 +15,11 @@
 # ===============================================================================
 
 # import all models from db package so that Alembic can discover them
-from db.asset import *
+
 from db.base import *
+from db.base import Base
+
+from db.asset import *
 from db.collabnet import *
 from db.contact import *
 from db.geochronology import *
@@ -37,7 +40,6 @@ from db.series.geothermal import *
 from db.series.groundwaterlevel import *
 from db.series.series import *
 from db.thing import *
-from db.base import Base
 
 from sqlalchemy import (
     func,
