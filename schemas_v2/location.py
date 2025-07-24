@@ -26,6 +26,7 @@ class CreateLocation(BaseModel):
     """
     Schema for creating a sample location.
     """
+
     name: str | None = None
     notes: str | None = None
     point: str  # point is required and should be in WKT format
