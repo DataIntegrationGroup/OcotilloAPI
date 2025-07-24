@@ -1,8 +1,8 @@
-"""Initial migration
+"""initial migration
 
-Revision ID: 5901f059248a
-Revises:
-Create Date: 2025-07-22 11:32:48.826352
+Revision ID: 42f7242f188d
+Revises: 
+Create Date: 2025-07-24 15:12:10.195332
 
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy_utils
 
 
 # revision identifiers, used by Alembic.
-revision: str = "5901f059248a"
+revision: str = "42f7242f188d"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -48,6 +48,19 @@ def upgrade() -> None:
         ["search_vector"],
         unique=False,
         postgresql_using="gin",
+    )
+    op.create_table(
+        "group",
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.String(length=255), nullable=True),
+        sa.Column("parent_group_id", sa.Integer(), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+        ),
+        sa.ForeignKeyConstraint(["parent_group_id"], ["group.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
     )
     op.create_table(
         "lexicon_category",
@@ -225,7 +238,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.execute("DROP INDEX IF EXISTS idx_location_point;")
     op.create_index(
         "idx_location_point",
         "location",
@@ -268,6 +280,21 @@ def upgrade() -> None:
     op.create_table(
         "thing",
         sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("description", sa.String(length=500), nullable=True),
+        sa.Column("thing_type", sa.String(length=100), nullable=True),
+        sa.Column("spring_type", sa.String(length=100), nullable=True),
+        sa.Column("well_depth", sa.Float(), nullable=True),
+        sa.Column("hole_depth", sa.Float(), nullable=True),
+        sa.Column("well_type", sa.String(length=100), nullable=True),
+        sa.Column("well_casing_diameter", sa.Float(), nullable=True),
+        sa.Column("well_casing_depth", sa.Float(), nullable=True),
+        sa.Column("well_casing_description", sa.String(length=50), nullable=True),
+        sa.Column("well_construction_notes", sa.String(length=250), nullable=True),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=True,
+        ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
@@ -277,7 +304,26 @@ def upgrade() -> None:
             ["release_status"],
             ["lexicon_term.term"],
         ),
+        sa.ForeignKeyConstraint(
+            ["spring_type"],
+            ["lexicon_term.term"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["thing_type"],
+            ["lexicon_term.term"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["well_type"],
+            ["lexicon_term.term"],
+        ),
         sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_thing_search_vector",
+        "thing",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
     )
     op.create_table(
         "address",
@@ -287,8 +333,13 @@ def upgrade() -> None:
         sa.Column("city", sa.String(length=100), nullable=False),
         sa.Column("state", sa.String(length=50), nullable=False),
         sa.Column("postal_code", sa.String(length=20), nullable=False),
-        sa.Column("country", sa.String(length=100), nullable=True),
-        sa.Column("address_type", sa.String(length=100), nullable=True),
+        sa.Column("country", sa.String(length=100), nullable=False),
+        sa.Column("address_type", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=True,
+        ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
@@ -298,7 +349,18 @@ def upgrade() -> None:
             ["lexicon_term.term"],
         ),
         sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["country"],
+            ["lexicon_term.term"],
+        ),
         sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_address_search_vector",
+        "address",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
     )
     op.create_table(
         "asset_thing_association",
@@ -313,10 +375,21 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "collaborative_network_well",
+        sa.Column("actively_monitored", sa.Boolean(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "email",
         sa.Column("contact_id", sa.Integer(), nullable=False),
         sa.Column("email", sa.String(length=100), nullable=False),
-        sa.Column("email_type", sa.String(length=100), nullable=True),
+        sa.Column("email_type", sa.String(length=100), nullable=False),
         sa.Column(
             "search_vector",
             sqlalchemy_utils.types.ts_vector.TSVectorType(),
@@ -341,6 +414,18 @@ def upgrade() -> None:
         postgresql_using="gin",
     )
     op.create_table(
+        "group_thing_association",
+        sa.Column("group_id", sa.Integer(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+        ),
+        sa.ForeignKeyConstraint(["group_id"], ["group.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "location_thing_association",
         sa.Column("location_id", sa.Integer(), nullable=False),
         sa.Column("thing_id", sa.Integer(), nullable=False),
@@ -363,7 +448,7 @@ def upgrade() -> None:
         "phone",
         sa.Column("contact_id", sa.Integer(), nullable=False),
         sa.Column("phone_number", sa.String(length=20), nullable=False),
-        sa.Column("phone_type", sa.String(length=100), nullable=True),
+        sa.Column("phone_type", sa.String(length=100), nullable=False),
         sa.Column(
             "search_vector",
             sqlalchemy_utils.types.ts_vector.TSVectorType(),
@@ -442,18 +527,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
-        "spring_thing",
-        sa.Column("description", sa.String(length=255), nullable=True),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
-        ),
-        sa.Column("thing_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("thing_id"),
-    )
-    op.create_table(
         "thing_contact_association",
         sa.Column("thing_id", sa.Integer(), nullable=False),
         sa.Column("contact_id", sa.Integer(), nullable=False),
@@ -493,36 +566,20 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
-        "well_thing",
-        sa.Column("well_depth", sa.Float(), nullable=True),
-        sa.Column("hole_depth", sa.Float(), nullable=True),
-        sa.Column("well_type", sa.String(length=100), nullable=True),
-        sa.Column("casing_diameter", sa.Float(), nullable=True),
-        sa.Column("casing_depth", sa.Float(), nullable=True),
-        sa.Column("casing_description", sa.String(length=50), nullable=True),
-        sa.Column("construction_notes", sa.String(length=250), nullable=True),
+        "well_screen",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("screen_depth_top", sa.Float(), nullable=False),
+        sa.Column("screen_depth_bottom", sa.Float(), nullable=False),
+        sa.Column("screen_type", sa.String(length=100), nullable=True),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
         ),
-        sa.Column("thing_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
-            ["well_type"],
+            ["screen_type"],
             ["lexicon_term.term"],
         ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("thing_id"),
-    )
-    op.create_table(
-        "collaborative_network_well",
-        sa.Column("actively_monitored", sa.Boolean(), nullable=False),
-        sa.Column("well_id", sa.Integer(), nullable=False),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
-        ),
-        sa.ForeignKeyConstraint(["well_id"], ["well_thing.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -558,48 +615,34 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("series_id"),
     )
-    op.create_table(
-        "well_screen",
-        sa.Column("well_id", sa.Integer(), nullable=False),
-        sa.Column("screen_depth_top", sa.Float(), nullable=False),
-        sa.Column("screen_depth_bottom", sa.Float(), nullable=False),
-        sa.Column("screen_type", sa.String(length=100), nullable=True),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
-        ),
-        sa.ForeignKeyConstraint(
-            ["screen_type"],
-            ["lexicon_term.term"],
-        ),
-        sa.ForeignKeyConstraint(["well_id"], ["well_thing.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_table("well_screen")
     op.drop_table("groundwater_level_series")
     op.drop_table("geothermal_series")
     op.drop_table("geochemical_series")
-    op.drop_table("collaborative_network_well")
-    op.drop_table("well_thing")
+    op.drop_table("well_screen")
     op.drop_table("thing_id_link")
     op.drop_table("thing_contact_association")
-    op.drop_table("spring_thing")
     op.drop_table("series")
     op.drop_table("pub_author_publication_association")
     op.drop_table("pub_author_contact_association")
     op.drop_index("ix_phone_search_vector", table_name="phone", postgresql_using="gin")
     op.drop_table("phone")
     op.drop_table("location_thing_association")
+    op.drop_table("group_thing_association")
     op.drop_index("ix_email_search_vector", table_name="email", postgresql_using="gin")
     op.drop_table("email")
+    op.drop_table("collaborative_network_well")
     op.drop_table("asset_thing_association")
+    op.drop_index(
+        "ix_address_search_vector", table_name="address", postgresql_using="gin"
+    )
     op.drop_table("address")
+    op.drop_index("ix_thing_search_vector", table_name="thing", postgresql_using="gin")
     op.drop_table("thing")
     op.drop_index(
         "ix_publication_search_vector", table_name="publication", postgresql_using="gin"
@@ -623,6 +666,7 @@ def downgrade() -> None:
     op.drop_table("pub_author")
     op.drop_table("lexicon_term")
     op.drop_table("lexicon_category")
+    op.drop_table("group")
     op.drop_index("ix_asset_search_vector", table_name="asset", postgresql_using="gin")
     op.drop_table("asset")
     # ### end Alembic commands ###
