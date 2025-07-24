@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from alembic.config import Config
+from alembic import command
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import configure_mappers
@@ -24,8 +26,19 @@ from db.engine import session_ctx
 
 configure_mappers()
 
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
+
+def run_alembic_upgrade():
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+
+
+def run_alembic_downgrade():
+    alembic_cfg = Config("alembic.ini")
+    command.downgrade(alembic_cfg, "base")
+
+
+run_alembic_downgrade()
+run_alembic_upgrade()
 
 # init_hypertables()
 init_lexicon()

@@ -16,6 +16,7 @@
 
 # import all models from db package so that Alembic can discover them
 from db.asset import *
+from db.base import *
 from db.collabnet import *
 from db.contact import *
 from db.geochronology import *
@@ -23,11 +24,18 @@ from db.geothermal import *
 from db.group import *
 from db.lexicon import *
 from db.location import *
-from db.observation import *
+from db.observation.geochemical import *
+from db.observation.geothermal import *
+from db.observation.groundwaterlevel import *
+from db.observation.observation import *
 from db.publication import *
 from db.sample import *
-from db.sensor import *
-from db.series import *
+from db.sensor.groundwaterlevel import *
+from db.sensor.sensor import *
+from db.series.geochemical import *
+from db.series.geothermal import *
+from db.series.groundwaterlevel import *
+from db.series.series import *
 from db.thing import *
 from db.base import Base
 
