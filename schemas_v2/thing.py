@@ -60,11 +60,6 @@ class CreateThing(CreateWell):
     """
 
 
-
-
-
-
-
 class CreateWellScreen(BaseModel):
     """
     Schema for creating a well screen.

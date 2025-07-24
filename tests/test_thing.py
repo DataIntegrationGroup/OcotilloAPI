@@ -73,7 +73,7 @@ def test_add_well():
     data = response.json()
     assert "id" in data
     assert data["name"] == "Test Well"
-    assert data['well_type'] == "Monitoring"
+    assert data["well_type"] == "Monitoring"
 
     response = client.post(
         "/thing",
