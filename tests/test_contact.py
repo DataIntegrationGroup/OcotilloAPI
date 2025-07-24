@@ -4,7 +4,7 @@
 import pytest
 
 from db import Thing
-from db.engine import get_db_session
+from db.engine import get_db_session, session_ctx
 
 # Base.metadata.drop_all(engine)
 # Base.metadata.create_all(engine)
@@ -19,13 +19,14 @@ from tests import client
 
 @pytest.fixture(scope="function")
 def thing():
-    session = next(get_db_session())
-    thing = Thing(name="Test Thing")
-    session.add(thing)
-    session.commit()
-    yield
+    with session_ctx() as session:
+        thing = Thing(name="Test Thing",
+                      thing_type="water well")
+        session.add(thing)
+        session.commit()
+        yield
 
-    session.close()
+        session.close()
 
 
 def test_add_contact(thing):

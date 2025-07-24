@@ -53,10 +53,10 @@ def test_query_regex_nested_between():
 
 
 def test_query_regex_like():
-    text = "construction_notes like '%test%'"
+    text = "well_construction_notes like '%test%'"
     match = QUERY_REGEX.match(text)
     assert match is not None
-    assert match.group("field") == "construction_notes"
+    assert match.group("field") == "well_construction_notes"
     assert match.group("value") == "'%test%'"
     assert match.group("operator") == "like"
 

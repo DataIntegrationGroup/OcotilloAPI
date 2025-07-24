@@ -39,6 +39,7 @@ def thing():
     with session_ctx() as session:
         thing = Thing()
         thing.name = "Test Thing"
+        thing.thing_type = "water well"
         session.add(thing)
         session.commit()
         yield thing

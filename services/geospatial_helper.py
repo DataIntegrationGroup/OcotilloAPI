@@ -21,7 +21,7 @@ from geoalchemy2 import functions as geofunc
 from shapely.io import from_geojson
 
 import constants
-from db import Thing, WellThing, SpringThing
+from db.thing import Thing
 from db.group import GroupThingAssociation, Group
 from db.location import Location, LocationThingAssociation
 from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
@@ -39,22 +39,22 @@ def get_thing_features(
         .join(Location, LocationThingAssociation.location_id == Location.id)
     )
 
-    selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
-    if thing_type == "well":
-        selection_args.append(WellThing)
-    elif thing_type == "spring":
-        selection_args.append(SpringThing)
+    # selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
+    # if thing_type == "well":
+    #     selection_args.append(WellThing)
+    # elif thing_type == "spring":
+    #     selection_args.append(SpringThing)
 
     sql = (
-        select(*selection_args)
+        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
         .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
         .join(Location, LocationThingAssociation.location_id == Location.id)
     )
 
-    if thing_type == "well":
-        sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
-    elif thing_type == "spring":
-        sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
+    # if thing_type == "well":
+    #     sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
+    # elif thing_type == "spring":
+    #     sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
 
     if group:
         sql = sql.join(GroupThingAssociation).join(Group)

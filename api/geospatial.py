@@ -16,15 +16,10 @@
 import json
 from typing import Annotated
 
-import pytest
 from fastapi import APIRouter, Query
-from sqlalchemy import select
-from geoalchemy2 import functions as geofunc
 from starlette.responses import FileResponse
 
 from core.dependencies import session_dependency
-from db import Thing, Location, LocationThingAssociation, WellThing
-from db.engine import session_ctx
 from schemas_v2.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 
