@@ -15,7 +15,7 @@
 # ===============================================================================
 import pytest
 
-from db import Thing, Location, LocationThingAssociation, WellThing
+from db import Thing, Location, LocationThingAssociation
 from db.engine import session_ctx
 from tests import client
 from geoalchemy2 import functions as geofunc
@@ -34,8 +34,8 @@ from geoalchemy2 import functions as geofunc
 def populate():
     with session_ctx() as session:
         # Create some sample data
-        thing1 = Thing(name="Thing 1")
-        thing2 = Thing(name="Thing 2")
+        thing1 = Thing(name="Thing 1", thing_type="water well")
+        thing2 = Thing(name="Thing 2", thing_type="water well")
         session.add(thing1)
         session.add(thing2)
 
@@ -45,14 +45,9 @@ def populate():
         loc2 = Location(point=geofunc.ST_GeomFromText("POINT(20 20)", srid=4326))
         session.add(loc1)
         session.add(loc2)
-        session.commit()
 
-        session.add(LocationThingAssociation(location_id=loc1.id, thing_id=thing1.id))
-        session.add(LocationThingAssociation(location_id=loc2.id, thing_id=thing2.id))
-        well1 = WellThing(thing_id=thing1.id)
-        well2 = WellThing(thing_id=thing2.id)
-        session.add(well1)
-        session.add(well2)
+        session.add(LocationThingAssociation(location=loc1, thing=thing1))
+        session.add(LocationThingAssociation(location=loc2, thing=thing2))
         session.commit()
 
 

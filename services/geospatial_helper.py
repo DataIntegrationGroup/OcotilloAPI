@@ -21,7 +21,7 @@ from geoalchemy2 import functions as geofunc
 from shapely.io import from_geojson
 
 import constants
-from db import Thing, WellThing, SpringThing
+from db.thing import Thing
 from db.group import GroupThingAssociation, Group
 from db.location import Location, LocationThingAssociation
 from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
@@ -31,30 +31,35 @@ from sqlalchemy import Select, select
 
 
 def get_thing_features(
-    session, thing_type: str | None, group: str | int | None
+    session, thing_type: list | str | None, group: str | int | None
 ) -> list:
+    # sql = (
+    #     select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
+    #     .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+    #     .join(Location, LocationThingAssociation.location_id == Location.id)
+    # )
+
+    # selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
+    # if thing_type == "well":
+    #     selection_args.append(WellThing)
+    # elif thing_type == "spring":
+    #     selection_args.append(SpringThing)
+
     sql = (
         select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
         .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
         .join(Location, LocationThingAssociation.location_id == Location.id)
     )
 
-    selection_args = [Thing, ST_AsGeoJSON(Location.point).label("geojson")]
-    if thing_type == "well":
-        selection_args.append(WellThing)
-    elif thing_type == "spring":
-        selection_args.append(SpringThing)
-
-    sql = (
-        select(*selection_args)
-        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
-        .join(Location, LocationThingAssociation.location_id == Location.id)
-    )
-
-    if thing_type == "well":
-        sql = sql.join(WellThing, Thing.id == WellThing.thing_id)
-    elif thing_type == "spring":
-        sql = sql.join(SpringThing, Thing.id == SpringThing.thing_id)
+    if thing_type:
+        if isinstance(thing_type, str):
+            thing_type = thing_type.lower()
+            sql = sql.where(Thing.thing_type == thing_type)
+        elif isinstance(thing_type, list):
+            thing_type = [t.lower() for t in thing_type]
+            sql = sql.where(Thing.thing_type.in_(thing_type))
+        else:
+            raise ValueError("thing_type must be a string or a list of strings")
 
     if group:
         sql = sql.join(GroupThingAssociation).join(Group)

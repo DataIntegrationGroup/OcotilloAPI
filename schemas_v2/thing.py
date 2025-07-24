@@ -34,21 +34,28 @@ class CreateThingIdLink(BaseModel):
     alternate_organization: str
 
 
-class CreateWell(BaseModel):
+class CreateThing(BaseModel):
+    """
+    Schema for creating a thing.
+    """
+
+    location_id: int | None = None  # Optional location ID for the thing
+    name: str  # Name of the thing
+    group: str | None = None  # Optional group ID for the thing
+    thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
+
+
+class CreateWell(CreateThing):
     """
     Schema for creating a well.
     """
 
-    location_id: int
-    name: str
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
-    construction_notes: str | None = None
-
-    group: str | None = None  # Optional group for the well
+    well_construction_notes: str | None = None
 
 
 class CreateWellScreen(BaseModel):
@@ -56,7 +63,7 @@ class CreateWellScreen(BaseModel):
     Schema for creating a well screen.
     """
 
-    well_id: int
+    thing_id: int
     screen_depth_bottom: float
     screen_depth_top: float
     screen_type: str | None = None
@@ -84,21 +91,22 @@ class CreateWellScreen(BaseModel):
         return self
 
 
-class CreateSpring(BaseModel):
+class CreateSpring(CreateThing):
     """
     Schema for creating a spring.
     """
 
-    location_id: int
-    name: str
+    spring_type: str | None = None
 
 
 # ------ RESPONSE ----------
-class ThingResponse(ORMBaseModel):
+class BaseThingResponse(ORMBaseModel):
     name: str
+    thing_type: str
+    id: int
 
 
-class WellResponse(ORMBaseModel):
+class WellResponse(BaseThingResponse):
     """
     Response schema for well details.
     """
@@ -106,12 +114,24 @@ class WellResponse(ORMBaseModel):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
-    thing: ThingResponse
-    well_type: str | None = None
+
+    well_type: str | None = None  # e.g., "Production", "Observation", etc.
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
-    construction_notes: str | None = None
+    well_construction_notes: str | None = None
     # Additional fields can be added as needed
+
+
+class SpringResponse(BaseThingResponse):
+    """
+    Response schema for spring details.
+    """
+
+    spring_type: str | None = None  # e.g., "Natural", "Artifical", etc.
+
+
+class ThingResponse(WellResponse, SpringResponse):
+    pass
 
 
 class LocationWellResponse(LocationResponse):
@@ -127,18 +147,9 @@ class WellScreenResponse(ORMBaseModel):
     Response schema for well screen details.
     """
 
-    well_id: int
+    thing_id: int
     screen_depth_bottom: float
     screen_depth_top: float
-
-
-class SpringResponse(ORMBaseModel):
-    """
-    Response schema for spring details.
-    """
-
-    id: int
-    description: str | None = None
 
 
 class GroupResponse(ORMBaseModel):
@@ -201,7 +212,7 @@ class UpdateWell(BaseModel):
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
-    construction_notes: str | None = None
+    well_construction_notes: str | None = None
 
     # group: str | None = None  # Optional group for the well
 

@@ -22,9 +22,9 @@ from db.engine import get_db_session, session_ctx
 
 # from db import get_db_session, database_sessionmaker
 # from db.base import Location
-from db.thing.well import WellThing
-from db.collabnet import CollaborativeNetworkWell
-from services.thing_helper import add_well
+# from db.thing.well import WellThing
+# from db.collabnet import CollaborativeNetworkWell
+from services.thing_helper import add_thing
 from tests import client
 
 
@@ -35,12 +35,13 @@ def well():
         session.add(loc)
         session.commit()
 
-        wt = add_well(
+        wt = add_thing(
             session,
             {
                 "location_id": 1,
                 "name": "Collabnet Test Well",
             },
+            "well",
         )
 
         yield wt

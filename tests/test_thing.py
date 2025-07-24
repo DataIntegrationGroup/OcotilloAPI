@@ -57,15 +57,16 @@ def test_add_well():
     # assert response.status_code == 200
 
     response = client.post(
-        "/thing/well",
+        "/thing",
         json={
+            "thing_type": "water well",
             "location_id": 1,
             "name": "Test Well",
             "api_id": "1001-0001",
             "ose_pod_id": "RA-0001",
             "well_type": "Monitoring",
             "well_depth": 100.0,
-            "construction_notes": "this is a test of notes",
+            "well_construction_notes": "this is a test of notes",
         },
     )
     assert response.status_code == 201
@@ -73,8 +74,9 @@ def test_add_well():
     assert "id" in data
 
     response = client.post(
-        "/thing/well",
+        "/thing",
         json={
+            "thing_type": "water well",
             "location_id": 2,
             "name": "Test Well 2",
             "api_id": "1001-0002",
@@ -91,10 +93,11 @@ def test_add_well():
 
 def test_add_spring():
     response = client.post(
-        "/thing/spring",
+        "/thing",
         json={
             "location_id": 1,
             "name": "Test Spring",
+            "thing_type": "spring",
         },
     )
     assert response.status_code == 201
@@ -109,9 +112,9 @@ def test_add_well_screen():
     # )
     # assert response.status_code == 200
     response = client.post(
-        "/thing/well/screen",
+        "/thing/well-screen",
         json={
-            "well_id": 1,
+            "thing_id": 1,
             "screen_depth_top": 10.0,
             "screen_depth_bottom": 20.0,
             "screen_type": "PVC",
@@ -121,7 +124,7 @@ def test_add_well_screen():
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
-    assert data["well_id"] == 1
+    assert data["thing_id"] == 1
 
 
 def test_add_thing_link():
@@ -154,33 +157,32 @@ def test_get_thing_by_id():
 
 
 def test_get_wells():
-    response = client.get("/thing/well")
-    print(response.json())
+    response = client.get("/thing?thing_type=water well")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
 
 def test_get_springs():
-    response = client.get("/thing/spring")
+    response = client.get("/thing?thing_type=spring")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
 
-def test_get_well_by_id():
-    response = client.get("/thing/well/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
+# def test_get_well_by_id():
+#     response = client.get("/thing/well/1")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
 
 
 def test_get_well_screens():
-    response = client.get("/thing/well/screen")
+    response = client.get("/thing/well-screen")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
 
 def test_item_get_well_filter():
-    response = client.get("/thing/well", params={"query": "well_type eq 'Monitoring'"})
+    response = client.get("/thing", params={"query": "well_type eq 'Monitoring'"})
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
@@ -192,36 +194,20 @@ def test_item_get_well_filter():
 # @pytest.mark.skip
 def test_item_get_well_filter_nonexistent():
     # response = client.get("/thing/well", params={"well_type": "9999-9999"})
-    response = client.get("/thing/well", params={"query": "well_type eq 'foo'"})
+    response = client.get("/thing", params={"query": "well_type eq 'foo'"})
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
     assert len(data["items"]) == 0
 
 
-def test_item_get_wells():
-    response = client.get("/thing/well/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    # assert data["location_id"] == 1
-
-
-def test_item_get_spring():
-    response = client.get("/thing/spring/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    # assert data["location_id"] == 1
-
-
 # @pytest.mark.skip
 def test_item_get_well_screens():
-    response = client.get("/thing/well/screen/1")
+    response = client.get("/thing/well-screen/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
-    assert data["well_id"] == 1
+    assert data["thing_id"] == 1
     assert data["screen_depth_top"] == 10.0
     assert data["screen_depth_bottom"] == 20.0
 
@@ -291,9 +277,8 @@ def test_patch_thing():
 
 def test_patch_well():
     response = client.patch(
-        "/thing/well/1",
+        "/thing/1",
         json={
-            "name": "Updated Test Well",
             "well_depth": 150.0,
         },
     )
@@ -301,20 +286,6 @@ def test_patch_well():
     data = response.json()
     assert data["id"] == 1
     assert data["well_depth"] == 150.0
-
-
-def test_patch_well_by_thing_id():
-    response = client.patch(
-        "/thing/4/well",
-        json={
-            "name": "Updated Test Well by Thing ID",
-            "well_depth": 200.0,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 2
-    assert data["well_depth"] == 200.0
 
 
 def test_patch_thing_location():

@@ -14,17 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 import json
-from typing import Annotated
+from typing import Annotated, List
 
-import pytest
 from fastapi import APIRouter, Query
-from sqlalchemy import select
-from geoalchemy2 import functions as geofunc
 from starlette.responses import FileResponse
 
 from core.dependencies import session_dependency
-from db import Thing, Location, LocationThingAssociation, WellThing
-from db.engine import session_ctx
 from schemas_v2.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 
@@ -34,9 +29,7 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 @router.get("/feature-collection")
 async def get_feature_collection(
     session: session_dependency,
-    thing_type: Annotated[
-        str, Query(title="thing type", description="thing type", alias="type")
-    ] = None,
+    thing_type: List[str] | None = None,
     group: Annotated[
         str | int, Query(title="group", description="group", alias="group")
     ] = None,
@@ -50,7 +43,12 @@ async def get_feature_collection(
     def make_feature_dict(thing, geometry, *other):
         return {
             "type": "Feature",
-            "properties": {"id": thing.id, "name": thing.name, "group": group},
+            "properties": {
+                "id": thing.id,
+                "thing_type": thing.thing_type,
+                "name": thing.name,
+                "group": group,
+            },
             "geometry": json.loads(geometry),
         }
 

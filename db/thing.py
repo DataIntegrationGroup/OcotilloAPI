@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, String, Column
+from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, mapped_column, declared_attr
 from sqlalchemy_utils import TSVectorType
@@ -39,6 +39,9 @@ class ThingChildMixin:
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
     name = mapped_column(String(255), nullable=False)
+    description = mapped_column(String(500))
+    thing_type = lexicon_term(nullable=True)
+    spring_type = lexicon_term(nullable=True)
 
     asset_associations = relationship(
         "AssetThingAssociation",
@@ -48,8 +51,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     )
     assets = association_proxy("asset_associations", "asset")
 
-    search_vector = Column(TSVectorType("name"))
-
     location_associations = relationship(
         "LocationThingAssociation",
         back_populates="thing",
@@ -58,6 +59,32 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         order_by="LocationThingAssociation.effective_start.desc()",
     )
     locations = association_proxy("location_associations", "location")
+
+    # Well fields
+    well_depth = Column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+    )
+    hole_depth = Column(
+        Float, nullable=True, info={"unit": "feet below ground surface"}
+    )
+    well_type = lexicon_term()
+    # e.g., "Production", "Observation", etc.
+    #
+    well_casing_diameter = Column(Float, info={"unit": "inches"})
+    well_casing_depth = Column(Float, info={"unit": "feet below ground surface"})
+    well_casing_description = Column(String(50))
+
+    well_construction_notes = Column(String(250))
+
+    # Spring fields
+
+    search_vector = Column(
+        TSVectorType(
+            "name", "well_construction_notes", "well_type", "well_casing_description"
+        )
+    )
 
 
 class ThingIdLink(Base, AutoBaseMixin):
@@ -71,6 +98,22 @@ class ThingIdLink(Base, AutoBaseMixin):
     alternate_organization = lexicon_term(nullable=False)
 
     # thing = relationship("Thing", back_populates="links")
+
+
+class WellScreen(Base, AutoBaseMixin):
+    thing_id = Column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    screen_depth_top = Column(
+        Float, nullable=False, info={"unit": "feet below ground surface"}
+    )
+    screen_depth_bottom = Column(
+        Float, nullable=False, info={"unit": "feet below ground surface"}
+    )
+    screen_type = lexicon_term()  # e.g., "PVC", "Steel", etc.
+
+    # Define a relationship to well if needed
+    # well = relationship("Well")
 
 
 # ============= EOF =============================================

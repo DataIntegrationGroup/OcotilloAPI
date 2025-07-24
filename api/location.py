@@ -23,7 +23,8 @@ from starlette import status
 from api.pagination import CustomPage
 from constants import SRID_WGS84
 from core.dependencies import session_dependency
-from db import adder, Location, WellThing
+from db import adder
+from db.location import Location
 from db.engine import get_db_session
 from schemas_v2.location import CreateLocation, LocationResponse
 from schemas_v2.thing import LocationWellResponse
@@ -136,7 +137,7 @@ async def get_location(
         sql = make_within_wkt(sql, within)
 
     if expand == "well":
-        sql = sql.outerjoin(WellThing)
+        pass
 
     def transformer(items):
         if expand == "well":

@@ -23,9 +23,6 @@ from db import (
     Phone,
     Address,
     Thing,
-    LocationThingAssociation,
-    WellThing,
-    Location,
     Asset,
     AssetThingAssociation,
     search,
@@ -66,19 +63,21 @@ def _get_contact_results(session: Session, q: str) -> list[dict]:
 
 
 def _get_thing_results(session: Session, q: str) -> list[dict]:
-    vector = Thing.search_vector | WellThing.search_vector
-    query = search(select(WellThing).join(Thing), q, vector=vector)
+    vector = Thing.search_vector
+    query = search(select(Thing), q, vector=vector)
 
-    wells = session.scalars(query).all()
+    things = session.scalars(query).all()
     results = [
         {
-            "label": w.thing.name,
+            "label": t.name,
             "group": "Things",
             "properties": {
-                "type": w.well_type,
+                "well_type": t.well_type,
+                "thing_type": t.thing_type,
+                "id": t.id,
             },
         }
-        for w in wells
+        for t in things
     ]
 
     return results
