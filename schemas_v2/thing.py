@@ -118,16 +118,17 @@ class WellResponse(ORMBaseModel):
     well_construction_notes: str | None = None
     # Additional fields can be added as needed
 
+
 class SpringResponse(ORMBaseModel):
     """
     Response schema for spring details.
     """
+
     pass
 
 
 class ThingResponse(WellResponse, SpringResponse):
     pass
-
 
 
 class LocationWellResponse(LocationResponse):
@@ -146,9 +147,6 @@ class WellScreenResponse(ORMBaseModel):
     thing_id: int
     screen_depth_bottom: float
     screen_depth_top: float
-
-
-
 
 
 class GroupResponse(ORMBaseModel):
