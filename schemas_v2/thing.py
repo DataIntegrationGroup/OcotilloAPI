@@ -100,15 +100,6 @@ class CreateSpring(CreateThing):
 
 
 # ------ RESPONSE ----------
-class ThingResponse(ORMBaseModel):
-    name: str
-
-    well_type: str | None = None
-    well_depth: float | None = None  # in feet
-    hole_depth: float | None = None  # in feet
-    well_construction_notes: str | None = None
-
-
 class WellResponse(ORMBaseModel):
     """
     Response schema for well details.
@@ -117,13 +108,26 @@ class WellResponse(ORMBaseModel):
     # api_id: str | None = None
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
+    name: str
     thing_type: str
+    id: int
 
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
     # Additional fields can be added as needed
+
+class SpringResponse(ORMBaseModel):
+    """
+    Response schema for spring details.
+    """
+    pass
+
+
+class ThingResponse(WellResponse, SpringResponse):
+    pass
+
 
 
 class LocationWellResponse(LocationResponse):
@@ -144,13 +148,7 @@ class WellScreenResponse(ORMBaseModel):
     screen_depth_top: float
 
 
-class SpringResponse(ORMBaseModel):
-    """
-    Response schema for spring details.
-    """
 
-    id: int
-    thing_type: str
 
 
 class GroupResponse(ORMBaseModel):
