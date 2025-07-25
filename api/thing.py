@@ -13,14 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from shapely.geometry import mapping
-from typing import Annotated
+from typing import Annotated, List
 
-from fastapi import APIRouter, Depends
-from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import Field
 from shapely import wkb
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from shapely.geometry import mapping
 from sqlalchemy import select
@@ -30,16 +27,14 @@ from starlette import status
 from api.pagination import CustomPage
 from db import adder
 
-from db.thing.thing import ThingIdLink, Thing
+from db.thing import ThingIdLink, Thing, WellScreen
 from db.location import LocationThingAssociation, Location
-from db.thing.well import WellThing, WellScreen
-from db.thing.spring import SpringThing
 from core.dependencies import (
     session_dependency,
     well_user_dependency,
 )
 from db.engine import get_db_session
-from db.thing.thing import ThingIdLink
+from db.thing import ThingIdLink
 from schemas_v2.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -51,6 +46,7 @@ from schemas_v2.thing import (
     UpdateWell,
     SpringResponse,
     CreateSpring,
+    CreateThing,
 )
 from schemas_v2.location import LocationResponse, UpdateLocation
 
@@ -61,7 +57,7 @@ from services.query_helper import (
     paginated_all_getter,
     order_sort_filter,
 )
-from services.thing_helper import add_well, add_spring
+from services.thing_helper import add_thing, get_db_things
 from services.validation.well import validate_screens
 
 
@@ -78,16 +74,22 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 @router.get("")
 def get_things(
     session: session_dependency,
+    thing_id: int = None,
+    thing_type: List[str] | str = Query(default=[]),
+    query: str = None,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
 ) -> CustomPage[ThingResponse]:
-    return paginated_all_getter(session, Thing)
-
-
-@router.get("/base/{thing_id}", summary="Get thing by ID")
-async def get_thing_by_id(thing_id: int, session: session_dependency) -> ThingResponse:
     """
-    Retrieve a thing by ID from the database.
+    Retrieve all things or filter by type.
     """
-    return simple_get_by_id(session, Thing, thing_id)
+
+    if thing_id:
+        sql = select(Thing).where(Thing.id == thing_id)
+        return paginate(query=sql, conn=session)
+    else:
+        return get_db_things(filter_, order, query, session, sort, thing_type)
 
 
 @router.get("/well", summary="Get all wells")
@@ -98,6 +100,7 @@ async def get_wells(
     sort: str = None,
     order: str = None,
     filter_: Annotated[str, Field(alias="filter")] = None,
+    thing_type: List[str] | str = Query(default="water well"),
     query: str = None,
 ) -> CustomPage[WellResponse]:
     """
@@ -108,13 +111,7 @@ async def get_wells(
     #     sql = select(WellThing).where(WellThing.api_id == api_id)
     # elif ose_pod_id:
     #     sql = select(WellThing).where(WellThing.ose_pod_id == ose_pod_id)
-    if query:
-        sql = select(WellThing).where(make_query(WellThing, query))
-    else:
-        sql = select(WellThing)
-
-    sql = order_sort_filter(sql, WellThing, sort, order, filter_)
-    return paginate(query=sql, conn=session)
+    return get_db_things(filter_, order, query, session, sort, thing_type)
     # If no parameters, return all wells
     # return simple_all_getter(session, Well)
 
@@ -122,8 +119,22 @@ async def get_wells(
     # return result.scalars().all()
 
 
+@router.get("/spring", summary="Get all springs")
+async def get_springs(
+    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: Annotated[str, Field(alias="filter")] = None,
+    thing_type: List[str] | str = Query(default="water well"),
+) -> CustomPage[SpringResponse]:
+    """
+    Retrieve all springs from the database.
+    """
+    return get_db_things(filter_, order, None, session, sort, thing_type)
+
+
 @router.get(
-    "/well/screen",
+    "/well-screen",
     summary="Get well screens",
 )
 async def get_well_screens(
@@ -136,40 +147,7 @@ async def get_well_screens(
 
 
 @router.get(
-    "/spring",
-)
-async def get_springs(session: session_dependency) -> CustomPage[SpringResponse]:
-    """
-    Retrieve all springs from the database.
-    """
-    return paginated_all_getter(session, SpringThing)
-
-
-@router.get("/spring/{spring_id}", summary="Get spring by ID")
-async def get_spring_by_id(
-    spring_id: int, session: Session = Depends(get_db_session)
-) -> SpringResponse:
-    """
-    Retrieve a spring by ID from the database.
-    """
-    return simple_get_by_id(session, SpringThing, spring_id)
-
-
-@router.get("/well/{well_id}", summary="Get well by ID")
-async def get_well_by_id(
-    well_id: int, session: Session = Depends(get_db_session)
-) -> WellResponse:
-    """
-    Retrieve a well by ID from the database.
-    """
-    well = simple_get_by_id(session, WellThing, well_id)
-    if not well:
-        return {"message": "Well not found"}
-    return well
-
-
-@router.get(
-    "/well/screen/{wellscreen_id}",
+    "/well-screen/{wellscreen_id}",
 )
 async def get_well_screen_by_id(
     wellscreen_id: int, session: Session = Depends(get_db_session)
@@ -198,11 +176,11 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
 
 @router.post(
     "/well",
-    summary="Create a new well",
+    summary="Create a well",
     status_code=status.HTTP_201_CREATED,
 )
 def create_well(
-    well_data: CreateWell,
+    thing_data: CreateWell,
     session: Session = Depends(get_db_session),
     user=well_user_dependency,
 ) -> WellResponse:
@@ -210,12 +188,44 @@ def create_well(
     Create a new well in the database.
     """
     # print("Creating well with data:", well_data, user)
-    well = add_well(session, well_data)
-    return well
+
+    return add_thing(session, thing_data, thing_type="water well")
 
 
 @router.post(
-    "/well/screen",
+    "/spring",
+    summary="Create a new spring",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_sprint(
+    thing_data: CreateSpring,
+    session: session_dependency,
+    user=well_user_dependency,
+) -> SpringResponse:
+    """
+    Create a new well in the database.
+    """
+    return add_thing(session, thing_data, thing_type="spring")
+
+
+@router.post(
+    "",
+    summary="Create a new thing",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_thing(
+    thing_data: CreateThing,
+    session: session_dependency,
+    user=well_user_dependency,
+) -> ThingResponse:
+    """
+    Create a new well in the database.
+    """
+    return add_thing(session, thing_data)
+
+
+@router.post(
+    "/well-screen",
     summary="Create a new well screen",
     status_code=status.HTTP_201_CREATED,
 )
@@ -230,23 +240,10 @@ def create_wellscreen(
     return adder(session, WellScreen, well_screen_data)
 
 
-@router.post(
-    "/spring", summary="Create a new spring", status_code=status.HTTP_201_CREATED
-)
-def create_spring(
-    spring_data: CreateSpring, session: Session = Depends(get_db_session)
-) -> SpringResponse:
-    """
-    Create a new spring in the database.
-    """
-    return add_spring(session, spring_data)
-    # return adder(session, SpringThing, spring_data)
-
-
 @router.patch("/{thing_id}", summary="Update thing")
 def update_thing(
     thing_id: int,
-    thing_data: UpdateThing,
+    thing_data: UpdateWell | UpdateThing,
     session: Session = Depends(get_db_session),
 ) -> ThingResponse:
     """
@@ -276,34 +273,16 @@ def update_thing_location(
     return model_patcher(session, Location, location_id, location_data)
 
 
-@router.patch("/{thing_id}/well", summary="Update well by parent thing ID")
-def update_well(
+@router.patch("/{thing_id}", summary="Update well by parent thing ID")
+def update_thing(
     thing_id: int,
-    well_data: UpdateWell,
+    thing_data: UpdateWell,
     session: session_dependency,
 ) -> WellResponse:
     """
     Update an existing well by ID.
     """
-
-    # get the WellThing associated with the Thing ID
-    well_thing_id = session.execute(
-        select(WellThing.id).join(Thing).where(Thing.id == thing_id)
-    ).scalar_one_or_none()
-
-    return model_patcher(session, WellThing, well_thing_id, well_data)
-
-
-@router.patch("/well/{well_id}", summary="Update well by well ID")
-def update_well_by_id(
-    well_id: int,
-    well_data: UpdateWell,
-    session: session_dependency,
-) -> WellResponse:
-    """
-    Update an existing well by its ID.
-    """
-    return model_patcher(session, WellThing, well_id, well_data)
+    return model_patcher(session, Thing, thing_id, thing_data)
 
 
 # ============= EOF =============================================

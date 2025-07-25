@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pprint
+
 from sqlalchemy import select
 
 from db import search
@@ -25,8 +27,9 @@ def test_search_api():
     response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
+
     assert isinstance(data, list)
-    assert len(data) == 1
+    assert len(data) == 4
 
 
 def test_search_api2():

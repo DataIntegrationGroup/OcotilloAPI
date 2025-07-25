@@ -23,13 +23,14 @@ from starlette import status
 from api.pagination import CustomPage
 from constants import SRID_WGS84
 from core.dependencies import session_dependency
-from db import adder, Location, WellThing
+from db import adder
+from db.location import Location
 from db.engine import get_db_session
-from schemas_v2.location import CreateLocation, LocationResponse
+from schemas_v2.location import CreateLocation, LocationResponse, UpdateLocation
 from schemas_v2.thing import LocationWellResponse
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query
-
+from services.crud_helper import model_patcher
 
 from fastapi import APIRouter
 
@@ -49,6 +50,21 @@ def create_location(
     Create a new sample location in the database.
     """
     return adder(session, Location, location_data)
+
+
+@router.patch(
+    "/{location_id}",
+    summary="Update a location",
+)
+def update_location(
+    location_id: int,
+    location_data: UpdateLocation,
+    session: Session = Depends(get_db_session),
+) -> LocationResponse:
+    """
+    Update a sample location in the database.
+    """
+    return model_patcher(session, Location, location_id, location_data)
 
 
 # @router.get("/shapefile", summary="Get location as shapefile")
@@ -136,7 +152,7 @@ async def get_location(
         sql = make_within_wkt(sql, within)
 
     if expand == "well":
-        sql = sql.outerjoin(WellThing)
+        pass
 
     def transformer(items):
         if expand == "well":

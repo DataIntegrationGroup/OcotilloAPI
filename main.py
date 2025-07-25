@@ -21,7 +21,7 @@ from api.series import router as series_router
 from api.sample import router as sample_router
 from api.observation import router as observation_router
 
-from api.form import router as form_router
+# from api.form import router as form_router
 
 from api.lexicon import router as lexicon_router
 
@@ -46,7 +46,7 @@ app.include_router(observation_router)
 app.include_router(search_router)
 app.include_router(geospatial_router)
 
-app.include_router(form_router)
+# app.include_router(form_router)
 app.include_router(lexicon_router)
 app.include_router(geothermal_router)
 app.include_router(geochronology_router)

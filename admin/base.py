@@ -19,7 +19,6 @@ from fastadmin import register, SqlAlchemyModelAdmin, WidgetType
 
 from db.engine import async_database_sessionmaker
 from db.location import Location
-from db.thing.well import WellThing
 
 
 @register(Location, sqlalchemy_sessionmaker=async_database_sessionmaker)
@@ -44,25 +43,6 @@ class SampleLocationsAdmin(SqlAlchemyModelAdmin):
             "point": to_shape(obj.point).wkt if obj.point else None,
             "created_at": obj.created_at.isoformat() if obj.created_at else None,
         }
-
-
-@register(WellThing, sqlalchemy_sessionmaker=async_database_sessionmaker)
-class WellAdmin(SqlAlchemyModelAdmin):
-    """
-    Admin interface for Well.
-    This class is a placeholder for future implementation.
-    """
-
-    list_display = ("name", "location", "well_depth")
-    list_display_links = ("name",)
-    list_filter = ("location",)
-    search_fields = ("name", "location")
-
-    formfield_overrides = {
-        "name": (WidgetType.SlugInput, {"required": True}),
-        # "description": (WidgetType.Textarea, {"required": False}),
-        # "well_depth": (WidgetType.NumberInput, {"required": True}),
-    }
 
 
 # ============= EOF =============================================

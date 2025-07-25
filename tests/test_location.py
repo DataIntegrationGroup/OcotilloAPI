@@ -22,7 +22,7 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            # "name": "Test Location 1",
+            "name": "Test Location 3",
             "point": "POINT(10.1 10.1)",
             # "visible": True,
         },
@@ -34,7 +34,7 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            # "name": "Test Location 2",
+            "name": "Test Location 4",
             "point": "POINT(50.0 50.0)",
             # "visible": False,
         },
@@ -42,6 +42,21 @@ def test_add_location():
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
+
+
+def test_update_location():
+    response = client.patch(
+        "/location/1",
+        json={
+            "point": "POINT (10.1 20.2)",
+            "release_status": "draft",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert data["point"] == "POINT (10.1 20.2)"
+    assert data["release_status"] == "draft"
 
 
 @pytest.mark.skip
