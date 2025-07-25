@@ -36,6 +36,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     # visible = Column(Boolean, default=False, nullable=False)
     __versioned__ = {}
 
+    name = mapped_column(String(255), nullable=True)
     notes = mapped_column(Text, nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True)

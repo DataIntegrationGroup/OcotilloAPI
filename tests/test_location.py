@@ -22,7 +22,7 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            # "name": "Test Location 1",
+            "name": "Test Location 3",
             "point": "POINT(10.1 10.1)",
             # "visible": True,
         },
@@ -34,7 +34,7 @@ def test_add_location():
     response = client.post(
         "/location",
         json={
-            # "name": "Test Location 2",
+            "name": "Test Location 4",
             "point": "POINT(50.0 50.0)",
             # "visible": False,
         },

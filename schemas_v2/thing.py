@@ -34,18 +34,14 @@ class CreateThingIdLink(BaseModel):
     alternate_organization: str
 
 
-class CreateThing(BaseModel):
-    """
-    Schema for creating a thing.
-    """
-
+class CreateBaseThing(BaseModel):
     location_id: int | None = None  # Optional location ID for the thing
     name: str  # Name of the thing
     group: str | None = None  # Optional group ID for the thing
     thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
 
 
-class CreateWell(CreateThing):
+class CreateWell(CreateBaseThing):
     """
     Schema for creating a well.
     """
@@ -56,6 +52,12 @@ class CreateWell(CreateThing):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
+
+
+class CreateThing(CreateWell):
+    """
+    Schema for creating a thing.
+    """
 
 
 class CreateWellScreen(BaseModel):
