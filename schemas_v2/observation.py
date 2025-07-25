@@ -72,12 +72,13 @@ class GeothermalObservationResponse(BaseObservationResponse):
     depth: float
 
 
-class ObservationResponse(GroundwaterLevelObservationResponse, GeothermalObservationResponse):
+class ObservationResponse(
+    GroundwaterLevelObservationResponse, GeothermalObservationResponse
+):
     """
     Response model for observations.
     Combines groundwater level and geothermal observation responses.
     """
-
 
 
 # -------- UPDATE ----------
