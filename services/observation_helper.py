@@ -13,27 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import ForeignKey, Integer, Float
-from sqlalchemy.orm import mapped_column, relationship
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from db.base import AutoBaseMixin, Base
-from db.observation.observation import ObservationMixin
-
-
-class GeothermalObservation(Base, AutoBaseMixin, ObservationMixin):
-    observation = relationship("Observation")
-    depth = mapped_column(
-        Float,
-        nullable=False,
-        info={"unit": "feet"},
-        doc="Depth of the geothermal observation in feet",
-    )
-    temperature = mapped_column(
-        Float,
-        nullable=False,
-        info={"unit": "degC"},
-        doc="Temperature of the geothermal observation in degrees Celsius",
-    )
+from db import Base, Observation
 
 
+def add_observation(session: Session,
+                    data: BaseModel,
+                    observation_type: str = None) -> Base:
+
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
+
+    if not observation_type:
+        observation_type = data.get("observation_type", None)
+        if not observation_type:
+            raise ValueError("Observation type must be specified.")
+
+    obj = Observation(**data)
+    obj.observation_type = observation_type
+    session.add(obj)
+    session.commit()
+    session.refresh(obj)
+
+    return obj
 # ============= EOF =============================================

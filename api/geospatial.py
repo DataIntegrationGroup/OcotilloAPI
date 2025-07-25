@@ -41,7 +41,7 @@ async def get_geospatial(
             title="format",
             description="Format of the response. 'geojson' for GeoJSON FeatureCollection, 'shapefile' for a shapefile.",
             alias="format",
-            regex="^(geojson|shapefile)$",
+            pattern="^(geojson|shapefile)$",
         ),
     ] = "geojson",
 ):
