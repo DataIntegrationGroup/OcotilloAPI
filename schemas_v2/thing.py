@@ -54,7 +54,15 @@ class CreateWell(CreateBaseThing):
     well_construction_notes: str | None = None
 
 
-class CreateThing(CreateWell):
+class CreateSpring(CreateBaseThing):
+    """
+    Schema for creating a spring.
+    """
+
+    spring_type: str | None = None
+
+
+class CreateThing(CreateWell, CreateSpring):
     """
     Schema for creating a thing.
     """
@@ -93,12 +101,6 @@ class CreateWellScreen(BaseModel):
         return self
 
 
-class CreateSpring(CreateThing):
-    """
-    Schema for creating a spring.
-    """
-
-    spring_type: str | None = None
 
 
 # ------ RESPONSE ----------

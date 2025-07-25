@@ -197,7 +197,7 @@ def create_well(
     summary="Create a new spring",
     status_code=status.HTTP_201_CREATED,
 )
-def create_sprint(
+def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     user=well_user_dependency,

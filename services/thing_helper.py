@@ -64,7 +64,7 @@ def add_thing(session: Session, data: BaseModel | dict, thing_type: str = None) 
         thing_type = data.get("thing_type", None)
         if not thing_type:
             raise ValueError("Thing type must be specified.")
-    # data['thing_type'] = thing_type
+
     thing = Thing(**data)
     thing.thing_type = thing_type
 
