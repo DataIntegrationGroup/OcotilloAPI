@@ -68,7 +68,7 @@ from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
 #         )
 
 
-class Observation(Base, AuditMixin,  ReleaseMixin):
+class Observation(Base, AuditMixin, ReleaseMixin):
     __tablename__ = "observation"
 
     __versioned__ = {}

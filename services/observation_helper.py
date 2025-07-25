@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 from db import Base, Observation
 
 
-def add_observation(session: Session,
-                    data: BaseModel,
-                    observation_type: str = None) -> Base:
+def add_observation(
+    session: Session, data: BaseModel, observation_type: str = None
+) -> Base:
 
     if isinstance(data, BaseModel):
         data = data.model_dump()
@@ -38,4 +38,6 @@ def add_observation(session: Session,
     session.refresh(obj)
 
     return obj
+
+
 # ============= EOF =============================================

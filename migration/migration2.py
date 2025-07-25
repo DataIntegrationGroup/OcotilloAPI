@@ -25,6 +25,7 @@ from shapely.ops import transform
 
 from db import Location, LocationThingAssociation, Thing, Sensor
 from db.engine import session_ctx
+
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation import Observation
 from db.series.groundwaterlevel import GroundwaterLevelSeries
