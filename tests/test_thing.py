@@ -107,14 +107,15 @@ def test_add_spring():
     data = response.json()
     assert "id" in data
 
-    assert 'name' in data
+    assert "name" in data
     assert data["name"] == "Test Spring"
 
-    assert 'thing_type' in data
-    assert data['thing_type']=='spring'
+    assert "thing_type" in data
+    assert data["thing_type"] == "spring"
 
-    assert 'spring_type' in data
-    assert data['spring_type']=='Ephemeral'
+    assert "spring_type" in data
+    assert data["spring_type"] == "Ephemeral"
+
 
 def test_add_well_screen():
     # response = client.post(

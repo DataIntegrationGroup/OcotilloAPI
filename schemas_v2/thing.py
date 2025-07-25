@@ -101,8 +101,6 @@ class CreateWellScreen(BaseModel):
         return self
 
 
-
-
 # ------ RESPONSE ----------
 class BaseThingResponse(ORMBaseModel):
     name: str
