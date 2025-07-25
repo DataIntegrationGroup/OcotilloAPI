@@ -22,14 +22,12 @@ import pandas as pd
 import pyproj
 from shapely import Point
 from shapely.ops import transform
-from sqlalchemy.orm import configure_mappers
 
-from api.observation import add_groundwater_level_observation
-from core.app import init_hypertables, init_lexicon
-from db import Location, LocationThingAssociation, Base, Thing, Sensor
-from db.engine import session_ctx, engine
-from db.observation.groundwaterlevel import GroundwaterLevelObservation
-from db.observation.observation import Observation
+from db import Location, LocationThingAssociation, Thing, Sensor
+from db.engine import session_ctx
+
+# from db.observation.groundwaterlevel import GroundwaterLevelObservation
+from db.observation import Observation
 from db.series.groundwaterlevel import GroundwaterLevelSeries
 from db.series.series import Series
 from services.lexicon import add_lexicon_term

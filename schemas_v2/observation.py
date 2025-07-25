@@ -18,63 +18,67 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class GroundwaterLevelMixin:
+# class GeothermalMixin:
+#     depth: float
+#     temperature: float
+
+
+# -------- CREATE ----------
+class CreateBaseObservation(BaseModel):
+    observation_timestamp: datetime
+    series_id: int
+    release_status: str
+
+
+class CreateGroundwaterLevelObservation(CreateBaseObservation):
     depth_to_water: float
     measuring_point_height: float
 
 
-class GeothermalMixin:
-    depth: float
-    temperature: float
-
-
-class ChildObservationModel(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
-
-# -------- CREATE ----------
-class CreateObservation(BaseModel):
-    series_id: int
-    release_status: str
-    observation_timestamp: datetime
-
-
-class CreateGroundwaterLevelObservation(ChildObservationModel, GroundwaterLevelMixin):
-    pass
-
-
-class CreateGeothermalObservation(ChildObservationModel, GeothermalMixin):
-    pass
-
-
-class CreateGroundwaterLevelObservationDirect(CreateObservation, GroundwaterLevelMixin):
-    pass
-
-
-class CreateGeothermalObservationDirect(CreateObservation, GeothermalMixin):
-    pass
+#
+#
+# class CreateGroundwaterLevelObservation(ChildObservationModel, GroundwaterLevelMixin):
+#     pass
+#
+#
+# class CreateGeothermalObservation(ChildObservationModel, GeothermalMixin):
+#     pass
+#
+#
+# class CreateGroundwaterLevelObservationDirect(CreateObservation, GroundwaterLevelMixin):
+#     pass
+#
+#
+# class CreateGeothermalObservationDirect(CreateObservation, GeothermalMixin):
+#     pass
 
 
 # -------- RESPONSE ----------
-class ObservationResponse(BaseModel):
+class BaseObservationResponse(BaseModel):
     id: int
+    series_id: int
     observation_timestamp: datetime
+    observation_type: str
+    created_at: datetime
 
 
-class GroundwaterLevelObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
-
+class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water: float
 
 
-class GeothermalObservationResponse(BaseModel):
-    observation_id: int
-    observation_timestamp: datetime
+class GeothermalObservationResponse(BaseObservationResponse):
 
     temperature: float
     depth: float
+
+
+class ObservationResponse(
+    GroundwaterLevelObservationResponse, GeothermalObservationResponse
+):
+    """
+    Response model for observations.
+    Combines groundwater level and geothermal observation responses.
+    """
 
 
 # -------- UPDATE ----------
