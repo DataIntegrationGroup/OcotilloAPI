@@ -23,8 +23,10 @@ from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
+from schemas_v2.group import UpdateGroup
 from schemas_v2.location import CreateGroup, CreateGroupThing
 from schemas_v2.thing import GroupResponse
+from services.crud_helper import model_patcher
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -34,7 +36,7 @@ router = APIRouter(prefix="/group", tags=["group"])
 
 
 @router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
-def create_group(group_data: CreateGroup, session: Session = Depends(get_db_session)):
+def create_group(group_data: CreateGroup, session: session_dependency):
     """
     Create a new group in the database.
     """
@@ -47,7 +49,7 @@ def create_group(group_data: CreateGroup, session: Session = Depends(get_db_sess
     status_code=status.HTTP_201_CREATED,
 )
 def create_group_thing(
-    group_location_data: CreateGroupThing, session: Session = Depends(get_db_session)
+    group_location_data: CreateGroupThing, session: session_dependency
 ):
     """
     Create a new group location association in the database.
@@ -65,9 +67,7 @@ async def get_groups(session: session_dependency) -> CustomPage[GroupResponse]:
 
 
 @router.get("/{group_id}", summary="Get group by ID")
-async def get_group_by_id(
-    group_id: int, session: Session = Depends(get_db_session)
-) -> GroupResponse:
+async def get_group_by_id(group_id: int, session: session_dependency) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
     """
@@ -78,13 +78,23 @@ async def get_group_by_id(
     "/association/{association_id}",
     summary="Get group-thing association by ID",
 )
-async def get_group_thing_by_id(
-    association_id: int, session: Session = Depends(get_db_session)
-):
+async def get_group_thing_by_id(association_id: int, session: session_dependency):
     """
     Retrieve a group-thing association by ID from the database.
     """
     return simple_get_by_id(session, GroupThingAssociation, association_id)
+
+
+# ============= Patch =============================================
+@router.patch("/{group_id}", summary="Update a group by ID")
+async def update_group(
+    group_id: int, group_data: UpdateGroup, session: session_dependency
+) -> GroupResponse:
+    """
+    Update a group by ID in the database.
+    """
+    return model_patcher(session, Group, group_id, group_data)
+    # return adder(session, Group, group_data, id=group_id)
 
 
 # ============= EOF =============================================
