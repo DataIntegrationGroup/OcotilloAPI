@@ -31,6 +31,7 @@ class GroupResponse(ORMBaseModel):
     description: str | None = None
     parent_group_id: int | None = None
 
+
 # -------- UPDATE ----------
 class UpdateGroup(BaseModel):
     """
@@ -41,5 +42,6 @@ class UpdateGroup(BaseModel):
     name: str | None = None
     description: str | None = None
     parent_group_id: int | None = None
+
 
 # ============= EOF =============================================

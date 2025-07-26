@@ -67,9 +67,7 @@ async def get_groups(session: session_dependency) -> CustomPage[GroupResponse]:
 
 
 @router.get("/{group_id}", summary="Get group by ID")
-async def get_group_by_id(
-    group_id: int, session: session_dependency
-) -> GroupResponse:
+async def get_group_by_id(group_id: int, session: session_dependency) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
     """
@@ -80,24 +78,23 @@ async def get_group_by_id(
     "/association/{association_id}",
     summary="Get group-thing association by ID",
 )
-async def get_group_thing_by_id(
-    association_id: int, session: session_dependency
-):
+async def get_group_thing_by_id(association_id: int, session: session_dependency):
     """
     Retrieve a group-thing association by ID from the database.
     """
     return simple_get_by_id(session, GroupThingAssociation, association_id)
 
+
 # ============= Patch =============================================
 @router.patch("/{group_id}", summary="Update a group by ID")
 async def update_group(
-    group_id: int,
-    group_data: UpdateGroup,
-    session: session_dependency
+    group_id: int, group_data: UpdateGroup, session: session_dependency
 ) -> GroupResponse:
     """
     Update a group by ID in the database.
     """
     return model_patcher(session, Group, group_id, group_data)
     # return adder(session, Group, group_data, id=group_id)
+
+
 # ============= EOF =============================================
