@@ -53,7 +53,7 @@ def test_upload_asset():
         assert response.status_code == 201
         data = response.json()
         print(data)
-        assert "url" in data
+        assert "storage_path" in data
         # assert data["name"] == "riochama.png"
         # assert data["label"] == "riochama.png"
         # assert data["storage_service"] == "mock_service"

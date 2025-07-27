@@ -28,7 +28,7 @@ class BaseAsset(BaseModel):
 
 # -------- CREATE ----------
 class CreateAsset(BaseAsset):
-    pass
+    url: str
 
 
 # -------- RESPONSE --------
