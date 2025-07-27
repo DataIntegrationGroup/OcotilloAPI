@@ -27,7 +27,8 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
-from schemas_v2.asset import AssetResponse, CreateAsset
+from schemas_v2.asset import AssetResponse, CreateAsset, UpdateAsset
+from services.crud_helper import model_patcher
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
@@ -142,4 +143,14 @@ async def add_asset(
     return asset
 
 
+@router.patch("/{asset_id}")
+async def update_asset(
+    asset_id: int,
+    session: session_dependency,
+    asset_data: UpdateAsset
+):
+    """
+    Update an existing asset.
+    """
+    return model_patcher(session, Asset, asset_id, asset_data)
 # ============= EOF =============================================

@@ -46,6 +46,7 @@ class AssetResponse(BaseAsset):
 
 
 # -------- UPDATE ----------
-
+class UpdateAsset(BaseModel):
+    label: str
 
 # ============= EOF =============================================
