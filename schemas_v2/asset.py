@@ -49,4 +49,5 @@ class AssetResponse(BaseAsset):
 class UpdateAsset(BaseModel):
     label: str
 
+
 # ============= EOF =============================================

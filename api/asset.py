@@ -145,12 +145,12 @@ async def add_asset(
 
 @router.patch("/{asset_id}")
 async def update_asset(
-    asset_id: int,
-    session: session_dependency,
-    asset_data: UpdateAsset
+    asset_id: int, session: session_dependency, asset_data: UpdateAsset
 ):
     """
     Update an existing asset.
     """
     return model_patcher(session, Asset, asset_id, asset_data)
+
+
 # ============= EOF =============================================
