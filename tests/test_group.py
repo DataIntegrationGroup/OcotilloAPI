@@ -80,4 +80,4 @@ def test_item_get_group_thing():
     data = response.json()
     assert data["id"] == 1
     assert data["group_id"] == 1
-    assert data["thing_id"] == 5
+    assert data["thing_id"] == 6

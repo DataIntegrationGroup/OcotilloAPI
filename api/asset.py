@@ -15,16 +15,19 @@
 # ===============================================================================
 import os
 from datetime import timedelta
+from typing import List
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
 
+from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
-from schemas_v2.asset import AssetResponse
+from schemas_v2.asset import AssetResponse, CreateAsset
 
 router = APIRouter(prefix="/asset", tags=["asset"])
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
@@ -34,10 +37,41 @@ from google.cloud import storage
 
 
 def get_storage_bucket() -> storage.Bucket:
-
-    client = storage.Client()
+    client = storage.Client.from_service_account_json(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket
+
+
+@router.get('')
+async def list_assets(
+    session: session_dependency,
+    # bucket=Depends(get_storage_bucket),
+    thing_id: int = None,
+) -> CustomPage[AssetResponse]:
+    """
+    List all assets or assets associated with a specific thing.
+    """
+    sql = select(Asset)
+    if thing_id:
+        sql = sql.join(AssetThingAssociation).where(
+            AssetThingAssociation.thing_id == thing_id
+        )
+
+    # assets = session.scalars(sql).all()
+    # if not assets:
+    #     return []
+
+    def transformer(assets: List[Asset]) -> AssetResponse:
+        # blob = bucket.blob(asset.storage_path)
+        # asset.url = blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET")
+        # return [AssetResponse.model_validate(asset) for asset in assets]
+        for a in assets:
+            a.url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{a.storage_path}"
+        return assets
+
+    return paginate(query=sql, conn=session,
+                    transformer=transformer
+                    )
 
 
 @router.get("/{asset_id}")
@@ -69,26 +103,32 @@ async def get_asset(
     return asset
 
 
-@router.post("", status_code=HTTP_201_CREATED)
-async def add_asset(
-    session: session_dependency,
-    thing_id: int = None,
-    file: UploadFile = File(...),
-    bucket=Depends(get_storage_bucket),
-) -> dict:
+@router.post("/upload", status_code=HTTP_201_CREATED)
+async def upload_asset(
+        bucket=Depends(get_storage_bucket),
+        file: UploadFile = File(...)):
     file_id = str(uuid4())
     blob_name = f"uploads/{file_id}_{file.filename}"
     blob = bucket.blob(blob_name)
-
     blob.upload_from_file(file.file, content_type=file.content_type)
+    return {"url": blob.generate_signed_url(
+                    expiration=timedelta(minutes=10), method="GET"
+            ),
+            "storage_path": blob_name,
+            }
 
-    asset = Asset(
-        filename=file.filename,
-        storage_service="gcs",
-        storage_path=blob_name,
-        mime_type=file.content_type,
-        size=file.size,
-    )
+@router.post("", status_code=HTTP_201_CREATED)
+async def add_asset(
+    session: session_dependency,
+    asset_data: CreateAsset
+
+) -> AssetResponse:
+
+    data = asset_data.model_dump()
+    thing_id = data.pop("thing_id", None)
+    data['storage_service'] = "gcs"
+    asset = Asset(**data)
+
     if thing_id:
         assoc = AssetThingAssociation()
         thing = session.get(Thing, thing_id)
@@ -100,11 +140,7 @@ async def add_asset(
     session.commit()
     session.refresh(asset)
 
-    return {
-        "id": asset.id,
-        "filename": asset.filename,
-        "url": f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{blob_name}",
-    }
-
+    asset.url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{asset.storage_path}"
+    return asset
 
 # ============= EOF =============================================
