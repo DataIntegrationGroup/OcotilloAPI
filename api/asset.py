@@ -37,12 +37,14 @@ from google.cloud import storage
 
 
 def get_storage_bucket() -> storage.Bucket:
-    client = storage.Client.from_service_account_json(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
+    client = storage.Client.from_service_account_json(
+        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    )
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket
 
 
-@router.get('')
+@router.get("")
 async def list_assets(
     session: session_dependency,
     # bucket=Depends(get_storage_bucket),
@@ -69,9 +71,7 @@ async def list_assets(
             a.url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{a.storage_path}"
         return assets
 
-    return paginate(query=sql, conn=session,
-                    transformer=transformer
-                    )
+    return paginate(query=sql, conn=session, transformer=transformer)
 
 
 @router.get("/{asset_id}")
@@ -105,28 +105,26 @@ async def get_asset(
 
 @router.post("/upload", status_code=HTTP_201_CREATED)
 async def upload_asset(
-        bucket=Depends(get_storage_bucket),
-        file: UploadFile = File(...)):
+    bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
+):
     file_id = str(uuid4())
     blob_name = f"uploads/{file_id}_{file.filename}"
     blob = bucket.blob(blob_name)
     blob.upload_from_file(file.file, content_type=file.content_type)
-    return {"url": blob.generate_signed_url(
-                    expiration=timedelta(minutes=10), method="GET"
-            ),
-            "storage_path": blob_name,
-            }
+    return {
+        "url": blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET"),
+        "storage_path": blob_name,
+    }
+
 
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
-    session: session_dependency,
-    asset_data: CreateAsset
-
+    session: session_dependency, asset_data: CreateAsset
 ) -> AssetResponse:
 
     data = asset_data.model_dump()
     thing_id = data.pop("thing_id", None)
-    data['storage_service'] = "gcs"
+    data["storage_service"] = "gcs"
     asset = Asset(**data)
 
     if thing_id:
@@ -142,5 +140,6 @@ async def add_asset(
 
     asset.url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{asset.storage_path}"
     return asset
+
 
 # ============= EOF =============================================

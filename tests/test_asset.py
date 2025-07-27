@@ -62,15 +62,18 @@ def test_upload_asset():
         # assert data["size"] == 12345
         # assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
 
+
 def test_add_asset(thing):
     resp = client.post(
         "/asset",
-        json={"thing_id": thing.id,
-              "name": "riochama.png",
-               "storage_service": "mock_service",
-               "storage_path": "mock/path/to/asset",
-               "mime_type": "image/png",
-               "size": 12345},
+        json={
+            "thing_id": thing.id,
+            "name": "riochama.png",
+            "storage_service": "mock_service",
+            "storage_path": "mock/path/to/asset",
+            "mime_type": "image/png",
+            "size": 12345,
+        },
     )
 
     print(resp.json())
@@ -97,13 +100,15 @@ def test_add_asset(thing):
 def test_add_asset_with_label(thing):
     resp = client.post(
         "/asset",
-        json={"thing_id": thing.id,
-              "name": "test_asset.png",
-              "label": "Test Asset",
-              "storage_service": "mock_service",
-              "storage_path": "mock/path/to/asset",
-              "mime_type": "image/png",
-              "size": 12345},
+        json={
+            "thing_id": thing.id,
+            "name": "test_asset.png",
+            "label": "Test Asset",
+            "storage_service": "mock_service",
+            "storage_path": "mock/path/to/asset",
+            "mime_type": "image/png",
+            "size": 12345,
+        },
     )
     assert resp.status_code == 201
     data = resp.json()

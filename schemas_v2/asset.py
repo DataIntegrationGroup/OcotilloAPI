@@ -25,9 +25,11 @@ class BaseAsset(BaseModel):
     mime_type: str
     size: int
 
+
 # -------- CREATE ----------
 class CreateAsset(BaseAsset):
     pass
+
 
 # -------- RESPONSE --------
 class AssetResponse(BaseAsset):
@@ -41,7 +43,6 @@ class AssetResponse(BaseAsset):
     url: str
     created_at: datetime
     storage_service: str
-
 
 
 # -------- UPDATE ----------
