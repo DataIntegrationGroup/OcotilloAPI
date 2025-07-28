@@ -5,6 +5,10 @@
   {"term":  "groundwater-level", "definition":  "the level of groundwater in a well or borehole", "category":  "observation_type"},
 
   {"term": "draft", "definition": "draft version", "category": "release_status"},
+  {"term": "provisional", "definition": "provisional version", "category": "release_status"},
+  {"term": "final", "definition": "final version", "category": "release_status"},
+  {"term": "published", "definition": "published version", "category": "release_status"},
+  {"term": "archived", "definition": "archived version", "category": "release_status"},
 
 
   {"term":  "USGS", "definition":  "US Geological Survey", "category":  "organization"},
