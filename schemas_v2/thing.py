@@ -159,8 +159,10 @@ class GroupResponse(ORMBaseModel):
     Response schema for group details.
     """
 
+
     name: str
     description: str | None = None
+    parent_group_id: int | None = None
 
 
 class GeoJSONGeometry(BaseModel):
