@@ -118,7 +118,9 @@ def upgrade() -> None:
         sa.Column("operation_type", sa.SmallInteger(), nullable=False),
         sa.PrimaryKeyConstraint("id", "transaction_id"),
     )
-    op.drop_index("idx_location_point", table_name="location_version", if_exists=True)
+    op.drop_index(
+        "idx_location_version_point", table_name="location_version", if_exists=True
+    )
     op.create_index(
         "idx_location_version_point",
         "location_version",
