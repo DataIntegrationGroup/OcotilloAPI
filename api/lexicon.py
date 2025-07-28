@@ -99,21 +99,27 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     session.commit()
     return triple
 
+
 @router.get("")
 def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
     term: str | None = None,
-)-> CustomPage[LexiconTermResponse]:
+) -> CustomPage[LexiconTermResponse]:
     """
     Endpoint to retrieve lexicon terms.
     """
     sql = select(Lexicon)
     if category:
-        sql = sql.join(TermCategoryAssociation).join(Category).where(Category.name == category)
+        sql = (
+            sql.join(TermCategoryAssociation)
+            .join(Category)
+            .where(Category.name == category)
+        )
     if term:
         sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
 
     return paginate(query=sql, conn=session)
+
 
 # ============= EOF =============================================
