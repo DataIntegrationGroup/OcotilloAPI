@@ -19,7 +19,6 @@ from sqlalchemy.orm import configure_mappers
 
 from core.app import init_lexicon, init_hypertables
 from main import app
-from db.base import Base
 from db import *
 from db.engine import engine, session_ctx
 

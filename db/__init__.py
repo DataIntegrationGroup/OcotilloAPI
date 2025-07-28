@@ -27,6 +27,7 @@ from db.sensor import *
 from db.series import *
 from db.thing import *
 from db.contact import *
+from db.group import *
 
 
 from sqlalchemy import (
