@@ -304,7 +304,7 @@ wheels = [
 
 [[package]]
 name = "cloud-sql-python-connector"
-version = "1.18.2"
+version = "1.18.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -314,9 +314,9 @@ dependencies = [
     { name = "google-auth" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/64/99/4380be2f05bf2eef47120294b1809046d35d97e5f6bbbb1beb8af67e4cef/cloud_sql_python_connector-1.18.2.tar.gz", hash = "sha256:c3c51e6cba6e25834f8858588020bf8972dd3e44a01cfe320959bd97c40f6268", size = 42636, upload-time = "2025-06-10T14:32:28.693Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/4f/97498f9ac19c80801a4c6a007b857bad3f50f671a0a486c669c98372e74f/cloud_sql_python_connector-1.18.3.tar.gz", hash = "sha256:1c50bfbcdf27f19be0389f0c088791c0cb8fdf8581974291dc3b155bb97f49cc", size = 42669, upload-time = "2025-07-11T22:09:28.925Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/cc/630a951a7bd06b9cea2134b7d96c29da66ff3ba38ecaf414d3614032a552/cloud_sql_python_connector-1.18.2-py3-none-any.whl", hash = "sha256:9b96f4d6484eb35317e09e9ac3678a67343fb8b13f00152378b1445bf6a46fdd", size = 49255, upload-time = "2025-05-20T20:44:44.96Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/bd/f8a05c5380d428c8cf9d8aeb8ed449d8f70b10bd218d0ee1d48f41586227/cloud_sql_python_connector-1.18.3-py3-none-any.whl", hash = "sha256:4f0f7722ee5de26c0322589038c6aa5839f40a23cd57ac4cadde231da5ba3ba4", size = 49276, upload-time = "2025-07-11T22:09:27.766Z" },
 ]
 
 [[package]]
@@ -941,7 +941,7 @@ requires-dist = [
     { name = "cffi", specifier = "==1.17.1" },
     { name = "charset-normalizer", specifier = "==3.4.2" },
     { name = "click", specifier = "==8.2.1" },
-    { name = "cloud-sql-python-connector", specifier = "==1.18.2" },
+    { name = "cloud-sql-python-connector", specifier = "==1.18.3" },
     { name = "cryptography", specifier = "==45.0.5" },
     { name = "dnspython", specifier = "==2.7.0" },
     { name = "email-validator", specifier = "==2.2.0" },
