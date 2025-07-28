@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 from typing import Any
 
+from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column, Select
+from sqlalchemy import select, Float, Integer, Column, Select, func
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.elements import OperatorExpression
 
@@ -125,6 +127,30 @@ def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
             sql = sql.order_by(attr.desc())
         else:
             raise ValueError("Invalid order parameter. Use 'asc' or 'desc'.")
+
+    if filter_:
+        required_keys = {"field", "value", "operator"}
+        if filter_ is not None:
+            try:
+                f = json.loads(filter_)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid JSON in filter")
+
+            missing = required_keys - f.keys()
+            if missing:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Missing required filter keys: {', '.join(missing)}"
+                )
+
+        field = f["field"]
+        value = f["value"]
+        operator = f["operator"]
+        column = getattr(table, field)
+        if operator == "contains":
+            sql = sql.where(column.ilike(f"%{value}%"))
+
+
     return sql
 
 
