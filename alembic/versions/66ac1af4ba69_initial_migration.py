@@ -1,10 +1,11 @@
 """initial migration
 
 Revision ID: 66ac1af4ba69
-Revises: 
+Revises:
 Create Date: 2025-07-28 12:07:27.082752
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -14,11 +15,10 @@ import sqlalchemy_utils
 from sqlalchemy.orm import configure_mappers
 
 # revision identifiers, used by Alembic.
-revision: str = '66ac1af4ba69'
+revision: str = "66ac1af4ba69"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
-
 
 
 from db import *  # Import your Base from models/__init__.py
