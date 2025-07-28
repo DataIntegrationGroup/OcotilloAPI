@@ -1,8 +1,8 @@
 """initial migration
 
-Revision ID: 0ca8b417fea8
+Revision ID: dcd4ba0a63c6
 Revises: 
-Create Date: 2025-07-24 17:02:46.216216
+Create Date: 2025-07-28 09:10:27.082507
 
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy_utils
 
 
 # revision identifiers, used by Alembic.
-revision: str = "0ca8b417fea8"
+revision: str = "dcd4ba0a63c6"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -83,6 +83,100 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("term"),
+    )
+    op.create_table(
+        "location_version",
+        sa.Column("name", sa.String(length=255), autoincrement=False, nullable=True),
+        sa.Column("notes", sa.Text(), autoincrement=False, nullable=True),
+        sa.Column(
+            "point",
+            geoalchemy2.types.Geometry(
+                geometry_type="POINT",
+                srid=4326,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+                nullable=False,
+            ),
+            autoincrement=False,
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("now()"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_index(
+        "idx_location_version_point",
+        "location_version",
+        ["point"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        op.f("ix_location_version_end_transaction_id"),
+        "location_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_location_version_operation_type"),
+        "location_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_location_version_transaction_id"),
+        "location_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_table(
+        "observation_version",
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column("series_id", sa.Integer(), autoincrement=False, nullable=True),
+        sa.Column(
+            "observation_timestamp", sa.TIMESTAMP(), autoincrement=False, nullable=False
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "observation_timestamp", "transaction_id"),
+    )
+    op.create_index(
+        op.f("ix_observation_version_end_transaction_id"),
+        "observation_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_observation_version_operation_type"),
+        "observation_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_observation_version_transaction_id"),
+        "observation_version",
+        ["transaction_id"],
+        unique=False,
     )
     op.create_table(
         "pub_author",
@@ -215,6 +309,7 @@ def upgrade() -> None:
     )
     op.create_table(
         "location",
+        sa.Column("name", sa.String(length=255), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column(
             "point",
@@ -238,7 +333,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.execute("DROP INDEX IF EXISTS idx_location_point;")
     op.create_index(
         "idx_location_point",
         "location",
@@ -325,6 +419,21 @@ def upgrade() -> None:
         ["search_vector"],
         unique=False,
         postgresql_using="gin",
+    )
+    op.create_table(
+        "transaction",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("remote_addr", sa.String(length=50), nullable=True),
+        sa.Column("user_id", sa.Integer(), nullable=True),
+        sa.Column("issued_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["user.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_transaction_user_id"), "transaction", ["user_id"], unique=False
     )
     op.create_table(
         "address",
@@ -714,6 +823,8 @@ def downgrade() -> None:
         "ix_address_search_vector", table_name="address", postgresql_using="gin"
     )
     op.drop_table("address")
+    op.drop_index(op.f("ix_transaction_user_id"), table_name="transaction")
+    op.drop_table("transaction")
     op.drop_index("ix_thing_search_vector", table_name="thing", postgresql_using="gin")
     op.drop_table("thing")
     op.drop_index(
@@ -736,6 +847,32 @@ def downgrade() -> None:
         "ix_pub_author_search_vector", table_name="pub_author", postgresql_using="gin"
     )
     op.drop_table("pub_author")
+    op.drop_index(
+        op.f("ix_observation_version_transaction_id"), table_name="observation_version"
+    )
+    op.drop_index(
+        op.f("ix_observation_version_operation_type"), table_name="observation_version"
+    )
+    op.drop_index(
+        op.f("ix_observation_version_end_transaction_id"),
+        table_name="observation_version",
+    )
+    op.drop_table("observation_version")
+    op.drop_index(
+        op.f("ix_location_version_transaction_id"), table_name="location_version"
+    )
+    op.drop_index(
+        op.f("ix_location_version_operation_type"), table_name="location_version"
+    )
+    op.drop_index(
+        op.f("ix_location_version_end_transaction_id"), table_name="location_version"
+    )
+    op.drop_index(
+        "idx_location_version_point",
+        table_name="location_version",
+        postgresql_using="gist",
+    )
+    op.drop_table("location_version")
     op.drop_table("lexicon_term")
     op.drop_table("lexicon_category")
     op.drop_table("group")

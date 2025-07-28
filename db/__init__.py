@@ -52,6 +52,9 @@ from sqlalchemy_searchable import (
     inspect_search_vectors,
     search_manager,
 )
+from sqlalchemy.orm import configure_mappers
+
+configure_mappers()
 
 
 def adder(session, table, model, **kwargs):
