@@ -59,13 +59,11 @@ def create_group_thing(
 
 # ============= Get =============================================
 @router.get("", summary="Get groups")
-async def get_groups(
-    session: session_dependency,
-    filter_: str = Query(
-        ...,
-        alias="filter",
-    ),
-) -> CustomPage[GroupResponse]:
+async def get_groups(session: session_dependency,
+                     filter_: str =  Query(
+                         alias="filter",
+                        default=None)
+                     ) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
     """

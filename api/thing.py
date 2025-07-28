@@ -80,7 +80,7 @@ def get_things(
     sort: str = None,
     order: str = None,
     filter_: str = Query(
-        ...,
+        default=None,
         alias="filter",
     ),
 ) -> CustomPage[ThingResponse]:
