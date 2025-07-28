@@ -161,6 +161,7 @@ class GroupResponse(ORMBaseModel):
 
     name: str
     description: str | None = None
+    parent_group_id: int | None = None
 
 
 class GeoJSONGeometry(BaseModel):

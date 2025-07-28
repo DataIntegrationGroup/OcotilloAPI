@@ -303,7 +303,7 @@ def test_patch_well():
 
 def test_patch_thing_location():
     response = client.patch(
-        "/thing/3/location",
+        "/thing/4/location",
         json={
             "point": "POINT(-106.61 35.08)",
         },

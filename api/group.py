@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Query
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -59,11 +59,13 @@ def create_group_thing(
 
 # ============= Get =============================================
 @router.get("", summary="Get groups")
-async def get_groups(session: session_dependency) -> CustomPage[GroupResponse]:
+async def get_groups(
+    session: session_dependency, filter_: str = Query(alias="filter", default=None)
+) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
     """
-    return paginated_all_getter(session, Group)
+    return paginated_all_getter(session, Group, filter_=filter_)
 
 
 @router.get("/{group_id}", summary="Get group by ID")

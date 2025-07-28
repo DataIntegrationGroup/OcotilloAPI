@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List, Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from pydantic_core import PydanticUndefined
 from fastapi import APIRouter
@@ -148,7 +148,7 @@ async def get_contacts(
     session: session_dependency,
     sort: str = None,
     order: str = None,
-    filter_: Annotated[str, Field(alias="filter")] = None,
+    filter_: str = Query(alias="filter", default=None),
     thing_id: int | None = None,
 ) -> CustomPage[ContactResponse]:
     """
