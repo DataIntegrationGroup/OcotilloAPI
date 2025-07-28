@@ -140,7 +140,7 @@ def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
             if missing:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"Missing required filter keys: {', '.join(missing)}"
+                    detail=f"Missing required filter keys: {', '.join(missing)}",
                 )
 
         field = f["field"]
@@ -149,7 +149,6 @@ def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
         column = getattr(table, field)
         if operator == "contains":
             sql = sql.where(column.ilike(f"%{value}%"))
-
 
     return sql
 
