@@ -1,10 +1,11 @@
 """empty message
 
 Revision ID: 59763cc319cf
-Revises: 
+Revises:
 Create Date: 2025-07-28 11:26:12.288640
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -16,7 +17,7 @@ from sqlalchemy_continuum import make_versioned
 from sqlalchemy_searchable import make_searchable
 
 # revision identifiers, used by Alembic.
-revision: str = '59763cc319cf'
+revision: str = "59763cc319cf"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

@@ -37,7 +37,7 @@ load_dotenv()
 user = environ.get("POSTGRES_USER", None)
 password = environ.get("POSTGRES_PASSWORD", None)
 db = environ.get("POSTGRES_DB", None)
-host = environ.get("POSTGRES_HOST", 'localhost')
+host = environ.get("POSTGRES_HOST", "localhost")
 port = environ.get("POSTGRES_PORT", 5432)
 SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
 
