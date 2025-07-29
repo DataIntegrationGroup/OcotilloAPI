@@ -51,6 +51,7 @@ def thing():
         thing.thing_type = "water well"
         session.add(thing)
         session.commit()
+        session.refresh(thing)
         yield thing
         session.delete(thing)
         session.close()
