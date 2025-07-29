@@ -38,6 +38,7 @@ def cli():
     """Command line interface for managing the application."""
     pass
 
+
 @cli.command()
 def initialize_lexicon():
     init_lexicon()
