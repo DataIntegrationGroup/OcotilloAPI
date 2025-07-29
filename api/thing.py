@@ -20,7 +20,7 @@ from shapely import wkb
 from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from shapely.geometry import mapping
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -61,11 +61,6 @@ from services.thing_helper import add_thing, get_db_things
 from services.validation.well import validate_screens
 
 
-def wkb_to_geojson(wkb_element):
-    if wkb_element is None:
-        return None
-    geom = wkb.loads(bytes(wkb_element.data))
-    return mapping(geom)
 
 
 router = APIRouter(prefix="/thing", tags=["thing"])
@@ -91,7 +86,8 @@ def get_things(
         sql = select(Thing).where(Thing.id == thing_id)
         return paginate(query=sql, conn=session)
     else:
-        return get_db_things(filter_, order, query, session, sort, thing_type)
+        return get_db_things(filter_, order, query, session, sort, thing_type,
+                             with_location=True)
 
 
 @router.get("/well", summary="Get all wells")

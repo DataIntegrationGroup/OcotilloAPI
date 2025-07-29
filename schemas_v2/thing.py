@@ -133,7 +133,8 @@ class SpringResponse(BaseThingResponse):
 
 
 class ThingResponse(WellResponse, SpringResponse):
-    pass
+    location: LocationResponse | None = None  # Optional location details
+    geometry: dict | None = None
 
 
 class LocationWellResponse(LocationResponse):
