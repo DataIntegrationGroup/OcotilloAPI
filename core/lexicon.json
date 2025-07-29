@@ -10,6 +10,9 @@
   {"term": "published", "definition": "published version", "category": "release_status"},
   {"term": "archived", "definition": "archived version", "category": "release_status"},
 
+  {"term": "dry", "definition": "well is dry", "category": "level_status"},
+  {"term": "normal", "definition": "normal well water level status", "category": "level_status"},
+
 
   {"term":  "USGS", "definition":  "US Geological Survey", "category":  "organization"},
 

@@ -22,25 +22,28 @@ from core.app import init_lexicon
 from db.engine import session_ctx
 
 
-from migration.migration2 import migrate_wells, migrate_water_levels
+# from migration.migration2 import migrate_wells, migrate_water_levels
+#
+#
+# def wells():
+#     with session_ctx() as sess:
+#         migrate_wells(sess, 1000)
+#
+#
+# def waterlevels():
+#     with session_ctx() as sess:
+#         migrate_water_levels(sess, 800)
+@click.group()
+def cli():
+    """Command line interface for managing the application."""
+    pass
 
-
-def wells():
-    with session_ctx() as sess:
-        migrate_wells(sess, 1000)
-
-
-def waterlevels():
-    with session_ctx() as sess:
-        migrate_water_levels(sess, 800)
-
-
-@click.command()
+@cli.command()
 def initialize_lexicon():
     init_lexicon()
 
 
 if __name__ == "__main__":
-    waterlevels()
+    cli()
 
 # ============= EOF =============================================

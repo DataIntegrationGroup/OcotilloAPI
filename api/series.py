@@ -40,12 +40,17 @@ router = APIRouter(
 def get_series(
     session: session_dependency,
     thing_id: int = None,  # Optional filter for a specific thing
+    observed_property: str = None,  # Optional filter for observed property
 ) -> CustomPage[SeriesResponse]:
     """
     Endpoint to retrieve series data.
     """
-    if thing_id is not None:
-        sql = select(Series).where(Series.thing_id == thing_id)
+    if thing_id is not None or observed_property is not None:
+        sql = select(Series)
+        if thing_id is not None:
+            sql = sql.where(Series.thing_id == thing_id)
+        if observed_property is not None:
+            sql = sql.where(Series.observed_property == observed_property)
         return paginate(conn=session, query=sql)
 
     return paginated_all_getter(session, Series)
