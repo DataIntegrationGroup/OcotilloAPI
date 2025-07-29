@@ -52,7 +52,7 @@ def thing():
         session.add(thing)
         session.commit()
         yield thing
-
+        session.delete(thing)
         session.close()
 
 

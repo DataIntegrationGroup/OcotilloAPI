@@ -15,7 +15,28 @@
 # ===============================================================================
 import pytest
 
-from tests import client
+from tests import client, thing  # noqa: F401
+
+
+import pytest
+from db.engine import session_ctx
+from db.sample import Sample
+
+
+@pytest.fixture
+def sample_fixture(thing):
+    with session_ctx() as session:
+        sample = Sample(
+            thing_id=thing.id,
+            collection_timestamp="2025-01-01T00:00:00+00:00",
+            collection_method="manual",
+        )
+        session.add(sample)
+        session.commit()
+        session.refresh(sample)
+        yield sample
+        session.delete(sample)
+        session.commit()
 
 
 def test_add_sample():
@@ -72,7 +93,7 @@ def test_add_geothermal_sample():
 
 
 #  ============= Get tests for samples =============================================
-def test_get_samples():
+def test_get_samples(sample_fixture):
     """
     Test retrieving samples from the collaborative network.
     """
