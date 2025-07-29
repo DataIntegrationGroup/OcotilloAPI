@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter, Depends
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
@@ -35,10 +37,16 @@ router = APIRouter(
 @router.get(
     "",
 )
-def get_series(session: session_dependency) -> CustomPage[SeriesResponse]:
+def get_series(session: session_dependency,
+               thing_id: int = None,  # Optional filter for a specific thing
+               ) -> CustomPage[SeriesResponse]:
     """
     Endpoint to retrieve series data.
     """
+    if thing_id is not None:
+        sql = select(Series).where(Series.thing_id == thing_id)
+        return paginate(conn=session, query=sql)
+
     return paginated_all_getter(session, Series)
 
 
