@@ -61,8 +61,6 @@ from services.thing_helper import add_thing, get_db_things
 from services.validation.well import validate_screens
 
 
-
-
 router = APIRouter(prefix="/thing", tags=["thing"])
 
 
@@ -86,8 +84,9 @@ def get_things(
         sql = select(Thing).where(Thing.id == thing_id)
         return paginate(query=sql, conn=session)
     else:
-        return get_db_things(filter_, order, query, session, sort, thing_type,
-                             with_location=True)
+        return get_db_things(
+            filter_, order, query, session, sort, thing_type, with_location=True
+        )
 
 
 @router.get("/well", summary="Get all wells")

@@ -34,9 +34,13 @@ def wkb_to_geojson(wkb_element):
 
 
 def get_db_things(
-    filter_, order, query, session, sort,
-        thing_type: str | list[str] = None,
-        with_location: bool = False
+    filter_,
+    order,
+    query,
+    session,
+    sort,
+    thing_type: str | list[str] = None,
+    with_location: bool = False,
 ):
     if query:
         sql = select(Thing).where(make_query(Thing, query))
@@ -44,7 +48,9 @@ def get_db_things(
         sql = select(Thing)
 
     if with_location:
-        sql = sql.join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
+        sql = sql.join(
+            LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
+        )
 
     if isinstance(thing_type, str):
         thing_type = thing_type.lower()
@@ -60,7 +66,7 @@ def get_db_things(
         subq = (
             select(
                 LocationThingAssociation.thing_id,
-                func.max(LocationThingAssociation.effective_start).label("max_start")
+                func.max(LocationThingAssociation.effective_start).label("max_start"),
             )
             .where(LocationThingAssociation.thing_id.in_(thing_ids))
             .group_by(LocationThingAssociation.thing_id)
@@ -68,16 +74,19 @@ def get_db_things(
         )
         stmt = (
             select(Location)
-            .join(LocationThingAssociation,
-                  Location.id == LocationThingAssociation.location_id)
+            .join(
+                LocationThingAssociation,
+                Location.id == LocationThingAssociation.location_id,
+            )
             .join(Thing)
             .join(
                 subq,
                 and_(
                     LocationThingAssociation.thing_id == subq.c.thing_id,
                     LocationThingAssociation.effective_start == subq.c.max_start,
-                    ),
-            ).order_by(Thing.id.asc())
+                ),
+            )
+            .order_by(Thing.id.asc())
         )
         locations = session.scalars(stmt).all()
 
