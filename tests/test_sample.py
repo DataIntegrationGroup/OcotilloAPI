@@ -34,11 +34,12 @@ def sample_fixture(thing):
         session.add(sample)
         session.commit()
         session.refresh(sample)
-        yield sample
+        yield thing, sample
         session.delete(sample)
         session.commit()
 
 
+#  ============= Post tests for samples =============================================
 def test_add_sample():
     """
     Test adding a sample to the collaborative network.
@@ -49,7 +50,6 @@ def test_add_sample():
             "thing_id": 1,
             "collection_timestamp": "2025-01-01T00:00:00Z",
             "collection_method": "manual",
-            "release_status": "draft",
         },
     )
     data = response.json()
@@ -92,16 +92,46 @@ def test_add_geothermal_sample():
     assert data["sample_id"] == 1
 
 
+#  ============= Patch tests for samples =============================================
+def test_patch_sample(sample_fixture):
+    """
+    Test updating a sample in the collaborative network.
+    """
+    thing, sample = sample_fixture
+    collection_method_patch = "automated"
+    response = client.patch(
+        f"/sample/{sample.id}",
+        json={
+            "collection_method": collection_method_patch,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "id": sample.id,
+        "collection_timestamp": sample.collection_timestamp.isoformat(),
+        "collection_method": collection_method_patch,
+        "thing_id": thing.id,
+    }
+
+
 #  ============= Get tests for samples =============================================
 def test_get_samples(sample_fixture):
     """
     Test retrieving samples from the collaborative network.
     """
+    thing, sample = sample_fixture
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    assert "items" in data
-    assert len(data["items"]) > 0
+    assert data["items"] == [
+        {
+            "id": sample.id,
+            "collection_timestamp": sample.collection_timestamp.isoformat(),
+            "collection_method": sample.collection_method,
+            "thing_id": thing.id,
+        }
+    ]
 
 
 @pytest.mark.skip(reason="Geochemical samples endpoint not implemented yet")
@@ -128,14 +158,30 @@ def test_get_geothermal_samples():
     assert len(data["items"]) > 0
 
 
-def test_get_sample_by_id():
+def test_get_sample_by_id_200(sample_fixture):
     """
     Test retrieving a sample from the collaborative network.
     """
+    thing, sample = sample_fixture
     response = client.get("/sample/1")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
+    assert data == {
+        "id": sample.id,
+        "collection_timestamp": sample.collection_timestamp.isoformat(),
+        "collection_method": sample.collection_method,
+        "thing_id": thing.id,
+    }
+
+
+def test_get_sample_by_id_404_not_found(sample_fixture):
+    """
+    Test retrieving a sample from the collaborative network.
+    """
+    response = client.get("/sample/999")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == "Sample with ID 999 not found."
 
 
 # ============= EOF =============================================
