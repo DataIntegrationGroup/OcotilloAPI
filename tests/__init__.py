@@ -17,14 +17,11 @@ from alembic.config import Config
 from alembic import command
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import configure_mappers
 
 from core.app import init_lexicon
 from main import app
 from db import *
 from db.engine import session_ctx
-
-configure_mappers()
 
 
 def run_alembic_upgrade():
