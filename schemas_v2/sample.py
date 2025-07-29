@@ -14,8 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+from pydantic import BaseModel, field_validator
 
-from pydantic import BaseModel
+from db.engine import get_db_session
 
 
 # -------- CREATE ----------
@@ -44,8 +45,38 @@ class CreateGeothermalSample(BaseModel):
 # -------- RESPONSE ----------
 class SampleResponse(BaseModel):
     id: int
+    collection_timestamp: datetime
+    collection_method: str
+    thing_id: int
 
 
 # -------- UPDATE ----------
+class UpdateSample(BaseModel):
+    collection_timestamp: datetime | None = None
+    collection_method: str | None = None
+    thing_id: int | None = None
+
+    @field_validator("thing_id")
+    def validate_thing_id_exists(cls, thing_id: int) -> int:
+        """
+        Validate that the thing_id exists in the database.
+        """
+        session = get_db_session()
+        thing = session.get("Thing", thing_id)
+        if not thing:
+            raise ValueError(f"Thing with ID {thing_id} does not exist.")
+        return thing_id
+
+    @field_validator("collection_timestamp")
+    def validate_collection_timestamp(cls, collection_timestamp: datetime) -> datetime:
+        """
+        Validate that the collection_timestamp is not in the future.
+        """
+        if collection_timestamp > datetime.now():
+            raise ValueError(
+                f"Collection timestamp {collection_timestamp} cannot be in the future."
+            )
+        return collection_timestamp
+
 
 # ============= EOF =============================================
