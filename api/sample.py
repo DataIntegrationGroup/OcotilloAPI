@@ -14,20 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_201_CREATED
+from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.sample import Sample
-from schemas_v2.sample import (
-    SampleResponse,
-    CreateSample,
-)
+from schemas_v2 import ResourceNotFoundResponse
+from schemas_v2.sample import SampleResponse, CreateSample, UpdateSample
 from services.query_helper import paginated_all_getter
+from services.crud_helper import model_patcher
 
 router = APIRouter(
     prefix="/sample",
@@ -69,6 +68,33 @@ def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_sess
 #     return adder(session, GeothermalSample, sample_data)
 
 
+# ============= Update =============================================
+@router.patch("/{sample_id}", summary="Update Sample")
+def update_sample(
+    sample_id: int,
+    sample_data: UpdateSample,
+    session: Session = Depends(get_db_session),
+) -> SampleResponse | ResourceNotFoundResponse:
+    """
+    Endpoint to update a sample.
+    """
+
+    """
+    Development notes:
+
+    What do we do if the field is nullable and the schema defaults to None?
+    If that occurs, then we update the field to None, which may not have 
+    been the intension of the user. We could set some string to indicate
+    DO NOT UPDATE. Perhaps coordination between the front and backends?
+    """
+    if session.get(Sample, sample_id) is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Sample with ID {sample_id} not found.",
+        )
+    return model_patcher(session, Sample, sample_id, sample_data)
+
+
 # ============= Get =============================================
 @router.get("", summary="Get Samples")
 def get_samples(session: session_dependency) -> CustomPage[SampleResponse]:
@@ -102,11 +128,20 @@ def get_samples(session: session_dependency) -> CustomPage[SampleResponse]:
 
 # ============= Get by ID =============================================
 @router.get("/{sample_id}", summary="Get Sample by ID")
-def get_sample_by_id(sample_id: int, session: session_dependency) -> SampleResponse:
+def get_sample_by_id(
+    sample_id: int, session: session_dependency
+) -> SampleResponse | ResourceNotFoundResponse:
     """
     Endpoint to retrieve a sample by its ID.
     """
-    return session.get(Sample, sample_id)
+    sample = session.get(Sample, sample_id)
+    if sample is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Sample with ID {sample_id} not found.",
+        )
+    else:
+        return sample
 
 
 # @router.get("/{sample_id}", summary="Get Geochemical Sample by ID")
