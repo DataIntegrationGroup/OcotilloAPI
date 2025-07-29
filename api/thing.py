@@ -79,12 +79,14 @@ def get_things(
     query: str = None,
     sort: str = None,
     order: str = None,
-    filter_: Annotated[str, Field(alias="filter")] = None,
+    filter_: str = Query(
+        default=None,
+        alias="filter",
+    ),
 ) -> CustomPage[ThingResponse]:
     """
     Retrieve all things or filter by type.
     """
-
     if thing_id:
         sql = select(Thing).where(Thing.id == thing_id)
         return paginate(query=sql, conn=session)
@@ -99,7 +101,7 @@ async def get_wells(
     # ose_pod_id: str = None,
     sort: str = None,
     order: str = None,
-    filter_: Annotated[str, Field(alias="filter")] = None,
+    filter_: str = Query(alias="filter", default=None),
     thing_type: List[str] | str = Query(default="water well"),
     query: str = None,
 ) -> CustomPage[WellResponse]:
@@ -124,7 +126,7 @@ async def get_springs(
     session: session_dependency,
     sort: str = None,
     order: str = None,
-    filter_: Annotated[str, Field(alias="filter")] = None,
+    filter_: str = Query(alias="filter", default=None),
     thing_type: List[str] | str = Query(default="water well"),
 ) -> CustomPage[SpringResponse]:
     """
@@ -197,7 +199,7 @@ def create_well(
     summary="Create a new spring",
     status_code=status.HTTP_201_CREATED,
 )
-def create_sprint(
+def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     user=well_user_dependency,

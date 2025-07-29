@@ -21,16 +21,6 @@ from db import lexicon_term
 from db.base import Base, AutoBaseMixin
 
 
-class SampleChildMixin:
-    """ """
-
-    @declared_attr
-    def sample_id(self):
-        return mapped_column(
-            Integer, ForeignKey("sample.id", ondelete="CASCADE"), nullable=False
-        )
-
-
 class Sample(Base, AutoBaseMixin):
     collection_timestamp = mapped_column(DateTime, nullable=False)
     collection_method = lexicon_term(nullable=False)

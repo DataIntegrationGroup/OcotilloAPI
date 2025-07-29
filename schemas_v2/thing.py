@@ -54,7 +54,15 @@ class CreateWell(CreateBaseThing):
     well_construction_notes: str | None = None
 
 
-class CreateThing(CreateWell):
+class CreateSpring(CreateBaseThing):
+    """
+    Schema for creating a spring.
+    """
+
+    spring_type: str | None = None
+
+
+class CreateThing(CreateWell, CreateSpring):
     """
     Schema for creating a thing.
     """
@@ -91,14 +99,6 @@ class CreateWellScreen(BaseModel):
                 "screen_depth_bottom must be greater than screen_depth_top"
             )
         return self
-
-
-class CreateSpring(CreateThing):
-    """
-    Schema for creating a spring.
-    """
-
-    spring_type: str | None = None
 
 
 # ------ RESPONSE ----------
@@ -161,6 +161,7 @@ class GroupResponse(ORMBaseModel):
 
     name: str
     description: str | None = None
+    parent_group_id: int | None = None
 
 
 class GeoJSONGeometry(BaseModel):

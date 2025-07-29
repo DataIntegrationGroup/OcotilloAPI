@@ -25,109 +25,57 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import adder, Thing, Location, LocationThingAssociation
 from db.engine import get_db_session
-from db.observation.geothermal import GeothermalObservation
-from db.observation.groundwaterlevel import GroundwaterLevelObservation
-from db.observation.observation import Observation
+
+# from db.observation.geothermal import GeothermalObservation
+# from db.observation.groundwaterlevel import GroundwaterLevelObservation
+from db.observation import Observation
 from db.series.series import Series
 from schemas_v2.observation import (
-    CreateObservation,
+    # CreateObservation,
     CreateGroundwaterLevelObservation,
-    CreateGeothermalObservation,
-    CreateGroundwaterLevelObservationDirect,
-    CreateGeothermalObservationDirect,
+    # CreateGeothermalObservation,
+    # CreateGroundwaterLevelObservationDirect,
+    # CreateGeothermalObservationDirect,
     ObservationResponse,
     GroundwaterLevelObservationResponse,
-    GeothermalObservationResponse,
+    # GeothermalObservationResponse,
 )
 from services.geospatial_helper import make_within_wkt
+from services.observation_helper import add_observation
 from services.query_helper import paginated_all_getter
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
 
-def direct_adder(session: Session, model, data):
-    obs = Observation(
-        series_id=data.series_id,
-        observation_timestamp=data.observation_timestamp,
-    )
-    obs.release_status = data.release_status
-    session.add(obs)
-    session.commit()
-    session.refresh(obs)
-
-    model_obj = model(
-        **data.model_dump(
-            exclude={"series_id", "observation_timestamp", "release_status"}
-        )
-    )
-    model_obj.observation = obs
-    session.add(model_obj)
-    session.commit()
-    session.refresh(model_obj)
-    return model_obj
-
-
 # ============= Post =============================================
-@router.post("", status_code=HTTP_201_CREATED)
-def add_observation(
-    obs_data: CreateObservation, session: Session = Depends(get_db_session)
-) -> ObservationResponse:
-    """
-    Add a new observation to the database.
-    This endpoint is currently a placeholder and does not implement any functionality.
-    """
-    return adder(session, Observation, obs_data)
-
-
 @router.post("/groundwater-level", status_code=HTTP_201_CREATED)
 def add_groundwater_level_observation(
-    obs_data: (
-        CreateGroundwaterLevelObservation | CreateGroundwaterLevelObservationDirect
-    ),
+    obs_data: CreateGroundwaterLevelObservation,
     session: session_dependency,
 ):
     """
     Add a new groundwater observation to the database.
-    This endpoint is currently a placeholder and does not implement any functionality.
     """
-    if isinstance(obs_data, CreateGroundwaterLevelObservationDirect):
-        return direct_adder(session, GroundwaterLevelObservation, obs_data)
-    else:
-
-        return adder(session, GroundwaterLevelObservation, obs_data)
+    return add_observation(session, obs_data, "groundwater-level")
 
 
-@router.post("/geothermal", status_code=HTTP_201_CREATED)
-def add_geothermal_observation(
-    obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
-    session: session_dependency,
-):
-    """
-    Add a new geothermal observation to the database.
-    This endpoint is currently a placeholder and does not implement any functionality.
-    """
-    if isinstance(obs_data, CreateGeothermalObservationDirect):
-        return direct_adder(session, GeothermalObservation, obs_data)
-    else:
-        return adder(session, GeothermalObservation, obs_data)
+#
+# @router.post("/geothermal", status_code=HTTP_201_CREATED)
+# def add_geothermal_observation(
+#     obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
+#     session: session_dependency,
+# ):
+#     """
+#     Add a new geothermal observation to the database.
+#     This endpoint is currently a placeholder and does not implement any functionality.
+#     """
+#     if isinstance(obs_data, CreateGeothermalObservationDirect):
+#         return direct_adder(session, GeothermalObservation, obs_data)
+#     else:
+#         return adder(session, GeothermalObservation, obs_data)
 
 
 # ============= Get ==============================================
-@router.get("")
-def get_observations(
-    session: session_dependency,
-    series_id: int | None = None,
-) -> CustomPage[ObservationResponse]:
-    """
-    Retrieve all observations from the database.
-    """
-    if series_id is not None:
-        sql = select(Observation).where(Observation.series_id == series_id)
-        return paginate(query=sql, conn=session)
-    else:
-        return paginated_all_getter(session, Observation)
-
-
 @router.get(
     "/groundwater-level",
 )
@@ -143,25 +91,14 @@ def get_groundwater_level_observations(
     Retrieve all groundwater level observations from the database.
     """
     if series_id is not None:
-        sql = (
-            select(GroundwaterLevelObservation)
-            .join(Observation)
-            .where(Observation.series_id == series_id)
-        )
+        sql = select(Observation).where(Observation.series_id == series_id)
         return paginate(query=sql, conn=session)
     elif thing_id is not None:
-        sql = (
-            select(GroundwaterLevelObservation)
-            .join(Observation)
-            .join(Series)
-            .join(Thing)
-            .where(Thing.id == thing_id)
-        )
+        sql = select(Observation).join(Series).join(Thing).where(Thing.id == thing_id)
         return paginate(query=sql, conn=session)
     elif polygon is not None:
         sql = (
-            select(GroundwaterLevelObservation)
-            .join(Observation)
+            select(Observation)
             .join(Series)
             .join(Thing)
             .join(LocationThingAssociation)
@@ -170,35 +107,13 @@ def get_groundwater_level_observations(
         sql = make_within_wkt(sql, polygon)
         return paginate(query=sql, conn=session)
     elif start_time is not None and end_time is not None:
-        sql = (
-            select(GroundwaterLevelObservation)
-            .join(Observation)
-            .where(
-                Observation.observation_timestamp >= start_time,
-                Observation.observation_timestamp <= end_time,
-            )
+        sql = select(Observation).where(
+            Observation.observation_timestamp >= start_time,
+            Observation.observation_timestamp <= end_time,
         )
         return paginate(query=sql, conn=session)
     else:
-        return paginated_all_getter(session, GroundwaterLevelObservation)
-
-
-@router.get("/geothermal")
-def get_groundwater_level_observations(
-    series_id: int | None = None, session: Session = Depends(get_db_session)
-) -> CustomPage[GeothermalObservationResponse]:
-    """
-    Retrieve all groundwater level observations from the database.
-    """
-    if series_id is not None:
-        sql = (
-            select(GeothermalObservation)
-            .join(Observation)
-            .where(Observation.series_id == series_id)
-        )
-        return paginate(query=sql, conn=session)
-    else:
-        return paginated_all_getter(session, GeothermalObservation)
+        return paginated_all_getter(session, Observation)
 
 
 # ============= EOF =============================================

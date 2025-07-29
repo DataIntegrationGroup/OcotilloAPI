@@ -27,10 +27,7 @@ from db.geothermal import *
 from db.group import *
 from db.lexicon import *
 from db.location import *
-from db.observation.geochemical import *
-from db.observation.geothermal import *
-from db.observation.groundwaterlevel import *
-from db.observation.observation import *
+from db.observation import *
 from db.publication import *
 from db.sample import *
 from db.sensor.groundwaterlevel import *

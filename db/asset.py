@@ -27,14 +27,15 @@ class Asset(Base, AutoBaseMixin):
     # content = Column(UploadedFileField)
     # photo = Column(UploadedFileField(upload_type=UploadedImageWithThumb))
 
-    filename = Column(String)
-    storage_service = Column(String)
-    storage_path = Column(String)
-    mime_type = Column(String)
-    size = Column(Integer)
+    name = Column(String, nullable=False)
+    label = Column(String, nullable=True)
+    storage_service = Column(String, nullable=False)
+    storage_path = Column(String, nullable=False)
+    mime_type = Column(String, nullable=False)
+    size = Column(Integer, nullable=False)
 
     search_vector = Column(
-        TSVectorType("filename", "mime_type", "storage_service", "storage_path")
+        TSVectorType("name", "mime_type", "storage_service", "storage_path")
     )
 
     things = relationship("Thing", secondary="asset_thing_association")

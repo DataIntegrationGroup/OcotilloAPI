@@ -92,7 +92,7 @@ def _get_asset_results(session: Session, q: str) -> list[dict]:
     assets = session.scalars(query).all()
     results = [
         {
-            "label": a.filename,
+            "label": a.name,
             "group": "Assets",
             "properties": {
                 "things": [t.name for t in a.things],

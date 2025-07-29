@@ -13,23 +13,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel
 
-# -------- CREATE ----------
 
-
-# -------- RESPONSE --------
-class AssetResponse(BaseModel):
-    id: int
-    filename: str
-    storage_service: str
+class BaseAsset(BaseModel):
+    name: str
+    label: str | None = None
     storage_path: str
     mime_type: str
     size: int
+
+
+# -------- CREATE ----------
+class CreateAsset(BaseAsset):
     url: str
 
 
+# -------- RESPONSE --------
+class AssetResponse(BaseAsset):
+    id: int
+    # name: str
+    # label: str
+    # storage_service: str
+    # storage_path: str
+    # mime_type: str
+    # size: int
+    url: str
+    created_at: datetime
+    storage_service: str
+
+
 # -------- UPDATE ----------
+class UpdateAsset(BaseModel):
+    label: str
 
 
 # ============= EOF =============================================

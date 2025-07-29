@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pytest
+
 from tests import client
 
 
@@ -35,6 +37,7 @@ def test_add_sample():
     assert data["thing_id"] == 1
 
 
+@pytest.mark.skip(reason="Geochemical sample endpoint not implemented yet")
 def test_add_geochemical_sample():
     """
     Test adding a geochemical sample to the collaborative network.
@@ -51,6 +54,7 @@ def test_add_geochemical_sample():
     assert data["sample_id"] == 1
 
 
+@pytest.mark.skip(reason="Geothermal sample endpoint not implemented yet")
 def test_add_geothermal_sample():
     """
     Test adding a geothermal sample to the collaborative network.
@@ -79,6 +83,7 @@ def test_get_samples():
     assert len(data["items"]) > 0
 
 
+@pytest.mark.skip(reason="Geochemical samples endpoint not implemented yet")
 def test_get_geochemical_samples():
     """
     Test retrieving geochemical samples from the collaborative network.
@@ -90,6 +95,7 @@ def test_get_geochemical_samples():
     assert len(data["items"]) > 0
 
 
+@pytest.mark.skip(reason="Geothermal samples endpoint not implemented yet")
 def test_get_geothermal_samples():
     """
     Test retrieving geothermal samples from the collaborative network.

@@ -13,25 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import DateTime, String, ForeignKey, Integer
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import mapped_column, relationship
+from pydantic import BaseModel
 
-from db.base import Base, AutoBaseMixin
-from db.sample.sample import SampleChildMixin
+from schemas import ORMBaseModel
 
 
-class GeochemicalSample(Base, AutoBaseMixin, SampleChildMixin):
+# -------- CREATE ----------
+# -------- RESPONSE --------
+class GroupResponse(ORMBaseModel):
     """
-    Represents a geochemical sample in the collaborative network.
+    Pydantic model for the response of a group.
+    This model can be extended to include additional fields as needed.
     """
 
-    # Define the columns for the geochemical sample
-    # sample = relationship("Sample", back_populates="geochemical_samples")
+    id: int
+    name: str
+    description: str | None = None
+    parent_group_id: int | None = None
 
-    # Additional fields specific to geochemical samples can be added here
-    # e.g., chemical composition, analysis method, etc.
-    pass
+
+# -------- UPDATE ----------
+class UpdateGroup(BaseModel):
+    """
+    Pydantic model for updating a group.
+    This model can be extended to include additional fields as needed.
+    """
+
+    name: str | None = None
+    description: str | None = None
+    parent_group_id: int | None = None
 
 
 # ============= EOF =============================================
