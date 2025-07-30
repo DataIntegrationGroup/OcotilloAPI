@@ -133,6 +133,40 @@ def test_patch_sample_404_not_found(sample_fixture):
     assert data["detail"] == "Sample with ID 999 not found."
 
 
+def test_patch_sample_422_thing_id_not_found(sample_fixture):
+    """
+    Test updating a sample with a thing_id that does not exist
+    """
+    response = client.patch(
+        f"/sample/{sample_fixture[1].id}",
+        json={
+            "thing_id": 999,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert data["detail"] == "Thing with ID 999 does not exist."
+
+
+def test_patch_sample_422_invalid_timestamp(sample_fixture):
+    """
+    Test updating a sample with an invalid collection timestamp.
+    """
+    bad_collection_timestamp = "3500-01-01T00:00:00Z"
+    response = client.patch(
+        f"/sample/{sample_fixture[1].id}",
+        json={
+            "collection_timestamp": bad_collection_timestamp,  # Invalid date
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert (
+        data["detail"]
+        == f"Collection timestamp {bad_collection_timestamp} cannot be in the future."
+    )
+
+
 #  ============= Get tests for samples =============================================
 def test_get_samples(sample_fixture):
     """
