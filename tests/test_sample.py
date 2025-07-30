@@ -40,14 +40,14 @@ def sample_fixture(thing):
 
 
 #  ============= Post tests for samples =============================================
-def test_add_sample():
+def test_add_sample(thing):
     """
     Test adding a sample to the collaborative network.
     """
     response = client.post(
         "/sample",
         json={
-            "thing_id": 1,
+            "thing_id": thing.id,
             "collection_timestamp": "2025-01-01T00:00:00Z",
             "collection_method": "manual",
         },
@@ -55,7 +55,7 @@ def test_add_sample():
     data = response.json()
     assert response.status_code == 201
     assert data["id"] is not None
-    assert data["thing_id"] == 1
+    assert data["thing_id"] == thing.id
 
 
 @pytest.mark.skip(reason="Geochemical sample endpoint not implemented yet")
