@@ -31,9 +31,9 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 @router.get("")
 async def get_geospatial(
     session: session_dependency,
-    thing_type: List[str] | None = None,
+    thing_type: Annotated[List[str], Query(title="thing_type")] = None,
     group: Annotated[
-        str | int, Query(title="group", description="group", alias="group")
+        str | int, Query(title="group")
     ] = None,
     format_: Annotated[
         str,
