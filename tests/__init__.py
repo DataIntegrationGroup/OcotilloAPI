@@ -42,6 +42,12 @@ init_lexicon()
 
 client = TestClient(app)
 
+"""
+REFACTOR TODO: put all fixtures here or in a separate fixtures file. Some fixtures are dependent on others,
+such as `sample_fixture` which requires `thing`. By putting them all in one place, we can ensure that
+they are properly managed and avoid potential issues with fixture scope and lifecycle.
+"""
+
 
 @pytest.fixture(scope="function")
 def thing():
