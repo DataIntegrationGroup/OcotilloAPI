@@ -58,6 +58,10 @@ def test_add_sample(thing):
     assert data["id"] is not None
     assert data["thing_id"] == thing.id
 
+    with session_ctx() as session:
+        session.query(Sample).delete()
+        session.commit()
+
 
 @pytest.mark.skip(reason="Geochemical sample endpoint not implemented yet")
 def test_add_geochemical_sample():
