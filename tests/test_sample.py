@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import pytest
+from datetime import datetime
 
 from tests import client, thing  # noqa: F401
 
@@ -137,15 +138,24 @@ def test_patch_sample_422_thing_id_not_found(sample_fixture):
     """
     Test updating a sample with a thing_id that does not exist
     """
+    bad_thing_id = 999
     response = client.patch(
         f"/sample/{sample_fixture[1].id}",
         json={
-            "thing_id": 999,
+            "thing_id": bad_thing_id,
         },
     )
     assert response.status_code == 422
     data = response.json()
-    assert data["detail"] == "Thing with ID 999 does not exist."
+    assert data["detail"] == [
+        {
+            "type": "value_error",
+            "loc": ["body", "thing_id"],
+            "msg": f"Value error, Thing with ID {bad_thing_id} does not exist.",
+            "input": bad_thing_id,
+            "ctx": {"error": {}},
+        }
+    ]
 
 
 def test_patch_sample_422_invalid_timestamp(sample_fixture):
@@ -153,6 +163,9 @@ def test_patch_sample_422_invalid_timestamp(sample_fixture):
     Test updating a sample with an invalid collection timestamp.
     """
     bad_collection_timestamp = "3500-01-01T00:00:00Z"
+    bad_collection_timestamp_dt = datetime.fromisoformat(
+        bad_collection_timestamp.replace("Z", "+00:00")
+    )
     response = client.patch(
         f"/sample/{sample_fixture[1].id}",
         json={
@@ -161,10 +174,15 @@ def test_patch_sample_422_invalid_timestamp(sample_fixture):
     )
     assert response.status_code == 422
     data = response.json()
-    assert (
-        data["detail"]
-        == f"Collection timestamp {bad_collection_timestamp} cannot be in the future."
-    )
+    assert data["detail"] == [
+        {
+            "type": "value_error",
+            "loc": ["body", "collection_timestamp"],
+            "msg": f"Value error, Collection timestamp {bad_collection_timestamp_dt} cannot be in the future.",
+            "input": bad_collection_timestamp,
+            "ctx": {"error": {}},
+        }
+    ]
 
 
 #  ============= Get tests for samples =============================================
