@@ -14,19 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
-from db import adder, Series
-from db.sensor import Sensor
+from db import adder, Observation
 from db.engine import get_db_session
+from db.sensor import Sensor
 from schemas_v2.sensor import SensorResponse, CreateSensor
-from services.query_helper import paginated_all_getter
+from services.query_helper import order_sort_filter
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
@@ -47,26 +47,30 @@ def get_sensors(
     session: session_dependency,
     thing_id: int = None,  # Optional filter for thing_id
     observed_property: str = None,  # Optional filter for observed_property
+        sort: str | None = None,
+        order: str | None = None,
+        filter_: str = Query(alias='filter', default=None),
+
 ) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
     """
+    sql = select(Sensor)
     if thing_id is not None or observed_property is not None:
-        sql = select(Sensor)
+        conditions =[]
         if observed_property is not None:
-            sql = sql.join(Series)
-            sql = sql.where(Series.observed_property == observed_property)
+            conditions.append(Observation.observed_property == observed_property)
         if thing_id is not None:
-            sql = sql.where(Series.thing_id == thing_id)
-            # sql = sql.where(Sensor.observed_property == observed_property)
-        # if thing_id is not None:
+            conditions.append(Observation.thing_id == thing_id)
 
-        # sql = sql.where(Sensor.thing_id == thing_id)
-        return paginate(conn=session, query=sql)
-    else:
+        if conditions:
+            sql = sql.join(Observation).where(and_(*conditions))
 
-        return paginated_all_getter(session, Sensor)
+    sql = order_sort_filter(
+        sql, Sensor, sort=sort, order=order, filter_=filter_
+    )
+    return paginate(conn=session, query=sql)
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)

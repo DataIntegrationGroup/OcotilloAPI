@@ -74,10 +74,10 @@ def test_item_get_group():
     assert data["name"] == "Test Group"
 
 
-def test_item_get_group_thing():
+def test_item_get_group_thing(thing):
     response = client.get("/group/association/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
     assert data["group_id"] == 1
-    assert data["thing_id"] == 6
+    assert data["thing_id"] == thing.id

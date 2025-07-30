@@ -15,34 +15,20 @@
 # ===============================================================================
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
-from db import adder, Thing, Location, LocationThingAssociation
-from db.engine import get_db_session
-
-# from db.observation.geothermal import GeothermalObservation
-# from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation import Observation
-from db.series.series import Series
 from schemas_v2.observation import (
-    # CreateObservation,
     CreateGroundwaterLevelObservation,
-    # CreateGeothermalObservation,
-    # CreateGroundwaterLevelObservationDirect,
-    # CreateGeothermalObservationDirect,
-    ObservationResponse,
     GroundwaterLevelObservationResponse,
-    # GeothermalObservationResponse,
 )
-from services.geospatial_helper import make_within_wkt
 from services.observation_helper import add_observation
-from services.query_helper import paginated_all_getter
+from services.query_helper import order_sort_filter
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -81,39 +67,33 @@ def add_groundwater_level_observation(
 )
 def get_groundwater_level_observations(
     session: session_dependency,
-    series_id: int | None = None,
     thing_id: int | None = None,
+        sensor_id: int | None = None,
+    observed_property: str | None = None,
     polygon: str | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias='filter', default=None),
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.
     """
-    if series_id is not None:
-        sql = select(Observation).where(Observation.series_id == series_id)
-        return paginate(query=sql, conn=session)
-    elif thing_id is not None:
-        sql = select(Observation).join(Series).join(Thing).where(Thing.id == thing_id)
-        return paginate(query=sql, conn=session)
-    elif polygon is not None:
-        sql = (
-            select(Observation)
-            .join(Series)
-            .join(Thing)
-            .join(LocationThingAssociation)
-            .join(Location)
-        )
-        sql = make_within_wkt(sql, polygon)
-        return paginate(query=sql, conn=session)
-    elif start_time is not None and end_time is not None:
-        sql = select(Observation).where(
-            Observation.observation_timestamp >= start_time,
-            Observation.observation_timestamp <= end_time,
-        )
-        return paginate(query=sql, conn=session)
-    else:
-        return paginated_all_getter(session, Observation)
+    sql = select(Observation)
+    if thing_id is not None:
+        sql = sql.where(Observation.thing_id == thing_id)
+    if sensor_id is not None:
+        sql = sql.where(Observation.sensor_id == sensor_id)
+    if observed_property is not None:
+        sql = sql.where(Observation.observed_property == observed_property)
+    if start_time:
+        sql = sql.where(Observation.observation_timestamp >= start_time)
+    if end_time:
+        sql = sql.where(Observation.observation_timestamp <= end_time)
+
+    sql = order_sort_filter(sql, Observation, sort, order, filter_)
+    return paginate(query=sql, conn=session)
 
 
 # ============= EOF =============================================

@@ -2,7 +2,6 @@
 
   {"term":  "water well", "definition":  "a hole drill into the ground to access groundwater", "category":  "thing_type"},
   {"term":  "spring", "definition":  "a natural discharge of groundwater at the surface", "category":  "thing_type"},
-  {"term":  "groundwater-level", "definition":  "the level of groundwater in a well or borehole", "category":  "observation_type"},
 
   {"term": "draft", "definition": "draft version", "category": "release_status"},
   {"term": "provisional", "definition": "provisional version", "category": "release_status"},
