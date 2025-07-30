@@ -35,6 +35,7 @@ init_lexicon()
 
 client = TestClient(app)
 
+
 @pytest.fixture(scope="module")
 def sample():
     with session_ctx() as session:

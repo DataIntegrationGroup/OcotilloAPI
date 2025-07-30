@@ -27,6 +27,7 @@ class CreateSample(BaseModel):
     sampler: str | None = None
     release_status: str
 
+
 class CreateGeochemicalSample(BaseModel):
     """
     Represents a geochemical sample in the collaborative network.
