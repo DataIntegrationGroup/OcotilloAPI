@@ -16,28 +16,12 @@
 import pytest
 from datetime import datetime
 
-from tests import client, thing  # noqa: F401
+from tests import client, thing, sample_fixture  # noqa: F401
 
 
 import pytest
 from db.engine import session_ctx
 from db.sample import Sample
-
-
-@pytest.fixture
-def sample_fixture(thing):
-    with session_ctx() as session:
-        sample = Sample(
-            thing_id=thing.id,
-            collection_timestamp="2025-01-01T00:00:00+00:00",
-            collection_method="manual",
-        )
-        session.add(sample)
-        session.commit()
-        session.refresh(sample)
-        yield thing, sample
-        session.delete(sample)
-        session.commit()
 
 
 #  ============= Post tests for samples =============================================
