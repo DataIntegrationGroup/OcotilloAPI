@@ -18,12 +18,14 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import mapped_column, relationship, declared_attr
 
 from db import lexicon_term
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Sample(Base, AutoBaseMixin):
+class Sample(Base, AutoBaseMixin, ReleaseMixin):
     collection_timestamp = mapped_column(DateTime, nullable=False)
     collection_method = lexicon_term(nullable=False)
+    sample_type = lexicon_term(nullable=False)
+    sampler = mapped_column(String(255))
 
     thing_id = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False

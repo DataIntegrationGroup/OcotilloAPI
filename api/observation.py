@@ -70,6 +70,7 @@ def get_groundwater_level_observations(
     session: session_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
+    sample_id: int | None = None,
     observed_property: str | None = None,
     polygon: str | None = None,
     start_time: datetime | None = None,
@@ -85,6 +86,8 @@ def get_groundwater_level_observations(
     if thing_id is not None:
         sql = sql.join(Sample)
         sql = sql.where(Sample.thing_id == thing_id)
+    if sample_id is not None:
+        sql = sql.where(Observation.sample_id == sample_id)
     if sensor_id is not None:
         sql = sql.where(Observation.sensor_id == sensor_id)
     if observed_property is not None:

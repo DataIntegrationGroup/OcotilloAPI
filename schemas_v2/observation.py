@@ -26,8 +26,7 @@ from pydantic import BaseModel
 # -------- CREATE ----------
 class CreateBaseObservation(BaseModel):
     observation_timestamp: datetime
-    thing_id: int | None = None
-    sample_id: int | None = None
+    sample_id: int
     sensor_id: int
     observed_property: str
     release_status: str

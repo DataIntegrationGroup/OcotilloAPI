@@ -29,6 +29,8 @@ def test_add_sample():
             "collection_timestamp": "2025-01-01T00:00:00Z",
             "collection_method": "manual",
             "release_status": "draft",
+            "sample_type": "groundwater",
+            "sampler": "Test Sampler A",
         },
     )
     data = response.json()

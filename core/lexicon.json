@@ -1,5 +1,7 @@
 [
 
+  {"term":  "groundwater", "definition":  "groundwater sample from a well", "category":  "sample_type"},
+
   {"term":  "water well", "definition":  "a hole drill into the ground to access groundwater", "category":  "thing_type"},
   {"term":  "spring", "definition":  "a natural discharge of groundwater at the surface", "category":  "thing_type"},
 

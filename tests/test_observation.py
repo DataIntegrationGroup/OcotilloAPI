@@ -15,12 +15,12 @@
 # ===============================================================================
 from db import Sensor
 from db.engine import get_db_session
-from tests import client, thing, sensor
+from tests import client, thing, sensor, sample
 import pytest
 
 
 # ============= Post tests =================
-def test_add_groundwater_observation(thing, sensor):
+def test_add_groundwater_observation(sample, sensor):
     response = client.post(
         "/observation/groundwater-level",
         json={
@@ -28,7 +28,7 @@ def test_add_groundwater_observation(thing, sensor):
             "release_status": "draft",
             "depth_to_water": 101,
             "measuring_point_height": 53,
-            "thing_id": thing.id,
+            "sample_id": sample.id,
             "sensor_id": sensor.id,
             "level_status": "normal",
             "observed_property": "groundwater level",
@@ -97,10 +97,22 @@ def test_add_geochemical_observation():
 #     assert len(items) > 0, "Expected at least one geothermal observation for the series"
 
 
-def test_get_groundwater_observation_by_thing(thing):
+def test_get_groundwater_observation_by_sample(sample):
     response = client.get(
         "/observation/groundwater-level",
-        params={"thing_id": thing.id, "observed_property": "groundwater level"},
+        params={"sample_id": sample.id, "observed_property": "groundwater level"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert len(items) > 0, "Expected at least one groundwater observation for the thing"
+
+
+def test_get_groundwater_observation_by_thing(sample):
+    response = client.get(
+        "/observation/groundwater-level",
+        params={"thing_id": sample.thing_id, "observed_property": "groundwater level"},
     )
     assert response.status_code == 200
     data = response.json()
