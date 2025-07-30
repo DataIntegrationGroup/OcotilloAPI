@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, field_validator
 
 from db.engine import get_db_session
@@ -72,10 +72,11 @@ class UpdateSample(BaseModel):
         """
         Validate that the collection_timestamp is not in the future.
         """
-        if collection_timestamp > datetime.now():
-            raise ValueError(
-                f"Collection timestamp {collection_timestamp} cannot be in the future."
-            )
+        if collection_timestamp:
+            if collection_timestamp > datetime.now(tz=timezone.utc):
+                raise ValueError(
+                    f"Collection timestamp {collection_timestamp} cannot be in the future."
+                )
         return collection_timestamp
 
 

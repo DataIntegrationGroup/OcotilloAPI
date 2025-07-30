@@ -98,21 +98,39 @@ def test_patch_sample(sample_fixture):
     Test updating a sample in the collaborative network.
     """
     thing, sample = sample_fixture
-    collection_method_patch = "automated"
+    collection_method_patch = "continuous"
+    collection_timestamp_patch = "2025-01-02T00:00:00+00:00"
     response = client.patch(
         f"/sample/{sample.id}",
         json={
             "collection_method": collection_method_patch,
+            "collection_timestamp": collection_timestamp_patch,
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data == {
         "id": sample.id,
-        "collection_timestamp": sample.collection_timestamp.isoformat(),
+        "collection_timestamp": collection_timestamp_patch.split("+")[0],
         "collection_method": collection_method_patch,
         "thing_id": thing.id,
     }
+
+
+def test_patch_sample_404_not_found(sample_fixture):
+    """
+    Test updating a sample that does not exist in the collaborative network.
+    """
+    collection_method_patch = "continuous"
+    response = client.patch(
+        "/sample/999",
+        json={
+            "collection_method": collection_method_patch,
+        },
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == "Sample with ID 999 not found."
 
 
 #  ============= Get tests for samples =============================================
