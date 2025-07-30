@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, field_validator
 
 from db.engine import get_db_session
+from db import Thing
 
 
 # -------- CREATE ----------
@@ -61,10 +62,10 @@ class UpdateSample(BaseModel):
         """
         Validate that the thing_id exists in the database.
         """
-        session = get_db_session()
-        thing = session.get("Thing", thing_id)
-        if not thing:
-            raise ValueError(f"Thing with ID {thing_id} does not exist.")
+        with next(get_db_session()) as session:
+            thing = session.get(Thing, thing_id)
+            if not thing:
+                raise ValueError(f"Thing with ID {thing_id} does not exist.")
         return thing_id
 
     @field_validator("collection_timestamp")
