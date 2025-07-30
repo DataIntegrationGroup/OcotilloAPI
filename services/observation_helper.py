@@ -19,23 +19,23 @@ from sqlalchemy.orm import Session
 from db import Base, Observation, Sample
 
 
-def add_observation(
-    session: Session, data: BaseModel
-) -> Base:
+def add_observation(session: Session, data: BaseModel) -> Base:
 
     if isinstance(data, BaseModel):
         data = data.model_dump(exclude_unset=True)
 
-    if 'thing_id' in data:
-        thing_id = data.pop('thing_id')
-        if 'sample_id' not in data:
-            sample = Sample(thing_id=thing_id,
-                            collection_method=data.get('collection_method', 'manual'),
-                            collection_timestamp=data.get('observation_timestamp'))
+    if "thing_id" in data:
+        thing_id = data.pop("thing_id")
+        if "sample_id" not in data:
+            sample = Sample(
+                thing_id=thing_id,
+                collection_method=data.get("collection_method", "manual"),
+                collection_timestamp=data.get("observation_timestamp"),
+            )
             session.add(sample)
-            data['sample'] = sample
+            data["sample"] = sample
         else:
-            raise ValueError('Cannot specify both thing_id and sample_id')
+            raise ValueError("Cannot specify both thing_id and sample_id")
 
     obj = Observation(**data)
 

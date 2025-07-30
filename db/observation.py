@@ -56,7 +56,6 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         nullable=False,
     )
 
-
     observation_timestamp = mapped_column(
         TIMESTAMP, nullable=False, doc="Timestamp of the observation"
     )
