@@ -15,12 +15,14 @@
 # ===============================================================================
 
 from fastapi import APIRouter, Depends
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
-from db import adder
+from db import adder, Series
 from db.sensor import Sensor
 from db.engine import get_db_session
 from schemas_v2.sensor import SensorResponse, CreateSensor
@@ -41,12 +43,30 @@ def add_sensor(
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-def get_sensors(session: session_dependency) -> CustomPage[SensorResponse]:
+def get_sensors(session: session_dependency,
+                thing_id: int = None,  # Optional filter for thing_id
+                observed_property: str = None  # Optional filter for observed_property
+                ) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
     """
-    return paginated_all_getter(session, Sensor)
+    if thing_id is not None or observed_property is not None:
+        sql = select(Sensor)
+        if observed_property is not None:
+            sql = sql.join(Series)
+            sql = sql.where(Series.observed_property == observed_property)
+        if thing_id is not None:
+            sql = sql.where(Series.thing_id == thing_id)
+            # sql = sql.where(Sensor.observed_property == observed_property)
+        # if thing_id is not None:
+
+            # sql = sql.where(Sensor.thing_id == thing_id)
+        return paginate(conn=session, query=sql)
+    else:
+
+
+        return paginated_all_getter(session, Sensor)
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
