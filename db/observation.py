@@ -26,6 +26,7 @@ from sqlalchemy.orm import declared_attr, mapped_column, relationship
 
 from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
 
+
 class Observation(Base, AuditMixin, ReleaseMixin):
     __tablename__ = "observation"
 
@@ -99,5 +100,6 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     thing = relationship("Thing")
     sensor = relationship("Sensor")
     sample = relationship("Sample")
+
 
 # ============= EOF =============================================

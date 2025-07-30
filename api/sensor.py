@@ -47,10 +47,9 @@ def get_sensors(
     session: session_dependency,
     thing_id: int = None,  # Optional filter for thing_id
     observed_property: str = None,  # Optional filter for observed_property
-        sort: str | None = None,
-        order: str | None = None,
-        filter_: str = Query(alias='filter', default=None),
-
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
@@ -58,7 +57,7 @@ def get_sensors(
     """
     sql = select(Sensor)
     if thing_id is not None or observed_property is not None:
-        conditions =[]
+        conditions = []
         if observed_property is not None:
             conditions.append(Observation.observed_property == observed_property)
         if thing_id is not None:
@@ -67,9 +66,7 @@ def get_sensors(
         if conditions:
             sql = sql.join(Observation).where(and_(*conditions))
 
-    sql = order_sort_filter(
-        sql, Sensor, sort=sort, order=order, filter_=filter_
-    )
+    sql = order_sort_filter(sql, Sensor, sort=sort, order=order, filter_=filter_)
     return paginate(conn=session, query=sql)
 
 

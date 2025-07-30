@@ -68,14 +68,14 @@ def add_groundwater_level_observation(
 def get_groundwater_level_observations(
     session: session_dependency,
     thing_id: int | None = None,
-        sensor_id: int | None = None,
+    sensor_id: int | None = None,
     observed_property: str | None = None,
     polygon: str | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
     sort: str | None = None,
     order: str | None = None,
-    filter_: str = Query(alias='filter', default=None),
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[GroundwaterLevelObservationResponse]:
     """
     Retrieve all groundwater level observations from the database.

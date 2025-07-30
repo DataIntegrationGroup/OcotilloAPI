@@ -98,8 +98,10 @@ def test_add_geochemical_observation():
 
 
 def test_get_groundwater_observation_by_thing(thing):
-    response = client.get("/observation/groundwater-level", params={"thing_id": thing.id,
-                                                                    "observed_property": "groundwater level"})
+    response = client.get(
+        "/observation/groundwater-level",
+        params={"thing_id": thing.id, "observed_property": "groundwater level"},
+    )
     assert response.status_code == 200
     data = response.json()
     assert "items" in data, "Expected 'items' in response"
