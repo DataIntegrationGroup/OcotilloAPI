@@ -43,10 +43,11 @@ def add_sensor(
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-def get_sensors(session: session_dependency,
-                thing_id: int = None,  # Optional filter for thing_id
-                observed_property: str = None  # Optional filter for observed_property
-                ) -> CustomPage[SensorResponse]:
+def get_sensors(
+    session: session_dependency,
+    thing_id: int = None,  # Optional filter for thing_id
+    observed_property: str = None,  # Optional filter for observed_property
+) -> CustomPage[SensorResponse]:
     """
     Retrieve all sensors from the system.
     This endpoint is a placeholder and should be implemented with actual logic.
@@ -61,10 +62,9 @@ def get_sensors(session: session_dependency,
             # sql = sql.where(Sensor.observed_property == observed_property)
         # if thing_id is not None:
 
-            # sql = sql.where(Sensor.thing_id == thing_id)
+        # sql = sql.where(Sensor.thing_id == thing_id)
         return paginate(conn=session, query=sql)
     else:
-
 
         return paginated_all_getter(session, Sensor)
 
