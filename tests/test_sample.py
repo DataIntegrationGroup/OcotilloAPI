@@ -215,7 +215,7 @@ def test_get_sample_by_id_200(sample_fixture):
     Test retrieving a sample from the collaborative network.
     """
     thing, sample = sample_fixture
-    response = client.get("/sample/1")
+    response = client.get(f"/sample/{sample.id}")
     assert response.status_code == 200
     data = response.json()
     assert data == {
