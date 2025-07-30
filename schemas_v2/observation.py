@@ -26,7 +26,8 @@ from pydantic import BaseModel
 # -------- CREATE ----------
 class CreateBaseObservation(BaseModel):
     observation_timestamp: datetime
-    thing_id: int
+    thing_id: int | None = None
+    sample_id: int | None = None
     sensor_id: int
     observed_property: str
     release_status: str
@@ -59,7 +60,7 @@ class CreateGroundwaterLevelObservation(CreateBaseObservation):
 # -------- RESPONSE ----------
 class BaseObservationResponse(BaseModel):
     id: int
-    thing_id: int
+    sample_id: int
     sensor_id: int
     observation_timestamp: datetime
     observed_property: str

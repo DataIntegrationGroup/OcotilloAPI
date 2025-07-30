@@ -16,23 +16,29 @@
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from db import Base, Observation
+from db import Base, Observation, Sample
 
 
 def add_observation(
-    session: Session, data: BaseModel, observation_type: str = None
+    session: Session, data: BaseModel
 ) -> Base:
 
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        data = data.model_dump(exclude_unset=True)
 
-    if not observation_type:
-        observation_type = data.get("observation_type", None)
-        if not observation_type:
-            raise ValueError("Observation type must be specified.")
+    if 'thing_id' in data:
+        thing_id = data.pop('thing_id')
+        if 'sample_id' not in data:
+            sample = Sample(thing_id=thing_id,
+                            collection_method=data.get('collection_method', 'manual'),
+                            collection_timestamp=data.get('observation_timestamp'))
+            session.add(sample)
+            data['sample'] = sample
+        else:
+            raise ValueError('Cannot specify both thing_id and sample_id')
 
     obj = Observation(**data)
-    obj.observation_type = observation_type
+
     session.add(obj)
     session.commit()
     session.refresh(obj)

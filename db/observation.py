@@ -45,9 +45,9 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         autoincrement=True,
     )
 
-    thing_id = mapped_column(
+    sample_id = mapped_column(
         Integer,
-        ForeignKey("thing.id", ondelete="CASCADE"),
+        ForeignKey("sample.id", ondelete="CASCADE"),
         nullable=False,
     )
     sensor_id = mapped_column(
@@ -55,11 +55,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         ForeignKey("sensor.id", ondelete="CASCADE"),
         nullable=False,
     )
-    sample_id = mapped_column(
-        Integer,
-        ForeignKey("sample.id", ondelete="SET NULL"),
-        nullable=True,
-    )
+
 
     observation_timestamp = mapped_column(
         TIMESTAMP, nullable=False, doc="Timestamp of the observation"
@@ -97,7 +93,6 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         doc="Temperature of the geothermal observation in degrees Celsius",
     )
 
-    thing = relationship("Thing")
     sensor = relationship("Sensor")
     sample = relationship("Sample")
 

@@ -22,6 +22,7 @@ from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
+from db import Sample
 from db.observation import Observation
 from schemas_v2.observation import (
     CreateGroundwaterLevelObservation,
@@ -42,7 +43,7 @@ def add_groundwater_level_observation(
     """
     Add a new groundwater observation to the database.
     """
-    return add_observation(session, obs_data, "groundwater-level")
+    return add_observation(session, obs_data)
 
 
 #
@@ -82,7 +83,8 @@ def get_groundwater_level_observations(
     """
     sql = select(Observation)
     if thing_id is not None:
-        sql = sql.where(Observation.thing_id == thing_id)
+        sql = sql.join(Sample)
+        sql = sql.where(Sample.thing_id == thing_id)
     if sensor_id is not None:
         sql = sql.where(Observation.sensor_id == sensor_id)
     if observed_property is not None:
