@@ -32,10 +32,6 @@ from db.publication import *
 from db.sample import *
 from db.sensor.groundwaterlevel import *
 from db.sensor.sensor import *
-from db.series.geochemical import *
-from db.series.geothermal import *
-from db.series.groundwaterlevel import *
-from db.series.series import *
 from db.thing import *
 
 from sqlalchemy import (
