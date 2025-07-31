@@ -192,7 +192,6 @@ def test_get_samples(sample):
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert data["items"] == [
         {
             "id": sample.id,
