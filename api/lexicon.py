@@ -15,8 +15,13 @@
 # ===============================================================================
 from fastapi import APIRouter, Depends
 from fastapi import status
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
+
+from api.pagination import CustomPage
+from core.dependencies import session_dependency
 from db.engine import get_db_session
-from db.lexicon import Category, LexiconTriple
+from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
 from schemas_v2.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
@@ -93,6 +98,28 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     session.add(triple)
     session.commit()
     return triple
+
+
+@router.get("")
+def get_lexicon_terms(
+    session: session_dependency,
+    category: str | None = None,
+    term: str | None = None,
+) -> CustomPage[LexiconTermResponse]:
+    """
+    Endpoint to retrieve lexicon terms.
+    """
+    sql = select(Lexicon)
+    if category:
+        sql = (
+            sql.join(TermCategoryAssociation)
+            .join(Category)
+            .where(Category.name == category)
+        )
+    if term:
+        sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
+
+    return paginate(query=sql, conn=session)
 
 
 # ============= EOF =============================================

@@ -25,6 +25,9 @@ class CreateSample(BaseModel):
     collection_timestamp: datetime
     collection_method: str
     thing_id: int
+    sample_type: str
+    sampler: str | None = None
+    release_status: str
 
 
 class CreateGeochemicalSample(BaseModel):

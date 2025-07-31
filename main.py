@@ -17,7 +17,8 @@ from api.contact import router as contact_router
 from api.location import router as location_router
 from api.thing import router as thing_router
 from api.sensor import router as sensor_router
-from api.series import router as series_router
+
+# from api.series import router as series_router
 from api.sample import router as sample_router
 from api.observation import router as observation_router
 
@@ -40,7 +41,7 @@ app.include_router(group_router)
 app.include_router(location_router)
 app.include_router(thing_router)
 app.include_router(sensor_router)
-app.include_router(series_router)
+# app.include_router(series_router)
 app.include_router(sample_router)
 app.include_router(observation_router)
 app.include_router(search_router)
