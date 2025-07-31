@@ -35,7 +35,7 @@ router = APIRouter(
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
-def add_sample(sample_data: CreateSample, session: Session = Depends(get_db_session)):
+def add_sample(sample_data: CreateSample, session: session_dependency):
     """
     Endpoint to add a sample.
     """
