@@ -1,9 +1,6 @@
 # from fastapi.testclient import TestClient
 # from main import app
 # from models import Base, engine
-from db import Contact
-from db.engine import session_ctx
-
 # Base.metadata.drop_all(engine)
 # Base.metadata.create_all(engine)
 
@@ -49,12 +46,6 @@ def test_add_contact(thing):
     assert data["phones"][0]["phone_number"] == "+12345678901"
     assert len(data["addresses"]) == 1
     assert data["addresses"][0]["address_line_1"] == "123 Main St"
-
-    # cleanup after adding the contact
-    contact_id = data["id"]
-    with session_ctx() as session:
-        session.select(Contact).where(Contact.id == contact_id).delete()
-        session.commit()
 
     # assert data["email"] == "fasdfasdf@gmail.com"
 
