@@ -37,10 +37,11 @@ init_lexicon()
 
 client = TestClient(app)
 
+
 @pytest.fixture(scope="session")
 def location():
     with session_ctx() as session:
-        loc = Location(point='SRID=4326;POINT(0 0)')
+        loc = Location(point="SRID=4326;POINT(0 0)")
         session.add(loc)
         session.commit()
         session.refresh(loc)
