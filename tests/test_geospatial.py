@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from pathlib import Path
 import pytest
 
 from db import Thing, Location, LocationThingAssociation
@@ -75,6 +76,9 @@ def test_get_shapefile():
     assert (
         'attachment; filename="things.zip"' == response.headers["Content-Disposition"]
     )
+
+    for shapefile_ending in [".shp", ".shx", ".dbf", ".prj", ".zip"]:
+        Path(f"things{shapefile_ending}").unlink(missing_ok=True)
 
 
 @pytest.mark.skip
