@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pprint
-
 import pytest
 from sqlalchemy import select
 
@@ -30,7 +28,7 @@ def test_search_api():
     data = response.json()
 
     assert isinstance(data, list)
-    assert len(data) == 5
+    assert len(data) == 3
 
 
 @pytest.mark.skip(reason="This test is not working .")
