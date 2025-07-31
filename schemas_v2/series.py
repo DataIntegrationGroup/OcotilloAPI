@@ -39,6 +39,7 @@ class SeriesResponse(BaseModel):
     id: int
     name: str
     observed_property: str
+    thing_id: int
 
 
 # -------- UPDATE ----------

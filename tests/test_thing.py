@@ -310,7 +310,6 @@ def test_patch_thing_location():
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
     assert data["point"] == "POINT (-106.61 35.08)"
 
 

@@ -27,47 +27,6 @@ from sqlalchemy.orm import declared_attr, mapped_column, relationship
 from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
 
 
-# class ObservationMixin:
-#     # __table_args__ = (
-#     #     ForeignKeyConstraint(['observation_id', 'observation_timestamp'],
-#     #                          ["observation.id", "observation.observation_timestamp"]),
-#     #         {})
-#     #
-#     # @declared_attr
-#     # def observation_timestamp(self):
-#     #     return mapped_column(
-#     #     TIMESTAMP,
-#     #     nullable=False, doc="Timestamp of the observation"
-#     # )
-#     # observation_id = mapped_column(Integer, nullable=False)
-#     # observation_timestamp = mapped_column(TIMESTAMP, nullable=False)
-#
-#     @declared_attr
-#     def __table_args__(self):
-#         return (
-#             ForeignKeyConstraint(
-#                 ["observation_id", "observation_timestamp"],
-#                 ["observation.id", "observation.observation_timestamp"],
-#                 ondelete="CASCADE",
-#             ),
-#             {},
-#         )
-#
-#     @declared_attr
-#     def observation_id(self):
-#         return mapped_column(
-#             Integer,
-#             # ForeignKey("observation.id", ondelete="CASCADE"),
-#             nullable=False,
-#         )
-#
-#     @declared_attr
-#     def observation_timestamp(self):
-#         return mapped_column(
-#             TIMESTAMP, nullable=False, doc="Timestamp of the observation"
-#         )
-
-
 class Observation(Base, AuditMixin, ReleaseMixin):
     __tablename__ = "observation"
 
@@ -86,16 +45,21 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         autoincrement=True,
     )
 
-    series_id = mapped_column(
+    sample_id = mapped_column(
         Integer,
-        ForeignKey("series.id", ondelete="CASCADE"),
+        ForeignKey("sample.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sensor_id = mapped_column(
+        Integer,
+        ForeignKey("sensor.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     observation_timestamp = mapped_column(
         TIMESTAMP, nullable=False, doc="Timestamp of the observation"
     )
-    observation_type = lexicon_term()
+    observed_property = lexicon_term()
 
     # groundwater
     depth_to_water = mapped_column(
@@ -128,7 +92,8 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         doc="Temperature of the geothermal observation in degrees Celsius",
     )
 
-    series = relationship("Series")
+    sensor = relationship("Sensor")
+    sample = relationship("Sample")
 
 
 # ============= EOF =============================================

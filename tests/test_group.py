@@ -1,17 +1,5 @@
-# from fastapi.testclient import TestClient
-# from main import app
-# from models import Base, engine
 import pytest
-
-from db import Thing
-from db.engine import get_db_session
-
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
-
-# client = TestClient(app)
-
-from tests import client, thing
+from tests import client, thing, location
 
 
 #  ADD tests ======================================================
@@ -25,7 +13,7 @@ def test_add_group():
     assert data["name"] == "Test Group"
 
 
-def test_add_group_thing(thing):
+def test_add_group_thing(location, thing):
     response = client.post(
         "/group/association", json={"group_id": 1, "thing_id": thing.id}
     )
@@ -74,10 +62,10 @@ def test_item_get_group():
     assert data["name"] == "Test Group"
 
 
-def test_item_get_group_thing():
+def test_item_get_group_thing(location, thing):
     response = client.get("/group/association/1")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == 1
     assert data["group_id"] == 1
-    assert data["thing_id"] == 6
+    assert data["thing_id"] == thing.id

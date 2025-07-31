@@ -26,13 +26,16 @@ from pydantic import BaseModel
 # -------- CREATE ----------
 class CreateBaseObservation(BaseModel):
     observation_timestamp: datetime
-    series_id: int
+    sample_id: int
+    sensor_id: int
+    observed_property: str
     release_status: str
 
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
     depth_to_water: float
     measuring_point_height: float
+    level_status: str
 
 
 #
@@ -56,14 +59,17 @@ class CreateGroundwaterLevelObservation(CreateBaseObservation):
 # -------- RESPONSE ----------
 class BaseObservationResponse(BaseModel):
     id: int
-    series_id: int
+    sample_id: int
+    sensor_id: int
     observation_timestamp: datetime
-    observation_type: str
+    observed_property: str
     created_at: datetime
+    release_status: str
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water: float
+    level_status: str
 
 
 class GeothermalObservationResponse(BaseObservationResponse):
