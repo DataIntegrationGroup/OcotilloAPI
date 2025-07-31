@@ -16,12 +16,9 @@
 import pytest
 from datetime import datetime
 
-from tests import client, thing, sample_fixture  # noqa: F401
-
-
-import pytest
 from db.engine import session_ctx
 from db.sample import Sample
+from tests import client
 
 
 #  ============= Post tests for samples =============================================
@@ -45,8 +42,10 @@ def test_add_sample(thing):
     assert data["id"] is not None
     assert data["thing_id"] == thing.id
 
+    # cleanup after adding the sample
+    sample_id = data["id"]
     with session_ctx() as session:
-        session.query(Sample).delete()
+        session.query(Sample).where(Sample.id == sample_id).delete()
         session.commit()
 
 
@@ -85,11 +84,13 @@ def test_add_geothermal_sample():
 
 
 #  ============= Patch tests for samples =============================================
-def test_patch_sample(sample_fixture):
+def test_patch_sample(sample):
     """
     Test updating a sample in the collaborative network.
     """
-    thing, sample = sample_fixture
+    original_method_patch = sample.collection_method
+    original_timestamp_patch = sample.collection_timestamp
+
     collection_method_patch = "continuous"
     collection_timestamp_patch = "2025-01-02T00:00:00+00:00"
     response = client.patch(
@@ -105,11 +106,18 @@ def test_patch_sample(sample_fixture):
         "id": sample.id,
         "collection_timestamp": collection_timestamp_patch.split("+")[0],
         "collection_method": collection_method_patch,
-        "thing_id": thing.id,
+        "thing_id": sample.thing_id,
     }
 
+    # cleanup after patching the sample
+    with session_ctx() as session:
+        updated_sample = session.query(Sample).filter(Sample.id == sample.id).one()
+        updated_sample.collection_method = original_method_patch
+        updated_sample.collection_timestamp = original_timestamp_patch
+        session.commit()
 
-def test_patch_sample_404_not_found(sample_fixture):
+
+def test_patch_sample_404_not_found(sample):
     """
     Test updating a sample that does not exist in the collaborative network.
     """
@@ -125,13 +133,13 @@ def test_patch_sample_404_not_found(sample_fixture):
     assert data["detail"] == "Sample with ID 999 not found."
 
 
-def test_patch_sample_422_thing_id_not_found(sample_fixture):
+def test_patch_sample_422_thing_id_not_found(sample):
     """
     Test updating a sample with a thing_id that does not exist
     """
     bad_thing_id = 999
     response = client.patch(
-        f"/sample/{sample_fixture[1].id}",
+        f"/sample/{sample.id}",
         json={
             "thing_id": bad_thing_id,
         },
@@ -149,7 +157,7 @@ def test_patch_sample_422_thing_id_not_found(sample_fixture):
     ]
 
 
-def test_patch_sample_422_invalid_timestamp(sample_fixture):
+def test_patch_sample_422_invalid_timestamp(sample):
     """
     Test updating a sample with an invalid collection timestamp.
     """
@@ -158,7 +166,7 @@ def test_patch_sample_422_invalid_timestamp(sample_fixture):
         bad_collection_timestamp.replace("Z", "+00:00")
     )
     response = client.patch(
-        f"/sample/{sample_fixture[1].id}",
+        f"/sample/{sample.id}",
         json={
             "collection_timestamp": bad_collection_timestamp,  # Invalid date
         },
@@ -177,20 +185,20 @@ def test_patch_sample_422_invalid_timestamp(sample_fixture):
 
 
 #  ============= Get tests for samples =============================================
-def test_get_samples(sample_fixture):
+def test_get_samples(sample):
     """
     Test retrieving samples from the collaborative network.
     """
-    thing, sample = sample_fixture
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
+    print(data)
     assert data["items"] == [
         {
             "id": sample.id,
-            "collection_timestamp": sample.collection_timestamp.isoformat(),
+            "collection_timestamp": sample.collection_timestamp,
             "collection_method": sample.collection_method,
-            "thing_id": thing.id,
+            "thing_id": sample.thing_id,
         }
     ]
 
@@ -219,23 +227,22 @@ def test_get_geothermal_samples():
     assert len(data["items"]) > 0
 
 
-def test_get_sample_by_id_200(sample_fixture):
+def test_get_sample_by_id(sample):
     """
     Test retrieving a sample from the collaborative network.
     """
-    thing, sample = sample_fixture
     response = client.get(f"/sample/{sample.id}")
     assert response.status_code == 200
     data = response.json()
     assert data == {
         "id": sample.id,
-        "collection_timestamp": sample.collection_timestamp.isoformat(),
+        "collection_timestamp": sample.collection_timestamp,
         "collection_method": sample.collection_method,
-        "thing_id": thing.id,
+        "thing_id": sample.thing_id,
     }
 
 
-def test_get_sample_by_id_404_not_found(sample_fixture):
+def test_get_sample_by_id_404_not_found(sample):
     """
     Test retrieving a sample from the collaborative network.
     """
