@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Sensor
-from db.engine import get_db_session
-from tests import client, thing, sensor, sample
+
+from tests import client, sample, sensor, thing, location
 import pytest
 
 
 # ============= Post tests =================
-def test_add_groundwater_observation(sample, sensor):
+def test_add_groundwater_observation(location, thing, sample, sensor):
     response = client.post(
         "/observation/groundwater-level",
         json={
