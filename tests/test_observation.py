@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from tests import client, sample, sensor, thing, location
+from tests import client
 import pytest
 
 
