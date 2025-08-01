@@ -69,7 +69,11 @@ def init_lexicon():
                     term_dict["definition"],
                     term_dict["category"],
                 )
-            except DatabaseError:
+            except DatabaseError as e:
+                print(
+                    f"Failed to add term {term_dict['term']}: {term_dict['definition']} error: {e}"
+                )
+
                 session.rollback()
 
 

@@ -25,39 +25,36 @@ def add_lexicon_term(
     Add a term to the lexicon with its definition and category.
 
     """
-    with session.no_autoflush:
-        if isinstance(category, str):
-            sql = select(Category).where(Category.name == category)
-            dbcategory = session.scalars(sql).one_or_none()
-            if dbcategory is None:
-                # Create a new category if it does not exist
-                dbcategory = Category(name=category)
-                session.add(dbcategory)
-                session.commit()
-                session.flush()
-        else:
-            dbcategory = session.get(Category, category)
+    if isinstance(category, str):
+        sql = select(Category).where(Category.name == category)
+        dbcategory = session.scalars(sql).one_or_none()
+        if dbcategory is None:
+            # Create a new category if it does not exist
+            dbcategory = Category(name=category)
+            session.add(dbcategory)
+            session.commit()
+            session.flush()
+    else:
+        dbcategory = session.get(Category, category)
 
-        # Check if the term already exists
-        sql = select(Lexicon).where(Lexicon.term == term)
-        existing_term = session.scalars(sql).one_or_none()
-        if existing_term is not None:
-            return existing_term
+    # Check if the term already exists
+    sql = select(Lexicon).where(Lexicon.term == term)
+    dbterm = session.scalars(sql).one_or_none()
+    if dbterm is None:
+        dbterm = Lexicon(term=term, definition=definition)
+        session.add(dbterm)
 
-        term = Lexicon(term=term, definition=definition)
-        session.add(term)
+    if dbcategory is not None:
+        link = TermCategoryAssociation()
 
-        if dbcategory is not None:
-            link = TermCategoryAssociation()
+        link.category = dbcategory
+        link.term = dbterm
 
-            link.category = dbcategory
-            link.term = term
+        session.add(link)
 
-            session.add(link)
+    session.commit()
 
-        session.commit()
-
-        return term
+    return dbterm
 
 
 # ============= EOF =============================================
