@@ -39,11 +39,13 @@ def thing(location):
 def sample(thing):
     with session_ctx() as session:
         sample = Sample(
-            collection_timestamp="2025-01-01T00:00:00",
-            collection_method="manual",
+            sample_date="2025-01-01T00:00:00",
+            sample_method="manual",
             thing_id=thing.id,
             sample_type="groundwater",
-            sampler="Test Sampler",
+            sampler_name="Test Sampler",
+            release_status="draft",
+            field_sample_id=f"FS-{uuid.uuid4()}",
         )
         session.add(sample)
         session.commit()

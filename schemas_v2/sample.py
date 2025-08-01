@@ -16,17 +16,27 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, field_validator
 
-from db.engine import get_db_session
+from db.engine import get_db_session, session_ctx
 from db import Thing
 
 
 # -------- CREATE ----------
 class CreateSample(BaseModel):
-    collection_timestamp: datetime
-    collection_method: str
     thing_id: int
     sample_type: str
-    sampler: str | None = None
+    field_sample_id: str
+
+    sensor_id: int | None = None
+    sample_date: datetime | None = None
+    sample_matrix: str | None = None
+    sample_method: str | None = None
+    sampler_name: str | None = None
+    qc_sample: str | None = None
+    duplicate_sample_number: int | None = None
+
+    sample_top: float | None = None
+    sample_bottom: float | None = None
+
     release_status: str
 
 
@@ -49,15 +59,15 @@ class CreateGeothermalSample(BaseModel):
 # -------- RESPONSE ----------
 class SampleResponse(BaseModel):
     id: int
-    collection_timestamp: datetime
-    collection_method: str
+    sample_date: datetime
+    sample_method: str
     thing_id: int
 
 
 # -------- UPDATE ----------
 class UpdateSample(BaseModel):
-    collection_timestamp: datetime | None = None
-    collection_method: str | None = None
+    sample_date: datetime | None = None
+    sample_method: str | None = None
     thing_id: int | None = None
 
     @field_validator("thing_id")
@@ -65,23 +75,21 @@ class UpdateSample(BaseModel):
         """
         Validate that the thing_id exists in the database.
         """
-        with next(get_db_session()) as session:
+        with session_ctx() as session:
             thing = session.get(Thing, thing_id)
             if not thing:
                 raise ValueError(f"Thing with ID {thing_id} does not exist.")
         return thing_id
 
-    @field_validator("collection_timestamp")
-    def validate_collection_timestamp(cls, collection_timestamp: datetime) -> datetime:
+    @field_validator("sample_date")
+    def validate_sample_date(cls, sample_date: datetime) -> datetime:
         """
-        Validate that the collection_timestamp is not in the future.
+        Validate that the sample_date is not in the future.
         """
-        if collection_timestamp:
-            if collection_timestamp > datetime.now(tz=timezone.utc):
-                raise ValueError(
-                    f"Collection timestamp {collection_timestamp} cannot be in the future."
-                )
-        return collection_timestamp
+        if sample_date:
+            if sample_date > datetime.now(tz=timezone.utc):
+                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
+        return sample_date
 
 
 # ============= EOF =============================================
