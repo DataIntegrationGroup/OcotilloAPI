@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import declared_attr, relationship
 
 from db.base import Base, AutoBaseMixin
 
@@ -45,5 +45,10 @@ class Sensor(Base, AutoBaseMixin):
     recording_interval = Column(Integer)
     notes = Column(String(50))
 
-
+    sample = relationship(
+        "Sample",
+        back_populates="sensor",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 # ============= EOF =============================================

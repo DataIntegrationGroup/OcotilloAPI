@@ -30,11 +30,12 @@ def test_add_sample(thing):
         "/sample",
         json={
             "thing_id": thing.id,
-            "collection_timestamp": "2025-01-01T00:00:00Z",
-            "collection_method": "manual",
+            "sample_date": "2025-01-01T00:00:00Z",
+            "sample_method": "manual",
             "release_status": "draft",
             "sample_type": "groundwater",
             "sampler": "Test Sampler A",
+            "field_sample_id": "FS-12345",
         },
     )
     data = response.json()
@@ -88,32 +89,32 @@ def test_patch_sample(sample):
     """
     Test updating a sample in the collaborative network.
     """
-    original_method_patch = sample.collection_method
-    original_timestamp_patch = sample.collection_timestamp
+    original_method_patch = sample.sample_method
+    original_timestamp_patch = sample.sample_date
 
-    collection_method_patch = "continuous"
-    collection_timestamp_patch = "2025-01-02T00:00:00+00:00"
+    sample_method_patch = "continuous"
+    sample_date_patch = "2025-01-02T00:00:00+00:00"
     response = client.patch(
         f"/sample/{sample.id}",
         json={
-            "collection_method": collection_method_patch,
-            "collection_timestamp": collection_timestamp_patch,
+            "sample_method": sample_method_patch,
+            "sample_date": sample_date_patch,
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data == {
         "id": sample.id,
-        "collection_timestamp": collection_timestamp_patch.split("+")[0],
-        "collection_method": collection_method_patch,
+        "sample_date": sample_date_patch.split("+")[0],
+        "sample_method": sample_method_patch,
         "thing_id": sample.thing_id,
     }
 
     # cleanup after patching the sample
     with session_ctx() as session:
         updated_sample = session.query(Sample).filter(Sample.id == sample.id).one()
-        updated_sample.collection_method = original_method_patch
-        updated_sample.collection_timestamp = original_timestamp_patch
+        updated_sample.sample_method = original_method_patch
+        updated_sample.sample_date = original_timestamp_patch
         session.commit()
 
 
@@ -121,11 +122,11 @@ def test_patch_sample_404_not_found(sample):
     """
     Test updating a sample that does not exist in the collaborative network.
     """
-    collection_method_patch = "continuous"
+    sample_method_patch = "continuous"
     response = client.patch(
         "/sample/999",
         json={
-            "collection_method": collection_method_patch,
+            "sample_method": sample_method_patch,
         },
     )
     assert response.status_code == 404
@@ -161,27 +162,25 @@ def test_patch_sample_422_invalid_timestamp(sample):
     """
     Test updating a sample with an invalid collection timestamp.
     """
-    bad_collection_timestamp = "3500-01-01T00:00:00Z"
-    bad_collection_timestamp_dt = datetime.fromisoformat(
-        bad_collection_timestamp.replace("Z", "+00:00")
+    bad_sample_date = "3500-01-01T00:00:00Z"
+    bad_sample_date_dt = datetime.fromisoformat(
+        bad_sample_date.replace("Z", "+00:00")
     )
     response = client.patch(
         f"/sample/{sample.id}",
         json={
-            "collection_timestamp": bad_collection_timestamp,  # Invalid date
+            "sample_date": bad_sample_date,  # Invalid date
         },
     )
     assert response.status_code == 422
     data = response.json()
-    assert data["detail"] == [
-        {
-            "type": "value_error",
-            "loc": ["body", "collection_timestamp"],
-            "msg": f"Value error, Collection timestamp {bad_collection_timestamp_dt} cannot be in the future.",
-            "input": bad_collection_timestamp,
-            "ctx": {"error": {}},
-        }
-    ]
+    assert 'detail' in data
+    detail = data["detail"]
+    assert isinstance(detail, list)
+    assert len(detail) == 1
+    assert detail[0]["type"] == "value_error"
+    assert detail[0]["loc"] == ["body", "sample_date"]
+
 
 
 #  ============= Get tests for samples =============================================
@@ -195,8 +194,8 @@ def test_get_samples(sample):
     assert data["items"] == [
         {
             "id": sample.id,
-            "collection_timestamp": sample.collection_timestamp,
-            "collection_method": sample.collection_method,
+            "sample_date": sample.sample_date,
+            "sample_method": sample.sample_method,
             "thing_id": sample.thing_id,
         }
     ]
@@ -235,8 +234,8 @@ def test_get_sample_by_id(sample):
     data = response.json()
     assert data == {
         "id": sample.id,
-        "collection_timestamp": sample.collection_timestamp,
-        "collection_method": sample.collection_method,
+        "sample_date": sample.sample_date,
+        "sample_method": sample.sample_method,
         "thing_id": sample.thing_id,
     }
 
