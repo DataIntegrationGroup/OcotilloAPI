@@ -72,15 +72,19 @@ def update_sample(
 # ============= Get =============================================
 @router.get("", summary="Get Samples")
 def get_samples(
-        session: session_dependency,
-        sort: str = None,
-        order: str = None,
-        filter_: str = Query(alias="filter", default=None)) -> CustomPage[SampleResponse]:
+    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[SampleResponse]:
     """
     Endpoint to retrieve samples.
     """
 
-    return paginated_all_getter(session, Sample, sort=sort, order=order, filter_=filter_)
+    return paginated_all_getter(
+        session, Sample, sort=sort, order=order, filter_=filter_
+    )
+
 
 # ============= Get by ID =============================================
 @router.get("/{sample_id}", summary="Get Sample by ID")
@@ -91,7 +95,6 @@ def get_sample_by_id(
     Endpoint to retrieve a sample by its ID.
     """
     return simple_get_by_id(session, Sample, sample_id)
-
 
 
 # # ============= EOF =============================================

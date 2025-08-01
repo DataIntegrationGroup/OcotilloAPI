@@ -97,7 +97,9 @@ def simple_get_by_name(session, table, name) -> object | None:
     return result.scalar_one_or_none()
 
 
-def simple_get_by_id(session: Session, table: DeclarativeBase, item_id: int) -> object | None:
+def simple_get_by_id(
+    session: Session, table: DeclarativeBase, item_id: int
+) -> object | None:
     """
     Helper function to get a record by ID from the database.
     """
@@ -105,9 +107,9 @@ def simple_get_by_id(session: Session, table: DeclarativeBase, item_id: int) -> 
     item = session.get(table, item_id)
     if item is None:
         raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail=f"{table.__name__} with ID {item_id} not found.",
-            )
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"{table.__name__} with ID {item_id} not found.",
+        )
     return item
 
 
