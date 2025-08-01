@@ -19,7 +19,7 @@ from sqlalchemy.orm import mapped_column, relationship, Mapped, declared_attr
 
 # import models from classes that are defined in separate files
 from db import lexicon_term
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.thing import Thing
 from db.sensor import Sensor
 
@@ -28,7 +28,7 @@ from typing import List, Optional
 import datetime
 
 
-class Sample(Base, AutoBaseMixin):
+class Sample(Base, AutoBaseMixin, ReleaseMixin):
     """
     Defines the Sample table, which stores data for individual
     sampling events.

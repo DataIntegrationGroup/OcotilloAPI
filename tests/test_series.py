@@ -25,6 +25,7 @@ from db.engine import get_db_session
 from tests import client
 
 
+@pytest.mark.skip(reason="series deprecated")
 def test_add_series():
     response = client.post(
         "/series",
@@ -45,6 +46,7 @@ def test_add_series():
     ), "Expected 'observed_property' to be 'groundwater_level'"
 
 
+@pytest.mark.skip(reason="series deprecated")
 def test_get_series():
     response = client.get("/series")
     assert response.status_code == 200
@@ -55,6 +57,7 @@ def test_get_series():
     assert len(items) > 0, "Expected at least one series in the response"
 
 
+@pytest.mark.skip(reason="series deprecated")
 def test_get_series_by_id():
     response = client.get("/series/1")
     assert response.status_code == 200

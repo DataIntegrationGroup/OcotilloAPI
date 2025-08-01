@@ -18,9 +18,10 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column, Select, func
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import select, Float, Integer, Column, Select
+from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.sql.elements import OperatorExpression
+from starlette.status import HTTP_404_NOT_FOUND
 
 from db import search as search_func
 from services.regex import QUERY_REGEX
@@ -96,13 +97,20 @@ def simple_get_by_name(session, table, name) -> object | None:
     return result.scalar_one_or_none()
 
 
-def simple_get_by_id(session, table, item_id) -> object | None:
+def simple_get_by_id(
+    session: Session, table: DeclarativeBase, item_id: int
+) -> object | None:
     """
     Helper function to get a record by ID from the database.
     """
-    sql = select(table).where(table.id == item_id)
-    result = session.execute(sql)
-    return result.scalar_one_or_none()
+
+    item = session.get(table, item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"{table.__name__} with ID {item_id} not found.",
+        )
+    return item
 
 
 def simple_all_getter(session, table) -> list[object]:

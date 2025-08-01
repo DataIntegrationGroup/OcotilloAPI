@@ -15,8 +15,7 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
-from tests import client, thing
-import pytest
+from tests import client
 
 
 class MockBlob:
@@ -52,7 +51,6 @@ def test_upload_asset():
 
         assert response.status_code == 201
         data = response.json()
-        print(data)
         assert "storage_path" in data
         # assert data["name"] == "riochama.png"
         # assert data["label"] == "riochama.png"
@@ -63,7 +61,7 @@ def test_upload_asset():
         # assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
 
 
-def test_add_asset(thing):
+def test_add_asset(location, thing):
     resp = client.post(
         "/asset",
         json={

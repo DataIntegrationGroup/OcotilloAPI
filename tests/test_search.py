@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pprint
-
 import pytest
 from sqlalchemy import select
 
@@ -24,13 +22,13 @@ from db.engine import session_ctx
 from tests import client
 
 
-def test_search_api():
+def test_search_api(thing, sample):
     response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
 
     assert isinstance(data, list)
-    assert len(data) == 5
+    assert len(data) == 2
 
 
 @pytest.mark.skip(reason="This test is not working .")

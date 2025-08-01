@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, DeclarativeBase
+from starlette.status import HTTP_404_NOT_FOUND
 
 from services.query_helper import simple_get_by_id
 
@@ -22,9 +24,8 @@ from services.query_helper import simple_get_by_id
 def model_patcher(
     session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel
 ):
+    # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
     item = simple_get_by_id(session, model, item_id)
-    if not item:
-        return {"message": f"{model.__name__} {item_id} not found"}
 
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, key, value)

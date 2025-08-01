@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import Union
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ from db.engine import get_db_session
 from schemas_v2.location import CreateLocation, LocationResponse, UpdateLocation
 from schemas_v2.thing import LocationWellResponse
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query
+from services.query_helper import make_query, order_sort_filter
 from services.crud_helper import model_patcher
 
 from fastapi import APIRouter
@@ -133,6 +133,9 @@ async def get_location(
     within: str = None,
     query: str = None,
     expand: str = None,
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[Union[LocationResponse, LocationWellResponse]]:
     """
     Retrieve all wells from the database.
@@ -158,6 +161,8 @@ async def get_location(
         if expand == "well":
             return [LocationWellResponse.model_validate(item) for item in items]
         return [LocationResponse.model_validate(item) for item in items]
+
+    sql = order_sort_filter(sql, Location, sort, order, filter_)
 
     return paginate(query=sql, conn=session, transformer=transformer)
 

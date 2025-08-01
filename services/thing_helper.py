@@ -15,21 +15,42 @@
 # ===============================================================================
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
 
-from db import LocationThingAssociation, Thing, Base
+from db import LocationThingAssociation, Thing, Base, Location
+from schemas_v2.location import LocationResponse
 from db.group import Group, GroupThingAssociation
 from services.query_helper import make_query, order_sort_filter
+from shapely import wkb
+from shapely.geometry import mapping
+
+
+def wkb_to_geojson(wkb_element):
+    if wkb_element is None:
+        return None
+    geom = wkb.loads(bytes(wkb_element.data))
+    return mapping(geom)
 
 
 def get_db_things(
-    filter_, order, query, session, sort, thing_type: str | list[str] = None
+    filter_,
+    order,
+    query,
+    session,
+    sort,
+    thing_type: str | list[str] = None,
+    with_location: bool = False,
 ):
     if query:
         sql = select(Thing).where(make_query(Thing, query))
     else:
         sql = select(Thing)
+
+    if with_location:
+        sql = sql.join(
+            LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
+        )
 
     if isinstance(thing_type, str):
         thing_type = thing_type.lower()
@@ -39,7 +60,44 @@ def get_db_things(
 
     sql = sql.where(Thing.thing_type.in_(thing_type)) if thing_type else sql
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
-    return paginate(query=sql, conn=session)
+
+    def transformer(records):
+        thing_ids = sorted([record.id for record in records])
+        subq = (
+            select(
+                LocationThingAssociation.thing_id,
+                func.max(LocationThingAssociation.effective_start).label("max_start"),
+            )
+            .where(LocationThingAssociation.thing_id.in_(thing_ids))
+            .group_by(LocationThingAssociation.thing_id)
+            .subquery()
+        )
+        stmt = (
+            select(Location)
+            .join(
+                LocationThingAssociation,
+                Location.id == LocationThingAssociation.location_id,
+            )
+            .join(Thing)
+            .join(
+                subq,
+                and_(
+                    LocationThingAssociation.thing_id == subq.c.thing_id,
+                    LocationThingAssociation.effective_start == subq.c.max_start,
+                ),
+            )
+            .order_by(Thing.id.asc())
+        )
+        locations = session.scalars(stmt).all()
+
+        for r, l in zip(records, locations):
+
+            r.location = LocationResponse.model_validate(l)
+            r.geometry = wkb_to_geojson(l.point) if l.point else None
+
+        return records
+
+    return paginate(query=sql, conn=session, transformer=transformer)
 
 
 def add_thing(session: Session, data: BaseModel | dict, thing_type: str = None) -> Base:
