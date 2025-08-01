@@ -51,4 +51,6 @@ class Sensor(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
         uselist=False,
     )
+
+
 # ============= EOF =============================================

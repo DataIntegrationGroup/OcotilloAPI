@@ -86,10 +86,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         )
     )
 
-    samples = relationship("Sample",
-                           back_populates="thing",
-                           cascade="all, delete-orphan",
-                           uselist=True)
+    samples = relationship(
+        "Sample", back_populates="thing", cascade="all, delete-orphan", uselist=True
+    )
 
 
 class ThingIdLink(Base, AutoBaseMixin):

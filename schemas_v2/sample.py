@@ -88,9 +88,7 @@ class UpdateSample(BaseModel):
         """
         if sample_date:
             if sample_date > datetime.now(tz=timezone.utc):
-                raise ValueError(
-                    f"Sample date {sample_date} cannot be in the future."
-                )
+                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
         return sample_date
 
 

@@ -163,9 +163,7 @@ def test_patch_sample_422_invalid_timestamp(sample):
     Test updating a sample with an invalid collection timestamp.
     """
     bad_sample_date = "3500-01-01T00:00:00Z"
-    bad_sample_date_dt = datetime.fromisoformat(
-        bad_sample_date.replace("Z", "+00:00")
-    )
+    bad_sample_date_dt = datetime.fromisoformat(bad_sample_date.replace("Z", "+00:00"))
     response = client.patch(
         f"/sample/{sample.id}",
         json={
@@ -174,13 +172,12 @@ def test_patch_sample_422_invalid_timestamp(sample):
     )
     assert response.status_code == 422
     data = response.json()
-    assert 'detail' in data
+    assert "detail" in data
     detail = data["detail"]
     assert isinstance(detail, list)
     assert len(detail) == 1
     assert detail[0]["type"] == "value_error"
     assert detail[0]["loc"] == ["body", "sample_date"]
-
 
 
 #  ============= Get tests for samples =============================================
