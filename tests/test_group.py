@@ -1,5 +1,5 @@
 import pytest
-from tests import client, thing, location
+from tests import client
 
 
 #  ADD tests ======================================================

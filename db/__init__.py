@@ -14,20 +14,25 @@
 # limitations under the License.
 # ===============================================================================
 
-from db.asset import *
+# import all models from db package so that Alembic can discover them
+
+from db.base import *
 from db.base import Base
+
+from db.asset import *
 from db.collabnet import *
+from db.contact import *
 from db.geochronology import *
+from db.geothermal import *
+from db.group import *
 from db.lexicon import *
 from db.location import *
 from db.observation import *
 from db.publication import *
 from db.sample import *
-from db.sensor import *
+from db.sensor.groundwaterlevel import *
+from db.sensor.sensor import *
 from db.thing import *
-from db.contact import *
-from db.group import *
-
 
 from sqlalchemy import (
     func,
@@ -40,6 +45,9 @@ from sqlalchemy_searchable import (
     inspect_search_vectors,
     search_manager,
 )
+from sqlalchemy.orm import configure_mappers
+
+configure_mappers()
 
 
 def adder(session, table, model, **kwargs):

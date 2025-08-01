@@ -18,7 +18,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column, Select, func
+from sqlalchemy import select, Float, Integer, Column, Select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.elements import OperatorExpression
 
@@ -99,6 +99,12 @@ def simple_get_by_name(session, table, name) -> object | None:
 def simple_get_by_id(session, table, item_id) -> object | None:
     """
     Helper function to get a record by ID from the database.
+    """
+    """
+    REFACTOR NOTE/TODO: this function replicates the functionality of
+    session.get(table, item_id), which is a SQL Alchemy method to retrieve
+    a record by its primary key. This function can be replaced with
+    session.get(table, item_id).
     """
     sql = select(table).where(table.id == item_id)
     result = session.execute(sql)

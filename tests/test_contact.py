@@ -1,11 +1,6 @@
 # from fastapi.testclient import TestClient
 # from main import app
 # from models import Base, engine
-import pytest
-
-from db import Thing
-from db.engine import get_db_session, session_ctx
-
 # Base.metadata.drop_all(engine)
 # Base.metadata.create_all(engine)
 
@@ -17,24 +12,13 @@ from tests import client
 #  ADD tests ======================================================
 
 
-@pytest.fixture(scope="function")
-def thing():
-    with session_ctx() as session:
-        thing = Thing(name="Test Thing", thing_type="water well")
-        session.add(thing)
-        session.commit()
-        yield
-
-        session.close()
-
-
 def test_add_contact(thing):
     response = client.post(
         "/contact",
         json={
             "name": "Test Contact",
             "role": "Owner",
-            "thing_id": 1,
+            "thing_id": thing.id,
             "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
             "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
             "addresses": [
@@ -83,7 +67,7 @@ def test_add_contact(thing):
     #     assert data["phone"] == f"+1234567890{i}"
 
 
-def test_phone_validation_fail():
+def test_phone_validation_fail(thing):
     for phone in [
         "definitely not a phone",
         # "1234567890",
@@ -100,7 +84,7 @@ def test_phone_validation_fail():
             "/contact",
             json={
                 "name": "Test Contact 2",
-                "thing_id": 1,
+                "thing_id": thing.id,
                 "role": "Primary",
                 "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
                 "phones": [{"phone_number": phone, "phone_type": "Primary"}],
@@ -124,7 +108,7 @@ def test_phone_validation_fail():
         assert detail["msg"] == f"Value error, Invalid phone number. {phone}"
 
 
-def test_email_validation_fail():
+def test_email_validation_fail(thing):
 
     for email in [
         "",
@@ -137,7 +121,7 @@ def test_email_validation_fail():
             "/contact",
             json={
                 "name": "Test ContactX",
-                "thing_id": 1,
+                "thing_id": thing.id,
                 "role": "Primary",
                 "emails": [{"email": email, "email_type": "Primary"}],
                 "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],

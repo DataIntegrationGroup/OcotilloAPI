@@ -15,7 +15,7 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
-from tests import client, thing, location
+from tests import client
 
 
 class MockBlob:

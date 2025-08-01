@@ -14,6 +14,7 @@ repos:
           '--show-source',
           '--statistics'
           ]
+        exclude: ^db/__init__.py$ # all models need to be imported for Alembic, but are not used directly
 
   # - repo: https://github.com/pre-commit/mirrors-mypy
   #   rev: v1.10.0  # Use the latest stable version or pin to your preference
