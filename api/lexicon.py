@@ -33,6 +33,7 @@ from services.lexicon import add_lexicon_term
 
 router = APIRouter(
     prefix="/lexicon",
+    tags=["lexicon"],
 )
 
 
