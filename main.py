@@ -34,29 +34,24 @@ from api.asset import router as asset_router
 from api.search import router as search_router
 from api.geospatial import router as geospatial_router
 
-
-app.include_router(contact_router)
-app.include_router(group_router)
-
-app.include_router(location_router)
-app.include_router(thing_router)
-app.include_router(sensor_router)
-# app.include_router(series_router)
-app.include_router(sample_router)
-app.include_router(observation_router)
-app.include_router(search_router)
-app.include_router(geospatial_router)
-
-# app.include_router(form_router)
-app.include_router(lexicon_router)
-app.include_router(geothermal_router)
-app.include_router(geochronology_router)
-app.include_router(publication_router)
-app.include_router(author_router)
 app.include_router(asset_router)
+app.include_router(author_router)
+app.include_router(contact_router)
+app.include_router(geochronology_router)
+app.include_router(geospatial_router)
+app.include_router(geothermal_router)
+app.include_router(group_router)
+app.include_router(lexicon_router)
+app.include_router(location_router)
+app.include_router(observation_router)
+app.include_router(publication_router)
+app.include_router(sample_router)
+app.include_router(sensor_router)
+app.include_router(search_router)
+app.include_router(thing_router)
 
-from admin.user import *
-from admin.base import *
+from admin.user import *  # noqa: F401, F403
+from admin.base import *  # noqa: F401, F403
 
 app.mount("/admin", admin_app)
 
