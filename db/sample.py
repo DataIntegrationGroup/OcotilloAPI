@@ -45,7 +45,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
     sensor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("sensor.id"),
-        unique=True,
+        # unique=True,
         comment="Foreign key for the specific equipment used.",
     )
 

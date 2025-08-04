@@ -60,7 +60,18 @@ class CreateGeothermalSample(BaseModel):
 class SampleResponse(BaseModel):
     id: int
     sample_date: datetime
-    sample_method: str
+    sample_method: str | None = None
+    sample_type: str
+    field_sample_id: str
+    sample_matrix: str | None = None
+    sampler_name: str | None = None
+    qc_sample: str | None = None
+    duplicate_sample_number: int | None = None
+    sample_top: float | None = None
+    sample_bottom: float | None = None
+    sensor_id: int | None = None
+    release_status: str
+    created_at: datetime
     thing_id: int
 
 

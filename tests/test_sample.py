@@ -93,7 +93,7 @@ def test_patch_sample(sample):
     original_timestamp_patch = sample.sample_date
 
     sample_method_patch = "continuous"
-    sample_date_patch = "2025-01-02T00:00:00+00:00"
+    sample_date_patch = "2025-01-02T00:00:00Z"
     response = client.patch(
         f"/sample/{sample.id}",
         json={
@@ -103,12 +103,9 @@ def test_patch_sample(sample):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data == {
-        "id": sample.id,
-        "sample_date": sample_date_patch.split("+")[0],
-        "sample_method": sample_method_patch,
-        "thing_id": sample.thing_id,
-    }
+    assert data["id"] == sample.id
+    assert data["sample_date"] == sample_date_patch[:-1]
+    assert data["sample_method"] == sample_method_patch
 
     # cleanup after patching the sample
     with session_ctx() as session:
@@ -147,15 +144,14 @@ def test_patch_sample_422_thing_id_not_found(sample):
     )
     assert response.status_code == 422
     data = response.json()
-    assert data["detail"] == [
-        {
-            "type": "value_error",
-            "loc": ["body", "thing_id"],
-            "msg": f"Value error, Thing with ID {bad_thing_id} does not exist.",
-            "input": bad_thing_id,
-            "ctx": {"error": {}},
-        }
-    ]
+
+    assert "detail" in data
+    assert isinstance(data["detail"], list)
+    assert len(data["detail"]) == 1
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Value error, Thing with ID {bad_thing_id} does not exist."
+
 
 
 def test_patch_sample_422_invalid_timestamp(sample):
@@ -163,7 +159,6 @@ def test_patch_sample_422_invalid_timestamp(sample):
     Test updating a sample with an invalid collection timestamp.
     """
     bad_sample_date = "3500-01-01T00:00:00Z"
-    bad_sample_date_dt = datetime.fromisoformat(bad_sample_date.replace("Z", "+00:00"))
     response = client.patch(
         f"/sample/{sample.id}",
         json={
@@ -188,14 +183,12 @@ def test_get_samples(sample):
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    assert data["items"] == [
-        {
-            "id": sample.id,
-            "sample_date": sample.sample_date,
-            "sample_method": sample.sample_method,
-            "thing_id": sample.thing_id,
-        }
-    ]
+    assert "items" in data
+    assert len(data["items"]) ==1
+    assert data["items"][0]["id"] == sample.id
+    assert data["items"][0]["sample_date"] == sample.sample_date
+    assert data["items"][0]["sample_method"] == sample.sample_method
+    assert data["items"][0]["thing_id"] == sample.thing_id
 
 
 @pytest.mark.skip(reason="Geochemical samples endpoint not implemented yet")
@@ -229,12 +222,10 @@ def test_get_sample_by_id(sample):
     response = client.get(f"/sample/{sample.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data == {
-        "id": sample.id,
-        "sample_date": sample.sample_date,
-        "sample_method": sample.sample_method,
-        "thing_id": sample.thing_id,
-    }
+    assert data["id"] == sample.id
+    assert data["sample_date"] == sample.sample_date
+    assert data["sample_method"] == sample.sample_method
+    assert data["thing_id"] == sample.thing_id
 
 
 def test_get_sample_by_id_404_not_found(sample):
