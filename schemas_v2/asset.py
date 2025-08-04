@@ -32,6 +32,7 @@ class BaseAsset(BaseModel):
 class CreateAsset(BaseAsset):
     pass
 
+
 # -------- RESPONSE --------
 class AssetResponse(BaseAsset):
     id: int
@@ -48,5 +49,6 @@ class AssetResponse(BaseAsset):
 # -------- UPDATE ----------
 class UpdateAsset(BaseAsset):
     pass
+
 
 # ============= EOF =============================================

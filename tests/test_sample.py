@@ -150,8 +150,10 @@ def test_patch_sample_422_thing_id_not_found(sample):
     assert len(data["detail"]) == 1
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["loc"] == ["body", "thing_id"]
-    assert data["detail"][0]["msg"] == f"Value error, Thing with ID {bad_thing_id} does not exist."
-
+    assert (
+        data["detail"][0]["msg"]
+        == f"Value error, Thing with ID {bad_thing_id} does not exist."
+    )
 
 
 def test_patch_sample_422_invalid_timestamp(sample):
@@ -184,7 +186,7 @@ def test_get_samples(sample):
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
-    assert len(data["items"]) ==1
+    assert len(data["items"]) == 1
     assert data["items"][0]["id"] == sample.id
     assert data["items"][0]["sample_date"] == sample.sample_date
     assert data["items"][0]["sample_method"] == sample.sample_method
