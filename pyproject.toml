@@ -56,7 +56,7 @@ dependencies = [
     "packaging==25.0",
     "pandas==2.3.1",
     "pg8000==1.31.4",
-    "phonenumbers==9.0.8",
+    "phonenumbers==9.0.10",
     "pillow==11.3.0",
     "pluggy==1.6.0",
     "pre-commit==4.2.0",
