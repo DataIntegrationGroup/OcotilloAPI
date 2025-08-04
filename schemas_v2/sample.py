@@ -16,12 +16,46 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, field_validator
 
-from db.engine import get_db_session, session_ctx
+from db.engine import session_ctx
 from db import Thing
 
 
+# -------- VALIDATE ----------
+
+
+class SampleValidator(BaseModel):
+    """
+    Validator for Sample data.
+    """
+
+    @field_validator("thing_id", check_fields=False)
+    def validate_thing_id_exists(cls, thing_id: int) -> int:
+        """
+        Validate that the thing_id exists in the database.
+        """
+        if thing_id:
+            with session_ctx() as session:
+                thing = session.get(Thing, thing_id)
+                if not thing:
+                    raise ValueError(f"Thing with ID {thing_id} does not exist.")
+        return thing_id
+
+    @field_validator("sample_date", check_fields=False)
+    def validate_sample_date(cls, sample_date: datetime) -> datetime:
+        """
+        Validate that the sample_date is not in the future.
+        """
+        if sample_date:
+            if sample_date:
+                if sample_date > datetime.now(tz=timezone.utc):
+                    raise ValueError(
+                        f"Sample date {sample_date} cannot be in the future."
+                    )
+        return sample_date
+
+
 # -------- CREATE ----------
-class CreateSample(BaseModel):
+class CreateSample(SampleValidator):
     thing_id: int
     sample_type: str
     field_sample_id: str
@@ -56,40 +90,19 @@ class CreateGeothermalSample(BaseModel):
     sample_id: int
 
 
+# -------- UPDATE ----------
+class UpdateSample(SampleValidator):
+    sample_date: datetime | None = None
+    sample_method: str | None = None
+    thing_id: int | None = None
+
+
 # -------- RESPONSE ----------
 class SampleResponse(BaseModel):
     id: int
     sample_date: datetime
     sample_method: str
     thing_id: int
-
-
-# -------- UPDATE ----------
-class UpdateSample(BaseModel):
-    sample_date: datetime | None = None
-    sample_method: str | None = None
-    thing_id: int | None = None
-
-    @field_validator("thing_id")
-    def validate_thing_id_exists(cls, thing_id: int) -> int:
-        """
-        Validate that the thing_id exists in the database.
-        """
-        with session_ctx() as session:
-            thing = session.get(Thing, thing_id)
-            if not thing:
-                raise ValueError(f"Thing with ID {thing_id} does not exist.")
-        return thing_id
-
-    @field_validator("sample_date")
-    def validate_sample_date(cls, sample_date: datetime) -> datetime:
-        """
-        Validate that the sample_date is not in the future.
-        """
-        if sample_date:
-            if sample_date > datetime.now(tz=timezone.utc):
-                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
-        return sample_date
 
 
 # ============= EOF =============================================
