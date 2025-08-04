@@ -46,8 +46,13 @@ class AssetResponse(BaseAsset):
 
 
 # -------- UPDATE ----------
-class UpdateAsset(BaseModel):
-    label: str
+class UpdateAsset(BaseAsset):
+    label: str | None = None
+    url: str | None = None
+    name: str | None = None
+    storage_path: str | None = None
+    mime_type: str | None = None
+    size: int | None = None
 
 
 # ============= EOF =============================================
