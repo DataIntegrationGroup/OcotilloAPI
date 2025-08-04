@@ -14,9 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
@@ -30,6 +30,7 @@ from services.crud_helper import model_patcher
 
 router = APIRouter(
     prefix="/sample",
+    tags=["sample"],
 )
 
 
