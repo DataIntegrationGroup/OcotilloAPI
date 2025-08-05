@@ -14,93 +14,143 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
+from typing_extensions import Self
 
-from db.engine import get_db_session, session_ctx
-from db import Thing
+
+"""
+REFACTOR TODO: can we use inheritance for commonly defined fields and then set them as optional 
+or not between Create, Update, and Response schemas?
+"""
+
+
+# -------- VALIDATE ----------
+class ValidateSample(BaseModel):
+    """
+    Validator for Sample data for Create and Update schemas.
+    """
+
+    @field_validator("sample_date", check_fields=False)
+    def validate_sample_date(cls, sample_date: datetime | None) -> datetime | None:
+        """
+        Validate that the sample_date is not in the future.
+        """
+        if sample_date is not None:
+            if sample_date > datetime.now(tz=timezone.utc):
+                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
+        return sample_date
+
+    # # REFACTOR TODO: is below ground negative or positive? the combine this with validate_sample_bottom defined below
+    # @field_validator("sample_bottom", check_fields=False)
+    # def validate_sample_bottom(cls, sample_bottom: float | None, values) -> float | None:
+    #     """
+    #     Validate that the sample_bottom is not less than sample_top.
+    #     """
+    #     sample_top = values.get('sample_top')
+    #     if sample_bottom is not None and sample_top is not None:
+    #         if sample_bottom > sample_top:
+    #             raise ValueError(
+    #                 "Sample bottom cannot be greater than sample top."
+    #             )
+    #     return sample_bottom
+
+    # REFACTOR TODO: fields are evaluated in the order in which they are defined.
+    # are sample top/bottom really working as expected?
+
+    @model_validator(mode="after")
+    def validate_top_and_bottom(self) -> Self:
+        """
+        Validate that sample_top and sample_bottom are both defined or both None.
+        """
+        sample_top = getattr(self, "sample_top", None)
+        sample_bottom = getattr(self, "sample_bottom", None)
+
+        if (sample_top is not None and sample_bottom is None) or (
+            sample_top is None and sample_bottom is not None
+        ):
+            raise ValueError(
+                "Sample top and bottom must both be defined or both must be None."
+            )
+        return self
 
 
 # -------- CREATE ----------
-class CreateSample(BaseModel):
+class CreateSample(ValidateSample):
     thing_id: int
     sample_type: str
     field_sample_id: str
+    sample_date: datetime
+    release_status: str
+    sampler_name: str  # REFACTOR TODO: update with enum/restricted values
+    qc_sample: str = "Original"
 
     sensor_id: int | None = None
-    sample_date: datetime | None = None
-    sample_matrix: str | None = None
-    sample_method: str | None = None
-    sampler_name: str | None = None
-    qc_sample: str | None = None
-    duplicate_sample_number: int | None = None
+    sample_matrix: str | None = (
+        None  # REFACTOR TODO: update with enum/restricted values
+    )
+    sample_method: str | None = (
+        None  # REFACTOR TODO: update with enum/restricted values
+    )
 
+    duplicate_sample_number: int | None = 0
+
+    # REFACTOR TODO: update with numeric restrictions? Are negative values below ground and positive above?
+    # for example: wells below, rain above, and soil/rock could be at ground surface
     sample_top: float | None = None
     sample_bottom: float | None = None
 
-    release_status: str
 
-
-class CreateGeochemicalSample(BaseModel):
+# -------- UPDATE ----------
+class UpdateSample(ValidateSample):
     """
-    Represents a geochemical sample in the collaborative network.
-    """
+    Development notes:
 
-    sample_id: int
-
-
-class CreateGeothermalSample(BaseModel):
-    """
-    Represents a geothermal sample in the collaborative network.
+    setting <type> = None makes the field optional, but if it is defined it must be of that type.
     """
 
-    sample_id: int
+    thing_id: int = None  # REFACTOR TODO: should users be able to change this?
+    sample_type: str = None
+    field_sample_id: str = None
+    sample_date: datetime = None
+    release_status: str = None
+    sampler_name: str = None  # REFACTOR TODO: update with enum/restricted values
+    qc_sample: str = None
+
+    sensor_id: int | None = None  # REFACTOR TODO: should users be able to change this?
+    sample_matrix: str | None = (
+        None  # REFACTOR TODO: update with enum/restricted values
+    )
+    sample_method: str | None = (
+        None  # REFACTOR TODO: update with enum/restricted values
+    )
+
+    duplicate_sample_number: int | None = None
+
+    # REFACTOR TODO: update with numeric restrictions? Are negative values below ground and positive above?
+    # for example: wells below, rain above, and soil/rock could be at ground surface
+    sample_top: float | None = None
+    sample_bottom: float | None = None
 
 
 # -------- RESPONSE ----------
 class SampleResponse(BaseModel):
     id: int
-    sample_date: datetime
-    sample_method: str | None = None
+    thing_id: int
     sample_type: str
     field_sample_id: str
-    sample_matrix: str | None = None
-    sampler_name: str | None = None
-    qc_sample: str | None = None
-    duplicate_sample_number: int | None = None
-    sample_top: float | None = None
-    sample_bottom: float | None = None
-    sensor_id: int | None = None
+    sample_date: datetime
     release_status: str
-    created_at: datetime
-    thing_id: int
+    sampler_name: str
+    qc_sample: str
 
+    sensor_id: int | None
+    sample_matrix: str | None
+    sample_method: str | None
 
-# -------- UPDATE ----------
-class UpdateSample(BaseModel):
-    sample_date: datetime | None = None
-    sample_method: str | None = None
-    thing_id: int | None = None
+    duplicate_sample_number: int | None
 
-    @field_validator("thing_id")
-    def validate_thing_id_exists(cls, thing_id: int) -> int:
-        """
-        Validate that the thing_id exists in the database.
-        """
-        with session_ctx() as session:
-            thing = session.get(Thing, thing_id)
-            if not thing:
-                raise ValueError(f"Thing with ID {thing_id} does not exist.")
-        return thing_id
-
-    @field_validator("sample_date")
-    def validate_sample_date(cls, sample_date: datetime) -> datetime:
-        """
-        Validate that the sample_date is not in the future.
-        """
-        if sample_date:
-            if sample_date > datetime.now(tz=timezone.utc):
-                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
-        return sample_date
+    sample_top: float | None
+    sample_bottom: float | None
 
 
 # ============= EOF =============================================

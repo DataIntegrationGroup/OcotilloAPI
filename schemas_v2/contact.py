@@ -24,6 +24,13 @@ from pydantic import field_validator, BaseModel
 from schemas import ORMBaseModel
 from schemas_v2.thing import ThingResponse
 
+"""
+REFACTOR TODO
+
+Create common validator classes to be shared amongst create and update schemas.
+Since many fields are optional in the update schemas set check_fields=False in the field_validator.
+"""
+
 
 # -------- CREATE ----------
 class CreateEmail(BaseModel):
