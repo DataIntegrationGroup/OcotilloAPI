@@ -39,7 +39,7 @@ def database_error_handler(
     payload: CreateSample | UpdateSample, error: IntegrityError | ProgrammingError
 ) -> None:
     """
-    Handle database integrity errors.
+    Handle errors raised by the database when adding or updating a sample.
     """
     error_message = error.orig.args[0]["M"]
     if (
@@ -66,9 +66,7 @@ def add_sample(sample_data: CreateSample, session: session_dependency):
     """
     try:
         return adder(session, Sample, sample_data)
-    except IntegrityError as e:
-        database_error_handler(sample_data, e)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 
 
@@ -97,9 +95,7 @@ def update_sample(
     """
     try:
         return model_patcher(session, Sample, sample_id, sample_data)
-    except IntegrityError as e:
-        database_error_handler(sample_data, e)
-    except ProgrammingError as e:
+    except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 
 
