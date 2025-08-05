@@ -116,6 +116,7 @@ def test_get_within_locations():
     # assert len(data) == 1  # Assuming one location is within the distance
     # assert data[0]["name"] == "Test Location"  # Check if the correct location is returned
 
+
 def test_get_within_things():
     response = client.get(
         "/thing",
