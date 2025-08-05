@@ -84,7 +84,7 @@ def test_patch_sample(sample):
 
     assert data["id"] == sample.id
     assert data["sampler_name"] == sampler_name
-    assert data["sample_date"] == sample_date_patch.split("+")[0]
+    assert data["sample_date"] == sample_date_patch[:-1]
     assert data["sample_method"] == sample_method_patch
     assert data["thing_id"] == sample.thing_id
 
@@ -157,7 +157,7 @@ def test_patch_sample_422_invalid_timestamp(sample):
     assert detail[0]["loc"] == ["body", "sample_date"]
     assert (
         detail[0]["msg"]
-        == f"Value error, Sample date {bad_sample_date} cannot be in the future."
+        == f"Value error, Sample date {bad_sample_date[:-1].replace("T", " ")}+00:00 cannot be in the future."
     )
     assert detail[0]["input"] == bad_sample_date
     assert detail[0]["ctx"] == {"error": {}}
