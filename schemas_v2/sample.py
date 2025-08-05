@@ -98,6 +98,9 @@ class ValidateSample(BaseModel):
     #             )
     #     return sample_bottom
 
+    # REFACTOR TODO: fields are evaluated in the order in which they are defined.
+    # are sample top/bottom really working as expected?
+
     @field_validator("sample_top", check_fields=False)
     def validate_sample_top(cls, sample_top: float | None, values) -> float | None:
         """
