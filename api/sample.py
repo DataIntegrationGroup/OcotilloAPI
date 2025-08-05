@@ -14,9 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_201_CREATED
+from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
@@ -34,13 +35,41 @@ router = APIRouter(
 )
 
 
+def database_error_handler(
+    payload: CreateSample | UpdateSample, error: IntegrityError | ProgrammingError
+) -> None:
+    """
+    Handle database integrity errors.
+    """
+    error_message = error.orig.args[0]["M"]
+    if (
+        error_message
+        == 'duplicate key value violates unique constraint "sample_field_sample_id_key"'
+    ):
+        detail = (
+            f"Sample with field_sample_id {payload.field_sample_id} already exists."
+        )
+    elif (
+        error_message
+        == 'insert or update on table "sample" violates foreign key constraint "sample_thing_id_fkey"'
+    ):
+        detail = f"Thing with ID {payload.thing_id} does not exist."
+
+    raise HTTPException(status_code=HTTP_409_CONFLICT, detail=detail)
+
+
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
 def add_sample(sample_data: CreateSample, session: session_dependency):
     """
     Endpoint to add a sample.
     """
-    return adder(session, Sample, sample_data)
+    try:
+        return adder(session, Sample, sample_data)
+    except IntegrityError as e:
+        database_error_handler(sample_data, e)
+    except ProgrammingError as e:
+        database_error_handler(sample_data, e)
 
 
 # ============= Update =============================================
@@ -66,8 +95,12 @@ def update_sample(
     This is handled by the `model_patcher` function, which excludes unset fields from 
     the update.
     """
-
-    return model_patcher(session, Sample, sample_id, sample_data)
+    try:
+        return model_patcher(session, Sample, sample_id, sample_data)
+    except IntegrityError as e:
+        database_error_handler(sample_data, e)
+    except ProgrammingError as e:
+        database_error_handler(sample_data, e)
 
 
 # ============= Get =============================================
