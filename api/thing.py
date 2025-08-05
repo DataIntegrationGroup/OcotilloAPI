@@ -13,28 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Annotated, List
+from typing import List
 
-from pydantic import Field
-from shapely import wkb
 from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
-from shapely.geometry import mapping
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
-from db import adder
-
-from db.thing import ThingIdLink, Thing, WellScreen
-from db.location import LocationThingAssociation, Location
 from core.dependencies import (
     session_dependency,
     well_user_dependency,
 )
+from db import adder
 from db.engine import get_db_session
+from db.location import LocationThingAssociation, Location
+from db.thing import Thing, WellScreen
 from db.thing import ThingIdLink
+from schemas_v2.location import LocationResponse, UpdateLocation
 from schemas_v2.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -48,18 +45,13 @@ from schemas_v2.thing import (
     CreateSpring,
     CreateThing,
 )
-from schemas_v2.location import LocationResponse, UpdateLocation
-
 from services.crud_helper import model_patcher
 from services.query_helper import (
-    make_query,
     simple_get_by_id,
     paginated_all_getter,
-    order_sort_filter,
 )
 from services.thing_helper import add_thing, get_db_things
 from services.validation.well import validate_screens
-
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
@@ -69,6 +61,7 @@ def get_things(
     session: session_dependency,
     thing_id: int = None,
     thing_type: List[str] | str = Query(default=[]),
+    within: str = None,
     query: str = None,
     sort: str = None,
     order: str = None,
@@ -85,7 +78,14 @@ def get_things(
         return paginate(query=sql, conn=session)
     else:
         return get_db_things(
-            filter_, order, query, session, sort, thing_type, with_location=True
+            filter_,
+            order,
+            query,
+            session,
+            sort,
+            thing_type,
+            with_location=True,
+            within=within,
         )
 
 

@@ -1,4 +1,8 @@
 [
+  {"category": "qc_sample", "term": "original", "definition": ""},
+  {"category": "qc_sample", "term": "duplicate", "definition": ""},
+
+  
 
   {"term":  "groundwater", "definition":  "groundwater sample from a well", "category":  "sample_type"},
 
