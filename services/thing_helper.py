@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from db import LocationThingAssociation, Thing, Base, Location
 from schemas_v2.location import LocationResponse
 from db.group import Group, GroupThingAssociation
+from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter
 from shapely import wkb
 from shapely.geometry import mapping
@@ -41,16 +42,21 @@ def get_db_things(
     sort,
     thing_type: str | list[str] = None,
     with_location: bool = False,
+    within: str = None,
 ):
+
     if query:
         sql = select(Thing).where(make_query(Thing, query))
     else:
         sql = select(Thing)
 
-    if with_location:
+
+    if with_location or within:
         sql = sql.join(
             LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
         )
+        sql = sql.join(Location)
+
 
     if isinstance(thing_type, str):
         thing_type = thing_type.lower()
@@ -60,6 +66,9 @@ def get_db_things(
 
     sql = sql.where(Thing.thing_type.in_(thing_type)) if thing_type else sql
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
+    if within:
+
+        sql = make_within_wkt(sql, within)
 
     def transformer(records):
         thing_ids = sorted([record.id for record in records])
