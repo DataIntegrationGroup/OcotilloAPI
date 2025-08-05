@@ -116,7 +116,7 @@ def test_add_sample(thing, sensor):
 
     # cleanup after adding the sample
     with session_ctx() as session:
-        session.query(Sample).where(Sample.id == data["id"]).delete()
+        session.delete(session.get(Sample, data["id"]))
         session.commit()
 
 
@@ -205,7 +205,7 @@ def test_patch_sample(sample):
 
     # rollback after updating the sample
     with session_ctx() as session:
-        updated_sample = session.query(Sample).filter(Sample.id == sample.id).first()
+        updated_sample = session.get(Sample, sample.id)
         updated_sample.sampler_name = sample.sampler_name
         updated_sample.sample_method = sample.sample_method
         updated_sample.sample_date = sample.sample_date
