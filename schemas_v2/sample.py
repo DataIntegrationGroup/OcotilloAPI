@@ -98,18 +98,30 @@ class ValidateSample(BaseModel):
     #             )
     #     return sample_bottom
 
+    @field_validator("sample_top", check_fields=False)
+    def validate_sample_top(cls, sample_top: float | None, values) -> float | None:
+        """
+        Validate that the sample_top is not less than sample_bottom.
+        """
+        sample_bottom = values.data.get("sample_bottom")
+        if sample_bottom is None and sample_top is not None:
+            raise ValueError("Sample bottom must be defined if sample top is defined.")
+        elif sample_bottom is not None and sample_top is None:
+            raise ValueError("Sample top must be defined if sample bottom is defined.")
+        return sample_top
+
     @field_validator("sample_bottom", check_fields=False)
     def validate_sample_bottom(
-        cls, sample_bottom: float | None, values: dict
+        cls, sample_bottom: float | None, values
     ) -> float | None:
         """
-        Validate that the sample_bottom is definfed if sample_top is defined
+        Validate that the sample_bottom is defined if sample_top is defined and vice versa
         """
-        sample_top = values.get("sample_top")
-        if sample_bottom is not None and sample_top is None:
+        sample_top = values.data.get("sample_top")
+        if sample_bottom is None and sample_top is not None:
             raise ValueError("Sample bottom must be defined if sample top is defined.")
-        elif sample_bottom is None and sample_top is not None:
-            raise ValueError("Sample bottom must be defined if sample top is defined.")
+        elif sample_bottom is not None and sample_top is None:
+            raise ValueError("Sample top must be defined if sample bottom is defined.")
         return sample_bottom
 
 
