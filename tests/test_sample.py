@@ -77,7 +77,7 @@ def test_validate_sample_top_and_bottom():
 #  ============= Post tests for samples =============================================
 def test_add_sample(thing, sensor):
     """
-    Test adding a sample to the collaborative network.
+    Test adding a sample.
     """
     payload = {
         "thing_id": thing.id,
@@ -182,7 +182,7 @@ def test_409_add_sample_invalid_thing_id():
 #  ============= Patch tests for samples =============================================
 def test_patch_sample(sample):
     """
-    Test updating a sample in the collaborative network.
+    Test updating a sample.
     """
     new_sampler_name = "Test Sampler B"
     new_sample_method = "continuous"
@@ -214,7 +214,7 @@ def test_patch_sample(sample):
 
 def test_patch_sample_404_not_found(sample):
     """
-    Test updating a sample that does not exist in the collaborative network.
+    Test updating a sample that does not exist
     """
     sample_method_patch = "continuous"
     response = client.patch(
@@ -266,7 +266,7 @@ def test_409_patch_sample_invalid_thing_id(sample):
 #  ============= Get tests for samples =============================================
 def test_get_samples(sample):
     """
-    Test retrieving samples from the collaborative network.
+    Test retrieving samples
     """
     response = client.get("/sample")
     assert response.status_code == 200
@@ -290,7 +290,7 @@ def test_get_samples(sample):
 
 def test_get_sample_by_id(sample):
     """
-    Test retrieving a sample from the collaborative network.
+    Test retrieving a sample by its ID.
     """
     response = client.get(f"/sample/{sample.id}")
     assert response.status_code == 200
@@ -313,7 +313,7 @@ def test_get_sample_by_id(sample):
 
 def test_get_sample_by_id_404_not_found(sample):
     """
-    Test retrieving a sample from the collaborative network.
+    Test retrieving a sample that does not exist.
     """
     response = client.get("/sample/999")
     assert response.status_code == 404
