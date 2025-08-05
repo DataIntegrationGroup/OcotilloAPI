@@ -116,6 +116,18 @@ def test_get_within_locations():
     # assert len(data) == 1  # Assuming one location is within the distance
     # assert data[0]["name"] == "Test Location"  # Check if the correct location is returned
 
+def test_get_within_things():
+    response = client.get(
+        "/thing",
+        params={
+            "within": "POLYGON((10.0 10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, 10.0 10.0))",
+        },
+    )
+    data = response.json()
+    assert response.status_code == 200
+    assert "items" in data
+    assert len(data["items"]) == 1
+
 
 @pytest.mark.skip("Needs fixture to ensure a location exists nearby the point")
 def test_get_nearby_locations():
