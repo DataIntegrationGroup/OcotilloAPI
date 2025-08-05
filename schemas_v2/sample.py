@@ -14,10 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator
-
-from db.engine import session_ctx
-from db import Thing, Sensor, Sample
+from pydantic import BaseModel, field_validator, model_validator
+from typing_extensions import Self
 
 
 """
@@ -31,48 +29,6 @@ class ValidateSample(BaseModel):
     """
     Validator for Sample data for Create and Update schemas.
     """
-
-    @field_validator("field_sample_id", check_fields=False)
-    def validate_field_sample_id(cls, field_sample_id: str) -> str:
-        """
-        Validate that the field_sample_id is unique.
-        """
-        if field_sample_id is not None:
-            with session_ctx() as session:
-                existing_sample = (
-                    session.query(Sample)
-                    .filter_by(field_sample_id=field_sample_id)
-                    .first()
-                )
-                if existing_sample:
-                    raise ValueError(
-                        f"Field sample ID {field_sample_id} already exists."
-                    )
-        return field_sample_id
-
-    @field_validator("sensor_id", check_fields=False)
-    def validate_sensor_id(cls, sensor_id: int | None) -> int | None:
-        """
-        Validate that the sensor_idexists in the database.
-        """
-        if sensor_id is not None:
-            with session_ctx() as session:
-                sensor = session.get(Sensor, sensor_id)
-                if not sensor:
-                    raise ValueError(f"Sensor with ID {sensor_id} does not exist.")
-        return sensor_id
-
-    @field_validator("thing_id", check_fields=False)
-    def validate_thing_id_exists(cls, thing_id: int | None) -> int | None:
-        """
-        Validate that the thing_id exists in the database.
-        """
-        if thing_id is not None:
-            with session_ctx() as session:
-                thing = session.get(Thing, thing_id)
-                if not thing:
-                    raise ValueError(f"Thing with ID {thing_id} does not exist.")
-        return thing_id
 
     @field_validator("sample_date", check_fields=False)
     def validate_sample_date(cls, sample_date: datetime | None) -> datetime | None:
@@ -101,31 +57,21 @@ class ValidateSample(BaseModel):
     # REFACTOR TODO: fields are evaluated in the order in which they are defined.
     # are sample top/bottom really working as expected?
 
-    @field_validator("sample_top", check_fields=False)
-    def validate_sample_top(cls, sample_top: float | None, values) -> float | None:
+    @model_validator(mode="after")
+    def validate_top_and_bottom(self) -> Self:
         """
-        Validate that the sample_top is not less than sample_bottom.
+        Validate that sample_top and sample_bottom are both defined or both None.
         """
-        sample_bottom = values.data.get("sample_bottom")
-        if sample_bottom is None and sample_top is not None:
-            raise ValueError("Sample bottom must be defined if sample top is defined.")
-        elif sample_bottom is not None and sample_top is None:
-            raise ValueError("Sample top must be defined if sample bottom is defined.")
-        return sample_top
+        sample_top = getattr(self, "sample_top", None)
+        sample_bottom = getattr(self, "sample_bottom", None)
 
-    @field_validator("sample_bottom", check_fields=False)
-    def validate_sample_bottom(
-        cls, sample_bottom: float | None, values
-    ) -> float | None:
-        """
-        Validate that the sample_bottom is defined if sample_top is defined and vice versa
-        """
-        sample_top = values.data.get("sample_top")
-        if sample_bottom is None and sample_top is not None:
-            raise ValueError("Sample bottom must be defined if sample top is defined.")
-        elif sample_bottom is not None and sample_top is None:
-            raise ValueError("Sample top must be defined if sample bottom is defined.")
-        return sample_bottom
+        if (sample_top is not None and sample_bottom is None) or (
+            sample_top is None and sample_bottom is not None
+        ):
+            raise ValueError(
+                "Sample top and bottom must both be defined or both must be None."
+            )
+        return self
 
 
 # -------- CREATE ----------
