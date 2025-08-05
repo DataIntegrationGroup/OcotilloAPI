@@ -36,29 +36,35 @@ def thing(location):
 
 
 @pytest.fixture(scope="session")
-def sample(thing):
-    with session_ctx() as session:
-        sample = Sample(
-            sample_date="2025-01-01T00:00:00",
-            sample_method="manual",
-            thing_id=thing.id,
-            sample_type="groundwater",
-            sampler_name="Test Sampler",
-            release_status="draft",
-            field_sample_id=f"FS-{uuid.uuid4()}",
-        )
-        session.add(sample)
-        session.commit()
-        yield sample
-
-        session.close()
-
-
-@pytest.fixture(scope="session")
 def sensor():
     with session_ctx() as session:
         sensor = Sensor(name=f"Test Sensor {uuid.uuid4()}")
         session.add(sensor)
         session.commit()
         yield sensor
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def sample(thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            sample_date="2025-01-01T00:00:00",
+            thing_id=thing.id,
+            sample_type="groundwater",
+            sampler_name="Test Sampler",
+            release_status="draft",
+            field_sample_id=f"FS-{uuid.uuid4()}",
+            qc_sample="Original",
+            sensor_id=sensor.id,
+            sample_matrix="water",
+            sample_method="manual",
+            duplicate_sample_number=0,
+            sample_top=None,
+            sample_bottom=None,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+
         session.close()
