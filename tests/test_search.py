@@ -28,7 +28,7 @@ def test_search_api(thing, sample):
     data = response.json()
 
     assert isinstance(data, list)
-    assert len(data) == 2
+    assert len(data) == 3
 
 
 @pytest.mark.skip(reason="This test is not working .")

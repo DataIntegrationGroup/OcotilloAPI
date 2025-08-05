@@ -70,7 +70,7 @@ def test_patch_sample(sample):
 
     sampler_name = "Test Sampler B"
     sample_method_patch = "continuous"
-    sample_date_patch = "2025-01-02T00:00:00+00:00"
+    sample_date_patch = "2025-01-02T00:00:00Z"
     response = client.patch(
         f"/sample/{sample.id}",
         json={
@@ -141,7 +141,6 @@ def test_patch_sample_422_invalid_timestamp(sample):
     Test updating a sample with an invalid collection timestamp.
     """
     bad_sample_date = "3500-01-01T00:00:00Z"
-    bad_sample_date_dt = datetime.fromisoformat(bad_sample_date.replace("Z", "+00:00"))
     response = client.patch(
         f"/sample/{sample.id}",
         json={
@@ -158,7 +157,7 @@ def test_patch_sample_422_invalid_timestamp(sample):
     assert detail[0]["loc"] == ["body", "sample_date"]
     assert (
         detail[0]["msg"]
-        == f"Value error, Sample date {bad_sample_date_dt} cannot be in the future."
+        == f"Value error, Sample date {bad_sample_date} cannot be in the future."
     )
     assert detail[0]["input"] == bad_sample_date
     assert detail[0]["ctx"] == {"error": {}}

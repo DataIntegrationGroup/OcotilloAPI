@@ -24,11 +24,13 @@ class BaseAsset(BaseModel):
     storage_path: str
     mime_type: str
     size: int
+    url: str
+    thing_id: int | None = None
 
 
 # -------- CREATE ----------
 class CreateAsset(BaseAsset):
-    url: str
+    pass
 
 
 # -------- RESPONSE --------
@@ -40,14 +42,13 @@ class AssetResponse(BaseAsset):
     # storage_path: str
     # mime_type: str
     # size: int
-    url: str
     created_at: datetime
     storage_service: str
 
 
 # -------- UPDATE ----------
-class UpdateAsset(BaseModel):
-    label: str
+class UpdateAsset(BaseAsset):
+    pass
 
 
 # ============= EOF =============================================
