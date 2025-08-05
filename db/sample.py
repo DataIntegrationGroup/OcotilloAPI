@@ -13,17 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import DateTime, String, ForeignKey, Integer, UniqueConstraint, Float
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import mapped_column, relationship, Mapped, declared_attr
+from sqlalchemy import DateTime, ForeignKey, UniqueConstraint, Float
+from sqlalchemy.orm import mapped_column, relationship, Mapped
 
 # import models from classes that are defined in separate files
-from db import lexicon_term
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.thing import Thing
 from db.sensor import Sensor
 
-from typing import List, Optional
+from typing import Optional
 
 import datetime
 
@@ -45,28 +43,32 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
     sensor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("sensor.id"),
-        unique=True,
         comment="Foreign key for the specific equipment used.",
     )
 
     # Sample Attributes
     sample_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime, comment="Date and time of sample collection."
+        DateTime, nullable=False, comment="Date and time of sample collection."
     )
+    # REFACTOR TODO: update with enum/restricted values
     sample_matrix: Mapped[Optional[str]] = mapped_column(
         comment="The material of the sample (e.g., 'gw', 'soil')."
     )
+    # REFACTOR TODO: update with enum/restricted values
     sample_method: Mapped[Optional[str]] = mapped_column(
         comment="Method used to collect the sample."
     )
     field_sample_id: Mapped[str] = mapped_column(
-        unique=True, comment="User-defined ID for field tracking."
+        unique=True, nullable=False, comment="User-defined ID for field tracking."
     )
+    # REFACTOR TODO: update with enum/restricted values
     sampler_name: Mapped[Optional[str]] = mapped_column(
-        comment="Name of the person who collected the sample."
+        nullable=False, comment="Name of the person who collected the sample."
     )
+    # REFACTOR TODO: update with enum/restricted values
     qc_sample: Mapped[str] = mapped_column(
         default="Original",
+        nullable=False,
         comment="Quality control sample type (e.g., 'Original', 'field dupe').",
     )
     sample_top: Mapped[Optional[float]] = mapped_column(
