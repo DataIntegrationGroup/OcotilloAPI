@@ -78,7 +78,13 @@ def get_things(
         return paginate(query=sql, conn=session)
     else:
         return get_db_things(
-            filter_, order, query, session, sort, thing_type, with_location=True,
+            filter_,
+            order,
+            query,
+            session,
+            sort,
+            thing_type,
+            with_location=True,
             within=within,
         )
 

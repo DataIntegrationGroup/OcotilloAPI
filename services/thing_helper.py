@@ -50,13 +50,11 @@ def get_db_things(
     else:
         sql = select(Thing)
 
-
     if with_location or within:
         sql = sql.join(
             LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
         )
         sql = sql.join(Location)
-
 
     if isinstance(thing_type, str):
         thing_type = thing_type.lower()
