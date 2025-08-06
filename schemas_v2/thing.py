@@ -39,6 +39,7 @@ class CreateBaseThing(BaseModel):
     name: str  # Name of the thing
     group: str | None = None  # Optional group ID for the thing
     thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
+    release_status: str | None = "draft"  # Release status of the thing
 
 
 class CreateWell(CreateBaseThing):
@@ -106,6 +107,7 @@ class BaseThingResponse(ORMBaseModel):
     name: str
     thing_type: str
     id: int
+    release_status: str
 
 
 class WellResponse(BaseThingResponse):
@@ -203,12 +205,13 @@ class UpdateThing(BaseModel):
 
     # location_id: int | None = None  # Optional location ID for the thing
     name: str | None = None  # Optional name for the thing
+    release_status: str | None = None
     # group: str | None = None  # Optional group for the thing
     # description: str | None = None  # Optional description of the thing
     # tags: list[str] | None = None  # Optional tags associated with the thing
 
 
-class UpdateWell(BaseModel):
+class UpdateWell(UpdateThing):
     # location_id: int | None = None  # Optional location ID for the well
     # name: str | None = None  # Optional name for the well
     # api_id: str | None = None
