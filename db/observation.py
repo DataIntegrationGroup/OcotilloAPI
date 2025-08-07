@@ -16,13 +16,11 @@
 from sqlalchemy import (
     ForeignKey,
     Integer,
-    DateTime,
     TIMESTAMP,
     PrimaryKeyConstraint,
-    ForeignKeyConstraint,
     Float,
 )
-from sqlalchemy.orm import declared_attr, mapped_column, relationship
+from sqlalchemy.orm import mapped_column, relationship
 
 from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
 
@@ -57,7 +55,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     )
 
     observation_timestamp = mapped_column(
-        TIMESTAMP, nullable=False, doc="Timestamp of the observation"
+        TIMESTAMP(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
     observed_property = lexicon_term()
 

@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
-from pydantic import BaseModel
+from pydantic import BaseModel, AwareDatetime, PastDatetime
+from typing import Annotated
 
 
 # class GeothermalMixin:
@@ -25,7 +24,7 @@ from pydantic import BaseModel
 
 # -------- CREATE ----------
 class CreateBaseObservation(BaseModel):
-    observation_timestamp: datetime
+    observation_timestamp: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int
     sensor_id: int
     observed_property: str
@@ -61,9 +60,9 @@ class BaseObservationResponse(BaseModel):
     id: int
     sample_id: int
     sensor_id: int
-    observation_timestamp: datetime
+    observation_timestamp: AwareDatetime
     observed_property: str
-    created_at: datetime
+    created_at: AwareDatetime
     release_status: str
 
 
