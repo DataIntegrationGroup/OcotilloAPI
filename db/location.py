@@ -19,7 +19,6 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
-    Boolean,
     DateTime,
     func,
     Text,
@@ -56,8 +55,13 @@ class LocationThingAssociation(Base, AutoBaseMixin):
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), primary_key=True
     )
 
-    effective_start = Column(DateTime, nullable=False, server_default=func.now())
-    effective_end = Column(DateTime, nullable=True)
+    # REFACTOR TODO: when refactoring/updating location/thing schemas and tests, ensure timezone is UTC
+    effective_start = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.timezone("UTC", func.now()),
+    )
+    effective_end = Column(DateTime(timezone=True), nullable=True)
 
     location = relationship("Location")
     thing = relationship("Thing")
