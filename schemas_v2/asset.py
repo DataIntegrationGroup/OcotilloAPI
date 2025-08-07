@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
-from pydantic import BaseModel
+from pydantic import BaseModel, AwareDatetime
 
 
 class BaseAsset(BaseModel):
@@ -42,7 +40,7 @@ class AssetResponse(BaseAsset):
     # storage_path: str
     # mime_type: str
     # size: int
-    created_at: datetime
+    created_at: AwareDatetime
     storage_service: str
 
 
