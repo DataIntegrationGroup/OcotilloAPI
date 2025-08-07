@@ -26,7 +26,8 @@ from db import Sample
 from db.observation import Observation
 from schemas_v2.observation import (
     CreateGroundwaterLevelObservation,
-    GroundwaterLevelObservationResponse, CreateWaterChemistryObservation,
+    GroundwaterLevelObservationResponse,
+    CreateWaterChemistryObservation,
 )
 from services.observation_helper import add_observation
 from services.query_helper import order_sort_filter
@@ -45,6 +46,7 @@ def add_groundwater_level_observation(
     """
     return add_observation(session, obs_data)
 
+
 @router.post("/water-chemistry", status_code=HTTP_201_CREATED)
 def add_water_chemistry_observation(
     obs_data: CreateWaterChemistryObservation,
@@ -55,6 +57,7 @@ def add_water_chemistry_observation(
     This endpoint is currently a placeholder and does not implement any functionality.
     """
     return add_observation(session, obs_data)
+
 
 #
 # @router.post("/geothermal", status_code=HTTP_201_CREATED)

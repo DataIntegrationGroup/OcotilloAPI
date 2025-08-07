@@ -77,7 +77,6 @@ def init_lexicon():
                 session.rollback()
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
