@@ -49,7 +49,7 @@ def sensor():
 def sample(thing, sensor):
     with session_ctx() as session:
         sample = Sample(
-            sample_date="2025-01-01T00:00:00",
+            sample_date="2025-01-01T00:00:00Z",
             thing_id=thing.id,
             sample_type="groundwater",
             sampler_name="Test Sampler",
