@@ -15,7 +15,7 @@
 # ===============================================================================
 from pydantic import BaseModel
 
-from schemas import ORMBaseModel
+from schemas_v2 import ORMBaseModel
 
 
 # -------- CREATE ----------

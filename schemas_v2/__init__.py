@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class ResourceNotFoundResponse(BaseModel):
@@ -21,3 +23,10 @@ class ResourceNotFoundResponse(BaseModel):
 
 
 # ============= EOF =============================================
+class ORMBaseModel(BaseModel):
+    id: int  # every ORM model should have an id field
+    created_at: datetime
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )

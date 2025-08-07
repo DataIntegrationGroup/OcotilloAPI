@@ -26,7 +26,7 @@ from db import Sample
 from db.observation import Observation
 from schemas_v2.observation import (
     CreateGroundwaterLevelObservation,
-    GroundwaterLevelObservationResponse,
+    GroundwaterLevelObservationResponse, CreateWaterChemistryObservation,
 )
 from services.observation_helper import add_observation
 from services.query_helper import order_sort_filter
@@ -45,6 +45,16 @@ def add_groundwater_level_observation(
     """
     return add_observation(session, obs_data)
 
+@router.post("/water-chemistry", status_code=HTTP_201_CREATED)
+def add_water_chemistry_observation(
+    obs_data: CreateWaterChemistryObservation,
+    session: session_dependency,
+):
+    """
+    Add a new water chemistry observation to the database.
+    This endpoint is currently a placeholder and does not implement any functionality.
+    """
+    return add_observation(session, obs_data)
 
 #
 # @router.post("/geothermal", status_code=HTTP_201_CREATED)
@@ -71,7 +81,6 @@ def get_groundwater_level_observations(
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,
-    observed_property: str | None = None,
     polygon: str | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
@@ -83,6 +92,7 @@ def get_groundwater_level_observations(
     Retrieve all groundwater level observations from the database.
     """
     sql = select(Observation)
+    sql = sql.where(Observation.observed_property == "groundwater level")
     if thing_id is not None:
         sql = sql.join(Sample)
         sql = sql.where(Sample.thing_id == thing_id)
@@ -90,8 +100,7 @@ def get_groundwater_level_observations(
         sql = sql.where(Observation.sample_id == sample_id)
     if sensor_id is not None:
         sql = sql.where(Observation.sensor_id == sensor_id)
-    if observed_property is not None:
-        sql = sql.where(Observation.observed_property == observed_property)
+
     if start_time:
         sql = sql.where(Observation.observation_timestamp >= start_time)
     if end_time:

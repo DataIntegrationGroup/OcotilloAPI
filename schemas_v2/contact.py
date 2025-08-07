@@ -21,7 +21,7 @@ from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
 from pydantic import field_validator, BaseModel
 
-from schemas import ORMBaseModel
+from schemas_v2 import ORMBaseModel
 from schemas_v2.thing import ThingResponse
 
 """

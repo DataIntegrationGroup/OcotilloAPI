@@ -2,7 +2,11 @@
   {"category": "qc_sample", "term": "original", "definition": ""},
   {"category": "qc_sample", "term": "duplicate", "definition": ""},
 
-  
+  {"category": "units", "term":  "dimensionless", "definition":  ""},
+
+  {"category":  "observed_property", "term":  "groundwater level", "definition":  "groundwater level measurement" },
+  {"category":  "observed_property", "term":  "pH", "definition":  "pH"},
+  {"category":  "observed_property", "term":  "Alkalinity as CaCO3", "definition":  "Alkalinity as CaCO3"},
 
   {"term":  "groundwater", "definition":  "groundwater sample from a well", "category":  "sample_type"},
 
@@ -29,7 +33,6 @@
   {"term":  "continuous", "definition":  "continuous sampling", "category":  "collection_method"},
 
 
-  {"term":  "groundwater level", "definition":  "groundwater level measurement", "category":  "observed_property"},
 
   {"term":  "United States", "definition":  "United States of America", "category":  "country"},
   {"term":  "Canada", "definition":  "Canada", "category":  "country"},
@@ -62,16 +65,6 @@
   {"term":  "Work", "definition":  "Primary", "category":  "phone_type"},
   {"term":  "Home", "definition":  "Primary", "category":  "phone_type"},
   {"term":  "Mobile", "definition":  "Primary", "category":  "phone_type"},
-
-
-  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
-  {"term": "Na", "definition": "Sodium", "category": "water_chemistry"},
-  {"term": "Cl", "definition": "Chloride", "category": "water_chemistry"},
-  {"term": "Ca", "definition": "Calcium", "category": "water_chemistry"},
-  {"term": "Mg", "definition": "Magnesium", "category": "water_chemistry"},
-  {"term": "SO4", "definition": "Sulfate", "category": "water_chemistry"},
-  {"term": "HCO3", "definition": "Bicarbonate", "category": "water_chemistry"},
-
 
   {"term": "ft", "definition": "feet", "category": "unit"},
   {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},

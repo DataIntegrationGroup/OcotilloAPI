@@ -92,6 +92,14 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         doc="Temperature of the geothermal observation in degrees Celsius",
     )
 
+    # water chemistry
+    value = mapped_column(
+        Float,
+        nullable=True,
+    )
+    units = lexicon_term()
+
+
     sensor = relationship("Sensor")
     sample = relationship("Sample")
 

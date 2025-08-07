@@ -77,17 +77,6 @@ def init_lexicon():
                 session.rollback()
 
 
-def create_superuser():
-    from admin.user import User
-
-    with session_ctx() as session:
-        user = User(
-            username="admin",
-            password="admin",
-            is_superuser=True,
-        )
-        session.add(user)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -96,7 +85,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     if settings.get_enum("MODE") == "development":
         init_db()
-        create_superuser()
         init_lexicon()
     yield
 

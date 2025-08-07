@@ -18,7 +18,7 @@ from typing import List
 
 from pydantic import BaseModel, model_validator
 
-from schemas import ORMBaseModel
+from schemas_v2 import ORMBaseModel
 from schemas_v2.location import LocationResponse
 
 
