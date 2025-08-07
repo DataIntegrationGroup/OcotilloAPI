@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel, AwareDatetime, PastDatetime
+from datetime import timezone
+from pydantic import BaseModel, AwareDatetime, PastDatetime, field_validator
 from typing import Annotated
 
 
@@ -22,8 +23,29 @@ from typing import Annotated
 #     temperature: float
 
 
+# -------- VALIDATE -------
+
+
+class ValidateObservation(BaseModel):
+
+    @field_validator("observation_timestamp", check_fields=False)
+    def convert_observation_timestamp_to_utc(
+        observation_timestamp: AwareDatetime,
+    ) -> AwareDatetime:
+        """
+        Convert observation_timestamp to UTC timezone if it's not already. This runs after
+        the Annotated validator PastDatetime() is run.
+        """
+        if (
+            observation_timestamp is not None
+            and observation_timestamp.tzinfo != timezone.utc
+        ):
+            return observation_timestamp.astimezone(timezone.utc)
+        return observation_timestamp
+
+
 # -------- CREATE ----------
-class CreateBaseObservation(BaseModel):
+class CreateBaseObservation(ValidateObservation):
     observation_timestamp: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int
     sensor_id: int
