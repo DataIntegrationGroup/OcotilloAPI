@@ -91,5 +91,5 @@ app/
 ├── schemas/                # Pydantic data models
 ├── services/               # Reusable business logic, helpers, and database interactions
 ├── tests/                  # Code tests
-└── transfer/               # Scripts to transfer data from NM_Aquifer to current db schema
+└── transfers/               # Scripts to transfer data from NM_Aquifer to current db schema
 ```
