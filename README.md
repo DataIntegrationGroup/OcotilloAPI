@@ -29,11 +29,11 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 ### Prerequisites
 
 - Python 3.11+
-- PostgreSQL with PostGIS extension
 - [`uv`](https://github.com/astral-sh/uv) package manager
-- Docker Desktop 4+
+- Docker Desktop 4+ if wanting to host server/database locally with containers
+- PostgreSQL with PostGIS extension if wanting to host server/database locally without containers
 
-### Installation & Development Setup
+### Installation & Setup
 
 #### 1. Clone the repository
 
@@ -67,22 +67,38 @@ pre-commit install
 #### 4. Setup environment variables
 
 ```bash
-# Set up environment variables
-cp .env.example .env
 # Edit `.env` to configure database connection and app settings
+cp .env.example .env
 ```
 
-#### 5. Build Docker images and start services
+#### 5. Database and server
+
+##### 5a. With PostgreSQL with PostGIS extension installed locally
+
+```bash
+# Run database migrations
+alembic upgrade head  
+
+# Start the development server
+uvicorn app.main:app --reload
+```
+
+Notes:
+- Requires PostgreSQL and the PostGIS extensions to be installed locally.
+
+##### 5b. With Docker
 
 Builds the images for the server, database, and app and starts the services.
 
 ```bash
-docker compose up --build # -d for silent/detached build
+# include -d flag for silent/detached build
+docker compose up --build 
 ```
 
 Notes:
 - To access the app run `docker exec -it nmsamplelocations-app-1 bash`
 - Pytest can be run through the command line outside of the app.
+- Requires Docker Desktop be installed.
 
 ### 🧭 Project Structure
 ```text
