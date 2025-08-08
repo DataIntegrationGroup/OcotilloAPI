@@ -17,7 +17,7 @@ import pytest
 
 from db.engine import session_ctx
 from db.sample import Sample
-from schemas_v2.sample import ValidateSample
+from schemas.sample import ValidateSample
 from tests import client
 
 # ============= module & function fixtures =======================================

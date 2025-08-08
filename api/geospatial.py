@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 # from starlette.responses import FileResponse
 
 from core.dependencies import session_dependency
-from schemas_v2.thing import FeatureCollectionResponse
+from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])

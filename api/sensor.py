@@ -25,7 +25,7 @@ from core.dependencies import session_dependency
 from db import adder, Observation
 from db.engine import get_db_session
 from db.sensor import Sensor
-from schemas_v2.sensor import SensorResponse, CreateSensor
+from schemas.sensor import SensorResponse, CreateSensor
 from services.query_helper import order_sort_filter
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])

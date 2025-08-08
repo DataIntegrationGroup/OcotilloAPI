@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
+from typing import List, Optional
 
 from schemas import ORMBaseModel
 
@@ -52,15 +53,6 @@ class CreateTriple(BaseModel):
 
 
 # -------- RESPONSE ----------
-class LexiconTermResponse(ORMBaseModel):
-    """
-    Pydantic model for the response of a lexicon term.
-    This model can be extended to include additional fields as needed.
-    """
-
-    term: str
-    definition: str
-    category: str | None = None
 
 
 class LexiconCategoryResponse(ORMBaseModel):
@@ -73,6 +65,26 @@ class LexiconCategoryResponse(ORMBaseModel):
     name: str
     description: str | None = None
     # terms: list[LexiconTermResponse] | None = None
+
+
+class LexiconTermCategoryResponse(ORMBaseModel):
+    """
+    Pydantic model for the response of a lexicon term category association.
+    This model can be extended to include additional fields as needed.
+    """
+
+    category: LexiconCategoryResponse
+
+
+class LexiconTermResponse(ORMBaseModel):
+    """
+    Pydantic model for the response of a lexicon term.
+    This model can be extended to include additional fields as needed.
+    """
+
+    term: str
+    definition: str
+    categories: List[LexiconTermCategoryResponse] | None = None
 
 
 # -------- UPDATE ----------

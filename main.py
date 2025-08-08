@@ -2,15 +2,9 @@ import os
 
 from fastapi_pagination import add_pagination
 
-os.environ["ADMIN_USER_MODEL"] = "User"
-os.environ["ADMIN_USER_MODEL_USERNAME_FIELD"] = "username"
-os.environ["ADMIN_SECRET_KEY"] = "secret"
-
 from starlette.middleware.cors import CORSMiddleware
 
 from core.app import app
-
-from fastadmin import fastapi_app as admin_app
 
 from api.group import router as group_router
 from api.contact import router as contact_router
@@ -49,11 +43,6 @@ app.include_router(sample_router)
 app.include_router(sensor_router)
 app.include_router(search_router)
 app.include_router(thing_router)
-
-from admin.user import *  # noqa: F401, F403
-from admin.base import *  # noqa: F401, F403
-
-app.mount("/admin", admin_app)
 
 
 app.add_middleware(

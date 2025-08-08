@@ -28,7 +28,7 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from core.dependencies import session_dependency
 from db import ThingContactAssociation, Thing
 from db.contact import Contact, Email, Phone, Address
-from schemas_v2.contact import (
+from schemas.contact import (
     CreateContact,
     PhoneResponse,
     EmailResponse,

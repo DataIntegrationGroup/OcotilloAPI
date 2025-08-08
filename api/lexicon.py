@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends
-from fastapi import status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 
@@ -22,7 +21,7 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db.engine import get_db_session
 from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
-from schemas_v2.lexicon import (
+from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
     CreateTriple,
@@ -30,6 +29,11 @@ from schemas_v2.lexicon import (
     LexiconCategoryResponse,
 )
 from services.lexicon import add_lexicon_term
+from services.query_helper import (
+    simple_all_getter,
+    paginated_all_getter,
+    order_sort_filter,
+)
 
 router = APIRouter(
     prefix="/lexicon",
@@ -106,6 +110,9 @@ def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
     term: str | None = None,
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[LexiconTermResponse]:
     """
     Endpoint to retrieve lexicon terms.
@@ -120,7 +127,27 @@ def get_lexicon_terms(
     if term:
         sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
 
+    # If sort is 'categories', we do not apply sorting or filtering
+    if sort == "categories":
+        sort = None
+        order = None
+
+    sql = order_sort_filter(sql, Lexicon, sort=sort, order=order, filter_=filter_)
     return paginate(query=sql, conn=session)
+    # return paginated_all_getter(session, sql, filter_)
+
+
+@router.get("/category")
+def get_lexicon_categories(
+    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[LexiconCategoryResponse]:
+    """
+    Endpoint to retrieve lexicon categories.
+    """
+    return paginated_all_getter(session, Category, sort, order, filter_)
 
 
 # ============= EOF =============================================

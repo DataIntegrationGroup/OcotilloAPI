@@ -29,11 +29,13 @@ class Lexicon(Base, AutoBaseMixin):
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
 
-    # category_id = mapped_column(Integer, nullable=False)
-    # category = mapped_column(String(255), nullable=True)
-
+    # categories = relationship(
+    #     "Category",
+    #     secondary="lexicon_term_category_association",
+    # )
+    # categories = relationship("TermCategoryAssociation")
     def __repr__(self):
-        return f"<Lexicon(category={self.category_id}, term={self.term}, definition={self.definition})>"
+        return f"<Lexicon(term={self.term}, definition={self.definition})>"
 
 
 class Category(Base, AutoBaseMixin):
@@ -46,12 +48,6 @@ class Category(Base, AutoBaseMixin):
     name = mapped_column(String(100), unique=True, nullable=False)
     description = mapped_column(String(255), nullable=True)
 
-    # terms = relationship(
-    #     "lexicon",
-    #     backref="category",
-    #     cascade="all, delete-orphan",
-    #     lazy="dynamic"
-    # )
     def __repr__(self):
         return f"<Category(name={self.name}, description={self.description})>"
 
@@ -73,7 +69,7 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
         nullable=False,
     )
 
-    term = relationship("Lexicon")
+    term = relationship("Lexicon", backref="categories")
     category = relationship("Category")
 
     def __repr__(self):

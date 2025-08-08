@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 
 [[package]]
@@ -460,19 +460,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fastadmin"
-version = "0.2.22"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "asgiref" },
-    { name = "pyjwt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/50/2a/e5443dbf1eba8d9799862b87edcb5a8e3c8d837923aa6617222ce8f5747b/fastadmin-0.2.22.tar.gz", hash = "sha256:51703a9e0a892ce2baeceb43cafef7f5ecbbc70ee17dd3f93f25277f81bdcbe0", size = 1660674, upload-time = "2025-04-22T11:14:43.391Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/80/26/cb8393ce0c179c29b15a7ce214b22d798a547f505f4c4b0b0a11a580f2c6/fastadmin-0.2.22-py3-none-any.whl", hash = "sha256:4e8e1341a5097d9da7f2a8c5b925de8bf16253822e7b857a5d430d3b026251b8", size = 1679535, upload-time = "2025-04-22T11:14:41.578Z" },
-]
-
-[[package]]
 name = "fastapi"
 version = "0.116.1"
 source = { registry = "https://pypi.org/simple" }
@@ -898,7 +885,6 @@ dependencies = [
     { name = "cryptography" },
     { name = "dnspython" },
     { name = "email-validator" },
-    { name = "fastadmin" },
     { name = "fastapi" },
     { name = "fastapi-pagination" },
     { name = "frozenlist" },
@@ -999,7 +985,6 @@ requires-dist = [
     { name = "cryptography", specifier = "==45.0.5" },
     { name = "dnspython", specifier = "==2.7.0" },
     { name = "email-validator", specifier = "==2.2.0" },
-    { name = "fastadmin", specifier = "==0.2.22" },
     { name = "fastapi", specifier = "==0.116.1" },
     { name = "fastapi-pagination", specifier = "==0.13.3" },
     { name = "frozenlist", specifier = "==1.7.0" },

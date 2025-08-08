@@ -28,10 +28,11 @@ from db.engine import session_ctx
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation import Observation
-from db.series.groundwaterlevel import GroundwaterLevelSeries
-from db.series.series import Series
+
+# from db.series.groundwaterlevel import GroundwaterLevelSeries
+# from db.series.series import Series
 from services.lexicon import add_lexicon_term
-from services.thing_helper import add_well
+from services.thing_helper import add_thing
 
 
 TRANSFORMERS = {}
@@ -61,97 +62,100 @@ def make_location(row):
     )
 
     return Location(
-        # name=row_dict["PointID"],
+        name=row.PointID,
         point=transformed_point.wkt,
+        release_status="public" if row.PublicRelease else "private",
         # visible=row_dict["PublicRelease"],
     )
 
 
-def migrate_water_levels(session, limit=800):
-    wd = pd.read_csv("./migration/data/water_levels.csv")
-    p = pd.read_csv("./migration/data/welldata.csv")
-    # get first 100 rows
-    pointids = p["PointID"].unique()[:limit]
-
-    wd = wd[wd["PointID"].isin(pointids)]
-
-    gwd = wd.groupby(["PointID"])
-
-    sensor = Sensor()
-    sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
-    sensor.description = "Groundwater level manual measurement"
-    session.add(sensor)
-    session.commit()
-
-    for index, group in gwd:
-
-        # add a series
-        # add a groundwater level series
-        thing = session.query(Thing).filter_by(name=index[0]).first()
-        print("Processing PointID:", index, thing)
-        if not thing:
-            continue
-
-        print("found thing:", index, thing.id)
-        series = Series(name="Groundwater Level Series")
-        series.observed_property = "groundwater level"
-        series.unit = "ft"
-
-        series.sensor = sensor
-        series.thing = thing
-
-        groundwater_level_series = GroundwaterLevelSeries()
-        groundwater_level_series.series = series
-
-        session.add(series)
-        session.add(groundwater_level_series)
-
-        for row in group.itertuples():
-            obs = Observation()
-            obs.series = series
-            obs.observation_timestamp = datetime.fromisoformat(row.DateMeasured)
-            # print("rw", row.DateMeasured, row.TimeMeasured)
-            gwl_obs = GroundwaterLevelObservation()
-            gwl_obs.observation = obs
-            gwl_obs.depth_to_water = row.DepthToWater
-            gwl_obs.measuring_point_height = row.MPHeight
-            session.add(obs)
-            session.add(gwl_obs)
-
-        session.commit()
-        # break
-
-        # print(group)
-        # print('--------------------------------------------')
-        # break
-        # for index, row in group:
-        # print(index, row)
-        # print(row.PointID, row.TimeMeasured)
-        # print(row.PointID, row.WaterLevel, row.WaterLevelDate)
-        # if pd.isna(row.WaterLevel) or pd.isna(row.WaterLevelDate):
-        #     continue
-        #
-        # obs = add_groundwater_level_observation(
-        #     session,
-        #     {
-        #         "point_id": row.PointID,
-        #         "water_level": row.WaterLevel,
-        #         "water_level_date": row.WaterLevelDate,
-        #     },
-        # )
-        # print(obs)
-
-        # print(index, row)
-
-        # obs = Observation()
+#
+# def migrate_water_levels(session, limit=800):
+#     wd = pd.read_csv("./migration/data/water_levels.csv")
+#     p = pd.read_csv("./migration/data/welldata.csv")
+#     # get first 100 rows
+#     pointids = p["PointID"].unique()[:limit]
+#
+#     wd = wd[wd["PointID"].isin(pointids)]
+#
+#     gwd = wd.groupby(["PointID"])
+#
+#     sensor = Sensor()
+#     sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
+#     sensor.description = "Groundwater level manual measurement"
+#     session.add(sensor)
+#     session.commit()
+#
+#     for index, group in gwd:
+#
+#         # add a series
+#         # add a groundwater level series
+#         thing = session.query(Thing).filter_by(name=index[0]).first()
+#         print("Processing PointID:", index, thing)
+#         if not thing:
+#             continue
+#
+#         print("found thing:", index, thing.id)
+#         series = Series(name="Groundwater Level Series")
+#         series.observed_property = "groundwater level"
+#         series.unit = "ft"
+#
+#         series.sensor = sensor
+#         series.thing = thing
+#
+#         groundwater_level_series = GroundwaterLevelSeries()
+#         groundwater_level_series.series = series
+#
+#         session.add(series)
+#         session.add(groundwater_level_series)
+#
+#         for row in group.itertuples():
+#             obs = Observation()
+#             obs.series = series
+#             obs.observation_datetime = datetime.fromisoformat(row.DateMeasured)
+#             # print("rw", row.DateMeasured, row.TimeMeasured)
+#             gwl_obs = GroundwaterLevelObservation()
+#             gwl_obs.observation = obs
+#             gwl_obs.depth_to_water = row.DepthToWater
+#             gwl_obs.measuring_point_height = row.MPHeight
+#             session.add(obs)
+#             session.add(gwl_obs)
+#
+#         session.commit()
+#         # break
+#
+#         # print(group)
+#         # print('--------------------------------------------')
+#         # break
+#         # for index, row in group:
+#         # print(index, row)
+#         # print(row.PointID, row.TimeMeasured)
+#         # print(row.PointID, row.WaterLevel, row.WaterLevelDate)
+#         # if pd.isna(row.WaterLevel) or pd.isna(row.WaterLevelDate):
+#         #     continue
+#         #
+#         # obs = add_groundwater_level_observation(
+#         #     session,
+#         #     {
+#         #         "point_id": row.PointID,
+#         #         "water_level": row.WaterLevel,
+#         #         "water_level_date": row.WaterLevelDate,
+#         #     },
+#         # )
+#         # print(obs)
+#
+#         # print(index, row)
+#
+#         # obs = Observation()
 
 
 ADDED = []
 
 
 def migrate_wells(session, limit=1000):
-    wdf = pd.read_csv("./migration/data/welldata.csv")
-    ldf = pd.read_csv("./migration/data/location.csv")
+    wdf = pd.read_csv("./data/welldata.csv")
+    # wdf = pd.read_csv("./migration/data/welldata.csv")
+    ldf = pd.read_csv("./data/location.csv")
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
@@ -177,15 +181,17 @@ def migrate_wells(session, limit=1000):
         location = make_location(row)
         session.add(location)
 
-        well = add_well(
+        well = add_thing(
             session,
             {
                 "name": row.PointID,
                 "hole_depth": row.HoleDepth,
                 "well_depth": row.WellDepth,
-                "casing_diameter": row.CasingDiameter,
-                "casing_depth": row.CasingDepth,
-                "casing_description": row.CasingDescription,
+                "well_casing_diameter": row.CasingDiameter,
+                "well_casing_depth": row.CasingDepth,
+                "well_casing_description": row.CasingDescription,
+                "thing_type": "water well",
+                "release_status": "public" if row.PublicRelease else "private",
             },
         )
         wt = row.Meaning
@@ -200,7 +206,7 @@ def migrate_wells(session, limit=1000):
         assoc = LocationThingAssociation()
 
         assoc.location = location
-        assoc.thing = well.thing
+        assoc.thing = well
         session.add(assoc)
         # break
 
@@ -219,6 +225,6 @@ if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
         migrate_wells(sess)
-        migrate_water_levels(sess)
+        # migrate_water_levels(sess)
 
 # ============= EOF =============================================

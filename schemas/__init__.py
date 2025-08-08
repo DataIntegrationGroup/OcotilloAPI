@@ -13,7 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, AwareDatetime
+
+
+class ResourceNotFoundResponse(BaseModel):
+    detail: str
 
 
 class ORMBaseModel(BaseModel):

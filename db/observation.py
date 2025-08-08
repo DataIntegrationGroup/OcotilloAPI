@@ -19,6 +19,7 @@ from sqlalchemy import (
     TIMESTAMP,
     PrimaryKeyConstraint,
     Float,
+    DateTime,
 )
 from sqlalchemy.orm import mapped_column, relationship
 
@@ -33,7 +34,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     __table_args__ = (
         PrimaryKeyConstraint(
             "id",
-            "observation_timestamp",
+            "observation_datetime",
         ),
         {},
     )
@@ -54,8 +55,8 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         nullable=False,
     )
 
-    observation_timestamp = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, doc="Timestamp of the observation"
+    observation_datetime = mapped_column(
+        DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
     observed_property = lexicon_term()
 
@@ -89,6 +90,13 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         info={"unit": "degC"},
         doc="Temperature of the geothermal observation in degrees Celsius",
     )
+
+    # general observations
+    value = mapped_column(
+        Float,
+        nullable=True,
+    )
+    units = lexicon_term()
 
     sensor = relationship("Sensor")
     sample = relationship("Sample")

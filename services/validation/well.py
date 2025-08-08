@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from schemas_v2.thing import CreateWellScreen
+from schemas.thing import CreateWellScreen
 from services.validation import get_category
 
 
