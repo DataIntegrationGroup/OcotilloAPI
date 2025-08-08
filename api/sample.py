@@ -60,7 +60,9 @@ def database_error_handler(
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
-def add_sample(sample_data: CreateSample, session: session_dependency):
+def add_sample(
+    sample_data: CreateSample, session: session_dependency
+) -> SampleResponse:
     """
     Endpoint to add a sample.
     """
