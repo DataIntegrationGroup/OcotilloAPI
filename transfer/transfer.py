@@ -20,7 +20,6 @@ import pandas as pd
 import pyproj
 from shapely import Point
 from shapely.ops import transform
-from sqlalchemy.exc import ProgrammingError
 
 from db import *
 from db.location import Location

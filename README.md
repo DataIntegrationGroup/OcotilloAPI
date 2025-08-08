@@ -88,8 +88,8 @@ app/
 ├── core/                   # Settings, application config, and dependencies
 ├── db/                     # Database models, sessions, and engine
 ├── docker/                 # Custom Docker files
-├── migrations/             # Scripts to migrate data from NM_Aquifer to current db schema
 ├── schemas/                # Pydantic data models
 ├── services/               # Reusable business logic, helpers, and database interactions
-└── tests/                  # Code tests
+├── tests/                  # Code tests
+└── transfer/               # Scripts to transfer data from NM_Aquifer to current db schema
 ```
