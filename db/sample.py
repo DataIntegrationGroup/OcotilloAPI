@@ -85,7 +85,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         default=0,
         comment="Identifier for duplicate samples (0 = original sample, not a duplicate, 1 = dup no.1, 2 = dup no.2, etc.).",
     )
-    # TODO: Consider user research to determine if sample_group_type field is necessary
+    # TODO: Consider user research to determine if sample_group field is necessary
     sample_group: Mapped[str] = mapped_column(
         comment="Defines a sample's purpose, category, or group (e.g., 'geochemistry', 'geothermal', 'groundwater level')."
     )
