@@ -53,11 +53,13 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         comment="Date and time of sample collection.",
     )
     # REFACTOR TODO: update with enum/restricted values
-    sample_matrix: Mapped[Optional[str]] = mapped_column(
+    sample_matrix: Mapped[str] = mapped_column(
+        nullable=False,
         comment="The material of the sample (e.g., 'gw', 'soil')."
     )
     # REFACTOR TODO: update with enum/restricted values
-    sample_method: Mapped[Optional[str]] = mapped_column(
+    sample_method: Mapped[str] = mapped_column(
+        nullable=False,
         comment="Method used to collect the sample."
     )
     field_sample_id: Mapped[str] = mapped_column(
