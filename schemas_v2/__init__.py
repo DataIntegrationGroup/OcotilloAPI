@@ -15,18 +15,18 @@
 # ===============================================================================
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, AwareDatetime
 
 
 class ResourceNotFoundResponse(BaseModel):
     detail: str
 
 
-# ============= EOF =============================================
 class ORMBaseModel(BaseModel):
     id: int  # every ORM model should have an id field
-    created_at: datetime
+    created_at: AwareDatetime
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
     )
+# ============= EOF =============================================
