@@ -106,9 +106,9 @@ def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
     term: str | None = None,
-        sort: str = None,
-        order: str = None,
-        filter_: str = Query(alias="filter", default=None),
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[LexiconTermResponse]:
     """
     Endpoint to retrieve lexicon terms.
@@ -123,22 +123,22 @@ def get_lexicon_terms(
     if term:
         sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
 
-    sql = order_sort_filter(
-        sql, Lexicon, sort=sort, order=order, filter_=filter_
-    )
+    sql = order_sort_filter(sql, Lexicon, sort=sort, order=order, filter_=filter_)
     return paginate(query=sql, conn=session)
     # return paginated_all_getter(session, sql, filter_)
 
+
 @router.get("/category")
 def get_lexicon_categories(
-        session: session_dependency,
-        sort: str = None,
-        order: str = None,
-        filter_: str = Query(alias="filter", default=None),
+    session: session_dependency,
+    sort: str = None,
+    order: str = None,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[LexiconCategoryResponse]:
     """
     Endpoint to retrieve lexicon categories.
     """
     return paginated_all_getter(session, Category, sort, order, filter_)
+
 
 # ============= EOF =============================================

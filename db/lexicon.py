@@ -29,7 +29,6 @@ class Lexicon(Base, AutoBaseMixin):
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
 
-
     # categories = relationship(
     #     "Category",
     #     secondary="lexicon_term_category_association",
@@ -48,7 +47,6 @@ class Category(Base, AutoBaseMixin):
     __tablename__ = "lexicon_category"
     name = mapped_column(String(100), unique=True, nullable=False)
     description = mapped_column(String(255), nullable=True)
-
 
     def __repr__(self):
         return f"<Category(name={self.name}, description={self.description})>"

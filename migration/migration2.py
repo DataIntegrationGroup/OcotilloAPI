@@ -28,6 +28,7 @@ from db.engine import session_ctx
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 from db.observation import Observation
+
 # from db.series.groundwaterlevel import GroundwaterLevelSeries
 # from db.series.series import Series
 from services.lexicon import add_lexicon_term
@@ -63,9 +64,10 @@ def make_location(row):
     return Location(
         name=row.PointID,
         point=transformed_point.wkt,
-        release_status='public' if row.PublicRelease else 'private',
+        release_status="public" if row.PublicRelease else "private",
         # visible=row_dict["PublicRelease"],
     )
+
 
 #
 # def migrate_water_levels(session, limit=800):

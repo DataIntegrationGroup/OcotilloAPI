@@ -54,6 +54,7 @@ class CreateTriple(BaseModel):
 
 # -------- RESPONSE ----------
 
+
 class LexiconCategoryResponse(ORMBaseModel):
     """
     Pydantic model for the response of a lexicon category.
@@ -65,6 +66,7 @@ class LexiconCategoryResponse(ORMBaseModel):
     description: str | None = None
     # terms: list[LexiconTermResponse] | None = None
 
+
 class LexiconTermCategoryResponse(ORMBaseModel):
     """
     Pydantic model for the response of a lexicon term category association.
@@ -72,6 +74,7 @@ class LexiconTermCategoryResponse(ORMBaseModel):
     """
 
     category: LexiconCategoryResponse
+
 
 class LexiconTermResponse(ORMBaseModel):
     """
@@ -82,6 +85,7 @@ class LexiconTermResponse(ORMBaseModel):
     term: str
     definition: str
     categories: List[LexiconTermCategoryResponse] | None = None
+
 
 # -------- UPDATE ----------
 # ============= EOF =============================================
