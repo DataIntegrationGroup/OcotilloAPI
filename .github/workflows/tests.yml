@@ -63,15 +63,15 @@ jobs:
         DB_DRIVER: postgres
 #        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
 
-      run: uv run pytest -vv --durations=20 --junitxml=junit.xml
+      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
 
-#    - name: Upload results to Codecov
-#      uses: codecov/codecov-action@v4
-#      with:
-#        token: ${{ secrets.CODECOV_TOKEN }}
-#
-#    - name: Upload test results to Codecov
-#      if: ${{ !cancelled() }}
-#      uses: codecov/test-results-action@v1
-#      with:
-#        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload results to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
