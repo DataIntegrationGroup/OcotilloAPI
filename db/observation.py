@@ -91,7 +91,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         doc="Temperature of the geothermal observation in degrees Celsius",
     )
 
-    # water chemistry
+    # general observations
     value = mapped_column(
         Float,
         nullable=True,
