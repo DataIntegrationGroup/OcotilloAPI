@@ -67,7 +67,7 @@ cp .env.example .env
 
 | PostgreSQL + PostGIS install locally | Docker|
 | -------------------- | ----- |
-|<pre><code>#run database migrations<br>alembic upgrade head<br><br># start development server<br>uvicorn app.main:app --reload</code></pre> | <pre><code># include -d flag for slient/detached build<br>docker compose up --build<br><br><br><br></code></pre> |
+|<pre><code>#run database migrations<br>alembic upgrade head<br><br># start development server<br>uvicorn app.main:app --reload</code></pre> | <pre><code># include -d flag for silent/detached build<br>docker compose up --build<br><br><br><br></code></pre> |
 | Requires PostgreSQL and PostGIS extensions to be installed locally | Requires Docker Desktop to be installed |
 | | To access the app run `docker exec -it nmsamplelocations-app-1 bash` |
 | | Pytest can be run through the command line outside of the app |
