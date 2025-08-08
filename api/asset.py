@@ -27,7 +27,7 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
-from schemas_v2.asset import AssetResponse, CreateAsset, UpdateAsset
+from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.crud_helper import model_patcher
 
 router = APIRouter(prefix="/asset", tags=["asset"])

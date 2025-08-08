@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from db.engine import get_db_session
 from db.publication import Author
-from schemas_v2.publication import PublicationResponse
+from schemas.publication import PublicationResponse
 
 router = APIRouter(
     prefix="/author",

@@ -24,7 +24,7 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import Sample
 from db.observation import Observation
-from schemas_v2.observation import (
+from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
     CreateWaterChemistryObservation,

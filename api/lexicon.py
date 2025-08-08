@@ -21,7 +21,7 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db.engine import get_db_session
 from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
-from schemas_v2.lexicon import (
+from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
     CreateTriple,

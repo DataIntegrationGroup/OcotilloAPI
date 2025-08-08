@@ -16,7 +16,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-from schemas_v2 import ORMBaseModel
+from schemas import ORMBaseModel
 
 
 # -------- CREATE ----------

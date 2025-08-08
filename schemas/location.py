@@ -18,7 +18,7 @@ from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 from shapely import wkt
 
-from schemas_v2 import ORMBaseModel
+from schemas import ORMBaseModel
 
 """
 REFACTOR TODO
