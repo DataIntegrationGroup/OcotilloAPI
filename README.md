@@ -20,7 +20,7 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 - 🔎 Filtering by location, date, type, and more
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
-- 🧾 Interactive API documentation via Swagger and ReDoc
+- 🧾 Interactive API documentation via OpenAPI and ReDoc
 
 ---
 
@@ -31,40 +31,77 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 - Python 3.11+
 - PostgreSQL with PostGIS extension
 - [`uv`](https://github.com/astral-sh/uv) package manager
+- Docker Desktop 4+
 
-### Installation
+### Installation & Development Setup
+
+#### 1. Clone the repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/DataIntegrationGroup/NMSampleLocations.git
 cd NMSampleLocations
+```
 
-# Set up virtual environment and install dependencies
+#### 2. Set up virtual environment and install depdencies
+
+Mac/Linux
+```bash
 uv venv
-source .venv/bin/activate
+source .venv/bin/activate # (Mac/Linux)
 uv pip install -r requirements.txt
+```
 
-# Set up pre-commit hooks
+Windows
+```bash
+uv venv
+source .venv/Scripts/activate # (Windows)
+uv pip install -r requirements.txt
+```
+
+#### 3. Setup pre-commit hookes
+
+```bash
 pre-commit install
+```
 
+#### 4. Setup environment variables
+
+```bash
 # Set up environment variables
 cp .env.example .env
 # Edit `.env` to configure database connection and app settings
-
-# Run database migrations
-alembic upgrade head  
-
-# Start the development server
-uvicorn app.main:app --reload
 ```
+
+#### 5. Build Docker images and start services
+
+Builds the images for the server, database, and app and starts the services.
+
+```bash
+docker compose up --build # -d for silent/detached build
+```
+
+Notes:
+- To access the app run `docker exec -it nmsamplelocations-app-1 bash`
+- Pytest can be run through the command line outside of the app.
 
 ### 🧭 Project Structure
 ```text
 app/
-├── api/            # Route declarations
-├── core/           # Settings and application config
-├── db/             # Database models, sessions, migrations
-├── schemas/        # Pydantic data models
-├── services/       # Business logic and helpers
-└── main.py         # FastAPI entry point
+├── .env                    # Environment variables
+├── .pre-commit-config.yaml # pre-commit hook configuration file
+├── constants.py            # Static variables used throughout the code
+├── docker-compose.yml      # Docker compose file to build database and start server
+├── entrypoint.sh           # Used by Docker to run database migrations and start server
+├── main.py                 # FastAPI entry point
+|
+├── alembic/                # Alembic configuration and migration scripts
+├── api/                    # Route declarations
+├── core/                   # Settings and application config
+├── db/                     # Database models, sessions, migrations
+├── docker/                 # Custom Docker files
+├── migrations/             # Scripts to migrate data from NM_Aquifer to current db schema
+├── schemas/                # Pydantic data models
+├── services/               # Reusable database interactions
+├── services/               # Business logic and helpers
+└── tests/                  # Code tests
 ```
