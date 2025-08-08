@@ -45,7 +45,7 @@ def init_hypertables():
     # Create hypertables for time-series data
     with session_ctx() as session:
         session.execute(
-            text("select create_hypertable('observation', 'observation_timestamp');")
+            text("select create_hypertable('observation', 'observation_datetime');")
         )
 
     # session.commit()

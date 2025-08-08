@@ -105,9 +105,9 @@ def get_groundwater_level_observations(
         sql = sql.where(Observation.sensor_id == sensor_id)
 
     if start_time:
-        sql = sql.where(Observation.observation_timestamp >= start_time)
+        sql = sql.where(Observation.observation_datetime >= start_time)
     if end_time:
-        sql = sql.where(Observation.observation_timestamp <= end_time)
+        sql = sql.where(Observation.observation_datetime <= end_time)
 
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
     return paginate(query=sql, conn=session)

@@ -28,25 +28,25 @@ from typing import Annotated
 
 class ValidateObservation(BaseModel):
 
-    @field_validator("observation_timestamp", check_fields=False)
-    def convert_observation_timestamp_to_utc(
-        observation_timestamp: AwareDatetime,
+    @field_validator("observation_datetime", check_fields=False)
+    def convert_observation_datetime_to_utc(
+        observation_datetime: AwareDatetime,
     ) -> AwareDatetime:
         """
         Convert observation_timestamp to UTC timezone if it's not already. This runs after
         the Annotated validator PastDatetime() is run.
         """
         if (
-            observation_timestamp is not None
-            and observation_timestamp.tzinfo != timezone.utc
+            observation_datetime is not None
+            and observation_datetime.tzinfo != timezone.utc
         ):
-            return observation_timestamp.astimezone(timezone.utc)
-        return observation_timestamp
+            return observation_datetime.astimezone(timezone.utc)
+        return observation_datetime
 
 
 # -------- CREATE ----------
 class CreateBaseObservation(ValidateObservation):
-    observation_timestamp: Annotated[AwareDatetime, PastDatetime()]
+    observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int
     sensor_id: int
     observed_property: str
@@ -87,7 +87,7 @@ class BaseObservationResponse(BaseModel):
     id: int
     sample_id: int
     sensor_id: int
-    observation_timestamp: AwareDatetime
+    observation_datetime: AwareDatetime
     observed_property: str
     created_at: AwareDatetime
     release_status: str

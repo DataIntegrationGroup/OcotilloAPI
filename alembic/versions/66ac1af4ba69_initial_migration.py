@@ -402,7 +402,7 @@ def upgrade() -> None:
     # op.create_table('observation',
     # sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     # sa.Column('series_id', sa.Integer(), nullable=False),
-    # sa.Column('observation_timestamp', sa.TIMESTAMP(), nullable=False),
+    # sa.Column('observation_datetime', sa.TIMESTAMP(), nullable=False),
     # sa.Column('observation_type', sa.String(length=100), nullable=True),
     # sa.Column('depth_to_water', sa.Float(), nullable=True),
     # sa.Column('measuring_point_height', sa.Float(), nullable=True),
@@ -415,7 +415,7 @@ def upgrade() -> None:
     # sa.ForeignKeyConstraint(['observation_type'], ['lexicon_term.term'], ),
     # sa.ForeignKeyConstraint(['release_status'], ['lexicon_term.term'], ),
     # sa.ForeignKeyConstraint(['series_id'], ['series.id'], ondelete='CASCADE'),
-    # sa.PrimaryKeyConstraint('id', 'observation_timestamp')
+    # sa.PrimaryKeyConstraint('id', 'observation_datetime')
     # )
     # ### end Alembic commands ###
 

@@ -29,7 +29,7 @@ def add_observation(session: Session, data: BaseModel) -> Base:
     #     if 'sample_id' not in data:
     #         sample = Sample(thing_id=thing_id,
     #                         collection_method=data.get('collection_method', 'manual'),
-    #                         collection_timestamp=data.get('observation_timestamp'))
+    #                         collection_timestamp=data.get('observation_datetime'))
     #         session.add(sample)
     #         data['sample'] = sample
     #     else:

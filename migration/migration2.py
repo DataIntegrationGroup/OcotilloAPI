@@ -109,7 +109,7 @@ def migrate_water_levels(session, limit=800):
         for row in group.itertuples():
             obs = Observation()
             obs.series = series
-            obs.observation_timestamp = datetime.fromisoformat(row.DateMeasured)
+            obs.observation_datetime = datetime.fromisoformat(row.DateMeasured)
             # print("rw", row.DateMeasured, row.TimeMeasured)
             gwl_obs = GroundwaterLevelObservation()
             gwl_obs.observation = obs

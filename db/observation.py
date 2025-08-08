@@ -33,7 +33,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     __table_args__ = (
         PrimaryKeyConstraint(
             "id",
-            "observation_timestamp",
+            "observation_datetime",
         ),
         {},
     )
@@ -54,8 +54,8 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         nullable=False,
     )
 
-    observation_timestamp = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, doc="Timestamp of the observation"
+    observation_datetime = mapped_column(
+        DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
     observed_property = lexicon_term()
 
