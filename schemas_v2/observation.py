@@ -47,7 +47,8 @@ class ValidateObservation(BaseModel):
 # -------- CREATE ----------
 class CreateBaseObservation(ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
-    sample_id: int
+    sample_id: int | None = None
+    field_sample_id: str | None = None
     sensor_id: int
     observed_property: str
     release_status: str

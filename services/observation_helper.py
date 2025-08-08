@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import Base, Observation, Sample
@@ -34,7 +35,15 @@ def add_observation(session: Session, data: BaseModel) -> Base:
     #         data['sample'] = sample
     #     else:
     #         raise ValueError('Cannot specify both thing_id and sample_id')
+    if 'field_sample_id' in data:
+        field_sample_id = data.pop('field_sample_id')
+        data.pop('sample_id', None)  # Ensure sample_id is not set if field_sample_id is used
 
+        sql  = select(Sample).where(Sample.field_sample_id == field_sample_id)
+        sample = session.scalar(sql)
+        if not sample:
+            raise ValueError(f'Sample with id {field_sample_id} does not exist')
+        data['sample'] = sample
     obj = Observation(**data)
 
     session.add(obj)
