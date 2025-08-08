@@ -18,7 +18,8 @@ from sqlalchemy import (
     Integer,
     TIMESTAMP,
     PrimaryKeyConstraint,
-    Float, DateTime,
+    Float,
+    DateTime,
 )
 from sqlalchemy.orm import mapped_column, relationship
 
