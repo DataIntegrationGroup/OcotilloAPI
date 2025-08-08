@@ -29,7 +29,11 @@ from schemas.lexicon import (
     LexiconCategoryResponse,
 )
 from services.lexicon import add_lexicon_term
-from services.query_helper import simple_all_getter, paginated_all_getter, order_sort_filter
+from services.query_helper import (
+    simple_all_getter,
+    paginated_all_getter,
+    order_sort_filter,
+)
 
 router = APIRouter(
     prefix="/lexicon",
@@ -124,7 +128,7 @@ def get_lexicon_terms(
         sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
 
     # If sort is 'categories', we do not apply sorting or filtering
-    if sort == 'categories':
+    if sort == "categories":
         sort = None
         order = None
 
