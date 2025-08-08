@@ -85,12 +85,11 @@ app/
 |
 ├── alembic/                # Alembic configuration and migration scripts
 ├── api/                    # Route declarations
-├── core/                   # Settings and application config
+├── core/                   # Settings, application config, and dependencies
 ├── db/                     # Database models, sessions, and engine
 ├── docker/                 # Custom Docker files
 ├── migrations/             # Scripts to migrate data from NM_Aquifer to current db schema
 ├── schemas/                # Pydantic data models
-├── services/               # Reusable database interactions
-├── services/               # Business logic and helpers
+├── services/               # Reusable business logic, helpers, and database interactions
 └── tests/                  # Code tests
 ```
