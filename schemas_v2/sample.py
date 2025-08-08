@@ -13,8 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator, model_validator
+from datetime import timezone
+from pydantic import (
+    BaseModel,
+    field_validator,
+    model_validator,
+    AwareDatetime,
+    PastDatetime,
+)
+from typing import Annotated
 from typing_extensions import Self
 
 
@@ -29,16 +36,6 @@ class ValidateSample(BaseModel):
     """
     Validator for Sample data for Create and Update schemas.
     """
-
-    @field_validator("sample_date", check_fields=False)
-    def validate_sample_date(cls, sample_date: datetime | None) -> datetime | None:
-        """
-        Validate that the sample_date is not in the future.
-        """
-        if sample_date is not None:
-            if sample_date > datetime.now(tz=timezone.utc):
-                raise ValueError(f"Sample date {sample_date} cannot be in the future.")
-        return sample_date
 
     # # REFACTOR TODO: is below ground negative or positive? the combine this with validate_sample_bottom defined below
     # @field_validator("sample_bottom", check_fields=False)
@@ -73,13 +70,23 @@ class ValidateSample(BaseModel):
             )
         return self
 
+    @field_validator("sample_date", check_fields=False)
+    def convert_sample_date_to_utc(sample_date: AwareDatetime) -> AwareDatetime:
+        """
+        Convert sample_date to UTC timezone if it's not already. This runs after
+        the Annotated validator PastDatetime() is run.
+        """
+        if sample_date is not None and sample_date.tzinfo != timezone.utc:
+            return sample_date.astimezone(timezone.utc)
+        return sample_date
+
 
 # -------- CREATE ----------
 class CreateSample(ValidateSample):
     thing_id: int
     sample_type: str
     field_sample_id: str
-    sample_date: datetime
+    sample_date: Annotated[AwareDatetime, PastDatetime()]
     release_status: str
     sampler_name: str  # REFACTOR TODO: update with enum/restricted values
     qc_sample: str = "Original"
@@ -111,7 +118,7 @@ class UpdateSample(ValidateSample):
     thing_id: int = None  # REFACTOR TODO: should users be able to change this?
     sample_type: str = None
     field_sample_id: str = None
-    sample_date: datetime = None
+    sample_date: Annotated[AwareDatetime, PastDatetime()] = None
     release_status: str = None
     sampler_name: str = None  # REFACTOR TODO: update with enum/restricted values
     qc_sample: str = None
@@ -138,7 +145,7 @@ class SampleResponse(BaseModel):
     thing_id: int
     sample_type: str
     field_sample_id: str
-    sample_date: datetime
+    sample_date: AwareDatetime
     release_status: str
     sampler_name: str
     qc_sample: str

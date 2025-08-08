@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
 from typing import Optional, List
 
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
-from pydantic import field_validator, BaseModel
+from pydantic import field_validator, BaseModel, AwareDatetime
 
 from schemas_v2 import ORMBaseModel
 from schemas_v2.thing import ThingResponse
@@ -193,7 +192,7 @@ class ContactResponse(ORMBaseModel):
     id: int
     name: str
     role: str
-    created_at: datetime
+    created_at: AwareDatetime
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []

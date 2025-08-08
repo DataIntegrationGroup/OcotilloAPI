@@ -48,7 +48,9 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
 
     # Sample Attributes
     sample_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, comment="Date and time of sample collection."
+        DateTime(timezone=True),
+        nullable=False,
+        comment="Date and time of sample collection.",
     )
     # REFACTOR TODO: update with enum/restricted values
     sample_matrix: Mapped[Optional[str]] = mapped_column(

@@ -51,14 +51,6 @@ def second_sample(thing, sensor):
 # ============== Custom validators =================================================
 
 
-def test_validate_sample_date():
-    invalid_sample_date = "3500-01-01T00:00:00Z"
-    try:
-        invalid_sample = ValidateSample(sample_date=invalid_sample_date)
-    except ValueError as e:
-        assert str(e) == f"Sample date {invalid_sample_date} is not valid."
-
-
 def test_validate_sample_top_and_bottom():
     for i in range(2):
         sample_top = 10.0 if i == 0 else None
@@ -103,7 +95,7 @@ def test_add_sample(thing, sensor):
     assert data["thing_id"] == payload["thing_id"]
     assert data["sample_type"] == payload["sample_type"]
     assert data["field_sample_id"] == payload["field_sample_id"]
-    assert data["sample_date"] == payload["sample_date"][:-1]
+    assert data["sample_date"] == payload["sample_date"]
     assert data["release_status"] == payload["release_status"]
     assert data["sampler_name"] == payload["sampler_name"]
     assert data["qc_sample"] == payload["qc_sample"]
@@ -200,7 +192,7 @@ def test_patch_sample(sample):
 
     assert data["id"] == sample.id
     assert data["sampler_name"] == new_sampler_name
-    assert data["sample_date"] == new_sample_date[:-1]
+    assert data["sample_date"] == new_sample_date
     assert data["sample_method"] == new_sample_method
 
     # rollback after updating the sample

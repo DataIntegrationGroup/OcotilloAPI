@@ -57,7 +57,11 @@ class ReleaseMixin:
 class AuditMixin:
     @declared_attr
     def created_at(self):
-        return Column(DateTime, nullable=False, server_default=func.now())
+        return Column(
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=func.timezone("UTC", func.now()),
+        )
 
 
 class AutoBaseMixin(AuditMixin):
