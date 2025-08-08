@@ -44,19 +44,11 @@ cd NMSampleLocations
 
 #### 2. Set up virtual environment and install depdencies
 
-Mac/Linux
-```bash
-uv venv
-source .venv/bin/activate # (Mac/Linux)
-uv pip install -r requirements.txt
-```
 
-Windows
-```bash
-uv venv
-source .venv/Scripts/activate # (Windows)
-uv pip install -r requirements.txt
-```
+| Mac/Linux | Windows |
+| --------- | ------- |
+| <pre><code>uv venv<br>source .venv/bin/activate<br>uv pip install -r requirements.txt</code></pre> | <pre><code>uv venv<br>source .venv/Scripts/activate<br>uv pip install -r requirements.txt</code></pre>
+
 
 #### 3. Setup pre-commit hookes
 
@@ -73,32 +65,13 @@ cp .env.example .env
 
 #### 5. Database and server
 
-##### 5a. With PostgreSQL with PostGIS extension installed locally
+| PostgreSQL + PostGIS install locally | Docker|
+| -------------------- | ----- |
+|<pre><code>#run database migrations<br>alembic upgrade head<br><br># start development server<br>uvicorn app.main:app --reload</code></pre> | <pre><code># include -d flag for slient/detached build<br>docker compose up --build<br><br><br><br></code></pre> |
+| Requires PostgreSQL and PostGIS extensions to be installed locally | Requires Docker Desktop to be installed |
+| | To access the app run `docker exec -it nmsamplelocations-app-1 bash` |
+| | Pytest can be run through the command line outside of the app |
 
-```bash
-# Run database migrations
-alembic upgrade head  
-
-# Start the development server
-uvicorn app.main:app --reload
-```
-
-Notes:
-- Requires PostgreSQL and the PostGIS extensions to be installed locally.
-
-##### 5b. With Docker
-
-Builds the images for the server, database, and app and starts the services.
-
-```bash
-# include -d flag for silent/detached build
-docker compose up --build 
-```
-
-Notes:
-- To access the app run `docker exec -it nmsamplelocations-app-1 bash`
-- Pytest can be run through the command line outside of the app.
-- Requires Docker Desktop be installed.
 
 ### 🧭 Project Structure
 ```text
