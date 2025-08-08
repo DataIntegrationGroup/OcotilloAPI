@@ -6,6 +6,8 @@ name: Tests
 on:
   pull_request:
     branches: [ "main",'pre-production']
+  push:
+    branches: ["jab-github-workflows"]
 
 permissions:
   contents: read
