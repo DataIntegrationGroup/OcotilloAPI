@@ -20,7 +20,7 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 - 🔎 Filtering by location, date, type, and more
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
-- 🧾 Interactive API documentation via Swagger and ReDoc
+- 🧾 Interactive API documentation via OpenAPI and ReDoc
 
 ---
 
@@ -29,42 +29,142 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 ### Prerequisites
 
 - Python 3.11+
-- PostgreSQL with PostGIS extension
 - [`uv`](https://github.com/astral-sh/uv) package manager
+- Docker Desktop 4+ if wanting to host server/database locally with containers
+- PostgreSQL with PostGIS extension if wanting to host server/database locally without containers
 
-### Installation
+### Installation & Setup
+
+#### 1. Clone the repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/DataIntegrationGroup/NMSampleLocations.git
 cd NMSampleLocations
+```
 
-# Set up virtual environment and install dependencies
+#### 2. Set up virtual environment and install depdencies
+
+
+<table>
+<tr>
+<td>
+    Mac/Linux 
+</td>
+<td>
+    Windows
+</td>
+</tr>
+<tr>
+<td>
+
+```bash
 uv venv
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv sync --locked
+```
+    
+</td>
+<td>
 
-# Set up pre-commit hooks
+```bash
+uv venv
+source .venv/Scripts/activate
+uv sync --locked
+```
+
+</td>
+</tr>
+</table>
+
+
+#### 3. Setup pre-commit hookes
+
+```bash
 pre-commit install
+```
 
-# Set up environment variables
-cp .env.example .env
+#### 4. Setup environment variables
+
+```bash
 # Edit `.env` to configure database connection and app settings
+cp .env.example .env
+```
 
-# Run database migrations
-alembic upgrade head  
+#### 5. Database and server
 
-# Start the development server
+
+<table>
+<tr>
+<td>
+    PostgreSQL + PostGIS installed locally
+</td>
+<td>
+    Docker
+</td>
+</tr>
+<tr>
+<td>
+
+```bash
+#run database migrations
+alembic upgrade head
+
+# start development server
 uvicorn app.main:app --reload
 ```
+    
+</td>
+<td>
+
+```bash
+# include -d flag for silent/detached build
+docker compose up --build
+```
+
+</td>
+</tr>
+<tr>
+<td>
+Requires PostgreSQL and PostGIS extensions to be installed locally
+</td>
+<td>
+Requires Docker Desktop to be installed locally
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td>
+Run <code>docker exec -it nmsamplelocations-app-1 bash</code> to open a shell inside the running app container.
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td>
+After the database container is running, you can run tests with Pytest from your local command line (not necessarily inside the app container).
+</td>
+</tr>
+</table>
+
 
 ### 🧭 Project Structure
 ```text
 app/
-├── api/            # Route declarations
-├── core/           # Settings and application config
-├── db/             # Database models, sessions, migrations
-├── schemas/        # Pydantic data models
-├── services/       # Business logic and helpers
-└── main.py         # FastAPI entry point
+├── .env                    # Environment variables
+├── .pre-commit-config.yaml # pre-commit hook configuration file
+├── constants.py            # Static variables used throughout the code
+├── docker-compose.yml      # Docker compose file to build database and start server
+├── entrypoint.sh           # Used by Docker to run database migrations and start server
+├── main.py                 # FastAPI entry point
+|
+├── alembic/                # Alembic configuration and migration scripts
+├── api/                    # Route declarations
+├── core/                   # Settings, application config, and dependencies
+├── db/                     # Database models, sessions, and engine
+├── docker/                 # Custom Docker files
+├── schemas/                # Pydantic schemas and validations
+├── services/               # Reusable business logic, helpers, and database interactions
+├── tests/                  # Code tests
+└── transfers/              # Scripts to transfer data from NM_Aquifer to current db schema
 ```

@@ -15,7 +15,6 @@
 # ===============================================================================
 
 import time
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -23,11 +22,10 @@ import pyproj
 from shapely import Point
 from shapely.ops import transform
 
-from db import Location, LocationThingAssociation, Thing, Sensor
+from db import Location, LocationThingAssociation
 from db.engine import session_ctx
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
-from db.observation import Observation
 
 # from db.series.groundwaterlevel import GroundwaterLevelSeries
 # from db.series.series import Series
