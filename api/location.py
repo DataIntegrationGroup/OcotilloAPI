@@ -29,7 +29,7 @@ from db.engine import get_db_session
 from schemas.location import CreateLocation, LocationResponse, UpdateLocation
 from schemas.thing import LocationWellResponse
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter
+from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from services.crud_helper import model_patcher
 
 from fastapi import APIRouter
@@ -177,13 +177,7 @@ async def get_location_by_id(
     """
     Retrieve a sample location by ID from the database.
     """
-    sql = select(Location).where(Location.id == location_id)
-
-    result = session.execute(sql)
-    location = result.scalar_one_or_none()
-
-    if not location:
-        return {"message": "Location not found"}
+    location = simple_get_by_id(session, Location, location_id)
 
     response_klass = LocationResponse
     if expand == "well":
