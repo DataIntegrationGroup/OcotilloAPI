@@ -39,7 +39,7 @@ dependencies = [
     "google-crc32c==1.7.1",
     "google-resumable-media==2.7.2",
     "googleapis-common-protos==1.70.0",
-    "greenlet==3.2.3",
+    "greenlet==3.2.4",
     "gunicorn==23.0.0",
     "h11==0.16.0",
     "httpcore==1.0.9",
