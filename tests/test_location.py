@@ -20,6 +20,24 @@ from db import Location
 from db.engine import session_ctx
 from tests import client
 
+# ============= module & function fixtures =======================================
+
+
+@pytest.fixture(scope="function")
+def second_location():
+    with session_ctx() as session:
+        location = Location(
+            name="second location",
+            point="POINT (10.2 10.2)",
+            release_status="draft",
+        )
+        session.add(location)
+        session.commit()
+        yield location
+        session.delete(location)
+        session.commit()
+
+
 #  ============= Post tests for locations ======================================
 
 
@@ -114,6 +132,31 @@ def test_get_location_by_id(location):
 def test_get_sample_by_id_404_not_found(location):
     bad_location_id = 999999999
     response = client.get(f"/location/{bad_location_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Location with ID {bad_location_id} not found."
+
+
+#  ============= DELETE tests for locations ====================================
+
+
+def test_delete_location(second_location):
+    response = client.delete(f"/location/{second_location.id}")
+    assert response.status_code == 204
+
+    # Verify the location is deleted
+    response = client.get(f"/location/{second_location.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Location with ID {second_location.id} not found."
+
+
+def test_delete_location_404_not_found(second_location):
+    """
+    Testing deleting a location that does not exist
+    """
+    bad_location_id = 99999
+    response = client.delete(f"/location/{bad_location_id}")
     data = response.json()
     assert response.status_code == 404
     assert data["detail"] == f"Location with ID {bad_location_id} not found."
