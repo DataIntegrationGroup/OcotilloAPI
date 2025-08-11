@@ -46,11 +46,7 @@ def lexicon_term(foreignkeykw=None, **kw):
 
     return mapped_column(
         String(100),
-        ForeignKey(
-            "lexicon_term.term",
-            onupdate="CASCADE",
-            **fkw
-        ),
+        ForeignKey("lexicon_term.term", onupdate="CASCADE", **fkw),
         **kw,
     )
 
