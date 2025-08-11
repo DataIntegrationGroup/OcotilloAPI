@@ -60,10 +60,7 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
 
     __tablename__ = "lexicon_term_category_association"
 
-    # lexicon_term = mapped_column(
-    #     String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
-    # )
-    lexicon_term = lexicon_term()
+    lexicon_term = lexicon_term(foreignkeykw={'ondelete':"CASCADE"})
     category_name = mapped_column(
         String(255),
         ForeignKey("lexicon_category.name", ondelete="CASCADE"),
