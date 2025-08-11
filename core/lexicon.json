@@ -2,18 +2,28 @@
   {"category": "qc_sample", "term": "original", "definition": ""},
   {"category": "qc_sample", "term": "duplicate", "definition": ""},
 
-  
+  {"category": "units", "term":  "dimensionless", "definition":  ""},
+
+  {"category":  "observed_property", "term":  "groundwater level", "definition":  "groundwater level measurement" },
+  {"category":  "observed_property", "term":  "pH", "definition":  "pH"},
+  {"category":  "observed_property", "term":  "Alkalinity as CaCO3", "definition":  "Alkalinity as CaCO3"},
+
+  {"category": "release_status", "term": "draft", "definition": "draft version"},
+  {"category": "release_status", "term": "provisional", "definition": "provisional version"},
+  {"category": "release_status", "term": "final", "definition": "final version"},
+  {"category": "release_status", "term": "published", "definition": "published version"},
+  {"category": "release_status", "term": "archived", "definition": "archived version"},
+  {"category": "release_status", "term": "public", "definition": "public version"},
+  {"category": "release_status", "term": "private", "definition": "private version"},
+
+
 
   {"term":  "groundwater", "definition":  "groundwater sample from a well", "category":  "sample_type"},
 
   {"term":  "water well", "definition":  "a hole drill into the ground to access groundwater", "category":  "thing_type"},
   {"term":  "spring", "definition":  "a natural discharge of groundwater at the surface", "category":  "thing_type"},
 
-  {"term": "draft", "definition": "draft version", "category": "release_status"},
-  {"term": "provisional", "definition": "provisional version", "category": "release_status"},
-  {"term": "final", "definition": "final version", "category": "release_status"},
-  {"term": "published", "definition": "published version", "category": "release_status"},
-  {"term": "archived", "definition": "archived version", "category": "release_status"},
+
 
   {"term": "dry", "definition": "well is dry", "category": "level_status"},
   {"term": "normal", "definition": "normal well water level status", "category": "level_status"},
@@ -29,7 +39,6 @@
   {"term":  "continuous", "definition":  "continuous sampling", "category":  "collection_method"},
 
 
-  {"term":  "groundwater level", "definition":  "groundwater level measurement", "category":  "observed_property"},
 
   {"term":  "United States", "definition":  "United States of America", "category":  "country"},
   {"term":  "Canada", "definition":  "Canada", "category":  "country"},
@@ -62,16 +71,6 @@
   {"term":  "Work", "definition":  "Primary", "category":  "phone_type"},
   {"term":  "Home", "definition":  "Primary", "category":  "phone_type"},
   {"term":  "Mobile", "definition":  "Primary", "category":  "phone_type"},
-
-
-  {"term": "TDS", "definition": "Total Dissolved Solids", "category": "water_chemistry"},
-  {"term": "Na", "definition": "Sodium", "category": "water_chemistry"},
-  {"term": "Cl", "definition": "Chloride", "category": "water_chemistry"},
-  {"term": "Ca", "definition": "Calcium", "category": "water_chemistry"},
-  {"term": "Mg", "definition": "Magnesium", "category": "water_chemistry"},
-  {"term": "SO4", "definition": "Sulfate", "category": "water_chemistry"},
-  {"term": "HCO3", "definition": "Bicarbonate", "category": "water_chemistry"},
-
 
   {"term": "ft", "definition": "feet", "category": "unit"},
   {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},

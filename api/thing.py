@@ -31,8 +31,8 @@ from db.engine import get_db_session
 from db.location import LocationThingAssociation, Location
 from db.thing import Thing, WellScreen
 from db.thing import ThingIdLink
-from schemas_v2.location import LocationResponse, UpdateLocation
-from schemas_v2.thing import (
+from schemas.location import LocationResponse, UpdateLocation
+from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
     CreateWellScreen,

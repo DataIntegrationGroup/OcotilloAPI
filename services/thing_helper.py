@@ -19,7 +19,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation, Thing, Base, Location
-from schemas_v2.location import LocationResponse
+from schemas.location import LocationResponse
 from db.group import Group, GroupThingAssociation
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter

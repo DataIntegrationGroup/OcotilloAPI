@@ -23,9 +23,9 @@ from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
-from schemas_v2.group import UpdateGroup
-from schemas_v2.location import CreateGroup, CreateGroupThing
-from schemas_v2.thing import GroupResponse
+from schemas.group import UpdateGroup
+from schemas.location import CreateGroup, CreateGroupThing
+from schemas.thing import GroupResponse
 from services.crud_helper import model_patcher
 from services.query_helper import (
     simple_get_by_id,

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db.publication import Author, Publication, AuthorPublicationAssociation
-from schemas_v2.publication import CreatePublication
+from schemas.publication import CreatePublication
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 

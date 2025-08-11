@@ -15,7 +15,7 @@
 # ===============================================================================
 from db.engine import get_db_session
 from fastapi import APIRouter, Depends, status
-from schemas_v2.publication import PublicationResponse, CreatePublication
+from schemas.publication import PublicationResponse, CreatePublication
 from services.publication_helper import add_publication
 from sqlalchemy.orm import Session
 

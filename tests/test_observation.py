@@ -19,11 +19,31 @@ import pytest
 
 
 # ============= Post tests =================
+def test_add_water_chemistry_observation(location, thing, sample, sensor):
+    response = client.post(
+        "/observation/water-chemistry",
+        json={
+            "observation_datetime": "2025-01-01T00:00:00Z",
+            "release_status": "draft",
+            "value": 7.5,
+            "units": "dimensionless",
+            "sample_id": sample.id,
+            "sensor_id": sensor.id,
+            "observed_property": "pH",
+        },
+    )
+    data = response.json()
+    assert response.status_code == 201
+
+    assert data["value"] == 7.5
+    assert data["units"] == "dimensionless"
+
+
 def test_add_groundwater_observation(location, thing, sample, sensor):
     response = client.post(
         "/observation/groundwater-level",
         json={
-            "observation_timestamp": "2025-01-01T00:00:00Z",
+            "observation_datetime": "2025-01-01T00:00:00Z",
             "release_status": "draft",
             "depth_to_water": 101,
             "measuring_point_height": 53,
@@ -45,7 +65,7 @@ def test_add_groundwater_observation(location, thing, sample, sensor):
 #         "/observation/geothermal",
 #         json={
 #             "observation_id": 1,
-#             "observation_timestamp": "2025-01-01T00:00:00Z",
+#             "observation_datetime": "2025-01-01T00:00:00Z",
 #             "depth": 100,
 #             "temperature": 25.5,
 #         },

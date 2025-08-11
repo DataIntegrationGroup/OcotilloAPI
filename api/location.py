@@ -26,8 +26,8 @@ from core.dependencies import session_dependency
 from db import adder
 from db.location import Location
 from db.engine import get_db_session
-from schemas_v2.location import CreateLocation, LocationResponse, UpdateLocation
-from schemas_v2.thing import LocationWellResponse
+from schemas.location import CreateLocation, LocationResponse, UpdateLocation
+from schemas.thing import LocationWellResponse
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter
 from services.crud_helper import model_patcher

@@ -24,8 +24,8 @@ from core.dependencies import session_dependency
 from db import adder
 from db.engine import get_db_session
 from db.sample import Sample
-from schemas_v2 import ResourceNotFoundResponse
-from schemas_v2.sample import SampleResponse, CreateSample, UpdateSample
+from schemas import ResourceNotFoundResponse
+from schemas.sample import SampleResponse, CreateSample, UpdateSample
 from services.query_helper import paginated_all_getter, simple_get_by_id
 from services.crud_helper import model_patcher
 

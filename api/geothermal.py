@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from db import adder
-from db.engine import get_db_session
+from fastapi import APIRouter
 
 #
 # from db.geothermal import (
@@ -30,16 +26,6 @@ from db.engine import get_db_session
 #     GeothermalSampleSet,
 #     GeothermalBottomHoleTemperatureHeader,
 # )
-from schemas.create.geothermal import (
-    CreateTemperatureProfile,
-    CreateTemperatureProfileObservation,
-    CreateGeothermalSampleSet,
-    CreateBottomHoleTemperatureHeader,
-    CreateBottomHoleTemperature,
-    CreateGeothermalInterval,
-    CreateThermalConductivity,
-    CreateHeatFlow,
-)
 
 router = APIRouter(prefix="/geothermal", tags=["geothermal"])
 
