@@ -138,14 +138,14 @@ Requires Docker Desktop to be installed locally
 <td>
 </td>
 <td>
-To access the app run `docker exec -it nmsamplelocations-app-1 bash`
+Run <code>docker exec -it nmsamplelocations-app-1 bash</code> to open a shell inside the running app container.
 </td>
 </tr>
 <tr>
 <td>
 </td>
 <td>
-Pytest can be run through the command line outside of the app
+After the database container is running, you can run tests with Pytest from your local command line (not necessarily inside the app container).
 </td>
 </tr>
 </table>
