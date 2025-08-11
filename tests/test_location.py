@@ -74,14 +74,14 @@ def test_patch_location_404_not_found(location):
     """
     Testing updating a location that does not exist
     """
-    bad_location_id = 999999999999
+    bad_location_id = 99999
     location_name_patch = "another test name"
     response = client.patch(
-        f"/location/{location.id}", json={"name": location_name_patch}
+        f"/location/{bad_location_id}", json={"name": location_name_patch}
     )
     data = response.json()
     assert response.status_code == 404
-    assert data["detail"] == f"Location with ID {bad_location_id} not found"
+    assert data["detail"] == f"Location with ID {bad_location_id} not found."
 
 
 #  ============= GET tests for locations =======================================
