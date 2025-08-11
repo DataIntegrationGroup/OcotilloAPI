@@ -68,7 +68,7 @@ uv sync --locked
 
 ```bash
 uv venv
-uv .venv/Scripts/activate
+source .venv/Scripts/activate
 uv sync --locked
 ```
 
@@ -119,9 +119,6 @@ uvicorn app.main:app --reload
 ```bash
 # include -d flag for silent/detached build
 docker compose up --build
-
-
-
 ```
 
 </td>
