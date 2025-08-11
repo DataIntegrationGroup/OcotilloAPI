@@ -149,10 +149,43 @@ def make_location(row):
 
 ADDED = []
 
+def transfer_springs(session, limit=10000):
+    ldf = pd.read_csv("./data/location.csv")
+    ldf = ldf[ldf["SiteType"] == "SP"]
+    ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    n = len(ldf)
+    start_time = time.time()
+    for i, row in enumerate(ldf.itertuples()):
+        if i >= limit:
+            print(f"Reached limit of {limit} rows. Stopping migration.")
+            break
 
-def migrate_wells(session, limit=1000):
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
+            session.commit()
+
+        location = make_location(row)
+        session.add(location)
+
+        spring = add_thing(
+            session,
+            {
+                "name": row.PointID,
+                "thing_type": "spring",
+                "release_status": "public" if row.PublicRelease else "private",
+            },
+        )
+        assoc = LocationThingAssociation()
+
+        assoc.location = location
+        assoc.thing = spring
+        session.add(assoc)
+
+
+def transfer_wells(session, limit=1000):
     wdf = pd.read_csv("./data/welldata.csv")
-    # wdf = pd.read_csv("./migration/data/welldata.csv")
     ldf = pd.read_csv("./data/location.csv")
 
     wdf = wdf.replace(pd.NA, None)
@@ -222,7 +255,8 @@ def migrate_wells(session, limit=1000):
 if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
-        migrate_wells(sess)
+        transfer_wells(sess, limit=10000)
+        transfer_springs(sess, limit=10000)
         # migrate_water_levels(sess)
 
 # ============= EOF =============================================
