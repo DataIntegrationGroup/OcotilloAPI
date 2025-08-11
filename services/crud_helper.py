@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, DeclarativeBase
-from starlette.status import HTTP_404_NOT_FOUND
 
 from services.query_helper import simple_get_by_id
 
@@ -33,6 +31,13 @@ def model_patcher(
     session.commit()
     session.refresh(item)
     return item
+
+
+def model_deleter(session: Session, model: DeclarativeBase, item_id: int):
+    # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
+    item = simple_get_by_id(session, model, item_id)
+    session.delete(item)
+    session.commit()
 
 
 # ============= EOF =============================================
