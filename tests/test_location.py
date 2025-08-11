@@ -162,33 +162,4 @@ def test_delete_location_404_not_found(second_location):
     assert data["detail"] == f"Location with ID {bad_location_id} not found."
 
 
-#  ============= skipped tests for locations ===================================
-
-
-@pytest.mark.skip
-def test_get_locations_expand():
-    response = client.get("/base/location?expand=well")
-    assert response.status_code == 200
-    data = response.json()
-    assert "items" in data
-    assert len(data["items"]) > 0
-    for item in data["items"]:
-        assert "id" in item
-        assert "point" in item
-        assert "well" in item
-
-
-@pytest.mark.skip
-def test_get_location_expand():
-    response = client.get("/base/location/1", params={"expand": "well"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "id" in data
-    assert data["id"] == 1
-    assert "point" in data
-    assert data["point"] == "POINT (10.1 10.1)"
-    assert "well" in data
-    assert len(data["well"]) == 1
-
-
 # ============= EOF =============================================
