@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import Union
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Response
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -30,7 +30,7 @@ from schemas.location import CreateLocation, LocationResponse, UpdateLocation
 from schemas.thing import LocationWellResponse
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 
 from fastapi import APIRouter
 
@@ -184,6 +184,17 @@ async def get_location_by_id(
         response_klass = LocationWellResponse
 
     return response_klass.model_validate(location)
+
+
+@router.delete("/{location_id}", summary="Delete location by ID")
+async def delete_location(
+    location_id: int, session: Session = Depends(get_db_session)
+) -> None:
+    """
+    Delete a sample location by ID from the database.
+    """
+    model_deleter(session, Location, location_id)
+    return Response(status_code=204)
 
 
 # ============= EOF =============================================
