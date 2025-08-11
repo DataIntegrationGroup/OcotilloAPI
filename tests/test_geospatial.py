@@ -57,6 +57,13 @@ def populate():
         session.add(LocationThingAssociation(location=loc2, thing=thing2))
         session.commit()
 
+        yield
+
+        # Cleanup
+        session.delete(loc1)
+        session.delete(loc2)
+        session.commit()
+
 
 def test_get_geojson():
     response = client.get("/geospatial", params={"format": "geojson"})
