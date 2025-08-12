@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
@@ -23,7 +23,6 @@ from starlette import status
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import adder, Observation
-from db.engine import get_db_session
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor
 from services.query_helper import order_sort_filter, simple_get_by_id
@@ -33,11 +32,10 @@ router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def add_sensor(
-    sensor_data: CreateSensor, session: Session = Depends(get_db_session)
+    sensor_data: CreateSensor, session: Session = session_dependency
 ) -> SensorResponse:
     """
     Add a sensor to the system.
-    This endpoint is a placeholder and should be implemented with actual logic.
     """
     return adder(session, Sensor, sensor_data)
 
@@ -56,6 +54,7 @@ def get_sensors(
     This endpoint is a placeholder and should be implemented with actual logic.
     """
     sql = select(Sensor)
+    # TODO: a sensor is not yet related to observation, so this won't work at the moment
     if thing_id is not None or observed_property is not None:
         conditions = []
         if observed_property is not None:
@@ -71,10 +70,10 @@ def get_sensors(
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
-def get_sensor(
-    sensor_id: int, session: Session = Depends(get_db_session)
-) -> SensorResponse:
-
+def get_sensor(sensor_id: int, session: Session = session_dependency) -> SensorResponse:
+    """
+    Retrieve a sensor by its ID.
+    """
     return simple_get_by_id(session, Sensor, sensor_id)
 
 
