@@ -14,7 +14,31 @@
 # limitations under the License.
 # ===============================================================================
 from db import Sensor
+from db.engine import session_ctx
 from tests import client, cleanup_post_test, cleanup_patch_test
+
+import pytest
+
+# ====== module functions and fixtures =========================================
+
+
+@pytest.fixture(scope="function")
+def second_sensor():
+    with session_ctx() as session:
+        sensor = Sensor(
+            name="Test Sensor 2",
+            model="Model X",
+            serial_no="123456",
+            datetime_installed="2023-01-01T00:00:00Z",
+            datetime_removed="2023-01-02T00:00:00Z",
+            recording_interval=60,
+            notes="Test equipment",
+        )
+        session.add(sensor)
+        session.commit()
+        yield sensor
+        session.close()
+
 
 # ====== POST tests ============================================================
 
@@ -105,6 +129,28 @@ def test_get_sensor_by_id(sensor):
 def test_get_sensor_by_id_404_not_found(sensor):
     bad_sensor_id = 999999
     response = client.get(f"/sensor/{bad_sensor_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
+
+
+# ====== DELETE tests ==========================================================
+
+
+def test_delete_sensor(second_sensor):
+    response = client.delete(f"/sensor/{second_sensor.id}")
+    assert response.status_code == 204
+
+    # verify sensor is gone
+    response = client.get(f"/sensor/{second_sensor.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {second_sensor.id} not found."
+
+
+def test_delete_sensor_404_not_found(sensor):
+    bad_sensor_id = 999999
+    response = client.delete(f"/sensor/{bad_sensor_id}")
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."

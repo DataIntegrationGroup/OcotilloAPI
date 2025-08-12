@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, and_
 from starlette import status
@@ -24,7 +24,7 @@ from core.dependencies import session_dependency
 from db import adder, Observation
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
@@ -53,6 +53,17 @@ def update_sensor(
     Update a sensor in the system.
     """
     return model_patcher(session, Sensor, sensor_id, sensor_data)
+
+
+# ====== DELETE ================================================================
+
+
+@router.delete("/{sensor_id}")
+def delete_sensor(sensor_id: int, session: session_dependency) -> Response:
+    """
+    Delete a sensor in the system
+    """
+    return model_deleter(session, Sensor, sensor_id)
 
 
 # ====== GET ===================================================================
