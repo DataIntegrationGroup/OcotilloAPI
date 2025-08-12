@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pytest
-
 from tests import client
 from main import app
 from core.dependencies import well_user_function
@@ -46,7 +44,7 @@ def test_add_group():
     assert data["name"] == "collabnet"
 
 
-def test_add_well():
+def test_add_well(location):
     # response = client.post(
     #     "/lexicon/add", json={"term": "Monitoring", "definition": "Monitoring Well"}
     # )
@@ -60,7 +58,7 @@ def test_add_well():
         "/thing",
         json={
             "thing_type": "water well",
-            "location_id": 1,
+            "location_id": location.id,
             "name": "Test Well",
             "api_id": "1001-0001",
             "ose_pod_id": "RA-0001",
@@ -79,7 +77,7 @@ def test_add_well():
         "/thing",
         json={
             "thing_type": "water well",
-            "location_id": 2,
+            "location_id": location.id,
             "name": "Test Well 2",
             "api_id": "1001-0002",
             "ose_pod_id": "RA-0002",
