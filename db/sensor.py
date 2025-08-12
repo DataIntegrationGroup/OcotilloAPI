@@ -13,16 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime
 from sqlalchemy.orm import relationship
 
 from db.base import Base, AutoBaseMixin
 
-from db.sensor.sensor import SensorMixin
 
+class Sensor(Base, AutoBaseMixin):
+    """
+    Base class for all sensor types.
+    This class can be extended to create specific sensor types.
+    """
 
-class GroundwaterLevelSensor(Base, AutoBaseMixin, SensorMixin):
-    pass
+    # Define common attributes for sensors here
+    name = Column(String(255), nullable=False)
+    model = Column(String(50))
+    serial_no = Column(String(50))
+    datetime_installed = Column(DateTime(timezone=True), nullable=False)
+    datetime_removed = Column(DateTime(timezone=True))
+    recording_interval = Column(Integer)
+    notes = Column(String(50))
+
+    sample = relationship(
+        "Sample",
+        back_populates="sensor",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 # ============= EOF =============================================
