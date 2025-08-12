@@ -27,8 +27,8 @@ class CreateSensor(BaseModel):
     # equipment_type: str | None = None
     model: str | None = None
     serial_no: str | None = None
-    datetime_installed: Annotated[AwareDatetime, PastDatetime]
-    datetime_removed: Annotated[AwareDatetime, PastDatetime] | None = None
+    datetime_installed: Annotated[AwareDatetime, PastDatetime()]
+    datetime_removed: Annotated[AwareDatetime, PastDatetime()] | None = None
     recording_interval: int | None = None
     notes: str | None = None
 
