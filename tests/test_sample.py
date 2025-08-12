@@ -313,4 +313,26 @@ def test_get_sample_by_id_404_not_found(sample):
     assert data["detail"] == "Sample with ID 999 not found."
 
 
+# DELETE tests =================================================================
+
+
+def test_delete_sample(second_sample):
+    response = client.delete(f"/sample/{second_sample.id}")
+    assert response.status_code == 204
+
+    # verify the sample is deleted
+    response = client.get(f"/sample/{second_sample.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sample with ID {second_sample.id} not found."
+
+
+def test_delete_sample_404_not_found(second_sample):
+    bad_sample_id = 999999
+    response = client.delete(f"/sample/{bad_sample_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sample with ID {bad_sample_id} not found."
+
+
 # ============= EOF =============================================

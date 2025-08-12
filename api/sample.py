@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT
@@ -27,7 +27,7 @@ from db.sample import Sample
 from schemas import ResourceNotFoundResponse
 from schemas.sample import SampleResponse, CreateSample, UpdateSample
 from services.query_helper import paginated_all_getter, simple_get_by_id
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 
 router = APIRouter(
     prefix="/sample",
@@ -118,7 +118,6 @@ def get_samples(
     )
 
 
-# ============= Get by ID =============================================
 @router.get("/{sample_id}", summary="Get Sample by ID")
 def get_sample_by_id(
     sample_id: int, session: session_dependency
@@ -127,6 +126,14 @@ def get_sample_by_id(
     Endpoint to retrieve a sample by its ID.
     """
     return simple_get_by_id(session, Sample, sample_id)
+
+
+# ======= DELETE ===============================================================
+
+
+@router.delete("/{sample_id}", summary="Delete Sample by ID")
+def delete_sample_by_id(sample_id: int, session: session_dependency) -> Response:
+    return model_deleter(session, Sample, sample_id)
 
 
 # # ============= EOF =============================================
