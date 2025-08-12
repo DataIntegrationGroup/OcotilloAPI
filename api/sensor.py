@@ -26,7 +26,7 @@ from db import adder, Observation
 from db.engine import get_db_session
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor
-from services.query_helper import order_sort_filter
+from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
@@ -75,8 +75,7 @@ def get_sensor(
     sensor_id: int, session: Session = Depends(get_db_session)
 ) -> SensorResponse:
 
-    sensor = session.get(Sensor, sensor_id)
-    return sensor
+    return simple_get_by_id(session, Sensor, sensor_id)
 
 
 # ============= EOF =============================================
