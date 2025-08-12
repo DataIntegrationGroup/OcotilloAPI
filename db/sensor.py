@@ -29,8 +29,8 @@ class Sensor(Base, AutoBaseMixin):
     name = Column(String(255), nullable=False)
     model = Column(String(50))
     serial_no = Column(String(50))
-    date_installed = Column(DateTime)
-    date_removed = Column(DateTime)
+    datetime_installed = Column(DateTime(timezone=True))
+    datetime_removed = Column(DateTime(timezone=True))
     recording_interval = Column(Integer)
     notes = Column(String(50))
 
