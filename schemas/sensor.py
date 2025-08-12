@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from typing_extensions import Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, AwareDatetime, PastDatetime
 
 
 # -------- CREATE ----------
@@ -28,8 +28,8 @@ class CreateSensor(BaseModel):
     # equipment_type: str | None = None
     model: str | None = None
     serial_no: str | None = None
-    date_installed: str | None = None  # ISO format date string
-    date_removed: str | None = None  # ISO format date string
+    datetime_installed: Annotated[AwareDatetime, PastDatetime()]
+    datetime_removed: AwareDatetime | None = None  # ISO format date string
     recording_interval: int | None = None
     notes: str | None = None
 
@@ -40,8 +40,8 @@ class SensorResponse(BaseModel):
     name: str
     model: str | None  # = Column(String(50))
     serial_no: str | None  # = Column(String(50))
-    date_installed: datetime | None  # = Column(DateTime)
-    date_removed: datetime | None  # = Column(DateTime)
+    date_installed: AwareDatetime
+    date_removed: AwareDatetime | None  # = Column(DateTime)
     recording_interval: int | None  # = Column(Integer)
     notes: str | None  # = Column(String(50))
 
