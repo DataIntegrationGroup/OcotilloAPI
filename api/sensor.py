@@ -17,7 +17,6 @@
 from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, and_
-from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
@@ -25,19 +24,38 @@ from core.dependencies import session_dependency
 from db import adder, Observation
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor
+from services.crud_helper import model_patcher
 from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
 
+# ====== POST ==================================================================
+
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def add_sensor(
-    sensor_data: CreateSensor, session: Session = session_dependency
+    sensor_data: CreateSensor, session: session_dependency
 ) -> SensorResponse:
     """
     Add a sensor to the system.
     """
     return adder(session, Sensor, sensor_data)
+
+
+# ====== PATCH =================================================================
+
+
+@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
+def update_sensor(
+    sensor_id: int, sensor_data: CreateSensor, session: session_dependency
+) -> SensorResponse:
+    """
+    Update a sensor in the system.
+    """
+    return model_patcher(session, Sensor, sensor_id, sensor_data)
+
+
+# ====== GET ===================================================================
 
 
 @router.get("", status_code=status.HTTP_200_OK)
@@ -70,7 +88,7 @@ def get_sensors(
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
-def get_sensor(sensor_id: int, session: Session = session_dependency) -> SensorResponse:
+def get_sensor(sensor_id: int, session: session_dependency) -> SensorResponse:
     """
     Retrieve a sensor by its ID.
     """
