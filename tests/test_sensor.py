@@ -67,20 +67,14 @@ def test_get_sensor_by_id(sensor):
     response = client.get(f"/sensor/{sensor.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == sensor.id, "Expected sensor ID to match"
-    assert data["name"] == sensor.name, "Expected sensor name to match"
-    assert data["model"] == sensor.model, "Expected sensor model to match"
-    assert data["serial_no"] == sensor.serial_no, "Expected sensor serial_no to match"
-    assert (
-        data["datetime_installed"] == sensor.datetime_installed
-    ), "Expected sensor datetime_installed to match"
-    assert (
-        data["datetime_removed"] == sensor.datetime_removed
-    ), "Expected sensor datetime_removed to match"
-    assert (
-        data["recording_interval"] == sensor.recording_interval
-    ), "Expected sensor recording_interval to match"
-    assert data["notes"] == sensor.notes, "Expected sensor notes to match"
+    assert data["id"] == sensor.id
+    assert data["name"] == sensor.name
+    assert data["model"] == sensor.model
+    assert data["serial_no"] == sensor.serial_no
+    assert data["datetime_installed"] == sensor.datetime_installed
+    assert data["datetime_removed"] == sensor.datetime_removed
+    assert data["recording_interval"] == sensor.recording_interval
+    assert data["notes"] == sensor.notes
 
 
 # ============= EOF =============================================
