@@ -30,8 +30,7 @@ from db.location import *
 from db.observation import *
 from db.publication import *
 from db.sample import *
-from db.sensor.groundwaterlevel import *
-from db.sensor.sensor import *
+from db.sensor import *
 from db.thing import *
 
 from sqlalchemy import (
