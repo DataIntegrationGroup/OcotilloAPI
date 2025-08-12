@@ -77,4 +77,12 @@ def test_get_sensor_by_id(sensor):
     assert data["notes"] == sensor.notes
 
 
+def test_get_sensor_by_id_404_not_found(sensor):
+    bad_sensor_id = 999999
+    response = client.get(f"/sensor/{bad_sensor_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
+
+
 # ============= EOF =============================================
