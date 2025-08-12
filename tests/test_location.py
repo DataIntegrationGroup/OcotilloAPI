@@ -112,7 +112,6 @@ def test_get_locations(location):
     response = client.get("/location")
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert data["total"] == 1
     assert data["items"][0]["id"] == location.id
     assert data["items"][0]["name"] == location.name
