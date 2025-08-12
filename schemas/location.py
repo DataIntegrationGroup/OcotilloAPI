@@ -21,7 +21,7 @@ from shapely import wkt
 from schemas import ORMBaseModel
 
 """
-REFACTOR TODO
+TODO
 
 Create common validator classes to be shared amongst create and update schemas.
 Since many fields are optional in the update schemas set check_fields=False in the field_validator.

@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, DeclarativeBase
+from starlette.status import HTTP_204_NO_CONTENT
 
 from services.query_helper import simple_get_by_id
 
@@ -38,6 +40,7 @@ def model_deleter(session: Session, model: DeclarativeBase, item_id: int):
     item = simple_get_by_id(session, model, item_id)
     session.delete(item)
     session.commit()
+    return Response(status_code=HTTP_204_NO_CONTENT)
 
 
 # ============= EOF =============================================

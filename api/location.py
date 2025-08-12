@@ -172,12 +172,11 @@ async def get_location_by_id(
 @router.delete("/{location_id}", summary="Delete location by ID")
 async def delete_location(
     location_id: int, session: Session = Depends(get_db_session)
-) -> None:
+) -> Response:
     """
     Delete a sample location by ID from the database.
     """
-    model_deleter(session, Location, location_id)
-    return Response(status_code=204)
+    return model_deleter(session, Location, location_id)
 
 
 # ============= EOF =============================================
