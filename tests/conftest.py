@@ -38,7 +38,15 @@ def thing(location):
 @pytest.fixture(scope="session")
 def sensor():
     with session_ctx() as session:
-        sensor = Sensor(name=f"Test Sensor {uuid.uuid4()}")
+        sensor = Sensor(
+            name=f"Test Sensor {uuid.uuid4()}",
+            model="Test Model",
+            serial_no="Test Serial No",
+            datetime_installed="2023-01-01T00:00:00Z",
+            datetime_removed=None,
+            recording_interval=60,
+            notes="Test notes",
+        )
         session.add(sensor)
         session.commit()
         yield sensor
