@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 from core.app import init_lexicon
 from db import Base
-from db.engine import engine
+from db.engine import engine, session_ctx
 from main import app
 
 
@@ -27,6 +27,29 @@ Base.metadata.create_all(engine)
 init_lexicon()
 
 client = TestClient(app)
+
+
+def cleanup_post_test(model: Base, new_record_id: int) -> None:
+    """
+    Function to cleanup POST tests
+    """
+    with session_ctx() as session:
+        session.delete(session.get(model, new_record_id))
+        session.commit()
+
+
+def cleanup_patch_test(
+    model: Base, payload: dict, updated_record_id: int, original_data: Base
+) -> None:
+    """
+    Function to cleanup PATCH tests
+    """
+    with session_ctx() as session:
+        updated_record = session.get(model, updated_record_id)
+        for field in payload.keys():
+            original_value = getattr(original_data, field)
+            setattr(updated_record, field, original_value)
+        session.commit()
 
 
 # ============= EOF =============================================
