@@ -47,5 +47,14 @@ class SensorResponse(BaseModel):
 
 
 # -------- UPDATE ----------
+class UpdateSensor(BaseModel):
+    name: str | None = None
+    model: str | None = None
+    serial_no: str | None = None
+    datetime_installed: AwareDatetime | None = None
+    datetime_removed: AwareDatetime | None = None
+    recording_interval: int | None = None
+    notes: str | None = None
+
 
 # ============= EOF =============================================

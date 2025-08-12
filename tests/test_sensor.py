@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db import Sensor
-from tests import client, cleanup_post_test
+from tests import client, cleanup_post_test, cleanup_patch_test
 
 # ====== POST tests ============================================================
 
@@ -43,6 +43,31 @@ def test_add_sensor():
 
     # cleanup after post test
     cleanup_post_test(Sensor, data["id"])
+
+
+# ====== PATCH tests ===========================================================
+
+
+def test_patch_sensor(sensor):
+    payload = {"name": "patched name", "model": "patched model"}
+    response = client.patch(f"/sensor/{sensor.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == sensor.id
+    assert data["name"] == payload["name"]
+    assert data["model"] == payload["model"]
+
+    # cleanup after patch test
+    cleanup_patch_test(Sensor, payload, sensor)
+
+
+def test_patch_sensor_404_not_found(sensor):
+    bad_sensor_id = 99999
+    payload = {"name": "patched name", "model": "patched model"}
+    response = client.patch(f"/sensor/{bad_sensor_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
 
 
 # ====== GET tests =============================================================

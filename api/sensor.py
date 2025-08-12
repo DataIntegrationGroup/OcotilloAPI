@@ -23,7 +23,7 @@ from api.pagination import CustomPage
 from core.dependencies import session_dependency
 from db import adder, Observation
 from db.sensor import Sensor
-from schemas.sensor import SensorResponse, CreateSensor
+from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher
 from services.query_helper import order_sort_filter, simple_get_by_id
 
@@ -47,7 +47,7 @@ def add_sensor(
 
 @router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
 def update_sensor(
-    sensor_id: int, sensor_data: CreateSensor, session: session_dependency
+    sensor_id: int, sensor_data: UpdateSensor, session: session_dependency
 ) -> SensorResponse:
     """
     Update a sensor in the system.

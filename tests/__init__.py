@@ -38,14 +38,12 @@ def cleanup_post_test(model: Base, new_record_id: int) -> None:
         session.commit()
 
 
-def cleanup_patch_test(
-    model: Base, payload: dict, updated_record_id: int, original_data: Base
-) -> None:
+def cleanup_patch_test(model: Base, payload: dict, original_data: Base) -> None:
     """
     Function to cleanup PATCH tests
     """
     with session_ctx() as session:
-        updated_record = session.get(model, updated_record_id)
+        updated_record = session.get(model, original_data.id)
         for field in payload.keys():
             original_value = getattr(original_data, field)
             setattr(updated_record, field, original_value)
