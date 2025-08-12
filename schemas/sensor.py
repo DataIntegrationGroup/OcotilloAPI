@@ -40,8 +40,8 @@ class SensorResponse(BaseModel):
     name: str
     model: str | None  # = Column(String(50))
     serial_no: str | None  # = Column(String(50))
-    date_installed: AwareDatetime
-    date_removed: AwareDatetime | None  # = Column(DateTime)
+    datetime_installed: AwareDatetime
+    datetime_removed: AwareDatetime | None  # = Column(DateTime)
     recording_interval: int | None  # = Column(Integer)
     notes: str | None  # = Column(String(50))
 
