@@ -42,8 +42,8 @@ def sensor():
             name=f"Test Sensor {uuid.uuid4()}",
             model="Model X",
             serial_no="123456",
-            date_installed="2023-01-01T00:00:00Z",
-            date_removed="2023-01-02T00:00:00Z",
+            datetime_installed="2023-01-01T00:00:00Z",
+            datetime_removed="2023-01-02T00:00:00Z",
             recording_interval=60,
             notes="Test equipment",
         )
