@@ -25,7 +25,7 @@ from db import adder, Observation
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher, model_deleter
-from services.error_helper import PydanticStyleException
+from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
