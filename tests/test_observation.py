@@ -26,7 +26,7 @@ def test_add_water_chemistry_observation(location, thing, sample, sensor):
             "observation_datetime": "2025-01-01T00:00:00Z",
             "release_status": "draft",
             "value": 7.5,
-            "units": "dimensionless",
+            "unit": "dimensionless",
             "sample_id": sample.id,
             "sensor_id": sensor.id,
             "observed_property": "pH",
@@ -36,7 +36,7 @@ def test_add_water_chemistry_observation(location, thing, sample, sensor):
     assert response.status_code == 201
 
     assert data["value"] == 7.5
-    assert data["units"] == "dimensionless"
+    assert data["unit"] == "dimensionless"
 
 
 def test_add_groundwater_observation(location, thing, sample, sensor):

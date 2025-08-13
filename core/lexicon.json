@@ -2,7 +2,16 @@
   {"category": "qc_sample", "term": "original", "definition": ""},
   {"category": "qc_sample", "term": "duplicate", "definition": ""},
 
-  {"category": "units", "term":  "dimensionless", "definition":  ""},
+  {"category": "unit", "term":  "dimensionless", "definition":  ""},
+  {"category": "unit", "term": "ft", "definition": "feet"},
+  {"category": "unit", "term": "ftbgs", "definition": "feet below ground surface"},
+  {"category": "unit", "term": "F", "definition": "Fahrenheit"},
+  {"category": "unit", "term": "mg/L", "definition": "Milligrams per Liter"},
+  {"category": "unit", "term":  "mW/m²", "definition": "milliwatts per square meter"},
+  {"category": "unit", "term":  "W/m²", "definition": "watts per square meter"},
+  {"category": "unit", "term":  "W/m·K", "definition":  "watts per meter Kelvin"},
+  {"category": "unit", "term":  "m²/s", "definition": "square meters per second"},
+
 
   {"category":  "observed_property", "term":  "groundwater level", "definition":  "groundwater level measurement" },
   {"category":  "observed_property", "term":  "pH", "definition":  "pH"},
@@ -72,14 +81,7 @@
   {"term":  "Home", "definition":  "Primary", "category":  "phone_type"},
   {"term":  "Mobile", "definition":  "Primary", "category":  "phone_type"},
 
-  {"term": "ft", "definition": "feet", "category": "unit"},
-  {"term": "ftbgs", "definition": "feet below ground surface", "category": "unit"},
-  {"term": "F", "definition": "Fahrenheit", "category": "unit"},
-  {"term": "mg/L", "definition": "Milligrams per Liter", "category": "unit"},
-  {"term":  "mW/m²", "definition": "milliwatts per square meter", "category": "unit"},
-  {"term":  "W/m²", "definition": "watts per square meter", "category": "unit"},
-  {"term":  "W/m·K", "definition":  "watts per meter Kelvin", "category": "unit"},
-  {"term":  "m²/s", "definition": "square meters per second", "category": "unit"},
+
 
   {"term": "Artesian", "definition": "artesian spring", "category": "spring_type"},
   {"term": "Ephemeral", "definition": "ephemeral spring", "category": "spring_type"},

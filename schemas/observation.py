@@ -62,7 +62,7 @@ class CreateGroundwaterLevelObservation(CreateBaseObservation):
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
     value: float
-    units: str
+    unit: str
 
 
 #
