@@ -40,8 +40,15 @@ class Base(DeclarativeBase):
 make_searchable(Base.metadata)
 
 
-def lexicon_term(**kw):
-    return mapped_column(String(100), ForeignKey("lexicon_term.term"), **kw)
+def lexicon_term(foreignkeykw=None, **kw):
+
+    fkw = foreignkeykw if foreignkeykw else {}
+
+    return mapped_column(
+        String(100),
+        ForeignKey("lexicon_term.term", onupdate="CASCADE", **fkw),
+        **kw,
+    )
 
 
 def pascal_to_snake(name):
