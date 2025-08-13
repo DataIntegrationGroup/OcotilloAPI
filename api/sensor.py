@@ -25,6 +25,7 @@ from db import adder, Observation
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher, model_deleter
+from services.error_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
@@ -52,6 +53,46 @@ def update_sensor(
     """
     Update a sensor in the system.
     """
+    if (
+        sensor_data.datetime_installed is not None
+        and sensor_data.datetime_removed is None
+    ):
+        sensor = simple_get_by_id(session, Sensor, sensor_id)
+        existing_datetime_removed = sensor.datetime_removed
+        if (
+            existing_datetime_removed is not None
+            and sensor_data.datetime_installed >= existing_datetime_removed
+        ):
+            raise PydanticStyleException(
+                status_code=status.HTTP_409_CONFLICT,
+                loc=["body", "datetime_installed"],
+                msg=f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
+                type="value_error",
+                input={
+                    "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                },
+            )
+    elif (
+        sensor_data.datetime_installed is None
+        and sensor_data.datetime_removed is not None
+    ):
+        sensor = simple_get_by_id(session, Sensor, sensor_id)
+        existing_datetime_installed = sensor.datetime_installed
+        if sensor_data.datetime_removed <= existing_datetime_installed:
+            raise PydanticStyleException(
+                status_code=status.HTTP_409_CONFLICT,
+                loc=["body", "datetime_removed"],
+                msg=f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
+                type="value_error",
+                input={
+                    "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
+                        "+00:00", "Z"
+                    )
+                },
+            )
+
     return model_patcher(session, Sensor, sensor_id, sensor_data)
 
 
