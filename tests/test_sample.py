@@ -61,8 +61,8 @@ def test_validate_sample_top_and_bottom():
             )
         except ValueError as e:
             assert (
-                str(e)
-                == "Sample top and bottom must both be defined or both must be None."
+                e.errors()[0]["msg"]
+                == "Value error, Sample top and bottom must both be defined or both must be None."
             )
 
 
