@@ -1,6 +1,6 @@
 from db import Contact, Address, Email, Phone
 
-from tests import client, cleanup_post_test
+from tests import client, cleanup_post_test, cleanup_patch_test
 from schemas.contact import ValidateEmail, ValidatePhone
 
 # VALIDATION tests =============================================================
@@ -405,93 +405,117 @@ def test_get_address_by_id_404_not_found(address):
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
 
 
-# Test item edit ==========================================================
-def test_item_edit_contact_name():
+# PATCH tests ==================================================================
+
+
+def test_patch_contact(contact):
+    payload = {"name": "Updated Contact"}
     response = client.patch(
-        "/contact/1",
-        json={
-            "name": "Updated Contact",
-        },
+        f"/contact/{contact.id}",
+        json=payload,
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Updated Contact"
-    assert data["role"] == "Owner"
+    assert data["id"] == contact.id
+    assert data["name"] == payload["name"]
 
-    # put contact name back to original
+    cleanup_patch_test(Contact, payload, contact)
+
+
+def test_patch_contact_404_not_found(contact):
+    bad_contact_id = 999999
+    payload = {"name": "Updated Contact"}
     response = client.patch(
-        "/contact/1",
-        json={
-            "name": "Test Contact",
-        },
+        f"/contact/{bad_contact_id}",
+        json=payload,
     )
-    assert response.status_code == 200
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-def test_edit_contact_email():
-    response = client.patch("/contact/email/1", json={"email": "boo@bar.com"})
+def test_patch_email(email):
+    payload = {"email": "boo@bar.com"}
+    response = client.patch(f"/contact/email/{email.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["email"] == "boo@bar.com"
-    assert data["email_type"] == "Primary"
+    assert data["id"] == email.id
+    assert data["contact_id"] == email.contact_id
+    assert data["email"] == payload["email"]
+    assert data["email_type"] == email.email_type
 
-    # put contact email back to original
-    response = client.patch("/contact/email/1", json={"email": "fasdfasdf@gmail.com"})
+    cleanup_patch_test(Email, payload, email)
+
+
+def test_patch_email_404_not_found(email):
+    bad_email_id = 999999
+    payload = {"email": "boo@bar.com"}
+    response = client.patch(f"/contact/email/{bad_email_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_patch_phone(phone):
+    payload = {"phone_number": "+19709654321"}
+    response = client.patch(f"/contact/phone/{phone.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["email"] == "fasdfasdf@gmail.com"
+    assert data["id"] == phone.id
+    assert data["contact_id"] == phone.contact_id
+    assert data["phone_number"] == payload["phone_number"]
+    assert data["phone_type"] == phone.phone_type
+
+    cleanup_patch_test(Phone, payload, phone)
 
 
-def test_edit_contact_phone():
-    response = client.patch("/contact/phone/1", json={"phone_number": "+19876543210"})
+def test_patch_phone_404_not_found(phone):
+    bad_phone_id = 999999
+    payload = {"phone_number": "+19709654321"}
+    response = client.patch(f"/contact/phone/{bad_phone_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {bad_phone_id} not found."
+
+
+def test_edit_address(address):
+    payload = {
+        "address_line_1": "456 Elm St",
+        "address_line_2": "Apt 21B",
+        "city": "Updated City",
+        "state": "CA",
+        "postal_code": "90210",
+        "country": "United States",
+    }
+    response = client.patch(f"/contact/address/{address.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["phone_number"] == "+19876543210"
+    assert data["id"] == address.id
+    assert data["contact_id"] == address.contact_id
+    assert data["address_line_1"] == payload["address_line_1"]
+    assert data["address_line_2"] == payload["address_line_2"]
+    assert data["city"] == payload["city"]
+    assert data["state"] == payload["state"]
+    assert data["postal_code"] == payload["postal_code"]
+    assert data["country"] == payload["country"]
+    assert data["address_type"] == address.address_type
 
-    # put contact phone back to original
-    response = client.patch("/contact/phone/1", json={"phone_number": "+12345678901"})
+    cleanup_patch_test(Address, payload, address)
+
+
+def test_patch_address_404_not_found(address):
+    bad_address_id = 999999
+    payload = {
+        "address_line_1": "456 Elm St",
+        "address_line_2": "Apt 21B",
+        "city": "Updated City",
+        "state": "CA",
+        "postal_code": "90210",
+        "country": "United States",
+    }
+    response = client.patch(f"/contact/address/{bad_address_id}", json=payload)
     data = response.json()
-    assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["phone_number"] == "+12345678901"
-
-
-def test_edit_contact_address():
-    response = client.patch(
-        "/contact/address/1",
-        json={
-            "address_line_1": "456 Elm St",
-            "city": "Updated City",
-            "postal_code": "90210",
-            "country": "United States",
-        },
-    )
-    data = response.json()
-    assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["address_line_1"] == "456 Elm St"
-    assert data["city"] == "Updated City"
-    assert data["state"] == "NM"
-    assert data["postal_code"] == "90210"
-    assert data["country"] == "United States"
-    assert data["address_type"] == "Primary"
-
-    # put contact address back to original
-    response = client.patch(
-        "/contact/address/1",
-        json={
-            "address_line_1": "123 Main St",
-            "city": "Test City",
-            "state": "NM",
-            "postal_code": "87501",
-            "country": "United States",
-            "address_type": "Primary",
-        },
-    )
-    data = response.json()
-    assert response.status_code == 200
+    assert response.status_code == 404
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
