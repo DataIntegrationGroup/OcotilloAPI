@@ -90,7 +90,10 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         "Sample", back_populates="thing", cascade="all, delete-orphan", uselist=True
     )
     contacts = relationship(
-        "Contacts", secondary="thing_contact_association", passive_deletes=True
+        "Contact",
+        secondary="thing_contact_association",
+        back_populates="things",
+        passive_deletes=True,
     )
 
 

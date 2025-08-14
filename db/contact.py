@@ -51,7 +51,10 @@ class Contact(Base, AutoBaseMixin):
     )
     authors = association_proxy("author_associations", "author")
     things = relationship(
-        "Thing", secondary="thing_contact_association", passive_deletes=True
+        "Thing",
+        secondary="thing_contact_association",
+        back_populates="contacts",
+        passive_deletes=True,
     )
 
 
