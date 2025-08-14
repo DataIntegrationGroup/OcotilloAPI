@@ -29,7 +29,7 @@ from schemas.thing import ThingResponse
 
 class ValidateEmail(BaseModel):
 
-    email: str
+    email: str | None = None
 
     @field_validator("email", check_fields=False)
     @classmethod
@@ -44,7 +44,7 @@ class ValidateEmail(BaseModel):
 
 class ValidatePhone(BaseModel):
 
-    phone_number: str
+    phone_number: str | None = None
 
     @field_validator("phone_number", check_fields=False)
     @classmethod
