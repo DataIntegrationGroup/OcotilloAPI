@@ -189,6 +189,62 @@ def update_contact_address(
 # ====== GET ===================================================================
 
 
+@router.get("/email", summary="Get all emails")
+async def get_emails(session: session_dependency) -> CustomPage[EmailResponse]:
+    """
+    Retrieve all emails from the database.
+    :param session:
+    :return:
+    """
+    return paginated_all_getter(session, Email)
+
+
+@router.get("/email/{email_id}", summary="Get email by ID")
+async def get_email_by_id(email_id: int, session: session_dependency) -> EmailResponse:
+    """
+    Retrieve an email by ID from the database.
+    """
+    return simple_get_by_id(session, Email, email_id)
+
+
+@router.get("/phone", summary="Get all phones")
+async def get_phones(session: session_dependency) -> CustomPage[PhoneResponse]:
+    """
+    Retrieve all phone numbers from the database.
+    :param session:
+    :return:
+    """
+    return paginated_all_getter(session, Phone)
+
+
+@router.get("/phone/{phone_id}", summary="Get phone by ID")
+async def get_phone_by_id(phone_id: int, session: session_dependency) -> PhoneResponse:
+    """
+    Retrieve a phone by ID from the database.
+    """
+    return simple_get_by_id(session, Phone, phone_id)
+
+
+@router.get("/address", summary="Get all addresses")
+async def get_addresses(session: session_dependency) -> CustomPage[AddressResponse]:
+    """
+    Retrieve all addresses from the database.
+    :param session:
+    :return:
+    """
+    return paginated_all_getter(session, Address)
+
+
+@router.get("/address/{address_id}", summary="Get address by ID")
+async def get_address_by_id(
+    address_id: int, session: session_dependency
+) -> AddressResponse:
+    """
+    Retrieve an address by ID from the database.
+    """
+    return simple_get_by_id(session, Address, address_id)
+
+
 @router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,

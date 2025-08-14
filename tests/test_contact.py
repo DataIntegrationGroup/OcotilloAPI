@@ -316,6 +316,95 @@ def test_get_contact_addresses_404_contact_not_found(contact, address):
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
+def test_get_emails(email):
+    response = client.get("/contact/email")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["contact_id"] == email.contact_id
+    assert data["items"][0]["email"] == email.email
+    assert data["items"][0]["email_type"] == email.email_type
+
+
+def test_get_email_by_id(email):
+    response = client.get(f"/contact/email/{email.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == email.id
+    assert data["contact_id"] == email.contact_id
+    assert data["email"] == email.email
+    assert data["email_type"] == email.email_type
+
+
+def test_get_email_404_not_found(email):
+    bad_email_id = 99999
+    response = client.get(f"/contact/email/{bad_email_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_get_phones(phone):
+    response = client.get("/contact/phone")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["contact_id"] == phone.contact_id
+    assert data["items"][0]["phone_number"] == phone.phone_number
+    assert data["items"][0]["phone_type"] == phone.phone_type
+
+
+def test_get_phone_by_id(phone):
+    response = client.get(f"/contact/phone/{phone.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == phone.id
+    assert data["contact_id"] == phone.contact_id
+    assert data["phone_number"] == phone.phone_number
+    assert data["phone_type"] == phone.phone_type
+
+
+def test_get_addresses(address):
+    response = client.get("/contact/address")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["contact_id"] == address.contact_id
+    assert data["items"][0]["address_line_1"] == address.address_line_1
+    assert data["items"][0]["address_line_2"] == address.address_line_2
+    assert data["items"][0]["city"] == address.city
+    assert data["items"][0]["state"] == address.state
+    assert data["items"][0]["postal_code"] == address.postal_code
+    assert data["items"][0]["country"] == address.country
+    assert data["items"][0]["address_type"] == address.address_type
+
+
+def test_get_address_by_id(address):
+    response = client.get(f"/contact/address/{address.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == address.id
+    assert data["contact_id"] == address.contact_id
+    assert data["address_line_1"] == address.address_line_1
+    assert data["address_line_2"] == address.address_line_2
+    assert data["city"] == address.city
+    assert data["state"] == address.state
+    assert data["postal_code"] == address.postal_code
+    assert data["country"] == address.country
+    assert data["address_type"] == address.address_type
+
+
+def test_get_address_by_id_404_not_found(address):
+    bad_address_id = 99999
+    response = client.get(f"/contact/address/{bad_address_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
 # Test item edit ==========================================================
 def test_item_edit_contact_name():
     response = client.patch(
