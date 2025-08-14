@@ -136,10 +136,16 @@ async def get_springs(
 )
 async def get_well_screens(
     session: session_dependency,
+        thing_id: int = None,
 ) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens from the database.
     """
+    if thing_id:
+        sql = select(WellScreen).where(WellScreen.thing_id == thing_id)
+        return paginate(query=sql, conn=session)
+
+
     return paginated_all_getter(session, WellScreen)
 
 

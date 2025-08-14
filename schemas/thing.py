@@ -78,6 +78,7 @@ class CreateWellScreen(BaseModel):
     screen_depth_bottom: float
     screen_depth_top: float
     screen_type: str | None = None
+    screen_description: str | None = None
 
     @model_validator(mode="after")
     def validate_screen_type(self):

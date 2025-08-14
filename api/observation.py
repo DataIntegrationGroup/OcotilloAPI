@@ -110,6 +110,7 @@ def get_groundwater_level_observations(
         sql = sql.where(Observation.observation_datetime <= end_time)
 
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
+    sql = sql.order_by(Observation.observation_datetime.desc())
     return paginate(query=sql, conn=session)
 
 

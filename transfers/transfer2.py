@@ -15,15 +15,20 @@
 # ===============================================================================
 
 import time
+import uuid
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import pyproj
+from pydantic import ValidationError
 from shapely import Point
 from shapely.ops import transform
+from sqlalchemy import select
 
-from db import Location, LocationThingAssociation
+from db import Location, LocationThingAssociation, adder, WellScreen, Thing, Observation, Sample
 from db.engine import session_ctx
+from schemas.thing import CreateWellScreen
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 
@@ -67,7 +72,42 @@ def make_location(row):
     )
 
 
-#
+def transfer_water_levels(session):
+    wd = pd.read_csv("./data/water_levels.csv")
+    gwd = wd.groupby(["PointID"])
+
+    for index, group in gwd:
+        for row in group.itertuples():
+            if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
+                print(f"Skipping row {row.Index} due to missing data.")
+                continue
+
+            dt = datetime.fromisoformat(row.DateMeasured)
+            thing = session.query(Thing).where(Thing.name==row.PointID).first()
+            if thing is None:
+                print(f"Thing with PointID {row.PointID} not found. Skipping water level.")
+                continue
+
+            sample = Sample()
+            sample.sampler_name = 'unknown'
+            sample.sample_type = 'groundwater level'
+
+            sample.field_sample_id = str(uuid.uuid4())
+            sample.sample_date = dt
+            sample.thing = thing
+            session.add(sample)
+
+            obs = Observation()
+            obs.sensor_id = 1
+            obs.sample = sample
+            obs.observation_datetime = dt
+            obs.depth_to_water = row.DepthToWater
+            obs.observed_property = "groundwater level"
+            obs.unit = "ft"
+
+            session.add(obs)
+            session.commit()
+
 # def migrate_water_levels(session, limit=800):
 #     wd = pd.read_csv("./migration/data/water_levels.csv")
 #     p = pd.read_csv("./migration/data/welldata.csv")
@@ -150,14 +190,14 @@ def make_location(row):
 ADDED = []
 
 
-def transfer_springs(session, limit=10000):
+def transfer_springs(session, limit=None):
     ldf = pd.read_csv("./data/location.csv")
     ldf = ldf[ldf["SiteType"] == "SP"]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
     start_time = time.time()
     for i, row in enumerate(ldf.itertuples()):
-        if i >= limit:
+        if limit and i >= limit:
             print(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
@@ -185,7 +225,7 @@ def transfer_springs(session, limit=10000):
         session.add(assoc)
 
 
-def transfer_wells(session, limit=1000):
+def transfer_wells(session, limit=None):
     wdf = pd.read_csv("./data/welldata.csv")
     ldf = pd.read_csv("./data/location.csv")
 
@@ -200,7 +240,7 @@ def transfer_wells(session, limit=1000):
     start_time = time.time()
 
     for i, row in enumerate(wdf.itertuples()):
-        if i >= limit:
+        if limit and i >= limit:
             print("Reached limit of", limit, "rows. Stopping migration.")
             break
 
@@ -242,7 +282,51 @@ def transfer_wells(session, limit=1000):
         session.add(assoc)
         # break
 
+def transfer_wellscreens(session, limit=None):
+    wdf = pd.read_csv("./data/wellscreens.csv")
+    wdf = wdf.replace(pd.NA, None)
+    wdf = wdf.replace({np.nan: None})
 
+    n = len(wdf)
+    start_time = time.time()
+
+    for i, row in enumerate(wdf.itertuples()):
+        if limit and i >= limit:
+            print("Reached limit of", limit, "rows. Stopping migration.")
+            break
+
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
+            session.commit()
+# thing_id: int
+# screen_depth_bottom: float
+# screen_depth_top: float
+# screen_type: str | None = None
+        # print(row)
+
+        sql = select(Thing).where(Thing.name == row.PointID)
+        thing = session.execute(sql).scalar_one_or_none()
+        if not thing:
+            print(f"Thing with PointID {row.PointID} not found. Skipping well screen.")
+            continue
+
+        well_screen_data = {
+            "thing_id": thing.id,
+            "screen_depth_top": row.ScreenTop,
+            "screen_depth_bottom": row.ScreenBottom,
+            # "screen_type": row.ScreenType,
+            "screen_description": row.ScreenDescription,
+            "release_status": 'draft'
+        }
+        try:
+            model = CreateWellScreen.model_validate(well_screen_data)
+            adder(session, WellScreen, model)
+        except ValidationError as e:
+            print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
+            continue
+        # session.add(screen)
 # def reset_db():
 #     configure_mappers()
 #
@@ -256,8 +340,9 @@ def transfer_wells(session, limit=1000):
 if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
-        transfer_wells(sess, limit=10000)
-        transfer_springs(sess, limit=10000)
-        # migrate_water_levels(sess)
+        # transfer_wells(sess, 1000)
+        # transfer_springs(sess, limit=10000)
+        # transfer_wellscreens(sess)
+        transfer_water_levels(sess)
 
 # ============= EOF =============================================

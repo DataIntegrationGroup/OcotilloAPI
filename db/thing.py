@@ -116,6 +116,9 @@ class WellScreen(Base, AutoBaseMixin):
     )
     screen_type = lexicon_term()  # e.g., "PVC", "Steel", etc.
 
+    screen_description = Column(
+        String(1000), nullable=True, info={"unit": "description of the screen"}
+    )
     # Define a relationship to well if needed
     # well = relationship("Well")
 
