@@ -31,9 +31,10 @@ from jose import jwt
 from jose.exceptions import JWTError
 import httpx
 
-AUTHENTIK_ISSUER = os.environ.get('AUTHENTIK_URL')
+AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
 JWKS_URL = f"{AUTHENTIK_ISSUER}jwks/"
 ALGORITHMS = ["RS256"]
+
 
 # Fetch JWKS (could also cache this)
 def get_jwks():
@@ -41,7 +42,9 @@ def get_jwks():
     resp.raise_for_status()
     return resp.json()
 
+
 jwks = get_jwks()
+
 
 def get_public_key(token):
     unverified_header = jwt.get_unverified_header(token)
@@ -49,6 +52,7 @@ def get_public_key(token):
         if key["kid"] == unverified_header["kid"]:
             return RSAAlgorithm.from_jwk(key)
     raise HTTPException(status_code=401, detail="Invalid signing key")
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -97,7 +101,6 @@ def authenticated(
     return _authenicated
 
 
-
 def verify_token(
     token: TokenType, scope: Optional[List[str]], permissions: Optional[List[str]]
 ) -> bool:
@@ -126,15 +129,16 @@ def _get_token_payload(token: str = Depends(oauth2_scheme)):
             token,
             public_key,
             algorithms=ALGORITHMS,
-            audience=os.environ.get("AUTHENTIK_CLIENT_ID"),  # Must match Authentik application
+            audience=os.environ.get(
+                "AUTHENTIK_CLIENT_ID"
+            ),  # Must match Authentik application
         )
         return payload
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
+            detail="Could not validate credentials",
         )
-
 
 
 # ============= EOF =============================================

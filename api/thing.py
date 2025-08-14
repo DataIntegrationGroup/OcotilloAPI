@@ -23,7 +23,12 @@ from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import (
-    session_dependency, amp_admin_dependency, admin_dependency, editor_dependency, amp_viewer_dependency, viewer_dependency
+    session_dependency,
+    amp_admin_dependency,
+    admin_dependency,
+    editor_dependency,
+    amp_viewer_dependency,
+    viewer_dependency,
 )
 from db import adder
 from db.engine import get_db_session
@@ -58,7 +63,7 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 @router.get("")
 def get_things(
     session: session_dependency,
-        user: viewer_dependency,
+    user: viewer_dependency,
     thing_id: int = None,
     thing_type: List[str] | str = Query(default=[]),
     within: str = None,
@@ -92,7 +97,7 @@ def get_things(
 @router.get("/well", summary="Get all wells")
 async def get_wells(
     session: session_dependency,
-        user: amp_viewer_dependency,
+    user: amp_viewer_dependency,
     # api_id: str = None,
     # ose_pod_id: str = None,
     sort: str = None,
@@ -283,7 +288,7 @@ def update_thing(
     thing_id: int,
     thing_data: UpdateWell,
     session: session_dependency,
-    user: editor_dependency
+    user: editor_dependency,
 ) -> WellResponse:
     """
     Update an existing well by ID.

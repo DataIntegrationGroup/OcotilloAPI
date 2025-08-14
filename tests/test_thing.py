@@ -17,8 +17,14 @@ import pytest
 
 from tests import client
 from main import app
-from core.dependencies import admin_function, editor_function, amp_admin_function, amp_editor_function, viewer_function, \
-    amp_viewer_function
+from core.dependencies import (
+    admin_function,
+    editor_function,
+    amp_admin_function,
+    amp_editor_function,
+    viewer_function,
+    amp_viewer_function,
+)
 
 
 def override_authentication():
