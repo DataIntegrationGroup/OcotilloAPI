@@ -22,17 +22,21 @@ from db.base import Base, AutoBaseMixin, lexicon_term
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
-    thing_id = Column(Integer, ForeignKey("thing.id"), nullable=False)
-    contact_id = Column(Integer, ForeignKey("contact.id"), nullable=False)
+    thing_id = Column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    contact_id = Column(
+        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+    )
 
 
 class Contact(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False)
     role = lexicon_term(nullable=False)
 
-    phones = relationship("Phone", back_populates="contact")
-    emails = relationship("Email", back_populates="contact")
-    addresses = relationship("Address", back_populates="contact")
+    phones = relationship("Phone", back_populates="contact", passive_deletes=True)
+    emails = relationship("Email", back_populates="contact", passive_deletes=True)
+    addresses = relationship("Address", back_populates="contact", passive_deletes=True)
     # email = Column(String(100), nullable=True)
     # phone = Column(String(20), nullable=True)
     # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
@@ -46,7 +50,9 @@ class Contact(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     authors = association_proxy("author_associations", "author")
-    things = relationship("Thing", secondary="thing_contact_association")
+    things = relationship(
+        "Thing", secondary="thing_contact_association", passive_deletes=True
+    )
 
 
 class Phone(Base, AutoBaseMixin):
