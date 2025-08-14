@@ -54,6 +54,10 @@ class ValidateSample(BaseModel):
     # REFACTOR TODO: fields are evaluated in the order in which they are defined.
     # are sample top/bottom really working as expected?
 
+    sample_date: AwareDatetime | None = None
+    sample_top: float | None = None
+    sample_bottom: float | None = None
+
     @model_validator(mode="after")
     def validate_top_and_bottom(self) -> Self:
         """
