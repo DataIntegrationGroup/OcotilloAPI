@@ -192,16 +192,19 @@ def test_get_contacts(contact, email, address, phone):
 
     assert len(data["items"][0]["emails"]) == 1
     assert data["items"][0]["emails"][0]["id"] == email.id
+    assert data["items"][0]["emails"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["emails"][0]["email"] == email.email
     assert data["items"][0]["emails"][0]["email_type"] == email.email_type
 
     assert len(data["items"][0]["phones"]) == 1
     assert data["items"][0]["phones"][0]["id"] == phone.id
+    assert data["items"][0]["phones"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
 
     assert len(data["items"][0]["addresses"]) == 1
     assert data["items"][0]["addresses"][0]["id"] == address.id
+    assert data["items"][0]["addresses"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["addresses"][0]["address_line_2"] == address.address_line_2
     assert data["items"][0]["addresses"][0]["city"] == address.city
@@ -221,16 +224,19 @@ def test_get_contact_by_id(contact, email, address, phone):
 
     assert len(data["emails"]) == 1
     assert data["emails"][0]["id"] == email.id
+    assert data["emails"][0]["contact_id"] == email.contact_id
     assert data["emails"][0]["email"] == email.email
     assert data["emails"][0]["email_type"] == email.email_type
 
     assert len(data["phones"]) == 1
     assert data["phones"][0]["id"] == phone.id
+    assert data["phones"][0]["contact_id"] == phone.contact_id
     assert data["phones"][0]["phone_number"] == phone.phone_number
     assert data["phones"][0]["phone_type"] == phone.phone_type
 
     assert len(data["addresses"]) == 1
     assert data["addresses"][0]["id"] == address.id
+    assert data["addresses"][0]["contact_id"] == address.contact_id
     assert data["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["addresses"][0]["address_line_2"] == address.address_line_2
     assert data["addresses"][0]["city"] == address.city
@@ -254,6 +260,7 @@ def test_get_contact_emails(contact, email):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["email"] == email.email
     assert data["items"][0]["email_type"] == email.email_type
 
@@ -272,6 +279,7 @@ def test_get_contact_phones(contact, phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phone_type"] == phone.phone_type
 
@@ -290,6 +298,7 @@ def test_get_contact_addresses(contact, address):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["address_line_2"] == address.address_line_2
     assert data["items"][0]["city"] == address.city

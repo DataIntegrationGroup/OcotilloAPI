@@ -118,32 +118,36 @@ class CreateContact(BaseModel):
 
 
 # -------- RESPONSE ----------
-class PhoneResponse(ORMBaseModel):
+
+
+class BaseItemResponse(ORMBaseModel):
+    id: int
+    contact_id: int
+
+
+class PhoneResponse(BaseItemResponse):
     """
     Response schema for phone details.
     """
 
-    id: int
     phone_number: str
     phone_type: str  # e.g., 'mobile', 'landline', etc.
 
 
-class EmailResponse(ORMBaseModel):
+class EmailResponse(BaseItemResponse):
     """
     Response schema for email details.
     """
 
-    id: int
     email: str
     email_type: str  # e.g., 'personal', 'work', etc.
 
 
-class AddressResponse(ORMBaseModel):
+class AddressResponse(BaseItemResponse):
     """
     Response schema for address details.
     """
 
-    id: int
     address_line_1: str
     address_line_2: str | None = None
     city: str
