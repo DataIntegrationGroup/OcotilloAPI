@@ -76,3 +76,32 @@ def sample(thing, sensor):
         yield sample
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def contact(thing):
+    with session_ctx() as session:
+        contact = Contact(
+            name="Test Contact",
+            role="Owner",
+            thing_id=thing.id,
+            emails=[{"email": "test@example.com", "email_type": "Primary"}],
+            phones=[{"phone_number": "+12345678901", "phone_type": "Primary"}],
+            addresses=[
+                {
+                    "address_line_1": "123 Main St",
+                    "address_line_2": "Apt 4B",
+                    "city": "Test City",
+                    "state": "NM",
+                    "postal_code": "87501",
+                    "country": "United States",
+                    "address_type": "Primary",
+                }
+            ],
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+        yield contact
+
+        session.close()
