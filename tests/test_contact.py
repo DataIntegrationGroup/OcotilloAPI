@@ -1,4 +1,4 @@
-from db import Contact
+from db import Contact, Address
 
 from tests import client, cleanup_post_test
 
@@ -61,7 +61,45 @@ def test_add_contact(thing):
 
 
 def test_add_address(contact):
-    pass
+    payload = {
+        "address_line_1": "456 Secondary St",
+        "address_line_2": "Apt 12A",
+        "city": "Test Metropolis",
+        "state": "NM",
+        "postal_code": "87502",
+        "country": "United States",
+        "address_type": "Primary",
+    }
+    response = client.post(f"/contact/{contact.id}/address", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["address_line_1"] == payload["address_line_1"]
+    assert data["address_line_2"] == payload["address_line_2"]
+    assert data["city"] == payload["city"]
+    assert data["state"] == payload["state"]
+    assert data["postal_code"] == payload["postal_code"]
+    assert data["country"] == payload["country"]
+    assert data["address_type"] == payload["address_type"]
+
+    cleanup_post_test(Address, contact.id)
+
+
+def test_add_address_404_contact_not_found(contact):
+    bad_contact_id = 9999
+    payload = {
+        "address_line_1": "456 Secondary St",
+        "address_line_2": "Apt 12A",
+        "city": "Test Metropolis",
+        "state": "NM",
+        "postal_code": "87502",
+        "country": "United States",
+        "address_type": "Secondary",
+    }
+    response = client.post(f"/contact/{bad_contact_id}/address", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
 def test_phone_validation_fail(thing):
