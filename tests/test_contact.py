@@ -234,6 +234,14 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["addresses"][0]["address_type"] == address.address_type
 
 
+def test_get_contact_by_id_404_not_found(contact):
+    bad_contact_id = 99999
+    response = client.get(f"/contact/{bad_contact_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
 def test_get_email_by_contact_id():
     response = client.get("/contact/1/email")
     assert response.status_code == 200
@@ -278,43 +286,6 @@ def test_get_address_by_contact_id():
     assert "postal_code" in address, "Expected 'postal_code' in address item"
     assert "country" in address, "Expected 'country' in address item"
     assert "address_type" in address, "Expected 'address_type' in address item"
-
-
-# test item retrieval via filter ===========================================
-
-
-# Test item retrieval ======================================================
-def test_item_get_contact():
-    response = client.get("/contact/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Test Contact"
-
-    assert "emails" in data
-    emails = data["emails"]
-    assert len(emails) == 1
-    email = emails[0]
-    assert email["email"] == "fasdfasdf@gmail.com"
-    assert email["email_type"] == "Primary"
-
-    assert "phones" in data
-    phones = data["phones"]
-    assert len(phones) == 1
-    phone = phones[0]
-    assert phone["phone_number"] == "+12345678901"
-    assert phone["phone_type"] == "Primary"
-
-    assert "addresses" in data
-    addresses = data["addresses"]
-    assert len(addresses) == 1
-    address = addresses[0]
-    assert address["address_line_1"] == "123 Main St"
-    assert address["city"] == "Test City"
-    assert address["state"] == "NM"
-    assert address["postal_code"] == "87501"
-    assert address["country"] == "United States"
-    assert address["address_type"] == "Primary"
 
 
 # Test item edit ==========================================================
