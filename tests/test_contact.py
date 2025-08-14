@@ -181,37 +181,57 @@ def test_add_phone_404_contact_not_found(contact):
 # GET tests ======================================================
 
 
-# def test_get_locations():
-#     response = client.get("/base/location")
-#     assert response.status_code == 200
-#     assert len(response.json()) > 0
-
-
-def test_get_contacts():
+def test_get_contacts(contact, email, address, phone):
     response = client.get("/contact")
     assert response.status_code == 200
-
     data = response.json()
-    assert "items" in data, "Expected 'items' in response"
-    items = data["items"]
-    assert isinstance(items, list), "'items' should be a list"
-    assert len(items) > 0, "'items' should not be empty"
-    item = items[0]
-    assert "id" in item, "Expected 'id' in contact item"
-    assert "name" in item, "Expected 'name' in contact item"
-    assert "role" in item, "Expected 'role' in contact item"
-    assert "emails" in item, "Expected 'emails' in contact item"
-    assert "phones" in item, "Expected 'phones' in contact item"
-    assert "addresses" in item, "Expected 'addresses' in contact item"
-    assert isinstance(item["emails"], list), "'emails' should be a list"
-    assert isinstance(item["phones"], list), "'phones' should be a list"
-    assert isinstance(item["addresses"], list), "'addresses' should be a list"
-    assert len(item["emails"]) == 1, "'emails' should not be empty"
-    assert len(item["phones"]) == 1, "'phones' should not be empty"
-    assert len(item["addresses"]) == 1, "'addresses' should not be empty"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == contact.id
+    assert data["items"][0]["name"] == contact.name
+    assert data["items"][0]["role"] == contact.role
 
-    # print(response.json())
-    # assert len(response.json()) > 0
+    assert len(data["items"][0]["emails"]) == 1
+    assert data["items"][0]["emails"][0]["email"] == email.email
+    assert data["items"][0]["emails"][0]["email_type"] == email.email_type
+
+    assert len(data["items"][0]["phones"]) == 1
+    assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
+    assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
+
+    assert len(data["items"][0]["addresses"]) == 1
+    assert data["items"][0]["addresses"][0]["address_line_1"] == address.address_line_1
+    assert data["items"][0]["addresses"][0]["address_line_2"] == address.address_line_2
+    assert data["items"][0]["addresses"][0]["city"] == address.city
+    assert data["items"][0]["addresses"][0]["state"] == address.state
+    assert data["items"][0]["addresses"][0]["postal_code"] == address.postal_code
+    assert data["items"][0]["addresses"][0]["country"] == address.country
+    assert data["items"][0]["addresses"][0]["address_type"] == address.address_type
+
+
+def test_get_contact_by_id(contact, email, address, phone):
+    response = client.get(f"/contact/{contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == contact.id
+    assert data["name"] == contact.name
+    assert data["role"] == contact.role
+
+    assert len(data["emails"]) == 1
+    assert data["emails"][0]["email"] == email.email
+    assert data["emails"][0]["email_type"] == email.email_type
+
+    assert len(data["phones"]) == 1
+    assert data["phones"][0]["phone_number"] == phone.phone_number
+    assert data["phones"][0]["phone_type"] == phone.phone_type
+
+    assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["address_line_1"] == address.address_line_1
+    assert data["addresses"][0]["address_line_2"] == address.address_line_2
+    assert data["addresses"][0]["city"] == address.city
+    assert data["addresses"][0]["state"] == address.state
+    assert data["addresses"][0]["postal_code"] == address.postal_code
+    assert data["addresses"][0]["country"] == address.country
+    assert data["addresses"][0]["address_type"] == address.address_type
 
 
 def test_get_email_by_contact_id():
