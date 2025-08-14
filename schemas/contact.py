@@ -18,7 +18,7 @@ from typing import List
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
-from pydantic import field_validator, BaseModel, AwareDatetime
+from pydantic import field_validator, BaseModel
 
 from schemas import ORMBaseModel
 from schemas.thing import ThingResponse
@@ -156,7 +156,6 @@ class ContactResponse(ORMBaseModel):
     id: int
     name: str
     role: str
-    created_at: AwareDatetime
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
