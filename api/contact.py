@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, Annotated
-
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from pydantic_core import PydanticUndefined
+from fastapi import APIRouter, Query
 from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
@@ -26,10 +22,10 @@ from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from core.dependencies import session_dependency
-from db import ThingContactAssociation, Thing
-from db.contact import Contact, Email, Phone, Address
+from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address
 from schemas.contact import (
     CreateContact,
+    CreateAddress,
     PhoneResponse,
     EmailResponse,
     AddressResponse,
@@ -40,7 +36,7 @@ from schemas.contact import (
     UpdateAddress,
 )
 from services.crud_helper import model_patcher
-from services.people_helper import add_contact
+from services.people_helper import add_contact, add_address
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -48,6 +44,8 @@ from services.query_helper import (
 )
 
 router = APIRouter(prefix="/contact", tags=["contact"])
+
+# ====== POST ==================================================================
 
 
 @router.post(
@@ -61,7 +59,26 @@ def create_contact(
 
     return add_contact(session, contact_data)
 
-    # return adder(session, Contact, contact_data)
+
+@router.post(
+    "/{contact_id}/address",
+    summary="Add an address to a contact",
+    status_code=status.HTTP_201_CREATED,
+)
+def add_address_to_contact(
+    contact_id: int,
+    address_data: CreateAddress,
+    session: session_dependency,
+) -> AddressResponse:
+    """
+    Add a new address to an existing contact in the database.
+    :param contact_id: ID of the contact to add the address to
+    :param address_data: Data for the new address
+    :param session: Database session
+    :return: Response containing the added address
+    """
+    contact = simple_get_by_id(session, Contact, contact_id)
+    return add_address(session, contact.id, address_data)
 
 
 @router.patch("/{contact_id}", summary="Update contact")
