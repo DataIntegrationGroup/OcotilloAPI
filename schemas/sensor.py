@@ -29,8 +29,8 @@ from pydantic import (
 
 class ValidateSensor(BaseModel):
 
-    datetime_installed: AwareDatetime
-    datetime_removed: AwareDatetime
+    datetime_installed: AwareDatetime | None = None
+    datetime_removed: AwareDatetime | None = None
 
     @field_validator("datetime_installed", "datetime_removed")
     def convert_datetime_fields_to_utc(cls, field: AwareDatetime) -> AwareDatetime:
