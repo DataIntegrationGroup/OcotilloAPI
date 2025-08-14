@@ -1,7 +1,85 @@
-from db import Contact, Address, Email, Phone
-
+from db import Contact, Address, Email, Phone, ThingContactAssociation
+from db.engine import session_ctx
 from tests import client, cleanup_post_test, cleanup_patch_test
 from schemas.contact import ValidateEmail, ValidatePhone
+
+import pytest
+
+# ============= module & function fixtures =======================================
+
+
+@pytest.fixture(scope="function")
+def second_contact(thing):
+    with session_ctx() as session:
+        contact = Contact(
+            name="Test Second Contact",
+            role="Owner",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        thing_contact_association = ThingContactAssociation(
+            thing_id=thing.id, contact_id=contact.id
+        )
+        session.add(thing_contact_association)
+        session.commit()
+        session.refresh(thing_contact_association)
+
+        yield contact
+
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_email(second_contact):
+    with session_ctx() as session:
+        email = Email(
+            email="testsecondcontact@gmail.com",
+            email_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(email)
+        session.commit()
+        session.refresh(email)
+        yield email
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_phone(second_contact):
+    with session_ctx() as session:
+        phone = Phone(
+            phone_number="123-456-7890",
+            phone_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(phone)
+        session.commit()
+        session.refresh(phone)
+        yield phone
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_address(second_contact):
+    with session_ctx() as session:
+        address = Address(
+            address_line_1="456 Secondary St",
+            address_line_2="Apt 12A",
+            city="Test Metropolis",
+            state="NM",
+            postal_code="87501",
+            country="United States",
+            address_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(address)
+        session.commit()
+        session.refresh(address)
+        yield address
+        session.close()
+
 
 # VALIDATION tests =============================================================
 
@@ -518,4 +596,117 @@ def test_patch_address_404_not_found(address):
     response = client.patch(f"/contact/address/{bad_address_id}", json=payload)
     data = response.json()
     assert response.status_code == 404
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_contact(second_contact, second_email, second_phone, second_address):
+    response = client.delete(f"/contact/{second_contact.id}")
+    assert response.status_code == 204
+
+    # verify contact is deleted and it cascades to emails, phones, and addresses
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {second_contact.id} not found."
+
+    response = client.get(f"/contact/email/{second_email.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {second_email.id} not found."
+
+    response = client.get(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {second_phone.id} not found."
+
+    response = client.get(f"/contact/address/{second_address.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Address with ID {second_address.id} not found."
+
+
+def test_delete_contact_404_not_found(second_contact):
+    bad_contact_id = 999999
+    response = client.delete(f"/contact/{bad_contact_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_delete_email(second_contact, second_email):
+    response = client.delete(f"/contact/email/{second_email.id}")
+    assert response.status_code == 204
+
+    # verify email is deleted
+    response = client.get(f"/contact/email/{second_email.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {second_email.id} not found."
+
+    # verify email is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    print(data)
+    assert data["emails"] == []
+
+
+def test_delete_email_404_not_found(second_email):
+    bad_email_id = 999999
+    response = client.delete(f"/contact/email/{bad_email_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_delete_phone(second_contact, second_phone):
+    response = client.delete(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 204
+
+    # verify phone is deleted
+    response = client.get(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {second_phone.id} not found."
+
+    # verify phone is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["phones"] == []
+
+
+def test_delete_phone_404_not_found(second_phone):
+    bad_phone_id = 999999
+    response = client.delete(f"/contact/phone/{bad_phone_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {bad_phone_id} not found."
+
+
+def test_delete_address(second_contact, second_address):
+    response = client.delete(f"/contact/address/{second_address.id}")
+    assert response.status_code == 204
+
+    # verify address is deleted
+    response = client.get(f"/contact/address/{second_address.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Address with ID {second_address.id} not found."
+
+    # verify address is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["addresses"] == []
+
+
+def test_delete_address_404_not_found(second_address):
+    bad_address_id = 99999
+    response = client.delete(f"/contact/address/{bad_address_id}")
+    assert response.status_code == 404
+    data = response.json()
     assert data["detail"] == f"Address with ID {bad_address_id} not found."

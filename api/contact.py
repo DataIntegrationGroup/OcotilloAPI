@@ -37,7 +37,7 @@ from schemas.contact import (
     UpdatePhone,
     UpdateAddress,
 )
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 from services.people_helper import add_contact, add_address, add_email, add_phone
 from services.query_helper import (
     simple_get_by_id,
@@ -305,6 +305,41 @@ async def get_contact_addresses(
     contact = simple_get_by_id(session, Contact, contact_id)
     sql = select(Address).where(Address.contact_id == contact.id)
     return paginate(query=sql, conn=session)
+
+
+# DELETE =======================================================================
+
+
+@router.delete("/email/{email_id}", summary="Delete contact email")
+def delete_contact_email(email_id: int, session: session_dependency):
+    """
+    Delete a contact email by ID from the database.
+    """
+    return model_deleter(session, Email, email_id)
+
+
+@router.delete("/phone/{phone_id}", summary="Delete contact phone")
+def delete_contact_phone(phone_id: int, session: session_dependency):
+    """
+    Delete a contact phone by ID from the database.
+    """
+    return model_deleter(session, Phone, phone_id)
+
+
+@router.delete("/address/{address_id}", summary="Delete contact address")
+def delete_contact_address(address_id: int, session: session_dependency):
+    """
+    Delete a contact address by ID from the database.
+    """
+    return model_deleter(session, Address, address_id)
+
+
+@router.delete("/{contact_id}", summary="Delete contact")
+def delete_contact(contact_id: int, session: session_dependency):
+    """
+    Delete a contact by ID from the database.
+    """
+    return model_deleter(session, Contact, contact_id)
 
 
 # ============= EOF =============================================
