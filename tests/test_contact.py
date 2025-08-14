@@ -1,70 +1,63 @@
-# from fastapi.testclient import TestClient
-# from main import app
-# from models import Base, engine
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
+from db import Contact
 
-# client = TestClient(app)
-
-from tests import client
+from tests import client, cleanup_post_test
 
 
 #  ADD tests ======================================================
 
 
 def test_add_contact(thing):
-    response = client.post(
-        "/contact",
-        json={
-            "name": "Test Contact",
-            "role": "Owner",
-            "thing_id": thing.id,
-            "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
-            "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
-            "addresses": [
-                {
-                    "address_line_1": "123 Main St",
-                    "city": "Test City",
-                    "state": "NM",
-                    "postal_code": "87501",
-                    "country": "United States",
-                    "address_type": "Primary",
-                }
-            ],
-        },
-    )
+    payload = {
+        "name": "Test Contact",
+        "role": "Owner",
+        "thing_id": thing.id,
+        "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
+        "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
+        "addresses": [
+            {
+                "address_line_1": "123 Main St",
+                "address_line_2": "Apt 4B",
+                "city": "Test City",
+                "state": "NM",
+                "postal_code": "87501",
+                "country": "United States",
+                "address_type": "Primary",
+            }
+        ],
+    }
+    response = client.post("/contact", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
-    assert data["name"] == "Test Contact"
-    assert data["role"] == "Owner"
+    assert data["name"] == payload["name"]
+    assert data["role"] == payload["role"]
 
     assert len(data["emails"]) == 1
-    assert data["emails"][0]["email"] == "fasdfasdf@gmail.com"
+    assert data["emails"][0]["email"] == payload["emails"][0]["email"]
+    assert data["emails"][0]["email_type"] == payload["emails"][0]["email_type"]
 
     assert len(data["phones"]) == 1
-    assert data["phones"][0]["phone_number"] == "+12345678901"
+    assert data["phones"][0]["phone_number"] == payload["phones"][0]["phone_number"]
+    assert data["phones"][0]["phone_type"] == payload["phones"][0]["phone_type"]
+
     assert len(data["addresses"]) == 1
-    assert data["addresses"][0]["address_line_1"] == "123 Main St"
+    assert (
+        data["addresses"][0]["address_line_1"]
+        == payload["addresses"][0]["address_line_1"]
+    )
+    assert (
+        data["addresses"][0]["address_line_2"]
+        == payload["addresses"][0]["address_line_2"]
+    )
+    assert data["addresses"][0]["city"] == payload["addresses"][0]["city"]
+    assert data["addresses"][0]["state"] == payload["addresses"][0]["state"]
+    assert data["addresses"][0]["postal_code"] == payload["addresses"][0]["postal_code"]
+    assert data["addresses"][0]["country"] == payload["addresses"][0]["country"]
+    assert (
+        data["addresses"][0]["address_type"] == payload["addresses"][0]["address_type"]
+    )
 
-    # assert data["email"] == "fasdfasdf@gmail.com"
-
-    # for i in range(2, 5):
-    #     response = client.post(
-    #         "/base/contact",
-    #         json={
-    #             "owner_id": i,
-    #             "name": f"Test Contact {i}",
-    #             "email": f"foo{i}@gmail.com",
-    #             "phone": f"+1234567890{i}",
-    #         },
-    #     )
-    #     assert response.status_code == 201
-    #     data = response.json()
-    #     assert "id" in data
-    #     assert data["name"] == f"Test Contact {i}"
-    #     assert data["email"] == f"foo{i}@gmail.com"
-    #     assert data["phone"] == f"+1234567890{i}"
+    cleanup_post_test(Contact, data["id"])
 
 
 def test_phone_validation_fail(thing):
