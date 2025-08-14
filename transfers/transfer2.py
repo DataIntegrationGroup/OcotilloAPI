@@ -26,7 +26,15 @@ from shapely import Point
 from shapely.ops import transform
 from sqlalchemy import select
 
-from db import Location, LocationThingAssociation, adder, WellScreen, Thing, Observation, Sample
+from db import (
+    Location,
+    LocationThingAssociation,
+    adder,
+    WellScreen,
+    Thing,
+    Observation,
+    Sample,
+)
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
 
@@ -83,14 +91,16 @@ def transfer_water_levels(session):
                 continue
 
             dt = datetime.fromisoformat(row.DateMeasured)
-            thing = session.query(Thing).where(Thing.name==row.PointID).first()
+            thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:
-                print(f"Thing with PointID {row.PointID} not found. Skipping water level.")
+                print(
+                    f"Thing with PointID {row.PointID} not found. Skipping water level."
+                )
                 continue
 
             sample = Sample()
-            sample.sampler_name = 'unknown'
-            sample.sample_type = 'groundwater level'
+            sample.sampler_name = "unknown"
+            sample.sample_type = "groundwater level"
 
             sample.field_sample_id = str(uuid.uuid4())
             sample.sample_date = dt
@@ -107,6 +117,7 @@ def transfer_water_levels(session):
 
             session.add(obs)
             session.commit()
+
 
 # def migrate_water_levels(session, limit=800):
 #     wd = pd.read_csv("./migration/data/water_levels.csv")
@@ -282,6 +293,7 @@ def transfer_wells(session, limit=None):
         session.add(assoc)
         # break
 
+
 def transfer_wellscreens(session, limit=None):
     wdf = pd.read_csv("./data/wellscreens.csv")
     wdf = wdf.replace(pd.NA, None)
@@ -300,10 +312,10 @@ def transfer_wellscreens(session, limit=None):
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
-# thing_id: int
-# screen_depth_bottom: float
-# screen_depth_top: float
-# screen_type: str | None = None
+        # thing_id: int
+        # screen_depth_bottom: float
+        # screen_depth_top: float
+        # screen_type: str | None = None
         # print(row)
 
         sql = select(Thing).where(Thing.name == row.PointID)
@@ -318,7 +330,7 @@ def transfer_wellscreens(session, limit=None):
             "screen_depth_bottom": row.ScreenBottom,
             # "screen_type": row.ScreenType,
             "screen_description": row.ScreenDescription,
-            "release_status": 'draft'
+            "release_status": "draft",
         }
         try:
             model = CreateWellScreen.model_validate(well_screen_data)
@@ -327,6 +339,8 @@ def transfer_wellscreens(session, limit=None):
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
             continue
         # session.add(screen)
+
+
 # def reset_db():
 #     configure_mappers()
 #

@@ -64,8 +64,12 @@ def _get_contact_results(session: Session, q: str) -> list[dict]:
 
 def _get_thing_results(session: Session, q: str) -> list[dict]:
     vector = Thing.search_vector
-    water_well_query = search(select(Thing).where(Thing.thing_type=='water well'), q, vector=vector)
-    spring_well_query = search(select(Thing).where(Thing.thing_type=='spring'), q, vector=vector)
+    water_well_query = search(
+        select(Thing).where(Thing.thing_type == "water well"), q, vector=vector
+    )
+    spring_well_query = search(
+        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector
+    )
 
     wells = session.scalars(water_well_query).all()
     springs = session.scalars(spring_well_query).all()
@@ -75,35 +79,42 @@ def _get_thing_results(session: Session, q: str) -> list[dict]:
         if properties is None:
             properties = {}
 
-        properties['thing_type'] = thing.thing_type
-        properties['id'] = thing.id
+        properties["thing_type"] = thing.thing_type
+        properties["id"] = thing.id
         return {
             "label": thing.name,
             "group": group,
             "properties": properties,
         }
+
     def make_well_response(thing: Thing) -> dict:
         return _make_response(
-            'Wells',
+            "Wells",
             thing,
             {
-                'well_type': thing.well_type,
-                'well_depth': thing.well_depth,
-                'hole_depth': thing.hole_depth,
-            }
-        )
-    def make_spring_response(thing: Thing) -> dict:
-        return _make_response(
-            'Springs',
-            thing,
-            {
-                'spring_type': thing.spring_type,
-            }
+                "well_type": thing.well_type,
+                "well_depth": thing.well_depth,
+                "hole_depth": thing.hole_depth,
+            },
         )
 
-    return [func(item) for items, func in ((wells, make_well_response),
-                                (springs, make_spring_response))
-            for item in items]
+    def make_spring_response(thing: Thing) -> dict:
+        return _make_response(
+            "Springs",
+            thing,
+            {
+                "spring_type": thing.spring_type,
+            },
+        )
+
+    return [
+        func(item)
+        for items, func in (
+            (wells, make_well_response),
+            (springs, make_spring_response),
+        )
+        for item in items
+    ]
 
 
 def _get_asset_results(session: Session, q: str) -> list[dict]:
@@ -141,7 +152,7 @@ def search_api(q: str, session: Session = Depends(get_db_session)):
     results.extend(_get_thing_results(session, q))
     results.extend(_get_asset_results(session, q))
 
-    return {'items': results, 'total': len(results)}
+    return {"items": results, "total": len(results)}
 
 
 # ============= EOF =============================================
