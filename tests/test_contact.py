@@ -1,4 +1,4 @@
-from db import Contact, Address
+from db import Contact, Address, Email
 
 from tests import client, cleanup_post_test
 
@@ -97,6 +97,27 @@ def test_add_address_404_contact_not_found(contact):
         "address_type": "Secondary",
     }
     response = client.post(f"/contact/{bad_contact_id}/address", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_add_email(contact):
+    payload = {"email": "anothertestemail@nmt.edu", "email_type": "Primary"}
+    response = client.post(f"/contact/{contact.id}/email", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["email"] == payload["email"]
+    assert data["email_type"] == payload["email_type"]
+
+    cleanup_post_test(Email, contact.id)
+
+
+def test_add_email_404_contact_not_found(contact):
+    bad_contact_id = 9999
+    payload = {"email": "anothertestemail@nmt.edu", "email_type": "Primary"}
+    response = client.post(f"/contact/{bad_contact_id}/email", json=payload)
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."

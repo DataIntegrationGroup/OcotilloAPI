@@ -26,6 +26,7 @@ from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address
 from schemas.contact import (
     CreateContact,
     CreateAddress,
+    CreateEmail,
     PhoneResponse,
     EmailResponse,
     AddressResponse,
@@ -36,7 +37,7 @@ from schemas.contact import (
     UpdateAddress,
 )
 from services.crud_helper import model_patcher
-from services.people_helper import add_contact, add_address
+from services.people_helper import add_contact, add_address, add_email
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -79,6 +80,18 @@ def add_address_to_contact(
     """
     contact = simple_get_by_id(session, Contact, contact_id)
     return add_address(session, contact.id, address_data)
+
+
+@router.post(
+    "/{contact_id}/email",
+    summary="Add an email to a contact",
+    status_code=status.HTTP_201_CREATED,
+)
+def add_email_to_contact(
+    contact_id: int, email_data: CreateEmail, session: session_dependency
+) -> EmailResponse:
+    contact = simple_get_by_id(session, Contact, contact_id)
+    return add_email(session, contact.id, email_data)
 
 
 @router.patch("/{contact_id}", summary="Update contact")
