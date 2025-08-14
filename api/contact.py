@@ -107,31 +107,7 @@ def add_phone_to_contact(
     return add_phone(session, contact.id, phone_data)
 
 
-@router.patch("/{contact_id}", summary="Update contact")
-def update_contact(
-    contact_id: int,
-    contact_data: UpdateContact,
-    session: session_dependency,
-) -> ContactResponse:
-    """
-    Update an existing contact in the database.
-    :param contact_id: ID of the contact to update
-    :param contact_data: Data to update the contact with
-    :param session: Database session
-    :return: Updated contact response
-    """
-    # contact = simple_get_by_id(session, Contact, contact_id)
-    # if not contact:
-    #     return {"message": "Contact not found"}
-    #
-    # for key, value in contact_data.model_dump().items():
-    #     setattr(contact, key, value)
-    #
-    # session.commit()
-    # session.refresh(contact)
-
-    # return contact
-    return model_patcher(session, Contact, contact_id, contact_data)
+# PATCH ========================================================================
 
 
 @router.patch(
@@ -184,6 +160,22 @@ def update_contact_address(
     :return:
     """
     return model_patcher(session, Address, address_id, address_data)
+
+
+@router.patch("/{contact_id}", summary="Update contact")
+def update_contact(
+    contact_id: int,
+    contact_data: UpdateContact,
+    session: session_dependency,
+) -> ContactResponse:
+    """
+    Update an existing contact in the database.
+    :param contact_id: ID of the contact to update
+    :param contact_data: Data to update the contact with
+    :param session: Database session
+    :return: Updated contact response
+    """
+    return model_patcher(session, Contact, contact_id, contact_data)
 
 
 # ====== GET ===================================================================
