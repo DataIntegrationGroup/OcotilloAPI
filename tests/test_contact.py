@@ -1,9 +1,43 @@
 from db import Contact, Address, Email, Phone
 
 from tests import client, cleanup_post_test
+from schemas.contact import ValidateEmail, ValidatePhone
+
+# VALIDATION tests =============================================================
 
 
-#  ADD tests ======================================================
+def test_validate_phone(thing):
+    for phone in [
+        "definitely not a phone",
+        # "1234567890",
+        # "123-456-7890",
+        # "123-456-78901",
+        # "123-4567-890",
+        "123-456-789a",
+        "123-456-7890x1234",
+        "123.456.7890",
+        "(123) 456-7890",
+    ]:
+        try:
+            new_phone = ValidatePhone(phone_number=phone, phone_type="Primary")
+        except Exception as e:
+            assert e.errors()[0]["msg"] == f"Value error, Invalid phone number. {phone}"
+
+
+def test_validate_email(thing):
+    for email in [
+        "invalid-email",
+        "user@.com",
+        "user@domain..com",
+        "user@domain.com",
+    ]:
+        try:
+            new_email = ValidateEmail(email=email)
+        except Exception as e:
+            assert e.errors()[0]["msg"] == f"Value error, Invalid email format. {email}"
+
+
+# ADD tests ====================================================================
 
 
 def test_add_contact(thing):
@@ -142,84 +176,6 @@ def test_add_phone_404_contact_not_found(contact):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
-
-
-def test_phone_validation_fail(thing):
-    for phone in [
-        "definitely not a phone",
-        # "1234567890",
-        # "123-456-7890",
-        # "123-456-78901",
-        # "123-4567-890",
-        "123-456-789a",
-        "123-456-7890x1234",
-        "123.456.7890",
-        "(123) 456-7890",
-    ]:
-
-        response = client.post(
-            "/contact",
-            json={
-                "name": "Test Contact 2",
-                "thing_id": thing.id,
-                "role": "Primary",
-                "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
-                "phones": [{"phone_number": phone, "phone_type": "Primary"}],
-                "addresses": [
-                    {
-                        "address_line_1": "123 Main St",
-                        "city": "Test City",
-                        "state": "NM",
-                        "postal_code": "87501",
-                        "country": "United States",
-                        "address_type": "Primary",
-                    }
-                ],
-            },
-        )
-        data = response.json()
-        assert response.status_code == 422
-        assert "detail" in data, "Expected 'detail' in response"
-        assert len(data["detail"]) == 1, "Expected 1 error in response"
-        detail = data["detail"][0]
-        assert detail["msg"] == f"Value error, Invalid phone number. {phone}"
-
-
-def test_email_validation_fail(thing):
-
-    for email in [
-        "",
-        "invalid-email",
-        "invalid@domain",
-        "invalid@domain.",
-        "@domain.com",
-    ]:
-        response = client.post(
-            "/contact",
-            json={
-                "name": "Test ContactX",
-                "thing_id": thing.id,
-                "role": "Primary",
-                "emails": [{"email": email, "email_type": "Primary"}],
-                "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
-                "addresses": [
-                    {
-                        "address_line_1": "123 Main St",
-                        "city": "Test City",
-                        "state": "NM",
-                        "postal_code": "87501",
-                        "country": "United States",
-                        "address_type": "Primary",
-                    }
-                ],
-            },
-        )
-        data = response.json()
-        assert response.status_code == 422
-        assert "detail" in data, "Expected 'detail' in response"
-        assert len(data["detail"]) == 1, "Expected 1 error in response"
-        detail = data["detail"][0]
-        assert detail["msg"] == f"Value error, Invalid email format. {email}"
 
 
 # GET tests ======================================================

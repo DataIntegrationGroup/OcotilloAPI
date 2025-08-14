@@ -29,6 +29,8 @@ from schemas.thing import ThingResponse
 
 class ValidateEmail(BaseModel):
 
+    email: str
+
     @field_validator("email", check_fields=False)
     @classmethod
     def validate_email(cls, email: str | None) -> str | None:
@@ -42,9 +44,12 @@ class ValidateEmail(BaseModel):
 
 class ValidatePhone(BaseModel):
 
+    phone_number: str
+
     @field_validator("phone_number", check_fields=False)
     @classmethod
     def validate_phone(cls, phone_number_str: str | None) -> str | None:
+        print(phone_number_str)
         if phone_number_str is not None:
             region = "US"
             try:
