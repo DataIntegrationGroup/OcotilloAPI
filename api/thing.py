@@ -23,8 +23,7 @@ from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import (
-    session_dependency,
-    well_user_dependency,
+    session_dependency, amp_admin_dependency, admin_dependency, editor_dependency, amp_viewer_dependency, viewer_dependency
 )
 from db import adder
 from db.engine import get_db_session
@@ -59,6 +58,7 @@ router = APIRouter(prefix="/thing", tags=["thing"])
 @router.get("")
 def get_things(
     session: session_dependency,
+        user: viewer_dependency,
     thing_id: int = None,
     thing_type: List[str] | str = Query(default=[]),
     within: str = None,
@@ -92,6 +92,7 @@ def get_things(
 @router.get("/well", summary="Get all wells")
 async def get_wells(
     session: session_dependency,
+        user: amp_viewer_dependency,
     # api_id: str = None,
     # ose_pod_id: str = None,
     sort: str = None,
@@ -184,7 +185,7 @@ def create_thing_id_link(link_data: CreateThingIdLink, session: session_dependen
 def create_well(
     thing_data: CreateWell,
     session: Session = Depends(get_db_session),
-    user=well_user_dependency,
+    user=amp_admin_dependency,
 ) -> WellResponse:
     """
     Create a new well in the database.
@@ -202,7 +203,7 @@ def create_well(
 def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
-    user=well_user_dependency,
+    user=amp_admin_dependency,
 ) -> SpringResponse:
     """
     Create a new well in the database.
@@ -218,7 +219,7 @@ def create_spring(
 def create_thing(
     thing_data: CreateThing,
     session: session_dependency,
-    user=well_user_dependency,
+    user=admin_dependency,
 ) -> ThingResponse:
     """
     Create a new well in the database.
@@ -233,7 +234,7 @@ def create_thing(
 )
 def create_wellscreen(
     session: session_dependency,
-    user: well_user_dependency,
+    user: amp_admin_dependency,
     well_screen_data: CreateWellScreen = Depends(validate_screens),
 ) -> WellScreenResponse:
     """
@@ -246,6 +247,7 @@ def create_wellscreen(
 def update_thing(
     thing_id: int,
     thing_data: UpdateWell | UpdateThing,
+    user: admin_dependency,
     session: Session = Depends(get_db_session),
 ) -> ThingResponse:
     """
@@ -260,6 +262,7 @@ def update_thing_location(
     thing_id: int,
     location_data: UpdateLocation,
     session: session_dependency,
+    user: editor_dependency,
 ) -> LocationResponse:
     """
     Update the location of an existing thing by ID.
@@ -280,6 +283,7 @@ def update_thing(
     thing_id: int,
     thing_data: UpdateWell,
     session: session_dependency,
+    user: editor_dependency
 ) -> WellResponse:
     """
     Update an existing well by ID.

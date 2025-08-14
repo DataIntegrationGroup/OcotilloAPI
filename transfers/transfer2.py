@@ -354,8 +354,8 @@ def transfer_wellscreens(session, limit=None):
 if __name__ == "__main__":
     # reset_db()
     with session_ctx() as sess:
-        # transfer_wells(sess, 1000)
-        # transfer_springs(sess, limit=10000)
+        transfer_wells(sess, 1000)
+        transfer_springs(sess, limit=1000)
         # transfer_wellscreens(sess)
         transfer_water_levels(sess)
 

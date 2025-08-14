@@ -17,7 +17,8 @@ import pytest
 
 from tests import client
 from main import app
-from core.dependencies import well_user_function
+from core.dependencies import admin_function, editor_function, amp_admin_function, amp_editor_function, viewer_function, \
+    amp_viewer_function
 
 
 def override_authentication():
@@ -29,7 +30,12 @@ def override_authentication():
     return True
 
 
-app.dependency_overrides[well_user_function] = override_authentication
+app.dependency_overrides[admin_function] = override_authentication
+app.dependency_overrides[editor_function] = override_authentication
+app.dependency_overrides[viewer_function] = override_authentication
+app.dependency_overrides[amp_admin_function] = override_authentication
+app.dependency_overrides[amp_editor_function] = override_authentication
+app.dependency_overrides[amp_viewer_function] = override_authentication
 
 
 def test_add_group():

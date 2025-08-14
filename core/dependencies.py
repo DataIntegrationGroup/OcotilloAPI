@@ -24,8 +24,23 @@ from db.engine import get_db_session
 session_dependency = Annotated[Session, Depends(get_db_session)]
 
 # authentication functions
-well_user_function = authenticated(permissions=["well:read", "well:write"])
+# well_user_function = authenticated(permissions=["", "well:write"])
+admin_function = authenticated(permissions=["Admin"])
+editor_function = authenticated(permissions=["Editor"])
+viewer_function = authenticated(permissions=["Viewer"])
+
+amp_admin_function = authenticated(permissions=["AMPAdmin"])
+amp_editor_function = authenticated(permissions=["AMPEditor"])
+amp_viewer_function = authenticated(permissions=["AMPViewer"])
+
 
 # permissions dependencies
-well_user_dependency = Annotated[Callable, Depends(well_user_function)]
+admin_dependency = Annotated[Callable, Depends(admin_function)]
+editor_dependency = Annotated[Callable, Depends(editor_function)]
+viewer_dependency = Annotated[Callable, Depends(viewer_function)]
+
+
+amp_admin_dependency = Annotated[Callable, Depends(amp_admin_function)]
+amp_editor_dependency = Annotated[Callable, Depends(amp_editor_function)]
+amp_viewer_dependency = Annotated[Callable, Depends(amp_viewer_function)]
 # ============= EOF =============================================
