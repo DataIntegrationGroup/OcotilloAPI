@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
-from schemas.contact import CreateContact
+from schemas.contact import CreateAddress, CreateContact
 from sqlalchemy.orm import Session
 
 
@@ -64,6 +64,25 @@ def add_contact(
     session.commit()
 
     return contact
+
+
+def add_address(
+    session: Session,
+    contact_id: int,
+    address_data: dict,
+) -> Address:
+    """
+    Add an address to a contact.
+    """
+    if isinstance(address_data, CreateAddress):
+        address_data = address_data.model_dump(exclude_unset=True)
+
+    address = Address(**address_data, contact_id=contact_id)
+    session.add(address)
+    session.commit()
+    session.refresh(address)
+
+    return address
 
 
 # ============= EOF =============================================
