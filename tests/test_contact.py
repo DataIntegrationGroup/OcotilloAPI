@@ -191,14 +191,17 @@ def test_get_contacts(contact, email, address, phone):
     assert data["items"][0]["role"] == contact.role
 
     assert len(data["items"][0]["emails"]) == 1
+    assert data["items"][0]["emails"][0]["id"] == email.id
     assert data["items"][0]["emails"][0]["email"] == email.email
     assert data["items"][0]["emails"][0]["email_type"] == email.email_type
 
     assert len(data["items"][0]["phones"]) == 1
+    assert data["items"][0]["phones"][0]["id"] == phone.id
     assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
 
     assert len(data["items"][0]["addresses"]) == 1
+    assert data["items"][0]["addresses"][0]["id"] == address.id
     assert data["items"][0]["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["addresses"][0]["address_line_2"] == address.address_line_2
     assert data["items"][0]["addresses"][0]["city"] == address.city
@@ -217,14 +220,17 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["role"] == contact.role
 
     assert len(data["emails"]) == 1
+    assert data["emails"][0]["id"] == email.id
     assert data["emails"][0]["email"] == email.email
     assert data["emails"][0]["email_type"] == email.email_type
 
     assert len(data["phones"]) == 1
+    assert data["phones"][0]["id"] == phone.id
     assert data["phones"][0]["phone_number"] == phone.phone_number
     assert data["phones"][0]["phone_type"] == phone.phone_type
 
     assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["id"] == address.id
     assert data["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["addresses"][0]["address_line_2"] == address.address_line_2
     assert data["addresses"][0]["city"] == address.city
@@ -242,18 +248,14 @@ def test_get_contact_by_id_404_not_found(contact):
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-def test_get_email_by_contact_id():
-    response = client.get("/contact/1/email")
+def test_get_contact_emails(contact, email):
+    response = client.get(f"/contact/{contact.id}/email")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, dict), "Expected a paginated response"
-    assert "items" in data, "Expected 'items' in response"
-    data = data["items"]
-    assert len(data) == 1, "Expected one phone number"
-    email = data[0]
-    assert "id" in email, "Expected 'id' in email item"
-    assert "email" in email, "Expected 'email' in email item"
-    assert "email_type" in email, "Expected 'email_type' in email item"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["email"] == email.email
+    assert data["items"][0]["email_type"] == email.email_type
 
 
 def test_get_phone_by_contact_id():
