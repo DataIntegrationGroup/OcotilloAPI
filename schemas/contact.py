@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Optional, List
+from typing import List
 
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
@@ -23,16 +23,45 @@ from pydantic import field_validator, BaseModel, AwareDatetime
 from schemas import ORMBaseModel
 from schemas.thing import ThingResponse
 
-"""
-REFACTOR TODO
 
-Create common validator classes to be shared amongst create and update schemas.
-Since many fields are optional in the update schemas set check_fields=False in the field_validator.
-"""
+# -------- VALIDATORS ----------
+
+
+class ValidateEmail(BaseModel):
+
+    @field_validator("email", check_fields=False)
+    @classmethod
+    def validate_email(cls, email: str | None) -> str | None:
+        if email is not None:
+            try:
+                emailinfo = validate_email(email, check_deliverability=False)
+                return emailinfo.normalized
+            except EmailNotValidError as e:
+                raise ValueError(f"Invalid email format. {email}")
+
+
+class ValidatePhone(BaseModel):
+
+    @field_validator("phone_number", check_fields=False)
+    @classmethod
+    def validate_phone(cls, phone_number_str: str | None) -> str | None:
+        if phone_number_str is not None:
+            region = "US"
+            try:
+                parsed_number = phonenumbers.parse(phone_number_str, region)
+                if phonenumbers.is_valid_number(parsed_number):
+                    formatted_number = phonenumbers.format_number(
+                        parsed_number, phonenumbers.PhoneNumberFormat.E164
+                    )
+                    return formatted_number
+                else:
+                    raise ValueError(f"Invalid phone number. {phone_number_str}")
+            except NumberParseException as e:
+                raise ValueError(f"Invalid phone number. {phone_number_str}")
 
 
 # -------- CREATE ----------
-class CreateEmail(BaseModel):
+class CreateEmail(ValidateEmail):
     """
     Schema for creating an email.
     """
@@ -40,39 +69,14 @@ class CreateEmail(BaseModel):
     email: str
     email_type: str = "Primary"  # Default to 'Primary'
 
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, email):
-        try:
-            emailinfo = validate_email(email, check_deliverability=False)
-            return emailinfo.normalized
-        except EmailNotValidError as e:
-            raise ValueError(f"Invalid email format. {email}")
 
-
-class CreatePhone(BaseModel):
+class CreatePhone(ValidatePhone):
     """
     Schema for creating a phone number.
     """
 
     phone_number: str
     phone_type: str = "Primary"  # Default to 'Primary'
-
-    @field_validator("phone_number", mode="before")
-    @classmethod
-    def validate_phone(cls, phone_number_str):
-        region = "US"
-        try:
-            parsed_number = phonenumbers.parse(phone_number_str, region)
-            if phonenumbers.is_valid_number(parsed_number):
-                formatted_number = phonenumbers.format_number(
-                    parsed_number, phonenumbers.PhoneNumberFormat.E164
-                )
-                return formatted_number
-            else:
-                raise ValueError(f"Invalid phone number. {phone_number_str}")
-        except NumberParseException as e:
-            raise ValueError(f"Invalid phone number. {phone_number_str}")
 
 
 class CreateAddress(BaseModel):
@@ -106,46 +110,6 @@ class CreateContact(BaseModel):
     emails: list[CreateEmail] | None = None
     phones: list[CreatePhone] | None = None
     addresses: list[CreateAddress] | None = None
-
-
-#
-#
-# @field_validator("phone", mode="before")
-# @classmethod
-# def validate_phone(cls, phone_number_str):
-#     region = "US"
-#     try:
-#         parsed_number = phonenumbers.parse(phone_number_str, region)
-#         if phonenumbers.is_valid_number(parsed_number):
-#             # You can also format the number if needed
-#             formatted_number = phonenumbers.format_number(
-#                 parsed_number, phonenumbers.PhoneNumberFormat.E164
-#             )
-#             return formatted_number
-#         else:
-#             raise ValueError(f"Invalid phone number. {phone_number_str}")
-#     except NumberParseException as e:
-#         raise ValueError(f"Invalid phone number. {phone_number_str}")
-#
-# @field_validator("email")
-# @classmethod
-# def validate_email(cls, email):
-#     # try:
-#     # Check that the email address is valid. Turn on check_deliverability
-#     # for first-time validations like on account creation pages (but not
-#     # login pages).
-#     emailinfo = validate_email(email, check_deliverability=False)
-#
-#     # After this point, use only the normalized form of the email address,
-#     # especially before going to a database query.
-#     email = emailinfo.normalized
-#     return email
-#     # except EmailNotValidError as e:
-#     # if v is not None:
-#     #     # Basic email validation
-#     #     if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", v):
-#     #         raise ValueError(f"Invalid email format. {v}")
-#     # return v
 
 
 # -------- RESPONSE ----------
@@ -205,32 +169,32 @@ class UpdateContact(BaseModel):
     Schema for updating contact information.
     """
 
-    name: Optional[str] = None
-    role: Optional[str] = None
-    # thing_id: int | None = None
+    name: str | None = None
+    role: str | None = None
+    thing_id: int | None = None
     # email: str | None = None
     # phone: str | None = None
     # address: str | None = None
 
 
-class UpdateEmail(BaseModel):
+class UpdateEmail(ValidateEmail):
     """
     Schema for updating email information.
     """
 
     # email: Annotated[Optional[str], None]
     # email_type: Annotated[Optional[str], None]
-    email: Optional[str] = None  # None
-    email_type: Optional[str] = None  # None
+    email: str | None = None  # None
+    email_type: str | None = None  # None
 
 
-class UpdatePhone(BaseModel):
+class UpdatePhone(ValidatePhone):
     """
     Schema for updating phone information.
     """
 
-    phone_number: Optional[str] = None
-    phone_type: Optional[str] = None
+    phone_number: str | None = None
+    phone_type: str | None = None
 
 
 class UpdateAddress(BaseModel):
@@ -238,13 +202,13 @@ class UpdateAddress(BaseModel):
     Schema for updating address information.
     """
 
-    address_line_1: Optional[str] = None
-    address_line_2: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    postal_code: Optional[str] = None
-    country: Optional[str] = None
-    address_type: Optional[str] = None
+    address_line_1: str | None = None
+    address_line_2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    address_type: str | None = None
 
 
 # ============= EOF =============================================
