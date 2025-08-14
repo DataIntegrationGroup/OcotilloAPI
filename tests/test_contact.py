@@ -8,16 +8,16 @@ from tests import client, cleanup_post_test
 
 def test_add_contact(thing):
     payload = {
-        "name": "Test Contact",
+        "name": "Test Contact 2",
         "role": "Owner",
         "thing_id": thing.id,
-        "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
-        "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
+        "emails": [{"email": "testcontact2@gmail.com", "email_type": "Primary"}],
+        "phones": [{"phone_number": "+14153334444", "phone_type": "Primary"}],
         "addresses": [
             {
-                "address_line_1": "123 Main St",
-                "address_line_2": "Apt 4B",
-                "city": "Test City",
+                "address_line_1": "123 Default St",
+                "address_line_2": "Apt 8R",
+                "city": "Test Metropolis",
                 "state": "NM",
                 "postal_code": "87501",
                 "country": "United States",
@@ -58,6 +58,10 @@ def test_add_contact(thing):
     )
 
     cleanup_post_test(Contact, data["id"])
+
+
+def test_add_address(contact):
+    pass
 
 
 def test_phone_validation_fail(thing):
