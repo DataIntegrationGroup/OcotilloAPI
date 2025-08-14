@@ -49,7 +49,6 @@ class ValidatePhone(BaseModel):
     @field_validator("phone_number", check_fields=False)
     @classmethod
     def validate_phone(cls, phone_number_str: str | None) -> str | None:
-        print(phone_number_str)
         if phone_number_str is not None:
             region = "US"
             try:
@@ -190,10 +189,9 @@ class UpdateEmail(ValidateEmail):
     Schema for updating email information.
     """
 
-    # email: Annotated[Optional[str], None]
-    # email_type: Annotated[Optional[str], None]
-    email: str | None = None  # None
-    email_type: str | None = None  # None
+    contact_id: int | None = None
+    email: str | None = None
+    email_type: str | None = None
 
 
 class UpdatePhone(ValidatePhone):
@@ -201,6 +199,7 @@ class UpdatePhone(ValidatePhone):
     Schema for updating phone information.
     """
 
+    contact_id: int | None = None
     phone_number: str | None = None
     phone_type: str | None = None
 
@@ -210,6 +209,7 @@ class UpdateAddress(BaseModel):
     Schema for updating address information.
     """
 
+    contact_id: int | None = None
     address_line_1: str | None = None
     address_line_2: str | None = None
     city: str | None = None
