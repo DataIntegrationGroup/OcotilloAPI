@@ -186,6 +186,9 @@ def update_contact_address(
     return model_patcher(session, Address, address_id, address_data)
 
 
+# ====== GET ===================================================================
+
+
 @router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,
@@ -217,10 +220,7 @@ async def get_contact_by_id(
     """
     Retrieve a contact by ID from the database.
     """
-    contact = simple_get_by_id(session, Contact, contact_id)
-    if not contact:
-        return {"message": "Contact not found"}
-    return contact
+    return simple_get_by_id(session, Contact, contact_id)
 
 
 @router.get("/{contact_id}/email", summary="Get contact emails")
@@ -231,11 +231,7 @@ async def get_contact_emails(
     Retrieve all emails associated with a contact.
     """
     contact = simple_get_by_id(session, Contact, contact_id)
-    if not contact:
-        return {"message": "Contact not found"}
-
-    sql = select(Email).where(Email.contact_id == contact_id)
-
+    sql = select(Email).where(Email.contact_id == contact.id)
     return paginate(query=sql, conn=session)
 
 
@@ -247,9 +243,7 @@ async def get_contact_phones(
     Retrieve all phone numbers associated with a contact.
     """
     contact = simple_get_by_id(session, Contact, contact_id)
-    if not contact:
-        return {"message": "Contact not found"}
-    sql = select(Phone).where(Phone.contact_id == contact_id)
+    sql = select(Phone).where(Phone.contact_id == contact.id)
     return paginate(query=sql, conn=session)
 
 
@@ -261,9 +255,7 @@ async def get_contact_addresses(
     Retrieve all addresses associated with a contact.
     """
     contact = simple_get_by_id(session, Contact, contact_id)
-    if not contact:
-        return {"message": "Contact not found"}
-    sql = select(Address).where(Address.contact_id == contact_id)
+    sql = select(Address).where(Address.contact_id == contact.id)
     return paginate(query=sql, conn=session)
 
 
