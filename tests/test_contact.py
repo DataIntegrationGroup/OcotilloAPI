@@ -145,14 +145,17 @@ def test_add_contact(thing):
     assert data["role"] == payload["role"]
 
     assert len(data["emails"]) == 1
+    assert data["emails"][0]["contact_id"] == data["id"]
     assert data["emails"][0]["email"] == payload["emails"][0]["email"]
     assert data["emails"][0]["email_type"] == payload["emails"][0]["email_type"]
 
     assert len(data["phones"]) == 1
+    assert data["phones"][0]["contact_id"] == data["id"]
     assert data["phones"][0]["phone_number"] == payload["phones"][0]["phone_number"]
     assert data["phones"][0]["phone_type"] == payload["phones"][0]["phone_type"]
 
     assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["contact_id"] == data["id"]
     assert (
         data["addresses"][0]["address_line_1"]
         == payload["addresses"][0]["address_line_1"]
@@ -186,6 +189,7 @@ def test_add_address(contact):
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert data["contact_id"] == contact.id
     assert data["address_line_1"] == payload["address_line_1"]
     assert data["address_line_2"] == payload["address_line_2"]
     assert data["city"] == payload["city"]
@@ -220,6 +224,7 @@ def test_add_email(contact):
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert data["contact_id"] == contact.id
     assert data["email"] == payload["email"]
     assert data["email_type"] == payload["email_type"]
 
@@ -241,6 +246,7 @@ def test_add_phone(contact):
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert data["contact_id"] == contact.id
     assert data["phone_number"] == payload["phone_number"]
     assert data["phone_type"] == payload["phone_type"]
 
