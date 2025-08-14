@@ -14,8 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 from typing_extensions import Annotated, Self
+from datetime import timezone
 
-from pydantic import BaseModel, AwareDatetime, PastDatetime, model_validator
+from pydantic import (
+    BaseModel,
+    AwareDatetime,
+    PastDatetime,
+    model_validator,
+    field_validator,
+)
 
 # ------- VALIDATION ------
 
@@ -24,6 +31,12 @@ class ValidateSensor(BaseModel):
 
     datetime_installed: AwareDatetime
     datetime_removed: AwareDatetime
+
+    @field_validator("datetime_installed", "datetime_removed")
+    def convert_datetime_fields_to_utc(cls, field: AwareDatetime) -> AwareDatetime:
+        if field is not None and field.tzinfo != timezone.utc:
+            field = field.astimezone(timezone.utc)
+        return field
 
     @model_validator(mode="after")
     def check_datetime_values(self) -> Self:
