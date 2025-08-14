@@ -170,6 +170,16 @@ class ContactResponse(ORMBaseModel):
     things: List[ThingResponse] = []  # List of related things
 
 
+class ThingContactAssociationResponse(ORMBaseModel):
+    """
+    Response schema for thing-contact association details.
+    """
+
+    id: int
+    thing_id: int
+    contact_id: int
+
+
 # -------- UPDATE ----------
 class UpdateContact(BaseModel):
     """
@@ -217,6 +227,15 @@ class UpdateAddress(BaseModel):
     postal_code: str | None = None
     country: str | None = None
     address_type: str | None = None
+
+
+class UpdatedThingContactAssociation(BaseModel):
+    """
+    Schema for updating thing-contact association information.
+    """
+
+    thing_id: int | None = None
+    contact_id: int | None = None
 
 
 # ============= EOF =============================================
