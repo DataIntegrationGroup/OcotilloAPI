@@ -1,4 +1,4 @@
-from db import Contact, Address, Email, Phone
+from db import Contact, Address, Email, Phone, ThingContactAssociation
 from db.engine import session_ctx
 from tests import client, cleanup_post_test, cleanup_patch_test
 from schemas.contact import ValidateEmail, ValidatePhone
@@ -651,6 +651,30 @@ def test_patch_address_404_not_found(address):
     data = response.json()
     assert response.status_code == 404
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
+def test_patch_thing_contact_association(thing_contact_association, second_contact):
+    payload = {"contact_id": second_contact.id}
+    response = client.patch(
+        f"/contact/thing-association/{thing_contact_association.id}", json=payload
+    )
+    data = response.json()
+    assert response.status_code == 200
+    assert data["id"] == thing_contact_association.id
+    assert data["contact_id"] == payload["contact_id"]
+
+    cleanup_patch_test(ThingContactAssociation, payload, thing_contact_association)
+
+
+def test_patch_thing_contact_association_404_not_found(
+    thing_contact_association, second_contact
+):
+    bad_id = 999999
+    payload = {"contact_id": second_contact.id}
+    response = client.patch(f"/contact/thing-association/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
 
 
 # DELETE tests =================================================================

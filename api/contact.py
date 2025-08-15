@@ -37,6 +37,7 @@ from schemas.contact import (
     UpdateEmail,
     UpdatePhone,
     UpdateAddress,
+    UpdateThingContactAssociation,
 )
 from services.crud_helper import model_patcher, model_deleter
 from services.people_helper import add_contact, add_address, add_email, add_phone
@@ -111,6 +112,8 @@ def add_phone_to_contact(
 # PATCH ========================================================================
 
 
+# TODO: catch database errors with patches, most likely foreign key constraints
+#   then return a 409 response
 @router.patch(
     "/email/{email_id}",
 )
@@ -161,6 +164,31 @@ def update_contact_address(
     :return:
     """
     return model_patcher(session, Address, address_id, address_data)
+
+
+@router.patch(
+    "/thing-association/{thing_contact_association_id}",
+    summary="Update thing-contact association",
+)
+def update_thing_contact_association(
+    thing_contact_association_id: int,
+    thing_contact_association_data: UpdateThingContactAssociation,
+    session: session_dependency,
+) -> ThingContactAssociationResponse:
+    """
+    Update an existing thing-contact association in the database.
+
+    :param thing_contact_association_id:
+    :param thing_contact_association_data:
+    :param session:
+    :return:
+    """
+    return model_patcher(
+        session,
+        ThingContactAssociation,
+        thing_contact_association_id,
+        thing_contact_association_data,
+    )
 
 
 @router.patch("/{contact_id}", summary="Update contact")

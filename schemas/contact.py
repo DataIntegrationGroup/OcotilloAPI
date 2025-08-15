@@ -229,7 +229,7 @@ class UpdateAddress(BaseModel):
     address_type: str | None = None
 
 
-class UpdatedThingContactAssociation(BaseModel):
+class UpdateThingContactAssociation(BaseModel):
     """
     Schema for updating thing-contact association information.
     """
