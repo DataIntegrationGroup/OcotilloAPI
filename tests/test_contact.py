@@ -4,6 +4,8 @@ from tests import client, cleanup_post_test, cleanup_patch_test
 from schemas.contact import ValidateEmail, ValidatePhone
 
 import pytest
+from pydantic import ValidationError
+import re
 
 # ============= module & function fixtures =======================================
 
@@ -85,35 +87,28 @@ def second_address(second_contact):
 # VALIDATION tests =============================================================
 
 
-def test_validate_phone(thing):
+def test_validate_phone():
     for phone in [
         "definitely not a phone",
-        # "1234567890",
-        # "123-456-7890",
-        # "123-456-78901",
-        # "123-4567-890",
         "123-456-789a",
         "123-456-7890x1234",
         "123.456.7890",
         "(123) 456-7890",
     ]:
-        try:
-            new_phone = ValidatePhone(phone_number=phone, phone_type="Primary")
-        except Exception as e:
-            assert e.errors()[0]["msg"] == f"Value error, Invalid phone number. {phone}"
+        pattern = re.escape(f"Value error, Invalid phone number. {phone}")
+        with pytest.raises(ValidationError, match=pattern):
+            ValidatePhone(phone_number=phone, phone_type="Primary")
 
 
-def test_validate_email(thing):
+def test_validate_email():
     for email in [
         "invalid-email",
         "user@.com",
         "user@domain..com",
-        "user@domain.com",
     ]:
-        try:
-            new_email = ValidateEmail(email=email)
-        except Exception as e:
-            assert e.errors()[0]["msg"] == f"Value error, Invalid email format. {email}"
+        pattern = re.escape(f"Value error, Invalid email format. {email}")
+        with pytest.raises(ValidationError, match=pattern):
+            ValidateEmail(email=email)
 
 
 # ADD tests ====================================================================
