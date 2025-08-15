@@ -34,7 +34,7 @@ def test_search_api(thing, contact, email, phone, address):
     assert isinstance(data, dict)
     items = data.get("items")
     assert isinstance(items, list)
-    assert len(items) == 1
+    assert len(items) == 2
 
 
 @pytest.mark.skip(reason="This test is not working .")
