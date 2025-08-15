@@ -79,7 +79,7 @@ def sample(thing, sensor):
 
 
 @pytest.fixture(scope="session")
-def contact(thing):
+def contact():
     with session_ctx() as session:
         contact = Contact(
             name="Test Contact",
@@ -89,15 +89,19 @@ def contact(thing):
         session.commit()
         session.refresh(contact)
 
-        thing_contact_association = ThingContactAssociation(
-            thing_id=thing.id, contact_id=contact.id
-        )
-        session.add(thing_contact_association)
-        session.commit()
-        session.refresh(thing_contact_association)
-
         yield contact
 
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def thing_contact_association(contact, thing):
+    with session_ctx() as session:
+        association = ThingContactAssociation(thing_id=thing.id, contact_id=contact.id)
+        session.add(association)
+        session.commit()
+        session.refresh(association)
+        yield association
         session.close()
 
 

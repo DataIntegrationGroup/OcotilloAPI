@@ -32,6 +32,7 @@ from schemas.contact import (
     EmailResponse,
     AddressResponse,
     ContactResponse,
+    ThingContactAssociationResponse,
     UpdateContact,
     UpdateEmail,
     UpdatePhone,
@@ -237,6 +238,33 @@ async def get_address_by_id(
     return simple_get_by_id(session, Address, address_id)
 
 
+@router.get("/thing-association", summary="Get all thing-contact associations")
+async def get_thing_contact_associations(
+    session: session_dependency,
+) -> CustomPage[ThingContactAssociationResponse]:
+    """
+    Retrieve all thing-contact associations from the database.
+    :param session:
+    :return:
+    """
+    return paginated_all_getter(session, ThingContactAssociation)
+
+
+@router.get(
+    "/thing-association/{thing_contact_association_id}",
+    summary="Get thing-contact association by ID",
+)
+async def get_thing_contact_association_by_id(
+    thing_contact_association_id: int, session: session_dependency
+) -> ThingContactAssociationResponse:
+    """
+    Retrieve a thing-contact association by ID from the database.
+    """
+    return simple_get_by_id(
+        session, ThingContactAssociation, thing_contact_association_id
+    )
+
+
 @router.get("", summary="Get contacts")
 async def get_contacts(
     session: session_dependency,
@@ -304,6 +332,20 @@ async def get_contact_addresses(
     """
     contact = simple_get_by_id(session, Contact, contact_id)
     sql = select(Address).where(Address.contact_id == contact.id)
+    return paginate(query=sql, conn=session)
+
+
+@router.get("/{contact_id}/thing-association", summary="Get contact's things")
+async def get_contact_thing_associations(
+    contact_id: int, session: session_dependency
+) -> CustomPage[ThingContactAssociationResponse]:
+    """
+    Retrieve all thing-contact associations for a contact.
+    """
+    contact = simple_get_by_id(session, Contact, contact_id)
+    sql = select(ThingContactAssociation).where(
+        ThingContactAssociation.contact_id == contact.id
+    )
     return paginate(query=sql, conn=session)
 
 
