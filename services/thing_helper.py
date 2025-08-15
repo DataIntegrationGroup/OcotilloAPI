@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from db import LocationThingAssociation, Thing, Base, Location
 from schemas.location import LocationResponse
 from db.group import Group, GroupThingAssociation
-from services import audit_add
+from services.audit_helper import audit_add
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter
 from shapely import wkb

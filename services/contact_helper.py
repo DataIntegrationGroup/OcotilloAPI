@@ -21,12 +21,12 @@ from schemas.contact import (
     CreatePhone,
     CreateThingAssociation,
 )
+from services.audit_helper import audit_add
 from sqlalchemy.orm import Session
 
 
 def add_contact(
-    session: Session,
-    contact_data: CreateContact | dict,
+    session: Session, contact_data: CreateContact | dict, user: dict
 ) -> Contact:
     """
     Add a new contact to the database.
@@ -62,6 +62,11 @@ def add_contact(
             contact.addresses.append(address)
             # session.add(address)
 
+        audit_add(user, contact)
+        audit_add(user, contact.emails)
+        audit_add(user, contact.phones)
+        audit_add(user, contact.addresses)
+
         session.add(contact)
         session.flush()
         session.refresh(contact)
@@ -69,6 +74,8 @@ def add_contact(
         location_contact_association = ThingContactAssociation()
         location_contact_association.thing_id = contact_data.get("thing_id")
         location_contact_association.contact_id = contact.id
+
+        audit_add(user, location_contact_association)
 
         session.add(location_contact_association)
         # owner_contact_association = OwnerContactAssociation()
@@ -85,9 +92,7 @@ def add_contact(
 
 
 def add_address(
-    session: Session,
-    contact_id: int,
-    address_data: dict,
+    session: Session, contact_id: int, address_data: dict, user: dict
 ) -> Address:
     """
     Add an address to a contact.
@@ -96,6 +101,7 @@ def add_address(
         address_data = address_data.model_dump(exclude_unset=True)
 
     address = Address(**address_data, contact_id=contact_id)
+    audit_add(user, address)
     session.add(address)
     session.commit()
     session.refresh(address)
@@ -103,11 +109,7 @@ def add_address(
     return address
 
 
-def add_email(
-    session: Session,
-    contact_id: int,
-    email_data: dict,
-) -> Email:
+def add_email(session: Session, contact_id: int, email_data: dict, user: dict) -> Email:
     """
     Add an email to a contact.
     """
@@ -115,6 +117,7 @@ def add_email(
         email_data = email_data.model_dump(exclude_unset=True)
 
     email = Email(**email_data, contact_id=contact_id)
+    audit_add(user, email)
     session.add(email)
     session.commit()
     session.refresh(email)
@@ -122,11 +125,7 @@ def add_email(
     return email
 
 
-def add_phone(
-    session: Session,
-    contact_id: int,
-    phone_data: dict,
-) -> Phone:
+def add_phone(session: Session, contact_id: int, phone_data: dict, user: dict) -> Phone:
     """
     Add a phone number to a contact.
     """
@@ -134,6 +133,7 @@ def add_phone(
         phone_data = phone_data.model_dump(exclude_unset=True)
 
     phone = Phone(**phone_data, contact_id=contact_id)
+    audit_add(user, phone)
     session.add(phone)
     session.commit()
     session.refresh(phone)
@@ -142,7 +142,7 @@ def add_phone(
 
 
 def add_thing_association(
-    session: Session, contact_id: int, thing_association_data: dict
+    session: Session, contact_id: int, thing_association_data: dict, user: dict
 ):
     if isinstance(thing_association_data, CreateThingAssociation):
         thing_association_data = thing_association_data.model_dump(exclude_unset=True)
@@ -150,6 +150,9 @@ def add_thing_association(
     thing_association = ThingContactAssociation(
         **thing_association_data, contact_id=contact_id
     )
+
+    audit_add(user, thing_association)
+
     session.add(thing_association)
     session.commit()
     session.refresh(thing_association)
