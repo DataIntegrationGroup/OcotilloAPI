@@ -1,11 +1,40 @@
+from core.dependencies import (
+    amp_viewer_function,
+    amp_editor_function,
+    amp_admin_function,
+)
 from db import Contact, Address, Email, Phone, ThingContactAssociation
 from db.engine import session_ctx
+from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test
 from schemas.contact import ValidateEmail, ValidatePhone
 
 import pytest
 from pydantic import ValidationError
 import re
+
+
+def override_authentication(default=True):
+    """
+    Override the authentication dependency for testing purposes.
+    This allows all users to be considered authenticated.
+    """
+
+    def closure():
+        print("Overriding authentication")
+        return default
+
+    return closure
+
+
+app.dependency_overrides[amp_admin_function] = override_authentication(
+    default={"name": "foobar", "sub": "1234567890"}
+)
+app.dependency_overrides[amp_editor_function] = override_authentication(
+    default={"name": "foobar", "sub": "1234567890"}
+)
+app.dependency_overrides[amp_viewer_function] = override_authentication()
+
 
 # ============= module & function fixtures =======================================
 
