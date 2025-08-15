@@ -33,6 +33,8 @@ amp_admin_function = authenticated(permissions=["AMPAdmin"])
 amp_editor_function = authenticated(permissions=["AMPEditor"])
 amp_viewer_function = authenticated(permissions=["AMPViewer"])
 
+no_permission_function = authenticated(permissions=["NoPermission"])
+
 
 # permissions dependencies
 admin_dependency = Annotated[Callable, Depends(admin_function)]
@@ -43,4 +45,6 @@ viewer_dependency = Annotated[Callable, Depends(viewer_function)]
 amp_admin_dependency = Annotated[Callable, Depends(amp_admin_function)]
 amp_editor_dependency = Annotated[Callable, Depends(amp_editor_function)]
 amp_viewer_dependency = Annotated[Callable, Depends(amp_viewer_function)]
+
+no_permission_dependency = Annotated[Callable, Depends(no_permission_function)]
 # ============= EOF =============================================

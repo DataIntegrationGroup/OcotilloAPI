@@ -140,6 +140,14 @@ class ThingResponse(WellResponse, SpringResponse):
     geometry: dict | None = None
 
 
+class ThingIdLinkResponse(ORMBaseModel):
+    thing_id: int
+    thing: ThingResponse
+    relation: str
+    alternate_id: str
+    alternate_organization: str
+
+
 class LocationWellResponse(LocationResponse):
     """
     Response schema for sample location with well details.
@@ -224,5 +232,10 @@ class UpdateWell(UpdateThing):
 
     # group: str | None = None  # Optional group for the well
 
+class UpdateThingIdLink(BaseModel):
+    alternate_organization: str | None = None
+    alternate_id: str | None = None
+    relation: str | None = None
+    thing_id: int | None = None
 
 # ============= EOF =============================================

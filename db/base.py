@@ -63,6 +63,33 @@ class AuditMixin:
             server_default=func.timezone("UTC", func.now()),
         )
 
+    @declared_attr
+    def created_by_name(self):
+        return Column(
+            String(255),
+            nullable=True,
+        )
+
+    @declared_attr
+    def created_by_id(self):
+        return Column(
+            String(255),
+            nullable=True,
+        )
+
+    @declared_attr
+    def updated_by_name(self):
+        return Column(
+            String(255),
+            nullable=True,
+        )
+
+    @declared_attr
+    def updated_by_id(self):
+        return Column(
+            String(255),
+            nullable=True,
+        )
 
 class AutoBaseMixin(AuditMixin):
     @declared_attr

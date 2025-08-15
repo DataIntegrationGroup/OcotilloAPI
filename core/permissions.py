@@ -96,7 +96,7 @@ def authenticated(
             response.status_code = status.HTTP_401_UNAUTHORIZED
 
         # this is a placeholder for the actual authentication logic
-        return True
+        return jwt.decode(token)
 
     return _authenicated
 

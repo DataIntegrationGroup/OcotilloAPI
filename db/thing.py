@@ -101,7 +101,7 @@ class ThingIdLink(Base, AutoBaseMixin):
     alternate_id = mapped_column(String(100), nullable=False)
     alternate_organization = lexicon_term(nullable=False)
 
-    # thing = relationship("Thing", back_populates="links")
+    thing = relationship("Thing", backref="links")
 
 
 class WellScreen(Base, AutoBaseMixin):

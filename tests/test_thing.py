@@ -27,21 +27,25 @@ from core.dependencies import (
 )
 
 
-def override_authentication():
+def override_authentication(default=True):
     """
     Override the authentication dependency for testing purposes.
     This allows all users to be considered authenticated.
     """
-    print("Overriding authentication")
-    return True
+    def closure():
+        print("Overriding authentication")
+        return default
+    return closure
 
 
-app.dependency_overrides[admin_function] = override_authentication
-app.dependency_overrides[editor_function] = override_authentication
-app.dependency_overrides[viewer_function] = override_authentication
-app.dependency_overrides[amp_admin_function] = override_authentication
-app.dependency_overrides[amp_editor_function] = override_authentication
-app.dependency_overrides[amp_viewer_function] = override_authentication
+app.dependency_overrides[admin_function] = override_authentication(
+    default={'name': 'foobar', 'sub': '1234567890'}
+)
+app.dependency_overrides[editor_function] = override_authentication(default={'name': 'foobar', 'sub': '1234567890'})
+app.dependency_overrides[viewer_function] = override_authentication()
+app.dependency_overrides[amp_admin_function] = override_authentication(default={'name': 'foobar', 'sub': '1234567890'})
+app.dependency_overrides[amp_editor_function] = override_authentication(default={'name': 'foobar', 'sub': '1234567890'})
+app.dependency_overrides[amp_viewer_function] = override_authentication()
 
 
 def test_add_group():
@@ -153,7 +157,7 @@ def test_add_well_screen():
 
 def test_add_thing_link():
     response = client.post(
-        "/thing/link",
+        "/thing/id-link",
         json={
             "thing_id": 1,
             "relation": "same_as",
@@ -201,9 +205,48 @@ def test_get_springs():
 
 
 def test_get_well_screens():
+    #TODO: improve test indepedence
     response = client.get("/thing/well-screen")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+
+def test_get_thing_links():
+    #TODO: improve test indepedence
+    response = client.get("/thing/id-link")
+    assert response.status_code == 200
+    assert len(response.json()) > 0
+
+
+def test_get_thing_links_by_id():
+    #TODO: improve test indepedence
+    response = client.get("/thing/id-link/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["thing_id"] == 1
+    assert data["relation"] == "same_as"
+    assert data["alternate_id"] == "4321-1234"
+    assert data["alternate_organization"] == "USGS"
+
+
+
+def test_get_thing_links_by_thing_id():
+    #TODO: improve test indepedence
+    response = client.get("/thing/1/id-link")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict)
+    assert "items" in data
+    data = data["items"]
+    assert isinstance(data, list)
+    assert len(data) == 1
+    item = data[0]
+    assert item["id"] == 1
+    assert item["thing_id"] == 1
+    assert item["relation"] == "same_as"
+    assert item["alternate_id"] == "4321-1234"
+    assert item["alternate_organization"] == "USGS"
 
 
 def test_item_get_well_filter():
@@ -287,6 +330,22 @@ def test_weaver_thing_contact_info_by_id():
 
 
 # Patch tests
+def test_patch_thing_link():
+    response = client.patch(
+        "/thing/id-link/1",
+        json={
+            "relation": "same_as",
+            "alternate_id": "USGS-43211234",
+            "alternate_organization": "USGS",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["relation"] == "same_as"
+    assert data["alternate_id"] == "USGS-43211234"
+    assert data["alternate_organization"] == "USGS"
+
 def test_patch_thing():
     response = client.patch(
         "/thing/1",

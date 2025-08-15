@@ -50,13 +50,19 @@ from sqlalchemy.orm import configure_mappers
 configure_mappers()
 
 
-def adder(session, table, model, **kwargs):
+def adder(session, table, model, user=None, **kwargs):
     """
     Helper function to add a new record to the database.
     """
+
+
     md = model.model_dump()
     if kwargs:
         md.update(kwargs)
+
+    if user:
+        md['created_by_id'] = user['sub']
+        md['created_by_name'] = user['name']
 
     obj = table(**md)
     session.add(obj)
