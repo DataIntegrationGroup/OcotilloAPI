@@ -35,39 +35,51 @@ def add_contact(
     if isinstance(contact_data, CreateContact):
         contact_data = contact_data.model_dump(exclude_unset=True)
 
-    contact = Contact(
-        name=contact_data["name"],
-        role=contact_data["role"],
-    )
-    for e in contact_data.get("emails", []):
-        email = Email(**e)
-        contact.emails.append(email)
-        # session.add(email)
+    """
+    Developer's note
 
-    for p in contact_data.get("phones", []):
-        phone = Phone(**p)
-        contact.phones.append(phone)
-        # session.add(phone)
+    Rollback if there's an error creating a record in one of the tables so
+    that orphaned/fractured records are not made
+    """
 
-    for a in contact_data.get("addresses", []):
-        address = Address(**a)
-        contact.addresses.append(address)
-        # session.add(address)
+    try:
+        contact = Contact(
+            name=contact_data["name"],
+            role=contact_data["role"],
+        )
+        for e in contact_data.get("emails", []):
+            email = Email(**e)
+            contact.emails.append(email)
+            # session.add(email)
 
-    session.add(contact)
-    session.commit()
-    session.refresh(contact)
+        for p in contact_data.get("phones", []):
+            phone = Phone(**p)
+            contact.phones.append(phone)
+            # session.add(phone)
 
-    location_contact_association = ThingContactAssociation()
-    location_contact_association.thing_id = contact_data.get("thing_id")
-    location_contact_association.contact_id = contact.id
+        for a in contact_data.get("addresses", []):
+            address = Address(**a)
+            contact.addresses.append(address)
+            # session.add(address)
 
-    session.add(location_contact_association)
-    # owner_contact_association = OwnerContactAssociation()
-    # owner_contact_association.owner_id = owner.id
-    # owner_contact_association.contact_id = contact.id
-    # session.add(owner_contact_association)
-    session.commit()
+        session.add(contact)
+        session.flush()
+        session.refresh(contact)
+
+        location_contact_association = ThingContactAssociation()
+        location_contact_association.thing_id = contact_data.get("thing_id")
+        location_contact_association.contact_id = contact.id
+
+        session.add(location_contact_association)
+        # owner_contact_association = OwnerContactAssociation()
+        # owner_contact_association.owner_id = owner.id
+        # owner_contact_association.contact_id = contact.id
+        # session.add(owner_contact_association)
+        session.flush()
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
 
     return contact
 
