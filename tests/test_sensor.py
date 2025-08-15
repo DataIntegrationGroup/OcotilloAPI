@@ -19,6 +19,7 @@ from schemas.sensor import ValidateSensor
 from tests import client, cleanup_post_test, cleanup_patch_test
 
 import pytest
+from pydantic import ValidationError
 
 # ====== module functions and fixtures =========================================
 
@@ -47,15 +48,12 @@ def second_sensor():
 
 
 def test_validate_datetime_installed_datetime_removed():
-    try:
-        sensor = ValidateSensor(
+    with pytest.raises(
+        ValidationError, match="datetime removed must be after datetime installed"
+    ):
+        ValidateSensor(
             datetime_installed="2023-01-02T00:00:00Z",
             datetime_removed="2023-01-01T00:00:00Z",
-        )
-    except ValueError as e:
-        assert (
-            e.errors()[0]["msg"]
-            == "Value error, datetime removed must be after datetime installed"
         )
 
 

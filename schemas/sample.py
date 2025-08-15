@@ -51,8 +51,8 @@ class ValidateSample(BaseModel):
     #             )
     #     return sample_bottom
 
-    # REFACTOR TODO: fields are evaluated in the order in which they are defined.
-    # are sample top/bottom really working as expected?
+    sample_top: float | None = None
+    sample_bottom: float | None = None
 
     sample_date: AwareDatetime | None = None
     sample_top: float | None = None
