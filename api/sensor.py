@@ -63,16 +63,18 @@ def update_sensor(
             existing_datetime_removed is not None
             and sensor_data.datetime_installed >= existing_datetime_removed
         ):
-            raise PydanticStyleException(
-                status_code=status.HTTP_409_CONFLICT,
-                loc=["body", "datetime_installed"],
-                msg=f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
-                type="value_error",
-                input={
+            detail = {
+                "loc": ["body", "datetime_installed"],
+                "msg": f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
+                "type": "value_error",
+                "input": {
                     "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
                         "+00:00", "Z"
                     )
                 },
+            }
+            raise PydanticStyleException(
+                status_code=status.HTTP_409_CONFLICT, detail=[detail]
             )
     elif (
         sensor_data.datetime_installed is None
@@ -81,16 +83,18 @@ def update_sensor(
         sensor = simple_get_by_id(session, Sensor, sensor_id)
         existing_datetime_installed = sensor.datetime_installed
         if sensor_data.datetime_removed <= existing_datetime_installed:
-            raise PydanticStyleException(
-                status_code=status.HTTP_409_CONFLICT,
-                loc=["body", "datetime_removed"],
-                msg=f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
-                type="value_error",
-                input={
+            detail = {
+                "loc": ["body", "datetime_removed"],
+                "msg": f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
+                "type": "value_error",
+                "input": {
                     "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
                         "+00:00", "Z"
                     )
                 },
+            }
+            raise PydanticStyleException(
+                status_code=status.HTTP_409_CONFLICT, detail=[detail]
             )
 
     return model_patcher(session, Sensor, sensor_id, sensor_data)
