@@ -32,18 +32,18 @@ from jose.exceptions import JWTError
 import httpx
 
 AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
-JWKS_URL = f"{AUTHENTIK_ISSUER}jwks/"
 ALGORITHMS = ["RS256"]
+jwks = {}
+if AUTHENTIK_ISSUER:
+    JWKS_URL = f"{AUTHENTIK_ISSUER}jwks/"
 
+    # Fetch JWKS (could also cache this)
+    def get_jwks():
+        resp = httpx.get(JWKS_URL)
+        resp.raise_for_status()
+        return resp.json()
 
-# Fetch JWKS (could also cache this)
-def get_jwks():
-    resp = httpx.get(JWKS_URL)
-    resp.raise_for_status()
-    return resp.json()
-
-
-jwks = get_jwks()
+    jwks = get_jwks()
 
 
 def get_public_key(token):
@@ -61,8 +61,8 @@ TokenType = Union[str, HTTPAuthorizationCredentials]
 scheme = OAuth2AuthorizationCodeBearer(
     # authorizationUrl=f"{settings.FIEF_URL}/authorize",
     # tokenUrl=f"{settings.FIEF_URL}/api/token",
-    authorizationUrl=os.environ.get("AUTHENTIK_AUTHORIZE_URL"),
-    tokenUrl=os.environ.get("AUTHENTIK_TOKEN_URL"),
+    authorizationUrl=os.environ.get("AUTHENTIK_AUTHORIZE_URL", ''),
+    tokenUrl=os.environ.get("AUTHENTIK_TOKEN_URL", ''),
     scopes={"openid": "openid", "offline_access": "offline_access"},
     auto_error=False,
 )
