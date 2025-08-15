@@ -26,11 +26,6 @@ def test_search_api(thing, contact, email, phone, address):
     response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
-
-    from pprint import pprint
-
-    pprint(data, indent=2)
-
     assert isinstance(data, dict)
     items = data.get("items")
     assert isinstance(items, list)
