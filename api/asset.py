@@ -125,7 +125,6 @@ async def add_asset(
 
     data = asset_data.model_dump()
     thing_id = data.pop("thing_id", None)
-    url = data.pop("url", "")
 
     data["storage_service"] = "gcs"
     asset = Asset(**data)
@@ -140,7 +139,6 @@ async def add_asset(
     session.add(asset)
     session.commit()
     session.refresh(asset)
-    asset.url = url
     return asset
 
 

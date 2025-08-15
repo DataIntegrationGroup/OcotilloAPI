@@ -33,6 +33,7 @@ class Asset(Base, AutoBaseMixin):
     storage_path = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
     size = Column(Integer, nullable=False)
+    url = Column(String, nullable=False)
 
     search_vector = Column(
         TSVectorType("name", "mime_type", "storage_service", "storage_path")

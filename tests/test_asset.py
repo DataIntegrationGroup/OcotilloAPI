@@ -15,7 +15,8 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
-from tests import client
+from db import Asset
+from tests import client, cleanup_post_test
 
 
 class MockBlob:
@@ -52,16 +53,9 @@ def test_upload_asset():
         assert response.status_code == 201
         data = response.json()
         assert "storage_path" in data
-        # assert data["name"] == "riochama.png"
-        # assert data["label"] == "riochama.png"
-        # assert data["storage_service"] == "mock_service"
-        # assert data["storage_path"] == "mock/path/to/asset"
-        # assert data["mime_type"] == "image/png"
-        # assert data["size"] == 12345
-        # assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
 
 
-def test_add_asset(location, thing):
+def test_add_asset(thing):
     resp = client.post(
         "/asset",
         json={
@@ -75,25 +69,11 @@ def test_add_asset(location, thing):
         },
     )
 
-    print(resp.json())
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "riochama.png"
-    # assert data["label"] == "Test Asset"
-    # path = "tests/data/riochama.png"
-    #
-    # with open(path, "rb") as file:
-    #     response = client.post(
-    #         "/asset",
-    #         params={"thing_id": thing.id},
-    #         files={"file": ("riochama.png", file, "image/png")},
-    #     )
-    #
-    #     data = response.json()
-    #     assert response.status_code == 201
-    #     assert data["name"] == "riochama.png"
-    #     url = data["url"]
-    #     assert url.startswith("https://storage.googleapis.com/")
+
+    cleanup_post_test(Asset, data["id"])
 
 
 def test_add_asset_with_label(thing):
@@ -114,28 +94,17 @@ def test_add_asset_with_label(thing):
     data = resp.json()
     assert data["name"] == "test_asset.png"
     assert data["label"] == "Test Asset"
-    # path = "tests/data/riochama.png"
-    #
-    # with open(path, "rb") as file:
-    #     response = client.post(
-    #         "/asset",
-    #         params={'label': 'test label'},
-    #         files={"file": ("riochama.png", file, "image/png")},
-    #     )
-    #
-    #     assert response.status_code == 201
-    #     data = response.json()
-    #     assert data["name"] == "riochama.png"
-    #     assert data["label"] == "test label"
+
+    cleanup_post_test(Asset, data["id"])
 
 
-def test_get_asset():
-    response = client.get("/asset/1")
+def test_get_asset(asset):
+    response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "riochama.png"
-    assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
+    assert data["id"] == asset.id
+    assert data["name"] == asset.name
+    assert data["url"] == asset.url
 
 
 def test_get_asset_not_found():
