@@ -66,18 +66,25 @@ def database_error_handler(
     """
     Handle errors raised by the database when adding or updating a sample.
     """
-    error_message = error.orig.args[0]["M"]
+    detail_list = []
+
+    for e in error.orig.args:
+        error_message = e["M"]
+
     if (
         error_message
         == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_thing_id_fkey"'
     ):
-        loc = ["body", "thing_id"]
-        msg = f"Thing with ID {payload.thing_id} not found."
-        type_ = "value_error"
-        input_ = payload.thing_id
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} not found.",
+            "type": "value_error",
+            "input": payload.thing_id,
+        }
+        detail_list.append(detail)
 
     raise PydanticStyleException(
-        status_code=status.HTTP_409_CONFLICT, loc=loc, msg=msg, type=type_, input=input_
+        status_code=status.HTTP_409_CONFLICT, detail=detail_list
     )
 
 
@@ -232,12 +239,15 @@ def update_thing_contact_association(
     :param session:
     :return:
     """
-    return model_patcher(
-        session,
-        ThingContactAssociation,
-        thing_contact_association_id,
-        thing_contact_association_data,
-    )
+    try:
+        return model_patcher(
+            session,
+            ThingContactAssociation,
+            thing_contact_association_id,
+            thing_contact_association_data,
+        )
+    except ProgrammingError as e:
+        database_error_handler(thing_contact_association_data, e)
 
 
 @router.patch("/{contact_id}", summary="Update contact")

@@ -1,4 +1,12 @@
 from fastapi import HTTPException
+from typing import TypedDict
+
+
+class PydanticDetailDict(TypedDict):
+    loc: list
+    msg: str
+    type: str
+    input: dict
 
 
 class PydanticStyleException(HTTPException):
@@ -10,12 +18,16 @@ class PydanticStyleException(HTTPException):
     def __init__(
         self,
         status_code: int,
-        loc: list,
-        msg: str,
-        type: str,
-        input: dict,
+        detail: list[PydanticDetailDict],
     ):
+        """
+        The detail needs to be a list with the following keys:
+            "loc": list
+            "msg": string
+            "type": string
+            "input": Any
+        """
         super().__init__(
             status_code=status_code,
-            detail=[{"loc": loc, "msg": msg, "type": type, "input": input}],
+            detail=detail,
         )
