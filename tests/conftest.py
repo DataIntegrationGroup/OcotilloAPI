@@ -144,7 +144,7 @@ def email(contact):
 def phone(contact):
     with session_ctx() as session:
         phone = Phone(
-            phone_number="505-123-4567", phone_type="Mobile", contact_id=contact.id
+            phone_number="+15051234567", phone_type="Mobile", contact_id=contact.id
         )
         session.add(phone)
         session.commit()

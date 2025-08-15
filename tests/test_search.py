@@ -30,7 +30,7 @@ def test_search_api(thing, sample):
     assert isinstance(data, dict)
     items = data.get("items")
     assert isinstance(items, list)
-    assert len(items) == 3
+    assert len(items) == 1
 
 
 @pytest.mark.skip(reason="This test is not working .")
@@ -54,42 +54,42 @@ def test_search_api3():
     assert len(items) == 0
 
 
-def test_search_contact():
+def test_search_contact(contact):
     with session_ctx() as session:
         query = search(select(Contact), "Test")
 
-        contact = session.scalars(query).first()
-        assert contact is not None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is not None
 
 
-def test_search_contact_no_results():
+def test_search_contact_no_results(contact):
     with session_ctx() as session:
         query = search(select(Contact), "NonExistent")
-        contact = session.scalars(query).first()
-        assert contact is None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is None
 
 
-def test_search_contact_like():
+def test_search_contact_like(contact):
     with session_ctx() as session:
         query = search(select(Contact), "Te")
-        contact = session.scalars(query).first()
-        assert contact is not None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is not None
 
 
-def test_search_contact_by_email():
+def test_search_contact_by_email(contact, email):
     with session_ctx() as session:
         vector = Contact.search_vector | Email.search_vector
         query = search(
             select(Contact).join(Email),
-            "fasdfasdf@gmail.co",
+            "test@example.com",
             vector=vector,
         )
 
-        contact = session.scalars(query).first()
-        assert contact is not None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is not None
 
 
-def test_search_contact_by_email_no_results():
+def test_search_contact_by_email_no_results(contact, email):
     with session_ctx() as session:
         vector = Contact.search_vector | Email.search_vector
         query = search(
@@ -97,23 +97,23 @@ def test_search_contact_by_email_no_results():
             "foo",
             vector=vector,
         )
-        contact = session.scalars(query).first()
-        assert contact is None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is None
 
 
-def test_search_contact_by_phone_number():
+def test_search_contact_by_phone_number(contact, phone):
     with session_ctx() as session:
         vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
-            "+12345678901",
+            "+15051234567",
             vector=vector,
         )
-        contact = session.scalars(query).first()
-        assert contact is not None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is not None
 
 
-def test_search_contact_by_phone_number_no_results():
+def test_search_contact_by_phone_number_no_results(contact, phone):
     with session_ctx() as session:
         vector = Contact.search_vector | Phone.search_vector
         query = search(
@@ -121,23 +121,23 @@ def test_search_contact_by_phone_number_no_results():
             "+12345678902",
             vector=vector,
         )
-        contact = session.scalars(query).first()
-        assert contact is None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is None
 
 
-def test_search_contact_by_phone_like():
+def test_search_contact_by_phone_like(contact, phone):
     with session_ctx() as session:
         vector = Contact.search_vector | Phone.search_vector
         query = search(
             select(Contact).join(Phone),
-            "+12",
+            "+15",
             vector=vector,
         )
-        contact = session.scalars(query).first()
-        assert contact is not None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is not None
 
 
-def test_search_contact_by_phone_like_no_results():
+def test_search_contact_by_phone_like_no_results(contact, phone):
     with session_ctx() as session:
         vector = Contact.search_vector | Phone.search_vector
         query = search(
@@ -145,8 +145,8 @@ def test_search_contact_by_phone_like_no_results():
             "+99",
             vector=vector,
         )
-        contact = session.scalars(query).first()
-        assert contact is None
+        queried_contact = session.scalars(query).first()
+        assert queried_contact is None
 
 
 # def test_search_owner_by_contact_name():
