@@ -62,7 +62,7 @@ class CreateGroundwaterLevelObservation(CreateBaseObservation):
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
     value: float
-    units: str
+    unit: str
 
 
 #
@@ -96,7 +96,7 @@ class BaseObservationResponse(BaseModel):
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water: float
-    level_status: str
+    level_status: str | None
 
 
 class GeothermalObservationResponse(BaseObservationResponse):

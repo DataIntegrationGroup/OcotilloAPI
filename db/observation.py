@@ -96,7 +96,7 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         Float,
         nullable=True,
     )
-    units = lexicon_term()
+    unit = lexicon_term()
 
     sensor = relationship("Sensor")
     sample = relationship("Sample")
