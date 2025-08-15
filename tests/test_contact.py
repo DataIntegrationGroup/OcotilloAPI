@@ -84,6 +84,21 @@ def second_address(second_contact):
         session.close()
 
 
+@pytest.fixture(scope="function")
+def second_thing_contact_association(thing, second_contact):
+    with session_ctx() as session:
+        association = ThingContactAssociation(
+            thing_id=thing.id, contact_id=second_contact.id
+        )
+        session.add(association)
+        session.commit()
+        session.refresh(association)
+        yield association
+        session.delete(association)
+        session.commit()
+        session.close()
+
+
 # VALIDATION tests =============================================================
 
 
@@ -869,3 +884,31 @@ def test_delete_address_404_not_found(second_address):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
+def test_delete_thing_contact_association(second_thing_contact_association):
+    response = client.delete(
+        f"/contact/thing-association/{second_thing_contact_association.id}"
+    )
+    assert response.status_code == 204
+
+    # verify association is deleted
+    response = client.get(
+        f"/contact/thing-association/{second_thing_contact_association.id}"
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"]
+        == f"ThingContactAssociation with ID {second_thing_contact_association.id} not found."
+    )
+
+
+def test_delete_thing_contact_association_404_not_found(
+    second_thing_contact_association,
+):
+    bad_id = 999999
+    response = client.delete(f"/contact/thing-association/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."

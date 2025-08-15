@@ -471,6 +471,19 @@ def delete_contact_address(address_id: int, session: session_dependency):
     return model_deleter(session, Address, address_id)
 
 
+@router.delete(
+    "/thing-association/{thing_contact_association_id}",
+    summary="Delete contact thing association",
+)
+def delete_contact_thing_association(
+    thing_contact_association_id: int, session: session_dependency
+):
+    """
+    Delete a contact's thing association from the database
+    """
+    return model_deleter(session, ThingContactAssociation, thing_contact_association_id)
+
+
 @router.delete("/{contact_id}", summary="Delete contact")
 def delete_contact(contact_id: int, session: session_dependency):
     """
