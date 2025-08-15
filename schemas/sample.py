@@ -51,9 +51,6 @@ class ValidateSample(BaseModel):
     #             )
     #     return sample_bottom
 
-    sample_top: float | None = None
-    sample_bottom: float | None = None
-
     sample_date: AwareDatetime | None = None
     sample_top: float | None = None
     sample_bottom: float | None = None
