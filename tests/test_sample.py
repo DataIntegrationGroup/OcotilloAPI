@@ -135,10 +135,13 @@ def test_409_add_sample_invalid_field_sample_id(sample, thing):
     )
     data = response.json()
     assert response.status_code == 409
+    assert data["detail"][0]["loc"] == ["body", "field_sample_id"]
     assert (
-        data["detail"]
+        data["detail"][0]["msg"]
         == f"Sample with field_sample_id {sample.field_sample_id} already exists."
     )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"field_sample_id": sample.field_sample_id}
 
 
 def test_409_add_sample_invalid_thing_id():
@@ -166,7 +169,13 @@ def test_409_add_sample_invalid_thing_id():
     )
     data = response.json()
     assert response.status_code == 409
-    assert data["detail"] == f"Thing with ID {payload['thing_id']} does not exist."
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {payload['thing_id']} does not exist."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": payload["thing_id"]}
 
 
 #  ============= Patch tests for samples =============================================
@@ -231,10 +240,13 @@ def test_409_patch_sample_invalid_field_sample_id(sample, second_sample):
     )
     data = response.json()
     assert response.status_code == 409
+    assert data["detail"][0]["loc"] == ["body", "field_sample_id"]
     assert (
-        data["detail"]
+        data["detail"][0]["msg"]
         == f"Sample with field_sample_id {payload['field_sample_id']} already exists."
     )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"field_sample_id": sample.field_sample_id}
 
 
 def test_409_patch_sample_invalid_thing_id(sample):
@@ -250,7 +262,13 @@ def test_409_patch_sample_invalid_thing_id(sample):
     )
     data = response.json()
     assert response.status_code == 409
-    assert data["detail"] == f"Thing with ID {payload['thing_id']} does not exist."
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {payload['thing_id']} does not exist."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": payload["thing_id"]}
 
 
 #  ============= Get tests for samples =============================================

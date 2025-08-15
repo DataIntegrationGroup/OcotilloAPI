@@ -331,7 +331,7 @@ def test_add_thing_association_409_thing_not_found(thing, contact):
     assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
     assert data["detail"][0]["loc"] == ["body", "thing_id"]
     assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == bad_thing_id
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
 # GET tests ======================================================

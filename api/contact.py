@@ -77,7 +77,7 @@ def database_error_handler(
             "loc": ["body", "thing_id"],
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
-            "input": payload.thing_id,
+            "input": {"thing_id": payload.thing_id},
         }
 
     elif (
@@ -88,7 +88,7 @@ def database_error_handler(
             "loc": ["body", "contact_id"],
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
-            "input": payload.contact_id,
+            "input": {"contact_id": payload.contact_id},
         }
 
     raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
