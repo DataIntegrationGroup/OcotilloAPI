@@ -11,7 +11,7 @@ import re
 
 
 @pytest.fixture(scope="function")
-def second_contact(thing):
+def second_contact():
     with session_ctx() as session:
         contact = Contact(
             name="Test Second Contact",
@@ -169,6 +169,32 @@ def test_add_contact(thing):
     )
 
     cleanup_post_test(Contact, data["id"])
+
+
+def test_add_contact_409_bad_thing_id():
+    bad_thing_id = 9999
+    payload = {
+        "name": "Test Contact 3",
+        "role": "Owner",
+        "thing_id": bad_thing_id,
+        "emails": [{"email": "testcontact3@gmail.com", "email_type": "Primary"}],
+        "phones": [{"phone_number": "+14153334445", "phone_type": "Primary"}],
+        "addresses": [
+            {
+                "address_line_1": "123 Default St",
+                "address_line_2": "Apt 8R",
+                "city": "Test Metropolis",
+                "state": "NM",
+                "postal_code": "87501",
+                "country": "United States",
+                "address_type": "Primary",
+            }
+        ],
+    }
+    response = client.post("/contact", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
 
 
 def test_add_address(contact):
@@ -705,6 +731,32 @@ def test_patch_thing_contact_association_404_not_found(
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+
+
+def test_patch_thing_contact_association_409_contact_not_found(
+    thing_contact_association,
+):
+    bad_contact_id = 999999
+    payload = {"contact_id": bad_contact_id}
+    response = client.patch(
+        f"/contact/thing-association/{thing_contact_association.id}", json=payload
+    )
+    assert response.status_code == 409
+    data = response.json()
+    assert len(data["detail"]) == 1
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_patch_thing_contact_association_409_thing_not_found(thing_contact_association):
+    bad_thing_id = 999999
+    payload = {"thing_id": bad_thing_id}
+    response = client.patch(
+        f"/contact/thing-association/{thing_contact_association.id}", json=payload
+    )
+    assert response.status_code == 409
+    data = response.json()
+    assert len(data["detail"]) == 1
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
 
 
 # DELETE tests =================================================================

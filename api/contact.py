@@ -17,7 +17,7 @@ from fastapi import APIRouter, Query
 from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
-from sqlalchemy.exc import IntegrityError, ProgrammingError
+from sqlalchemy.exc import ProgrammingError
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -61,15 +61,13 @@ router = APIRouter(prefix="/contact", tags=["contact"])
 
 
 def database_error_handler(
-    payload: CreateThingAssociation, error: IntegrityError | ProgrammingError
+    payload: CreateThingAssociation, error: ProgrammingError
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a sample.
     """
-    detail_list = []
 
-    for e in error.orig.args:
-        error_message = e["M"]
+    error_message = error.orig.args[0]["M"]
 
     if (
         error_message
@@ -81,11 +79,19 @@ def database_error_handler(
             "type": "value_error",
             "input": payload.thing_id,
         }
-        detail_list.append(detail)
 
-    raise PydanticStyleException(
-        status_code=status.HTTP_409_CONFLICT, detail=detail_list
-    )
+    elif (
+        error_message
+        == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_contact_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "contact_id"],
+            "msg": f"Contact with ID {payload.contact_id} not found.",
+            "type": "value_error",
+            "input": payload.contact_id,
+        }
+
+    raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
 
 
 # ====== POST ==================================================================
@@ -99,8 +105,10 @@ def database_error_handler(
 def create_contact(
     contact_data: CreateContact, session: session_dependency
 ) -> ContactResponse:
-
-    return add_contact(session, contact_data)
+    try:
+        return add_contact(session, contact_data)
+    except ProgrammingError as e:
+        database_error_handler(contact_data, e)
 
 
 @router.post(
