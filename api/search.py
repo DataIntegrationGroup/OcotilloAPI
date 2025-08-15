@@ -46,8 +46,10 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     )
 
     query = search(
-        select(Contact).join(Email).join(Phone).join(Address), q, vector=vector,
-        limit= limit
+        select(Contact).join(Email).join(Phone).join(Address),
+        q,
+        vector=vector,
+        limit=limit,
     )
     contacts = session.scalars(query).all()
     results = [
@@ -71,12 +73,13 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
 def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = Thing.search_vector
     water_well_query = search(
-        select(Thing).where(Thing.thing_type == "water well"), q, vector=vector,
-        limit=limit
+        select(Thing).where(Thing.thing_type == "water well"),
+        q,
+        vector=vector,
+        limit=limit,
     )
     spring_well_query = search(
-        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector,
-        limit=limit
+        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector, limit=limit
     )
 
     wells = session.scalars(water_well_query).all()
@@ -128,8 +131,10 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
 def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = Asset.search_vector
     query = search(
-        select(Asset).join(AssetThingAssociation).join(Thing), q, vector=vector,
-        limit=limit
+        select(Asset).join(AssetThingAssociation).join(Thing),
+        q,
+        vector=vector,
+        limit=limit,
     )
 
     assets = session.scalars(query).all()
@@ -152,7 +157,11 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 @router.get("")
-def search_api(session: session_dependency, q: str, limit: int=25, ) -> CustomPage[dict]:
+def search_api(
+    session: session_dependency,
+    q: str,
+    limit: int = 25,
+) -> CustomPage[dict]:
     """
     Search endpoint for the collaborative network.
     """
