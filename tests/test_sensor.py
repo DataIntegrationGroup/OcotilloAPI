@@ -13,50 +13,188 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from tests import client
+from db import Sensor
+from db.engine import session_ctx
+from schemas.sensor import ValidateSensor
+from tests import client, cleanup_post_test, cleanup_patch_test
+
+import pytest
+from pydantic import ValidationError
+
+# ====== module functions and fixtures =========================================
+
+
+@pytest.fixture(scope="function")
+def second_sensor():
+    with session_ctx() as session:
+        sensor = Sensor(
+            name="Test Sensor 2",
+            model="Model X",
+            serial_no="123456",
+            datetime_installed="2023-01-01T00:00:00Z",
+            datetime_removed="2023-01-02T00:00:00Z",
+            recording_interval=60,
+            notes="Test equipment",
+        )
+        session.add(sensor)
+        session.commit()
+        yield sensor
+        session.close()
+
+
+# ====== VALIDATION tests ======================================================
+
+
+def test_validate_datetime_installed_datetime_removed():
+    with pytest.raises(
+        ValidationError, match="datetime removed must be after datetime installed"
+    ):
+        ValidateSensor(
+            datetime_installed="2023-01-02T00:00:00Z",
+            datetime_removed="2023-01-01T00:00:00Z",
+        )
+
+
+# ====== POST tests ============================================================
 
 
 def test_add_sensor():
-    response = client.post(
-        "/sensor",
-        json={
-            "name": "Test Sensor",
-            "model": "Model X",
-            "serial_no": "123456",
-            "date_installed": "2023-01-01T00:00:00",
-            # "date_removed": None,
-            "recording_interval": 60,
-            "notes": "Test equipment",
-            # "location_id": 2,
-        },
-    )
+    payload = {
+        "name": "Test Sensor 2",
+        "model": "Model X",
+        "serial_no": "12345678",
+        "datetime_installed": "2024-01-01T00:00:00Z",
+        "datetime_removed": None,
+        "recording_interval": 60,
+        "notes": "Test equipment",
+    }
+    response = client.post("/sensor", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
-    # assert data["location_id"] == 2
+    assert data["name"] == payload["name"]
+    assert data["model"] == payload["model"]
+    assert data["serial_no"] == payload["serial_no"]
+    assert data["datetime_installed"] == payload["datetime_installed"]
+    assert data["datetime_removed"] == payload["datetime_removed"]
+    assert data["recording_interval"] == payload["recording_interval"]
+    assert data["notes"] == payload["notes"]
+
+    # cleanup after post test
+    cleanup_post_test(Sensor, data["id"])
 
 
-def test_get_sensors():
+# ====== PATCH tests ===========================================================
+
+
+def test_patch_sensor(sensor):
+    payload = {"name": "patched name", "model": "patched model"}
+    response = client.patch(f"/sensor/{sensor.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == sensor.id
+    assert data["name"] == payload["name"]
+    assert data["model"] == payload["model"]
+
+    # cleanup after patch test
+    cleanup_patch_test(Sensor, payload, sensor)
+
+
+def test_patch_sensor_404_not_found(sensor):
+    bad_sensor_id = 99999
+    payload = {"name": "patched name", "model": "patched model"}
+    response = client.patch(f"/sensor/{bad_sensor_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
+
+
+def test_patch_sensor_409_conflicting_datetime_installed(sensor):
+    payload = {"datetime_installed": "2025-01-01T00:00:00Z"}
+    response = client.patch(f"/sensor/{sensor.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "datetime_installed"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"new datetime installed must be before existing datetime removed of {sensor.datetime_removed}"
+    )
+    assert data["detail"][0]["type"] == "value_error"
+
+
+def test_patch_sensor_409_conflicting_datetime_removed(sensor):
+    payload = {"datetime_removed": "2020-01-01T00:00:00Z"}
+    response = client.patch(f"/sensor/{sensor.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "datetime_removed"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"new datetime removed must be after existing datetime installed of {sensor.datetime_installed}"
+    )
+    assert data["detail"][0]["type"] == "value_error"
+
+
+# ====== GET tests =============================================================
+
+
+def test_get_sensors(sensor):
     response = client.get("/sensor")
     assert response.status_code == 200
     data = response.json()
-    # assert isinstance(items, list), "Expected a list of sensors"
-    assert "items" in data
-    items = data["items"]
-    assert "id" in items[0], "Expected 'id' in sensor items"
-    # assert "name" in items[0], "Expected 'name' in sensor items"
-    # assert "equipment_type" in items[0], "Expected 'equipment_type' in sensor items"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == sensor.id
+    assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["model"] == sensor.model
+    assert data["items"][0]["serial_no"] == sensor.serial_no
+    assert data["items"][0]["datetime_installed"] == sensor.datetime_installed
+    assert data["items"][0]["datetime_removed"] == sensor.datetime_removed
+    assert data["items"][0]["recording_interval"] == sensor.recording_interval
+    assert data["items"][0]["notes"] == sensor.notes
 
 
-def test_get_sensor():
-    # Assuming the first sensor has an ID of 1
-    response = client.get("/sensor/1")
+def test_get_sensor_by_id(sensor):
+    response = client.get(f"/sensor/{sensor.id}")
     assert response.status_code == 200
     data = response.json()
-    assert "id" in data, "Expected 'id' in sensor data"
-    assert data["id"] == 1, "Expected sensor ID to be 1"
-    assert "name" in data, "Expected 'name' in sensor data"
-    # assert "equipment_type" in data, "Expected 'equipment_type' in sensor data"
+    assert data["id"] == sensor.id
+    assert data["name"] == sensor.name
+    assert data["model"] == sensor.model
+    assert data["serial_no"] == sensor.serial_no
+    assert data["datetime_installed"] == sensor.datetime_installed
+    assert data["datetime_removed"] == sensor.datetime_removed
+    assert data["recording_interval"] == sensor.recording_interval
+    assert data["notes"] == sensor.notes
+
+
+def test_get_sensor_by_id_404_not_found(sensor):
+    bad_sensor_id = 999999
+    response = client.get(f"/sensor/{bad_sensor_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
+
+
+# ====== DELETE tests ==========================================================
+
+
+def test_delete_sensor(second_sensor):
+    response = client.delete(f"/sensor/{second_sensor.id}")
+    assert response.status_code == 204
+
+    # verify sensor is gone
+    response = client.get(f"/sensor/{second_sensor.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {second_sensor.id} not found."
+
+
+def test_delete_sensor_404_not_found(sensor):
+    bad_sensor_id = 999999
+    response = client.delete(f"/sensor/{bad_sensor_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
 
 
 # ============= EOF =============================================
