@@ -63,6 +63,15 @@ class AuditMixin:
             server_default=func.timezone("UTC", func.now()),
         )
 
+    # TODO: there is probably no need to store both the id and name of the user. We should decide which attribute
+    #  included in the token payload is the most appropriate to use as the user identifier.
+    # included "claims"
+    # sub:  the subject of the token, which is a unique identifier for the user
+    # name: the name of the user
+    # email: the email address of the user
+    # given_name: the first name of the user
+    # preferred_username: the preferred username of the user
+    # nickname: the nickname of the user
     @declared_attr
     def created_by_name(self):
         return Column(

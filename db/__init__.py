@@ -55,12 +55,12 @@ def adder(session, table, model, user=None, **kwargs):
     Helper function to add a new record to the database.
     """
 
-
     md = model.model_dump()
     if kwargs:
         md.update(kwargs)
 
     if user:
+        # TODO: see note in "AuditMixin"
         md['created_by_id'] = user['sub']
         md['created_by_name'] = user['name']
 
