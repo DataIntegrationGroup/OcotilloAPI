@@ -27,8 +27,10 @@ def test_search_api(thing, sample):
     assert response.status_code == 200
     data = response.json()
 
-    assert isinstance(data, list)
-    assert len(data) == 3
+    assert isinstance(data, dict)
+    items = data.get("items")
+    assert isinstance(items, list)
+    assert len(items) == 3
 
 
 @pytest.mark.skip(reason="This test is not working .")
@@ -46,8 +48,10 @@ def test_search_api3():
     response = client.get("/search", params={"q": "nonexistent"})
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 0
+    assert isinstance(data, dict)
+    items = data.get("items")
+    assert isinstance(items, list)
+    assert len(items) == 0
 
 
 def test_search_contact():

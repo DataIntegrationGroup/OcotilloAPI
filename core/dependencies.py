@@ -24,8 +24,36 @@ from db.engine import get_db_session
 session_dependency = Annotated[Session, Depends(get_db_session)]
 
 # authentication functions
-well_user_function = authenticated(permissions=["well:read", "well:write"])
+
+# Admin, can do everything Editor and Viewer can do
+# + create new objects
+admin_function = authenticated(permissions=["Admin"])
+
+# Editor can do everything Viewer can do
+# + edit existing objects
+editor_function = authenticated(permissions=["Editor"])
+
+# Viewer can view all "global" entities Location, Sample, Group, Lexicon, etc
+viewer_function = authenticated(permissions=["Viewer"])
+
+# AMP specific permissions
+amp_admin_function = authenticated(permissions=["AMPAdmin"])
+amp_editor_function = authenticated(permissions=["AMPEditor"])
+amp_viewer_function = authenticated(permissions=["AMPViewer"])
+
+# for testing
+no_permission_function = authenticated(permissions=["NoPermission"])
+
 
 # permissions dependencies
-well_user_dependency = Annotated[Callable, Depends(well_user_function)]
+admin_dependency = Annotated[Callable, Depends(admin_function)]
+editor_dependency = Annotated[Callable, Depends(editor_function)]
+viewer_dependency = Annotated[Callable, Depends(viewer_function)]
+
+
+amp_admin_dependency = Annotated[Callable, Depends(amp_admin_function)]
+amp_editor_dependency = Annotated[Callable, Depends(amp_editor_function)]
+amp_viewer_dependency = Annotated[Callable, Depends(amp_viewer_function)]
+
+no_permission_dependency = Annotated[Callable, Depends(no_permission_function)]
 # ============= EOF =============================================

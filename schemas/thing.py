@@ -78,6 +78,7 @@ class CreateWellScreen(BaseModel):
     screen_depth_bottom: float
     screen_depth_top: float
     screen_type: str | None = None
+    screen_description: str | None = None
 
     @model_validator(mode="after")
     def validate_screen_type(self):
@@ -137,6 +138,14 @@ class SpringResponse(BaseThingResponse):
 class ThingResponse(WellResponse, SpringResponse):
     location: LocationResponse | None = None  # Optional location details
     geometry: dict | None = None
+
+
+class ThingIdLinkResponse(ORMBaseModel):
+    thing_id: int
+    thing: ThingResponse
+    relation: str
+    alternate_id: str
+    alternate_organization: str
 
 
 class LocationWellResponse(LocationResponse):
@@ -222,6 +231,13 @@ class UpdateWell(UpdateThing):
     well_construction_notes: str | None = None
 
     # group: str | None = None  # Optional group for the well
+
+
+class UpdateThingIdLink(BaseModel):
+    alternate_organization: str | None = None
+    alternate_id: str | None = None
+    relation: str | None = None
+    thing_id: int | None = None
 
 
 # ============= EOF =============================================

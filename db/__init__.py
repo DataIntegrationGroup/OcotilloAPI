@@ -49,13 +49,19 @@ from sqlalchemy.orm import configure_mappers
 configure_mappers()
 
 
-def adder(session, table, model, **kwargs):
+def adder(session, table, model, user=None, **kwargs):
     """
     Helper function to add a new record to the database.
     """
+
     md = model.model_dump()
     if kwargs:
         md.update(kwargs)
+
+    if user:
+        # TODO: see note in "AuditMixin"
+        md["created_by_id"] = user["sub"]
+        md["created_by_name"] = user["name"]
 
     obj = table(**md)
     session.add(obj)
@@ -64,7 +70,7 @@ def adder(session, table, model, **kwargs):
     return obj
 
 
-def search(query, search_query, vector=None, regconfig=None, sort=True):
+def search(query, search_query, vector=None, regconfig=None, sort=True, limit=None):
     if not search_query.strip():
         return query
 
@@ -87,6 +93,9 @@ def search(query, search_query, vector=None, regconfig=None, sort=True):
                 func.ts_rank_cd(vector, func.parse_websearch(cast(search_query, Text)))
             )
         )
+
+    if limit:
+        query = query.limit(limit)
 
     return query.params(term=search_query)
 

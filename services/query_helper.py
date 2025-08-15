@@ -121,7 +121,9 @@ def simple_all_getter(session, table) -> list[object]:
     return session.scalars(sql).all()
 
 
-def order_sort_filter(sql, table, sort, order, filter_) -> Select[Any]:
+def order_sort_filter(
+    sql: Select[Any], table: DeclarativeBase, sort: str, order: str, filter_: str
+) -> Select[Any]:
     if order:
         if not sort:
             raise ValueError(

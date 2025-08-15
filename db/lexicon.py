@@ -16,7 +16,7 @@
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship
 
-from db.base import AutoBaseMixin, Base
+from db.base import AutoBaseMixin, Base, lexicon_term
 
 
 class Lexicon(Base, AutoBaseMixin):
@@ -60,9 +60,7 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
 
     __tablename__ = "lexicon_term_category_association"
 
-    lexicon_term = mapped_column(
-        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
-    )
+    lexicon_term = lexicon_term(foreignkeykw={"ondelete": "CASCADE"})
     category_name = mapped_column(
         String(255),
         ForeignKey("lexicon_category.name", ondelete="CASCADE"),
@@ -82,13 +80,9 @@ class LexiconTriple(Base, AutoBaseMixin):
     This can be used to represent relationships between terms.
     """
 
-    subject = mapped_column(
-        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
-    )
+    subject = lexicon_term(nullable=False)
     predicate = mapped_column(String(100), nullable=False)
-    object_ = mapped_column(
-        String(100), ForeignKey("lexicon_term.term", ondelete="CASCADE"), nullable=False
-    )
+    object_ = lexicon_term(nullable=False)
 
     subject_term = relationship("Lexicon", foreign_keys=[subject])
     object_term = relationship("Lexicon", foreign_keys=[object_])

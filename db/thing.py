@@ -107,7 +107,7 @@ class ThingIdLink(Base, AutoBaseMixin):
     alternate_id = mapped_column(String(100), nullable=False)
     alternate_organization = lexicon_term(nullable=False)
 
-    # thing = relationship("Thing", back_populates="links")
+    thing = relationship("Thing", backref="links")
 
 
 class WellScreen(Base, AutoBaseMixin):
@@ -122,6 +122,9 @@ class WellScreen(Base, AutoBaseMixin):
     )
     screen_type = lexicon_term()  # e.g., "PVC", "Steel", etc.
 
+    screen_description = Column(
+        String(1000), nullable=True, info={"unit": "description of the screen"}
+    )
     # Define a relationship to well if needed
     # well = relationship("Well")
 
