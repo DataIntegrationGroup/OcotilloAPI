@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from pydantic import ValidationError
 import pytest
 
 from db.engine import session_ctx
@@ -55,15 +56,11 @@ def test_validate_sample_top_and_bottom():
     for i in range(2):
         sample_top = 10.0 if i == 0 else None
         sample_bottom = 5.0 if i == 1 else None
-        try:
-            invalid_sample = ValidateSample(
-                sample_top=sample_top, sample_bottom=sample_bottom
-            )
-        except ValueError as e:
-            assert (
-                str(e)
-                == "Sample top and bottom must both be defined or both must be None."
-            )
+        with pytest.raises(
+            ValidationError,
+            match="Sample top and bottom must both be defined or both must be None.",
+        ):
+            ValidateSample(sample_top=sample_top, sample_bottom=sample_bottom)
 
 
 #  ============= Post tests for samples =============================================
