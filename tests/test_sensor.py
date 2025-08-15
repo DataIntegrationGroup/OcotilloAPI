@@ -38,6 +38,8 @@ def second_sensor():
         session.add(sensor)
         session.commit()
         yield sensor
+        session.delete(sensor)
+        session.commit()
         session.close()
 
 

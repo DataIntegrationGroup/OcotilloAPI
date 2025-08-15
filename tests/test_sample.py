@@ -46,6 +46,7 @@ def second_sample(thing, sensor):
         yield sample
         session.delete(sample)
         session.commit()
+        session.close()
 
 
 # ============== Custom validators =================================================

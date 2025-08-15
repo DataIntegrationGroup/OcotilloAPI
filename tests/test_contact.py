@@ -21,6 +21,8 @@ def second_contact(thing):
 
         yield contact
 
+        session.delete(contact)
+        session.commit()
         session.close()
 
 
@@ -36,6 +38,8 @@ def second_email(second_contact):
         session.commit()
         session.refresh(email)
         yield email
+        session.delete(email)
+        session.commit()
         session.close()
 
 
@@ -51,6 +55,8 @@ def second_phone(second_contact):
         session.commit()
         session.refresh(phone)
         yield phone
+        session.delete(phone)
+        session.commit()
         session.close()
 
 
@@ -71,6 +77,8 @@ def second_address(second_contact):
         session.commit()
         session.refresh(address)
         yield address
+        session.delete(address)
+        session.commit()
         session.close()
 
 
