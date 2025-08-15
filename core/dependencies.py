@@ -24,15 +24,24 @@ from db.engine import get_db_session
 session_dependency = Annotated[Session, Depends(get_db_session)]
 
 # authentication functions
-# well_user_function = authenticated(permissions=["", "well:write"])
+
+# Admin, can do everything Editor and Viewer can do
+# + create new objects
 admin_function = authenticated(permissions=["Admin"])
+
+# Editor can do everything Viewer can do
+# + edit existing objects
 editor_function = authenticated(permissions=["Editor"])
+
+# Viewer can view all "global" entities Location, Sample, Group, Lexicon, etc
 viewer_function = authenticated(permissions=["Viewer"])
 
+# AMP specific permissions
 amp_admin_function = authenticated(permissions=["AMPAdmin"])
 amp_editor_function = authenticated(permissions=["AMPEditor"])
 amp_viewer_function = authenticated(permissions=["AMPViewer"])
 
+# for testing
 no_permission_function = authenticated(permissions=["NoPermission"])
 
 

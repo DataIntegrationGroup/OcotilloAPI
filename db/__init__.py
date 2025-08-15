@@ -71,7 +71,7 @@ def adder(session, table, model, user=None, **kwargs):
     return obj
 
 
-def search(query, search_query, vector=None, regconfig=None, sort=True):
+def search(query, search_query, vector=None, regconfig=None, sort=True, limit=None):
     if not search_query.strip():
         return query
 
@@ -94,6 +94,9 @@ def search(query, search_query, vector=None, regconfig=None, sort=True):
                 func.ts_rank_cd(vector, func.parse_websearch(cast(search_query, Text)))
             )
         )
+
+    if limit:
+        query = query.limit(limit)
 
     return query.params(term=search_query)
 

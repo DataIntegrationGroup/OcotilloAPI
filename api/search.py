@@ -16,7 +16,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from api.pagination import CustomPage
+from fastapi_pagination import paginate
+from fastapi_pagination.utils import disable_installed_extensions_check
 
+from core.dependencies import session_dependency
 from db import (
     Contact,
     Email,
@@ -27,12 +31,13 @@ from db import (
     AssetThingAssociation,
     search,
 )
-from db.engine import get_db_session
 
+
+disable_installed_extensions_check()
 router = APIRouter(prefix="/search", tags=["search"])
 
 
-def _get_contact_results(session: Session, q: str) -> list[dict]:
+def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = (
         Contact.search_vector
         | Email.search_vector
@@ -41,7 +46,8 @@ def _get_contact_results(session: Session, q: str) -> list[dict]:
     )
 
     query = search(
-        select(Contact).join(Email).join(Phone).join(Address), q, vector=vector
+        select(Contact).join(Email).join(Phone).join(Address), q, vector=vector,
+        limit= limit
     )
     contacts = session.scalars(query).all()
     results = [
@@ -62,13 +68,15 @@ def _get_contact_results(session: Session, q: str) -> list[dict]:
     return results
 
 
-def _get_thing_results(session: Session, q: str) -> list[dict]:
+def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = Thing.search_vector
     water_well_query = search(
-        select(Thing).where(Thing.thing_type == "water well"), q, vector=vector
+        select(Thing).where(Thing.thing_type == "water well"), q, vector=vector,
+        limit=limit
     )
     spring_well_query = search(
-        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector
+        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector,
+        limit=limit
     )
 
     wells = session.scalars(water_well_query).all()
@@ -117,10 +125,11 @@ def _get_thing_results(session: Session, q: str) -> list[dict]:
     ]
 
 
-def _get_asset_results(session: Session, q: str) -> list[dict]:
+def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = Asset.search_vector
     query = search(
-        select(Asset).join(AssetThingAssociation).join(Thing), q, vector=vector
+        select(Asset).join(AssetThingAssociation).join(Thing), q, vector=vector,
+        limit=limit
     )
 
     assets = session.scalars(query).all()
@@ -143,16 +152,17 @@ def _get_asset_results(session: Session, q: str) -> list[dict]:
 
 
 @router.get("")
-def search_api(q: str, session: Session = Depends(get_db_session)):
+def search_api(session: session_dependency, q: str, limit: int=25, ) -> CustomPage[dict]:
     """
     Search endpoint for the collaborative network.
     """
 
-    results = _get_contact_results(session, q)
-    results.extend(_get_thing_results(session, q))
-    results.extend(_get_asset_results(session, q))
+    results = _get_contact_results(session, q, limit)
+    results.extend(_get_thing_results(session, q, limit))
+    results.extend(_get_asset_results(session, q, limit))
 
-    return {"items": results, "total": len(results)}
+    return paginate(results)
+    # return {"items": results, "total": len(results)}
 
 
 # ============= EOF =============================================
