@@ -61,8 +61,8 @@ TokenType = Union[str, HTTPAuthorizationCredentials]
 scheme = OAuth2AuthorizationCodeBearer(
     # authorizationUrl=f"{settings.FIEF_URL}/authorize",
     # tokenUrl=f"{settings.FIEF_URL}/api/token",
-    authorizationUrl=os.environ.get("AUTHENTIK_AUTHORIZE_URL", ''),
-    tokenUrl=os.environ.get("AUTHENTIK_TOKEN_URL", ''),
+    authorizationUrl=os.environ.get("AUTHENTIK_AUTHORIZE_URL", ""),
+    tokenUrl=os.environ.get("AUTHENTIK_TOKEN_URL", ""),
     scopes={"openid": "openid", "offline_access": "offline_access"},
     auto_error=False,
 )
