@@ -258,6 +258,41 @@ def test_add_phone_404_contact_not_found(contact):
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
+def test_add_thing_association(thing, second_contact):
+    payload = {"thing_id": thing.id}
+    response = client.post(
+        f"/contact/{second_contact.id}/thing-association", json=payload
+    )
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["thing_id"] == thing.id
+    assert data["contact_id"] == second_contact.id
+
+    cleanup_post_test(ThingContactAssociation, data["id"])
+
+
+def test_add_thing_association_404_contact_not_found(contact, thing):
+    bad_contact_id = 99999
+    payload = {"thing_id": thing.id}
+    response = client.post(f"/contact/{bad_contact_id}/thing-association", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_add_thing_association_409_thing_not_found(thing, contact):
+    bad_thing_id = 9999
+    payload = {"thing_id": bad_thing_id}
+    response = client.post(f"/contact/{contact.id}/thing-association", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == bad_thing_id
+
+
 # GET tests ======================================================
 
 
@@ -723,7 +758,6 @@ def test_delete_email(second_contact, second_email):
     response = client.get(f"/contact/{second_contact.id}")
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert data["emails"] == []
 
 

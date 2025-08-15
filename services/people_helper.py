@@ -14,7 +14,13 @@
 # limitations under the License.
 # ===============================================================================
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
-from schemas.contact import CreateAddress, CreateContact, CreateEmail, CreatePhone
+from schemas.contact import (
+    CreateAddress,
+    CreateContact,
+    CreateEmail,
+    CreatePhone,
+    CreateThingAssociation,
+)
 from sqlalchemy.orm import Session
 
 
@@ -121,6 +127,22 @@ def add_phone(
     session.refresh(phone)
 
     return phone
+
+
+def add_thing_association(
+    session: Session, contact_id: int, thing_association_data: dict
+):
+    if isinstance(thing_association_data, CreateThingAssociation):
+        thing_association_data = thing_association_data.model_dump(exclude_unset=True)
+
+    thing_association = ThingContactAssociation(
+        **thing_association_data, contact_id=contact_id
+    )
+    session.add(thing_association)
+    session.commit()
+    session.refresh(thing_association)
+
+    return thing_association
 
 
 # ============= EOF =============================================

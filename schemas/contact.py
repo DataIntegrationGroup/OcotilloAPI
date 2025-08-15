@@ -99,6 +99,14 @@ class CreateAddress(BaseModel):
     address_type: str = "Primary"
 
 
+class CreateThingAssociation(BaseModel):
+    """
+    Schema for creating a ContactThingAssociation
+    """
+
+    thing_id: int
+
+
 class CreateContact(BaseModel):
     """
     Schema for creating a contact.

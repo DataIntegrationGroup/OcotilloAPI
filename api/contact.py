@@ -17,7 +17,7 @@ from fastapi import APIRouter, Query
 from fastapi import APIRouter
 from sqlalchemy import select
 from starlette import status
-
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -28,6 +28,7 @@ from schemas.contact import (
     CreateAddress,
     CreateEmail,
     CreatePhone,
+    CreateThingAssociation,
     PhoneResponse,
     EmailResponse,
     AddressResponse,
@@ -40,14 +41,45 @@ from schemas.contact import (
     UpdateThingContactAssociation,
 )
 from services.crud_helper import model_patcher, model_deleter
-from services.people_helper import add_contact, add_address, add_email, add_phone
+from services.people_helper import (
+    add_contact,
+    add_address,
+    add_email,
+    add_phone,
+    add_thing_association,
+)
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
     order_sort_filter,
 )
+from services.exceptions_helper import PydanticStyleException
 
 router = APIRouter(prefix="/contact", tags=["contact"])
+
+# ====== DB ERROR HANDLERS =====================================================
+
+
+def database_error_handler(
+    payload: CreateThingAssociation, error: IntegrityError | ProgrammingError
+) -> None:
+    """
+    Handle errors raised by the database when adding or updating a sample.
+    """
+    error_message = error.orig.args[0]["M"]
+    if (
+        error_message
+        == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_thing_id_fkey"'
+    ):
+        loc = ["body", "thing_id"]
+        msg = f"Thing with ID {payload.thing_id} not found."
+        type_ = "value_error"
+        input_ = payload.thing_id
+
+    raise PydanticStyleException(
+        status_code=status.HTTP_409_CONFLICT, loc=loc, msg=msg, type=type_, input=input_
+    )
+
 
 # ====== POST ==================================================================
 
@@ -107,6 +139,23 @@ def add_phone_to_contact(
 ) -> PhoneResponse:
     contact = simple_get_by_id(session, Contact, contact_id)
     return add_phone(session, contact.id, phone_data)
+
+
+@router.post(
+    "/{contact_id}/thing-association",
+    summary="Add a thing-contact association to a contact",
+    status_code=status.HTTP_201_CREATED,
+)
+def add_thing_association_to_contact(
+    contact_id: int,
+    thing_association_data: CreateThingAssociation,
+    session: session_dependency,
+) -> ThingContactAssociationResponse:
+    contact = simple_get_by_id(session, Contact, contact_id)
+    try:
+        return add_thing_association(session, contact.id, thing_association_data)
+    except ProgrammingError as e:
+        database_error_handler(thing_association_data, e)
 
 
 # PATCH ========================================================================
