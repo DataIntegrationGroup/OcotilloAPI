@@ -61,8 +61,8 @@ def adder(session, table, model, user=None, **kwargs):
 
     if user:
         # TODO: see note in "AuditMixin"
-        md['created_by_id'] = user['sub']
-        md['created_by_name'] = user['name']
+        md["created_by_id"] = user["sub"]
+        md["created_by_name"] = user["name"]
 
     obj = table(**md)
     session.add(obj)

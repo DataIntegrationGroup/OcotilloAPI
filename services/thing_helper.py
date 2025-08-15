@@ -110,12 +110,14 @@ def get_db_things(
 def audit_add(user, obj):
     # TODO: see note in "AuditMixin"
     if user:
-        obj.created_by_id = user['sub']
-        obj.created_by_name = user['name']
+        obj.created_by_id = user["sub"]
+        obj.created_by_name = user["name"]
 
 
 # REFACTOR TODO: use enums (or enum-like object) for thing_type
-def add_thing(session: Session, data: BaseModel | dict, thing_type: str = None, user: dict=None) -> Base:
+def add_thing(
+    session: Session, data: BaseModel | dict, thing_type: str = None, user: dict = None
+) -> Base:
 
     if isinstance(data, BaseModel):
         data = data.model_dump()

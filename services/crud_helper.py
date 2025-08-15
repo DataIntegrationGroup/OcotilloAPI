@@ -22,8 +22,11 @@ from services.query_helper import simple_get_by_id
 
 
 def model_patcher(
-    session: Session, model: DeclarativeBase, item_id: int, payload: BaseModel,
-        user: dict=None,
+    session: Session,
+    model: DeclarativeBase,
+    item_id: int,
+    payload: BaseModel,
+    user: dict = None,
 ):
     # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
     item = simple_get_by_id(session, model, item_id)
@@ -32,8 +35,8 @@ def model_patcher(
         setattr(item, key, value)
 
     if user:
-        item.updated_by_id = user['sub']
-        item.updated_by_name = user['name']
+        item.updated_by_id = user["sub"]
+        item.updated_by_name = user["name"]
 
     session.commit()
     session.refresh(item)

@@ -100,6 +100,7 @@ class AuditMixin:
             nullable=True,
         )
 
+
 class AutoBaseMixin(AuditMixin):
     @declared_attr
     def __tablename__(self):

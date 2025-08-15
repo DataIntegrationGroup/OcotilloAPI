@@ -28,7 +28,11 @@ from core.dependencies import (
     admin_dependency,
     editor_dependency,
     amp_viewer_dependency,
-    viewer_dependency, no_permission_dependency, viewer_function, amp_viewer_function, no_permission_function,
+    viewer_dependency,
+    no_permission_dependency,
+    viewer_function,
+    amp_viewer_function,
+    no_permission_function,
     amp_editor_dependency,
 )
 from db import adder
@@ -48,19 +52,22 @@ from schemas.thing import (
     UpdateWell,
     SpringResponse,
     CreateSpring,
-    CreateThing, ThingIdLinkResponse, UpdateThingIdLink,
+    CreateThing,
+    ThingIdLinkResponse,
+    UpdateThingIdLink,
 )
 from services.crud_helper import model_patcher
 from services.query_helper import (
     simple_get_by_id,
-    paginated_all_getter, order_sort_filter,
+    paginated_all_getter,
+    order_sort_filter,
 )
 from services.thing_helper import add_thing, get_db_things
 from services.validation.well import validate_screens
 
-router = APIRouter(prefix="/thing", tags=["thing"],
-                   dependencies=[Depends(viewer_function)]
-                   )
+router = APIRouter(
+    prefix="/thing", tags=["thing"], dependencies=[Depends(viewer_function)]
+)
 
 
 @router.get("")
@@ -96,8 +103,9 @@ def get_things(
         )
 
 
-@router.get("/well", summary="Get all wells",
-            dependencies=[Depends(amp_viewer_function)])
+@router.get(
+    "/well", summary="Get all wells", dependencies=[Depends(amp_viewer_function)]
+)
 async def get_wells(
     session: session_dependency,
     # api_id: str = None,
@@ -124,8 +132,9 @@ async def get_wells(
     # return result.scalars().all()
 
 
-@router.get("/spring", summary="Get all springs",
-            dependencies=[Depends(amp_viewer_function)])
+@router.get(
+    "/spring", summary="Get all springs", dependencies=[Depends(amp_viewer_function)]
+)
 async def get_springs(
     session: session_dependency,
     sort: str = None,
@@ -178,8 +187,8 @@ async def get_well_screen_by_id(
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
 def get_thing_id_links(
-        thing_id: int,
-        session: session_dependency,
+    thing_id: int,
+    session: session_dependency,
 ) -> CustomPage[ThingIdLinkResponse]:
     """
     Retrieve all links for a specific thing by its ID.
@@ -190,8 +199,8 @@ def get_thing_id_links(
 
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
 def get_thing_id_links(
-        link_id: int,
-        session: session_dependency,
+    link_id: int,
+    session: session_dependency,
 ) -> ThingIdLinkResponse:
     """
     Retrieve all links for a specific thing by its ID.
@@ -199,12 +208,15 @@ def get_thing_id_links(
     return simple_get_by_id(session, ThingIdLink, link_id)
 
 
-@router.get('/id-link', summary="Get all thing links",)
+@router.get(
+    "/id-link",
+    summary="Get all thing links",
+)
 def get_thing_id_links(
-        session: session_dependency,
-        filter_: str = Query(alias="filter", default=None),
-        sort: str = None,
-        order: str = None,
+    session: session_dependency,
+    filter_: str = Query(alias="filter", default=None),
+    sort: str = None,
+    order: str = None,
 ) -> CustomPage[ThingIdLinkResponse]:
     """
     Retrieve all thing links, optionally filtered and sorted.
@@ -213,18 +225,19 @@ def get_thing_id_links(
     sql = order_sort_filter(sql, ThingIdLink, sort=sort, order=order, filter_=filter_)
 
     return paginate(query=sql, conn=session)
+
+
 #  ===== POST =============
 
 
 @router.post(
-    "/id-link",
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a new thing link"
+    "/id-link", status_code=status.HTTP_201_CREATED, summary="Create a new thing link"
 )
-def create_thing_id_link(link_data: CreateThingIdLink,
-                         session: session_dependency,
-                         user: admin_dependency,
-                         ):
+def create_thing_id_link(
+    link_data: CreateThingIdLink,
+    session: session_dependency,
+    user: admin_dependency,
+):
     """
     Create a new link between a thing and an alternate ID.
     """
@@ -347,10 +360,10 @@ def update_thing(
 
 @router.patch("/well/{thing_id}", summary="Update well by parent thing ID")
 def update_thing(
-        thing_id: int,
-        thing_data: UpdateWell,
-        session: session_dependency,
-        user: amp_editor_dependency,
+    thing_id: int,
+    thing_data: UpdateWell,
+    session: session_dependency,
+    user: amp_editor_dependency,
 ) -> WellResponse:
     """
     Update an existing well by ID.
@@ -360,11 +373,12 @@ def update_thing(
 
 @router.patch("/id-link/{link_id}", summary="Update thing link by ID")
 def update_thing_id_link(
-        link_id: int,
-        link_data: UpdateThingIdLink,
-        session: session_dependency,
-        user: editor_dependency,
-)-> ThingIdLinkResponse:
+    link_id: int,
+    link_data: UpdateThingIdLink,
+    session: session_dependency,
+    user: editor_dependency,
+) -> ThingIdLinkResponse:
     return model_patcher(session, ThingIdLink, link_id, link_data, user=user)
+
 
 # ============= EOF =============================================

@@ -232,10 +232,12 @@ class UpdateWell(UpdateThing):
 
     # group: str | None = None  # Optional group for the well
 
+
 class UpdateThingIdLink(BaseModel):
     alternate_organization: str | None = None
     alternate_id: str | None = None
     relation: str | None = None
     thing_id: int | None = None
+
 
 # ============= EOF =============================================
