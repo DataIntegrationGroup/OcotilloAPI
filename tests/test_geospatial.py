@@ -56,9 +56,11 @@ def populate():
         session.add(LocationThingAssociation(location=loc1, thing=thing1))
         session.add(LocationThingAssociation(location=loc2, thing=thing2))
 
-        group = Group(name="Test Group Foo",
-                      description="Test Group Description",
-                      project_area='MULTIPOLYGON(((10 10, 20 10, 20 20, 10 20, 10 10)))')
+        group = Group(
+            name="Test Group Foo",
+            description="Test Group Description",
+            project_area="MULTIPOLYGON(((10 10, 20 10, 20 20, 10 20, 10 10)))",
+        )
 
         session.add(group)
         session.commit()
@@ -82,7 +84,10 @@ def test_get_project_area():
     assert len(data["features"]) > 0
     assert data["features"][0]["properties"]["group_id"] == 1
     assert data["features"][0]["properties"]["group_name"] == "Test Group Foo"
-    assert data["features"][0]["properties"]["group_description"] == "Test Group Description"
+    assert (
+        data["features"][0]["properties"]["group_description"]
+        == "Test Group Description"
+    )
     assert data["features"][0]["geometry"]["type"] == "MultiPolygon"
     # assert data["features"][0][] == 'MULTIPOLYGON(((10 10, 20 10, 20 20, 10 20, 10 10)))'
 

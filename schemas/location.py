@@ -27,7 +27,8 @@ Create common validator classes to be shared amongst create and update schemas.
 Since many fields are optional in the update schemas set check_fields=False in the field_validator.
 """
 
-def validate_wkt_geometry(value: str|None) -> str|None  :
+
+def validate_wkt_geometry(value: str | None) -> str | None:
     """
     Validate that the provided string is a valid WKT geometry.
     Raises ValueError if the geometry is invalid.
@@ -135,5 +136,6 @@ class UpdateGroup(BaseModel):
     description: str | None = None
     parent_group_id: int | None = None
     project_area: str | None = None
+
 
 # ============= EOF =============================================

@@ -15,12 +15,15 @@ def test_add_group():
 
 def test_add_group_with_area():
     response = client.post(
-        "/group", json={"name": "Test Group with Project Area", "project_area":
-                        'MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))'
-                        }
+        "/group",
+        json={
+            "name": "Test Group with Project Area",
+            "project_area": "MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))",
+        },
     )
     assert response.status_code == 201
     data = response.json()
+
 
 def test_add_group_thing(location, thing):
     response = client.post(

@@ -178,7 +178,6 @@ class GroupResponse(ORMBaseModel):
     parent_group_id: int | None = None
     project_area: str | None = None
 
-
     @field_validator("project_area", mode="before")
     def project_area_to_wkt(cls, value):
         if not value:
@@ -201,7 +200,10 @@ class GeoJSONGeometry(BaseModel):
 
     type: str
     coordinates: (
-        List[float] | List[List[float]] | List[List[List[float]]] |  List[List[List[List[float]]]]
+        List[float]
+        | List[List[float]]
+        | List[List[List[float]]]
+        | List[List[List[List[float]]]]
     )  # Supports Point, LineString, Polygon, MultiPolygon
 
 
