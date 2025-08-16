@@ -129,4 +129,14 @@ class PropertiesMixin:
         )
 
 
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
+    def __str__(self):
+        return self.username
+
+
 # ============= EOF =============================================
