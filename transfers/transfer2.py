@@ -200,6 +200,7 @@ def transfer_water_levels(session):
 
 ADDED = []
 
+
 def transfer_thing(session, site_type, make_payload, limit=None):
     ldf = pd.read_csv("./data/location.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
@@ -249,6 +250,7 @@ def transfer_perennial_stream(session, limit=None):
             "thing_type": "perennial stream",
             "release_status": "public" if row.PublicRelease else "private",
         }
+
     transfer_thing(session, "PS", make_payload, limit)
 
 
@@ -259,6 +261,7 @@ def transfer_ephemeral_stream(session, limit=None):
             "thing_type": "ephemeral stream",
             "release_status": "public" if row.PublicRelease else "private",
         }
+
     transfer_thing(session, "ES", make_payload, limit)
 
 
@@ -269,6 +272,7 @@ def transfer_met(session, limit=None):
             "thing_type": "meteorological station",
             "release_status": "public" if row.PublicRelease else "private",
         }
+
     transfer_thing(session, "M", make_payload, limit)
 
 
