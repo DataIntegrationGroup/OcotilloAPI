@@ -200,10 +200,9 @@ def transfer_water_levels(session):
 
 ADDED = []
 
-
-def transfer_springs(session, limit=None):
+def transfer_thing(session, site_type, make_payload, limit=None):
     ldf = pd.read_csv("./data/location.csv")
-    ldf = ldf[ldf["SiteType"] == "SP"]
+    ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
     start_time = time.time()
@@ -223,17 +222,54 @@ def transfer_springs(session, limit=None):
 
         spring = add_thing(
             session,
-            {
-                "name": row.PointID,
-                "thing_type": "spring",
-                "release_status": "public" if row.PublicRelease else "private",
-            },
+            make_payload(row),
         )
         assoc = LocationThingAssociation()
 
         assoc.location = location
         assoc.thing = spring
         session.add(assoc)
+
+
+def transfer_springs(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "spring",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "SP", make_payload, limit)
+
+
+def transfer_perennial_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "perennial stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+    transfer_thing(session, "PS", make_payload, limit)
+
+
+def transfer_ephemeral_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "ephemeral stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+    transfer_thing(session, "ES", make_payload, limit)
+
+
+def transfer_met(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "meteorological station",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+    transfer_thing(session, "M", make_payload, limit)
 
 
 def transfer_wells(session, limit=None):
@@ -356,7 +392,10 @@ if __name__ == "__main__":
     with session_ctx() as sess:
         transfer_wells(sess, 1000)
         transfer_springs(sess, limit=1000)
+        transfer_perennial_stream(sess)
+        transfer_ephemeral_stream(sess)
+        transfer_met(sess)
         # transfer_wellscreens(sess)
-        transfer_water_levels(sess)
+        # transfer_water_levels(sess)
 
 # ============= EOF =============================================

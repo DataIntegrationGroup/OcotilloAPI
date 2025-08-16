@@ -31,6 +31,9 @@
 
   {"category": "thing_type", "term": "water well", "definition": "a hole drill into the ground to access groundwater"},
   {"category": "thing_type", "term": "spring", "definition": "a natural discharge of groundwater at the surface"},
+  {"category": "thing_type", "term": "perennial stream", "definition": "that has a continuous flow of water throughout the year, even during drier periods."},
+  {"category": "thing_type", "term": "ephemeral stream", "definition": "a stream that flows only briefly during and after precipitation events"},
+  {"category": "thing_type", "term": "meteorological station", "definition": "a station that measures the weather conditions at a particular location"},
 
   {"category": "level_status", "term": "dry", "definition": "well is dry"},
   {"category": "level_status", "term": "normal", "definition": "normal well water level status"},
