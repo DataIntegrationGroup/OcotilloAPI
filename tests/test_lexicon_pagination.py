@@ -21,7 +21,7 @@ def test_get_lexicon_terms_sort_categories_branch():
     Ensure the special-case branch (sort == 'categories') in GET /lexicon is exercised.
     It should not apply sorting/filtering and still return a valid pagination payload.
     """
-    resp = client.get("/lexicon", params={"sort": "categories"})
+    resp = client.get("/lexicon/term", params={"sort": "categories"})
     assert resp.status_code == 200
     data = resp.json()
     # fastapi-pagination returns a Page-like object with these keys

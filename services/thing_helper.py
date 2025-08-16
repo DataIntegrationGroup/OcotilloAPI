@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from db import LocationThingAssociation, Thing, Base, Location
 from schemas.location import LocationResponse
 from db.group import Group, GroupThingAssociation
+from services.audit_helper import audit_add
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter
 from shapely import wkb
@@ -106,12 +107,6 @@ def get_db_things(
 
     return paginate(query=sql, conn=session, transformer=transformer)
 
-
-def audit_add(user, obj):
-    # TODO: see note in "AuditMixin"
-    if user:
-        obj.created_by_id = user["sub"]
-        obj.created_by_name = user["name"]
 
 
 # REFACTOR TODO: use enums (or enum-like object) for thing_type
