@@ -16,9 +16,11 @@
 from sqlalchemy.orm import DeclarativeBase
 
 
-def audit_add(user: dict, obj: DeclarativeBase)->None:
+def audit_add(user: dict, obj: DeclarativeBase) -> None:
     # see note in "AuditMixin"
     if user:
         obj.created_by_id = user["sub"]
         obj.created_by_name = user["name"]
+
+
 # ============= EOF =============================================

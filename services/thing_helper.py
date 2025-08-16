@@ -108,7 +108,6 @@ def get_db_things(
     return paginate(query=sql, conn=session, transformer=transformer)
 
 
-
 # REFACTOR TODO: use enums (or enum-like object) for thing_type
 def add_thing(
     session: Session, data: BaseModel | dict, thing_type: str = None, user: dict = None

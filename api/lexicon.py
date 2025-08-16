@@ -18,8 +18,13 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency, editor_dependency, admin_dependency, viewer_dependency, \
-    viewer_function
+from core.dependencies import (
+    session_dependency,
+    editor_dependency,
+    admin_dependency,
+    viewer_dependency,
+    viewer_function,
+)
 from db.engine import get_db_session
 from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
 from schemas.lexicon import (
@@ -34,13 +39,12 @@ from services.lexicon import add_lexicon_term
 from services.query_helper import (
     simple_all_getter,
     paginated_all_getter,
-    order_sort_filter, simple_get_by_id,
+    order_sort_filter,
+    simple_get_by_id,
 )
 
 router = APIRouter(
-    prefix="/lexicon",
-    tags=["lexicon"],
-    dependencies=[Depends(viewer_function)]
+    prefix="/lexicon", tags=["lexicon"], dependencies=[Depends(viewer_function)]
 )
 
 
@@ -70,17 +74,15 @@ def add_category(
     status_code=status.HTTP_201_CREATED,
 )
 def add_term(
-    term_data: CreateLexiconTerm,
-    session: session_dependency,
-    user: admin_dependency
+    term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
 ) -> LexiconTermResponse:
     """
     Endpoint to add a term to the lexicon.
     """
     data = term_data.model_dump()
-    return add_lexicon_term(session, data["term"],
-                            data["definition"], data["category"],
-                            user=user)
+    return add_lexicon_term(
+        session, data["term"], data["definition"], data["category"], user=user
+    )
 
 
 @router.post(
@@ -112,18 +114,17 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     return triple
 
 
-@router.get('/term/{term_id}')
+@router.get("/term/{term_id}")
 def get_lexicon_term(term_id: int, session: session_dependency):
     return simple_get_by_id(session, Lexicon, term_id)
 
 
-@router.get('/category/{category_id}')
+@router.get("/category/{category_id}")
 def get_lexicon_category(category_id: int, session: session_dependency):
     return simple_get_by_id(session, Category, category_id)
 
 
-@router.get("/term",
-            summary="Get lexicon terms")
+@router.get("/term", summary="Get lexicon terms")
 def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
@@ -163,8 +164,8 @@ def get_lexicon_terms(
 @router.get("/category")
 def get_lexicon_categories(
     session: session_dependency,
-    sort: str = 'name',
-    order: str = 'asc',
+    sort: str = "name",
+    order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[LexiconCategoryResponse]:
     """
@@ -175,10 +176,10 @@ def get_lexicon_categories(
 
 @router.patch("/term/{term_id}")
 def update_lexicon_term(
-        term_id: int,
-        term_data: CreateLexiconTerm,
-        session: session_dependency,
-        user: editor_dependency
+    term_id: int,
+    term_data: CreateLexiconTerm,
+    session: session_dependency,
+    user: editor_dependency,
 ):
 
     return model_patcher(session, Lexicon, term_id, term_data, user=user)
@@ -186,10 +187,12 @@ def update_lexicon_term(
 
 @router.patch("/category/{category_id}")
 def update_lexicon_category(
-        category_id: int,
-        category_data: CreateLexiconCategory,
-        session: session_dependency,
-        user: editor_dependency
+    category_id: int,
+    category_data: CreateLexiconCategory,
+    session: session_dependency,
+    user: editor_dependency,
 ):
     return model_patcher(session, Category, category_id, category_data, user=user)
+
+
 # ============= EOF =============================================

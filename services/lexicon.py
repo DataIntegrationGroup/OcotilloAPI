@@ -21,8 +21,7 @@ from services.audit_helper import audit_add
 
 
 def add_lexicon_term(
-    session: Session, term: str, definition: str, category: str | int,
-    user: dict =None
+    session: Session, term: str, definition: str, category: str | int, user: dict = None
 ) -> Lexicon:
     """
     Add a term to the lexicon with its definition and category.
