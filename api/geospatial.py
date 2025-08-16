@@ -18,12 +18,16 @@ from typing import Annotated, List, Union
 
 from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
+from geoalchemy2.shape import to_shape
+from shapely.io import to_geojson
 
 # from starlette.responses import FileResponse
 
 from core.dependencies import session_dependency
+from db import Group
 from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
+from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
@@ -53,6 +57,31 @@ async def get_geospatial(
         return get_feature_collection(session, thing_type, group)
     else:
         return get_location_shapefile(session, thing_type, group)
+
+
+@router.get("/project-area/{group_id}", summary="Get project area for group")
+async def get_project_area(session: session_dependency,
+                           group_id: int)-> FeatureCollectionResponse:
+
+    group = simple_get_by_id(session, Group, group_id)
+
+    if group.project_area:
+        features = [
+            {"type": "Feature",
+             "geometry": json.loads(to_geojson(to_shape(group.project_area))),
+             "properties": {
+                 "group_id": group.id,
+                 "group_name": group.name,
+                 "group_description": group.description,
+             }
+             }
+        ]
+
+    return {
+        "type": "FeatureCollection",
+        "features": features,
+    }
+
 
 
 def get_feature_collection(

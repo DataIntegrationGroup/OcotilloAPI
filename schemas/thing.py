@@ -16,7 +16,9 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel, model_validator
+from geoalchemy2 import WKBElement
+from geoalchemy2.shape import to_shape
+from pydantic import BaseModel, model_validator, field_validator
 
 from schemas import ORMBaseModel
 from schemas.location import LocationResponse
@@ -174,6 +176,22 @@ class GroupResponse(ORMBaseModel):
     name: str
     description: str | None = None
     parent_group_id: int | None = None
+    project_area: str | None = None
+
+
+    @field_validator("project_area", mode="before")
+    def project_area_to_wkt(cls, value):
+        if not value:
+            return value
+
+        if isinstance(value, WKBElement):
+            return to_shape(value).wkt
+
+        # If the value is a string, assume it's already in WKT format
+        if isinstance(value, str):
+            return value
+
+        return None
 
 
 class GeoJSONGeometry(BaseModel):
@@ -183,8 +201,8 @@ class GeoJSONGeometry(BaseModel):
 
     type: str
     coordinates: (
-        List[float] | List[List[float]] | List[List[List[float]]]
-    )  # Supports Point, LineString, Polygon, etc.
+        List[float] | List[List[float]] | List[List[List[float]]] |  List[List[List[List[float]]]]
+    )  # Supports Point, LineString, Polygon, MultiPolygon
 
 
 class Feature(BaseModel):
