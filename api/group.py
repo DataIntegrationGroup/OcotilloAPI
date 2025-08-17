@@ -18,7 +18,12 @@ from fastapi import Depends, APIRouter, Query
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency, admin_dependency, editor_dependency, viewer_function
+from core.dependencies import (
+    session_dependency,
+    admin_dependency,
+    editor_dependency,
+    viewer_function,
+)
 from db import adder
 from db.group import Group, GroupThingAssociation
 from schemas.group import UpdateGroup, CreateGroup
@@ -30,12 +35,15 @@ from services.query_helper import (
     paginated_all_getter,
 )
 
-router = APIRouter(prefix="/group", tags=["group"],
-                   dependencies=[Depends(viewer_function)])
+router = APIRouter(
+    prefix="/group", tags=["group"], dependencies=[Depends(viewer_function)]
+)
 
 
 @router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
-def create_group(group_data: CreateGroup, session: session_dependency, user: admin_dependency) -> GroupResponse:
+def create_group(
+    group_data: CreateGroup, session: session_dependency, user: admin_dependency
+) -> GroupResponse:
     """
     Create a new group in the database.
     """
@@ -49,8 +57,8 @@ def create_group(group_data: CreateGroup, session: session_dependency, user: adm
 )
 def create_group_thing(
     group_location_data: CreateGroupThing,
-        session: session_dependency,
-        user: admin_dependency
+    session: session_dependency,
+    user: admin_dependency,
 ):
     """
     Create a new group location association in the database.
@@ -91,8 +99,10 @@ async def get_group_thing_by_id(association_id: int, session: session_dependency
 # ============= Patch =============================================
 @router.patch("/{group_id}", summary="Update a group by ID")
 async def update_group(
-        user: editor_dependency,
-    group_id: int, group_data: UpdateGroup, session: session_dependency
+    user: editor_dependency,
+    group_id: int,
+    group_data: UpdateGroup,
+    session: session_dependency,
 ) -> GroupResponse:
     """
     Update a group by ID in the database.

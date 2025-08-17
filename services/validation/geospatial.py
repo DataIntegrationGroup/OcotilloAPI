@@ -31,4 +31,6 @@ def validate_wkt_geometry(value: str | None) -> str | None:
         return value
     except Exception as e:
         raise ValueError(f"Invalid WKT geometry: {e}")
+
+
 # ============= EOF =============================================
