@@ -15,16 +15,14 @@
 # ===============================================================================
 
 from fastapi import Depends, APIRouter, Query
-from sqlalchemy.orm import Session
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
+from core.dependencies import session_dependency, admin_dependency, editor_dependency, viewer_function
 from db import adder
-from db.engine import get_db_session
 from db.group import Group, GroupThingAssociation
-from schemas.group import UpdateGroup
-from schemas.location import CreateGroup, CreateGroupThing
+from schemas.group import UpdateGroup, CreateGroup
+from schemas.location import CreateGroupThing
 from schemas.thing import GroupResponse
 from services.crud_helper import model_patcher
 from services.query_helper import (
@@ -32,15 +30,16 @@ from services.query_helper import (
     paginated_all_getter,
 )
 
-router = APIRouter(prefix="/group", tags=["group"])
+router = APIRouter(prefix="/group", tags=["group"],
+                   dependencies=[Depends(viewer_function)])
 
 
 @router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
-def create_group(group_data: CreateGroup, session: session_dependency) -> GroupResponse:
+def create_group(group_data: CreateGroup, session: session_dependency, user: admin_dependency) -> GroupResponse:
     """
     Create a new group in the database.
     """
-    return adder(session, Group, group_data)
+    return adder(session, Group, group_data, user=user)
 
 
 @router.post(
@@ -49,12 +48,14 @@ def create_group(group_data: CreateGroup, session: session_dependency) -> GroupR
     status_code=status.HTTP_201_CREATED,
 )
 def create_group_thing(
-    group_location_data: CreateGroupThing, session: session_dependency
+    group_location_data: CreateGroupThing,
+        session: session_dependency,
+        user: admin_dependency
 ):
     """
     Create a new group location association in the database.
     """
-    return adder(session, GroupThingAssociation, group_location_data)
+    return adder(session, GroupThingAssociation, group_location_data, user=user)
 
 
 # ============= Get =============================================
@@ -90,13 +91,13 @@ async def get_group_thing_by_id(association_id: int, session: session_dependency
 # ============= Patch =============================================
 @router.patch("/{group_id}", summary="Update a group by ID")
 async def update_group(
+        user: editor_dependency,
     group_id: int, group_data: UpdateGroup, session: session_dependency
 ) -> GroupResponse:
     """
     Update a group by ID in the database.
     """
-    return model_patcher(session, Group, group_id, group_data)
-    # return adder(session, Group, group_data, id=group_id)
+    return model_patcher(session, Group, group_id, group_data, user=user)
 
 
 # ============= EOF =============================================
