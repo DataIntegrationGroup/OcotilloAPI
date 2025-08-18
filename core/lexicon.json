@@ -11,7 +11,7 @@
   {"category": "unit", "term": "W/m²", "definition": "watts per square meter"},
   {"category": "unit", "term": "W/m·K", "definition": "watts per meter Kelvin"},
   {"category": "unit", "term": "m²/s", "definition": "square meters per second"},
-  {"category": "unit", "term": "C", "definition": "Celsius"},
+  {"category": "unit", "term": "deg C", "definition": "degree Celsius"},
 
   {"category": "observed_property", "term": "groundwater level", "definition": "groundwater level measurement" },
   {"category": "observed_property", "term": "pH", "definition": "pH"},
