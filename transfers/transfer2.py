@@ -49,7 +49,7 @@ from db import (
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
 from services.audit_helper import audit_add
-from services.gcs_helper import gcs_upload
+from services.gcs_helper import gcs_upload, check_asset_exists
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 
@@ -469,6 +469,11 @@ def transfer_assets(session):
             uf = UploadFile(file=f, filename=p, size=10)
             url, blob_name = gcs_upload(uf)
             thing_id = 151
+
+            if check_asset_exists(session, blob_name, thing_id):
+                print(f"Asset {blob_name} already exists. Skipping.")
+                continue
+
             asset = Asset(
                 name=p,
                 label=p,
@@ -498,15 +503,17 @@ def init_sensor(session):
 
 
 if __name__ == "__main__":
-
+    init=False
     with session_ctx() as sess:
-        # Base.metadata.drop_all(sess.bind)
-        # Base.metadata.create_all(sess.bind)
-        #
-        # init_lexicon("../core/lexicon.json")
-        #
-        # init_sensor(sess)
-        # transfer_wells(sess, 1000)
+        if init:
+            Base.metadata.drop_all(sess.bind)
+            Base.metadata.create_all(sess.bind)
+
+            init_lexicon("../core/lexicon.json")
+
+            init_sensor(sess)
+            transfer_wells(sess, 1000)
+
         # transfer_springs(sess, limit=1000)
         # transfer_perennial_stream(sess)
         # transfer_ephemeral_stream(sess)

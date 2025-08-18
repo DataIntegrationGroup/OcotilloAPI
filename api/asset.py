@@ -37,10 +37,9 @@ from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.gcs_helper import (
-    GCS_BUCKET_NAME,
     get_storage_bucket,
     gcs_upload,
-    set_asset_url,
+    set_asset_url, check_asset_exists,
 )
 
 router = APIRouter(
@@ -64,12 +63,23 @@ async def upload_asset(
 
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
-    user: admin_dependency, session: session_dependency, asset_data: CreateAsset
+    user: admin_dependency,
+        session: session_dependency,
+        asset_data: CreateAsset
 ) -> AssetResponse:
 
     data = asset_data.model_dump()
     thing_id = data.pop("thing_id", None)
     url = data.pop("url", "")
+    storage_path = data['storage_path']
+
+    # check to see if an asset entry already exists for
+    # this storage path and thing_id
+    existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
+    if existing_asset:
+        # If an asset already exists, return it
+        set_asset_url(existing_asset)
+        return existing_asset
 
     data["storage_service"] = "gcs"
     asset = Asset(**data)
