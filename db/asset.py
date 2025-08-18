@@ -30,14 +30,14 @@ class Asset(Base, AutoBaseMixin):
     # content = Column(UploadedFileField)
     # photo = Column(UploadedFileField(upload_type=UploadedImageWithThumb))
 
-    name: Mapped[str]=mapped_column(String, nullable=False)
-    label: Mapped[Optional[str]]=mapped_column(String, nullable=True)
-    storage_service: Mapped[str]=mapped_column(String, nullable=False)
-    storage_path: Mapped[str]=mapped_column(String, nullable=False)
-    mime_type: Mapped[str]=mapped_column(String, nullable=False)
-    size: Mapped[int]=mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    storage_service: Mapped[str] = mapped_column(String, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String, nullable=False)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    search_vector: Mapped[TSVectorType]=mapped_column(
+    search_vector: Mapped[TSVectorType] = mapped_column(
         TSVectorType("name", "mime_type", "storage_service", "storage_path")
     )
 
