@@ -52,35 +52,48 @@ class CreateBaseObservation(ValidateObservation):
     sensor_id: int
     observed_property: str
     release_status: str
+    value: float | None
+    unit: str | None
 
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
-    depth_to_water: float
     measuring_point_height: float
     level_status: str
 
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
-    value: float
-    unit: str
+    pass
 
 
-#
-#
-# class CreateGroundwaterLevelObservation(ChildObservationModel, GroundwaterLevelMixin):
-#     pass
-#
-#
-# class CreateGeothermalObservation(ChildObservationModel, GeothermalMixin):
-#     pass
-#
-#
-# class CreateGroundwaterLevelObservationDirect(CreateObservation, GroundwaterLevelMixin):
-#     pass
-#
-#
-# class CreateGeothermalObservationDirect(CreateObservation, GeothermalMixin):
-#     pass
+class CreateGeothermalObservation(CreateBaseObservation):
+    observation_depth: float
+
+
+# -------- UPDATE ------------
+
+
+class UpdateBaseObservation(ValidateObservation):
+    observation_datetime: Annotated[AwareDatetime, PastDatetime()]
+    sample_id: int | None = None
+    field_sample_id: str | None = None
+    sensor_id: int | None = None
+    observed_property: str | None = None
+    release_status: str | None = None
+    value: float | None | None = None
+    unit: str | None = None
+
+
+class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
+    measuring_point_height: float | None = None
+    level_status: str | None = None
+
+
+class UpdateWaterChemistryObservation(UpdateBaseObservation):
+    pass
+
+
+class UpdateGeothermalObservation(UpdateBaseObservation):
+    observation_depth: float | None = None
 
 
 # -------- RESPONSE ----------
@@ -92,17 +105,30 @@ class BaseObservationResponse(BaseModel):
     observed_property: str
     created_at: AwareDatetime
     release_status: str
+    value: float | None
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
-    depth_to_water: float
+    depth_to_water_bgs: float | None
+    measuring_point_height: float
     level_status: str | None
+
+    @field_validator("depth_to_water_bgs")
+    def calculate_depth_to_water_bgs(cls, depth_to_water_bgs, data):
+        depth_to_water = data.values.get("value")
+        measuring_point_height = data.values.get("measuring_point_height")
+        if depth_to_water is not None:
+            return depth_to_water - measuring_point_height
+        else:
+            return depth_to_water
+
+
+class WaterChemistryObservationResponse(BaseObservationResponse):
+    pass
 
 
 class GeothermalObservationResponse(BaseObservationResponse):
-
-    temperature: float
-    depth: float
+    observation_depth: float
 
 
 class ObservationResponse(
@@ -114,5 +140,4 @@ class ObservationResponse(
     """
 
 
-# -------- UPDATE ----------
 # ============= EOF =============================================
