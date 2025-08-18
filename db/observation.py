@@ -16,7 +16,6 @@
 from sqlalchemy import (
     ForeignKey,
     Integer,
-    TIMESTAMP,
     PrimaryKeyConstraint,
     Float,
     DateTime,
@@ -59,15 +58,13 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
     observed_property = lexicon_term()
-
-    # groundwater
-    depth_to_water = mapped_column(
+    value = mapped_column(
         Float,
         nullable=True,
-        doc="Depth to water level in ft below measuring point",
-        info={"unit": "ft"},
     )
+    unit = lexicon_term()
 
+    # groundwater
     measuring_point_height = mapped_column(
         Float,
         nullable=True,
@@ -78,25 +75,12 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     level_status = lexicon_term()
 
     # geothermal
-    depth = mapped_column(
+    observation_depth = mapped_column(
         Float,
         nullable=True,
         info={"unit": "feet"},
         doc="Depth of the geothermal observation in feet",
     )
-    temperature = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "degC"},
-        doc="Temperature of the geothermal observation in degrees Celsius",
-    )
-
-    # general observations
-    value = mapped_column(
-        Float,
-        nullable=True,
-    )
-    unit = lexicon_term()
 
     sensor = relationship("Sensor")
     sample = relationship("Sample")
