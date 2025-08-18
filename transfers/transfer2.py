@@ -44,7 +44,8 @@ from db import (
     Sensor,
     Address,
     Asset,
-    AssetThingAssociation, ThingIdLink,
+    AssetThingAssociation,
+    ThingIdLink,
 )
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
@@ -492,7 +493,7 @@ def transfer_assets(session):
             session.commit()
 
 
-def transfer_link_ids(session,site_type="GW"):
+def transfer_link_ids(session, site_type="GW"):
     ldf = pd.read_csv("./data/location.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
@@ -508,7 +509,7 @@ def transfer_link_ids(session,site_type="GW"):
         link_id.alternate_id = row.AlternateSiteID
 
         # TODO: this needs improvement. use regex to determine the organization from the alternate id.
-        link_id.alternate_organization = 'USGS'
+        link_id.alternate_organization = "USGS"
 
         session.add(link_id)
         session.commit()
@@ -525,7 +526,7 @@ def init_sensor(session):
 
 
 if __name__ == "__main__":
-    init=True
+    init = True
     with session_ctx() as sess:
         if init:
             Base.metadata.drop_all(sess.bind)
