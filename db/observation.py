@@ -16,7 +16,6 @@
 from sqlalchemy import (
     ForeignKey,
     Integer,
-    PrimaryKeyConstraint,
     Float,
     DateTime,
 )
@@ -29,14 +28,6 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     __tablename__ = "observation"
 
     __versioned__ = {}
-
-    __table_args__ = (
-        PrimaryKeyConstraint(
-            "id",
-            "observation_datetime",
-        ),
-        {},
-    )
 
     id = mapped_column(
         Integer,
