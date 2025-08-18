@@ -61,5 +61,4 @@ class LocationThingAssociation(Base, AutoBaseMixin):
     thing = relationship("Thing")
 
 
-
 # ============= EOF =============================================

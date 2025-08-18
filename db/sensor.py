@@ -31,8 +31,12 @@ class Sensor(Base, AutoBaseMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     model: Mapped[str] = mapped_column(String(50), nullable=True)
     serial_no: Mapped[str] = mapped_column(String(50), nullable=True)
-    datetime_installed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    datetime_removed: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    datetime_installed: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    datetime_removed: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     notes: Mapped[str] = mapped_column(String(50), nullable=True)
 
