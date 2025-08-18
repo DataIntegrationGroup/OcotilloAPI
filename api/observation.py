@@ -21,15 +21,17 @@ from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
-from db import Sample
+from core.dependencies import session_dependency, amp_admin_dependency, admin_dependency
+from db import Sample, Observation, adder
 from db.observation import Observation
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
     CreateWaterChemistryObservation,
+    WaterChemistryObservationResponse,
+    CreateGeothermalObservation,
+    GeothermalObservationResponse,
 )
-from services.observation_helper import add_observation
 from services.query_helper import order_sort_filter
 
 router = APIRouter(prefix="/observation", tags=["observation"])
@@ -40,39 +42,38 @@ router = APIRouter(prefix="/observation", tags=["observation"])
 def add_groundwater_level_observation(
     obs_data: CreateGroundwaterLevelObservation,
     session: session_dependency,
-):
+    user: amp_admin_dependency,
+) -> GroundwaterLevelObservationResponse:
     """
     Add a new groundwater observation to the database.
     """
-    return add_observation(session, obs_data)
+    return adder(session, Observation, obs_data, user=user)
 
 
 @router.post("/water-chemistry", status_code=HTTP_201_CREATED)
 def add_water_chemistry_observation(
     obs_data: CreateWaterChemistryObservation,
     session: session_dependency,
-):
+    user: amp_admin_dependency,
+) -> WaterChemistryObservationResponse:
     """
     Add a new water chemistry observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
     """
-    return add_observation(session, obs_data)
+    return adder(session, Observation, obs_data, user=user)
 
 
-#
-# @router.post("/geothermal", status_code=HTTP_201_CREATED)
-# def add_geothermal_observation(
-#     obs_data: CreateGeothermalObservation | CreateGeothermalObservationDirect,
-#     session: session_dependency,
-# ):
-#     """
-#     Add a new geothermal observation to the database.
-#     This endpoint is currently a placeholder and does not implement any functionality.
-#     """
-#     if isinstance(obs_data, CreateGeothermalObservationDirect):
-#         return direct_adder(session, GeothermalObservation, obs_data)
-#     else:
-#         return adder(session, GeothermalObservation, obs_data)
+@router.post("/geothermal", status_code=HTTP_201_CREATED)
+def add_geothermal_observation(
+    obs_data: CreateGeothermalObservation,
+    session: session_dependency,
+    user: admin_dependency,
+) -> GeothermalObservationResponse:
+    """
+    Add a new geothermal observation to the database.
+    This endpoint is currently a placeholder and does not implement any functionality.
+    """
+    return adder(session, Observation, obs_data, user=user)
 
 
 # ============= Get ==============================================
