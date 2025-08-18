@@ -29,6 +29,19 @@ init_lexicon()
 client = TestClient(app)
 
 
+def override_authentication(default=True):
+    """
+    Override the authentication dependency for testing purposes.
+    This allows all users to be considered authenticated.
+    """
+
+    def closure():
+        print("Overriding authentication")
+        return default
+
+    return closure
+
+
 def cleanup_post_test(model: Base, new_record_id: int) -> None:
     """
     Function to cleanup POST tests
