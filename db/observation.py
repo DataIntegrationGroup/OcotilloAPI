@@ -21,18 +21,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import mapped_column, relationship
 
-from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
-class Observation(Base, AuditMixin, ReleaseMixin):
-    __tablename__ = "observation"
-
+class Observation(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
-
-    id = mapped_column(
-        Integer,
-        autoincrement=True,
-    )
 
     sample_id = mapped_column(
         Integer,
