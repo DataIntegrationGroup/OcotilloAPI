@@ -28,6 +28,8 @@ from typing import Annotated
 
 class ValidateObservation(BaseModel):
 
+    observation_datetime: AwareDatetime
+
     @field_validator("observation_datetime", check_fields=False)
     def convert_observation_datetime_to_utc(
         observation_datetime: AwareDatetime,
@@ -48,7 +50,6 @@ class ValidateObservation(BaseModel):
 class CreateBaseObservation(ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int | None = None
-    field_sample_id: str | None = None
     sensor_id: int
     observed_property: str
     release_status: str
@@ -75,7 +76,6 @@ class CreateGeothermalObservation(CreateBaseObservation):
 class UpdateBaseObservation(ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int | None = None
-    field_sample_id: str | None = None
     sensor_id: int | None = None
     observed_property: str | None = None
     release_status: str | None = None
