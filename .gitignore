@@ -23,7 +23,7 @@ tests/uploads
 migrate.sh
 launcher.sh
 gcs_credentials.json
-
+transfers/data/assets*
 
 # deployment files
 app.yaml

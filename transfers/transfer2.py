@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
+import os
 import time
 import uuid
 from datetime import datetime
@@ -25,6 +25,7 @@ from pydantic import ValidationError
 from shapely import Point
 from shapely.ops import transform
 from sqlalchemy import select
+from starlette.datastructures import UploadFile
 
 from core.app import init_lexicon
 from db import (
@@ -41,10 +42,12 @@ from db import (
     ThingContactAssociation,
     Base,
     Sensor,
-    Address,
+    Address, Asset, AssetThingAssociation,
 )
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
+from services.audit_helper import audit_add
+from services.gcs_helper import gcs_upload
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 
@@ -457,6 +460,32 @@ def transfer_wellscreens(session, limit=None):
             continue
         # session.add(screen)
 
+def transfer_assets(session):
+    for p in ('asset1.png', 'asset2.png', 'asset3.png'):
+        with open(f"./data/assets/{p}", "rb") as f:
+            uf = UploadFile(file=f,
+                            filename=p,
+                            size=10)
+            url, blob_name = gcs_upload(uf)
+            thing_id = 151
+            asset = Asset(
+                name=p,
+                label=p,
+                storage_path=blob_name,
+                storage_service='gcs',
+                mime_type='image/png',
+                size=uf.size
+            )
+            assoc = AssetThingAssociation()
+            audit_add({'sub': 'foobar',
+                       'name': 'Mr. Foobar'}, assoc)
+            thing = session.get(Thing, thing_id)
+            assoc.thing = thing
+            assoc.asset = asset
+            session.add(assoc)
+            session.add(asset)
+            session.commit()
+
 
 def init_sensor(session):
     sensor = Sensor()
@@ -471,20 +500,20 @@ def init_sensor(session):
 if __name__ == "__main__":
 
     with session_ctx() as sess:
-        Base.metadata.drop_all(sess.bind)
-        Base.metadata.create_all(sess.bind)
-
-        init_lexicon("../core/lexicon.json")
-
-        init_sensor(sess)
-        transfer_wells(sess, 1000)
-        transfer_springs(sess, limit=1000)
-        transfer_perennial_stream(sess)
-        transfer_ephemeral_stream(sess)
-        transfer_met(sess)
-
-        transfer_owners(sess)
-        transfer_wellscreens(sess)
-        transfer_water_levels(sess)
-
+        # Base.metadata.drop_all(sess.bind)
+        # Base.metadata.create_all(sess.bind)
+        #
+        # init_lexicon("../core/lexicon.json")
+        #
+        # init_sensor(sess)
+        # transfer_wells(sess, 1000)
+        # transfer_springs(sess, limit=1000)
+        # transfer_perennial_stream(sess)
+        # transfer_ephemeral_stream(sess)
+        # transfer_met(sess)
+        #
+        # transfer_owners(sess)
+        # transfer_wellscreens(sess)
+        # transfer_water_levels(sess)
+        transfer_assets(sess)
 # ============= EOF =============================================
