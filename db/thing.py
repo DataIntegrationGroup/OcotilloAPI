@@ -22,21 +22,6 @@ from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
-class ThingChildMixin:
-    @declared_attr
-    def thing_id(self):
-        return mapped_column(
-            Integer,
-            ForeignKey("thing.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        )
-
-    @declared_attr
-    def thing(self):
-        return relationship("Thing")
-
-
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(String(500))

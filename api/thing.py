@@ -54,7 +54,7 @@ from schemas.thing import (
     CreateSpring,
     CreateThing,
     ThingIdLinkResponse,
-    UpdateThingIdLink,
+    UpdateThingIdLink, UpdateWellScreen,
 )
 from services.crud_helper import model_patcher
 from services.query_helper import (
@@ -379,6 +379,17 @@ def update_thing_id_link(
     user: editor_dependency,
 ) -> ThingIdLinkResponse:
     return model_patcher(session, ThingIdLink, link_id, link_data, user=user)
+
+@router.patch("/well-screen/{well_screen_id}", summary="Update Well Screen by ID")
+def update_thing_id_link(
+        well_screen_id: int,
+        well_screen_data: UpdateWellScreen,
+        session: session_dependency,
+        user: editor_dependency,
+) -> WellScreenResponse:
+    return model_patcher(session, WellScreen, well_screen_id, well_screen_data, user=user)
+
+
 
 
 # ============= EOF =============================================

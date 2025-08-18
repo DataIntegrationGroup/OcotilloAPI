@@ -166,6 +166,8 @@ class WellScreenResponse(ORMBaseModel):
     thing_id: int
     screen_depth_bottom: float
     screen_depth_top: float
+    screen_type: str | None = None
+    screen_description: str | None = None
 
 
 class GroupResponse(ORMBaseModel):
@@ -259,5 +261,11 @@ class UpdateThingIdLink(BaseModel):
     relation: str | None = None
     thing_id: int | None = None
 
+
+class UpdateWellScreen(BaseModel):
+    screen_depth_bottom: float | None = None
+    screen_depth_top: float | None = None
+    screen_description: str | None = None
+    screen_type: str | None = None
 
 # ============= EOF =============================================

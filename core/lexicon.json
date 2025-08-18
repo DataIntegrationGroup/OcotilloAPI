@@ -53,6 +53,8 @@
   {"category": "country", "term": "Japan", "definition": "Japan"},
 
   {"category": "role", "term": "Owner", "definition": "Owner"},
+  {"category": "role", "term": "Primary", "definition": "Primary"},
+  {"category": "role", "term": "Secondary", "definition": "Secondary"},
   {"category": "role", "term": "Manager", "definition": "Manager"},
   {"category": "role", "term": "Operator", "definition": "Operator"},
   {"category": "role", "term": "Driller", "definition": "Driller"},
@@ -68,6 +70,8 @@
   {"category": "address_type", "term": "Primary", "definition": "Primary"},
   {"category": "address_type", "term": "Work", "definition": "Primary"},
   {"category": "address_type", "term": "Personal", "definition": "Primary"},
+  {"category": "address_type", "term": "Mailing", "definition": "mailing"},
+  {"category": "address_type", "term": "Physical", "definition": "physical"},
   {"category": "phone_type", "term": "Primary", "definition": "Primary"},
   {"category": "phone_type", "term": "Work", "definition": "Primary"},
   {"category": "phone_type", "term": "Home", "definition": "Primary"},

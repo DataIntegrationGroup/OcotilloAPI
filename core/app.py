@@ -52,8 +52,9 @@ def init_hypertables():
     # session.close()
 
 
-def init_lexicon():
-    with open("./core/lexicon.json") as f:
+def init_lexicon(path="./core/lexicon.json"):
+
+    with open(path) as f:
         import json
 
         default_lexicon = json.load(f)

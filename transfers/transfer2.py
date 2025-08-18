@@ -26,6 +26,7 @@ from shapely import Point
 from shapely.ops import transform
 from sqlalchemy import select
 
+from core.app import init_lexicon
 from db import (
     Location,
     LocationThingAssociation,
@@ -33,7 +34,7 @@ from db import (
     WellScreen,
     Thing,
     Observation,
-    Sample,
+    Sample, Contact, Email, Phone, ThingContactAssociation, Base, Sensor, Address,
 )
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
@@ -276,6 +277,60 @@ def transfer_met(session, limit=None):
     transfer_thing(session, "M", make_payload, limit)
 
 
+def transfer_owners(session):
+    odf = pd.read_csv('./data/ownersdata.csv')
+    odf = odf.replace(pd.NA, None)
+    odf = odf.replace({np.nan: None})
+
+    for i, row in odf.iterrows():
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            print(f'Thing with PointID {row.PointID} not foaund. Skipping owner.')
+            continue
+
+        contact1 = Contact(name=f'{row.FirstName} {row.LastName}', role='Primary')
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact1
+        session.add(assoc)
+        session.add(contact1)
+
+        if row.Email:
+            contact1.emails.append(Email(email=row.Email, email_type='Primary'))
+        if row.Phone:
+            contact1.phones.append(Phone(phone_number=row.Phone, phone_type='Primary'))
+        if row.CellPhone:
+            contact1.phones.append(Phone(phone_number=row.CellPhone, phone_type='Mobile'))
+
+        if row.MailingAddress:
+            contact1.addresses.append(Address(address_line_1=row.MailingAddress,
+                                              city=row.MailCity,
+                                              state=row.MailState,
+                                              postal_code=row.MailZipCode,
+                                              address_type='Mailing'))
+
+            contact1.addresses.append(Address(address_line_1=row.PhysicalAddress,
+                                              city=row.PhysicalCity,
+                                              state=row.PhysicalState,
+                                              postal_code=row.PhysicalZipCode,
+                                              address_type='Physical'))
+
+
+        contact2 = Contact(name=f'{row.SecondFirstName} {row.SecondLastName}', role='Secondary')
+        if row.SecondCtctEmail:
+            contact2.emails.append(Email(email=row.SecondCtctEmail, email_type='Primary'))
+        if row.SecondCtctPhone:
+            contact2.phones.append(Phone(phone_number=row.SecondCtctPhone, phone_type='Primary'))
+
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact2
+        session.add(assoc)
+        session.add(contact2)
+
+        session.commit()
+
+
 def transfer_wells(session, limit=None):
     wdf = pd.read_csv("./data/welldata.csv")
     ldf = pd.read_csv("./data/location.csv")
@@ -381,25 +436,33 @@ def transfer_wellscreens(session, limit=None):
         # session.add(screen)
 
 
-# def reset_db():
-#     configure_mappers()
-#
-#     Base.metadata.drop_all(engine)
-#     Base.metadata.create_all(engine)
-#
-#     init_hypertables()
-#     init_lexicon()
+def init_sensor(session):
+    sensor = Sensor()
+    sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
+    sensor.description = "Groundwater level manual measurement"
+    sensor.unit = "ft"
+    sensor.datetime_installed = datetime.now()
+    session.add(sensor)
+    session.commit()
 
 
 if __name__ == "__main__":
-    # reset_db()
+
     with session_ctx() as sess:
+        Base.metadata.drop_all(sess.bind)
+        Base.metadata.create_all(sess.bind)
+
+        init_lexicon("../core/lexicon.json")
+
+        init_sensor(sess)
         transfer_wells(sess, 1000)
         transfer_springs(sess, limit=1000)
         transfer_perennial_stream(sess)
         transfer_ephemeral_stream(sess)
         transfer_met(sess)
-        # transfer_wellscreens(sess)
-        # transfer_water_levels(sess)
+
+        transfer_owners(sess)
+        transfer_wellscreens(sess)
+        transfer_water_levels(sess)
 
 # ============= EOF =============================================
