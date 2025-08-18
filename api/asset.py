@@ -24,36 +24,47 @@ from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency, viewer_function, admin_dependency, admin_function, editor_dependency
+from core.dependencies import (
+    session_dependency,
+    viewer_function,
+    admin_dependency,
+    admin_function,
+    editor_dependency,
+)
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
-from services.gcs_helper import GCS_BUCKET_NAME, get_storage_bucket, gcs_upload, set_asset_url
+from services.gcs_helper import (
+    GCS_BUCKET_NAME,
+    get_storage_bucket,
+    gcs_upload,
+    set_asset_url,
+)
 
-router = APIRouter(prefix="/asset", tags=["asset"],
-                   dependencies=[Depends(viewer_function)])
+router = APIRouter(
+    prefix="/asset", tags=["asset"], dependencies=[Depends(viewer_function)]
+)
 
 
 # ======= Create =========
-@router.post("/upload", status_code=HTTP_201_CREATED,
-             dependencies=[Depends(admin_function)])
+@router.post(
+    "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)]
+)
 async def upload_asset(
-        bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
+    bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
 ):
     signed_url, blob_name = gcs_upload(bucket, file)
     return {
         "url": signed_url,
         "storage_path": blob_name,
-
     }
 
 
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
-        user: admin_dependency,
-        session: session_dependency, asset_data: CreateAsset
+    user: admin_dependency, session: session_dependency, asset_data: CreateAsset
 ) -> AssetResponse:
 
     data = asset_data.model_dump()
@@ -84,7 +95,9 @@ async def add_asset(
 async def list_assets(
     session: session_dependency,
     thing_id: int = None,
-    bucket=Depends(get_storage_bucket)  # Assuming get_storage_bucket is defined elsewhere
+    bucket=Depends(
+        get_storage_bucket
+    ),  # Assuming get_storage_bucket is defined elsewhere
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.
@@ -94,7 +107,6 @@ async def list_assets(
         sql = sql.join(AssetThingAssociation).where(
             AssetThingAssociation.thing_id == thing_id
         )
-
 
     def transformer(assets: List[Asset]) -> AssetResponse:
         for a in assets:
@@ -108,7 +120,9 @@ async def list_assets(
 async def get_asset(
     asset_id: int,
     session: session_dependency,
-    bucket=Depends(get_storage_bucket),  # Assuming get_storage_bucket is defined elsewhere
+    bucket=Depends(
+        get_storage_bucket
+    ),  # Assuming get_storage_bucket is defined elsewhere
     thing_id: int = None,
 ) -> AssetResponse:
     """
@@ -128,14 +142,16 @@ async def get_asset(
 
     set_asset_url(asset, bucket)
 
-
     return asset
+
 
 # ======= Update =========
 @router.patch("/{asset_id}")
 async def update_asset(
-    asset_id: int, session: session_dependency, asset_data: UpdateAsset,
-        user: editor_dependency
+    asset_id: int,
+    session: session_dependency,
+    asset_data: UpdateAsset,
+    user: editor_dependency,
 ):
     """
     Update an existing asset.

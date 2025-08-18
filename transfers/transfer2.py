@@ -42,7 +42,9 @@ from db import (
     ThingContactAssociation,
     Base,
     Sensor,
-    Address, Asset, AssetThingAssociation,
+    Address,
+    Asset,
+    AssetThingAssociation,
 )
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
@@ -460,25 +462,23 @@ def transfer_wellscreens(session, limit=None):
             continue
         # session.add(screen)
 
+
 def transfer_assets(session):
-    for p in ('asset1.png', 'asset2.png', 'asset3.png'):
+    for p in ("asset1.png", "asset2.png", "asset3.png"):
         with open(f"./data/assets/{p}", "rb") as f:
-            uf = UploadFile(file=f,
-                            filename=p,
-                            size=10)
+            uf = UploadFile(file=f, filename=p, size=10)
             url, blob_name = gcs_upload(uf)
             thing_id = 151
             asset = Asset(
                 name=p,
                 label=p,
                 storage_path=blob_name,
-                storage_service='gcs',
-                mime_type='image/png',
-                size=uf.size
+                storage_service="gcs",
+                mime_type="image/png",
+                size=uf.size,
             )
             assoc = AssetThingAssociation()
-            audit_add({'sub': 'foobar',
-                       'name': 'Mr. Foobar'}, assoc)
+            audit_add({"sub": "foobar", "name": "Mr. Foobar"}, assoc)
             thing = session.get(Thing, thing_id)
             assoc.thing = thing
             assoc.asset = asset
