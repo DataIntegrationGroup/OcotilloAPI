@@ -503,7 +503,7 @@ def init_sensor(session):
 
 
 if __name__ == "__main__":
-    init=False
+    init = False
     with session_ctx() as sess:
         if init:
             Base.metadata.drop_all(sess.bind)

@@ -51,13 +51,12 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     eblob = bucket.get_blob(blob_name)
     if eblob:
         print("blob exists")
-        return eblob.generate_signed_url(
-            expiration=timedelta(minutes=10), method="GET"
-        ), blob_name
-
+        return (
+            eblob.generate_signed_url(expiration=timedelta(minutes=10), method="GET"),
+            blob_name,
+        )
 
     blob = bucket.blob(blob_name)
-
 
     file.file.seek(0)
     blob.upload_from_file(file.file, content_type=file.content_type)
@@ -78,7 +77,9 @@ def set_asset_url(asset, bucket=None):
 def check_asset_exists(session, blob_name, thing_id=None):
     sql = select(Asset).where(Asset.storage_path == blob_name)
     if thing_id:
-        sql = sql.join(AssetThingAssociation).where(AssetThingAssociation.thing_id == thing_id)
+        sql = sql.join(AssetThingAssociation).where(
+            AssetThingAssociation.thing_id == thing_id
+        )
     return session.scalars(sql).one_or_none()
 
 
