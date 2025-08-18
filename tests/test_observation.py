@@ -13,74 +13,109 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
-from tests import client
+from db import Observation
+from core.dependencies import amp_admin_function, admin_function
+from main import app
+from tests import client, cleanup_post_test, override_authentication
 import pytest
 
 
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+
+    yield
+
+    app.dependency_overrides = {}
+
+
 # ============= Post tests =================
-def test_add_water_chemistry_observation(location, thing, sample, sensor):
-    response = client.post(
-        "/observation/water-chemistry",
-        json={
-            "observation_datetime": "2025-01-01T00:00:00Z",
-            "release_status": "draft",
-            "value": 7.5,
-            "unit": "dimensionless",
-            "sample_id": sample.id,
-            "sensor_id": sensor.id,
-            "observed_property": "pH",
-        },
+def test_add_water_chemistry_observation(sample, sensor):
+    payload = {
+        "observation_datetime": "2025-01-01T00:00:00Z",
+        "release_status": "draft",
+        "value": 7.5,
+        "unit": "dimensionless",
+        "sample_id": sample.id,
+        "sensor_id": sensor.id,
+        "observed_property": "pH",
+    }
+    response = client.post("/observation/water-chemistry", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+
+    assert data["observation_datetime"] == payload["observation_datetime"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["value"] == payload["value"]
+    assert data["unit"] == payload["unit"]
+    assert data["sample_id"] == payload["sample_id"]
+    assert data["sensor_id"] == payload["sensor_id"]
+    assert data["observed_property"] == payload["observed_property"]
+
+    cleanup_post_test(Observation, data["id"])
+
+
+def test_add_groundwater_level_observation(sample, sensor):
+    payload = {
+        "observation_datetime": "2025-01-01T00:00:00Z",
+        "release_status": "draft",
+        "value": 101,
+        "measuring_point_height": 53,
+        "sample_id": sample.id,
+        "sensor_id": sensor.id,
+        "level_status": "normal",
+        "observed_property": "groundwater level",
+        "unit": "ft",
+    }
+    response = client.post("/observation/groundwater-level", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+
+    assert data["observation_datetime"] == payload["observation_datetime"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["value"] == payload["value"]
+    assert data["measuring_point_height"] == payload["measuring_point_height"]
+    assert data["sensor_id"] == payload["sensor_id"]
+    assert data["level_status"] == payload["level_status"]
+    assert data["observed_property"] == payload["observed_property"]
+    assert (
+        data["depth_to_water_bgs"]
+        == payload["value"] - payload["measuring_point_height"]
     )
+
+    cleanup_post_test(Observation, data["id"])
+
+
+def test_add_geothermal_observation(sample, sensor):
+    payload = {
+        "observation_datetime": "2025-01-01T00:00:00Z",
+        "release_status": "draft",
+        "observation_depth": 100,
+        "value": 25.5,
+        "sample_id": sample.id,
+        "sensor_id": sensor.id,
+        "observed_property": "temperature",
+        "unit": "C",
+    }
+    response = client.post("/observation/geothermal", json=payload)
     data = response.json()
     assert response.status_code == 201
 
-    assert data["value"] == 7.5
-    assert data["unit"] == "dimensionless"
+    assert data["observation_datetime"] == payload["observation_datetime"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["observation_depth"] == payload["observation_depth"]
+    assert data["value"] == payload["value"]
+    assert data["sample_id"] == payload["sample_id"]
+    assert data["sensor_id"] == payload["sensor_id"]
+    assert data["observed_property"] == payload["observed_property"]
+    assert data["unit"] == payload["unit"]
 
-
-def test_add_groundwater_observation(location, thing, sample, sensor):
-    response = client.post(
-        "/observation/groundwater-level",
-        json={
-            "observation_datetime": "2025-01-01T00:00:00Z",
-            "release_status": "draft",
-            "depth_to_water": 101,
-            "measuring_point_height": 53,
-            "sample_id": sample.id,
-            "sensor_id": sensor.id,
-            "level_status": "normal",
-            "observed_property": "groundwater level",
-        },
-    )
-    data = response.json()
-    assert response.status_code == 201
-
-    assert data["depth_to_water"] == 101
-    assert data["measuring_point_height"] == 53
-
-
-# def test_add_geothermal_observation():
-#     response = client.post(
-#         "/observation/geothermal",
-#         json={
-#             "observation_id": 1,
-#             "observation_datetime": "2025-01-01T00:00:00Z",
-#             "depth": 100,
-#             "temperature": 25.5,
-#         },
-#     )
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert data["observation_id"] == 1
-
-
-@pytest.mark.skip(reason="not implemented yet")
-def test_add_geochemical_observation():
-    response = client.post("/observation/geochemical", json={"observation_id": 1})
-    assert response.status_code == 201
-    data = response.json()
-    assert data["observation_id"] == 1
+    cleanup_post_test(Observation, data["id"])
 
 
 # ============= Get tests =================
