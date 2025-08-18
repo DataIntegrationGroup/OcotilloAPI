@@ -11,10 +11,13 @@
   {"category": "unit", "term": "W/m²", "definition": "watts per square meter"},
   {"category": "unit", "term": "W/m·K", "definition": "watts per meter Kelvin"},
   {"category": "unit", "term": "m²/s", "definition": "square meters per second"},
+  {"category": "unit", "term": "C", "definition": "Celsius"},
 
   {"category": "observed_property", "term": "groundwater level", "definition": "groundwater level measurement" },
   {"category": "observed_property", "term": "pH", "definition": "pH"},
   {"category": "observed_property", "term": "Alkalinity as CaCO3", "definition": "Alkalinity as CaCO3"},
+  {"category": "observed_property", "term": "temperature", "definition": "Temperature measurement"},
+
 
   {"category": "release_status", "term": "draft", "definition": "draft version"},
   {"category": "release_status", "term": "provisional", "definition": "provisional version"},

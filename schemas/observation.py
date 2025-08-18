@@ -14,8 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import timezone
-from pydantic import BaseModel, AwareDatetime, PastDatetime, field_validator
+from pydantic import (
+    BaseModel,
+    AwareDatetime,
+    PastDatetime,
+    field_validator,
+    model_validator,
+)
 from typing import Annotated
+from typing_extensions import Self
 
 
 # class GeothermalMixin:
@@ -106,6 +113,7 @@ class BaseObservationResponse(BaseModel):
     created_at: AwareDatetime
     release_status: str
     value: float | None
+    unit: str
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
@@ -113,14 +121,13 @@ class GroundwaterLevelObservationResponse(BaseObservationResponse):
     measuring_point_height: float
     level_status: str | None
 
-    @field_validator("depth_to_water_bgs")
-    def calculate_depth_to_water_bgs(cls, depth_to_water_bgs, data):
-        depth_to_water = data.values.get("value")
-        measuring_point_height = data.values.get("measuring_point_height")
+    @model_validator(mode="before")
+    def calculate_depth_to_water_bgs(self: Self) -> Self:
+        depth_to_water = self.value
+        measuring_point_height = self.measuring_point_height
         if depth_to_water is not None:
-            return depth_to_water - measuring_point_height
-        else:
-            return depth_to_water
+            self.depth_to_water_bgs = depth_to_water - measuring_point_height
+        return self
 
 
 class WaterChemistryObservationResponse(BaseObservationResponse):
