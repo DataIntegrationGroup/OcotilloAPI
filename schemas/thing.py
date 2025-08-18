@@ -170,31 +170,6 @@ class WellScreenResponse(ORMBaseModel):
     screen_description: str | None = None
 
 
-class GroupResponse(ORMBaseModel):
-    """
-    Response schema for group details.
-    """
-
-    name: str
-    description: str | None = None
-    parent_group_id: int | None = None
-    project_area: str | None = None
-
-    @field_validator("project_area", mode="before")
-    def project_area_to_wkt(cls, value):
-        if not value:
-            return value
-
-        if isinstance(value, WKBElement):
-            return to_shape(value).wkt
-
-        # If the value is a string, assume it's already in WKT format
-        if isinstance(value, str):
-            return value
-
-        return None
-
-
 class GeoJSONGeometry(BaseModel):
     """
     Geometry schema for GeoJSON response.

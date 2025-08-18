@@ -16,7 +16,7 @@
 import json
 from typing import Annotated, List, Union
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from geoalchemy2.shape import to_shape
 from shapely.io import to_geojson
@@ -61,23 +61,26 @@ async def get_geospatial(
 
 @router.get("/project-area/{group_id}", summary="Get project area for group")
 async def get_project_area(
-    session: session_dependency, group_id: int
+    session: session_dependency,
+        group_id: int
 ) -> FeatureCollectionResponse:
 
     group = simple_get_by_id(session, Group, group_id)
 
-    if group.project_area:
-        features = [
-            {
-                "type": "Feature",
-                "geometry": json.loads(to_geojson(to_shape(group.project_area))),
-                "properties": {
-                    "group_id": group.id,
-                    "group_name": group.name,
-                    "group_description": group.description,
-                },
-            }
-        ]
+    if not group.project_area:
+        raise HTTPException(status_code=404, detail="Group has no project area")
+
+    features = [
+                {
+                    "type": "Feature",
+                    "geometry": json.loads(to_geojson(to_shape(group.project_area))),
+                    "properties": {
+                        "group_id": group.id,
+                        "group_name": group.name,
+                        "group_description": group.description,
+                    },
+                }
+            ]
 
     return {
         "type": "FeatureCollection",

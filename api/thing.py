@@ -383,12 +383,14 @@ def update_thing_id_link(
 
 
 @router.patch("/well-screen/{well_screen_id}", summary="Update Well Screen by ID")
-def update_thing_id_link(
+def update_well_screen(
     well_screen_id: int,
     well_screen_data: UpdateWellScreen,
     session: session_dependency,
     user: editor_dependency,
 ) -> WellScreenResponse:
+
+    # TODO: add validation
     return model_patcher(
         session, WellScreen, well_screen_id, well_screen_data, user=user
     )

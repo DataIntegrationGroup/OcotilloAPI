@@ -26,9 +26,8 @@ from core.dependencies import (
 )
 from db import adder
 from db.group import Group, GroupThingAssociation
-from schemas.group import UpdateGroup, CreateGroup
+from schemas.group import UpdateGroup, CreateGroup, GroupResponse
 from schemas.location import CreateGroupThing
-from schemas.thing import GroupResponse
 from services.crud_helper import model_patcher
 from services.query_helper import (
     simple_get_by_id,
