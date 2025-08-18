@@ -33,6 +33,7 @@ class MockStorageBucket:
     def get_blob(self, *args, **kwargs):
         return None
 
+
 def mock_storage_bucket():
     return MockStorageBucket()
 
