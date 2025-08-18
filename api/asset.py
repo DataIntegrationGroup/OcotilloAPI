@@ -42,7 +42,7 @@ router = APIRouter(prefix="/asset", tags=["asset"],
 async def upload_asset(
         bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
 ):
-    signed_url, blob_name = gcs_upload(bucket, file)
+    signed_url, blob_name = gcs_upload(file, bucket)
     return {
         "url": signed_url,
         "storage_path": blob_name,
