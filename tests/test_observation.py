@@ -100,7 +100,7 @@ def test_add_geothermal_observation(sample, sensor):
         "sample_id": sample.id,
         "sensor_id": sensor.id,
         "observed_property": "temperature",
-        "unit": "C",
+        "unit": "deg C",
     }
     response = client.post("/observation/geothermal", json=payload)
     data = response.json()
@@ -119,6 +119,105 @@ def test_add_geothermal_observation(sample, sensor):
 
 
 # ============= Get tests =================
+def test_get_groundwater_level_observations(
+    groundwater_level_observation, water_chemistry_observation, geothermal_observation
+):
+    response = client.get("/observation/groundwater-level")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == groundwater_level_observation.id
+    assert data["items"][0]["sample_id"] == groundwater_level_observation.sample_id
+    assert data["items"][0]["sensor_id"] == groundwater_level_observation.sensor_id
+    assert (
+        data["items"][0]["observation_datetime"]
+        == groundwater_level_observation.observation_datetime
+    )
+    assert (
+        data["items"][0]["observed_property"]
+        == groundwater_level_observation.observed_property
+    )
+    assert (
+        data["items"][0]["release_status"]
+        == groundwater_level_observation.release_status
+    )
+    assert (
+        data["items"][0]["level_status"] == groundwater_level_observation.level_status
+    )
+    assert data["items"][0]["value"] == groundwater_level_observation.value
+    assert data["items"][0]["unit"] == groundwater_level_observation.unit
+    assert (
+        data["items"][0]["depth_to_water_bgs"]
+        == groundwater_level_observation.value
+        - groundwater_level_observation.measuring_point_height
+    )
+    assert (
+        data["items"][0]["measuring_point_height"]
+        == groundwater_level_observation.measuring_point_height
+    )
+    assert (
+        data["items"][0]["level_status"] == groundwater_level_observation.level_status
+    )
+
+
+def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
+    response = client.get(
+        f"/observation/groundwater-level/{groundwater_level_observation.id}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == groundwater_level_observation.id
+    assert data["sample_id"] == groundwater_level_observation.sample_id
+    assert data["sensor_id"] == groundwater_level_observation.sensor_id
+    assert (
+        data["observation_datetime"]
+        == groundwater_level_observation.observation_datetime
+    )
+    assert data["observed_property"] == groundwater_level_observation.observed_property
+    assert data["release_status"] == groundwater_level_observation.release_status
+    assert data["level_status"] == groundwater_level_observation.level_status
+    assert data["value"] == groundwater_level_observation.value
+    assert data["unit"] == groundwater_level_observation.unit
+    assert (
+        data["depth_to_water_bgs"]
+        == groundwater_level_observation.value
+        - groundwater_level_observation.measuring_point_height
+    )
+    assert (
+        data["measuring_point_height"]
+        == groundwater_level_observation.measuring_point_height
+    )
+    assert data["level_status"] == groundwater_level_observation.level_status
+
+
+def test_get_groundwater_level_observation_by_id_404_not_found(
+    groundwater_level_observation,
+):
+    bad_id = 99999
+    response = client.get(f"/observation/groundwater-level/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data, "Expected 'detail' in response"
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
+def test_get_groundwater_level_observation_by_id_404_wrong_observed_property(
+    water_chemistry_observation,
+):
+    response = client.get(
+        f"/observation/groundwater-level/{water_chemistry_observation.id}"
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Observation with ID {water_chemistry_observation.id} is not a groundwater level observation."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {
+        "observation_id": water_chemistry_observation.id
+    }
+    assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
 def test_get_groundwater_observation_by_sample(sample):
@@ -133,10 +232,10 @@ def test_get_groundwater_observation_by_sample(sample):
     assert len(items) > 0, "Expected at least one groundwater observation for the thing"
 
 
-def test_get_groundwater_observation_by_thing(sample):
+def test_get_groundwater_observation_by_thing(thing):
     response = client.get(
         "/observation/groundwater-level",
-        params={"thing_id": sample.thing_id, "observed_property": "groundwater level"},
+        params={"thing_id": thing.id, "observed_property": "groundwater level"},
     )
     assert response.status_code == 200
     data = response.json()
