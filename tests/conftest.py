@@ -225,7 +225,7 @@ def geothermal_observation(sensor, sample):
             release_status="draft",
             value=20.0,
             unit="deg C",
-            observation_depth="200",
+            observation_depth=200.0,
         )
         session.add(observation)
         session.commit()

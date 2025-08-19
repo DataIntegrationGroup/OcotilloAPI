@@ -367,6 +367,77 @@ def test_get_water_chemistry_observation_by_id_404_wrong_observation_class(
         assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
+def test_get_geothermal_observations(geothermal_observation):
+    response = client.get("/observation/geothermal")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == geothermal_observation.id
+    assert data["items"][0]["sample_id"] == geothermal_observation.sample_id
+    assert data["items"][0]["sensor_id"] == geothermal_observation.sensor_id
+    assert (
+        data["items"][0]["observation_datetime"]
+        == geothermal_observation.observation_datetime
+    )
+    assert (
+        data["items"][0]["observed_property"]
+        == geothermal_observation.observed_property
+    )
+    assert data["items"][0]["value"] == geothermal_observation.value
+    assert data["items"][0]["unit"] == geothermal_observation.unit
+    assert (
+        data["items"][0]["observation_depth"]
+        == geothermal_observation.observation_depth
+    )
+
+
+def test_get_geothermal_observation_by_id(geothermal_observation):
+    response = client.get(f"/observation/geothermal/{geothermal_observation.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == geothermal_observation.id
+    assert data["created_at"] == geothermal_observation.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["sample_id"] == geothermal_observation.sample_id
+    assert data["sensor_id"] == geothermal_observation.sensor_id
+    assert data["observation_datetime"] == geothermal_observation.observation_datetime
+    assert data["observed_property"] == geothermal_observation.observed_property
+    assert data["value"] == geothermal_observation.value
+    assert data["unit"] == geothermal_observation.unit
+    assert data["observation_depth"] == geothermal_observation.observation_depth
+
+
+def test_get_geothermal_observation_by_id_404_not_found(geothermal_observation):
+    bad_id = 99999
+    response = client.get(f"/observation/geothermal/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
+def test_get_geothermal_observation_by_id_404_wrong_observation_class(
+    water_chemistry_observation, groundwater_level_observation
+):
+    for obs in water_chemistry_observation, groundwater_level_observation:
+        response = client.get(f"/observation/geothermal/{obs.id}")
+        assert response.status_code == 404
+        data = response.json()
+
+        if obs.observed_property == "groundwater level":
+            url = f"/observation/groundwater-level/{obs.id}"
+        else:
+            url = f"/observation/water-chemistry/{obs.id}"
+
+        assert (
+            data["detail"][0]["msg"]
+            == f"Observation with ID {obs.id} is not a geothermal observation. To retrieve it, use the following URL: {url}"
+        )
+        assert data["detail"][0]["type"] == "value_error"
+        assert data["detail"][0]["input"] == {"observation_id": obs.id}
+        assert data["detail"][0]["loc"] == ["path", "observation_id"]
+
+
 # JB's comment: I don't think that geographic filters are necessary for
 # observations. I think that they should only be applicable to finding Things
 # and locations. Then the user can proceed from there to find observations.

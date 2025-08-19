@@ -90,6 +90,8 @@ def specify_observation_class(observation_class: str):
             elif observation_class == "water chemistry":
                 sql = sql.where(Observation.observed_property != "groundwater level")
                 sql = sql.where(Observation.observed_property != "temperature")
+            elif observation_class == "geothermal":
+                sql = sql.where(Observation.observed_property == "temperature")
             return paginate(query=sql, conn=session)
 
         return wrapper
@@ -237,6 +239,60 @@ def get_water_chemistry_observation_by_id(
                 {
                     "loc": ["path", "observation_id"],
                     "msg": f"Observation with ID {observation_id} is not a water chemistry observation. To retrieve it, use the following URL: {url}",
+                    "type": "value_error",
+                    "input": {"observation_id": observation_id},
+                }
+            ],
+        )
+    else:
+        return observation
+
+
+@router.get("/geothermal", summary="Get geothermal observations")
+@specify_observation_class(observation_class="geothermal")
+def get_geothermal_observations(
+    session: session_dependency,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    sample_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[GeothermalObservationResponse]:
+    """
+    Retrieve all geothermal observations from the database.
+    """
+    return get_observations(
+        session=session,
+        thing_id=thing_id,
+        sensor_id=sensor_id,
+        sample_id=sample_id,
+        start_time=start_time,
+        end_time=end_time,
+        sort=sort,
+        order=order,
+        filter_=filter_,
+    )
+
+
+@router.get("/geothermal/{observation_id}", summary="Get geothermal observation by ID")
+def get_geothermal_observation_by_id(
+    session: session_dependency, observation_id: int
+) -> GeothermalObservationResponse:
+    observation = simple_get_by_id(session, Observation, observation_id)
+    if observation.observed_property != "temperature":
+        if observation.observed_property == "groundwater level":
+            url = f"/observation/groundwater-level/{observation_id}"
+        else:
+            url = f"/observation/water-chemistry/{observation_id}"
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "observation_id"],
+                    "msg": f"Observation with ID {observation_id} is not a geothermal observation. To retrieve it, use the following URL: {url}",
                     "type": "value_error",
                     "input": {"observation_id": observation_id},
                 }
