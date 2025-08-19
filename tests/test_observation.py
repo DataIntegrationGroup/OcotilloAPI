@@ -119,36 +119,6 @@ def test_add_geothermal_observation(sample, sensor):
 
 
 # ============= Get tests =================
-# def test_get_observation_by_series_id():
-#     response = client.get("/observation", params={"series_id": 1})
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert "items" in data, "Expected 'items' in response"
-#     items = data["items"]
-#     assert len(items) > 0, "Expected at least one observation for the series"
-#     # assert isinstance(data, list), "Expected a list of observations"
-#     # assert len(data) == 1, "Expected at least one observation for the series"
-
-
-# def test_get_groundwater_observation_by_thing_id():
-#     response = client.get("/observation/groundwater-level", params={"thing_id": 1,
-#                                                                     "observed_property": "groundwater level"})
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert "items" in data, "Expected 'items' in response"
-#     items = data["items"]
-#     assert (
-#         len(items) > 0
-#     ), "Expected at least one groundwater observation for the series"
-
-
-# def test_get_geothermal_observation_by_series_id():
-#     response = client.get("/observation/geothermal", params={"series_id": 1})
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert "items" in data, "Expected 'items' in response"
-#     items = data["items"]
-#     assert len(items) > 0, "Expected at least one geothermal observation for the series"
 
 
 def test_get_groundwater_observation_by_sample(sample):
@@ -186,38 +156,6 @@ def test_get_groundwater_observation_by_thing_nonexistent():
     ), "Expected no groundwater observations for a non-existent thing"
 
 
-@pytest.mark.skip(reason="unclear why not working. is it necessary functionality?")
-def test_get_groundwater_observation_by_polygon():
-    response = client.get(
-        "/observation/groundwater-level",
-        params={
-            "polygon": "POLYGON((-10.0 -10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, -10.0 -10.0))",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "items" in data, "Expected 'items' in response"
-    items = data["items"]
-    assert (
-        len(items) > 0
-    ), "Expected at least one groundwater observation within the polygon"
-
-
-@pytest.mark.skip(reason="unclear why not working. is it necessary functionality?")
-def test_get_groundwater_observation_by_polygon_nonexistent():
-    response = client.get(
-        "/observation/groundwater-level",
-        params={
-            "polygon": "POLYGON((-100.0 -100.0, -90.0 -90.0, -90.0 -80.0, -100.0 -80.0, -100.0 -100.0))",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "items" in data, "Expected 'items' in response"
-    items = data["items"]
-    assert len(items) == 0, "Expected no groundwater observations within the polygon"
-
-
 def test_get_groundwater_observation_by_time_range():
     response = client.get(
         "/observation/groundwater-level",
@@ -248,6 +186,44 @@ def test_get_groundwater_observation_by_time_range_nonexistent():
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
     assert len(items) == 0, "Expected no groundwater observations in the time range"
+
+
+# JB's comment: I don't think that geographic filters are necessary for
+# observations. I think that they should only be applicable to finding Things
+# and locations. Then the user can proceed from there to find observations.
+@pytest.mark.skip(reason="unclear why not working. is it necessary functionality?")
+def test_get_groundwater_observation_by_polygon():
+    response = client.get(
+        "/observation/groundwater-level",
+        params={
+            "polygon": "POLYGON((-10.0 -10.0, 20.0 10.0, 20.0 20.0, 10.0 20.0, -10.0 -10.0))",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert (
+        len(items) > 0
+    ), "Expected at least one groundwater observation within the polygon"
+
+
+# JB's comment: I don't think that geographic filters are necessary for
+# observations. I think that they should only be applicable to finding Things
+# and locations. Then the user can proceed from there to find observations
+@pytest.mark.skip(reason="unclear why not working. is it necessary functionality?")
+def test_get_groundwater_observation_by_polygon_nonexistent():
+    response = client.get(
+        "/observation/groundwater-level",
+        params={
+            "polygon": "POLYGON((-100.0 -100.0, -90.0 -90.0, -90.0 -80.0, -100.0 -80.0, -100.0 -100.0))",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data, "Expected 'items' in response"
+    items = data["items"]
+    assert len(items) == 0, "Expected no groundwater observations within the polygon"
 
 
 # ============= EOF =============================================
