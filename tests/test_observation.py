@@ -175,6 +175,49 @@ def test_patch_groundwater_level_observation_404_wrong_observation_class(
         )
 
 
+def test_patch_water_chemistry_observation(water_chemistry_observation):
+    payload = {"value": 8}
+    response = client.patch(
+        f"/observation/water-chemistry/{water_chemistry_observation.id}",
+        json=payload,
+    )
+    data = response.json()
+    assert response.status_code == 200
+
+    assert data["value"] == payload["value"]
+
+    cleanup_patch_test(Observation, payload, water_chemistry_observation)
+
+
+def test_patch_water_chemistry_observation_404_not_found(water_chemistry_observation):
+    bad_id = 999999
+    payload = {"value": 8}
+    response = client.patch(f"/observation/water-chemistry/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
+def test_patch_water_chemistry_observation_404_wrong_observation_class(
+    groundwater_level_observation, geothermal_observation
+):
+    for obs in groundwater_level_observation, geothermal_observation:
+        payload = {"value": 8}
+        response = client.patch(f"/observation/water-chemistry/{obs.id}", json=payload)
+        assert response.status_code == 404
+        data = response.json()
+
+        if obs.observed_property == "temperature":
+            observation_class = "geothermal"
+        else:
+            observation_class = "groundwater level"
+
+        assert (
+            data["detail"][0]["msg"]
+            == f"Observation with ID {obs.id} is not a water chemistry observation. It is a {observation_class} observation."
+        )
+
+
 # ============= Get tests =================
 
 
@@ -184,6 +227,7 @@ def test_get_all_observations(
     response = client.get("/observation")
     assert response.status_code == 200
     data = response.json()
+    print(data)
     assert data["total"] == 3
     assert data["items"][0]["id"] == groundwater_level_observation.id
     assert data["items"][1]["id"] == water_chemistry_observation.id

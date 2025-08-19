@@ -39,6 +39,7 @@ from schemas.observation import (
     GeothermalObservationResponse,
     ObservationResponse,
     UpdateGroundwaterLevelObservation,
+    UpdateWaterChemistryObservation,
 )
 from services.query_helper import order_sort_filter, simple_get_by_id
 from services.observation_helper import (
@@ -103,6 +104,21 @@ def update_groundwater_level_observation(
     """
     return observation_model_patcher(
         session, observation_id, obs_data, "groundwater level", user
+    )
+
+
+@router.patch("/water-chemistry/{observation_id}", status_code=HTTP_200_OK)
+def update_water_chemistry_observation(
+    observation_id: int,
+    obs_data: UpdateWaterChemistryObservation,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> WaterChemistryObservationResponse:
+    """
+    Update an existing water chemistry observation in the database.
+    """
+    return observation_model_patcher(
+        session, observation_id, obs_data, "water chemistry", user
     )
 
 
