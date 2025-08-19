@@ -19,7 +19,7 @@ import functools
 from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -42,6 +42,7 @@ from schemas.observation import (
     UpdateWaterChemistryObservation,
     UpdateGeothermalObservation,
 )
+from services.crud_helper import model_deleter
 from services.query_helper import order_sort_filter, simple_get_by_id
 from services.observation_helper import (
     observation_model_patcher,
@@ -354,6 +355,20 @@ def get_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> ObservationResponse:
     return simple_get_by_id(session, Observation, observation_id)
+
+
+# DELETE =======================================================================
+
+
+@router.delete(
+    "/{observation_id}",
+    summary="Delete an observation",
+    status_code=HTTP_204_NO_CONTENT,
+)
+def delete_observation(
+    session: session_dependency, user: amp_admin_dependency, observation_id: int
+) -> None:
+    return model_deleter(session, Observation, observation_id)
 
 
 # ============= EOF =============================================

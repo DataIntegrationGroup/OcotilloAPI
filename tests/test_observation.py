@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db import Observation
+from db.engine import session_ctx
 from core.dependencies import (
     amp_admin_function,
     admin_function,
@@ -39,6 +40,23 @@ def override_authentication_dependency_fixture():
     yield
 
     app.dependency_overrides = {}
+
+
+@pytest.fixture(scope="function")
+def observation_to_delete(sample, sensor):
+    with session_ctx() as session:
+        observation = Observation(
+            observation_datetime="2019-01-01T00:03:00Z",
+            sample_id=sample.id,
+            sensor_id=sensor.id,
+            observed_property="pH",
+            release_status="draft",
+            value=4.0,
+            unit="dimensionless",
+        )
+        session.add(observation)
+        session.commit()
+        yield observation
 
 
 # ============= Post tests =================
@@ -663,6 +681,30 @@ def test_get_groundwater_observation_by_polygon_nonexistent():
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
     assert len(items) == 0, "Expected no groundwater observations within the polygon"
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_observation_by_id(observation_to_delete):
+    response = client.delete(f"/observation/{observation_to_delete.id}")
+    assert response.status_code == 204
+
+    # Verify that the observation was deleted
+    get_response = client.get(f"/observation/{observation_to_delete.id}")
+    assert get_response.status_code == 404
+    data = get_response.json()
+    assert (
+        data["detail"] == f"Observation with ID {observation_to_delete.id} not found."
+    )
+
+
+def test_delete_observation_by_id_404_not_found(observation_to_delete):
+    bad_id = 99999
+    response = client.delete(f"/observation/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
 
 
 # ============= EOF =============================================
