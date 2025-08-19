@@ -42,12 +42,10 @@ def verify_observed_property_corresponds_with_observation_class(
                     "loc": ["path", "observation_id"],
                     "type": "value_error",
                     "input": {"observation_id": observation.id},
-                    "msg": f"{observation_class.capitalize()} observation with ID {observation.id} not found. It is a {actual_observation_class} observation.",
+                    "msg": f"Observation with ID {observation.id} is not a {observation_class} observation. It is a {actual_observation_class} observation.",
                 }
             ],
         )
-    else:
-        return True
 
 
 def get_observation_of_an_observation_class_by_id(

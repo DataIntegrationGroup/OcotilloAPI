@@ -171,7 +171,7 @@ def test_patch_groundwater_level_observation_404_wrong_observation_class(
 
         assert (
             data["detail"][0]["msg"]
-            == f"Groundwater level observation with ID {obs.id} not found. It is a {observation_class} observation."
+            == f"Observation with ID {obs.id} is not a groundwater level observation. It is a {observation_class} observation."
         )
 
 
@@ -315,13 +315,13 @@ def test_get_groundwater_level_observation_by_id_404_wrong_observation_class(
         data = response.json()
 
         if obs.observed_property == "temperature":
-            url = f"/observation/geothermal/{obs.id}"
+            actual_observation_class = "geothermal"
         else:
-            url = f"/observation/water-chemistry/{obs.id}"
+            actual_observation_class = "water chemistry"
 
         assert (
             data["detail"][0]["msg"]
-            == f"Observation with ID {obs.id} is not a groundwater level observation. To retrieve it, use the following URL: {url}"
+            == f"Observation with ID {obs.id} is not a groundwater level observation. It is a {actual_observation_class} observation."
         )
         assert data["detail"][0]["type"] == "value_error"
         assert data["detail"][0]["input"] == {"observation_id": obs.id}
@@ -457,15 +457,15 @@ def test_get_water_chemistry_observation_by_id_404_wrong_observation_class(
         data = response.json()
 
         if obs.observed_property == "groundwater level":
-            url = f"/observation/groundwater-level/{obs.id}"
+            actual_observation_class = "groundwater level"
         elif obs.observed_property == "temperature":
-            url = f"/observation/geothermal/{obs.id}"
+            actual_observation_class = "geothermal"
         else:
             url = f"/observation/water-chemistry/{obs.id}"
 
         assert (
             data["detail"][0]["msg"]
-            == f"Observation with ID {obs.id} is not a water chemistry observation. To retrieve it, use the following URL: {url}"
+            == f"Observation with ID {obs.id} is not a water chemistry observation. It is a {actual_observation_class} observation."
         )
         assert data["detail"][0]["type"] == "value_error"
         assert data["detail"][0]["input"] == {"observation_id": obs.id}
@@ -530,13 +530,13 @@ def test_get_geothermal_observation_by_id_404_wrong_observation_class(
         data = response.json()
 
         if obs.observed_property == "groundwater level":
-            url = f"/observation/groundwater-level/{obs.id}"
+            actual_observation_class = "groundwater level"
         else:
-            url = f"/observation/water-chemistry/{obs.id}"
+            actual_observation_class = "water chemistry"
 
         assert (
             data["detail"][0]["msg"]
-            == f"Observation with ID {obs.id} is not a geothermal observation. To retrieve it, use the following URL: {url}"
+            == f"Observation with ID {obs.id} is not a geothermal observation. It is a {actual_observation_class} observation."
         )
         assert data["detail"][0]["type"] == "value_error"
         assert data["detail"][0]["input"] == {"observation_id": obs.id}

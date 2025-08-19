@@ -19,7 +19,7 @@ import functools
 from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -40,9 +40,11 @@ from schemas.observation import (
     ObservationResponse,
     UpdateGroundwaterLevelObservation,
 )
-from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
-from services.observation_helper import observation_model_patcher
+from services.observation_helper import (
+    observation_model_patcher,
+    get_observation_of_an_observation_class_by_id,
+)
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -100,7 +102,7 @@ def update_groundwater_level_observation(
     Update an existing groundwater level observation in the database.
     """
     return observation_model_patcher(
-        session, Observation, observation_id, obs_data, "groundwater level", user
+        session, observation_id, obs_data, "groundwater level", user
     )
 
 
@@ -199,25 +201,11 @@ def get_groundwater_level_observations(
 def get_groundwater_level_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> GroundwaterLevelObservationResponse:
-    observation = simple_get_by_id(session, Observation, observation_id)
-    if observation.observed_property != "groundwater level":
-        if observation.observed_property == "temperature":
-            url = f"/observation/geothermal/{observation_id}"
-        else:
-            url = f"/observation/water-chemistry/{observation_id}"
-        raise PydanticStyleException(
-            status_code=HTTP_404_NOT_FOUND,
-            detail=[
-                {
-                    "loc": ["path", "observation_id"],
-                    "msg": f"Observation with ID {observation_id} is not a groundwater level observation. To retrieve it, use the following URL: {url}",
-                    "type": "value_error",
-                    "input": {"observation_id": observation_id},
-                }
-            ],
-        )
-    else:
-        return observation
+    return get_observation_of_an_observation_class_by_id(
+        session=session,
+        observation_id=observation_id,
+        observation_class="groundwater level",
+    )
 
 
 @router.get("/water-chemistry", summary="Get water chemistry observations")
@@ -256,25 +244,11 @@ def get_water_chemistry_observations(
 def get_water_chemistry_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> WaterChemistryObservationResponse:
-    observation = simple_get_by_id(session, Observation, observation_id)
-    if observation.observed_property in ("groundwater level", "temperature"):
-        if observation.observed_property == "groundwater level":
-            url = f"/observation/groundwater-level/{observation_id}"
-        else:
-            url = f"/observation/geothermal/{observation_id}"
-        raise PydanticStyleException(
-            status_code=HTTP_404_NOT_FOUND,
-            detail=[
-                {
-                    "loc": ["path", "observation_id"],
-                    "msg": f"Observation with ID {observation_id} is not a water chemistry observation. To retrieve it, use the following URL: {url}",
-                    "type": "value_error",
-                    "input": {"observation_id": observation_id},
-                }
-            ],
-        )
-    else:
-        return observation
+    return get_observation_of_an_observation_class_by_id(
+        session=session,
+        observation_id=observation_id,
+        observation_class="water chemistry",
+    )
 
 
 @router.get("/geothermal", summary="Get geothermal observations")
@@ -311,25 +285,9 @@ def get_geothermal_observations(
 def get_geothermal_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> GeothermalObservationResponse:
-    observation = simple_get_by_id(session, Observation, observation_id)
-    if observation.observed_property != "temperature":
-        if observation.observed_property == "groundwater level":
-            url = f"/observation/groundwater-level/{observation_id}"
-        else:
-            url = f"/observation/water-chemistry/{observation_id}"
-        raise PydanticStyleException(
-            status_code=HTTP_404_NOT_FOUND,
-            detail=[
-                {
-                    "loc": ["path", "observation_id"],
-                    "msg": f"Observation with ID {observation_id} is not a geothermal observation. To retrieve it, use the following URL: {url}",
-                    "type": "value_error",
-                    "input": {"observation_id": observation_id},
-                }
-            ],
-        )
-    else:
-        return observation
+    return get_observation_of_an_observation_class_by_id(
+        session=session, observation_id=observation_id, observation_class="geothermal"
+    )
 
 
 @router.get("", summary="Get all observations")
