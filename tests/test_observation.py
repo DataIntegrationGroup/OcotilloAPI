@@ -201,7 +201,7 @@ def test_get_groundwater_level_observation_by_id_404_not_found(
     assert data["detail"] == f"Observation with ID {bad_id} not found."
 
 
-def test_get_groundwater_level_observation_by_id_404_wrong_observed_property(
+def test_get_groundwater_level_observation_by_id_404_wrong_observation_class(
     water_chemistry_observation,
 ):
     response = client.get(
@@ -285,6 +285,78 @@ def test_get_groundwater_observation_by_time_range_nonexistent():
     assert "items" in data, "Expected 'items' in response"
     items = data["items"]
     assert len(items) == 0, "Expected no groundwater observations in the time range"
+
+
+def test_get_water_chemistry_observations(water_chemistry_observation):
+    response = client.get("/observation/water-chemistry")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == water_chemistry_observation.id
+    assert data["items"][0][
+        "created_at"
+    ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["sample_id"] == water_chemistry_observation.sample_id
+    assert data["items"][0]["sensor_id"] == water_chemistry_observation.sensor_id
+    assert (
+        data["items"][0]["observation_datetime"]
+        == water_chemistry_observation.observation_datetime
+    )
+    assert (
+        data["items"][0]["observed_property"]
+        == water_chemistry_observation.observed_property
+    )
+    assert data["items"][0]["value"] == water_chemistry_observation.value
+    assert data["items"][0]["unit"] == water_chemistry_observation.unit
+
+
+def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
+    response = client.get(
+        f"/observation/water-chemistry/{water_chemistry_observation.id}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == water_chemistry_observation.id
+    assert data[
+        "created_at"
+    ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    assert data["sample_id"] == water_chemistry_observation.sample_id
+    assert data["sensor_id"] == water_chemistry_observation.sensor_id
+    assert (
+        data["observation_datetime"] == water_chemistry_observation.observation_datetime
+    )
+    assert data["observed_property"] == water_chemistry_observation.observed_property
+    assert data["value"] == water_chemistry_observation.value
+    assert data["unit"] == water_chemistry_observation.unit
+
+
+def test_get_water_chemistry_observation_by_id_404_not_found(
+    water_chemistry_observation,
+):
+    bad_id = 99999
+    response = client.get(f"/observation/water-chemistry/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
+def test_get_water_chemistry_observation_by_id_404_wrong_observation_class(
+    groundwater_level_observation,
+):
+    response = client.get(
+        f"/observation/water-chemistry/{groundwater_level_observation.id}"
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Observation with ID {groundwater_level_observation.id} is not a water chemistry observation."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {
+        "observation_id": groundwater_level_observation.id
+    }
+    assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
 # JB's comment: I don't think that geographic filters are necessary for

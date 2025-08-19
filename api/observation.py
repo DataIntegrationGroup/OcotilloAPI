@@ -80,7 +80,7 @@ def add_geothermal_observation(
 # ============= Get ==============================================
 
 
-def specify_observation_type(observation_class: str):
+def specify_observation_class(observation_class: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -133,10 +133,8 @@ def get_observations(
     return sql, session
 
 
-@router.get(
-    "/groundwater-level",
-)
-@specify_observation_type(observation_class="groundwater level")
+@router.get("/groundwater-level", summary="Get groundwater level observations")
+@specify_observation_class(observation_class="groundwater level")
 def get_groundwater_level_observations(
     session: session_dependency,
     thing_id: int | None = None,
@@ -164,7 +162,10 @@ def get_groundwater_level_observations(
     )
 
 
-@router.get("/groundwater-level/{observation_id}")
+@router.get(
+    "/groundwater-level/{observation_id}",
+    summary="Get groundwater level observation by ID",
+)
 def get_groundwater_level_observation_by_id(
     session: session_dependency, observation_id: int
 ) -> GroundwaterLevelObservationResponse:
@@ -185,34 +186,56 @@ def get_groundwater_level_observation_by_id(
         return observation
 
 
-# @router.get(
-#     "/water-chemistry"
-# )
-# @specify_observation_type(observation_class="water chemistry")
-# def get_water_chemistry_observations(
-#     session: session_dependency,
-#     thing_id: int | None = None,
-#     sensor_id: int | None = None,
-#     sample_id: int | None = None,
-#     start_time: datetime | None = None,
-#     end_time: datetime | None = None,
-#     sort: str | None = None,
-#     order: str | None = None,
-#     filter_: str = Query(alias="filter", default=None),
-# ) -> CustomPage[WaterChemistryObservationResponse]:
-#     """
-#     Retrieve all water chemistry observations from the database.
-#     """
-#     return get_observations(
-#         session=session,
-#         thing_id=thing_id,
-#         sensor_id=sensor_id,
-#         sample_id=sample_id,
-#         start_time=start_time,
-#         end_time=end_time,
-#         sort=sort,
-#         order=order,
-#         filter_=filter_,
-#     )
+@router.get("/water-chemistry", summary="Get water chemistry observations")
+@specify_observation_class(observation_class="water chemistry")
+def get_water_chemistry_observations(
+    session: session_dependency,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    sample_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[WaterChemistryObservationResponse]:
+    """
+    Retrieve all water chemistry observations from the database.
+    """
+    return get_observations(
+        session=session,
+        thing_id=thing_id,
+        sensor_id=sensor_id,
+        sample_id=sample_id,
+        start_time=start_time,
+        end_time=end_time,
+        sort=sort,
+        order=order,
+        filter_=filter_,
+    )
+
+
+@router.get(
+    "/water-chemistry/{observation_id}", summary="Get water chemistry observation by ID"
+)
+def get_water_chemistry_observation_by_id(
+    session: session_dependency, observation_id: int
+) -> WaterChemistryObservationResponse:
+    observation = simple_get_by_id(session, Observation, observation_id)
+    if observation.observed_property in ("groundwater level", "temperature"):
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "observation_id"],
+                    "msg": f"Observation with ID {observation_id} is not a water chemistry observation.",
+                    "type": "value_error",
+                    "input": {"observation_id": observation_id},
+                }
+            ],
+        )
+    else:
+        return observation
+
 
 # ============= EOF =============================================
