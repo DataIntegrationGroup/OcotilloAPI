@@ -22,7 +22,13 @@ from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency, amp_admin_dependency, admin_dependency
+from core.dependencies import (
+    session_dependency,
+    amp_admin_dependency,
+    admin_dependency,
+    amp_viewer_dependency,
+    viewer_dependency,
+)
 from db import Sample, Observation, adder
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
@@ -140,6 +146,7 @@ def get_observations(
 @specify_observation_class(observation_class="groundwater level")
 def get_groundwater_level_observations(
     session: session_dependency,
+    user: amp_viewer_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,
@@ -170,7 +177,7 @@ def get_groundwater_level_observations(
     summary="Get groundwater level observation by ID",
 )
 def get_groundwater_level_observation_by_id(
-    session: session_dependency, observation_id: int
+    session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> GroundwaterLevelObservationResponse:
     observation = simple_get_by_id(session, Observation, observation_id)
     if observation.observed_property != "groundwater level":
@@ -197,6 +204,7 @@ def get_groundwater_level_observation_by_id(
 @specify_observation_class(observation_class="water chemistry")
 def get_water_chemistry_observations(
     session: session_dependency,
+    user: amp_viewer_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,
@@ -226,7 +234,7 @@ def get_water_chemistry_observations(
     "/water-chemistry/{observation_id}", summary="Get water chemistry observation by ID"
 )
 def get_water_chemistry_observation_by_id(
-    session: session_dependency, observation_id: int
+    session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> WaterChemistryObservationResponse:
     observation = simple_get_by_id(session, Observation, observation_id)
     if observation.observed_property in ("groundwater level", "temperature"):
@@ -253,6 +261,7 @@ def get_water_chemistry_observation_by_id(
 @specify_observation_class(observation_class="geothermal")
 def get_geothermal_observations(
     session: session_dependency,
+    user: viewer_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,
@@ -280,7 +289,7 @@ def get_geothermal_observations(
 
 @router.get("/geothermal/{observation_id}", summary="Get geothermal observation by ID")
 def get_geothermal_observation_by_id(
-    session: session_dependency, observation_id: int
+    session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> GeothermalObservationResponse:
     observation = simple_get_by_id(session, Observation, observation_id)
     if observation.observed_property != "temperature":
@@ -307,6 +316,7 @@ def get_geothermal_observation_by_id(
 @specify_observation_class(observation_class=None)
 def get_all_observations(
     session: session_dependency,
+    user: amp_viewer_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,
@@ -331,7 +341,7 @@ def get_all_observations(
 
 @router.get("/{observation_id}", summary="Get an observation by its ID")
 def get_observation_by_id(
-    session: session_dependency, observation_id: int
+    session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> ObservationResponse:
     return simple_get_by_id(session, Observation, observation_id)
 

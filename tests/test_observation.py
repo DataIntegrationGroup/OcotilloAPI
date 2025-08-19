@@ -14,7 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from db import Observation
-from core.dependencies import amp_admin_function, admin_function
+from core.dependencies import (
+    amp_admin_function,
+    admin_function,
+    amp_viewer_function,
+    viewer_function,
+)
 from main import app
 from tests import client, cleanup_post_test, override_authentication
 import pytest
@@ -28,6 +33,8 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides[admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
+    app.dependency_overrides[viewer_function] = override_authentication()
 
     yield
 
