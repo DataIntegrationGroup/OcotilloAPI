@@ -39,6 +39,10 @@
   {"category": "level_status", "term": "normal", "definition": "normal well water level status"},
 
   {"category": "organization", "term": "USGS", "definition": "US Geological Survey"},
+  {"category": "organization", "term": "TWDB", "definition": "Texas Water Development Board"},
+  {"category": "organization", "term": "Unknown", "definition": "Unknown organization"},
+  {"category": "organization", "term": "NMED", "definition": "New Mexico Environment Department"},
+
 
   {"category": "collection_method", "term": "manual", "definition": "manual sampling"},
   {"category": "collection_method", "term": "continuous", "definition": "continuous sampling"},

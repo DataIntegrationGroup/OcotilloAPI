@@ -24,6 +24,7 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
+from schemas.thing import ThingResponse
 
 """
 REFACTOR TODO: can we use inheritance for commonly defined fields and then set them as optional 
@@ -143,6 +144,7 @@ class UpdateSample(ValidateSample):
 class SampleResponse(BaseModel):
     id: int
     thing_id: int
+    thing: ThingResponse
     sample_type: str
     field_sample_id: str
     sample_date: AwareDatetime

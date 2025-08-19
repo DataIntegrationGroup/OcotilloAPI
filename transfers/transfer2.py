@@ -493,24 +493,40 @@ def transfer_assets(session):
             session.commit()
 
 
+def extract_organization(alternate_id):
+    if alternate_id.startswith("TWDB"):
+        return "TWDB"
+    elif alternate_id.startswith("NMED"):
+        return "NMED"
+
+    return 'Unknown'
+
+
 def transfer_link_ids(session, site_type="GW"):
-    ldf = pd.read_csv("./data/location.csv")
+    ldf = pd.read_csv("./data/location2.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
-
+    ldf = ldf[ldf["AlternateSiteID"].notna()]
     for i, row in enumerate(ldf.itertuples()):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
-            print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
+            # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
             continue
-
+        print(f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
+              f"b={row.AlternateSiteID2}")
         link_id = ThingIdLink()
         link_id.thing = thing
+        link_id.relation='same_as'
         link_id.alternate_id = row.AlternateSiteID
 
-        # TODO: this needs improvement. use regex to determine the organization from the alternate id.
-        link_id.alternate_organization = "USGS"
+        # TODO: this needs improvement. use regex to determine the organization from the alternate id?
 
+        link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+
+        print('adding link id: ', link_id)
+
+        # if i>100:
+        #     break
         session.add(link_id)
         session.commit()
 
@@ -536,15 +552,18 @@ if __name__ == "__main__":
 
             init_sensor(sess)
             transfer_wells(sess, 1000)
-            # transfer_link_ids(sess)
+            transfer_springs(sess)
+            transfer_perennial_stream(sess)
+            transfer_ephemeral_stream(sess)
+            transfer_met(sess)
+            transfer_owners(sess)
+            transfer_wellscreens(sess)
+            transfer_water_levels(sess)
+            transfer_assets(sess)
 
-        transfer_springs(sess)
-        transfer_perennial_stream(sess)
-        transfer_ephemeral_stream(sess)
-        transfer_met(sess)
+        transfer_link_ids(sess)
+
+
         #
-        transfer_owners(sess)
-        transfer_wellscreens(sess)
-        transfer_water_levels(sess)
-        transfer_assets(sess)
+
 # ============= EOF =============================================
