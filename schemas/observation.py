@@ -24,6 +24,8 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
+from schemas import ORMBaseModel
+
 
 # class GeothermalMixin:
 #     depth: float
@@ -104,13 +106,11 @@ class UpdateGeothermalObservation(UpdateBaseObservation):
 
 
 # -------- RESPONSE ----------
-class BaseObservationResponse(BaseModel):
-    id: int
+class BaseObservationResponse(ORMBaseModel):
     sample_id: int
     sensor_id: int
     observation_datetime: AwareDatetime
     observed_property: str
-    created_at: AwareDatetime
     release_status: str
     value: float | None
     unit: str
