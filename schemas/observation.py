@@ -83,7 +83,7 @@ class CreateGeothermalObservation(CreateBaseObservation):
 
 
 class UpdateBaseObservation(ValidateObservation):
-    observation_datetime: Annotated[AwareDatetime, PastDatetime()]
+    observation_datetime: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_id: int | None = None
     sensor_id: int | None = None
     observed_property: str | None = None

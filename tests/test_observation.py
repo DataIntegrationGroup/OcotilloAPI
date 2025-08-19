@@ -21,7 +21,7 @@ from core.dependencies import (
     viewer_function,
 )
 from main import app
-from tests import client, cleanup_post_test, override_authentication
+from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
 import pytest
 
 
@@ -123,6 +123,56 @@ def test_add_geothermal_observation(sample, sensor):
     assert data["unit"] == payload["unit"]
 
     cleanup_post_test(Observation, data["id"])
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_groundwater_level_observation(groundwater_level_observation):
+    payload = {"measuring_point_height": 3}
+    response = client.patch(
+        f"/observation/groundwater-level/{groundwater_level_observation.id}",
+        json=payload,
+    )
+    data = response.json()
+    assert response.status_code == 200
+
+    assert data["measuring_point_height"] == payload["measuring_point_height"]
+
+    cleanup_patch_test(Observation, payload, groundwater_level_observation)
+
+
+def test_patch_groundwater_level_observation_404_not_found(
+    groundwater_level_observation,
+):
+    bad_id = 99999
+    payload = {"measuring_point_height": 3}
+    response = client.patch(f"/observation/groundwater-level/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
+def test_patch_groundwater_level_observation_404_wrong_observation_class(
+    water_chemistry_observation, geothermal_observation
+):
+    for obs in water_chemistry_observation, geothermal_observation:
+        payload = {"measuring_point_height": 3}
+        response = client.patch(
+            f"/observation/groundwater-level/{obs.id}", json=payload
+        )
+        assert response.status_code == 404
+        data = response.json()
+
+        if obs.observed_property == "temperature":
+            observation_class = "geothermal"
+        else:
+            observation_class = "water chemistry"
+
+        assert (
+            data["detail"][0]["msg"]
+            == f"Groundwater level observation with ID {obs.id} not found. It is a {observation_class} observation."
+        )
 
 
 # ============= Get tests =================

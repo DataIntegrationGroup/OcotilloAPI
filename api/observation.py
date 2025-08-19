@@ -19,7 +19,7 @@ import functools
 from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -38,9 +38,11 @@ from schemas.observation import (
     CreateGeothermalObservation,
     GeothermalObservationResponse,
     ObservationResponse,
+    UpdateGroundwaterLevelObservation,
 )
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
+from services.observation_helper import observation_model_patcher
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -82,6 +84,24 @@ def add_geothermal_observation(
     This endpoint is currently a placeholder and does not implement any functionality.
     """
     return adder(session, Observation, obs_data, user=user)
+
+
+# PATCH ========================================================================
+
+
+@router.patch("/groundwater-level/{observation_id}", status_code=HTTP_200_OK)
+def update_groundwater_level_observation(
+    observation_id: int,
+    obs_data: UpdateGroundwaterLevelObservation,
+    session: session_dependency,
+    user: amp_admin_dependency,
+) -> GroundwaterLevelObservationResponse:
+    """
+    Update an existing groundwater level observation in the database.
+    """
+    return observation_model_patcher(
+        session, Observation, observation_id, obs_data, "groundwater level", user
+    )
 
 
 # ============= Get ==============================================
