@@ -171,12 +171,16 @@ def get_groundwater_level_observation_by_id(
 ) -> GroundwaterLevelObservationResponse:
     observation = simple_get_by_id(session, Observation, observation_id)
     if observation.observed_property != "groundwater level":
+        if observation.observed_property == "temperature":
+            url = f"/observation/geothermal/{observation_id}"
+        else:
+            url = f"/observation/water-chemistry/{observation_id}"
         raise PydanticStyleException(
             status_code=HTTP_404_NOT_FOUND,
             detail=[
                 {
                     "loc": ["path", "observation_id"],
-                    "msg": f"Observation with ID {observation_id} is not a groundwater level observation.",
+                    "msg": f"Observation with ID {observation_id} is not a groundwater level observation. To retrieve it, use the following URL: {url}",
                     "type": "value_error",
                     "input": {"observation_id": observation_id},
                 }
@@ -223,12 +227,16 @@ def get_water_chemistry_observation_by_id(
 ) -> WaterChemistryObservationResponse:
     observation = simple_get_by_id(session, Observation, observation_id)
     if observation.observed_property in ("groundwater level", "temperature"):
+        if observation.observed_property == "groundwater level":
+            url = f"/observation/groundwater-level/{observation_id}"
+        else:
+            url = f"/observation/geothermal/{observation_id}"
         raise PydanticStyleException(
             status_code=HTTP_404_NOT_FOUND,
             detail=[
                 {
                     "loc": ["path", "observation_id"],
-                    "msg": f"Observation with ID {observation_id} is not a water chemistry observation.",
+                    "msg": f"Observation with ID {observation_id} is not a water chemistry observation. To retrieve it, use the following URL: {url}",
                     "type": "value_error",
                     "input": {"observation_id": observation_id},
                 }

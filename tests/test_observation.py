@@ -202,22 +202,25 @@ def test_get_groundwater_level_observation_by_id_404_not_found(
 
 
 def test_get_groundwater_level_observation_by_id_404_wrong_observation_class(
-    water_chemistry_observation,
+    water_chemistry_observation, geothermal_observation
 ):
-    response = client.get(
-        f"/observation/groundwater-level/{water_chemistry_observation.id}"
-    )
-    assert response.status_code == 404
-    data = response.json()
-    assert (
-        data["detail"][0]["msg"]
-        == f"Observation with ID {water_chemistry_observation.id} is not a groundwater level observation."
-    )
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {
-        "observation_id": water_chemistry_observation.id
-    }
-    assert data["detail"][0]["loc"] == ["path", "observation_id"]
+    for obs in water_chemistry_observation, geothermal_observation:
+        response = client.get(f"/observation/groundwater-level/{obs.id}")
+        assert response.status_code == 404
+        data = response.json()
+
+        if obs.observed_property == "temperature":
+            url = f"/observation/geothermal/{obs.id}"
+        else:
+            url = f"/observation/water-chemistry/{obs.id}"
+
+        assert (
+            data["detail"][0]["msg"]
+            == f"Observation with ID {obs.id} is not a groundwater level observation. To retrieve it, use the following URL: {url}"
+        )
+        assert data["detail"][0]["type"] == "value_error"
+        assert data["detail"][0]["input"] == {"observation_id": obs.id}
+        assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
 def test_get_groundwater_observation_by_sample(sample):
@@ -341,22 +344,27 @@ def test_get_water_chemistry_observation_by_id_404_not_found(
 
 
 def test_get_water_chemistry_observation_by_id_404_wrong_observation_class(
-    groundwater_level_observation,
+    groundwater_level_observation, geothermal_observation
 ):
-    response = client.get(
-        f"/observation/water-chemistry/{groundwater_level_observation.id}"
-    )
-    assert response.status_code == 404
-    data = response.json()
-    assert (
-        data["detail"][0]["msg"]
-        == f"Observation with ID {groundwater_level_observation.id} is not a water chemistry observation."
-    )
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {
-        "observation_id": groundwater_level_observation.id
-    }
-    assert data["detail"][0]["loc"] == ["path", "observation_id"]
+    for obs in groundwater_level_observation, geothermal_observation:
+        response = client.get(f"/observation/water-chemistry/{obs.id}")
+        assert response.status_code == 404
+        data = response.json()
+
+        if obs.observed_property == "groundwater level":
+            url = f"/observation/groundwater-level/{obs.id}"
+        elif obs.observed_property == "temperature":
+            url = f"/observation/geothermal/{obs.id}"
+        else:
+            url = f"/observation/water-chemistry/{obs.id}"
+
+        assert (
+            data["detail"][0]["msg"]
+            == f"Observation with ID {obs.id} is not a water chemistry observation. To retrieve it, use the following URL: {url}"
+        )
+        assert data["detail"][0]["type"] == "value_error"
+        assert data["detail"][0]["input"] == {"observation_id": obs.id}
+        assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
 # JB's comment: I don't think that geographic filters are necessary for
