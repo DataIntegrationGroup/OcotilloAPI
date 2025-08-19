@@ -119,6 +119,54 @@ def test_add_geothermal_observation(sample, sensor):
 
 
 # ============= Get tests =================
+
+
+def test_get_all_observations(
+    groundwater_level_observation, water_chemistry_observation, geothermal_observation
+):
+    response = client.get("/observation")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 3
+    assert data["items"][0]["id"] == groundwater_level_observation.id
+    assert data["items"][1]["id"] == water_chemistry_observation.id
+    assert data["items"][2]["id"] == geothermal_observation.id
+
+
+def test_get_observation_by_id(
+    groundwater_level_observation, water_chemistry_observation, geothermal_observation
+):
+    for obs in (
+        groundwater_level_observation,
+        water_chemistry_observation,
+        geothermal_observation,
+    ):
+        response = client.get(f"/observation/{obs.id}")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["id"] == obs.id
+        if obs.observed_property == "groundwater level":
+            assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
+            assert data["observation_depth"] is None
+        elif obs.observed_property == "temperature":
+            assert data["depth_to_water_bgs"] is None
+            assert data["observation_depth"] == obs.observation_depth
+        else:
+            assert data["depth_to_water_bgs"] is None
+            assert data["observation_depth"] is None
+
+
+def test_get_observation_by_id_404_not_found(
+    groundwater_level_observation, water_chemistry_observation, geothermal_observation
+):
+    bad_id = 999999
+    response = client.get(f"/observation/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Observation with ID {bad_id} not found."
+
+
 def test_get_groundwater_level_observations(
     groundwater_level_observation, water_chemistry_observation, geothermal_observation
 ):

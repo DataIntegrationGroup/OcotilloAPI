@@ -31,6 +31,7 @@ from schemas.observation import (
     WaterChemistryObservationResponse,
     CreateGeothermalObservation,
     GeothermalObservationResponse,
+    ObservationResponse,
 )
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
@@ -80,7 +81,7 @@ def add_geothermal_observation(
 # ============= Get ==============================================
 
 
-def specify_observation_class(observation_class: str):
+def specify_observation_class(observation_class: str | None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -300,6 +301,39 @@ def get_geothermal_observation_by_id(
         )
     else:
         return observation
+
+
+@router.get("", summary="Get all observations")
+@specify_observation_class(observation_class=None)
+def get_all_observations(
+    session: session_dependency,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    sample_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[ObservationResponse]:
+    return get_observations(
+        session=session,
+        thing_id=thing_id,
+        sensor_id=sensor_id,
+        sample_id=sample_id,
+        start_time=start_time,
+        end_time=end_time,
+        sort=sort,
+        order=order,
+        filter_=filter_,
+    )
+
+
+@router.get("/{observation_id}", summary="Get an observation by its ID")
+def get_observation_by_id(
+    session: session_dependency, observation_id: int
+) -> ObservationResponse:
+    return simple_get_by_id(session, Observation, observation_id)
 
 
 # ============= EOF =============================================

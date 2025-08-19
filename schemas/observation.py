@@ -118,15 +118,17 @@ class BaseObservationResponse(ORMBaseModel):
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water_bgs: float | None
-    measuring_point_height: float
+    measuring_point_height: float | None
     level_status: str | None
 
     @model_validator(mode="before")
     def calculate_depth_to_water_bgs(self: Self) -> Self:
         depth_to_water = self.value
         measuring_point_height = self.measuring_point_height
-        if depth_to_water is not None:
+        if depth_to_water is not None and measuring_point_height is not None:
             self.depth_to_water_bgs = depth_to_water - measuring_point_height
+        else:
+            self.depth_to_water_bgs = None
         return self
 
 
@@ -135,7 +137,7 @@ class WaterChemistryObservationResponse(BaseObservationResponse):
 
 
 class GeothermalObservationResponse(BaseObservationResponse):
-    observation_depth: float
+    observation_depth: float | None
 
 
 class ObservationResponse(
