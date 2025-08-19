@@ -172,3 +172,63 @@ def asset():
         yield asset
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def groundwater_level_observation(sensor, sample):
+    with session_ctx() as session:
+        observation = Observation(
+            observation_datetime="2025-01-01T00:00:00Z",
+            sample_id=sample.id,
+            sensor_id=sensor.id,
+            observed_property="groundwater level",
+            release_status="draft",
+            value=10.0,
+            unit="ft",
+            measuring_point_height=5.0,
+            level_status="normal",
+        )
+        session.add(observation)
+        session.commit()
+        yield observation
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def water_chemistry_observation(sensor, sample):
+    with session_ctx() as session:
+        observation = Observation(
+            observation_datetime="2025-01-01T00:00:00Z",
+            sample_id=sample.id,
+            sensor_id=sensor.id,
+            observed_property="pH",
+            release_status="draft",
+            value=4.0,
+            unit="dimensionless",
+        )
+        session.add(observation)
+        session.commit()
+        yield observation
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def geothermal_observation(sensor, sample):
+    with session_ctx() as session:
+        observation = Observation(
+            observation_datetime="2025-01-01T00:00:00Z",
+            sample_id=sample.id,
+            sensor_id=sensor.id,
+            observed_property="temperature",
+            release_status="draft",
+            value=20.0,
+            unit="deg C",
+            observation_depth="200",
+        )
+        session.add(observation)
+        session.commit()
+        yield observation
+
+        session.close()
