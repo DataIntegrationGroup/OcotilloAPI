@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from sqlalchemy.orm import Session, DeclarativeBase
+from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
 
+from db import Observation
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id
 
@@ -17,21 +18,16 @@ for key, value in observation_class_to_observed_properties.items():
         observation_property_to_class[prop] = key
 
 
-def observation_model_patcher(
-    session: Session,
-    model: DeclarativeBase,
-    item_id: int,
-    payload: BaseModel,
-    observation_class: str,
-    user: dict,
-) -> object:
+def verify_observed_property_corresponds_with_observation_class(
+    observation: Observation, observation_class: str
+) -> None:
     """
-    Patch an observation model with the provided payload.
+    Verify that the observed property of the retrieved Observation corresponds
+    with the observation class as defined by the path
+    (e.g. /observation/water-chemistry). Raise an error if they do not
+    correspond.
     """
-    # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
-    item = simple_get_by_id(session, model, item_id)
-
-    observed_property = item.observed_property
+    observed_property = observation.observed_property
 
     if (
         observed_property
@@ -45,19 +41,54 @@ def observation_model_patcher(
                 {
                     "loc": ["path", "observation_id"],
                     "type": "value_error",
-                    "input": {"observation_id": item_id},
-                    "msg": f"{observation_class.capitalize()} observation with ID {item_id} not found. It is a {actual_observation_class} observation.",
+                    "input": {"observation_id": observation.id},
+                    "msg": f"{observation_class.capitalize()} observation with ID {observation.id} not found. It is a {actual_observation_class} observation.",
                 }
             ],
         )
+    else:
+        return True
+
+
+def get_observation_of_an_observation_class_by_id(
+    session: Session, observation_id: int, observation_class: str
+) -> Observation:
+    """
+    Retrieve an observation by its ID.
+    """
+    observation = simple_get_by_id(session, Observation, observation_id)
+
+    verify_observed_property_corresponds_with_observation_class(
+        observation, observation_class
+    )
+
+    return observation
+
+
+def observation_model_patcher(
+    session: Session,
+    observation_id: int,
+    payload: BaseModel,
+    observation_class: str,
+    user: dict,
+) -> Observation:
+    """
+    Patch an observation model with the provided payload.
+    """
+    # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
+    observation = simple_get_by_id(session, Observation, observation_id)
+
+    verify_observed_property_corresponds_with_observation_class(
+        observation, observation_class
+    )
 
     for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(item, key, value)
+        setattr(observation, key, value)
 
     if user:
-        item.updated_by_id = user["sub"]
-        item.updated_by_name = user["name"]
+        observation.updated_by_id = user["sub"]
+        observation.updated_by_name = user["name"]
 
     session.commit()
-    session.refresh(item)
-    return item
+    session.refresh(observation)
+    return observation
