@@ -178,7 +178,7 @@ def asset():
 def groundwater_level_observation(sensor, sample):
     with session_ctx() as session:
         observation = Observation(
-            observation_datetime="2025-01-01T00:00:00Z",
+            observation_datetime="2025-01-01T00:04:00Z",
             sample_id=sample.id,
             sensor_id=sensor.id,
             observed_property="groundwater level",
@@ -199,7 +199,7 @@ def groundwater_level_observation(sensor, sample):
 def water_chemistry_observation(sensor, sample):
     with session_ctx() as session:
         observation = Observation(
-            observation_datetime="2025-01-01T00:00:00Z",
+            observation_datetime="2025-01-01T00:03:00Z",
             sample_id=sample.id,
             sensor_id=sensor.id,
             observed_property="pH",
@@ -218,7 +218,7 @@ def water_chemistry_observation(sensor, sample):
 def geothermal_observation(sensor, sample):
     with session_ctx() as session:
         observation = Observation(
-            observation_datetime="2025-01-01T00:00:00Z",
+            observation_datetime="2025-01-01T00:02:00Z",
             sample_id=sample.id,
             sensor_id=sensor.id,
             observed_property="temperature",
