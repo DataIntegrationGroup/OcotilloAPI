@@ -76,3 +76,93 @@ def sample(thing, sensor):
         yield sample
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def contact(thing):
+    with session_ctx() as session:
+        contact = Contact(
+            name="Test Contact",
+            role="Owner",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        association = ThingContactAssociation(thing_id=thing.id, contact_id=contact.id)
+        session.add(association)
+        session.commit()
+        session.refresh(association)
+
+        yield contact
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def address(contact):
+    with session_ctx() as session:
+        address = Address(
+            address_line_1="123 Main St",
+            address_line_2="Apt 4B",
+            city="Test City",
+            state="NM",
+            postal_code="87501",
+            country="United States",
+            address_type="Primary",
+            contact_id=contact.id,
+        )
+        session.add(address)
+        session.commit()
+        session.refresh(address)
+        yield address
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def email(contact):
+    with session_ctx() as session:
+        email = Email(
+            email="test@example.com", email_type="Primary", contact_id=contact.id
+        )
+        session.add(email)
+        session.commit()
+        session.refresh(email)
+        yield email
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def phone(contact):
+    with session_ctx() as session:
+        phone = Phone(
+            phone_number="+15051234567", phone_type="Mobile", contact_id=contact.id
+        )
+        session.add(phone)
+        session.commit()
+        session.refresh(phone)
+        yield phone
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
+def asset():
+    with session_ctx() as session:
+        asset = Asset(
+            name="Test Asset",
+            label="test label",
+            mime_type="image/png",
+            size=12345,
+            storage_service="mock_service",
+            storage_path="mock/path/to/asset",
+            uri="https://storage.googleapis.com/mock-bucket/mock-asset",
+        )
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+        yield asset
+
+        session.close()

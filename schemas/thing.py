@@ -13,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
 from typing import List
 
-from geoalchemy2 import WKBElement
-from geoalchemy2.shape import to_shape
-from pydantic import BaseModel, model_validator, field_validator
+from pydantic import BaseModel, model_validator
 
 from schemas import ORMBaseModel
 from schemas.location import LocationResponse

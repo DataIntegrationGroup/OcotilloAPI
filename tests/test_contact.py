@@ -1,356 +1,964 @@
-# from fastapi.testclient import TestClient
-# from main import app
-# from models import Base, engine
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
+from core.dependencies import (
+    amp_viewer_function,
+    amp_editor_function,
+    amp_admin_function,
+)
+from db import Contact, Address, Email, Phone
+from db.engine import session_ctx
+from main import app
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
+from schemas.contact import ValidateEmail, ValidatePhone
 
-# client = TestClient(app)
-
-from tests import client
-
-
-#  ADD tests ======================================================
+import pytest
+from pydantic import ValidationError
+import re
 
 
-def test_add_contact(thing):
-    response = client.post(
-        "/contact",
-        json={
-            "name": "Test Contact",
-            "role": "Owner",
-            "thing_id": thing.id,
-            "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
-            "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
-            "addresses": [
-                {
-                    "address_line_1": "123 Main St",
-                    "city": "Test City",
-                    "state": "NM",
-                    "postal_code": "87501",
-                    "country": "United States",
-                    "address_type": "Primary",
-                }
-            ],
-        },
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
     )
-    data = response.json()
-    assert response.status_code == 201
-    assert "id" in data
-    assert data["name"] == "Test Contact"
-    assert data["role"] == "Owner"
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
 
-    assert len(data["emails"]) == 1
-    assert data["emails"][0]["email"] == "fasdfasdf@gmail.com"
+    yield
 
-    assert len(data["phones"]) == 1
-    assert data["phones"][0]["phone_number"] == "+12345678901"
-    assert len(data["addresses"]) == 1
-    assert data["addresses"][0]["address_line_1"] == "123 Main St"
-
-    # assert data["email"] == "fasdfasdf@gmail.com"
-
-    # for i in range(2, 5):
-    #     response = client.post(
-    #         "/base/contact",
-    #         json={
-    #             "owner_id": i,
-    #             "name": f"Test Contact {i}",
-    #             "email": f"foo{i}@gmail.com",
-    #             "phone": f"+1234567890{i}",
-    #         },
-    #     )
-    #     assert response.status_code == 201
-    #     data = response.json()
-    #     assert "id" in data
-    #     assert data["name"] == f"Test Contact {i}"
-    #     assert data["email"] == f"foo{i}@gmail.com"
-    #     assert data["phone"] == f"+1234567890{i}"
+    app.dependency_overrides = {}
 
 
-def test_phone_validation_fail(thing):
+# ============= module & function fixtures =======================================
+
+
+@pytest.fixture(scope="function")
+def second_contact():
+    with session_ctx() as session:
+        contact = Contact(
+            name="Test Second Contact",
+            role="Owner",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        yield contact
+
+        session.delete(contact)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_email(second_contact):
+    with session_ctx() as session:
+        email = Email(
+            email="testsecondcontact@gmail.com",
+            email_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(email)
+        session.commit()
+        session.refresh(email)
+        yield email
+        session.delete(email)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_phone(second_contact):
+    with session_ctx() as session:
+        phone = Phone(
+            phone_number="123-456-7890",
+            phone_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(phone)
+        session.commit()
+        session.refresh(phone)
+        yield phone
+        session.delete(phone)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_address(second_contact):
+    with session_ctx() as session:
+        address = Address(
+            address_line_1="456 Secondary St",
+            address_line_2="Apt 12A",
+            city="Test Metropolis",
+            state="NM",
+            postal_code="87501",
+            country="United States",
+            address_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(address)
+        session.commit()
+        session.refresh(address)
+        yield address
+        session.delete(address)
+        session.commit()
+        session.close()
+
+
+# @pytest.fixture(scope="function")
+# def second_thing_contact_association(thing, second_contact):
+#     with session_ctx() as session:
+#         association = ThingContactAssociation(
+#             thing_id=thing.id, contact_id=second_contact.id
+#         )
+#         session.add(association)
+#         session.commit()
+#         session.refresh(association)
+#         yield association
+#         session.delete(association)
+#         session.commit()
+#         session.close()
+
+
+# VALIDATION tests =============================================================
+
+
+def test_validate_phone():
     for phone in [
         "definitely not a phone",
-        # "1234567890",
-        # "123-456-7890",
-        # "123-456-78901",
-        # "123-4567-890",
         "123-456-789a",
         "123-456-7890x1234",
         "123.456.7890",
         "(123) 456-7890",
     ]:
-
-        response = client.post(
-            "/contact",
-            json={
-                "name": "Test Contact 2",
-                "thing_id": thing.id,
-                "role": "Primary",
-                "emails": [{"email": "fasdfasdf@gmail.com", "email_type": "Primary"}],
-                "phones": [{"phone_number": phone, "phone_type": "Primary"}],
-                "addresses": [
-                    {
-                        "address_line_1": "123 Main St",
-                        "city": "Test City",
-                        "state": "NM",
-                        "postal_code": "87501",
-                        "country": "United States",
-                        "address_type": "Primary",
-                    }
-                ],
-            },
-        )
-        data = response.json()
-        assert response.status_code == 422
-        assert "detail" in data, "Expected 'detail' in response"
-        assert len(data["detail"]) == 1, "Expected 1 error in response"
-        detail = data["detail"][0]
-        assert detail["msg"] == f"Value error, Invalid phone number. {phone}"
+        pattern = re.escape(f"Value error, Invalid phone number. {phone}")
+        with pytest.raises(ValidationError, match=pattern):
+            ValidatePhone(phone_number=phone, phone_type="Primary")
 
 
-def test_email_validation_fail(thing):
-
+def test_validate_email():
     for email in [
-        "",
         "invalid-email",
-        "invalid@domain",
-        "invalid@domain.",
-        "@domain.com",
+        "user@.com",
+        "user@domain..com",
     ]:
-        response = client.post(
-            "/contact",
-            json={
-                "name": "Test ContactX",
-                "thing_id": thing.id,
-                "role": "Primary",
-                "emails": [{"email": email, "email_type": "Primary"}],
-                "phones": [{"phone_number": "+12345678901", "phone_type": "Primary"}],
-                "addresses": [
-                    {
-                        "address_line_1": "123 Main St",
-                        "city": "Test City",
-                        "state": "NM",
-                        "postal_code": "87501",
-                        "country": "United States",
-                        "address_type": "Primary",
-                    }
-                ],
-            },
-        )
-        data = response.json()
-        assert response.status_code == 422
-        assert "detail" in data, "Expected 'detail' in response"
-        assert len(data["detail"]) == 1, "Expected 1 error in response"
-        detail = data["detail"][0]
-        assert detail["msg"] == f"Value error, Invalid email format. {email}"
+        pattern = re.escape(f"Value error, Invalid email format. {email}")
+        with pytest.raises(ValidationError, match=pattern):
+            ValidateEmail(email=email)
+
+
+# ADD tests ====================================================================
+
+
+def test_add_contact(thing):
+    payload = {
+        "name": "Test Contact 2",
+        "role": "Owner",
+        "thing_id": thing.id,
+        "emails": [{"email": "testcontact2@gmail.com", "email_type": "Primary"}],
+        "phones": [{"phone_number": "+14153334444", "phone_type": "Primary"}],
+        "addresses": [
+            {
+                "address_line_1": "123 Default St",
+                "address_line_2": "Apt 8R",
+                "city": "Test Metropolis",
+                "state": "NM",
+                "postal_code": "87501",
+                "country": "United States",
+                "address_type": "Primary",
+            }
+        ],
+    }
+    response = client.post("/contact", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["name"] == payload["name"]
+    assert data["role"] == payload["role"]
+
+    assert len(data["emails"]) == 1
+    assert data["emails"][0]["contact_id"] == data["id"]
+    assert data["emails"][0]["email"] == payload["emails"][0]["email"]
+    assert data["emails"][0]["email_type"] == payload["emails"][0]["email_type"]
+
+    assert len(data["phones"]) == 1
+    assert data["phones"][0]["contact_id"] == data["id"]
+    assert data["phones"][0]["phone_number"] == payload["phones"][0]["phone_number"]
+    assert data["phones"][0]["phone_type"] == payload["phones"][0]["phone_type"]
+
+    assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["contact_id"] == data["id"]
+    assert (
+        data["addresses"][0]["address_line_1"]
+        == payload["addresses"][0]["address_line_1"]
+    )
+    assert (
+        data["addresses"][0]["address_line_2"]
+        == payload["addresses"][0]["address_line_2"]
+    )
+    assert data["addresses"][0]["city"] == payload["addresses"][0]["city"]
+    assert data["addresses"][0]["state"] == payload["addresses"][0]["state"]
+    assert data["addresses"][0]["postal_code"] == payload["addresses"][0]["postal_code"]
+    assert data["addresses"][0]["country"] == payload["addresses"][0]["country"]
+    assert (
+        data["addresses"][0]["address_type"] == payload["addresses"][0]["address_type"]
+    )
+
+    cleanup_post_test(Contact, data["id"])
+
+
+def test_add_contact_409_bad_thing_id():
+    bad_thing_id = 9999
+    payload = {
+        "name": "Test Contact 3",
+        "role": "Owner",
+        "thing_id": bad_thing_id,
+        "emails": [{"email": "testcontact3@gmail.com", "email_type": "Primary"}],
+        "phones": [{"phone_number": "+14153334445", "phone_type": "Primary"}],
+        "addresses": [
+            {
+                "address_line_1": "123 Default St",
+                "address_line_2": "Apt 8R",
+                "city": "Test Metropolis",
+                "state": "NM",
+                "postal_code": "87501",
+                "country": "United States",
+                "address_type": "Primary",
+            }
+        ],
+    }
+    response = client.post("/contact", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+
+
+def test_add_address(contact):
+    payload = {
+        "contact_id": contact.id,
+        "address_line_1": "456 Secondary St",
+        "address_line_2": "Apt 12A",
+        "city": "Test Metropolis",
+        "state": "NM",
+        "postal_code": "87502",
+        "country": "United States",
+        "address_type": "Primary",
+    }
+    response = client.post("/contact/address", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["contact_id"] == contact.id
+    assert data["address_line_1"] == payload["address_line_1"]
+    assert data["address_line_2"] == payload["address_line_2"]
+    assert data["city"] == payload["city"]
+    assert data["state"] == payload["state"]
+    assert data["postal_code"] == payload["postal_code"]
+    assert data["country"] == payload["country"]
+    assert data["address_type"] == payload["address_type"]
+
+    cleanup_post_test(Address, data["id"])
+
+
+def test_add_address_409_contact_not_found(contact):
+    bad_contact_id = 9999
+    payload = {
+        "contact_id": bad_contact_id,
+        "address_line_1": "456 Secondary St",
+        "address_line_2": "Apt 12A",
+        "city": "Test Metropolis",
+        "state": "NM",
+        "postal_code": "87502",
+        "country": "United States",
+        "address_type": "Secondary",
+    }
+    response = client.post("/contact/address", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
+
+
+def test_add_email(contact):
+    payload = {
+        "contact_id": contact.id,
+        "email": "anothertestemail@nmt.edu",
+        "email_type": "Primary",
+    }
+    response = client.post("/contact/email", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["contact_id"] == contact.id
+    assert data["email"] == payload["email"]
+    assert data["email_type"] == payload["email_type"]
+
+    cleanup_post_test(Email, data["id"])
+
+
+def test_add_email_409_contact_not_found(contact):
+    bad_contact_id = 9999
+    payload = {
+        "contact_id": bad_contact_id,
+        "email": "anothertestemail@nmt.edu",
+        "email_type": "Primary",
+    }
+    response = client.post("/contact/email", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
+
+
+def test_add_phone(contact):
+    payload = {
+        "contact_id": contact.id,
+        "phone_number": "+12345678901",
+        "phone_type": "Primary",
+    }
+    response = client.post("/contact/phone", json=payload)
+    data = response.json()
+    assert response.status_code == 201
+    assert "id" in data
+    assert data["contact_id"] == contact.id
+    assert data["phone_number"] == payload["phone_number"]
+    assert data["phone_type"] == payload["phone_type"]
+
+    cleanup_post_test(Phone, data["id"])
+
+
+def test_add_phone_409_contact_not_found(contact):
+    bad_contact_id = 9999
+    payload = {
+        "contact_id": bad_contact_id,
+        "phone_number": "+12345678901",
+        "phone_type": "Primary",
+    }
+    response = client.post("/contact/phone", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
+
+
+# def test_add_thing_association(thing, second_contact):
+#     payload = {"thing_id": thing.id}
+#     response = client.post(
+#         f"/contact/{second_contact.id}/thing-association", json=payload
+#     )
+#     data = response.json()
+#     assert response.status_code == 201
+#     assert "id" in data
+#     assert data["thing_id"] == thing.id
+#     assert data["contact_id"] == second_contact.id
+
+#     cleanup_post_test(ThingContactAssociation, data["id"])
+
+
+# def test_add_thing_association_404_contact_not_found(contact, thing):
+#     bad_contact_id = 99999
+#     payload = {"thing_id": thing.id}
+#     response = client.post(f"/contact/{bad_contact_id}/thing-association", json=payload)
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+# def test_add_thing_association_409_thing_not_found(thing, contact):
+#     bad_thing_id = 9999
+#     payload = {"thing_id": bad_thing_id}
+#     response = client.post(f"/contact/{contact.id}/thing-association", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+#     assert data["detail"][0]["loc"] == ["body", "thing_id"]
+#     assert data["detail"][0]["type"] == "value_error"
+#     assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
 # GET tests ======================================================
 
 
-# def test_get_locations():
-#     response = client.get("/base/location")
-#     assert response.status_code == 200
-#     assert len(response.json()) > 0
-
-
-def test_get_contacts():
+def test_get_contacts(contact, email, address, phone):
     response = client.get("/contact")
     assert response.status_code == 200
-
     data = response.json()
-    assert "items" in data, "Expected 'items' in response"
-    items = data["items"]
-    assert isinstance(items, list), "'items' should be a list"
-    assert len(items) > 0, "'items' should not be empty"
-    item = items[0]
-    assert "id" in item, "Expected 'id' in contact item"
-    assert "name" in item, "Expected 'name' in contact item"
-    assert "role" in item, "Expected 'role' in contact item"
-    assert "emails" in item, "Expected 'emails' in contact item"
-    assert "phones" in item, "Expected 'phones' in contact item"
-    assert "addresses" in item, "Expected 'addresses' in contact item"
-    assert isinstance(item["emails"], list), "'emails' should be a list"
-    assert isinstance(item["phones"], list), "'phones' should be a list"
-    assert isinstance(item["addresses"], list), "'addresses' should be a list"
-    assert len(item["emails"]) == 1, "'emails' should not be empty"
-    assert len(item["phones"]) == 1, "'phones' should not be empty"
-    assert len(item["addresses"]) == 1, "'addresses' should not be empty"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == contact.id
+    assert data["items"][0]["name"] == contact.name
+    assert data["items"][0]["role"] == contact.role
 
-    # print(response.json())
-    # assert len(response.json()) > 0
+    assert len(data["items"][0]["emails"]) == 1
+    assert data["items"][0]["emails"][0]["id"] == email.id
+    assert data["items"][0]["emails"][0]["contact_id"] == email.contact_id
+    assert data["items"][0]["emails"][0]["email"] == email.email
+    assert data["items"][0]["emails"][0]["email_type"] == email.email_type
+
+    assert len(data["items"][0]["phones"]) == 1
+    assert data["items"][0]["phones"][0]["id"] == phone.id
+    assert data["items"][0]["phones"][0]["contact_id"] == phone.contact_id
+    assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
+    assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
+
+    assert len(data["items"][0]["addresses"]) == 1
+    assert data["items"][0]["addresses"][0]["id"] == address.id
+    assert data["items"][0]["addresses"][0]["contact_id"] == address.contact_id
+    assert data["items"][0]["addresses"][0]["address_line_1"] == address.address_line_1
+    assert data["items"][0]["addresses"][0]["address_line_2"] == address.address_line_2
+    assert data["items"][0]["addresses"][0]["city"] == address.city
+    assert data["items"][0]["addresses"][0]["state"] == address.state
+    assert data["items"][0]["addresses"][0]["postal_code"] == address.postal_code
+    assert data["items"][0]["addresses"][0]["country"] == address.country
+    assert data["items"][0]["addresses"][0]["address_type"] == address.address_type
 
 
-def test_get_email_by_contact_id():
-    response = client.get("/contact/1/email")
+def test_get_contact_by_id(contact, email, address, phone):
+    response = client.get(f"/contact/{contact.id}")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, dict), "Expected a paginated response"
-    assert "items" in data, "Expected 'items' in response"
-    data = data["items"]
-    assert len(data) == 1, "Expected one phone number"
-    email = data[0]
-    assert "id" in email, "Expected 'id' in email item"
-    assert "email" in email, "Expected 'email' in email item"
-    assert "email_type" in email, "Expected 'email_type' in email item"
+    assert data["id"] == contact.id
+    assert data["name"] == contact.name
+    assert data["role"] == contact.role
+
+    assert len(data["emails"]) == 1
+    assert data["emails"][0]["id"] == email.id
+    assert data["emails"][0]["contact_id"] == email.contact_id
+    assert data["emails"][0]["email"] == email.email
+    assert data["emails"][0]["email_type"] == email.email_type
+
+    assert len(data["phones"]) == 1
+    assert data["phones"][0]["id"] == phone.id
+    assert data["phones"][0]["contact_id"] == phone.contact_id
+    assert data["phones"][0]["phone_number"] == phone.phone_number
+    assert data["phones"][0]["phone_type"] == phone.phone_type
+
+    assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["id"] == address.id
+    assert data["addresses"][0]["contact_id"] == address.contact_id
+    assert data["addresses"][0]["address_line_1"] == address.address_line_1
+    assert data["addresses"][0]["address_line_2"] == address.address_line_2
+    assert data["addresses"][0]["city"] == address.city
+    assert data["addresses"][0]["state"] == address.state
+    assert data["addresses"][0]["postal_code"] == address.postal_code
+    assert data["addresses"][0]["country"] == address.country
+    assert data["addresses"][0]["address_type"] == address.address_type
 
 
-def test_get_phone_by_contact_id():
-    response = client.get("/contact/1/phone")
+def test_get_contact_by_id_404_not_found(contact):
+    bad_contact_id = 99999
+    response = client.get(f"/contact/{bad_contact_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_get_contact_emails(contact, email):
+    response = client.get(f"/contact/{contact.id}/email")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, dict), "Expected a paginated response"
-    assert "items" in data, "Expected 'items' in response"
-    data = data["items"]
-    assert len(data) == 1, "Expected one phone number"
-    phone = data[0]
-    assert "id" in phone, "Expected 'id' in phone item"
-    assert "phone_number" in phone, "Expected 'phone_number' in phone item"
-    assert "phone_type" in phone, "Expected 'phone_type' in phone item"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["contact_id"] == email.contact_id
+    assert data["items"][0]["email"] == email.email
+    assert data["items"][0]["email_type"] == email.email_type
 
 
-def test_get_address_by_contact_id():
-    response = client.get("/contact/1/address")
+def test_get_contact_emails_404_contact_not_found(contact, email):
+    bad_contact_id = 99999
+    response = client.get(f"/contact/{bad_contact_id}/email")
     data = response.json()
-    assert response.status_code == 200
-    assert isinstance(data, dict), "Expected a paginated response"
-    assert "items" in data, "Expected 'items' in response"
-    data = data["items"]
-    assert len(data) == 1, "Expected one phone number"
-    address = data[0]
-    assert "id" in address, "Expected 'id' in address item"
-    assert "address_line_1" in address, "Expected 'address_line_1' in address item"
-    assert "city" in address, "Expected 'city' in address item"
-    assert "state" in address, "Expected 'state' in address item"
-    assert "postal_code" in address, "Expected 'postal_code' in address item"
-    assert "country" in address, "Expected 'country' in address item"
-    assert "address_type" in address, "Expected 'address_type' in address item"
+    assert response.status_code == 404
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-# test item retrieval via filter ===========================================
-
-
-# Test item retrieval ======================================================
-def test_item_get_contact():
-    response = client.get("/contact/1")
+def test_get_contact_phones(contact, phone):
+    response = client.get(f"/contact/{contact.id}/phone")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Test Contact"
-
-    assert "emails" in data
-    emails = data["emails"]
-    assert len(emails) == 1
-    email = emails[0]
-    assert email["email"] == "fasdfasdf@gmail.com"
-    assert email["email_type"] == "Primary"
-
-    assert "phones" in data
-    phones = data["phones"]
-    assert len(phones) == 1
-    phone = phones[0]
-    assert phone["phone_number"] == "+12345678901"
-    assert phone["phone_type"] == "Primary"
-
-    assert "addresses" in data
-    addresses = data["addresses"]
-    assert len(addresses) == 1
-    address = addresses[0]
-    assert address["address_line_1"] == "123 Main St"
-    assert address["city"] == "Test City"
-    assert address["state"] == "NM"
-    assert address["postal_code"] == "87501"
-    assert address["country"] == "United States"
-    assert address["address_type"] == "Primary"
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["contact_id"] == phone.contact_id
+    assert data["items"][0]["phone_number"] == phone.phone_number
+    assert data["items"][0]["phone_type"] == phone.phone_type
 
 
-# Test item edit ==========================================================
-def test_item_edit_contact_name():
+def test_get_contact_phones_404_contact_not_found(contact, phone):
+    bad_contact_id = 99999
+    response = client.get(f"/contact/{bad_contact_id}/phone")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_get_contact_addresses(contact, address):
+    response = client.get(f"/contact/{contact.id}/address")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["contact_id"] == address.contact_id
+    assert data["items"][0]["address_line_1"] == address.address_line_1
+    assert data["items"][0]["address_line_2"] == address.address_line_2
+    assert data["items"][0]["city"] == address.city
+    assert data["items"][0]["state"] == address.state
+    assert data["items"][0]["postal_code"] == address.postal_code
+    assert data["items"][0]["country"] == address.country
+    assert data["items"][0]["address_type"] == address.address_type
+
+
+def test_get_contact_addresses_404_contact_not_found(contact, address):
+    bad_contact_id = 99999
+    response = client.get(f"/contact/{bad_contact_id}/address")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_get_emails(email):
+    response = client.get("/contact/email")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["contact_id"] == email.contact_id
+    assert data["items"][0]["email"] == email.email
+    assert data["items"][0]["email_type"] == email.email_type
+
+
+def test_get_email_by_id(email):
+    response = client.get(f"/contact/email/{email.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == email.id
+    assert data["contact_id"] == email.contact_id
+    assert data["email"] == email.email
+    assert data["email_type"] == email.email_type
+
+
+def test_get_email_404_not_found(email):
+    bad_email_id = 99999
+    response = client.get(f"/contact/email/{bad_email_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_get_phones(phone):
+    response = client.get("/contact/phone")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["contact_id"] == phone.contact_id
+    assert data["items"][0]["phone_number"] == phone.phone_number
+    assert data["items"][0]["phone_type"] == phone.phone_type
+
+
+def test_get_phone_by_id(phone):
+    response = client.get(f"/contact/phone/{phone.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == phone.id
+    assert data["contact_id"] == phone.contact_id
+    assert data["phone_number"] == phone.phone_number
+    assert data["phone_type"] == phone.phone_type
+
+
+def test_get_addresses(address):
+    response = client.get("/contact/address")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["contact_id"] == address.contact_id
+    assert data["items"][0]["address_line_1"] == address.address_line_1
+    assert data["items"][0]["address_line_2"] == address.address_line_2
+    assert data["items"][0]["city"] == address.city
+    assert data["items"][0]["state"] == address.state
+    assert data["items"][0]["postal_code"] == address.postal_code
+    assert data["items"][0]["country"] == address.country
+    assert data["items"][0]["address_type"] == address.address_type
+
+
+def test_get_address_by_id(address):
+    response = client.get(f"/contact/address/{address.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == address.id
+    assert data["contact_id"] == address.contact_id
+    assert data["address_line_1"] == address.address_line_1
+    assert data["address_line_2"] == address.address_line_2
+    assert data["city"] == address.city
+    assert data["state"] == address.state
+    assert data["postal_code"] == address.postal_code
+    assert data["country"] == address.country
+    assert data["address_type"] == address.address_type
+
+
+def test_get_address_by_id_404_not_found(address):
+    bad_address_id = 99999
+    response = client.get(f"/contact/address/{bad_address_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
+# def test_get_thing_contact_associations(thing_contact_association):
+#     response = client.get("/contact/thing-association")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["total"] == 1
+#     assert data["items"][0]["id"] == thing_contact_association.id
+#     assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
+#     assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
+
+
+# def test_get_contact_thing_contact_association(contact, thing_contact_association):
+#     response = client.get(f"/contact/{contact.id}/thing-association")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["total"] == 1
+#     assert data["items"][0]["id"] == thing_contact_association.id
+#     assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
+#     assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
+
+
+# def test_get_thing_contact_association_404_contact_not_found(
+#     contact, thing_contact_association
+# ):
+#     bad_contact_id = 999999
+#     response = client.get(f"/contact/{bad_contact_id}/thing-association")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+# def test_get_thing_contact_association_by_id(thing_contact_association):
+#     response = client.get(f"/contact/thing-association/{thing_contact_association.id}")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == thing_contact_association.id
+#     assert data["contact_id"] == thing_contact_association.contact_id
+#     assert data["thing_id"] == thing_contact_association.thing_id
+
+
+# def test_get_thing_contact_association_by_id_404_not_found(thing_contact_association):
+#     bad_id = 999999
+#     response = client.get(f"/contact/thing-association/{bad_id}")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_contact(contact):
+    payload = {"name": "Updated Contact"}
     response = client.patch(
-        "/contact/1",
-        json={
-            "name": "Updated Contact",
-        },
+        f"/contact/{contact.id}",
+        json=payload,
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Updated Contact"
-    assert data["role"] == "Owner"
+    assert data["id"] == contact.id
+    assert data["name"] == payload["name"]
 
-    # put contact name back to original
+    cleanup_patch_test(Contact, payload, contact)
+
+
+def test_patch_contact_404_not_found(contact):
+    bad_contact_id = 999999
+    payload = {"name": "Updated Contact"}
     response = client.patch(
-        "/contact/1",
-        json={
-            "name": "Test Contact",
-        },
+        f"/contact/{bad_contact_id}",
+        json=payload,
     )
-    assert response.status_code == 200
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-def test_edit_contact_email():
-    response = client.patch("/contact/email/1", json={"email": "boo@bar.com"})
+def test_patch_email(email):
+    payload = {"email": "boo@bar.com"}
+    response = client.patch(f"/contact/email/{email.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["email"] == "boo@bar.com"
-    assert data["email_type"] == "Primary"
+    assert data["id"] == email.id
+    assert data["contact_id"] == email.contact_id
+    assert data["email"] == payload["email"]
+    assert data["email_type"] == email.email_type
 
-    # put contact email back to original
-    response = client.patch("/contact/email/1", json={"email": "fasdfasdf@gmail.com"})
+    cleanup_patch_test(Email, payload, email)
+
+
+def test_patch_email_404_not_found(email):
+    bad_email_id = 999999
+    payload = {"email": "boo@bar.com"}
+    response = client.patch(f"/contact/email/{bad_email_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_patch_phone(phone):
+    payload = {"phone_number": "+19709654321"}
+    response = client.patch(f"/contact/phone/{phone.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["email"] == "fasdfasdf@gmail.com"
+    assert data["id"] == phone.id
+    assert data["contact_id"] == phone.contact_id
+    assert data["phone_number"] == payload["phone_number"]
+    assert data["phone_type"] == phone.phone_type
+
+    cleanup_patch_test(Phone, payload, phone)
 
 
-def test_edit_contact_phone():
-    response = client.patch("/contact/phone/1", json={"phone_number": "+19876543210"})
+def test_patch_phone_404_not_found(phone):
+    bad_phone_id = 999999
+    payload = {"phone_number": "+19709654321"}
+    response = client.patch(f"/contact/phone/{bad_phone_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {bad_phone_id} not found."
+
+
+def test_edit_address(address):
+    payload = {
+        "address_line_1": "456 Elm St",
+        "address_line_2": "Apt 21B",
+        "city": "Updated City",
+        "state": "CA",
+        "postal_code": "90210",
+        "country": "United States",
+    }
+    response = client.patch(f"/contact/address/{address.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["phone_number"] == "+19876543210"
+    assert data["id"] == address.id
+    assert data["contact_id"] == address.contact_id
+    assert data["address_line_1"] == payload["address_line_1"]
+    assert data["address_line_2"] == payload["address_line_2"]
+    assert data["city"] == payload["city"]
+    assert data["state"] == payload["state"]
+    assert data["postal_code"] == payload["postal_code"]
+    assert data["country"] == payload["country"]
+    assert data["address_type"] == address.address_type
 
-    # put contact phone back to original
-    response = client.patch("/contact/phone/1", json={"phone_number": "+12345678901"})
+    cleanup_patch_test(Address, payload, address)
+
+
+def test_patch_address_404_not_found(address):
+    bad_address_id = 999999
+    payload = {
+        "address_line_1": "456 Elm St",
+        "address_line_2": "Apt 21B",
+        "city": "Updated City",
+        "state": "CA",
+        "postal_code": "90210",
+        "country": "United States",
+    }
+    response = client.patch(f"/contact/address/{bad_address_id}", json=payload)
     data = response.json()
-    assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["phone_number"] == "+12345678901"
+    assert response.status_code == 404
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
 
 
-def test_edit_contact_address():
-    response = client.patch(
-        "/contact/address/1",
-        json={
-            "address_line_1": "456 Elm St",
-            "city": "Updated City",
-            "postal_code": "90210",
-            "country": "United States",
-        },
-    )
+# def test_patch_thing_contact_association(thing_contact_association, second_contact):
+#     payload = {"contact_id": second_contact.id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     data = response.json()
+#     assert response.status_code == 200
+#     assert data["id"] == thing_contact_association.id
+#     assert data["contact_id"] == payload["contact_id"]
+
+#     cleanup_patch_test(ThingContactAssociation, payload, thing_contact_association)
+
+
+# def test_patch_thing_contact_association_404_not_found(
+#     thing_contact_association, second_contact
+# ):
+#     bad_id = 999999
+#     payload = {"contact_id": second_contact.id}
+#     response = client.patch(f"/contact/thing-association/{bad_id}", json=payload)
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+
+
+# def test_patch_thing_contact_association_409_contact_not_found(
+#     thing_contact_association,
+# ):
+#     bad_contact_id = 999999
+#     payload = {"contact_id": bad_contact_id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert len(data["detail"]) == 1
+#     assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+
+
+# def test_patch_thing_contact_association_409_thing_not_found(thing_contact_association):
+#     bad_thing_id = 999999
+#     payload = {"thing_id": bad_thing_id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert len(data["detail"]) == 1
+#     assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_contact(second_contact, second_email, second_phone, second_address):
+    response = client.delete(f"/contact/{second_contact.id}")
+    assert response.status_code == 204
+
+    # verify contact is deleted and it cascades to emails, phones, and addresses
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 404
     data = response.json()
-    assert response.status_code == 200
-    assert data["id"] == 1
-    assert data["address_line_1"] == "456 Elm St"
-    assert data["city"] == "Updated City"
-    assert data["state"] == "NM"
-    assert data["postal_code"] == "90210"
-    assert data["country"] == "United States"
-    assert data["address_type"] == "Primary"
+    assert data["detail"] == f"Contact with ID {second_contact.id} not found."
 
-    # put contact address back to original
-    response = client.patch(
-        "/contact/address/1",
-        json={
-            "address_line_1": "123 Main St",
-            "city": "Test City",
-            "state": "NM",
-            "postal_code": "87501",
-            "country": "United States",
-            "address_type": "Primary",
-        },
-    )
+    response = client.get(f"/contact/email/{second_email.id}")
+    assert response.status_code == 404
     data = response.json()
+    assert data["detail"] == f"Email with ID {second_email.id} not found."
+
+    response = client.get(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {second_phone.id} not found."
+
+    response = client.get(f"/contact/address/{second_address.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Address with ID {second_address.id} not found."
+
+
+def test_delete_contact_404_not_found(second_contact):
+    bad_contact_id = 999999
+    response = client.delete(f"/contact/{bad_contact_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_delete_email(second_contact, second_email):
+    response = client.delete(f"/contact/email/{second_email.id}")
+    assert response.status_code == 204
+
+    # verify email is deleted
+    response = client.get(f"/contact/email/{second_email.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {second_email.id} not found."
+
+    # verify email is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
     assert response.status_code == 200
+    data = response.json()
+    assert data["emails"] == []
+
+
+def test_delete_email_404_not_found(second_email):
+    bad_email_id = 999999
+    response = client.delete(f"/contact/email/{bad_email_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Email with ID {bad_email_id} not found."
+
+
+def test_delete_phone(second_contact, second_phone):
+    response = client.delete(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 204
+
+    # verify phone is deleted
+    response = client.get(f"/contact/phone/{second_phone.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {second_phone.id} not found."
+
+    # verify phone is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["phones"] == []
+
+
+def test_delete_phone_404_not_found(second_phone):
+    bad_phone_id = 999999
+    response = client.delete(f"/contact/phone/{bad_phone_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Phone with ID {bad_phone_id} not found."
+
+
+def test_delete_address(second_contact, second_address):
+    response = client.delete(f"/contact/address/{second_address.id}")
+    assert response.status_code == 204
+
+    # verify address is deleted
+    response = client.get(f"/contact/address/{second_address.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Address with ID {second_address.id} not found."
+
+    # verify address is no longer associated with the contact
+    response = client.get(f"/contact/{second_contact.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["addresses"] == []
+
+
+def test_delete_address_404_not_found(second_address):
+    bad_address_id = 99999
+    response = client.delete(f"/contact/address/{bad_address_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Address with ID {bad_address_id} not found."
+
+
+# def test_delete_thing_contact_association(second_thing_contact_association):
+#     response = client.delete(
+#         f"/contact/thing-association/{second_thing_contact_association.id}"
+#     )
+#     assert response.status_code == 204
+
+#     # verify association is deleted
+#     response = client.get(
+#         f"/contact/thing-association/{second_thing_contact_association.id}"
+#     )
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert (
+#         data["detail"]
+#         == f"ThingContactAssociation with ID {second_thing_contact_association.id} not found."
+#     )
+
+
+# def test_delete_thing_contact_association_404_not_found(
+#     second_thing_contact_association,
+# ):
+#     bad_id = 999999
+#     response = client.delete(f"/contact/thing-association/{bad_id}")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."

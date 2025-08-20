@@ -15,7 +15,7 @@
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column, declared_attr
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
@@ -44,6 +44,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         order_by="LocationThingAssociation.effective_start.desc()",
     )
     locations = association_proxy("location_associations", "location")
+
+    contact_associations = relationship(
+        "ThingContactAssociation",
+        back_populates="thing",
+        overlaps="contacts",
+        cascade="all, delete-orphan",
+    )
+    contacts = association_proxy("contact_associations", "contact")
 
     # Well fields
     well_depth = Column(

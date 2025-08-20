@@ -16,10 +16,42 @@
 from pathlib import Path
 import pytest
 
+from main import app
+from core.dependencies import (
+    admin_function,
+    editor_function,
+    amp_admin_function,
+    amp_editor_function,
+    viewer_function,
+    amp_viewer_function,
+)
 from db import Thing, Location, LocationThingAssociation, Group
 from db.engine import session_ctx
-from tests import client
+from tests import client, override_authentication
 from geoalchemy2 import functions as geofunc
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
+
 
 # @pytest.fixture(scope="module", autouse=True)
 # def location_fixture():

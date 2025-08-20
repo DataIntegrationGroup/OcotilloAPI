@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from tests import client
+import pytest
+from tests import client, override_authentication
 from main import app
 from core.dependencies import (
     admin_function,
@@ -25,33 +26,26 @@ from core.dependencies import (
 )
 
 
-def override_authentication(default=True):
-    """
-    Override the authentication dependency for testing purposes.
-    This allows all users to be considered authenticated.
-    """
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
 
-    def closure():
-        print("Overriding authentication")
-        return default
+    yield
 
-    return closure
-
-
-app.dependency_overrides[admin_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[editor_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[viewer_function] = override_authentication()
-app.dependency_overrides[amp_admin_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[amp_editor_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[amp_viewer_function] = override_authentication()
+    app.dependency_overrides = {}
 
 
 def test_add_group():

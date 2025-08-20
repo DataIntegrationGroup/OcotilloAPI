@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT
@@ -28,6 +28,7 @@ from schemas import ResourceNotFoundResponse
 from schemas.sample import SampleResponse, CreateSample, UpdateSample
 from services.query_helper import paginated_all_getter, simple_get_by_id
 from services.crud_helper import model_patcher, model_deleter
+from services.exceptions_helper import PydanticStyleException
 
 router = APIRouter(
     prefix="/sample",
@@ -46,16 +47,24 @@ def database_error_handler(
         error_message
         == 'duplicate key value violates unique constraint "sample_field_sample_id_key"'
     ):
-        detail = (
-            f"Sample with field_sample_id {payload.field_sample_id} already exists."
-        )
+        detail = {
+            "loc": ["body", "field_sample_id"],
+            "msg": f"Sample with field_sample_id {payload.field_sample_id} already exists.",
+            "type": "value_error",
+            "input": {"field_sample_id": payload.field_sample_id},
+        }
     elif (
         error_message
         == 'insert or update on table "sample" violates foreign key constraint "sample_thing_id_fkey"'
     ):
-        detail = f"Thing with ID {payload.thing_id} does not exist."
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} does not exist.",
+            "type": "value_error",
+            "input": {"thing_id": payload.thing_id},
+        }
 
-    raise HTTPException(status_code=HTTP_409_CONFLICT, detail=detail)
+    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
 
 
 # ============= Post =============================================

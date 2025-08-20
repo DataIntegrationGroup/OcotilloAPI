@@ -22,8 +22,12 @@ from db.base import Base, AutoBaseMixin, lexicon_term
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
-    thing_id = Column(Integer, ForeignKey("thing.id"), primary_key=True)
-    contact_id = Column(Integer, ForeignKey("contact.id"), primary_key=True)
+    thing_id = Column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    contact_id = Column(
+        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+    )
 
     contact = relationship("Contact")
     thing = relationship("Thing")
@@ -33,9 +37,9 @@ class Contact(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False)
     role = lexicon_term(nullable=False)
 
-    phones = relationship("Phone", back_populates="contact")
-    emails = relationship("Email", back_populates="contact")
-    addresses = relationship("Address", back_populates="contact")
+    phones = relationship("Phone", back_populates="contact", passive_deletes=True)
+    emails = relationship("Email", back_populates="contact", passive_deletes=True)
+    addresses = relationship("Address", back_populates="contact", passive_deletes=True)
 
     search_vector = Column(TSVectorType("name", "role"))
 
@@ -49,6 +53,7 @@ class Contact(Base, AutoBaseMixin):
         "ThingContactAssociation",
         back_populates="contact",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     things = association_proxy("thing_associations", "thing")
 
@@ -60,7 +65,7 @@ class Phone(Base, AutoBaseMixin):
     phone_number = Column(String(20), nullable=False)
     phone_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="phones")
+    contact = relationship("Contact", back_populates="phones", passive_deletes=True)
     search_vector = Column(TSVectorType("phone_number"))
 
 
@@ -71,7 +76,7 @@ class Email(Base, AutoBaseMixin):
     email = Column(String(100), nullable=False)
     email_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="emails")
+    contact = relationship("Contact", back_populates="emails", passive_deletes=True)
 
     search_vector = Column(TSVectorType("email"))
 
@@ -88,7 +93,7 @@ class Address(Base, AutoBaseMixin):
     country = lexicon_term(nullable=False, default="United States")
     address_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="addresses")
+    contact = relationship("Contact", back_populates="addresses", passive_deletes=True)
     search_vector = Column(
         TSVectorType(
             "address_line_1",

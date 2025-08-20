@@ -15,7 +15,11 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
-from tests import client
+from core.dependencies import viewer_function, admin_function, editor_function
+from db import Asset
+from tests import client, cleanup_post_test, override_authentication
+
+import pytest
 
 
 class MockBlob:
@@ -40,9 +44,23 @@ def mock_storage_bucket():
     return MockStorageBucket()
 
 
-app.dependency_overrides = {
-    get_storage_bucket: mock_storage_bucket,
-}
+@pytest.fixture(scope="module", autouse=True)
+def override_dependency_fixture():
+    app.dependency_overrides = {
+        get_storage_bucket: mock_storage_bucket,
+    }
+
+    app.dependency_overrides[viewer_function] = override_authentication()
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_upload_asset():
@@ -57,16 +75,9 @@ def test_upload_asset():
         assert response.status_code == 201
         data = response.json()
         assert "storage_path" in data
-        # assert data["name"] == "riochama.png"
-        # assert data["label"] == "riochama.png"
-        # assert data["storage_service"] == "mock_service"
-        # assert data["storage_path"] == "mock/path/to/asset"
-        # assert data["mime_type"] == "image/png"
-        # assert data["size"] == 12345
-        # assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
 
 
-def test_add_asset(location, thing):
+def test_add_asset(thing):
     resp = client.post(
         "/asset",
         json={
@@ -80,25 +91,11 @@ def test_add_asset(location, thing):
         },
     )
 
-    print(resp.json())
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "riochama.png"
-    # assert data["label"] == "Test Asset"
-    # path = "tests/data/riochama.png"
-    #
-    # with open(path, "rb") as file:
-    #     response = client.post(
-    #         "/asset",
-    #         params={"thing_id": thing.id},
-    #         files={"file": ("riochama.png", file, "image/png")},
-    #     )
-    #
-    #     data = response.json()
-    #     assert response.status_code == 201
-    #     assert data["name"] == "riochama.png"
-    #     url = data["url"]
-    #     assert url.startswith("https://storage.googleapis.com/")
+
+    cleanup_post_test(Asset, data["id"])
 
 
 def test_add_asset_with_label(thing):
@@ -119,28 +116,17 @@ def test_add_asset_with_label(thing):
     data = resp.json()
     assert data["name"] == "test_asset.png"
     assert data["label"] == "Test Asset"
-    # path = "tests/data/riochama.png"
-    #
-    # with open(path, "rb") as file:
-    #     response = client.post(
-    #         "/asset",
-    #         params={'label': 'test label'},
-    #         files={"file": ("riochama.png", file, "image/png")},
-    #     )
-    #
-    #     assert response.status_code == 201
-    #     data = response.json()
-    #     assert data["name"] == "riochama.png"
-    #     assert data["label"] == "test label"
+
+    cleanup_post_test(Asset, data["id"])
 
 
-def test_get_asset():
-    response = client.get("/asset/1")
+def test_get_asset(asset):
+    response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "riochama.png"
-    assert data["uri"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
+    assert data["id"] == asset.id
+    assert data["name"] == asset.name
+    assert data["uri"] == MockBlob().generate_signed_url()
 
 
 def test_get_asset_not_found():

@@ -1,5 +1,24 @@
 import pytest
-from tests import client
+
+from core.dependencies import admin_function, viewer_function, editor_function
+from main import app
+from tests import client, override_authentication
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 #  ADD tests ======================================================
