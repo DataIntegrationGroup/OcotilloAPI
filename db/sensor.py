@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from sqlalchemy import Column, String, Integer, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 
 from db.base import Base, AutoBaseMixin
 
@@ -26,13 +28,17 @@ class Sensor(Base, AutoBaseMixin):
     """
 
     # Define common attributes for sensors here
-    name = Column(String(255), nullable=False)
-    model = Column(String(50))
-    serial_no = Column(String(50))
-    datetime_installed = Column(DateTime(timezone=True), nullable=False)
-    datetime_removed = Column(DateTime(timezone=True))
-    recording_interval = Column(Integer)
-    notes = Column(String(50))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    model: Mapped[str] = mapped_column(String(50), nullable=True)
+    serial_no: Mapped[str] = mapped_column(String(50), nullable=True)
+    datetime_installed: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    datetime_removed: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str] = mapped_column(String(50), nullable=True)
 
     sample = relationship(
         "Sample",

@@ -19,6 +19,7 @@ from pydantic import BaseModel, field_validator
 from shapely import wkt
 
 from schemas import ORMBaseModel
+from services.validation.geospatial import validate_wkt_geometry
 
 """
 TODO
@@ -41,24 +42,8 @@ class CreateLocation(BaseModel):
 
     @classmethod
     @field_validator("point")
-    def validate_point_is_wkt(cls, point):
-        try:
-            geometry = wkt.loads(point)
-            if not geometry.is_valid:
-                raise ValueError("WKT geometry is not topologically valid")
-            return point
-        except Exception as e:
-            raise ValueError(f"Invalid WKT geometry: {e}")
-
-
-class CreateGroup(BaseModel):
-    """
-    Schema for creating a group.
-    """
-
-    name: str
-    description: str | None = None
-    parent_group_id: int | None = None
+    def validate_point_is_wkt(cls, wkt):
+        return validate_wkt_geometry(wkt)
 
 
 class CreateGroupThing(BaseModel):
@@ -90,6 +75,8 @@ class LocationResponse(ORMBaseModel):
         if isinstance(value, str):
             return value
 
+        return None
+
 
 class GroupLocationResponse(ORMBaseModel):
     """
@@ -110,6 +97,13 @@ class UpdateLocation(BaseModel):
     notes: str | None = None
     point: str | None = None
     release_status: str | None = None
+
+
+class UpdateGroup(BaseModel):
+    name: str
+    description: str | None = None
+    parent_group_id: int | None = None
+    project_area: str | None = None
 
 
 # ============= EOF =============================================

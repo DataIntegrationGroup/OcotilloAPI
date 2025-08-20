@@ -15,26 +15,11 @@
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column, declared_attr
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
-
-
-class ThingChildMixin:
-    @declared_attr
-    def thing_id(self):
-        return mapped_column(
-            Integer,
-            ForeignKey("thing.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        )
-
-    @declared_attr
-    def thing(self):
-        return relationship("Thing")
 
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
@@ -59,6 +44,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         order_by="LocationThingAssociation.effective_start.desc()",
     )
     locations = association_proxy("location_associations", "location")
+
+    contact_associations = relationship(
+        "ThingContactAssociation",
+        back_populates="thing",
+        overlaps="contacts",
+        cascade="all, delete-orphan",
+    )
+    contacts = association_proxy("contact_associations", "contact")
 
     # Well fields
     well_depth = Column(
@@ -88,12 +81,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
 
     samples = relationship(
         "Sample", back_populates="thing", cascade="all, delete-orphan", uselist=True
-    )
-    contacts = relationship(
-        "Contact",
-        secondary="thing_contact_association",
-        back_populates="things",
-        passive_deletes=True,
     )
 
 

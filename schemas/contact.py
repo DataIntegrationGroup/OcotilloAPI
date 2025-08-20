@@ -70,6 +70,7 @@ class CreateEmail(ValidateEmail):
     Schema for creating an email.
     """
 
+    contact_id: int | None = None  # set to None for when made via POST /contact
     email: str
     email_type: str = "Primary"  # Default to 'Primary'
 
@@ -79,6 +80,7 @@ class CreatePhone(ValidatePhone):
     Schema for creating a phone number.
     """
 
+    contact_id: int | None = None  # set to None for when made via POST /contact
     phone_number: str
     phone_type: str = "Primary"  # Default to 'Primary'
 
@@ -88,6 +90,7 @@ class CreateAddress(BaseModel):
     Schema for creating an address.
     """
 
+    contact_id: int | None = None  # set to None for when made via POST /contact
     # todo: use a postal API to validate address and suggest corrections
     address_line_1: str  # Required (e.g., "123 Main St")
     address_line_2: str | None = None  # Optional (e.g., "Apt 4B", "Suite 200")
@@ -104,6 +107,7 @@ class CreateThingAssociation(BaseModel):
     Schema for creating a ContactThingAssociation
     """
 
+    contact_id: int
     thing_id: int
 
 

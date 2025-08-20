@@ -14,7 +14,28 @@
 # limitations under the License.
 # ===============================================================================
 from services.validation import get_category
-from tests import client
+from tests import client, override_authentication
+
+from core.dependencies import admin_function, viewer_function, editor_function
+from main import app
+
+import pytest
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_add_lexicon_category():
@@ -22,7 +43,7 @@ def test_add_lexicon_category():
     description = "This is a test category."
 
     response = client.post(
-        "/lexicon/category/add",
+        "/lexicon/category",
         json={"name": name, "description": description},
     )
 
@@ -38,7 +59,7 @@ def test_add_lexicon_term():
     category = "Test Category"
 
     response = client.post(
-        "/lexicon/add",
+        "/lexicon/term",
         json={"term": term, "definition": definition, "category": category},
     )
 

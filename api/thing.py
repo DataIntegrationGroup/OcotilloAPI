@@ -55,6 +55,7 @@ from schemas.thing import (
     CreateThing,
     ThingIdLinkResponse,
     UpdateThingIdLink,
+    UpdateWellScreen,
 )
 from services.crud_helper import model_patcher
 from services.query_helper import (
@@ -379,6 +380,20 @@ def update_thing_id_link(
     user: editor_dependency,
 ) -> ThingIdLinkResponse:
     return model_patcher(session, ThingIdLink, link_id, link_data, user=user)
+
+
+@router.patch("/well-screen/{well_screen_id}", summary="Update Well Screen by ID")
+def update_well_screen(
+    well_screen_id: int,
+    well_screen_data: UpdateWellScreen,
+    session: session_dependency,
+    user: editor_dependency,
+) -> WellScreenResponse:
+
+    # TODO: add validation
+    return model_patcher(
+        session, WellScreen, well_screen_id, well_screen_data, user=user
+    )
 
 
 # ============= EOF =============================================

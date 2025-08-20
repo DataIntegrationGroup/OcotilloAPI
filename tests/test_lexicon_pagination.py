@@ -13,7 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from tests import client
+from tests import client, override_authentication
+
+from core.dependencies import admin_function, viewer_function, editor_function
+from main import app
+
+import pytest
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_authentication_dependency_fixture():
+
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_get_lexicon_terms_sort_categories_branch():
@@ -21,7 +42,7 @@ def test_get_lexicon_terms_sort_categories_branch():
     Ensure the special-case branch (sort == 'categories') in GET /lexicon is exercised.
     It should not apply sorting/filtering and still return a valid pagination payload.
     """
-    resp = client.get("/lexicon", params={"sort": "categories"})
+    resp = client.get("/lexicon/term", params={"sort": "categories"})
     assert resp.status_code == 200
     data = resp.json()
     # fastapi-pagination returns a Page-like object with these keys

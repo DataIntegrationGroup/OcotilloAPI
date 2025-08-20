@@ -36,7 +36,7 @@ def override_authentication(default=True):
     """
 
     def closure():
-        print("Overriding authentication")
+        # print("Overriding authentication")
         return default
 
     return closure

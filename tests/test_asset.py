@@ -15,8 +15,11 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
+from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test
+from tests import client, cleanup_post_test, override_authentication
+
+import pytest
 
 
 class MockBlob:
@@ -28,17 +31,36 @@ class MockBlob:
 
 
 class MockStorageBucket:
+    name = "mock-bucket"
+
     def blob(self, *args, **kwargs):
         return MockBlob()
+
+    def get_blob(self, *args, **kwargs):
+        return None
 
 
 def mock_storage_bucket():
     return MockStorageBucket()
 
 
-app.dependency_overrides = {
-    get_storage_bucket: mock_storage_bucket,
-}
+@pytest.fixture(scope="module", autouse=True)
+def override_dependency_fixture():
+    app.dependency_overrides = {
+        get_storage_bucket: mock_storage_bucket,
+    }
+
+    app.dependency_overrides[viewer_function] = override_authentication()
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_upload_asset():
@@ -63,7 +85,7 @@ def test_add_asset(thing):
             "name": "riochama.png",
             "storage_service": "mock_service",
             "storage_path": "mock/path/to/asset",
-            "url": "https://storage.googleapis.com/mock-bucket/mock-asset",
+            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
             "mime_type": "image/png",
             "size": 12345,
         },
@@ -83,9 +105,9 @@ def test_add_asset_with_label(thing):
             "thing_id": thing.id,
             "name": "test_asset.png",
             "label": "Test Asset",
-            "url": "https://storage.googleapis.com/mock-bucket/mock-asset",
+            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
             "storage_service": "mock_service",
-            "storage_path": "mock/path/to/asset",
+            "storage_path": "mock/path/to/asset/test_asset.png",
             "mime_type": "image/png",
             "size": 12345,
         },
@@ -104,7 +126,7 @@ def test_get_asset(asset):
     data = response.json()
     assert data["id"] == asset.id
     assert data["name"] == asset.name
-    assert data["url"] == asset.url
+    assert data["uri"] == MockBlob().generate_signed_url()
 
 
 def test_get_asset_not_found():
