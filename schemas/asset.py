@@ -43,7 +43,7 @@ class AssetResponse(BaseAsset):
     created_at: AwareDatetime
     storage_service: str
     uri: str
-    signed_url: str
+    signed_url: str | None = None
 
 
 # -------- UPDATE ----------
