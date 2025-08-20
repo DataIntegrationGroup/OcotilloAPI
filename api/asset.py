@@ -17,7 +17,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from starlette.status import HTTP_201_CREATED
+from sqlalchemy.exc import ProgrammingError
+from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -39,10 +40,40 @@ from services.gcs_helper import (
     check_asset_exists,
     add_signed_url,
 )
+from services.exceptions_helper import PydanticStyleException
 
 router = APIRouter(
     prefix="/asset", tags=["asset"], dependencies=[Depends(viewer_function)]
 )
+
+
+def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
+    """
+    Handle errors raised by the database when adding or updating a sample.
+    """
+
+    error_message = error.orig.args[0]["M"]
+    print(error_message)
+
+    if (
+        error_message
+        == 'null value in column "thing_id" of relation "asset_thing_association" violates not-null constraint'
+    ):
+        """
+        Developer's notes
+
+        this error occurs because the thing_id is set by the Thing record that
+        is retrieved, so if there is no Thing with thing_id it tries to set
+        thing_id to None in the AssetThingAssociation table
+        """
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} not found.",
+            "type": "value_error",
+            "input": {"thing_id": payload.thing_id},
+        }
+
+    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
 
 
 # ======= Create =========
@@ -64,33 +95,38 @@ async def add_asset(
     user: admin_dependency, session: session_dependency, asset_data: CreateAsset
 ) -> AssetResponse:
 
-    data = asset_data.model_dump()
-    thing_id = data.pop("thing_id", None)
-    storage_path = data["storage_path"]
+    try:
+        data = asset_data.model_dump()
+        print(data)
+        thing_id = data.pop("thing_id", None)
+        print(thing_id)
+        storage_path = data["storage_path"]
 
-    # check to see if an asset entry already exists for
-    # this storage path and thing_id
-    existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
-    if existing_asset:
-        # If an asset already exists, return it
-        return existing_asset
+        # check to see if an asset entry already exists for
+        # this storage path and thing_id
+        existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
+        if existing_asset:
+            # If an asset already exists, return it
+            return existing_asset
 
-    data["storage_service"] = "gcs"
-    asset = Asset(**data)
-    audit_add(user, asset)
+        data["storage_service"] = "gcs"
+        asset = Asset(**data)
+        audit_add(user, asset)
 
-    if thing_id:
-        assoc = AssetThingAssociation()
-        audit_add(user, assoc)
-        thing = session.get(Thing, thing_id)
-        assoc.thing = thing
-        assoc.asset = asset
-        session.add(assoc)
+        if thing_id:
+            assoc = AssetThingAssociation()
+            audit_add(user, assoc)
+            thing = session.get(Thing, thing_id)
+            assoc.thing = thing
+            assoc.asset = asset
+            session.add(assoc)
 
-    session.add(asset)
-    session.commit()
-    session.refresh(asset)
-    return asset
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+        return asset
+    except ProgrammingError as e:
+        database_error_handler(asset_data, e)
 
 
 # ======= Read =========
