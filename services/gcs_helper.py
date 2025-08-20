@@ -32,7 +32,7 @@ from google.cloud import storage
 def get_storage_bucket() -> storage.Bucket:
 
     if settings.mode == "production":
-        key_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        key_json = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
         # Load service account credentials
         creds = service_account.Credentials.from_service_account_info(
             json.loads(key_json)
