@@ -27,6 +27,7 @@ GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 GCS_BUCKET_BASE_URL = f"https://storage.cloud.google.com/{GCS_BUCKET_NAME}/uploads"
 
 from google.cloud import storage
+from typing import List
 
 
 def get_storage_bucket() -> storage.Bucket:
@@ -76,7 +77,7 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     return url, blob_name
 
 
-def add_signed_url(asset, bucket):
+def add_signed_url(asset: Asset | List[Asset], bucket):
     if isinstance(asset, list):
         for a in asset:
             a.signed_url = bucket.blob(a.storage_path).generate_signed_url(
