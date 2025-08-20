@@ -164,7 +164,7 @@ def asset():
             size=12345,
             storage_service="mock_service",
             storage_path="mock/path/to/asset",
-            url="https://storage.googleapis.com/mock-bucket/mock-asset",
+            uri="https://storage.googleapis.com/mock-bucket/mock-asset",
         )
         session.add(asset)
         session.commit()

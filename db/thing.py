@@ -45,6 +45,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     )
     locations = association_proxy("location_associations", "location")
 
+    contact_associations = relationship(
+        "ThingContactAssociation",
+        back_populates="thing",
+        overlaps="contacts",
+        cascade="all, delete-orphan",
+    )
+    contacts = association_proxy("contact_associations", "contact")
+
     # Well fields
     well_depth = Column(
         Float,
@@ -73,12 +81,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
 
     samples = relationship(
         "Sample", back_populates="thing", cascade="all, delete-orphan", uselist=True
-    )
-    contacts = relationship(
-        "Contact",
-        secondary="thing_contact_association",
-        back_populates="things",
-        passive_deletes=True,
     )
 
 

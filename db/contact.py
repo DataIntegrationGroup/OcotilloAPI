@@ -29,6 +29,9 @@ class ThingContactAssociation(Base, AutoBaseMixin):
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
 
+    contact = relationship("Contact")
+    thing = relationship("Thing")
+
 
 class Contact(Base, AutoBaseMixin):
     name = Column(String(100), nullable=False)
@@ -37,10 +40,6 @@ class Contact(Base, AutoBaseMixin):
     phones = relationship("Phone", back_populates="contact", passive_deletes=True)
     emails = relationship("Email", back_populates="contact", passive_deletes=True)
     addresses = relationship("Address", back_populates="contact", passive_deletes=True)
-    # email = Column(String(100), nullable=True)
-    # phone = Column(String(20), nullable=True)
-    # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
-    # owner = relationship("Owner")
 
     search_vector = Column(TSVectorType("name", "role"))
 
@@ -54,6 +53,7 @@ class Contact(Base, AutoBaseMixin):
         "ThingContactAssociation",
         back_populates="contact",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     things = association_proxy("thing_associations", "thing")
 

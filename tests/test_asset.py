@@ -15,8 +15,11 @@
 # ===============================================================================
 from api.asset import get_storage_bucket
 from core.app import app
+from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test
+from tests import client, cleanup_post_test, override_authentication
+
+import pytest
 
 
 class MockBlob:
@@ -41,9 +44,23 @@ def mock_storage_bucket():
     return MockStorageBucket()
 
 
-app.dependency_overrides = {
-    get_storage_bucket: mock_storage_bucket,
-}
+@pytest.fixture(scope="module", autouse=True)
+def override_dependency_fixture():
+    app.dependency_overrides = {
+        get_storage_bucket: mock_storage_bucket,
+    }
+
+    app.dependency_overrides[viewer_function] = override_authentication()
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "test", "sub": "314159"}
+    )
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_upload_asset():
@@ -109,7 +126,7 @@ def test_get_asset(asset):
     data = response.json()
     assert data["id"] == asset.id
     assert data["name"] == asset.name
-    assert data["url"] == asset.url
+    assert data["uri"] == MockBlob().generate_signed_url()
 
 
 def test_get_asset_not_found():
