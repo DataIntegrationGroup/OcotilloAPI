@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
@@ -32,6 +32,7 @@ from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
+from services.query_helper import simple_get_by_id
 from services.gcs_helper import (
     get_storage_bucket,
     gcs_upload,
@@ -118,26 +119,12 @@ async def list_assets(
 async def get_asset(
     asset_id: int,
     session: session_dependency,
-    thing_id: int = None,
     bucket=Depends(get_storage_bucket),
 ) -> AssetResponse:
     """
     Retrieve an asset by its ID.
     """
-    sql = select(Asset)
-    if thing_id:
-        sql = sql.join(AssetThingAssociation).where(
-            AssetThingAssociation.thing_id == thing_id
-        )
-    else:
-        sql = sql.where(Asset.id == asset_id)
-
-    asset = session.scalars(sql).one_or_none()
-    if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
-
-    add_signed_url(asset, bucket)
-    return asset
+    return simple_get_by_id(session, Asset, asset_id)
 
 
 # ======= Update =========
