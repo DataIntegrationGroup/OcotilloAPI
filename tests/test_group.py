@@ -25,16 +25,16 @@ def test_add_group_with_area():
     data = response.json()
 
 
-def test_add_group_thing(location, thing):
-    response = client.post(
-        "/group/association", json={"group_id": 2, "thing_id": thing.id}
-    )
-    assert response.status_code == 201
-
-    data = response.json()
-    assert "id" in data
-    assert data["group_id"] == 2
-    assert data["thing_id"] == thing.id
+# def test_add_group_thing(location, thing):
+#     response = client.post(
+#         "/group/association", json={"group_id": 2, "thing_id": thing.id}
+#     )
+#     assert response.status_code == 201
+#
+#     data = response.json()
+#     assert "id" in data
+#     assert data["group_id"] == 2
+#     assert data["thing_id"] == thing.id
 
 
 # GET tests ======================================================
@@ -74,10 +74,10 @@ def test_item_get_group():
     assert data["name"] == "Test Group"
 
 
-def test_item_get_group_thing(location, thing):
-    response = client.get("/group/association/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["group_id"] == 2
-    assert data["thing_id"] == thing.id
+# def test_item_get_group_thing(location, thing):
+#     response = client.get("/group/association/1")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
+#     assert data["group_id"] == 2
+#     assert data["thing_id"] == thing.id

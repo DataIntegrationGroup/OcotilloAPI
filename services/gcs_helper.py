@@ -14,12 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 import os
-from datetime import timedelta
-from uuid import uuid4
 from hashlib import md5
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 from sqlalchemy import select
-
+from core.settings import settings
 from db import Asset, AssetThingAssociation
 
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
@@ -29,18 +27,23 @@ from google.cloud import storage
 
 
 def get_storage_bucket() -> storage.Bucket:
-    client = storage.Client.from_service_account_json(
-        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    )
+
+    if settings.mode=='production':
+        client = storage.Client()
+    else:
+        client = storage.Client.from_service_account_json(
+            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        )
+
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket
+
 
 
 def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     if bucket is None:
         bucket = get_storage_bucket()
 
-    # file_id = str(uuid4())
     # make file id from hash of file contents
     file.file.seek(0)
     file_id = md5(file.file.read()).hexdigest()
@@ -52,7 +55,7 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     if eblob:
         print("blob exists")
         return (
-            eblob.generate_signed_url(expiration=timedelta(minutes=10), method="GET"),
+            f'gs://{bucket.name}/{blob_name}',
             blob_name,
         )
 
@@ -60,18 +63,8 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
 
     file.file.seek(0)
     blob.upload_from_file(file.file, content_type=file.content_type)
-    signed_url = blob.generate_signed_url(
-        expiration=timedelta(minutes=10), method="GET"
-    )
-
-    return signed_url, blob_name
-
-
-def set_asset_url(asset, bucket=None):
-    if bucket is None:
-        bucket = get_storage_bucket()
-    blob = bucket.blob(asset.storage_path)
-    asset.url = blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET")
+    url = f'gs://{bucket.name}/{blob_name}'
+    return url, blob_name
 
 
 def check_asset_exists(session, blob_name, thing_id=None):

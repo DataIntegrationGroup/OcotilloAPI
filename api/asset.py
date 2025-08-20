@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
-from datetime import timedelta
-from typing import List
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -39,7 +35,6 @@ from services.crud_helper import model_patcher
 from services.gcs_helper import (
     get_storage_bucket,
     gcs_upload,
-    set_asset_url,
     check_asset_exists,
 )
 
@@ -69,7 +64,6 @@ async def add_asset(
 
     data = asset_data.model_dump()
     thing_id = data.pop("thing_id", None)
-    url = data.pop("url", "")
     storage_path = data["storage_path"]
 
     # check to see if an asset entry already exists for
@@ -77,7 +71,6 @@ async def add_asset(
     existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
     if existing_asset:
         # If an asset already exists, return it
-        set_asset_url(existing_asset)
         return existing_asset
 
     data["storage_service"] = "gcs"
@@ -95,7 +88,6 @@ async def add_asset(
     session.add(asset)
     session.commit()
     session.refresh(asset)
-    asset.url = url
     return asset
 
 
@@ -103,10 +95,7 @@ async def add_asset(
 @router.get("")
 async def list_assets(
     session: session_dependency,
-    thing_id: int = None,
-    bucket=Depends(
-        get_storage_bucket
-    ),  # Assuming get_storage_bucket is defined elsewhere
+    thing_id: int = None
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.
@@ -117,21 +106,13 @@ async def list_assets(
             AssetThingAssociation.thing_id == thing_id
         )
 
-    def transformer(assets: List[Asset]) -> AssetResponse:
-        for a in assets:
-            set_asset_url(a, bucket)
-        return assets
-
-    return paginate(query=sql, conn=session, transformer=transformer)
+    return paginate(query=sql, conn=session)
 
 
 @router.get("/{asset_id}")
 async def get_asset(
     asset_id: int,
     session: session_dependency,
-    bucket=Depends(
-        get_storage_bucket
-    ),  # Assuming get_storage_bucket is defined elsewhere
     thing_id: int = None,
 ) -> AssetResponse:
     """
@@ -148,8 +129,6 @@ async def get_asset(
     asset = session.scalars(sql).one_or_none()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
-
-    set_asset_url(asset, bucket)
 
     return asset
 

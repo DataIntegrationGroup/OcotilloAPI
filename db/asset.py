@@ -36,6 +36,7 @@ class Asset(Base, AutoBaseMixin):
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
+    uri: Mapped[str] = mapped_column(String, nullable=False)
 
     search_vector: Mapped[TSVectorType] = mapped_column(
         TSVectorType("name", "mime_type", "storage_service", "storage_path")

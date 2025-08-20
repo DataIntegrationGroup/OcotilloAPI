@@ -22,7 +22,7 @@ class BaseAsset(BaseModel):
     storage_path: str
     mime_type: str
     size: int
-    url: str
+    uri: str
     thing_id: int | None = None
 
 
@@ -42,6 +42,7 @@ class AssetResponse(BaseAsset):
     # size: int
     created_at: AwareDatetime
     storage_service: str
+    uri: str
 
 
 # -------- UPDATE ----------

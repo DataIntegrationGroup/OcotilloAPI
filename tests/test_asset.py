@@ -27,6 +27,7 @@ class MockBlob:
 
 
 class MockStorageBucket:
+    name = 'mock-bucket'
     def blob(self, *args, **kwargs):
         return MockBlob()
 
@@ -72,7 +73,7 @@ def test_add_asset(location, thing):
             "name": "riochama.png",
             "storage_service": "mock_service",
             "storage_path": "mock/path/to/asset",
-            "url": "https://storage.googleapis.com/mock-bucket/mock-asset",
+            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
             "mime_type": "image/png",
             "size": 12345,
         },
@@ -106,7 +107,7 @@ def test_add_asset_with_label(thing):
             "thing_id": thing.id,
             "name": "test_asset.png",
             "label": "Test Asset",
-            "url": "https://storage.googleapis.com/mock-bucket/mock-asset",
+            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
             "storage_service": "mock_service",
             "storage_path": "mock/path/to/asset/test_asset.png",
             "mime_type": "image/png",
@@ -138,7 +139,7 @@ def test_get_asset():
     data = response.json()
     assert data["id"] == 1
     assert data["name"] == "riochama.png"
-    assert data["url"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
+    assert data["uri"] == "https://storage.googleapis.com/mock-bucket/mock-asset"
 
 
 def test_get_asset_not_found():

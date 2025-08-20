@@ -5,7 +5,13 @@
 
 tests
 migration
-
+gcs_credentials.json
+launcher.sh
+test.sh
+docker/*
+alembic/*
+.gitattributes
+.git/*
 
 # User-specific stuff
 .idea/**/workspace.xml
@@ -215,6 +221,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+.venv/*
 ENV/
 env.bak/
 venv.bak/

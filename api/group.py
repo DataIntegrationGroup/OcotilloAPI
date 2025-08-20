@@ -49,21 +49,21 @@ def create_group(
     return adder(session, Group, group_data, user=user)
 
 
-@router.post(
-    "/association",
-    summary="Create a new group-thing association",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_group_thing(
-    group_location_data: CreateGroupThing,
-    session: session_dependency,
-    user: admin_dependency,
-):
-    """
-    Create a new group location association in the database.
-    """
-    return adder(session, GroupThingAssociation, group_location_data, user=user)
-
+# @router.post(
+#     "/association",
+#     summary="Create a new group-thing association",
+#     status_code=status.HTTP_201_CREATED,
+# )
+# def create_group_thing(
+#     group_location_data: CreateGroupThing,
+#     session: session_dependency,
+#     user: admin_dependency,
+# ):
+#     """
+#     Create a new group location association in the database.
+#     """
+#     return adder(session, GroupThingAssociation, group_location_data, user=user)
+#
 
 # ============= Get =============================================
 @router.get("", summary="Get groups")
@@ -84,15 +84,15 @@ async def get_group_by_id(group_id: int, session: session_dependency) -> GroupRe
     return simple_get_by_id(session, Group, group_id)
 
 
-@router.get(
-    "/association/{association_id}",
-    summary="Get group-thing association by ID",
-)
-async def get_group_thing_by_id(association_id: int, session: session_dependency):
-    """
-    Retrieve a group-thing association by ID from the database.
-    """
-    return simple_get_by_id(session, GroupThingAssociation, association_id)
+# @router.get(
+#     "/association/{association_id}",
+#     summary="Get group-thing association by ID",
+# )
+# async def get_group_thing_by_id(association_id: int, session: session_dependency):
+#     """
+#     Retrieve a group-thing association by ID from the database.
+#     """
+#     return simple_get_by_id(session, GroupThingAssociation, association_id)
 
 
 # ============= Patch =============================================

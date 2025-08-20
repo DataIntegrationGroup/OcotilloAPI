@@ -27,6 +27,7 @@ from shapely.ops import transform
 from sqlalchemy import select
 from starlette.datastructures import UploadFile
 
+
 from core.app import init_lexicon
 from db import (
     Location,
@@ -533,8 +534,8 @@ def transfer_link_ids(session, site_type="GW"):
 
 def init_sensor(session):
     sensor = Sensor()
-    sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
-    sensor.description = "Groundwater level manual measurement"
+    sensor.name = "Groundwater level manual measurement"
+    sensor.description = 'manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc.'
     sensor.unit = "ft"
     sensor.datetime_installed = datetime.now()
     session.add(sensor)
@@ -551,7 +552,7 @@ if __name__ == "__main__":
             init_lexicon("../core/lexicon.json")
 
             init_sensor(sess)
-            transfer_wells(sess, 1000)
+            transfer_wells(sess, 100)
             transfer_springs(sess)
             transfer_perennial_stream(sess)
             transfer_ephemeral_stream(sess)
