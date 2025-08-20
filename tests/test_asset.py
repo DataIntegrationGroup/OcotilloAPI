@@ -130,19 +130,31 @@ def test_add_asset_409_bad_thing_id(thing):
     assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
-def test_get_asset(asset):
+# GET tests ====================================================================
+
+
+def test_get_asset_by_id(asset):
     response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == asset.id
+    assert data["created_at"] == asset.created_at.isoformat().replace("+00:00", "Z")
     assert data["name"] == asset.name
-    assert data["uri"] == MockBlob().generate_signed_url()
+    assert data["label"] == asset.label
+    assert data["storage_path"] == asset.storage_path
+    assert data["mime_type"] == asset.mime_type
+    assert data["size"] == asset.size
+    assert data["uri"] == asset.uri
+    assert data["storage_service"] == asset.storage_service
+    assert data["signed_url"] == MockBlob().generate_signed_url()
 
 
-def test_get_asset_not_found():
-    response = client.get("/asset/9999")
+def test_get_asset_by_id_404_not_found(asset):
+    bad_id = 99999
+    response = client.get(f"/asset/{bad_id}")
     assert response.status_code == 404
-    assert response.json() == {"detail": "Asset not found"}
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
 
 
 # ============= EOF =============================================

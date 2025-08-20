@@ -160,7 +160,9 @@ async def get_asset(
     """
     Retrieve an asset by its ID.
     """
-    return simple_get_by_id(session, Asset, asset_id)
+    asset = simple_get_by_id(session, Asset, asset_id)
+    add_signed_url(asset, bucket)
+    return asset
 
 
 # ======= Update =========

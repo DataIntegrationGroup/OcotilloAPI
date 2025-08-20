@@ -35,7 +35,6 @@ class CreateAsset(BaseAsset):
 # -------- RESPONSE --------
 class AssetResponse(ORMBaseModel, BaseAsset):
     storage_service: str
-    storage_service: str
     signed_url: str | None = None
 
 
