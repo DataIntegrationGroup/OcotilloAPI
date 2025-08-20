@@ -144,8 +144,7 @@ async def list_assets(
         )
 
     def transformer(a):
-        if thing_id is not None:
-            add_signed_url(a, get_storage_bucket())
+        add_signed_url(a, get_storage_bucket())
         return a
 
     return paginate(query=sql, conn=session, transformer=transformer)

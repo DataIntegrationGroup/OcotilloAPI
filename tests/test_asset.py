@@ -20,6 +20,7 @@ from db import Asset
 from tests import client, cleanup_post_test, override_authentication
 
 import pytest
+from unittest.mock import patch
 
 # CLASSES, FIXTURES, AND FUNCTIONS =============================================
 
@@ -131,6 +132,27 @@ def test_add_asset_409_bad_thing_id(thing):
 
 
 # GET tests ====================================================================
+
+
+def test_get_assets(asset):
+    with patch("api.asset.get_storage_bucket") as mock_get_storage_bucket:
+        mock_get_storage_bucket.return_value = mock_storage_bucket()
+        response = client.get("/asset")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == asset.id
+        assert data["items"][0]["created_at"] == asset.created_at.isoformat().replace(
+            "+00:00", "Z"
+        )
+        assert data["items"][0]["name"] == asset.name
+        assert data["items"][0]["label"] == asset.label
+        assert data["items"][0]["storage_path"] == asset.storage_path
+        assert data["items"][0]["mime_type"] == asset.mime_type
+        assert data["items"][0]["size"] == asset.size
+        assert data["items"][0]["uri"] == asset.uri
+        assert data["items"][0]["storage_service"] == asset.storage_service
+        assert data["items"][0]["signed_url"] == MockBlob().generate_signed_url()
 
 
 def test_get_asset_by_id(asset):

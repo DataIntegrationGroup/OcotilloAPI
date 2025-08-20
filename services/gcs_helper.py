@@ -77,11 +77,19 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
 
 
 def add_signed_url(asset, bucket):
-    asset.signed_url = bucket.blob(asset.storage_path).generate_signed_url(
-        version="v4",
-        expiration=datetime.timedelta(minutes=15),
-        method="GET",
-    )
+    if isinstance(asset, list):
+        for a in asset:
+            a.signed_url = bucket.blob(a.storage_path).generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(minutes=15),
+                method="GET",
+            )
+    else:
+        asset.signed_url = bucket.blob(asset.storage_path).generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(minutes=15),
+            method="GET",
+        )
 
 
 def check_asset_exists(session, blob_name, thing_id=None):
