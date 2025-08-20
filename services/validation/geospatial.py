@@ -13,14 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy.orm import DeclarativeBase
+from shapely import wkt
 
 
-def audit_add(user: dict, obj: DeclarativeBase) -> None:
-    # see note in "AuditMixin"
-    if user:
-        obj.created_by_id = user["sub"]
-        obj.created_by_name = user["name"]
+def validate_wkt_geometry(value: str | None) -> str | None:
+    """
+    Validate that the provided string is a valid WKT geometry.
+    Raises ValueError if the geometry is invalid.
+    """
+    if value is None:
+        return value
+
+    try:
+        geometry = wkt.loads(value)
+        if not geometry.is_valid:
+            raise ValueError("WKT geometry is not topologically valid")
+        return value
+    except Exception as e:
+        raise ValueError(f"Invalid WKT geometry: {e}")
 
 
 # ============= EOF =============================================

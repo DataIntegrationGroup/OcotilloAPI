@@ -13,12 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
+from geoalchemy2 import WKBElement
+from geoalchemy2.shape import to_shape
+from pydantic import BaseModel, field_validator
 
 from schemas import ORMBaseModel
+from services.validation.geospatial import validate_wkt_geometry
+
+
+class ValidateGroup(BaseModel):
+    project_area: str | None = None
+
+    description: str | None = None
+    parent_group_id: int | None = None
+
+    @classmethod
+    @field_validator("project_area")
+    def validate_area_is_wkt(cls, wkt):
+        return validate_wkt_geometry(wkt)
 
 
 # -------- CREATE ----------
+class CreateGroup(ValidateGroup):
+    """
+    Schema for creating a group.
+    """
+
+    name: str
+
+
 # -------- RESPONSE --------
 class GroupResponse(ORMBaseModel):
     """
@@ -31,17 +54,30 @@ class GroupResponse(ORMBaseModel):
     description: str | None = None
     parent_group_id: int | None = None
 
+    @classmethod
+    @field_validator("project_area", mode="before")
+    def project_area_to_wkt(cls, value):
+        if not value:
+            return value
+
+        if isinstance(value, WKBElement):
+            return to_shape(value).wkt
+
+        # If the value is a string, assume it's already in WKT format
+        if isinstance(value, str):
+            return value
+
+        return None
+
 
 # -------- UPDATE ----------
-class UpdateGroup(BaseModel):
+class UpdateGroup(ValidateGroup):
     """
     Pydantic model for updating a group.
     This model can be extended to include additional fields as needed.
     """
 
     name: str | None = None
-    description: str | None = None
-    parent_group_id: int | None = None
 
 
 # ============= EOF =============================================

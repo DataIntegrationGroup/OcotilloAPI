@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Optional
+
 from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.testing.schema import mapped_column
 from sqlalchemy_utils import TSVectorType
 
 from db.base import Base, AutoBaseMixin
@@ -27,15 +30,15 @@ class Asset(Base, AutoBaseMixin):
     # content = Column(UploadedFileField)
     # photo = Column(UploadedFileField(upload_type=UploadedImageWithThumb))
 
-    name = Column(String, nullable=False)
-    label = Column(String, nullable=True)
-    storage_service = Column(String, nullable=False)
-    storage_path = Column(String, nullable=False)
-    mime_type = Column(String, nullable=False)
-    size = Column(Integer, nullable=False)
-    url = Column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    storage_service: Mapped[str] = mapped_column(String, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String, nullable=False)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    uri: Mapped[str] = mapped_column(String, nullable=False)
 
-    search_vector = Column(
+    search_vector: Mapped[TSVectorType] = mapped_column(
         TSVectorType("name", "mime_type", "storage_service", "storage_path")
     )
 

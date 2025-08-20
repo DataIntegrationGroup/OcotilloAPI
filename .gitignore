@@ -8,7 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
-
+requirements.txt
 
 # JetBrains IDEs
 .idea/
@@ -23,7 +23,7 @@ tests/uploads
 migrate.sh
 launcher.sh
 gcs_credentials.json
-
+transfers/data/assets*
 
 # deployment files
 app.yaml

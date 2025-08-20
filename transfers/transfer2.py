@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
+import os
 import time
 import uuid
 from datetime import datetime
@@ -25,7 +25,10 @@ from pydantic import ValidationError
 from shapely import Point
 from shapely.ops import transform
 from sqlalchemy import select
+from starlette.datastructures import UploadFile
 
+
+from core.app import init_lexicon
 from db import (
     Location,
     LocationThingAssociation,
@@ -34,9 +37,21 @@ from db import (
     Thing,
     Observation,
     Sample,
+    Contact,
+    Email,
+    Phone,
+    ThingContactAssociation,
+    Base,
+    Sensor,
+    Address,
+    Asset,
+    AssetThingAssociation,
+    ThingIdLink,
 )
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
+from services.audit_helper import audit_add
+from services.gcs_helper import gcs_upload, check_asset_exists
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
 
@@ -201,9 +216,9 @@ def transfer_water_levels(session):
 ADDED = []
 
 
-def transfer_springs(session, limit=None):
+def transfer_thing(session, site_type, make_payload, limit=None):
     ldf = pd.read_csv("./data/location.csv")
-    ldf = ldf[ldf["SiteType"] == "SP"]
+    ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
     start_time = time.time()
@@ -223,17 +238,126 @@ def transfer_springs(session, limit=None):
 
         spring = add_thing(
             session,
-            {
-                "name": row.PointID,
-                "thing_type": "spring",
-                "release_status": "public" if row.PublicRelease else "private",
-            },
+            make_payload(row),
         )
         assoc = LocationThingAssociation()
 
         assoc.location = location
         assoc.thing = spring
         session.add(assoc)
+
+
+def transfer_springs(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "spring",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "SP", make_payload, limit)
+
+
+def transfer_perennial_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "perennial stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "PS", make_payload, limit)
+
+
+def transfer_ephemeral_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "ephemeral stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "ES", make_payload, limit)
+
+
+def transfer_met(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "meteorological station",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "M", make_payload, limit)
+
+
+def transfer_owners(session):
+    odf = pd.read_csv("./data/ownersdata.csv")
+    odf = odf.replace(pd.NA, None)
+    odf = odf.replace({np.nan: None})
+
+    for i, row in odf.iterrows():
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            print(f"Thing with PointID {row.PointID} not foaund. Skipping owner.")
+            continue
+
+        contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role="Primary")
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact1
+        session.add(assoc)
+        session.add(contact1)
+
+        if row.Email:
+            contact1.emails.append(Email(email=row.Email, email_type="Primary"))
+        if row.Phone:
+            contact1.phones.append(Phone(phone_number=row.Phone, phone_type="Primary"))
+        if row.CellPhone:
+            contact1.phones.append(
+                Phone(phone_number=row.CellPhone, phone_type="Mobile")
+            )
+
+        if row.MailingAddress:
+            contact1.addresses.append(
+                Address(
+                    address_line_1=row.MailingAddress,
+                    city=row.MailCity,
+                    state=row.MailState,
+                    postal_code=row.MailZipCode,
+                    address_type="Mailing",
+                )
+            )
+
+            contact1.addresses.append(
+                Address(
+                    address_line_1=row.PhysicalAddress,
+                    city=row.PhysicalCity,
+                    state=row.PhysicalState,
+                    postal_code=row.PhysicalZipCode,
+                    address_type="Physical",
+                )
+            )
+
+        contact2 = Contact(
+            name=f"{row.SecondFirstName} {row.SecondLastName}", role="Secondary"
+        )
+        if row.SecondCtctEmail:
+            contact2.emails.append(
+                Email(email=row.SecondCtctEmail, email_type="Primary")
+            )
+        if row.SecondCtctPhone:
+            contact2.phones.append(
+                Phone(phone_number=row.SecondCtctPhone, phone_type="Primary")
+            )
+
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact2
+        session.add(assoc)
+        session.add(contact2)
+
+        session.commit()
 
 
 def transfer_wells(session, limit=None):
@@ -341,22 +465,108 @@ def transfer_wellscreens(session, limit=None):
         # session.add(screen)
 
 
-# def reset_db():
-#     configure_mappers()
-#
-#     Base.metadata.drop_all(engine)
-#     Base.metadata.create_all(engine)
-#
-#     init_hypertables()
-#     init_lexicon()
+def transfer_assets(session):
+    for p in ("asset1.png", "asset2.png", "asset3.png"):
+        with open(f"./data/assets/{p}", "rb") as f:
+            uf = UploadFile(file=f, filename=p, size=10)
+            uri, blob_name = gcs_upload(uf)
+            thing_id = 151
+
+            if check_asset_exists(session, blob_name, thing_id):
+                print(f"Asset {blob_name} already exists. Skipping.")
+                continue
+
+            asset = Asset(
+                name=p,
+                label=p,
+                storage_path=blob_name,
+                storage_service="gcs",
+                mime_type="image/png",
+                size=uf.size,
+                uri=uri,
+            )
+            assoc = AssetThingAssociation()
+            audit_add({"sub": "foobar", "name": "Mr. Foobar"}, assoc)
+            thing = session.get(Thing, thing_id)
+            assoc.thing = thing
+            assoc.asset = asset
+            session.add(assoc)
+            session.add(asset)
+            session.commit()
+
+
+def extract_organization(alternate_id):
+    if alternate_id.startswith("TWDB"):
+        return "TWDB"
+    elif alternate_id.startswith("NMED"):
+        return "NMED"
+
+    return "Unknown"
+
+
+def transfer_link_ids(session, site_type="GW"):
+    ldf = pd.read_csv("./data/location2.csv")
+    ldf = ldf[ldf["SiteType"] == site_type]
+    ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    ldf = ldf[ldf["AlternateSiteID"].notna()]
+    for i, row in enumerate(ldf.itertuples()):
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
+            continue
+        print(
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
+            f"b={row.AlternateSiteID2}"
+        )
+        link_id = ThingIdLink()
+        link_id.thing = thing
+        link_id.relation = "same_as"
+        link_id.alternate_id = row.AlternateSiteID
+
+        # TODO: this needs improvement. use regex to determine the organization from the alternate id?
+
+        link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+
+        print("adding link id: ", link_id)
+
+        # if i>100:
+        #     break
+        session.add(link_id)
+        session.commit()
+
+
+def init_sensor(session):
+    sensor = Sensor()
+    sensor.name = "Groundwater level manual measurement"
+    sensor.description = "manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."
+    sensor.unit = "ft"
+    sensor.datetime_installed = datetime.now()
+    session.add(sensor)
+    session.commit()
 
 
 if __name__ == "__main__":
-    # reset_db()
+    init = True
     with session_ctx() as sess:
-        transfer_wells(sess, 1000)
-        transfer_springs(sess, limit=1000)
-        # transfer_wellscreens(sess)
-        transfer_water_levels(sess)
+        if init:
+            Base.metadata.drop_all(sess.bind)
+            Base.metadata.create_all(sess.bind)
+
+            init_lexicon("../core/lexicon.json")
+
+            init_sensor(sess)
+            transfer_wells(sess, 1000)
+            transfer_springs(sess, 1000)
+            transfer_perennial_stream(sess, 1000)
+            transfer_ephemeral_stream(sess, 1000)
+            transfer_met(sess, 1000)
+            transfer_owners(sess)
+            transfer_wellscreens(sess)
+            transfer_water_levels(sess)
+
+            transfer_assets(sess)
+        transfer_link_ids(sess)
+
+        #
 
 # ============= EOF =============================================

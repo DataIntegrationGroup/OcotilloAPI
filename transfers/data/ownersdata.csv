@@ -1,0 +1,4 @@
+PointID,FirstName,LastName,OwnerKey,Email,CellPhone,Phone,MailingAddress,MailCity,MailState,MailZipCode,PhysicalAddress,PhysicalCity,PhysicalState,PhysicalZipCode,SecondLastName,SecondFirstName,SecondCtctEmail,SecondCtctPhone
+EB-270,John,Doe,OWN001,john.doe@example.com,555-1234,555-5678,123 Main St,Albuquerque,NM,87101,456 Elm St,Albuquerque,NM,87102,Smith,Jane,jane.smith@example.com,555-8765
+EB-271,Alice,Johnson,OWN002,alice.j@example.com,555-2345,555-6789,789 Oak St,Socorro,NM,87801,101 Pine St,Socorro,NM,87802,Brown,Bob,bob.brown@example.com,555-4321
+EB-272,Maria,Gonzalez,OWN003,maria.g@example.com,555-3456,555-7890,234 Maple St,Las Cruces,NM,88001,567 Cedar St,Las Cruces,NM,88002,Lopez,Carlos,carlos.lopez@example.com,555-5432

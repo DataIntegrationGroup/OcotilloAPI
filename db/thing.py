@@ -15,26 +15,11 @@
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column, declared_attr
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
-
-
-class ThingChildMixin:
-    @declared_attr
-    def thing_id(self):
-        return mapped_column(
-            Integer,
-            ForeignKey("thing.id", ondelete="CASCADE"),
-            nullable=False,
-            unique=True,
-        )
-
-    @declared_attr
-    def thing(self):
-        return relationship("Thing")
 
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin):

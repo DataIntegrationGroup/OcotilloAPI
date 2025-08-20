@@ -22,7 +22,7 @@ def test_add_lexicon_category():
     description = "This is a test category."
 
     response = client.post(
-        "/lexicon/category/add",
+        "/lexicon/category",
         json={"name": name, "description": description},
     )
 
@@ -38,7 +38,7 @@ def test_add_lexicon_term():
     category = "Test Category"
 
     response = client.post(
-        "/lexicon/add",
+        "/lexicon/term",
         json={"term": term, "definition": definition, "category": category},
     )
 
