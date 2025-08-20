@@ -469,7 +469,7 @@ def transfer_assets(session):
     for p in ("asset1.png", "asset2.png", "asset3.png"):
         with open(f"./data/assets/{p}", "rb") as f:
             uf = UploadFile(file=f, filename=p, size=10)
-            url, blob_name = gcs_upload(uf)
+            uri, blob_name = gcs_upload(uf)
             thing_id = 151
 
             if check_asset_exists(session, blob_name, thing_id):
@@ -483,6 +483,7 @@ def transfer_assets(session):
                 storage_service="gcs",
                 mime_type="image/png",
                 size=uf.size,
+                uri=uri,
             )
             assoc = AssetThingAssociation()
             audit_add({"sub": "foobar", "name": "Mr. Foobar"}, assoc)
@@ -554,16 +555,16 @@ if __name__ == "__main__":
             init_lexicon("../core/lexicon.json")
 
             init_sensor(sess)
-            transfer_wells(sess, 100)
-            transfer_springs(sess)
-            transfer_perennial_stream(sess)
-            transfer_ephemeral_stream(sess)
-            transfer_met(sess)
+            transfer_wells(sess, 1000)
+            transfer_springs(sess, 1000)
+            transfer_perennial_stream(sess, 1000)
+            transfer_ephemeral_stream(sess, 1000)
+            transfer_met(sess, 1000)
             transfer_owners(sess)
             transfer_wellscreens(sess)
             transfer_water_levels(sess)
-            transfer_assets(sess)
 
+            transfer_assets(sess)
         transfer_link_ids(sess)
 
         #

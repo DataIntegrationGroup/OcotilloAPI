@@ -35,7 +35,7 @@ from services.crud_helper import model_patcher
 from services.gcs_helper import (
     get_storage_bucket,
     gcs_upload,
-    check_asset_exists,
+    check_asset_exists, add_signed_url,
 )
 
 router = APIRouter(
@@ -50,9 +50,9 @@ router = APIRouter(
 async def upload_asset(
     bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
 ):
-    signed_url, blob_name = gcs_upload(file, bucket)
+    uri, blob_name = gcs_upload(file, bucket)
     return {
-        "url": signed_url,
+        "uri": uri,
         "storage_path": blob_name,
     }
 
@@ -104,8 +104,12 @@ async def list_assets(
         sql = sql.join(AssetThingAssociation).where(
             AssetThingAssociation.thing_id == thing_id
         )
+    def transformer(a):
+        if thing_id is not None:
+            add_signed_url(a, get_storage_bucket())
+        return a
 
-    return paginate(query=sql, conn=session)
+    return paginate(query=sql, conn=session, transformer=transformer)
 
 
 @router.get("/{asset_id}")
@@ -113,6 +117,7 @@ async def get_asset(
     asset_id: int,
     session: session_dependency,
     thing_id: int = None,
+    bucket=Depends(get_storage_bucket),
 ) -> AssetResponse:
     """
     Retrieve an asset by its ID.
@@ -129,6 +134,7 @@ async def get_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
+    add_signed_url(asset, bucket)
     return asset
 
 

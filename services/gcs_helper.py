@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 import os
+import datetime
 from hashlib import md5
 from fastapi import UploadFile
+from google.oauth2 import service_account
 from sqlalchemy import select
 from core.settings import settings
 from db import Asset, AssetThingAssociation
 
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
-
+GCS_BUCKET_BASE_URL = f"https://storage.cloud.google.com/{GCS_BUCKET_NAME}/uploads"
 
 from google.cloud import storage
 
@@ -29,7 +32,12 @@ from google.cloud import storage
 def get_storage_bucket() -> storage.Bucket:
 
     if settings.mode == "production":
-        client = storage.Client()
+        key_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        # Load service account credentials
+        creds = service_account.Credentials.from_service_account_info(json.loads(key_json))
+
+        # Create storage client
+        client = storage.Client(credentials=creds)
     else:
         client = storage.Client.from_service_account_json(
             os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
@@ -54,7 +62,7 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     if eblob:
         print("blob exists")
         return (
-            f"gs://{bucket.name}/{blob_name}",
+            f"{GCS_BUCKET_BASE_URL}/{blob_name}",
             blob_name,
         )
 
@@ -62,8 +70,16 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
 
     file.file.seek(0)
     blob.upload_from_file(file.file, content_type=file.content_type)
-    url = f"gs://{bucket.name}/{blob_name}"
+    url = f"{GCS_BUCKET_BASE_URL}/{blob_name}"
     return url, blob_name
+
+
+def add_signed_url(asset, bucket):
+    asset.signed_url = bucket.blob(asset.storage_path).generate_signed_url(
+        version="v4",
+        expiration=datetime.timedelta(minutes=15),
+        method="GET",
+    )
 
 
 def check_asset_exists(session, blob_name, thing_id=None):
