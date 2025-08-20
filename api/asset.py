@@ -94,8 +94,7 @@ async def add_asset(
 # ======= Read =========
 @router.get("")
 async def list_assets(
-    session: session_dependency,
-    thing_id: int = None
+    session: session_dependency, thing_id: int = None
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.

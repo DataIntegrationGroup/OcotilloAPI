@@ -500,7 +500,7 @@ def extract_organization(alternate_id):
     elif alternate_id.startswith("NMED"):
         return "NMED"
 
-    return 'Unknown'
+    return "Unknown"
 
 
 def transfer_link_ids(session, site_type="GW"):
@@ -513,18 +513,20 @@ def transfer_link_ids(session, site_type="GW"):
         if thing is None:
             # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
             continue
-        print(f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
-              f"b={row.AlternateSiteID2}")
+        print(
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
+            f"b={row.AlternateSiteID2}"
+        )
         link_id = ThingIdLink()
         link_id.thing = thing
-        link_id.relation='same_as'
+        link_id.relation = "same_as"
         link_id.alternate_id = row.AlternateSiteID
 
         # TODO: this needs improvement. use regex to determine the organization from the alternate id?
 
         link_id.alternate_organization = extract_organization(row.AlternateSiteID)
 
-        print('adding link id: ', link_id)
+        print("adding link id: ", link_id)
 
         # if i>100:
         #     break
@@ -535,7 +537,7 @@ def transfer_link_ids(session, site_type="GW"):
 def init_sensor(session):
     sensor = Sensor()
     sensor.name = "Groundwater level manual measurement"
-    sensor.description = 'manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc.'
+    sensor.description = "manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."
     sensor.unit = "ft"
     sensor.datetime_installed = datetime.now()
     session.add(sensor)
@@ -563,7 +565,6 @@ if __name__ == "__main__":
             transfer_assets(sess)
 
         transfer_link_ids(sess)
-
 
         #
 

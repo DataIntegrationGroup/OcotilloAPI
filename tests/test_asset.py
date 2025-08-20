@@ -27,7 +27,8 @@ class MockBlob:
 
 
 class MockStorageBucket:
-    name = 'mock-bucket'
+    name = "mock-bucket"
+
     def blob(self, *args, **kwargs):
         return MockBlob()
 

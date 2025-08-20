@@ -28,7 +28,7 @@ from google.cloud import storage
 
 def get_storage_bucket() -> storage.Bucket:
 
-    if settings.mode=='production':
+    if settings.mode == "production":
         client = storage.Client()
     else:
         client = storage.Client.from_service_account_json(
@@ -37,7 +37,6 @@ def get_storage_bucket() -> storage.Bucket:
 
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket
-
 
 
 def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
@@ -55,7 +54,7 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     if eblob:
         print("blob exists")
         return (
-            f'gs://{bucket.name}/{blob_name}',
+            f"gs://{bucket.name}/{blob_name}",
             blob_name,
         )
 
@@ -63,7 +62,7 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
 
     file.file.seek(0)
     blob.upload_from_file(file.file, content_type=file.content_type)
-    url = f'gs://{bucket.name}/{blob_name}'
+    url = f"gs://{bucket.name}/{blob_name}"
     return url, blob_name
 
 

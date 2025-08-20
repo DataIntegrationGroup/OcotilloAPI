@@ -65,6 +65,7 @@ def create_group(
 #     return adder(session, GroupThingAssociation, group_location_data, user=user)
 #
 
+
 # ============= Get =============================================
 @router.get("", summary="Get groups")
 async def get_groups(
