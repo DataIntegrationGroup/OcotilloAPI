@@ -22,8 +22,11 @@ from db.base import Base, AutoBaseMixin, lexicon_term
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
-    thing_id = Column(Integer, ForeignKey("thing.id"), nullable=False)
-    contact_id = Column(Integer, ForeignKey("contact.id"), nullable=False)
+    thing_id = Column(Integer, ForeignKey("thing.id"), primary_key=True)
+    contact_id = Column(Integer, ForeignKey("contact.id"), primary_key=True)
+
+    contact = relationship("Contact")
+    thing = relationship("Thing")
 
 
 class Contact(Base, AutoBaseMixin):
@@ -33,10 +36,6 @@ class Contact(Base, AutoBaseMixin):
     phones = relationship("Phone", back_populates="contact")
     emails = relationship("Email", back_populates="contact")
     addresses = relationship("Address", back_populates="contact")
-    # email = Column(String(100), nullable=True)
-    # phone = Column(String(20), nullable=True)
-    # owner_id = Column(Integer, ForeignKey("owner.id"), nullable=False)
-    # owner = relationship("Owner")
 
     search_vector = Column(TSVectorType("name", "role"))
 
@@ -46,7 +45,12 @@ class Contact(Base, AutoBaseMixin):
         cascade="all, delete-orphan",
     )
     authors = association_proxy("author_associations", "author")
-    things = relationship("Thing", secondary="thing_contact_association")
+    thing_associations = relationship(
+        "ThingContactAssociation",
+        back_populates="contact",
+        cascade="all, delete-orphan",
+    )
+    things = association_proxy("thing_associations", "thing")
 
 
 class Phone(Base, AutoBaseMixin):

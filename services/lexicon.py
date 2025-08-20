@@ -17,9 +17,11 @@ from db.lexicon import Category, Lexicon, TermCategoryAssociation
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+from services.audit_helper import audit_add
+
 
 def add_lexicon_term(
-    session: Session, term: str, definition: str, category: str | int
+    session: Session, term: str, definition: str, category: str | int, user: dict = None
 ) -> Lexicon:
     """
     Add a term to the lexicon with its definition and category.
@@ -31,6 +33,7 @@ def add_lexicon_term(
         if dbcategory is None:
             # Create a new category if it does not exist
             dbcategory = Category(name=category)
+            audit_add(user, dbcategory)
             session.add(dbcategory)
             session.commit()
             session.flush()
@@ -42,6 +45,7 @@ def add_lexicon_term(
     dbterm = session.scalars(sql).one_or_none()
     if dbterm is None:
         dbterm = Lexicon(term=term, definition=definition)
+        audit_add(user, dbterm)
         session.add(dbterm)
 
     if dbcategory is not None:
@@ -49,7 +53,7 @@ def add_lexicon_term(
 
         link.category = dbcategory
         link.term = dbterm
-
+        audit_add(user, link)
         session.add(link)
 
     session.commit()

@@ -23,7 +23,6 @@ from sqlalchemy import (
     func,
     Text,
 )
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
@@ -40,11 +39,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
     )
-
-    thing = association_proxy("location_thing_association", "thing")
-    # owner_id = Column(
-    #     Integer, ForeignKey("owner.id", ondelete="CASCADE"), nullable=True
-    # )
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):
@@ -65,78 +59,6 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 
     location = relationship("Location")
     thing = relationship("Thing")
-    # location = relationship("Location", back_populates="thing")
-    # thing = relationship("Thing", back_populates="locations")
-
-
-# class Owner(Base, AutoBaseMixin):
-#     name = Column(String(100), nullable=False, unique=True)
-#     description = Column(String(255), nullable=True)
-#
-#     search_vector = Column(TSVectorType("name", "description"))
-#
-#     contacts = relationship(
-#         "Contact",
-#         secondary="owner_contact_association",
-#     )
-#     # contacts = relationship(
-#     #     "Contact", back_populates="owner", cascade="all, delete-orphan"
-#     # )
-
-
-# class Equipment(Base, AutoBaseMixin):
-#     equipment_type = Column(String(50))
-#     model = Column(String(50))
-#     serial_no = Column(String(50))
-#     date_installed = Column(DateTime)
-#     date_removed = Column(DateTime)
-#     recording_interval = Column(Integer)
-#     equipment_notes = Column(String(50))
-#     location_id = Column(
-#         Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
-#     )
-#
-#     location = relationship("Location")
-
-# class Spring(Base):
-#     __tablename__ = 'Spring'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Stream(Base):
-#     __tablename__ = 'Stream'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Surface(Base):
-#     __tablename__ = 'Surface'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
-#
-# class Subsurface(Base):
-#     __tablename__ = 'Subsurface'
-#
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     location_id = Column(Integer, ForeignKey('samplelocation.id'), nullable=False)
-#
-#     # Define a relationship to samplelocation if needed
-#     location = relationship("samplelocation")
-#
 
 
 # ============= EOF =============================================

@@ -13,42 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel, AwareDatetime
+from sqlalchemy.orm import DeclarativeBase
 
 
-class BaseAsset(BaseModel):
-    name: str
-    label: str | None = None
-    storage_path: str
-    mime_type: str
-    size: int
-    uri: str
-    thing_id: int | None = None
-
-
-# -------- CREATE ----------
-class CreateAsset(BaseAsset):
-    pass
-
-
-# -------- RESPONSE --------
-class AssetResponse(BaseAsset):
-    id: int
-    # name: str
-    # label: str
-    # storage_service: str
-    # storage_path: str
-    # mime_type: str
-    # size: int
-    created_at: AwareDatetime
-    storage_service: str
-    uri: str
-    signed_url: str | None = None
-
-
-# -------- UPDATE ----------
-class UpdateAsset(BaseAsset):
-    pass
+def audit_add(user: dict, obj: DeclarativeBase) -> None:
+    # see note in "AuditMixin"
+    if user:
+        obj.created_by_id = user["sub"]
+        obj.created_by_name = user["name"]
 
 
 # ============= EOF =============================================

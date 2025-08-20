@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
-from datetime import timedelta
-from typing import List
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
@@ -24,32 +20,82 @@ from sqlalchemy import select
 from starlette.status import HTTP_201_CREATED
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
+from core.dependencies import (
+    session_dependency,
+    viewer_function,
+    admin_dependency,
+    admin_function,
+    editor_dependency,
+)
 from db import Thing
 from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
+from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
+from services.gcs_helper import (
+    get_storage_bucket,
+    gcs_upload,
+    check_asset_exists,
+    add_signed_url,
+)
 
-router = APIRouter(prefix="/asset", tags=["asset"])
-GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
-
-
-from google.cloud import storage
-
-
-def get_storage_bucket() -> storage.Bucket:
-    client = storage.Client.from_service_account_json(
-        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    )
-    bucket = client.bucket(GCS_BUCKET_NAME)
-    return bucket
+router = APIRouter(
+    prefix="/asset", tags=["asset"], dependencies=[Depends(viewer_function)]
+)
 
 
+# ======= Create =========
+@router.post(
+    "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)]
+)
+async def upload_asset(
+    bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
+):
+    uri, blob_name = gcs_upload(file, bucket)
+    return {
+        "uri": uri,
+        "storage_path": blob_name,
+    }
+
+
+@router.post("", status_code=HTTP_201_CREATED)
+async def add_asset(
+    user: admin_dependency, session: session_dependency, asset_data: CreateAsset
+) -> AssetResponse:
+
+    data = asset_data.model_dump()
+    thing_id = data.pop("thing_id", None)
+    storage_path = data["storage_path"]
+
+    # check to see if an asset entry already exists for
+    # this storage path and thing_id
+    existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
+    if existing_asset:
+        # If an asset already exists, return it
+        return existing_asset
+
+    data["storage_service"] = "gcs"
+    asset = Asset(**data)
+    audit_add(user, asset)
+
+    if thing_id:
+        assoc = AssetThingAssociation()
+        audit_add(user, assoc)
+        thing = session.get(Thing, thing_id)
+        assoc.thing = thing
+        assoc.asset = asset
+        session.add(assoc)
+
+    session.add(asset)
+    session.commit()
+    session.refresh(asset)
+    return asset
+
+
+# ======= Read =========
 @router.get("")
 async def list_assets(
-    session: session_dependency,
-    # bucket=Depends(get_storage_bucket),
-    thing_id: int = None,
+    session: session_dependency, thing_id: int = None
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.
@@ -60,17 +106,10 @@ async def list_assets(
             AssetThingAssociation.thing_id == thing_id
         )
 
-    # assets = session.scalars(sql).all()
-    # if not assets:
-    #     return []
-
-    def transformer(assets: List[Asset]) -> AssetResponse:
-        # blob = bucket.blob(asset.storage_path)
-        # asset.url = blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET")
-        # return [AssetResponse.model_validate(asset) for asset in assets]
-        for a in assets:
-            a.url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{a.storage_path}"
-        return assets
+    def transformer(a):
+        if thing_id is not None:
+            add_signed_url(a, get_storage_bucket())
+        return a
 
     return paginate(query=sql, conn=session, transformer=transformer)
 
@@ -79,10 +118,8 @@ async def list_assets(
 async def get_asset(
     asset_id: int,
     session: session_dependency,
-    bucket=Depends(
-        get_storage_bucket
-    ),  # Assuming get_storage_bucket is defined elsewhere
     thing_id: int = None,
+    bucket=Depends(get_storage_bucket),
 ) -> AssetResponse:
     """
     Retrieve an asset by its ID.
@@ -99,59 +136,22 @@ async def get_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    blob = bucket.blob(asset.storage_path)
-    asset.url = blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET")
+    add_signed_url(asset, bucket)
     return asset
 
 
-@router.post("/upload", status_code=HTTP_201_CREATED)
-async def upload_asset(
-    bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
-):
-    file_id = str(uuid4())
-    blob_name = f"uploads/{file_id}_{file.filename}"
-    blob = bucket.blob(blob_name)
-    blob.upload_from_file(file.file, content_type=file.content_type)
-    return {
-        "url": blob.generate_signed_url(expiration=timedelta(minutes=10), method="GET"),
-        "storage_path": blob_name,
-    }
-
-
-@router.post("", status_code=HTTP_201_CREATED)
-async def add_asset(
-    session: session_dependency, asset_data: CreateAsset
-) -> AssetResponse:
-
-    data = asset_data.model_dump()
-    thing_id = data.pop("thing_id", None)
-    url = data.pop("url", "")
-
-    data["storage_service"] = "gcs"
-    asset = Asset(**data)
-
-    if thing_id:
-        assoc = AssetThingAssociation()
-        thing = session.get(Thing, thing_id)
-        assoc.thing = thing
-        assoc.asset = asset
-        session.add(assoc)
-
-    session.add(asset)
-    session.commit()
-    session.refresh(asset)
-    asset.url = url
-    return asset
-
-
+# ======= Update =========
 @router.patch("/{asset_id}")
 async def update_asset(
-    asset_id: int, session: session_dependency, asset_data: UpdateAsset
+    asset_id: int,
+    session: session_dependency,
+    asset_data: UpdateAsset,
+    user: editor_dependency,
 ):
     """
     Update an existing asset.
     """
-    return model_patcher(session, Asset, asset_id, asset_data)
+    return model_patcher(session, Asset, asset_id, asset_data, user=user)
 
 
 # ============= EOF =============================================

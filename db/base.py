@@ -134,10 +134,6 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
     username: Mapped[str] = mapped_column(String(length=255), nullable=False)
-    password: Mapped[str] = mapped_column(String(length=255), nullable=False)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     def __str__(self):
         return self.username

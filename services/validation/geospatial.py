@@ -13,42 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel, AwareDatetime
+from shapely import wkt
 
 
-class BaseAsset(BaseModel):
-    name: str
-    label: str | None = None
-    storage_path: str
-    mime_type: str
-    size: int
-    uri: str
-    thing_id: int | None = None
+def validate_wkt_geometry(value: str | None) -> str | None:
+    """
+    Validate that the provided string is a valid WKT geometry.
+    Raises ValueError if the geometry is invalid.
+    """
+    if value is None:
+        return value
 
-
-# -------- CREATE ----------
-class CreateAsset(BaseAsset):
-    pass
-
-
-# -------- RESPONSE --------
-class AssetResponse(BaseAsset):
-    id: int
-    # name: str
-    # label: str
-    # storage_service: str
-    # storage_path: str
-    # mime_type: str
-    # size: int
-    created_at: AwareDatetime
-    storage_service: str
-    uri: str
-    signed_url: str | None = None
-
-
-# -------- UPDATE ----------
-class UpdateAsset(BaseAsset):
-    pass
+    try:
+        geometry = wkt.loads(value)
+        if not geometry.is_valid:
+            raise ValueError("WKT geometry is not topologically valid")
+        return value
+    except Exception as e:
+        raise ValueError(f"Invalid WKT geometry: {e}")
 
 
 # ============= EOF =============================================

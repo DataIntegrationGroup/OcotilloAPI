@@ -16,7 +16,9 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel, model_validator
+from geoalchemy2 import WKBElement
+from geoalchemy2.shape import to_shape
+from pydantic import BaseModel, model_validator, field_validator
 
 from schemas import ORMBaseModel
 from schemas.location import LocationResponse
@@ -164,16 +166,8 @@ class WellScreenResponse(ORMBaseModel):
     thing_id: int
     screen_depth_bottom: float
     screen_depth_top: float
-
-
-class GroupResponse(ORMBaseModel):
-    """
-    Response schema for group details.
-    """
-
-    name: str
-    description: str | None = None
-    parent_group_id: int | None = None
+    screen_type: str | None = None
+    screen_description: str | None = None
 
 
 class GeoJSONGeometry(BaseModel):
@@ -183,8 +177,11 @@ class GeoJSONGeometry(BaseModel):
 
     type: str
     coordinates: (
-        List[float] | List[List[float]] | List[List[List[float]]]
-    )  # Supports Point, LineString, Polygon, etc.
+        List[float]
+        | List[List[float]]
+        | List[List[List[float]]]
+        | List[List[List[List[float]]]]
+    )  # Supports Point, LineString, Polygon, MultiPolygon
 
 
 class Feature(BaseModel):
@@ -238,6 +235,13 @@ class UpdateThingIdLink(BaseModel):
     alternate_id: str | None = None
     relation: str | None = None
     thing_id: int | None = None
+
+
+class UpdateWellScreen(BaseModel):
+    screen_depth_bottom: float | None = None
+    screen_depth_top: float | None = None
+    screen_description: str | None = None
+    screen_type: str | None = None
 
 
 # ============= EOF =============================================
