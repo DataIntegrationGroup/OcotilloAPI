@@ -3,7 +3,7 @@ from core.dependencies import (
     amp_editor_function,
     amp_admin_function,
 )
-from db import Contact, Address, Email, Phone, ThingContactAssociation
+from db import Contact, Address, Email, Phone
 from db.engine import session_ctx
 from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
@@ -107,19 +107,19 @@ def second_address(second_contact):
         session.close()
 
 
-@pytest.fixture(scope="function")
-def second_thing_contact_association(thing, second_contact):
-    with session_ctx() as session:
-        association = ThingContactAssociation(
-            thing_id=thing.id, contact_id=second_contact.id
-        )
-        session.add(association)
-        session.commit()
-        session.refresh(association)
-        yield association
-        session.delete(association)
-        session.commit()
-        session.close()
+# @pytest.fixture(scope="function")
+# def second_thing_contact_association(thing, second_contact):
+#     with session_ctx() as session:
+#         association = ThingContactAssociation(
+#             thing_id=thing.id, contact_id=second_contact.id
+#         )
+#         session.add(association)
+#         session.commit()
+#         session.refresh(association)
+#         yield association
+#         session.delete(association)
+#         session.commit()
+#         session.close()
 
 
 # VALIDATION tests =============================================================
@@ -322,39 +322,39 @@ def test_add_phone_404_contact_not_found(contact):
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-def test_add_thing_association(thing, second_contact):
-    payload = {"thing_id": thing.id}
-    response = client.post(
-        f"/contact/{second_contact.id}/thing-association", json=payload
-    )
-    data = response.json()
-    assert response.status_code == 201
-    assert "id" in data
-    assert data["thing_id"] == thing.id
-    assert data["contact_id"] == second_contact.id
+# def test_add_thing_association(thing, second_contact):
+#     payload = {"thing_id": thing.id}
+#     response = client.post(
+#         f"/contact/{second_contact.id}/thing-association", json=payload
+#     )
+#     data = response.json()
+#     assert response.status_code == 201
+#     assert "id" in data
+#     assert data["thing_id"] == thing.id
+#     assert data["contact_id"] == second_contact.id
 
-    cleanup_post_test(ThingContactAssociation, data["id"])
-
-
-def test_add_thing_association_404_contact_not_found(contact, thing):
-    bad_contact_id = 99999
-    payload = {"thing_id": thing.id}
-    response = client.post(f"/contact/{bad_contact_id}/thing-association", json=payload)
-    assert response.status_code == 404
-    data = response.json()
-    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+#     cleanup_post_test(ThingContactAssociation, data["id"])
 
 
-def test_add_thing_association_409_thing_not_found(thing, contact):
-    bad_thing_id = 9999
-    payload = {"thing_id": bad_thing_id}
-    response = client.post(f"/contact/{contact.id}/thing-association", json=payload)
-    assert response.status_code == 409
-    data = response.json()
-    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
-    assert data["detail"][0]["loc"] == ["body", "thing_id"]
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+# def test_add_thing_association_404_contact_not_found(contact, thing):
+#     bad_contact_id = 99999
+#     payload = {"thing_id": thing.id}
+#     response = client.post(f"/contact/{bad_contact_id}/thing-association", json=payload)
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+# def test_add_thing_association_409_thing_not_found(thing, contact):
+#     bad_thing_id = 9999
+#     payload = {"thing_id": bad_thing_id}
+#     response = client.post(f"/contact/{contact.id}/thing-association", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+#     assert data["detail"][0]["loc"] == ["body", "thing_id"]
+#     assert data["detail"][0]["type"] == "value_error"
+#     assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
 # GET tests ======================================================
@@ -584,51 +584,51 @@ def test_get_address_by_id_404_not_found(address):
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
 
 
-def test_get_thing_contact_associations(thing_contact_association):
-    response = client.get("/contact/thing-association")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == thing_contact_association.id
-    assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
-    assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
+# def test_get_thing_contact_associations(thing_contact_association):
+#     response = client.get("/contact/thing-association")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["total"] == 1
+#     assert data["items"][0]["id"] == thing_contact_association.id
+#     assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
+#     assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
 
 
-def test_get_contact_thing_contact_association(contact, thing_contact_association):
-    response = client.get(f"/contact/{contact.id}/thing-association")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == thing_contact_association.id
-    assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
-    assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
+# def test_get_contact_thing_contact_association(contact, thing_contact_association):
+#     response = client.get(f"/contact/{contact.id}/thing-association")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["total"] == 1
+#     assert data["items"][0]["id"] == thing_contact_association.id
+#     assert data["items"][0]["contact_id"] == thing_contact_association.contact_id
+#     assert data["items"][0]["thing_id"] == thing_contact_association.thing_id
 
 
-def test_get_thing_contact_association_404_contact_not_found(
-    contact, thing_contact_association
-):
-    bad_contact_id = 999999
-    response = client.get(f"/contact/{bad_contact_id}/thing-association")
-    assert response.status_code == 404
-    data = response.json()
-    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+# def test_get_thing_contact_association_404_contact_not_found(
+#     contact, thing_contact_association
+# ):
+#     bad_contact_id = 999999
+#     response = client.get(f"/contact/{bad_contact_id}/thing-association")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
-def test_get_thing_contact_association_by_id(thing_contact_association):
-    response = client.get(f"/contact/thing-association/{thing_contact_association.id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == thing_contact_association.id
-    assert data["contact_id"] == thing_contact_association.contact_id
-    assert data["thing_id"] == thing_contact_association.thing_id
+# def test_get_thing_contact_association_by_id(thing_contact_association):
+#     response = client.get(f"/contact/thing-association/{thing_contact_association.id}")
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == thing_contact_association.id
+#     assert data["contact_id"] == thing_contact_association.contact_id
+#     assert data["thing_id"] == thing_contact_association.thing_id
 
 
-def test_get_thing_contact_association_by_id_404_not_found(thing_contact_association):
-    bad_id = 999999
-    response = client.get(f"/contact/thing-association/{bad_id}")
-    assert response.status_code == 404
-    data = response.json()
-    assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+# def test_get_thing_contact_association_by_id_404_not_found(thing_contact_association):
+#     bad_id = 999999
+#     response = client.get(f"/contact/thing-association/{bad_id}")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
 
 
 # PATCH tests ==================================================================
@@ -747,54 +747,54 @@ def test_patch_address_404_not_found(address):
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
 
 
-def test_patch_thing_contact_association(thing_contact_association, second_contact):
-    payload = {"contact_id": second_contact.id}
-    response = client.patch(
-        f"/contact/thing-association/{thing_contact_association.id}", json=payload
-    )
-    data = response.json()
-    assert response.status_code == 200
-    assert data["id"] == thing_contact_association.id
-    assert data["contact_id"] == payload["contact_id"]
+# def test_patch_thing_contact_association(thing_contact_association, second_contact):
+#     payload = {"contact_id": second_contact.id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     data = response.json()
+#     assert response.status_code == 200
+#     assert data["id"] == thing_contact_association.id
+#     assert data["contact_id"] == payload["contact_id"]
 
-    cleanup_patch_test(ThingContactAssociation, payload, thing_contact_association)
-
-
-def test_patch_thing_contact_association_404_not_found(
-    thing_contact_association, second_contact
-):
-    bad_id = 999999
-    payload = {"contact_id": second_contact.id}
-    response = client.patch(f"/contact/thing-association/{bad_id}", json=payload)
-    assert response.status_code == 404
-    data = response.json()
-    assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+#     cleanup_patch_test(ThingContactAssociation, payload, thing_contact_association)
 
 
-def test_patch_thing_contact_association_409_contact_not_found(
-    thing_contact_association,
-):
-    bad_contact_id = 999999
-    payload = {"contact_id": bad_contact_id}
-    response = client.patch(
-        f"/contact/thing-association/{thing_contact_association.id}", json=payload
-    )
-    assert response.status_code == 409
-    data = response.json()
-    assert len(data["detail"]) == 1
-    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+# def test_patch_thing_contact_association_404_not_found(
+#     thing_contact_association, second_contact
+# ):
+#     bad_id = 999999
+#     payload = {"contact_id": second_contact.id}
+#     response = client.patch(f"/contact/thing-association/{bad_id}", json=payload)
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
 
 
-def test_patch_thing_contact_association_409_thing_not_found(thing_contact_association):
-    bad_thing_id = 999999
-    payload = {"thing_id": bad_thing_id}
-    response = client.patch(
-        f"/contact/thing-association/{thing_contact_association.id}", json=payload
-    )
-    assert response.status_code == 409
-    data = response.json()
-    assert len(data["detail"]) == 1
-    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+# def test_patch_thing_contact_association_409_contact_not_found(
+#     thing_contact_association,
+# ):
+#     bad_contact_id = 999999
+#     payload = {"contact_id": bad_contact_id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert len(data["detail"]) == 1
+#     assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+
+
+# def test_patch_thing_contact_association_409_thing_not_found(thing_contact_association):
+#     bad_thing_id = 999999
+#     payload = {"thing_id": bad_thing_id}
+#     response = client.patch(
+#         f"/contact/thing-association/{thing_contact_association.id}", json=payload
+#     )
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert len(data["detail"]) == 1
+#     assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
 
 
 # DELETE tests =================================================================
@@ -909,29 +909,29 @@ def test_delete_address_404_not_found(second_address):
     assert data["detail"] == f"Address with ID {bad_address_id} not found."
 
 
-def test_delete_thing_contact_association(second_thing_contact_association):
-    response = client.delete(
-        f"/contact/thing-association/{second_thing_contact_association.id}"
-    )
-    assert response.status_code == 204
+# def test_delete_thing_contact_association(second_thing_contact_association):
+#     response = client.delete(
+#         f"/contact/thing-association/{second_thing_contact_association.id}"
+#     )
+#     assert response.status_code == 204
 
-    # verify association is deleted
-    response = client.get(
-        f"/contact/thing-association/{second_thing_contact_association.id}"
-    )
-    assert response.status_code == 404
-    data = response.json()
-    assert (
-        data["detail"]
-        == f"ThingContactAssociation with ID {second_thing_contact_association.id} not found."
-    )
+#     # verify association is deleted
+#     response = client.get(
+#         f"/contact/thing-association/{second_thing_contact_association.id}"
+#     )
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert (
+#         data["detail"]
+#         == f"ThingContactAssociation with ID {second_thing_contact_association.id} not found."
+#     )
 
 
-def test_delete_thing_contact_association_404_not_found(
-    second_thing_contact_association,
-):
-    bad_id = 999999
-    response = client.delete(f"/contact/thing-association/{bad_id}")
-    assert response.status_code == 404
-    data = response.json()
-    assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."
+# def test_delete_thing_contact_association_404_not_found(
+#     second_thing_contact_association,
+# ):
+#     bad_id = 999999
+#     response = client.delete(f"/contact/thing-association/{bad_id}")
+#     assert response.status_code == 404
+#     data = response.json()
+#     assert data["detail"] == f"ThingContactAssociation with ID {bad_id} not found."

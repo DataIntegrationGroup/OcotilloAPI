@@ -38,12 +38,10 @@ from schemas.contact import (
     EmailResponse,
     AddressResponse,
     ContactResponse,
-    ThingContactAssociationResponse,
     UpdateContact,
     UpdateEmail,
     UpdatePhone,
     UpdateAddress,
-    UpdateThingContactAssociation,
 )
 from services.crud_helper import model_patcher, model_deleter
 from services.contact_helper import (
@@ -51,7 +49,6 @@ from services.contact_helper import (
     add_address,
     add_email,
     add_phone,
-    add_thing_association,
 )
 from services.query_helper import (
     simple_get_by_id,
@@ -168,24 +165,24 @@ def add_phone_to_contact(
     return add_phone(session, contact.id, phone_data, user=user)
 
 
-@router.post(
-    "/{contact_id}/thing-association",
-    summary="Add a thing-contact association to a contact",
-    status_code=status.HTTP_201_CREATED,
-)
-def add_thing_association_to_contact(
-    contact_id: int,
-    thing_association_data: CreateThingAssociation,
-    session: session_dependency,
-    user: amp_admin_dependency,
-) -> ThingContactAssociationResponse:
-    contact = simple_get_by_id(session, Contact, contact_id)
-    try:
-        return add_thing_association(
-            session, contact.id, thing_association_data, user=user
-        )
-    except ProgrammingError as e:
-        database_error_handler(thing_association_data, e)
+# @router.post(
+#     "/{contact_id}/thing-association",
+#     summary="Add a thing-contact association to a contact",
+#     status_code=status.HTTP_201_CREATED,
+# )
+# def add_thing_association_to_contact(
+#     contact_id: int,
+#     thing_association_data: CreateThingAssociation,
+#     session: session_dependency,
+#     user: amp_admin_dependency,
+# ) -> ThingContactAssociationResponse:
+#     contact = simple_get_by_id(session, Contact, contact_id)
+#     try:
+#         return add_thing_association(
+#             session, contact.id, thing_association_data, user=user
+#         )
+#     except ProgrammingError as e:
+#         database_error_handler(thing_association_data, e)
 
 
 # PATCH ========================================================================
@@ -248,34 +245,34 @@ def update_contact_address(
     return model_patcher(session, Address, address_id, address_data, user=user)
 
 
-@router.patch(
-    "/thing-association/{thing_contact_association_id}",
-    summary="Update thing-contact association",
-)
-def update_thing_contact_association(
-    thing_contact_association_id: int,
-    thing_contact_association_data: UpdateThingContactAssociation,
-    session: session_dependency,
-    user: amp_editor_dependency,
-) -> ThingContactAssociationResponse:
-    """
-    Update an existing thing-contact association in the database.
+# @router.patch(
+#     "/thing-association/{thing_contact_association_id}",
+#     summary="Update thing-contact association",
+# )
+# def update_thing_contact_association(
+#     thing_contact_association_id: int,
+#     thing_contact_association_data: UpdateThingContactAssociation,
+#     session: session_dependency,
+#     user: amp_editor_dependency,
+# ) -> ThingContactAssociationResponse:
+#     """
+#     Update an existing thing-contact association in the database.
 
-    :param thing_contact_association_id:
-    :param thing_contact_association_data:
-    :param session:
-    :return:
-    """
-    try:
-        return model_patcher(
-            session,
-            ThingContactAssociation,
-            thing_contact_association_id,
-            thing_contact_association_data,
-            user=user,
-        )
-    except ProgrammingError as e:
-        database_error_handler(thing_contact_association_data, e)
+#     :param thing_contact_association_id:
+#     :param thing_contact_association_data:
+#     :param session:
+#     :return:
+#     """
+#     try:
+#         return model_patcher(
+#             session,
+#             ThingContactAssociation,
+#             thing_contact_association_id,
+#             thing_contact_association_data,
+#             user=user,
+#         )
+#     except ProgrammingError as e:
+#         database_error_handler(thing_contact_association_data, e)
 
 
 @router.patch("/{contact_id}", summary="Update contact")
@@ -364,33 +361,33 @@ async def get_address_by_id(
     return simple_get_by_id(session, Address, address_id)
 
 
-@router.get("/thing-association", summary="Get all thing-contact associations")
-async def get_thing_contact_associations(
-    session: session_dependency, user: amp_viewer_dependency
-) -> CustomPage[ThingContactAssociationResponse]:
-    """
-    Retrieve all thing-contact associations from the database.
-    :param session:
-    :return:
-    """
-    return paginated_all_getter(session, ThingContactAssociation)
+# @router.get("/thing-association", summary="Get all thing-contact associations")
+# async def get_thing_contact_associations(
+#     session: session_dependency, user: amp_viewer_dependency
+# ) -> CustomPage[ThingContactAssociationResponse]:
+#     """
+#     Retrieve all thing-contact associations from the database.
+#     :param session:
+#     :return:
+#     """
+#     return paginated_all_getter(session, ThingContactAssociation)
 
 
-@router.get(
-    "/thing-association/{thing_contact_association_id}",
-    summary="Get thing-contact association by ID",
-)
-async def get_thing_contact_association_by_id(
-    thing_contact_association_id: int,
-    session: session_dependency,
-    user: amp_viewer_dependency,
-) -> ThingContactAssociationResponse:
-    """
-    Retrieve a thing-contact association by ID from the database.
-    """
-    return simple_get_by_id(
-        session, ThingContactAssociation, thing_contact_association_id
-    )
+# @router.get(
+#     "/thing-association/{thing_contact_association_id}",
+#     summary="Get thing-contact association by ID",
+# )
+# async def get_thing_contact_association_by_id(
+#     thing_contact_association_id: int,
+#     session: session_dependency,
+#     user: amp_viewer_dependency,
+# ) -> ThingContactAssociationResponse:
+#     """
+#     Retrieve a thing-contact association by ID from the database.
+#     """
+#     return simple_get_by_id(
+#         session, ThingContactAssociation, thing_contact_association_id
+#     )
 
 
 @router.get("", summary="Get contacts")
@@ -464,18 +461,18 @@ async def get_contact_addresses(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/{contact_id}/thing-association", summary="Get contact's things")
-async def get_contact_thing_associations(
-    contact_id: int, session: session_dependency, user: amp_viewer_dependency
-) -> CustomPage[ThingContactAssociationResponse]:
-    """
-    Retrieve all thing-contact associations for a contact.
-    """
-    contact = simple_get_by_id(session, Contact, contact_id)
-    sql = select(ThingContactAssociation).where(
-        ThingContactAssociation.contact_id == contact.id
-    )
-    return paginate(query=sql, conn=session)
+# @router.get("/{contact_id}/thing-association", summary="Get contact's things")
+# async def get_contact_thing_associations(
+#     contact_id: int, session: session_dependency, user: amp_viewer_dependency
+# ) -> CustomPage[ThingContactAssociationResponse]:
+#     """
+#     Retrieve all thing-contact associations for a contact.
+#     """
+#     contact = simple_get_by_id(session, Contact, contact_id)
+#     sql = select(ThingContactAssociation).where(
+#         ThingContactAssociation.contact_id == contact.id
+#     )
+#     return paginate(query=sql, conn=session)
 
 
 # DELETE =======================================================================
@@ -511,19 +508,19 @@ def delete_contact_address(
     return model_deleter(session, Address, address_id)
 
 
-@router.delete(
-    "/thing-association/{thing_contact_association_id}",
-    summary="Delete contact thing association",
-)
-def delete_contact_thing_association(
-    thing_contact_association_id: int,
-    session: session_dependency,
-    user: amp_admin_dependency,
-):
-    """
-    Delete a contact's thing association from the database
-    """
-    return model_deleter(session, ThingContactAssociation, thing_contact_association_id)
+# @router.delete(
+#     "/thing-association/{thing_contact_association_id}",
+#     summary="Delete contact thing association",
+# )
+# def delete_contact_thing_association(
+#     thing_contact_association_id: int,
+#     session: session_dependency,
+#     user: amp_admin_dependency,
+# ):
+#     """
+#     Delete a contact's thing association from the database
+#     """
+#     return model_deleter(session, ThingContactAssociation, thing_contact_association_id)
 
 
 @router.delete("/{contact_id}", summary="Delete contact")
