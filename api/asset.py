@@ -35,7 +35,8 @@ from services.crud_helper import model_patcher
 from services.gcs_helper import (
     get_storage_bucket,
     gcs_upload,
-    check_asset_exists, add_signed_url,
+    check_asset_exists,
+    add_signed_url,
 )
 
 router = APIRouter(
@@ -104,6 +105,7 @@ async def list_assets(
         sql = sql.join(AssetThingAssociation).where(
             AssetThingAssociation.thing_id == thing_id
         )
+
     def transformer(a):
         if thing_id is not None:
             add_signed_url(a, get_storage_bucket())

@@ -34,7 +34,9 @@ def get_storage_bucket() -> storage.Bucket:
     if settings.mode == "production":
         key_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
         # Load service account credentials
-        creds = service_account.Credentials.from_service_account_info(json.loads(key_json))
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(key_json)
+        )
 
         # Create storage client
         client = storage.Client(credentials=creds)
