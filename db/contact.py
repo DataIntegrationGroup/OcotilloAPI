@@ -65,7 +65,7 @@ class Phone(Base, AutoBaseMixin):
     phone_number = Column(String(20), nullable=False)
     phone_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="phones")
+    contact = relationship("Contact", back_populates="phones", passive_deletes=True)
     search_vector = Column(TSVectorType("phone_number"))
 
 
@@ -76,7 +76,7 @@ class Email(Base, AutoBaseMixin):
     email = Column(String(100), nullable=False)
     email_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="emails")
+    contact = relationship("Contact", back_populates="emails", passive_deletes=True)
 
     search_vector = Column(TSVectorType("email"))
 
@@ -93,7 +93,7 @@ class Address(Base, AutoBaseMixin):
     country = lexicon_term(nullable=False, default="United States")
     address_type = lexicon_term(nullable=False)
 
-    contact = relationship("Contact", back_populates="addresses")
+    contact = relationship("Contact", back_populates="addresses", passive_deletes=True)
     search_vector = Column(
         TSVectorType(
             "address_line_1",
