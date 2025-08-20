@@ -15,11 +15,7 @@
 # ===============================================================================
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
 from schemas.contact import (
-    CreateAddress,
     CreateContact,
-    CreateEmail,
-    CreatePhone,
-    CreateThingAssociation,
 )
 from services.audit_helper import audit_add
 from sqlalchemy.orm import Session
@@ -89,75 +85,6 @@ def add_contact(
         raise e
 
     return contact
-
-
-def add_address(
-    session: Session, contact_id: int, address_data: dict, user: dict
-) -> Address:
-    """
-    Add an address to a contact.
-    """
-    if isinstance(address_data, CreateAddress):
-        address_data = address_data.model_dump(exclude_unset=True)
-
-    address = Address(**address_data, contact_id=contact_id)
-    audit_add(user, address)
-    session.add(address)
-    session.commit()
-    session.refresh(address)
-
-    return address
-
-
-def add_email(session: Session, contact_id: int, email_data: dict, user: dict) -> Email:
-    """
-    Add an email to a contact.
-    """
-    if isinstance(email_data, CreateEmail):
-        email_data = email_data.model_dump(exclude_unset=True)
-
-    email = Email(**email_data, contact_id=contact_id)
-    audit_add(user, email)
-    session.add(email)
-    session.commit()
-    session.refresh(email)
-
-    return email
-
-
-def add_phone(session: Session, contact_id: int, phone_data: dict, user: dict) -> Phone:
-    """
-    Add a phone number to a contact.
-    """
-    if isinstance(phone_data, CreatePhone):
-        phone_data = phone_data.model_dump(exclude_unset=True)
-
-    phone = Phone(**phone_data, contact_id=contact_id)
-    audit_add(user, phone)
-    session.add(phone)
-    session.commit()
-    session.refresh(phone)
-
-    return phone
-
-
-def add_thing_association(
-    session: Session, contact_id: int, thing_association_data: dict, user: dict
-):
-    if isinstance(thing_association_data, CreateThingAssociation):
-        thing_association_data = thing_association_data.model_dump(exclude_unset=True)
-
-    thing_association = ThingContactAssociation(
-        **thing_association_data, contact_id=contact_id
-    )
-
-    audit_add(user, thing_association)
-
-    session.add(thing_association)
-    session.commit()
-    session.refresh(thing_association)
-
-    return thing_association
 
 
 # ============= EOF =============================================

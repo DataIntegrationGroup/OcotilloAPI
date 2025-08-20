@@ -27,7 +27,7 @@ from core.dependencies import (
     amp_editor_dependency,
     amp_viewer_dependency,
 )
-from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address
+from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address, adder
 from schemas.contact import (
     CreateContact,
     CreateAddress,
@@ -46,9 +46,6 @@ from schemas.contact import (
 from services.crud_helper import model_patcher, model_deleter
 from services.contact_helper import (
     add_contact,
-    add_address,
-    add_email,
-    add_phone,
 )
 from services.query_helper import (
     simple_get_by_id,
@@ -92,6 +89,36 @@ def database_error_handler(
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
         }
+    elif (
+        error_message
+        == 'insert or update on table "email" violates foreign key constraint "email_contact_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "contact_id"],
+            "msg": f"Contact with ID {payload.contact_id} not found.",
+            "type": "value_error",
+            "input": {"contact_id": payload.contact_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "phone" violates foreign key constraint "phone_contact_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "contact_id"],
+            "msg": f"Contact with ID {payload.contact_id} not found.",
+            "type": "value_error",
+            "input": {"contact_id": payload.contact_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "address" violates foreign key constraint "address_contact_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "contact_id"],
+            "msg": f"Contact with ID {payload.contact_id} not found.",
+            "type": "value_error",
+            "input": {"contact_id": payload.contact_id},
+        }
 
     raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
 
@@ -114,12 +141,11 @@ def create_contact(
 
 
 @router.post(
-    "/{contact_id}/address",
+    "/address",
     summary="Add an address to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-def add_address_to_contact(
-    contact_id: int,
+def create_address(
     address_data: CreateAddress,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -131,38 +157,42 @@ def add_address_to_contact(
     :param session: Database session
     :return: Response containing the added address
     """
-    contact = simple_get_by_id(session, Contact, contact_id)
-    return add_address(session, contact.id, address_data, user=user)
+    try:
+        return adder(session, Address, address_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(address_data, e)
 
 
 @router.post(
-    "/{contact_id}/email",
+    "/email",
     summary="Add an email to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-def add_email_to_contact(
-    contact_id: int,
+def create_email(
     email_data: CreateEmail,
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> EmailResponse:
-    contact = simple_get_by_id(session, Contact, contact_id)
-    return add_email(session, contact.id, email_data, user=user)
+    try:
+        return adder(session, Email, email_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(email_data, e)
 
 
 @router.post(
-    "/{contact_id}/phone",
+    "/phone",
     summary="Add a phone number to a contact",
     status_code=status.HTTP_201_CREATED,
 )
-def add_phone_to_contact(
-    contact_id: int,
+def create_phone(
     phone_data: CreatePhone,
     session: session_dependency,
     user: amp_admin_dependency,
 ) -> PhoneResponse:
-    contact = simple_get_by_id(session, Contact, contact_id)
-    return add_phone(session, contact.id, phone_data, user=user)
+    try:
+        return adder(session, Phone, phone_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(phone_data, e)
 
 
 # @router.post(

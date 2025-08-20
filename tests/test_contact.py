@@ -237,6 +237,7 @@ def test_add_contact_409_bad_thing_id():
 
 def test_add_address(contact):
     payload = {
+        "contact_id": contact.id,
         "address_line_1": "456 Secondary St",
         "address_line_2": "Apt 12A",
         "city": "Test Metropolis",
@@ -245,7 +246,7 @@ def test_add_address(contact):
         "country": "United States",
         "address_type": "Primary",
     }
-    response = client.post(f"/contact/{contact.id}/address", json=payload)
+    response = client.post("/contact/address", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
@@ -261,9 +262,10 @@ def test_add_address(contact):
     cleanup_post_test(Address, data["id"])
 
 
-def test_add_address_404_contact_not_found(contact):
+def test_add_address_409_contact_not_found(contact):
     bad_contact_id = 9999
     payload = {
+        "contact_id": bad_contact_id,
         "address_line_1": "456 Secondary St",
         "address_line_2": "Apt 12A",
         "city": "Test Metropolis",
@@ -272,15 +274,22 @@ def test_add_address_404_contact_not_found(contact):
         "country": "United States",
         "address_type": "Secondary",
     }
-    response = client.post(f"/contact/{bad_contact_id}/address", json=payload)
-    assert response.status_code == 404
+    response = client.post("/contact/address", json=payload)
+    assert response.status_code == 409
     data = response.json()
-    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
 
 
 def test_add_email(contact):
-    payload = {"email": "anothertestemail@nmt.edu", "email_type": "Primary"}
-    response = client.post(f"/contact/{contact.id}/email", json=payload)
+    payload = {
+        "contact_id": contact.id,
+        "email": "anothertestemail@nmt.edu",
+        "email_type": "Primary",
+    }
+    response = client.post("/contact/email", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
@@ -291,18 +300,29 @@ def test_add_email(contact):
     cleanup_post_test(Email, data["id"])
 
 
-def test_add_email_404_contact_not_found(contact):
+def test_add_email_409_contact_not_found(contact):
     bad_contact_id = 9999
-    payload = {"email": "anothertestemail@nmt.edu", "email_type": "Primary"}
-    response = client.post(f"/contact/{bad_contact_id}/email", json=payload)
-    assert response.status_code == 404
+    payload = {
+        "contact_id": bad_contact_id,
+        "email": "anothertestemail@nmt.edu",
+        "email_type": "Primary",
+    }
+    response = client.post("/contact/email", json=payload)
+    assert response.status_code == 409
     data = response.json()
-    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
 
 
 def test_add_phone(contact):
-    payload = {"phone_number": "+12345678901", "phone_type": "Primary"}
-    response = client.post(f"/contact/{contact.id}/phone", json=payload)
+    payload = {
+        "contact_id": contact.id,
+        "phone_number": "+12345678901",
+        "phone_type": "Primary",
+    }
+    response = client.post("/contact/phone", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
@@ -313,13 +333,20 @@ def test_add_phone(contact):
     cleanup_post_test(Phone, data["id"])
 
 
-def test_add_phone_404_contact_not_found(contact):
+def test_add_phone_409_contact_not_found(contact):
     bad_contact_id = 9999
-    payload = {"phone_number": "+12345678901", "phone_type": "Primary"}
-    response = client.post(f"/contact/{bad_contact_id}/phone", json=payload)
-    assert response.status_code == 404
+    payload = {
+        "contact_id": bad_contact_id,
+        "phone_number": "+12345678901",
+        "phone_type": "Primary",
+    }
+    response = client.post("/contact/phone", json=payload)
+    assert response.status_code == 409
     data = response.json()
-    assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["msg"] == f"Contact with ID {bad_contact_id} not found."
+    assert data["detail"][0]["loc"] == ["body", "contact_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_id": bad_contact_id}
 
 
 # def test_add_thing_association(thing, second_contact):
