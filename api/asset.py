@@ -143,9 +143,12 @@ async def list_assets(
             AssetThingAssociation.thing_id == thing_id
         )
 
-    def transformer(a):
-        add_signed_url(a, get_storage_bucket())
-        return a
+    def transformer(records: list[Asset]):
+        if thing_id is not None:
+            bucket = get_storage_bucket()
+            records = [add_signed_url(ai, bucket) for ai in records]
+
+        return records
 
     return paginate(query=sql, conn=session, transformer=transformer)
 

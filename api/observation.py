@@ -14,12 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
-import functools
 
 from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from typing import List
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -142,25 +142,6 @@ def update_geothermal_observation(
 # ============= Get ==============================================
 
 
-def specify_observation_class(observation_class: str | None):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            sql, session = func(*args, **kwargs)
-            if observation_class == "groundwater level":
-                sql = sql.where(Observation.observed_property == "groundwater level")
-            elif observation_class == "water chemistry":
-                sql = sql.where(Observation.observed_property != "groundwater level")
-                sql = sql.where(Observation.observed_property != "temperature")
-            elif observation_class == "geothermal":
-                sql = sql.where(Observation.observed_property == "temperature")
-            return paginate(query=sql, conn=session)
-
-        return wrapper
-
-    return decorator
-
-
 def get_observations(
     session: session_dependency,
     thing_id: int | None = None,
@@ -171,7 +152,13 @@ def get_observations(
     sort: str | None = None,
     order: str | None = None,
     filter_: str = Query(alias="filter", default=None),
-) -> tuple:
+    observation_class: str | None = None,
+) -> (
+    List[ObservationResponse]
+    | List[WaterChemistryObservationResponse]
+    | List[GeothermalObservationResponse]
+    | List[GroundwaterLevelObservationResponse]
+):
     """
     Retrieve all observations
     """
@@ -189,16 +176,23 @@ def get_observations(
     if end_time:
         sql = sql.where(Observation.observation_datetime <= end_time)
 
+    if observation_class == "groundwater level":
+        sql = sql.where(Observation.observed_property == "groundwater level")
+    elif observation_class == "water chemistry":
+        sql = sql.where(Observation.observed_property != "groundwater level")
+        sql = sql.where(Observation.observed_property != "temperature")
+    elif observation_class == "geothermal":
+        sql = sql.where(Observation.observed_property == "temperature")
+
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
 
     if not order:
         sql = sql.order_by(Observation.observation_datetime.desc())
 
-    return sql, session
+    return paginate(query=sql, conn=session)
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")
-@specify_observation_class(observation_class="groundwater level")
 def get_groundwater_level_observations(
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -224,6 +218,7 @@ def get_groundwater_level_observations(
         sort=sort,
         order=order,
         filter_=filter_,
+        observation_class="groundwater level",
     )
 
 
@@ -242,7 +237,6 @@ def get_groundwater_level_observation_by_id(
 
 
 @router.get("/water-chemistry", summary="Get water chemistry observations")
-@specify_observation_class(observation_class="water chemistry")
 def get_water_chemistry_observations(
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -268,6 +262,7 @@ def get_water_chemistry_observations(
         sort=sort,
         order=order,
         filter_=filter_,
+        observation_class="water chemistry",
     )
 
 
@@ -285,7 +280,6 @@ def get_water_chemistry_observation_by_id(
 
 
 @router.get("/geothermal", summary="Get geothermal observations")
-@specify_observation_class(observation_class="geothermal")
 def get_geothermal_observations(
     session: session_dependency,
     user: viewer_dependency,
@@ -311,6 +305,7 @@ def get_geothermal_observations(
         sort=sort,
         order=order,
         filter_=filter_,
+        observation_class="geothermal",
     )
 
 
@@ -324,7 +319,6 @@ def get_geothermal_observation_by_id(
 
 
 @router.get("", summary="Get all observations")
-@specify_observation_class(observation_class=None)
 def get_all_observations(
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -347,6 +341,7 @@ def get_all_observations(
         sort=sort,
         order=order,
         filter_=filter_,
+        observation_class=None,
     )
 
 
