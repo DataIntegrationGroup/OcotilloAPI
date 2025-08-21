@@ -139,7 +139,6 @@ def get_sensors(
             joins.append(Sample)
             conditions.append(Sample.thing_id == thing_id)
 
-
         if conditions:
             sql = sql.join(Observation)
             for j in joins:
