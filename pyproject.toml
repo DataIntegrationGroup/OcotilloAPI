@@ -27,6 +27,7 @@ dependencies = [
     "cloud-sql-python-connector==1.18.4",
     "cryptography==45.0.6",
     "dnspython==2.7.0",
+    "dotenv>=0.9.9",
     "email-validator==2.2.0",
     "fastapi==0.116.1",
     "fastapi-pagination==0.13.3",
