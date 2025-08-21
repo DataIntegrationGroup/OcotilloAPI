@@ -21,7 +21,7 @@ from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency
-from db import adder, Observation
+from db import adder, Observation, Sample
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher, model_deleter
@@ -131,13 +131,20 @@ def get_sensors(
     # TODO: a sensor is not yet related to observation, so this won't work at the moment
     if thing_id is not None or observed_property is not None:
         conditions = []
+        joins = []
         if observed_property is not None:
             conditions.append(Observation.observed_property == observed_property)
+
         if thing_id is not None:
-            conditions.append(Observation.thing_id == thing_id)
+            joins.append(Sample)
+            conditions.append(Sample.thing_id == thing_id)
 
         if conditions:
-            sql = sql.join(Observation).where(and_(*conditions))
+            sql = sql.join(Observation)
+            for j in joins:
+                sql = sql.join(j)
+
+            sql = sql.where(and_(*conditions))
 
     sql = order_sort_filter(sql, Sensor, sort=sort, order=order, filter_=filter_)
     return paginate(conn=session, query=sql)
