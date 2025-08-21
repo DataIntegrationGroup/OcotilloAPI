@@ -108,7 +108,8 @@ async def list_assets(
 
     def transformer(records: list[Asset]):
         if thing_id is not None:
-            records = [add_signed_url(ai, get_storage_bucket()) for ai in records]
+            bucket = get_storage_bucket()
+            records = [add_signed_url(ai, bucket) for ai in records]
 
         return records
 
