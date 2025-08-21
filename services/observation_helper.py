@@ -6,35 +6,15 @@ from db import Observation
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id
 
-observation_class_to_observed_properties = {
-    "groundwater level": ["groundwater level"],
-    "geothermal": ["temperature"],
-    "water chemistry": ["pH", "Alkalinity as CaCO3"],
-}
-
-observation_property_to_class = {}
-for key, value in observation_class_to_observed_properties.items():
-    for prop in value:
-        observation_property_to_class[prop] = key
-
 
 def verify_observed_property_corresponds_with_observation_class(
     observation: Observation, observation_class: str
-) -> None:
-    """
-    Verify that the observed property of the retrieved Observation corresponds
-    with the observation class as defined by the path
-    (e.g. /observation/water-chemistry). Raise an error if they do not
-    correspond.
-    """
+):
     observed_property = observation.observed_property
+    colon_index = observed_property.find(":")
+    actual_observation_class = observed_property[:colon_index]
 
-    if (
-        observed_property
-        not in observation_class_to_observed_properties[observation_class]
-    ):
-        actual_observation_class = observation_property_to_class[observed_property]
-
+    if actual_observation_class != observation_class:
         raise PydanticStyleException(
             status_code=HTTP_404_NOT_FOUND,
             detail=[

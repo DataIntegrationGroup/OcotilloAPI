@@ -177,12 +177,11 @@ def get_observations(
         sql = sql.where(Observation.observation_datetime <= end_time)
 
     if observation_class == "groundwater level":
-        sql = sql.where(Observation.observed_property == "groundwater level")
+        sql = sql.where(Observation.observed_property.like("groundwater level:%"))
     elif observation_class == "water chemistry":
-        sql = sql.where(Observation.observed_property != "groundwater level")
-        sql = sql.where(Observation.observed_property != "temperature")
+        sql = sql.where(Observation.observed_property.like("water chemistry:%"))
     elif observation_class == "geothermal":
-        sql = sql.where(Observation.observed_property == "temperature")
+        sql = sql.where(Observation.observed_property.like("geothermal:%"))
 
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
 

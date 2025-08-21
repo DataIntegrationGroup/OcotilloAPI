@@ -49,7 +49,7 @@ def observation_to_delete(sample, sensor):
             observation_datetime="2019-01-01T00:03:00Z",
             sample_id=sample.id,
             sensor_id=sensor.id,
-            observed_property="pH",
+            observed_property="water chemistry:pH",
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -182,7 +182,7 @@ def test_patch_groundwater_level_observation_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "temperature":
+        if obs.observed_property == "geothermal:temperature":
             observation_class = "geothermal"
         else:
             observation_class = "water chemistry"
@@ -225,7 +225,7 @@ def test_patch_water_chemistry_observation_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "temperature":
+        if obs.observed_property == "geothermal:temperature":
             observation_class = "geothermal"
         else:
             observation_class = "groundwater level"
@@ -266,7 +266,7 @@ def test_patch_geothermal_observation_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "groundwater level":
+        if obs.observed_property == "groundwater level:groundwater level":
             observation_class = "groundwater level"
         else:
             observation_class = "water chemistry"
@@ -305,10 +305,10 @@ def test_get_observation_by_id(
         data = response.json()
 
         assert data["id"] == obs.id
-        if obs.observed_property == "groundwater level":
+        if obs.observed_property == "groundwater level:groundwater level":
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
             assert data["observation_depth"] is None
-        elif obs.observed_property == "temperature":
+        elif obs.observed_property == "geothermal:temperature":
             assert data["depth_to_water_bgs"] is None
             assert data["observation_depth"] == obs.observation_depth
         else:
@@ -340,9 +340,10 @@ def test_get_groundwater_level_observations(
         data["items"][0]["observation_datetime"]
         == groundwater_level_observation.observation_datetime
     )
+    colon_index = groundwater_level_observation.observed_property.find(":")
     assert (
         data["items"][0]["observed_property"]
-        == groundwater_level_observation.observed_property
+        == groundwater_level_observation.observed_property[colon_index + 1 :]
     )
     assert (
         data["items"][0]["release_status"]
@@ -380,7 +381,11 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
         data["observation_datetime"]
         == groundwater_level_observation.observation_datetime
     )
-    assert data["observed_property"] == groundwater_level_observation.observed_property
+    colon_index = groundwater_level_observation.observed_property.find(":")
+    assert (
+        data["observed_property"]
+        == groundwater_level_observation.observed_property[colon_index + 1 :]
+    )
     assert data["release_status"] == groundwater_level_observation.release_status
     assert data["level_status"] == groundwater_level_observation.level_status
     assert data["value"] == groundwater_level_observation.value
@@ -416,7 +421,7 @@ def test_get_groundwater_level_observation_by_id_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "temperature":
+        if obs.observed_property == "geothermal:temperature":
             actual_observation_class = "geothermal"
         else:
             actual_observation_class = "water chemistry"
@@ -512,9 +517,10 @@ def test_get_water_chemistry_observations(water_chemistry_observation):
         data["items"][0]["observation_datetime"]
         == water_chemistry_observation.observation_datetime
     )
+    colon_index = water_chemistry_observation.observed_property.find(":")
     assert (
         data["items"][0]["observed_property"]
-        == water_chemistry_observation.observed_property
+        == water_chemistry_observation.observed_property[colon_index + 1 :]
     )
     assert data["items"][0]["value"] == water_chemistry_observation.value
     assert data["items"][0]["unit"] == water_chemistry_observation.unit
@@ -535,7 +541,11 @@ def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
     assert (
         data["observation_datetime"] == water_chemistry_observation.observation_datetime
     )
-    assert data["observed_property"] == water_chemistry_observation.observed_property
+    colon_index = water_chemistry_observation.observed_property.find(":")
+    assert (
+        data["observed_property"]
+        == water_chemistry_observation.observed_property[colon_index + 1 :]
+    )
     assert data["value"] == water_chemistry_observation.value
     assert data["unit"] == water_chemistry_observation.unit
 
@@ -558,12 +568,10 @@ def test_get_water_chemistry_observation_by_id_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "groundwater level":
+        if obs.observed_property == "groundwater level:groundwater level":
             actual_observation_class = "groundwater level"
-        elif obs.observed_property == "temperature":
-            actual_observation_class = "geothermal"
         else:
-            url = f"/observation/water-chemistry/{obs.id}"
+            actual_observation_class = "geothermal"
 
         assert (
             data["detail"][0]["msg"]
@@ -586,9 +594,10 @@ def test_get_geothermal_observations(geothermal_observation):
         data["items"][0]["observation_datetime"]
         == geothermal_observation.observation_datetime
     )
+    colon_index = geothermal_observation.observed_property.find(":")
     assert (
         data["items"][0]["observed_property"]
-        == geothermal_observation.observed_property
+        == geothermal_observation.observed_property[colon_index + 1 :]
     )
     assert data["items"][0]["value"] == geothermal_observation.value
     assert data["items"][0]["unit"] == geothermal_observation.unit
@@ -609,7 +618,11 @@ def test_get_geothermal_observation_by_id(geothermal_observation):
     assert data["sample_id"] == geothermal_observation.sample_id
     assert data["sensor_id"] == geothermal_observation.sensor_id
     assert data["observation_datetime"] == geothermal_observation.observation_datetime
-    assert data["observed_property"] == geothermal_observation.observed_property
+    colon_index = geothermal_observation.observed_property.find(":")
+    assert (
+        data["observed_property"]
+        == geothermal_observation.observed_property[colon_index + 1 :]
+    )
     assert data["value"] == geothermal_observation.value
     assert data["unit"] == geothermal_observation.unit
     assert data["observation_depth"] == geothermal_observation.observation_depth
@@ -631,7 +644,7 @@ def test_get_geothermal_observation_by_id_404_wrong_observation_class(
         assert response.status_code == 404
         data = response.json()
 
-        if obs.observed_property == "groundwater level":
+        if obs.observed_property == "groundwater level:groundwater level":
             actual_observation_class = "groundwater level"
         else:
             actual_observation_class = "water chemistry"
