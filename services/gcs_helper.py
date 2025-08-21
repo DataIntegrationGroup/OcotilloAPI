@@ -82,6 +82,7 @@ def add_signed_url(asset: Asset, bucket: storage.Bucket):
         expiration=datetime.timedelta(minutes=15),
         method="GET",
     )
+    return asset
 
 
 def check_asset_exists(session, blob_name, thing_id=None):
