@@ -168,6 +168,26 @@ def asset():
         session.close()
 
 
+@pytest.fixture(scope="function")
+def second_asset():
+    with session_ctx() as session:
+        asset = Asset(
+            name="Second test asset",
+            label="Second test label",
+            mime_type="application/pdf",
+            size=2468,
+            storage_service="mock_service",
+            storage_path="mock/path/to/asset",
+            uri="https://storage.googleapis.com/mock-bucket/second-mock-asset",
+        )
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+        yield asset
+        session.delete(asset)
+        session.close()
+
+
 @pytest.fixture(scope="session")
 def groundwater_level_observation(sensor, sample):
     with session_ctx() as session:

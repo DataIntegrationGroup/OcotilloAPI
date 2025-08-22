@@ -31,6 +31,9 @@ class MockBlob:
     def generate_signed_url(self, *args, **kwargs):
         return "https://storage.googleapis.com/mock-bucket/mock-asset"
 
+    def delete(self, *args, **kwargs):
+        pass
+
 
 class MockStorageBucket:
     name = "mock-bucket"
@@ -198,6 +201,33 @@ def test_patch_asset_404_not_found(asset):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_asset(second_asset):
+    response = client.delete(f"/asset/{second_asset.id}")
+    assert response.status_code == 204
+
+    # verify deletion
+    response = client.get(f"/asset/{second_asset.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {second_asset.id} not found."
+
+
+def test_delete_asset_404_not_found(second_asset):
+    bad_id = 99999
+    response = client.delete(f"/asset/{bad_id}/remove")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+def test_remove_asset(second_asset):
+    response = client.delete(f"/asset/{second_asset.id}/remove")
+    assert response.status_code == 204
 
 
 # ============= EOF =============================================

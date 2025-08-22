@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
-from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT
+from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -32,11 +32,12 @@ from db import Thing
 from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 from services.query_helper import simple_get_by_id
 from services.gcs_helper import (
     get_storage_bucket,
     gcs_upload,
+    gcs_remove,
     check_asset_exists,
     add_signed_url,
 )
@@ -76,7 +77,7 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
 
 
-# ======= Create =========
+# POST =========================================================================
 @router.post(
     "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)]
 )
@@ -92,14 +93,16 @@ async def upload_asset(
 
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_asset(
-    user: admin_dependency, session: session_dependency, asset_data: CreateAsset
+    user: admin_dependency,
+    session: session_dependency,
+    asset_data: CreateAsset,
+    bucket=Depends(get_storage_bucket),
 ) -> AssetResponse:
 
     try:
         data = asset_data.model_dump()
-        print(data)
         thing_id = data.pop("thing_id", None)
-        print(thing_id)
+
         storage_path = data["storage_path"]
 
         # check to see if an asset entry already exists for
@@ -124,12 +127,13 @@ async def add_asset(
         session.add(asset)
         session.commit()
         session.refresh(asset)
+        add_signed_url(asset, bucket)
         return asset
     except ProgrammingError as e:
         database_error_handler(asset_data, e)
 
 
-# ======= Read =========
+# GET ==========================================================================
 @router.get("")
 async def list_assets(
     session: session_dependency,
@@ -166,7 +170,7 @@ async def get_asset(
     return asset
 
 
-# ======= Update =========
+# PATCH ========================================================================
 @router.patch("/{asset_id}")
 async def update_asset(
     asset_id: int,
@@ -178,6 +182,31 @@ async def update_asset(
     Update an existing asset.
     """
     return model_patcher(session, Asset, asset_id, asset_data, user=user)
+
+
+# DELETE =======================================================================
+
+
+@router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT)
+async def delete_asset(
+    asset_id: int, session: session_dependency, user: admin_dependency
+):
+    return model_deleter(session, Asset, asset_id)
+
+
+@router.delete(
+    "/{asset_id}/remove",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies=[Depends(admin_function)],
+)
+async def remove_asset(
+    asset_id: int,
+    session: session_dependency,
+    user: admin_dependency,
+    bucket=Depends(get_storage_bucket),
+):
+    asset = simple_get_by_id(session, Asset, asset_id)
+    gcs_remove(asset.uri, bucket)
 
 
 # ============= EOF =============================================
