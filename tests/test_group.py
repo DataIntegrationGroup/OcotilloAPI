@@ -1,3 +1,4 @@
+from geoalchemy2.shape import to_shape
 import pytest
 
 from db import Group
@@ -46,44 +47,43 @@ def test_add_group():
 # GET tests ======================================================
 
 
-def test_get_groups():
+def test_get_groups(group):
     response = client.get("/group")
     assert response.status_code == 200
-    assert len(response.json()) > 0
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == group.id
+    assert data["items"][0]["created_at"] == group.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["name"] == group.name
+    assert data["items"][0]["project_area"] == to_shape(group.project_area).wkt
+    assert data["items"][0]["description"] == group.description
+    assert data["items"][0]["parent_group_id"] == group.parent_group_id
 
 
-@pytest.mark.skip
+def test_get_group_by_id(group):
+    response = client.get(f"/group/{group.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == group.id
+    assert data["created_at"] == group.created_at.isoformat().replace("+00:00", "Z")
+    assert data["name"] == group.name
+    assert data["project_area"] == to_shape(group.project_area).wkt
+    assert data["description"] == group.description
+    assert data["parent_group_id"] == group.parent_group_id
+
+
+def test_get_group_by_id_404_not_found(group):
+    bad_id = 99999
+    response = client.get(f"/group/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Group with ID {bad_id} not found."
+
+
+@pytest.mark.skip("associations not yet implemented")
 def test_get_group_things():
     response = client.get("/group/association")
     assert response.status_code == 200
     assert len(response.json()) > 0
-
-
-# test item retrieval via filter ===========================================
-
-
-# Test item retrieval ======================================================
-# @pytest.mark.skip
-# def test_item_get_spring():
-#     response = client.get("/thing/spring/1")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["location_id"] == 1
-
-
-def test_item_get_group():
-    response = client.get("/group/2")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 2
-    assert data["name"] == "Test Group"
-
-
-# def test_item_get_group_thing(location, thing):
-#     response = client.get("/group/association/1")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["group_id"] == 2
-#     assert data["thing_id"] == thing.id

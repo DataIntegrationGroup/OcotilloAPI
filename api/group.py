@@ -25,9 +25,8 @@ from core.dependencies import (
     viewer_function,
 )
 from db import adder
-from db.group import Group, GroupThingAssociation
+from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
-from schemas.location import CreateGroupThing
 from services.crud_helper import model_patcher
 from services.query_helper import (
     simple_get_by_id,
@@ -37,6 +36,8 @@ from services.query_helper import (
 router = APIRouter(
     prefix="/group", tags=["group"], dependencies=[Depends(viewer_function)]
 )
+
+# POST =========================================================================
 
 
 @router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
