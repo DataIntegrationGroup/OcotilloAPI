@@ -4,7 +4,7 @@ import pytest
 from db import Group
 from core.dependencies import admin_function, viewer_function, editor_function
 from main import app
-from tests import client, override_authentication, cleanup_post_test
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -87,3 +87,28 @@ def test_get_group_things():
     response = client.get("/group/association")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_group(group):
+    payload = {
+        "name": "Updated Group",
+    }
+    response = client.patch(f"/group/{group.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == group.id
+    assert data["name"] == payload["name"]
+
+    cleanup_patch_test(Group, payload, group)
+
+
+def test_patch_group_404_not_found(group):
+    payload = {"name": "Failed group patch"}
+    bad_id = 99999
+    response = client.patch(f"/group/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Group with ID {bad_id} not found."
