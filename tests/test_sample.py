@@ -16,9 +16,26 @@
 import pytest
 from pydantic import ValidationError
 
+from main import app
+from core.dependencies import admin_function, editor_function, viewer_function
 from db.sample import Sample
 from schemas.sample import ValidateSample
-from tests import client, cleanup_post_test, cleanup_patch_test
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 # ============== Custom validators =================================================
