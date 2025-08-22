@@ -112,3 +112,25 @@ def test_patch_group_404_not_found(group):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Group with ID {bad_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_group(second_group):
+    response = client.delete(f"/group/{second_group.id}")
+    assert response.status_code == 204
+
+    # verify deletion
+    response = client.get(f"/group/{second_group.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Group with ID {second_group.id} not found."
+
+
+def test_delete_group_404_not_found(second_group):
+    bad_id = 99999
+    response = client.delete(f"/group/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Group with ID {bad_id} not found."
