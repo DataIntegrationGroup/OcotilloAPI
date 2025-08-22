@@ -27,10 +27,13 @@ class ValidateGroup(BaseModel):
     description: str | None = None
     parent_group_id: int | None = None
 
-    @classmethod
     @field_validator("project_area")
     def validate_area_is_wkt(cls, wkt):
-        return validate_wkt_geometry(wkt)
+        valid_wkt = validate_wkt_geometry(wkt)
+        if "MULTIPOLYGON" not in valid_wkt:
+            raise ValueError("WKT must be a valid MULTIPOLYGON")
+
+        return valid_wkt
 
 
 # -------- CREATE ----------
