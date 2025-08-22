@@ -246,3 +246,53 @@ def geothermal_observation(sensor, sample):
         yield observation
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def group(thing):
+    with session_ctx() as session:
+        group = Group(
+            name="Test Group",
+            description="This is a test group.",
+            project_area="MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))",
+        )
+
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+
+        group_thing_association = GroupThingAssociation(
+            group_id=group.id, thing_id=thing.id
+        )
+        session.add(group_thing_association)
+        session.commit()
+        session.refresh(group_thing_association)
+
+        yield group
+
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_group(thing):
+    with session_ctx() as session:
+        group = Group(
+            name="Second Test Group",
+            description="This is a second test group.",
+            project_area="MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, 0 0, -107.2 34.2, -107.2 33.6)))",
+        )
+
+        session.add(group)
+        session.commit()
+        session.refresh(group)
+
+        group_thing_association = GroupThingAssociation(
+            group_id=group.id, thing_id=thing.id
+        )
+        session.add(group_thing_association)
+        session.commit()
+        session.refresh(group_thing_association)
+
+        yield group
+
+        session.close()

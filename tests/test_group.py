@@ -1,8 +1,9 @@
 import pytest
 
+from db import Group
 from core.dependencies import admin_function, viewer_function, editor_function
 from main import app
-from tests import client, override_authentication
+from tests import client, override_authentication, cleanup_post_test
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -25,35 +26,21 @@ def override_authentication_dependency_fixture():
 
 
 def test_add_group():
-    response = client.post("/group", json={"name": "Test Group"})
+    payload = {
+        "name": "Test Group",
+        "description": "This is a test group.",
+        "project_area": "MULTIPOLYGON (((0 0, 1 1, 2 2, 3 3, 4 4, 1 2, 0 0)))",
+    }
+    response = client.post("/group", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
-    assert data["name"] == "Test Group"
+    assert "created_at" in data
+    assert data["name"] == payload["name"]
+    assert data["description"] == payload["description"]
+    assert data["project_area"] == payload["project_area"]
 
-
-def test_add_group_with_area():
-    response = client.post(
-        "/group",
-        json={
-            "name": "Test Group with Project Area",
-            "project_area": "MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-
-
-# def test_add_group_thing(location, thing):
-#     response = client.post(
-#         "/group/association", json={"group_id": 2, "thing_id": thing.id}
-#     )
-#     assert response.status_code == 201
-#
-#     data = response.json()
-#     assert "id" in data
-#     assert data["group_id"] == 2
-#     assert data["thing_id"] == thing.id
+    cleanup_post_test(Group, data["id"])
 
 
 # GET tests ======================================================
