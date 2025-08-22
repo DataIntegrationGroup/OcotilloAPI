@@ -17,7 +17,7 @@ from api.asset import get_storage_bucket
 from core.app import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test, override_authentication
+from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
 
 import pytest
 
@@ -171,6 +171,30 @@ def test_get_asset_by_id(asset):
 def test_get_asset_by_id_404_not_found(asset):
     bad_id = 99999
     response = client.get(f"/asset/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_asset(asset):
+    payload = {"name": "patched name", "label": "patched label"}
+    response = client.patch(f"/asset/{asset.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == asset.id
+    assert data["name"] == payload["name"]
+    assert data["label"] == payload["label"]
+
+    cleanup_patch_test(Asset, payload, asset)
+
+
+def test_patch_asset_404_not_found(asset):
+    bad_id = 99999
+    payload = {"name": "patched name", "label": "patched label"}
+    response = client.patch(f"/asset/{bad_id}", json=payload)
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Asset with ID {bad_id} not found."

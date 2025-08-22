@@ -35,12 +35,13 @@ class CreateAsset(BaseAsset):
 # -------- RESPONSE --------
 class AssetResponse(ORMBaseModel, BaseAsset):
     storage_service: str
-    signed_url: str | None = None
+    signed_url: str
 
 
 # -------- UPDATE ----------
-class UpdateAsset(BaseAsset):
-    pass
+class UpdateAsset(BaseModel):
+    name: str | None = None
+    label: str | None = None
 
 
 # ============= EOF =============================================
