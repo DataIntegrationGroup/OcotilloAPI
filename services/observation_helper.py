@@ -1,58 +1,144 @@
-# ===============================================================================
-# Copyright 2025 ross
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ===============================================================================
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_404_NOT_FOUND
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
+from typing import List
+from fastapi import Request, Query
+from datetime import datetime
 
-from db import Base, Observation, Sample
+from core.dependencies import session_dependency
+from db import Observation, Sample
+from schemas.observation import (
+    ObservationResponse,
+    WaterChemistryObservationResponse,
+    GeothermalObservationResponse,
+    GroundwaterLevelObservationResponse,
+)
+from services.exceptions_helper import PydanticStyleException
+from services.query_helper import simple_get_by_id, order_sort_filter
 
 
-def add_observation(session: Session, data: BaseModel) -> Base:
+def get_observation_class_from_request(request: Request) -> str:
+    path = request.url.path
+    path_components = path.split("/")
+    if len(path_components) == 2:
+        # no observation class specified in path
+        observation_class_in_path = path_components[1]
+    if len(path_components) >= 3:
+        # observation class specified in path
+        observation_class_in_path = path_components[2]
 
-    if isinstance(data, BaseModel):
-        data = data.model_dump(exclude_unset=True)
+    observation_class = observation_class_in_path.replace("-", " ")
+    return observation_class
 
-    # if 'thing_id' in data:
-    #     thing_id = data.pop('thing_id')
-    #     if 'sample_id' not in data:
-    #         sample = Sample(thing_id=thing_id,
-    #                         collection_method=data.get('collection_method', 'manual'),
-    #                         collection_timestamp=data.get('observation_datetime'))
-    #         session.add(sample)
-    #         data['sample'] = sample
-    #     else:
-    #         raise ValueError('Cannot specify both thing_id and sample_id')
-    if "field_sample_id" in data:
-        field_sample_id = data.pop("field_sample_id")
-        data.pop(
-            "sample_id", None
-        )  # Ensure sample_id is not set if field_sample_id is used
 
-        sql = select(Sample).where(Sample.field_sample_id == field_sample_id)
-        sample = session.scalar(sql)
-        if not sample:
-            raise ValueError(f"Sample with id {field_sample_id} does not exist")
-        data["sample"] = sample
-    obj = Observation(**data)
+def get_observations(
+    request: Request,
+    session: session_dependency,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    sample_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
+) -> (
+    List[ObservationResponse]
+    | List[WaterChemistryObservationResponse]
+    | List[GeothermalObservationResponse]
+    | List[GroundwaterLevelObservationResponse]
+):
+    """
+    Retrieve all observations
+    """
+    observation_class = get_observation_class_from_request(request)
 
-    session.add(obj)
+    sql = select(Observation)
+    if thing_id is not None:
+        sql = sql.join(Sample)
+        sql = sql.where(Sample.thing_id == thing_id)
+    if sample_id is not None:
+        sql = sql.where(Observation.sample_id == sample_id)
+    if sensor_id is not None:
+        sql = sql.where(Observation.sensor_id == sensor_id)
+
+    if start_time:
+        sql = sql.where(Observation.observation_datetime >= start_time)
+    if end_time:
+        sql = sql.where(Observation.observation_datetime <= end_time)
+
+    # root of path is /observation
+    if observation_class != "observation":
+        sql = sql.where(Observation.observed_property.like(f"{observation_class}:%"))
+
+    sql = order_sort_filter(sql, Observation, sort, order, filter_)
+
+    if not order:
+        sql = sql.order_by(Observation.observation_datetime.desc())
+
+    return paginate(query=sql, conn=session)
+
+
+def verify_observed_property_corresponds_with_observation_class(
+    observation: Observation, request: Request
+):
+    observation_class = get_observation_class_from_request(request)
+
+    observed_property = observation.observed_property
+    colon_index = observed_property.find(":")
+    actual_observation_class = observed_property[:colon_index]
+
+    if actual_observation_class != observation_class:
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "observation_id"],
+                    "type": "value_error",
+                    "input": {"observation_id": observation.id},
+                    "msg": f"Observation with ID {observation.id} is not a {observation_class} observation. It is a {actual_observation_class} observation.",
+                }
+            ],
+        )
+
+
+def get_observation_of_an_observation_class_by_id(
+    session: Session, request: Request, observation_id: int
+) -> Observation:
+    """
+    Retrieve an observation by its ID.
+    """
+    observation = simple_get_by_id(session, Observation, observation_id)
+
+    verify_observed_property_corresponds_with_observation_class(observation, request)
+
+    return observation
+
+
+def observation_model_patcher(
+    session: Session,
+    request: Request,
+    observation_id: int,
+    payload: BaseModel,
+    user: dict,
+) -> Observation:
+    """
+    Patch an observation model with the provided payload.
+    """
+    # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
+    observation = simple_get_by_id(session, Observation, observation_id)
+
+    verify_observed_property_corresponds_with_observation_class(observation, request)
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(observation, key, value)
+
+    if user:
+        observation.updated_by_id = user["sub"]
+        observation.updated_by_name = user["name"]
+
     session.commit()
-    session.refresh(obj)
-
-    return obj
-
-
-# ============= EOF =============================================
+    session.refresh(observation)
+    return observation

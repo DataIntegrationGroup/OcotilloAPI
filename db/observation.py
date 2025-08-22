@@ -16,33 +16,16 @@
 from sqlalchemy import (
     ForeignKey,
     Integer,
-    TIMESTAMP,
-    PrimaryKeyConstraint,
     Float,
     DateTime,
 )
 from sqlalchemy.orm import mapped_column, relationship
 
-from db.base import Base, AuditMixin, ReleaseMixin, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
-class Observation(Base, AuditMixin, ReleaseMixin):
-    __tablename__ = "observation"
-
+class Observation(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
-
-    __table_args__ = (
-        PrimaryKeyConstraint(
-            "id",
-            "observation_datetime",
-        ),
-        {},
-    )
-
-    id = mapped_column(
-        Integer,
-        autoincrement=True,
-    )
 
     sample_id = mapped_column(
         Integer,
@@ -59,15 +42,13 @@ class Observation(Base, AuditMixin, ReleaseMixin):
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
     observed_property = lexicon_term()
-
-    # groundwater
-    depth_to_water = mapped_column(
+    value = mapped_column(
         Float,
         nullable=True,
-        doc="Depth to water level in ft below measuring point",
-        info={"unit": "ft"},
     )
+    unit = lexicon_term()
 
+    # groundwater
     measuring_point_height = mapped_column(
         Float,
         nullable=True,
@@ -78,25 +59,12 @@ class Observation(Base, AuditMixin, ReleaseMixin):
     level_status = lexicon_term()
 
     # geothermal
-    depth = mapped_column(
+    observation_depth = mapped_column(
         Float,
         nullable=True,
         info={"unit": "feet"},
         doc="Depth of the geothermal observation in feet",
     )
-    temperature = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "degC"},
-        doc="Temperature of the geothermal observation in degrees Celsius",
-    )
-
-    # general observations
-    value = mapped_column(
-        Float,
-        nullable=True,
-    )
-    unit = lexicon_term()
 
     sensor = relationship("Sensor")
     sample = relationship("Sample")
