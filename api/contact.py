@@ -69,6 +69,16 @@ def database_error_handler(
 
     if (
         error_message
+        == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_thing_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} not found.",
+            "type": "value_error",
+            "input": {"thing_id": payload.thing_id},
+        }
+    elif (
+        error_message
         == 'insert or update on table "email" violates foreign key constraint "email_contact_id_fkey"'
     ):
         detail = {
