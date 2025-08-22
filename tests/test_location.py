@@ -14,10 +14,28 @@
 # limitations under the License.
 # ===============================================================================
 from geoalchemy2.shape import to_shape
+import pytest
 
+from core.dependencies import admin_function, editor_function, viewer_function
 from db import Location
-from db.engine import session_ctx
-from tests import client
+from main import app
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
+
 
 #  ============= Post tests for locations ======================================
 
@@ -38,35 +56,23 @@ def test_add_location():
     assert data["release_status"] == payload["release_status"]
 
     # cleanup after test
-    with session_ctx() as session:
-        session.delete(session.get(Location, data["id"]))
-        session.commit()
+    cleanup_post_test(Location, data["id"])
 
 
 #  ============= Patch tests for locations =====================================
 
 
 def test_update_location(location):
-    location_id = location.id
-    response = client.patch(
-        f"/location/{location_id}",
-        json={
-            "point": "POINT (10.1 20.2)",
-            "release_status": "draft",
-        },
-    )
+    payload = {"point": "POINT (10.1 20.2)", "release_status": "draft"}
+    response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == location_id
-    assert data["point"] == "POINT (10.1 20.2)"
-    assert data["release_status"] == "draft"
+    assert data["id"] == location.id
+    assert data["point"] == payload["point"]
+    assert data["release_status"] == payload["release_status"]
 
     # cleanup after test
-    with session_ctx() as session:
-        updated_location = session.get(Location, location_id)
-        updated_location.point = location.point
-        updated_location.release_status = location.release_status
-        session.commit()
+    cleanup_patch_test(Location, payload, location)
 
 
 def test_patch_location_404_not_found(location):
