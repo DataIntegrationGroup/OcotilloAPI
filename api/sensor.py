@@ -20,7 +20,12 @@ from sqlalchemy import select, and_
 from starlette import status
 
 from api.pagination import CustomPage
-from core.dependencies import session_dependency
+from core.dependencies import (
+    session_dependency,
+    admin_dependency,
+    editor_dependency,
+    viewer_dependency,
+)
 from db import adder, Observation, Sample
 from db.sensor import Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
@@ -35,12 +40,12 @@ router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def add_sensor(
-    sensor_data: CreateSensor, session: session_dependency
+    sensor_data: CreateSensor, session: session_dependency, user: admin_dependency
 ) -> SensorResponse:
     """
     Add a sensor to the system.
     """
-    return adder(session, Sensor, sensor_data)
+    return adder(session, Sensor, sensor_data, user=user)
 
 
 # ====== PATCH =================================================================
@@ -48,7 +53,10 @@ def add_sensor(
 
 @router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
 def update_sensor(
-    sensor_id: int, sensor_data: UpdateSensor, session: session_dependency
+    sensor_id: int,
+    sensor_data: UpdateSensor,
+    session: session_dependency,
+    user: editor_dependency,
 ) -> SensorResponse:
     """
     Update a sensor in the system.
@@ -97,14 +105,16 @@ def update_sensor(
                 status_code=status.HTTP_409_CONFLICT, detail=[detail]
             )
 
-    return model_patcher(session, Sensor, sensor_id, sensor_data)
+    return model_patcher(session, Sensor, sensor_id, sensor_data, user=user)
 
 
 # ====== DELETE ================================================================
 
 
 @router.delete("/{sensor_id}")
-def delete_sensor(sensor_id: int, session: session_dependency) -> Response:
+def delete_sensor(
+    sensor_id: int, session: session_dependency, user: admin_dependency
+) -> Response:
     """
     Delete a sensor in the system
     """
@@ -117,6 +127,7 @@ def delete_sensor(sensor_id: int, session: session_dependency) -> Response:
 @router.get("", status_code=status.HTTP_200_OK)
 def get_sensors(
     session: session_dependency,
+    user: viewer_dependency,
     thing_id: int = None,  # Optional filter for thing_id
     observed_property: str = None,  # Optional filter for observed_property
     sort: str | None = None,
@@ -151,7 +162,9 @@ def get_sensors(
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
-def get_sensor(sensor_id: int, session: session_dependency) -> SensorResponse:
+def get_sensor(
+    sensor_id: int, session: session_dependency, user: viewer_dependency
+) -> SensorResponse:
     """
     Retrieve a sensor by its ID.
     """

@@ -13,12 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from core.dependencies import admin_function, editor_function, viewer_function
 from db import Sensor
+from main import app
 from schemas.sensor import ValidateSensor
-from tests import client, cleanup_post_test, cleanup_patch_test
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
 import pytest
 from pydantic import ValidationError
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 # ====== VALIDATION tests ======================================================
