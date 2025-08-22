@@ -50,11 +50,10 @@ router = APIRouter(
 
 def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
     """
-    Handle errors raised by the database when adding or updating a sample.
+    Handle errors raised by the database when adding or updating a asset.
     """
 
     error_message = error.orig.args[0]["M"]
-    print(error_message)
 
     if (
         error_message
@@ -150,7 +149,8 @@ async def list_assets(
         )
 
     def transformer(records: list[Asset]):
-        records = [add_signed_url(ai, bucket) for ai in records]
+        if thing_id is not None:
+            records = [add_signed_url(ai, bucket) for ai in records]
         return records
 
     return paginate(query=sql, conn=session, transformer=transformer)
@@ -166,7 +166,13 @@ async def get_asset(
     Retrieve an asset by its ID.
     """
     asset = simple_get_by_id(session, Asset, asset_id)
-    add_signed_url(asset, bucket)
+
+    sql = select(AssetThingAssociation).where(
+        AssetThingAssociation.asset_id == asset_id
+    )
+
+    if session.execute(sql).scalars().first() is not None:
+        add_signed_url(asset, bucket)
     return asset
 
 

@@ -152,7 +152,7 @@ def test_get_assets(asset):
     assert data["items"][0]["size"] == asset.size
     assert data["items"][0]["uri"] == asset.uri
     assert data["items"][0]["storage_service"] == asset.storage_service
-    assert data["items"][0]["signed_url"] == MockBlob().generate_signed_url()
+    assert data["items"][0]["signed_url"] == None
 
 
 def test_get_asset_by_id(asset):
@@ -168,7 +168,7 @@ def test_get_asset_by_id(asset):
     assert data["size"] == asset.size
     assert data["uri"] == asset.uri
     assert data["storage_service"] == asset.storage_service
-    assert data["signed_url"] == MockBlob().generate_signed_url()
+    assert data["signed_url"] == None
 
 
 def test_get_asset_by_id_404_not_found(asset):
