@@ -1,9 +1,11 @@
 from geoalchemy2.shape import to_shape
+from pydantic import ValidationError
 import pytest
 
 from db import Group
 from core.dependencies import admin_function, viewer_function, editor_function
 from main import app
+from schemas.group import ValidateGroup
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 
@@ -21,6 +23,36 @@ def override_authentication_dependency_fixture():
     yield
 
     app.dependency_overrides = {}
+
+
+# VALIDATION tests =============================================================
+
+
+def test_project_area_not_topologically_valid():
+    wkt = "MULTIPOLYGON(((0 0, 1 1, 2 2, 0 0)))"
+    with pytest.raises(
+        ValidationError, match="WKT geometry is not topologically valid"
+    ):
+        ValidateGroup(project_area=wkt)
+
+
+def test_project_area_invalid_wkt():
+    for wkt in [
+        "MULTIPOLYGON((0 0, 1 1, 2 2, 0 0))",
+        "0 0, 1 1, 2 2, 3 3, 4 5, 0 0",
+    ]:
+        with pytest.raises(ValidationError, match=r"Invalid WKT geometry: "):
+            ValidateGroup(project_area=wkt)
+
+
+def test_project_area_not_multipolygon():
+    for wkt in [
+        "POINT (0 0)",
+        "LINESTRING (0 0, 1 1, 2 2, 3 3)",
+        "POLYGON ((0 0, 1 1, 2 2, 1 2, 0 0))",
+    ]:
+        with pytest.raises(ValidationError, match="WKT must be a valid MULTIPOLYGON"):
+            ValidateGroup(project_area=wkt)
 
 
 #  ADD tests ======================================================
