@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 from db import Observation
-from db.engine import session_ctx
 from core.dependencies import (
     amp_admin_function,
     admin_function,
@@ -40,23 +39,6 @@ def override_authentication_dependency_fixture():
     yield
 
     app.dependency_overrides = {}
-
-
-@pytest.fixture(scope="function")
-def observation_to_delete(sample, sensor):
-    with session_ctx() as session:
-        observation = Observation(
-            observation_datetime="2019-01-01T00:03:00Z",
-            sample_id=sample.id,
-            sensor_id=sensor.id,
-            observed_property="water chemistry:pH",
-            release_status="draft",
-            value=4.0,
-            unit="dimensionless",
-        )
-        session.add(observation)
-        session.commit()
-        yield observation
 
 
 # ============= Post tests =================

@@ -18,6 +18,21 @@ def location():
         session.close()
 
 
+@pytest.fixture(scope="function")
+def second_location():
+    with session_ctx() as session:
+        location = Location(
+            name="second location",
+            point="POINT (10.2 10.2)",
+            release_status="draft",
+        )
+        session.add(location)
+        session.commit()
+        yield location
+        session.delete(location)
+        session.commit()
+
+
 @pytest.fixture(scope="session")
 def thing(location):
     with session_ctx() as session:
@@ -53,6 +68,26 @@ def sensor():
         session.close()
 
 
+@pytest.fixture(scope="function")
+def second_sensor():
+    with session_ctx() as session:
+        sensor = Sensor(
+            name="Test Sensor 2",
+            model="Model X",
+            serial_no="123456",
+            datetime_installed="2023-01-01T00:00:00Z",
+            datetime_removed="2023-01-02T00:00:00Z",
+            recording_interval=60,
+            notes="Test equipment",
+        )
+        session.add(sensor)
+        session.commit()
+        yield sensor
+        session.delete(sensor)
+        session.commit()
+        session.close()
+
+
 @pytest.fixture(scope="session")
 def sample(thing, sensor):
     with session_ctx() as session:
@@ -75,6 +110,32 @@ def sample(thing, sensor):
         session.commit()
         yield sample
 
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_sample(thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            thing_id=thing.id,
+            sample_type="groundwater",
+            field_sample_id="FS-9999999",
+            sample_date="2025-01-01T00:00:00Z",
+            release_status="draft",
+            sampler_name="Test Sampler",
+            qc_sample="Duplicate",
+            sensor_id=sensor.id,
+            sample_matrix="water",
+            sample_method="manual",
+            duplicate_sample_number=3,
+            sample_top=2,
+            sample_bottom=3,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
         session.close()
 
 
@@ -145,6 +206,80 @@ def phone(contact):
         session.refresh(phone)
         yield phone
 
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_contact():
+    with session_ctx() as session:
+        contact = Contact(
+            name="Test Second Contact",
+            role="Owner",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        yield contact
+
+        session.delete(contact)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_email(second_contact):
+    with session_ctx() as session:
+        email = Email(
+            email="testsecondcontact@gmail.com",
+            email_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(email)
+        session.commit()
+        session.refresh(email)
+        yield email
+        session.delete(email)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_phone(second_contact):
+    with session_ctx() as session:
+        phone = Phone(
+            phone_number="123-456-7890",
+            phone_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(phone)
+        session.commit()
+        session.refresh(phone)
+        yield phone
+        session.delete(phone)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_address(second_contact):
+    with session_ctx() as session:
+        address = Address(
+            address_line_1="456 Secondary St",
+            address_line_2="Apt 12A",
+            city="Test Metropolis",
+            state="NM",
+            postal_code="87501",
+            country="United States",
+            address_type="Primary",
+            contact_id=second_contact.id,
+        )
+        session.add(address)
+        session.commit()
+        session.refresh(address)
+        yield address
+        session.delete(address)
+        session.commit()
         session.close()
 
 
@@ -246,6 +381,23 @@ def geothermal_observation(sensor, sample):
         yield observation
 
         session.close()
+
+
+@pytest.fixture(scope="function")
+def observation_to_delete(sample, sensor):
+    with session_ctx() as session:
+        observation = Observation(
+            observation_datetime="2019-01-01T00:03:00Z",
+            sample_id=sample.id,
+            sensor_id=sensor.id,
+            observed_property="water chemistry:pH",
+            release_status="draft",
+            value=4.0,
+            unit="dimensionless",
+        )
+        session.add(observation)
+        session.commit()
+        yield observation
 
 
 @pytest.fixture(scope="session")

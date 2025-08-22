@@ -16,38 +16,9 @@
 import pytest
 from pydantic import ValidationError
 
-from db.engine import session_ctx
 from db.sample import Sample
 from schemas.sample import ValidateSample
-from tests import client
-
-# ============= module & function fixtures =======================================
-
-
-@pytest.fixture(scope="function")
-def second_sample(thing, sensor):
-    with session_ctx() as session:
-        sample = Sample(
-            thing_id=thing.id,
-            sample_type="groundwater",
-            field_sample_id="FS-9999999",
-            sample_date="2025-01-01T00:00:00Z",
-            release_status="draft",
-            sampler_name="Test Sampler",
-            qc_sample="Duplicate",
-            sensor_id=sensor.id,
-            sample_matrix="water",
-            sample_method="manual",
-            duplicate_sample_number=3,
-            sample_top=2,
-            sample_bottom=3,
-        )
-        session.add(sample)
-        session.commit()
-        yield sample
-        session.delete(sample)
-        session.commit()
-        session.close()
+from tests import client, cleanup_post_test, cleanup_patch_test
 
 
 # ============== Custom validators =================================================
@@ -105,9 +76,7 @@ def test_add_sample(thing, sensor):
     assert data["sample_bottom"] == payload["sample_bottom"]
 
     # cleanup after adding the sample
-    with session_ctx() as session:
-        session.delete(session.get(Sample, data["id"]))
-        session.commit()
+    cleanup_post_test(Sample, data["id"])
 
 
 def test_409_add_sample_invalid_field_sample_id(sample, thing):
@@ -183,32 +152,22 @@ def test_patch_sample(sample):
     """
     Test updating a sample.
     """
-    new_sampler_name = "Test Sampler B"
-    new_sample_method = "continuous"
-    new_sample_date = "2025-01-02T00:00:00Z"
-    response = client.patch(
-        f"/sample/{sample.id}",
-        json={
-            "sampler_name": new_sampler_name,
-            "sample_method": new_sample_method,
-            "sample_date": new_sample_date,
-        },
-    )
+    payload = {
+        "sampler_name": "test sample b",
+        "sample_method": "continuous",
+        "sample_date": "2025-01-02T00:00:00Z",
+    }
+    response = client.patch(f"/sample/{sample.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
 
     assert data["id"] == sample.id
-    assert data["sampler_name"] == new_sampler_name
-    assert data["sample_date"] == new_sample_date
-    assert data["sample_method"] == new_sample_method
+    assert data["sampler_name"] == payload["sampler_name"]
+    assert data["sample_date"] == payload["sample_date"]
+    assert data["sample_method"] == payload["sample_method"]
 
     # rollback after updating the sample
-    with session_ctx() as session:
-        updated_sample = session.get(Sample, sample.id)
-        updated_sample.sampler_name = sample.sampler_name
-        updated_sample.sample_method = sample.sample_method
-        updated_sample.sample_date = sample.sample_date
-        session.commit()
+    cleanup_patch_test(Sample, payload, sample)
 
 
 def test_patch_sample_404_not_found(sample):

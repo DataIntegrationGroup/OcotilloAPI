@@ -14,34 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 from db import Sensor
-from db.engine import session_ctx
 from schemas.sensor import ValidateSensor
 from tests import client, cleanup_post_test, cleanup_patch_test
 
 import pytest
 from pydantic import ValidationError
-
-# ====== module functions and fixtures =========================================
-
-
-@pytest.fixture(scope="function")
-def second_sensor():
-    with session_ctx() as session:
-        sensor = Sensor(
-            name="Test Sensor 2",
-            model="Model X",
-            serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
-            notes="Test equipment",
-        )
-        session.add(sensor)
-        session.commit()
-        yield sensor
-        session.delete(sensor)
-        session.commit()
-        session.close()
 
 
 # ====== VALIDATION tests ======================================================

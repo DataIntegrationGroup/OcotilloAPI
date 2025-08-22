@@ -14,29 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 from geoalchemy2.shape import to_shape
-import pytest
 
 from db import Location
 from db.engine import session_ctx
 from tests import client
-
-# ============= module & function fixtures =======================================
-
-
-@pytest.fixture(scope="function")
-def second_location():
-    with session_ctx() as session:
-        location = Location(
-            name="second location",
-            point="POINT (10.2 10.2)",
-            release_status="draft",
-        )
-        session.add(location)
-        session.commit()
-        yield location
-        session.delete(location)
-        session.commit()
-
 
 #  ============= Post tests for locations ======================================
 
