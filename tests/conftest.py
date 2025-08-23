@@ -172,7 +172,7 @@ def asset():
 def asset_with_associated_thing(thing):
     with session_ctx() as session:
         asset = Asset(
-            name="Test Asset",
+            name="Test Asset with thing",
             label="test label",
             mime_type="application/pdf",
             size=12345,
@@ -192,6 +192,7 @@ def asset_with_associated_thing(thing):
         yield asset
         session.delete(asset)
         session.delete(association)
+        session.commit()
         session.close()
 
 
