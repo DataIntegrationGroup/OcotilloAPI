@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 
 from db.base import AutoBaseMixin, Base, lexicon_term
 
@@ -29,11 +30,11 @@ class Lexicon(Base, AutoBaseMixin):
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
 
-    # categories = relationship(
-    #     "Category",
-    #     secondary="lexicon_term_category_association",
-    # )
-    # categories = relationship("TermCategoryAssociation")
+    category_associations = relationship(
+        "TermCategoryAssociation", back_populates="term", cascade="all, delete-orphan"
+    )
+    categories = association_proxy("category_associations", "category")
+
     def __repr__(self):
         return f"<Lexicon(term={self.term}, definition={self.definition})>"
 
@@ -67,11 +68,11 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
         nullable=False,
     )
 
-    term = relationship("Lexicon", backref="categories")
+    term = relationship("Lexicon")
     category = relationship("Category")
 
     def __repr__(self):
-        return f"<TermCategoryAssociation(term_id={self.term_id}, category_id={self.category_id})>"
+        return f"<TermCategoryAssociation(term_id={self.term.id}, category_id={self.category.id})>"
 
 
 class LexiconTriple(Base, AutoBaseMixin):

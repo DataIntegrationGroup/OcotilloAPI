@@ -79,7 +79,7 @@ def add_term(
     """
     data = term_data.model_dump()
     return add_lexicon_term(
-        session, data["term"], data["definition"], data["category"], user=user
+        session, data["term"], data["definition"], data["categories"], user=user
     )
 
 

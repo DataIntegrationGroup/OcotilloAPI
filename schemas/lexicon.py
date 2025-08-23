@@ -14,23 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 from schemas import ORMBaseModel
 
 
 # -------- CREATE ----------
-class CreateLexiconTerm(BaseModel):
-    """
-    Pydantic model for creating a lexicon term.
-    This model can be extended to include additional fields as needed.
-    """
-
-    term: str
-    definition: str
-    category: str | int | None = None
-
-
 class CreateLexiconCategory(BaseModel):
     """
     Pydantic model for creating a lexicon category.
@@ -39,6 +28,17 @@ class CreateLexiconCategory(BaseModel):
 
     name: str
     description: str | None = None
+
+
+class CreateLexiconTerm(BaseModel):
+    """
+    Pydantic model for creating a lexicon term.
+    This model can be extended to include additional fields as needed.
+    """
+
+    term: str
+    definition: str
+    categories: list[CreateLexiconCategory] | None = None
 
 
 class CreateTriple(BaseModel):
@@ -61,19 +61,9 @@ class LexiconCategoryResponse(ORMBaseModel):
     This model can be extended to include additional fields as needed.
     """
 
-    id: int
     name: str
     description: str | None = None
     # terms: list[LexiconTermResponse] | None = None
-
-
-class LexiconTermCategoryResponse(ORMBaseModel):
-    """
-    Pydantic model for the response of a lexicon term category association.
-    This model can be extended to include additional fields as needed.
-    """
-
-    category: LexiconCategoryResponse
 
 
 class LexiconTermResponse(ORMBaseModel):
@@ -84,7 +74,7 @@ class LexiconTermResponse(ORMBaseModel):
 
     term: str
     definition: str
-    categories: List[LexiconTermCategoryResponse] | None = None
+    categories: List[LexiconCategoryResponse] | None = None
 
 
 # -------- UPDATE ----------
