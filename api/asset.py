@@ -126,7 +126,9 @@ async def add_asset(
         session.add(asset)
         session.commit()
         session.refresh(asset)
-        add_signed_url(asset, bucket)
+
+        if thing_id:
+            add_signed_url(asset, bucket)
         return asset
     except ProgrammingError as e:
         database_error_handler(asset_data, e)
@@ -149,8 +151,9 @@ async def list_assets(
         )
 
     def transformer(records: list[Asset]):
-        if thing_id is not None:
-            records = [add_signed_url(ai, bucket) for ai in records]
+        records = [
+            add_signed_url(ai, bucket) if ai.things != [] else ai for ai in records
+        ]
         return records
 
     return paginate(query=sql, conn=session, transformer=transformer)
@@ -167,11 +170,7 @@ async def get_asset(
     """
     asset = simple_get_by_id(session, Asset, asset_id)
 
-    sql = select(AssetThingAssociation).where(
-        AssetThingAssociation.asset_id == asset_id
-    )
-
-    if session.execute(sql).scalars().first() is not None:
+    if asset.things != []:
         add_signed_url(asset, bucket)
     return asset
 
