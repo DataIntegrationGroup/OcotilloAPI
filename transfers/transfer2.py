@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
 import time
 import uuid
 from datetime import datetime
@@ -57,7 +56,7 @@ from services.gcs_helper import gcs_upload, check_asset_exists
 
 # from db.series.groundwaterlevel import GroundwaterLevelSeries
 # from db.series.series import Series
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
 
 
