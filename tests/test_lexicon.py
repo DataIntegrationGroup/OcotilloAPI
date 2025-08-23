@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Lexicon
+from db import Lexicon, Category
 from services.validation import get_category
 from tests import client, override_authentication, cleanup_post_test
 
@@ -57,13 +57,38 @@ def test_add_lexicon_category():
     assert data["description"] == description
 
 
-def test_add_lexicon_term():
+def test_add_lexicon_term_with_new_categories():
     payload = {
         "term": "test_term",
         "definition": "This is a test definition.",
-        "category": "Test Category",
+        "categories": [{"name": "test category", "description": "test lexicon terms"}],
     }
+    response = client.post(
+        "/lexicon/term",
+        json=payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["term"] == payload["term"]
+    assert data["definition"] == payload["definition"]
+    assert len(data["categories"]) == 1
+    assert data["categories"][0]["name"] == payload["categories"][0]["name"]
+    assert (
+        data["categories"][0]["description"] == payload["categories"][0]["description"]
+    )
 
+    cleanup_post_test(Lexicon, data["id"])
+    cleanup_post_test(Category, data["categories"][0]["id"])
+
+
+def test_add_lexicon_term_with_existing_categories():
+    payload = {
+        "term": "test_term_existing_categories",
+        "definition": "This is a test definition.",
+        "categories": [{"name": "unit", "description": None}],
+    }
     response = client.post(
         "/lexicon/term",
         json=payload,
@@ -75,7 +100,32 @@ def test_add_lexicon_term():
     assert "created_at" in data
     assert data["term"] == payload["term"]
     assert data["definition"] == payload["definition"]
-    assert data["category"] == payload["category"]
+    assert len(data["categories"]) == 1
+    assert data["categories"][0]["name"] == payload["categories"][0]["name"]
+    assert (
+        data["categories"][0]["description"] == payload["categories"][0]["description"]
+    )
+
+    cleanup_post_test(Lexicon, data["id"])
+
+
+def test_add_lexicon_term_with_no_categories():
+    payload = {
+        "term": "test_term_no_categories",
+        "definition": "This is a test definition without categories.",
+        "categories": None,
+    }
+    response = client.post(
+        "/lexicon/term",
+        json=payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["term"] == payload["term"]
+    assert data["definition"] == payload["definition"]
+    assert data["categories"] == []
 
     cleanup_post_test(Lexicon, data["id"])
 
