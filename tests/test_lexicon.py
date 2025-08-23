@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from db import Lexicon
 from services.validation import get_category
-from tests import client, override_authentication
+from tests import client, override_authentication, cleanup_post_test
 
 from core.dependencies import admin_function, viewer_function, editor_function
 from main import app
@@ -38,6 +39,9 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides = {}
 
 
+# POST tests ===================================================================
+
+
 def test_add_lexicon_category():
     name = "Test Category"
     description = "This is a test category."
@@ -54,19 +58,26 @@ def test_add_lexicon_category():
 
 
 def test_add_lexicon_term():
-    term = "test_term"
-    definition = "This is a test definition."
-    category = "Test Category"
+    payload = {
+        "term": "test_term",
+        "definition": "This is a test definition.",
+        "category": "Test Category",
+    }
 
     response = client.post(
         "/lexicon/term",
-        json={"term": term, "definition": definition, "category": category},
+        json=payload,
     )
 
     assert response.status_code == 201
     data = response.json()
-    assert data["term"] == term
-    assert data["definition"] == definition
+    assert "id" in data
+    assert "created_at" in data
+    assert data["term"] == payload["term"]
+    assert data["definition"] == payload["definition"]
+    assert data["category"] == payload["category"]
+
+    cleanup_post_test(Lexicon, data["id"])
 
 
 def test_get_category():
