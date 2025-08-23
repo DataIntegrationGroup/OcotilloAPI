@@ -74,7 +74,7 @@ class LexiconTermResponse(ORMBaseModel):
 
     term: str
     definition: str
-    categories: List[LexiconCategoryResponse] | None = None
+    categories: List[LexiconCategoryResponse] = []
 
 
 # -------- UPDATE ----------
