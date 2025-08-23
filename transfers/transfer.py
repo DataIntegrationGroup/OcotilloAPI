@@ -25,7 +25,7 @@ from db import *
 from db.location import Location
 from db.engine import session_ctx
 from db.thing.well import WellThing
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 
 TRANSFORMERS = {}
 

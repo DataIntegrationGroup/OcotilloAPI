@@ -22,7 +22,7 @@ from sqlalchemy.exc import DatabaseError
 
 from db.base import Base
 from db.engine import engine, session_ctx
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 from .settings import settings
 
 

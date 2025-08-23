@@ -22,7 +22,6 @@ from core.dependencies import (
     session_dependency,
     editor_dependency,
     admin_dependency,
-    viewer_dependency,
     viewer_function,
 )
 from db.engine import get_db_session
@@ -35,9 +34,8 @@ from schemas.lexicon import (
     LexiconCategoryResponse,
 )
 from services.crud_helper import model_patcher
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 from services.query_helper import (
-    simple_all_getter,
     paginated_all_getter,
     order_sort_filter,
     simple_get_by_id,
