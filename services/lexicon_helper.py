@@ -21,24 +21,43 @@ from services.audit_helper import audit_add
 
 
 def add_lexicon_term(
-    session: Session, term: str, definition: str, category: str | int, user: dict = None
+    session: Session,
+    term: str,
+    definition: str,
+    categories: list | None,
+    user: dict = None,
 ) -> Lexicon:
     """
     Add a term to the lexicon with its definition and category.
 
     """
-    if isinstance(category, str):
-        sql = select(Category).where(Category.name == category)
-        dbcategory = session.scalars(sql).one_or_none()
-        if dbcategory is None:
+    db_categories = []
+    if isinstance(categories, list):
+
+        category_names = [c.get("name") for c in categories]
+
+        sql = select(Category).where(Category.name.in_(category_names))
+        associated_categories = session.scalars(sql).all()
+        associated_category_names = [c.name for c in associated_categories]
+
+        unassociated_categories = [
+            category
+            for category in categories
+            if category.get("name") not in associated_category_names
+        ]
+        for category in unassociated_categories:
             # Create a new category if it does not exist
-            dbcategory = Category(name=category)
-            audit_add(user, dbcategory)
-            session.add(dbcategory)
+            category = Category(
+                name=category.get("name"), description=category.get("description")
+            )
+            audit_add(user, category)
+            session.add(category)
             session.commit()
             session.flush()
-    else:
-        dbcategory = session.get(Category, category)
+
+            db_categories.append(category)
+
+        db_categories.extend(associated_categories)
 
     # Check if the term already exists
     sql = select(Lexicon).where(Lexicon.term == term)
@@ -48,13 +67,14 @@ def add_lexicon_term(
         audit_add(user, dbterm)
         session.add(dbterm)
 
-    if dbcategory is not None:
-        link = TermCategoryAssociation()
+    if len(db_categories) > 0:
+        for category in db_categories:
+            link = TermCategoryAssociation()
 
-        link.category = dbcategory
-        link.term = dbterm
-        audit_add(user, link)
-        session.add(link)
+            link.category = category
+            link.term = dbterm
+            audit_add(user, link)
+            session.add(link)
 
     session.commit()
 
