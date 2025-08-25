@@ -182,4 +182,12 @@ def test_get_lexicon_term_by_id(lexicon_term):
     )
 
 
+def test_get_lexicon_term_by_id_404_not_found(lexicon_term):
+    bad_id = 999999
+    response = client.get(f"/lexicon/term/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+
+
 # ============= EOF =============================================
