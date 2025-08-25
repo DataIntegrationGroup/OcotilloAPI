@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 
 [[package]]
@@ -495,16 +495,16 @@ wheels = [
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.13.3"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/4c/e98a1665b6ac2e9e4ed98450e4e0ea48108f3bc52de517d9a70cc22761c2/fastapi_pagination-0.13.3.tar.gz", hash = "sha256:40c2383aff13a3a0e4a2742dfbf004572e88458cd8f338d85f90a27e07abab4a", size = 550898, upload-time = "2025-06-25T21:22:15.287Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/94/7f894a3137b2c5618f5b677c468a9a54c3e82a40019e168c7e1ac02112a4/fastapi_pagination-0.14.0.tar.gz", hash = "sha256:e576800270f2714c781241b66c11f5da24f6671670edc122f5be7e4c2bd7f353", size = 557583, upload-time = "2025-08-20T17:56:19.456Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/73/ef1ab892c2d189d8b6bd72325e9e710df6737c3b7976e12aa5749a56ea01/fastapi_pagination-0.13.3-py3-none-any.whl", hash = "sha256:e1b1cc7fa5c773c61087845ef8a73ed6b516071c057418698b9242461573f44e", size = 50986, upload-time = "2025-06-25T21:22:13.591Z" },
+    { url = "https://files.pythonhosted.org/packages/74/f3/b00424f9fe4d1f0a7657b7ab931bdfea5a9a9103f6684a0d64687d6f9f94/fastapi_pagination-0.14.0-py3-none-any.whl", hash = "sha256:72ed471c79c3aa07940b287b9cf022503ec2e69e1f2ca5a7a5fcd8152cc43392", size = 52517, upload-time = "2025-08-20T17:56:18.404Z" },
 ]
 
 [[package]]
@@ -1010,7 +1010,7 @@ requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "email-validator", specifier = "==2.2.0" },
     { name = "fastapi", specifier = "==0.116.1" },
-    { name = "fastapi-pagination", specifier = "==0.13.3" },
+    { name = "fastapi-pagination", specifier = "==0.14.0" },
     { name = "frozenlist", specifier = "==1.7.0" },
     { name = "geoalchemy2", specifier = "==0.18.0" },
     { name = "google-api-core", specifier = "==2.25.1" },

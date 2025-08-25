@@ -30,7 +30,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "email-validator==2.2.0",
     "fastapi==0.116.1",
-    "fastapi-pagination==0.13.3",
+    "fastapi-pagination==0.14.0",
     "frozenlist==1.7.0",
     "geoalchemy2==0.18.0",
     "google-api-core==2.25.1",
