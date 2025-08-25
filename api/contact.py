@@ -33,7 +33,6 @@ from schemas.contact import (
     CreateAddress,
     CreateEmail,
     CreatePhone,
-    CreateThingAssociation,
     PhoneResponse,
     EmailResponse,
     AddressResponse,
@@ -60,7 +59,7 @@ router = APIRouter(prefix="/contact", tags=["contact"])
 
 
 def database_error_handler(
-    payload: CreateThingAssociation, error: ProgrammingError
+    payload: CreateEmail | CreateContact | CreatePhone, error: ProgrammingError
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a sample.
@@ -77,17 +76,6 @@ def database_error_handler(
             "msg": f"Thing with ID {payload.thing_id} not found.",
             "type": "value_error",
             "input": {"thing_id": payload.thing_id},
-        }
-
-    elif (
-        error_message
-        == 'insert or update on table "thing_contact_association" violates foreign key constraint "thing_contact_association_contact_id_fkey"'
-    ):
-        detail = {
-            "loc": ["body", "contact_id"],
-            "msg": f"Contact with ID {payload.contact_id} not found.",
-            "type": "value_error",
-            "input": {"contact_id": payload.contact_id},
         }
     elif (
         error_message

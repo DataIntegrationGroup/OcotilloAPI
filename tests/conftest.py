@@ -168,6 +168,54 @@ def asset():
         session.close()
 
 
+@pytest.fixture(scope="function")
+def asset_with_associated_thing(thing):
+    with session_ctx() as session:
+        asset = Asset(
+            name="Test Asset with thing",
+            label="test label",
+            mime_type="application/pdf",
+            size=12345,
+            storage_service="mock_service",
+            storage_path="mock/path/to/asset",
+            uri="https://storage.googleapis.com/mock-bucket/mock-asset",
+        )
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+
+        association = AssetThingAssociation(asset_id=asset.id, thing_id=thing.id)
+        session.add(association)
+        session.commit()
+        session.refresh(association)
+
+        yield asset
+        session.delete(asset)
+        session.delete(association)
+        session.commit()
+        session.close()
+
+
+@pytest.fixture(scope="function")
+def second_asset():
+    with session_ctx() as session:
+        asset = Asset(
+            name="Second test asset",
+            label="Second test label",
+            mime_type="application/pdf",
+            size=2468,
+            storage_service="mock_service",
+            storage_path="mock/path/to/asset",
+            uri="https://storage.googleapis.com/mock-bucket/second-mock-asset",
+        )
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+        yield asset
+        session.delete(asset)
+        session.close()
+
+
 @pytest.fixture(scope="session")
 def groundwater_level_observation(sensor, sample):
     with session_ctx() as session:

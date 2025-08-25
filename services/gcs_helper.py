@@ -76,6 +76,11 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     return url, blob_name
 
 
+def gcs_remove(uri: str, bucket: storage.Bucket):
+    blob = bucket.blob(uri)
+    blob.delete()
+
+
 def add_signed_url(asset: Asset, bucket: storage.Bucket):
     asset.signed_url = bucket.blob(asset.storage_path).generate_signed_url(
         version="v4",

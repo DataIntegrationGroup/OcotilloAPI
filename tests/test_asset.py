@@ -17,9 +17,12 @@ from api.asset import get_storage_bucket
 from core.app import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test, override_authentication
+from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
 
 import pytest
+from unittest.mock import patch
+
+# CLASSES, FIXTURES, AND FUNCTIONS =============================================
 
 
 class MockBlob:
@@ -28,6 +31,9 @@ class MockBlob:
 
     def generate_signed_url(self, *args, **kwargs):
         return "https://storage.googleapis.com/mock-bucket/mock-asset"
+
+    def delete(self, *args, **kwargs):
+        pass
 
 
 class MockStorageBucket:
@@ -63,6 +69,9 @@ def override_dependency_fixture():
     app.dependency_overrides = {}
 
 
+# POST & UPLOAD tests ==========================================================
+
+
 def test_upload_asset():
     path = "tests/data/riochama.png"
 
@@ -78,61 +87,166 @@ def test_upload_asset():
 
 
 def test_add_asset(thing):
-    resp = client.post(
-        "/asset",
-        json={
-            "thing_id": thing.id,
-            "name": "riochama.png",
-            "storage_service": "mock_service",
-            "storage_path": "mock/path/to/asset",
-            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
-            "mime_type": "image/png",
-            "size": 12345,
-        },
-    )
-
+    payload = {
+        "thing_id": thing.id,
+        "name": "test_asset.png",
+        "label": "Test Asset",
+        "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
+        "storage_service": "mock_service",
+        "storage_path": "mock/path/to/asset/test_asset.png",
+        "mime_type": "image/png",
+        "size": 12345,
+    }
+    resp = client.post("/asset", json=payload)
     assert resp.status_code == 201
     data = resp.json()
-    assert data["name"] == "riochama.png"
+    assert "id" in data
+    assert "created_at" in data
+    assert data["name"] == payload["name"]
+    assert data["label"] == payload["label"]
+    assert data["uri"] == payload["uri"]
+    assert data["storage_service"] == "gcs"
+    assert data["storage_path"] == payload["storage_path"]
+    assert data["mime_type"] == payload["mime_type"]
+    assert data["size"] == payload["size"]
+    assert data["signed_url"] == None
 
     cleanup_post_test(Asset, data["id"])
 
 
-def test_add_asset_with_label(thing):
-    resp = client.post(
-        "/asset",
-        json={
-            "thing_id": thing.id,
-            "name": "test_asset.png",
-            "label": "Test Asset",
-            "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
-            "storage_service": "mock_service",
-            "storage_path": "mock/path/to/asset/test_asset.png",
-            "mime_type": "image/png",
-            "size": 12345,
-        },
-    )
-    assert resp.status_code == 201
+def test_add_asset_409_bad_thing_id(thing):
+    bad_thing_id = 99999
+    payload = {
+        "thing_id": bad_thing_id,
+        "name": "test_asset.png",
+        "label": "Test Asset",
+        "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
+        "storage_service": "mock_service",
+        "storage_path": "mock/path/to/asset/test_asset.png",
+        "mime_type": "image/png",
+        "size": 12345,
+    }
+    resp = client.post("/asset", json=payload)
+    assert resp.status_code == 409
     data = resp.json()
-    assert data["name"] == "test_asset.png"
-    assert data["label"] == "Test Asset"
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
-    cleanup_post_test(Asset, data["id"])
+
+# GET tests ====================================================================
 
 
-def test_get_asset(asset):
+def test_get_assets(asset, asset_with_associated_thing):
+    response = client.get("/asset")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert data["items"][0]["id"] == asset.id
+    assert data["items"][0]["created_at"] == asset.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["name"] == asset.name
+    assert data["items"][0]["label"] == asset.label
+    assert data["items"][0]["storage_path"] == asset.storage_path
+    assert data["items"][0]["mime_type"] == asset.mime_type
+    assert data["items"][0]["size"] == asset.size
+    assert data["items"][0]["uri"] == asset.uri
+    assert data["items"][0]["storage_service"] == asset.storage_service
+    assert data["items"][0]["signed_url"] == None
+
+    assert data["items"][1]["id"] == asset_with_associated_thing.id
+    assert data["items"][1]["signed_url"] == None
+
+
+def test_get_assets_thing_id(asset_with_associated_thing, thing):
+    with patch("api.asset.get_storage_bucket", return_value=MockStorageBucket()):
+        query_parameters = {"thing_id": thing.id}
+        response = client.get("/asset", params=query_parameters)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == asset_with_associated_thing.id
+        assert (
+            data["items"][0]["signed_url"]
+            == mock_storage_bucket().blob().generate_signed_url()
+        )
+
+
+def test_get_asset_by_id(asset):
     response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == asset.id
+    assert data["created_at"] == asset.created_at.isoformat().replace("+00:00", "Z")
     assert data["name"] == asset.name
-    assert data["uri"] == MockBlob().generate_signed_url()
+    assert data["label"] == asset.label
+    assert data["storage_path"] == asset.storage_path
+    assert data["mime_type"] == asset.mime_type
+    assert data["size"] == asset.size
+    assert data["uri"] == asset.uri
+    assert data["storage_service"] == asset.storage_service
+    assert data["signed_url"] == MockBlob().generate_signed_url()
 
 
-def test_get_asset_not_found():
-    response = client.get("/asset/9999")
+def test_get_asset_by_id_404_not_found(asset):
+    bad_id = 99999
+    response = client.get(f"/asset/{bad_id}")
     assert response.status_code == 404
-    assert response.json() == {"detail": "Asset not found"}
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_asset(asset):
+    payload = {"name": "patched name", "label": "patched label"}
+    response = client.patch(f"/asset/{asset.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == asset.id
+    assert data["name"] == payload["name"]
+    assert data["label"] == payload["label"]
+
+    cleanup_patch_test(Asset, payload, asset)
+
+
+def test_patch_asset_404_not_found(asset):
+    bad_id = 99999
+    payload = {"name": "patched name", "label": "patched label"}
+    response = client.patch(f"/asset/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_asset(second_asset):
+    response = client.delete(f"/asset/{second_asset.id}")
+    assert response.status_code == 204
+
+    # verify deletion
+    response = client.get(f"/asset/{second_asset.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {second_asset.id} not found."
+
+
+def test_delete_asset_404_not_found(second_asset):
+    bad_id = 99999
+    response = client.delete(f"/asset/{bad_id}/remove")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Asset with ID {bad_id} not found."
+
+
+def test_remove_asset(second_asset):
+    response = client.delete(f"/asset/{second_asset.id}/remove")
+    assert response.status_code == 204
 
 
 # ============= EOF =============================================
