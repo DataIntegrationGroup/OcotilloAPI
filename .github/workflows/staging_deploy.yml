@@ -48,7 +48,7 @@ jobs:
             echo "  CLOUD_SQL_DATABASE: \"${{ secrets.CLOUD_SQL_DATABASE }}\"" >> app.yaml
             echo "  CLOUD_SQL_USER: \"${{ secrets.CLOUD_SQL_USER }}\"" >> app.yaml
             echo "  CLOUD_SQL_PASSWORD: \"${{ secrets.CLOUD_SQL_PASSWORD }}\"" >> app.yaml
-            echo "  GCS_SERVICE_ACCOUNT_KEY: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }} \" >> app.yaml
+            echo "  GCS_SERVICE_ACCOUNT_KEY: ${{ secrets.GCS_SERVICE_ACCOUNT_KEY }} " >> app.yaml
             echo "  GCS_BUCKET_NAME: \"${{secrets.GCS_BUCKET_NAME}}\"" >> app.yaml
             echo "  AUTHENTIK_URL: \"${{secrets.AUTHENTIK_URL}}\"" >> app.yaml
             echo "  AUTHENTIK_CLIENT_ID: \"${{secrets.AUTHENTIK_CLIENT_ID}}\"" >> app.yaml
