@@ -45,6 +45,8 @@ router = APIRouter(
     prefix="/lexicon", tags=["lexicon"], dependencies=[Depends(viewer_function)]
 )
 
+# POST =========================================================================
+
 
 @router.post(
     "/category",
@@ -112,14 +114,31 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     return triple
 
 
-@router.get("/term/{term_id}")
-def get_lexicon_term(term_id: int, session: session_dependency):
-    return simple_get_by_id(session, Lexicon, term_id)
+# PATCH ========================================================================
 
 
-@router.get("/category/{category_id}")
-def get_lexicon_category(category_id: int, session: session_dependency):
-    return simple_get_by_id(session, Category, category_id)
+@router.patch("/term/{term_id}")
+def update_lexicon_term(
+    term_id: int,
+    term_data: CreateLexiconTerm,
+    session: session_dependency,
+    user: editor_dependency,
+):
+
+    return model_patcher(session, Lexicon, term_id, term_data, user=user)
+
+
+@router.patch("/category/{category_id}")
+def update_lexicon_category(
+    category_id: int,
+    category_data: CreateLexiconCategory,
+    session: session_dependency,
+    user: editor_dependency,
+):
+    return model_patcher(session, Category, category_id, category_data, user=user)
+
+
+# GET ==========================================================================
 
 
 @router.get("/term", summary="Get lexicon terms")
@@ -156,7 +175,11 @@ def get_lexicon_terms(
         sql = sql.order_by(func.lower(Lexicon.term).asc())
 
     return paginate(query=sql, conn=session)
-    # return paginated_all_getter(session, sql, filter_)
+
+
+@router.get("/term/{term_id}")
+def get_lexicon_term(term_id: int, session: session_dependency):
+    return simple_get_by_id(session, Lexicon, term_id)
 
 
 @router.get("/category")
@@ -172,25 +195,11 @@ def get_lexicon_categories(
     return paginated_all_getter(session, Category, sort, order, filter_)
 
 
-@router.patch("/term/{term_id}")
-def update_lexicon_term(
-    term_id: int,
-    term_data: CreateLexiconTerm,
-    session: session_dependency,
-    user: editor_dependency,
-):
-
-    return model_patcher(session, Lexicon, term_id, term_data, user=user)
+@router.get("/category/{category_id}")
+def get_lexicon_category(category_id: int, session: session_dependency):
+    return simple_get_by_id(session, Category, category_id)
 
 
-@router.patch("/category/{category_id}")
-def update_lexicon_category(
-    category_id: int,
-    category_data: CreateLexiconCategory,
-    session: session_dependency,
-    user: editor_dependency,
-):
-    return model_patcher(session, Category, category_id, category_data, user=user)
-
+# DELETE =======================================================================
 
 # ============= EOF =============================================

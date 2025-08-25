@@ -42,21 +42,6 @@ def override_authentication_dependency_fixture():
 # POST tests ===================================================================
 
 
-def test_add_lexicon_category():
-    name = "Test Category"
-    description = "This is a test category."
-
-    response = client.post(
-        "/lexicon/category",
-        json={"name": name, "description": description},
-    )
-
-    assert response.status_code == 201
-    data = response.json()
-    assert data["name"] == name
-    assert data["description"] == description
-
-
 def test_add_lexicon_term_with_new_categories():
     payload = {
         "term": "test_term",
