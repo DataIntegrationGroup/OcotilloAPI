@@ -108,6 +108,7 @@ def test_add_asset(thing):
     assert data["storage_path"] == payload["storage_path"]
     assert data["mime_type"] == payload["mime_type"]
     assert data["size"] == payload["size"]
+    assert data["signed_url"] == None
 
     cleanup_post_test(Asset, data["id"])
 
@@ -155,10 +156,23 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][0]["signed_url"] == None
 
     assert data["items"][1]["id"] == asset_with_associated_thing.id
-    assert data["items"][1]["signed_url"] == MockBlob().generate_signed_url()
+    assert data["items"][1]["signed_url"] == None
 
 
-def test_get_asset_by_id_no_associated_thing(asset):
+def test_get_assets_thing_id(asset_with_associated_thing, thing):
+    query_parameters = {"thing_id": thing.id}
+    response = client.get("/asset", params=query_parameters)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == asset_with_associated_thing.id
+    assert (
+        data["items"][0]["signed_url"]
+        == mock_storage_bucket().blob().generate_signed_url()
+    )
+
+
+def test_get_asset_by_id(asset):
     response = client.get(f"/asset/{asset.id}")
     assert response.status_code == 200
     data = response.json()
@@ -171,24 +185,6 @@ def test_get_asset_by_id_no_associated_thing(asset):
     assert data["size"] == asset.size
     assert data["uri"] == asset.uri
     assert data["storage_service"] == asset.storage_service
-    assert data["signed_url"] == None
-
-
-def test_get_asset_by_id_with_associated_thing(asset_with_associated_thing):
-    response = client.get(f"/asset/{asset_with_associated_thing.id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == asset_with_associated_thing.id
-    assert data[
-        "created_at"
-    ] == asset_with_associated_thing.created_at.isoformat().replace("+00:00", "Z")
-    assert data["name"] == asset_with_associated_thing.name
-    assert data["label"] == asset_with_associated_thing.label
-    assert data["storage_path"] == asset_with_associated_thing.storage_path
-    assert data["mime_type"] == asset_with_associated_thing.mime_type
-    assert data["size"] == asset_with_associated_thing.size
-    assert data["uri"] == asset_with_associated_thing.uri
-    assert data["storage_service"] == asset_with_associated_thing.storage_service
     assert data["signed_url"] == MockBlob().generate_signed_url()
 
 
