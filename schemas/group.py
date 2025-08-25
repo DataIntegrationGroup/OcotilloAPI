@@ -15,7 +15,8 @@
 # ===============================================================================
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
+from typing_extensions import Self
 
 from schemas import ORMBaseModel
 from services.validation.geospatial import validate_wkt_geometry
@@ -23,14 +24,16 @@ from services.validation.geospatial import validate_wkt_geometry
 
 class ValidateGroup(BaseModel):
     project_area: str | None = None
-
     description: str | None = None
     parent_group_id: int | None = None
 
-    @classmethod
     @field_validator("project_area")
     def validate_area_is_wkt(cls, wkt):
-        return validate_wkt_geometry(wkt)
+        valid_wkt = validate_wkt_geometry(wkt)
+        if "MULTIPOLYGON" not in valid_wkt:
+            raise ValueError("WKT must be a valid MULTIPOLYGON")
+
+        return valid_wkt
 
 
 # -------- CREATE ----------
@@ -49,25 +52,16 @@ class GroupResponse(ORMBaseModel):
     This model can be extended to include additional fields as needed.
     """
 
-    id: int
     name: str
-    description: str | None = None
-    parent_group_id: int | None = None
+    project_area: str | None
+    description: str | None
+    parent_group_id: int | None
 
-    @classmethod
-    @field_validator("project_area", mode="before")
-    def project_area_to_wkt(cls, value):
-        if not value:
-            return value
-
-        if isinstance(value, WKBElement):
-            return to_shape(value).wkt
-
-        # If the value is a string, assume it's already in WKT format
-        if isinstance(value, str):
-            return value
-
-        return None
+    @model_validator(mode="before")
+    def project_area_to_wkt(self: Self) -> Self:
+        if isinstance(self.project_area, WKBElement):
+            self.project_area = to_shape(self.project_area).wkt
+        return self
 
 
 # -------- UPDATE ----------

@@ -4,7 +4,6 @@ from core.dependencies import (
     amp_admin_function,
 )
 from db import Contact, Address, Email, Phone
-from db.engine import session_ctx
 from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 from schemas.contact import ValidateEmail, ValidatePhone
@@ -28,98 +27,6 @@ def override_authentication_dependency_fixture():
     yield
 
     app.dependency_overrides = {}
-
-
-# ============= module & function fixtures =======================================
-
-
-@pytest.fixture(scope="function")
-def second_contact():
-    with session_ctx() as session:
-        contact = Contact(
-            name="Test Second Contact",
-            role="Owner",
-        )
-        session.add(contact)
-        session.commit()
-        session.refresh(contact)
-
-        yield contact
-
-        session.delete(contact)
-        session.commit()
-        session.close()
-
-
-@pytest.fixture(scope="function")
-def second_email(second_contact):
-    with session_ctx() as session:
-        email = Email(
-            email="testsecondcontact@gmail.com",
-            email_type="Primary",
-            contact_id=second_contact.id,
-        )
-        session.add(email)
-        session.commit()
-        session.refresh(email)
-        yield email
-        session.delete(email)
-        session.commit()
-        session.close()
-
-
-@pytest.fixture(scope="function")
-def second_phone(second_contact):
-    with session_ctx() as session:
-        phone = Phone(
-            phone_number="123-456-7890",
-            phone_type="Primary",
-            contact_id=second_contact.id,
-        )
-        session.add(phone)
-        session.commit()
-        session.refresh(phone)
-        yield phone
-        session.delete(phone)
-        session.commit()
-        session.close()
-
-
-@pytest.fixture(scope="function")
-def second_address(second_contact):
-    with session_ctx() as session:
-        address = Address(
-            address_line_1="456 Secondary St",
-            address_line_2="Apt 12A",
-            city="Test Metropolis",
-            state="NM",
-            postal_code="87501",
-            country="United States",
-            address_type="Primary",
-            contact_id=second_contact.id,
-        )
-        session.add(address)
-        session.commit()
-        session.refresh(address)
-        yield address
-        session.delete(address)
-        session.commit()
-        session.close()
-
-
-# @pytest.fixture(scope="function")
-# def second_thing_contact_association(thing, second_contact):
-#     with session_ctx() as session:
-#         association = ThingContactAssociation(
-#             thing_id=thing.id, contact_id=second_contact.id
-#         )
-#         session.add(association)
-#         session.commit()
-#         session.refresh(association)
-#         yield association
-#         session.delete(association)
-#         session.commit()
-#         session.close()
 
 
 # VALIDATION tests =============================================================

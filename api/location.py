@@ -13,17 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import Depends, Query, Response
+from fastapi import Query, Response
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
 from starlette import status
 from api.pagination import CustomPage
 from constants import SRID_WGS84
-from core.dependencies import session_dependency
+from core.dependencies import (
+    session_dependency,
+    admin_dependency,
+    editor_dependency,
+    viewer_dependency,
+)
 from db import adder
 from db.location import Location
-from db.engine import get_db_session
 from schemas.location import CreateLocation, LocationResponse, UpdateLocation
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
@@ -41,12 +44,12 @@ router = APIRouter(prefix="/location", tags=["location"])
     status_code=status.HTTP_201_CREATED,
 )
 def create_location(
-    location_data: CreateLocation, session: Session = Depends(get_db_session)
+    location_data: CreateLocation, session: session_dependency, user: admin_dependency
 ) -> LocationResponse:
     """
     Create a new sample location in the database.
     """
-    return adder(session, Location, location_data)
+    return adder(session, Location, location_data, user=user)
 
 
 @router.patch(
@@ -56,12 +59,13 @@ def create_location(
 def update_location(
     location_id: int,
     location_data: UpdateLocation,
-    session: Session = Depends(get_db_session),
+    session: session_dependency,
+    user: editor_dependency,
 ) -> LocationResponse:
     """
     Update a sample location in the database.
     """
-    return model_patcher(session, Location, location_id, location_data)
+    return model_patcher(session, Location, location_id, location_data, user=user)
 
 
 # @router.get("/shapefile", summary="Get location as shapefile")
@@ -125,6 +129,7 @@ def update_location(
 )
 async def get_location(
     session: session_dependency,
+    user: viewer_dependency,
     nearby_point: str = None,
     nearby_distance_km: float = 1,
     within: str = None,
@@ -160,7 +165,7 @@ async def get_location(
     summary="Get location by ID",
 )
 async def get_location_by_id(
-    location_id: int, session: Session = Depends(get_db_session)
+    location_id: int, session: session_dependency, user: viewer_dependency
 ) -> LocationResponse:
     """
     Retrieve a sample location by ID from the database.
@@ -171,7 +176,7 @@ async def get_location_by_id(
 
 @router.delete("/{location_id}", summary="Delete location by ID")
 async def delete_location(
-    location_id: int, session: Session = Depends(get_db_session)
+    location_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:
     """
     Delete a sample location by ID from the database.

@@ -15,7 +15,7 @@
 # ===============================================================================
 
 from fastapi import Depends, APIRouter, Query
-from starlette import status
+from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -25,10 +25,9 @@ from core.dependencies import (
     viewer_function,
 )
 from db import adder
-from db.group import Group, GroupThingAssociation
+from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
-from schemas.location import CreateGroupThing
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -38,8 +37,10 @@ router = APIRouter(
     prefix="/group", tags=["group"], dependencies=[Depends(viewer_function)]
 )
 
+# POST =========================================================================
 
-@router.post("", summary="Create a new group", status_code=status.HTTP_201_CREATED)
+
+@router.post("", summary="Create a new group", status_code=HTTP_201_CREATED)
 def create_group(
     group_data: CreateGroup, session: session_dependency, user: admin_dependency
 ) -> GroupResponse:
@@ -108,6 +109,16 @@ async def update_group(
     Update a group by ID in the database.
     """
     return model_patcher(session, Group, group_id, group_data, user=user)
+
+
+# DELETE =======================================================================
+@router.delete(
+    "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT
+)
+async def delete_group(
+    user: admin_dependency, group_id: int, session: session_dependency
+):
+    return model_deleter(session, Group, group_id)
 
 
 # ============= EOF =============================================

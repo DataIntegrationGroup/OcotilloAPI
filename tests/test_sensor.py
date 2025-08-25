@@ -13,35 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from core.dependencies import admin_function, editor_function, viewer_function
 from db import Sensor
-from db.engine import session_ctx
+from main import app
 from schemas.sensor import ValidateSensor
-from tests import client, cleanup_post_test, cleanup_patch_test
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
 import pytest
 from pydantic import ValidationError
 
-# ====== module functions and fixtures =========================================
 
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
 
-@pytest.fixture(scope="function")
-def second_sensor():
-    with session_ctx() as session:
-        sensor = Sensor(
-            name="Test Sensor 2",
-            model="Model X",
-            serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
-            notes="Test equipment",
-        )
-        session.add(sensor)
-        session.commit()
-        yield sensor
-        session.delete(sensor)
-        session.commit()
-        session.close()
+    yield
+
+    app.dependency_overrides = {}
 
 
 # ====== VALIDATION tests ======================================================
