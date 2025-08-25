@@ -133,6 +133,18 @@ async def add_asset(
 
 
 # GET ==========================================================================
+
+"""
+Developer's notes
+
+Do not generate signed urls when listing ALL assets. There is a reason to
+generate signed urls when listing assets for a given `thing_id` because this
+is used by the front end to display a gallery of images all at once. This is
+the only case in which signed urls should be generated for a list of assets. A
+signed url is always generated when retrieving assets individually
+"""
+
+
 @router.get("")
 async def list_assets(
     session: session_dependency,
