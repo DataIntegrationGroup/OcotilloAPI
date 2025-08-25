@@ -93,6 +93,7 @@ def test_add_lexicon_term_with_existing_categories():
     cleanup_post_test(Lexicon, data["id"])
 
 
+# TODO: this should raise an error since each term MUST be associated with a category
 def test_add_lexicon_term_with_no_categories():
     payload = {
         "term": "test_term_no_categories",
@@ -112,6 +113,19 @@ def test_add_lexicon_term_with_no_categories():
     assert data["categories"] == []
 
     cleanup_post_test(Lexicon, data["id"])
+
+
+def test_add_lexicon_category():
+    payload = {"name": "test category name", "description": "test category description"}
+    response = client.post("/lexicon/category", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["name"] == payload["name"]
+    assert data["description"] == payload["description"]
+
+    cleanup_post_test(Category, data["id"])
 
 
 def test_add_triple():
