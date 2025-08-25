@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from db import Lexicon, Category
-from tests import client, override_authentication, cleanup_post_test
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 from core.dependencies import admin_function, viewer_function, editor_function
 from main import app
@@ -141,6 +141,29 @@ def test_add_triple():
     assert data["subject"] == subject["term"]
     assert data["predicate"] == predicate
     assert data["object_"] == object_["term"]
+
+
+# PATCH tests ==================================================================
+
+
+def test_patch_lexicon(lexicon_term):
+    payload = {"term": "patched term", "definition": "patched definition"}
+    response = client.patch(f"/lexicon/term/{lexicon_term.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["term"] == payload["term"]
+    assert data["definition"] == payload["definition"]
+
+    cleanup_patch_test(Lexicon, payload, lexicon_term)
+
+
+def test_patch_lexicon_404_not_found(lexicon_term):
+    bad_id = 99999
+    payload = {"term": "patched term", "definition": "patched definition"}
+    response = client.patch(f"/lexicon/term/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
 
 
 # GET tests ====================================================================

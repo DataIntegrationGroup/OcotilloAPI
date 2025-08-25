@@ -52,6 +52,23 @@ class CreateTriple(BaseModel):
     object_: CreateLexiconTerm
 
 
+# UPDATE =======================================================================
+
+
+class UpdateLexiconCategory(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class UpdateLexiconTerm(BaseModel):
+    term: str | None = None
+    definition: str | None = None
+
+
+class UpdateTriple(BaseModel):
+    pass
+
+
 # -------- RESPONSE ----------
 
 
@@ -77,5 +94,4 @@ class LexiconTermResponse(ORMBaseModel):
     categories: List[LexiconCategoryResponse] = []
 
 
-# -------- UPDATE ----------
 # ============= EOF =============================================
