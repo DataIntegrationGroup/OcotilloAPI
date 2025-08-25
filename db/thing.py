@@ -113,7 +113,7 @@ class WellScreen(Base, AutoBaseMixin):
         String(1000), nullable=True, info={"unit": "description of the screen"}
     )
     # Define a relationship to well if needed
-    # well = relationship("Well")
+    thing = relationship("Thing")
 
 
 # ============= EOF =============================================

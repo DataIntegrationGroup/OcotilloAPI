@@ -161,6 +161,7 @@ class WellScreenResponse(ORMBaseModel):
     """
 
     thing_id: int
+    thing: WellResponse
     screen_depth_bottom: float
     screen_depth_top: float
     screen_type: str | None = None
