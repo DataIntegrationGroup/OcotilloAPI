@@ -476,3 +476,36 @@ def second_group(thing):
         yield group
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def lexicon_category():
+    with session_ctx() as session:
+        category = Category(
+            name="first test category", description="describes the first test category"
+        )
+        session.add(category)
+        session.commit()
+        session.refresh(category)
+        yield category
+
+
+@pytest.fixture(scope="session")
+def lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = Lexicon(
+            term="first test term",
+            definition="defines the first test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = TermCategoryAssociation(
+            lexicon_term=term.term, category_name=lexicon_category.name
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term

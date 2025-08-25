@@ -178,7 +178,7 @@ def get_lexicon_terms(
 
 
 @router.get("/term/{term_id}")
-def get_lexicon_term(term_id: int, session: session_dependency):
+def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
     return simple_get_by_id(session, Lexicon, term_id)
 
 
