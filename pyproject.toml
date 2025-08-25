@@ -80,7 +80,7 @@ dependencies = [
     "python-jose>=3.5.0",
     "python-multipart==0.0.20",
     "pytz==2025.2",
-    "requests==2.32.4",
+    "requests==2.32.5",
     "rsa==4.9.1",
     "scramp==1.4.6",
     "sentry-sdk[fastapi]>=2.35.0",
