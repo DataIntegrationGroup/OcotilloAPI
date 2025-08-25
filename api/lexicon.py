@@ -25,6 +25,7 @@ from core.dependencies import (
     admin_dependency,
     viewer_function,
 )
+from db import adder
 from db.engine import get_db_session
 from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
 from schemas.lexicon import (
@@ -54,19 +55,14 @@ router = APIRouter(
     status_code=HTTP_201_CREATED,
 )
 def add_category(
-    category_data: CreateLexiconCategory, session=Depends(get_db_session)
+    category_data: CreateLexiconCategory,
+    session: session_dependency,
+    user: admin_dependency,
 ) -> LexiconCategoryResponse:
     """
     Endpoint to add a category to the lexicon.
     """
-    data = category_data.model_dump()
-    name = data["name"]
-    description = data.get("description", "")
-
-    category = Category(name=name, description=description)
-    session.add(category)
-    session.commit()
-    return category
+    return adder(session, Category, category_data, user=user)
 
 
 @router.post(
