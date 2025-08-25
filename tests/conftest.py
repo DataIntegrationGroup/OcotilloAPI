@@ -509,3 +509,27 @@ def lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
+
+
+@pytest.fixture(scope="function")
+def second_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = Lexicon(
+            term="second test term",
+            definition="defines the second test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = TermCategoryAssociation(
+            lexicon_term=term.term, category_name=lexicon_category.name
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+
+        session.delete(term)
+        session.commit()

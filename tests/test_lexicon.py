@@ -213,4 +213,23 @@ def test_get_lexicon_term_by_id_404_not_found(lexicon_term):
     assert data["detail"] == f"Lexicon with ID {bad_id} not found."
 
 
-# ============= EOF =============================================
+# DELETE tests =================================================================
+
+
+def test_delete_lexicon_term(second_lexicon_term):
+    response = client.delete(f"/lexicon/term/{second_lexicon_term.id}")
+    assert response.status_code == 204
+
+    # verify the lexicon term was deleted
+    response = client.get(f"/lexicon/term/{second_lexicon_term.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Lexicon with ID {second_lexicon_term.id} not found."
+
+
+def test_delete_lexicon_term_404_not_found(second_lexicon_term):
+    bad_id = 999999
+    response = client.delete(f"/lexicon/term/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
