@@ -68,7 +68,7 @@ def init_lexicon(path="./core/lexicon.json"):
                     session,
                     term_dict["term"],
                     term_dict["definition"],
-                    term_dict["category"],
+                    term_dict["categories"],
                 )
             except DatabaseError as e:
                 print(
