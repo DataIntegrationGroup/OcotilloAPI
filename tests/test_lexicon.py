@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 from db import Lexicon, Category
-from services.validation import get_category
 from tests import client, override_authentication, cleanup_post_test
 
 from core.dependencies import admin_function, viewer_function, editor_function
@@ -115,11 +114,6 @@ def test_add_lexicon_term_with_no_categories():
     cleanup_post_test(Lexicon, data["id"])
 
 
-def test_get_category():
-    items = get_category("casing_material")
-    assert isinstance(items, list)
-
-
 def test_add_triple():
     subject = {
         "term": "MG-030",
@@ -147,6 +141,45 @@ def test_add_triple():
     assert data["subject"] == subject["term"]
     assert data["predicate"] == predicate
     assert data["object_"] == object_["term"]
+
+
+# GET tests ====================================================================
+
+
+def test_get_lexicon_terms():
+    # terms are defined in conftest.py and core/lexicon.json, so rather than
+    # test a specific one just ensure the responses are correct
+    response = client.get("lexicon/term")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] > 0
+    for term in data["items"]:
+        assert isinstance(term["id"], int)
+        assert isinstance(term["created_at"], str)
+        assert isinstance(term["term"], str)
+        assert isinstance(term["definition"], str)
+        assert isinstance(term["categories"], list)
+
+
+def test_get_lexicon_term_by_id(lexicon_term):
+    response = client.get(f"/lexicon/term/{lexicon_term.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == lexicon_term.id
+    assert data["created_at"] == lexicon_term.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["term"] == lexicon_term.term
+    assert data["definition"] == lexicon_term.definition
+    assert len(data["categories"]) == 1
+    assert data["categories"][0]["id"] == lexicon_term.categories[0].id
+    assert data["categories"][0]["created_at"] == lexicon_term.categories[
+        0
+    ].created_at.isoformat().replace("+00:00", "Z")
+    assert data["categories"][0]["name"] == lexicon_term.categories[0].name
+    assert (
+        data["categories"][0]["description"] == lexicon_term.categories[0].description
+    )
 
 
 # ============= EOF =============================================
