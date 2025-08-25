@@ -20,6 +20,7 @@ from db import Asset
 from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
 
 import pytest
+from unittest.mock import patch
 
 # CLASSES, FIXTURES, AND FUNCTIONS =============================================
 
@@ -160,16 +161,17 @@ def test_get_assets(asset, asset_with_associated_thing):
 
 
 def test_get_assets_thing_id(asset_with_associated_thing, thing):
-    query_parameters = {"thing_id": thing.id}
-    response = client.get("/asset", params=query_parameters)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == asset_with_associated_thing.id
-    assert (
-        data["items"][0]["signed_url"]
-        == mock_storage_bucket().blob().generate_signed_url()
-    )
+    with patch("api.asset.get_storage_bucket", return_value=MockStorageBucket()):
+        query_parameters = {"thing_id": thing.id}
+        response = client.get("/asset", params=query_parameters)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == asset_with_associated_thing.id
+        assert (
+            data["items"][0]["signed_url"]
+            == mock_storage_bucket().blob().generate_signed_url()
+        )
 
 
 def test_get_asset_by_id(asset):

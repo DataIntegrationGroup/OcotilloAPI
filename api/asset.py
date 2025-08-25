@@ -137,7 +137,6 @@ async def add_asset(
 async def list_assets(
     session: session_dependency,
     thing_id: int = None,
-    bucket=Depends(get_storage_bucket),
 ) -> CustomPage[AssetResponse]:
     """
     List all assets or assets associated with a specific thing.
@@ -150,6 +149,7 @@ async def list_assets(
 
     def transformer(records: list[Asset]):
         if thing_id is not None:
+            bucket = get_storage_bucket()
             records = [add_signed_url(ai, bucket) for ai in records]
         return records
 
