@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -33,7 +34,7 @@ from schemas.lexicon import (
     LexiconTermResponse,
     LexiconCategoryResponse,
 )
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_deleter
 from services.lexicon_helper import add_lexicon_term
 from services.query_helper import (
     paginated_all_getter,
@@ -50,7 +51,7 @@ router = APIRouter(
 
 @router.post(
     "/category",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
 def add_category(
     category_data: CreateLexiconCategory, session=Depends(get_db_session)
@@ -71,7 +72,7 @@ def add_category(
 @router.post(
     "/term",
     summary="Add term",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
 def add_term(
     term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
@@ -88,7 +89,7 @@ def add_term(
 @router.post(
     "/triple/add",
     summary="Add triple",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
 def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
     triple_data = triple_data.model_dump()
@@ -117,7 +118,7 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
 # PATCH ========================================================================
 
 
-@router.patch("/term/{term_id}")
+@router.patch("/term/{term_id}", status_code=HTTP_200_OK)
 def update_lexicon_term(
     term_id: int,
     term_data: CreateLexiconTerm,
@@ -128,7 +129,7 @@ def update_lexicon_term(
     return model_patcher(session, Lexicon, term_id, term_data, user=user)
 
 
-@router.patch("/category/{category_id}")
+@router.patch("/category/{category_id}", status_code=HTTP_200_OK)
 def update_lexicon_category(
     category_id: int,
     category_data: CreateLexiconCategory,
@@ -141,7 +142,7 @@ def update_lexicon_category(
 # GET ==========================================================================
 
 
-@router.get("/term", summary="Get lexicon terms")
+@router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK)
 def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
@@ -177,7 +178,7 @@ def get_lexicon_terms(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/term/{term_id}")
+@router.get("/term/{term_id}", status_code=HTTP_200_OK)
 def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
     return simple_get_by_id(session, Lexicon, term_id)
 
@@ -201,5 +202,17 @@ def get_lexicon_category(category_id: int, session: session_dependency):
 
 
 # DELETE =======================================================================
+
+
+@router.delete(
+    "/term/{term_id}",
+    summary="Delete a lexicon term by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_term(
+    session: session_dependency, user: admin_dependency, term_id: int
+):
+    return model_deleter(session, Lexicon, term_id)
+
 
 # ============= EOF =============================================
