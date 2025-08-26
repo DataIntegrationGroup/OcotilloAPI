@@ -14,18 +14,51 @@
 # limitations under the License.
 # ===============================================================================
 import time
+import uuid
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import pyproj
+from pydantic import ValidationError
 from shapely import Point
 from shapely.ops import transform
+from sqlalchemy import select
+from starlette.datastructures import UploadFile
 
-from db import *
-from db.location import Location
+
+from core.app import init_lexicon
+from db import (
+    Location,
+    LocationThingAssociation,
+    adder,
+    WellScreen,
+    Thing,
+    Observation,
+    Sample,
+    Contact,
+    Email,
+    Phone,
+    ThingContactAssociation,
+    Base,
+    Sensor,
+    Address,
+    Asset,
+    AssetThingAssociation,
+    ThingIdLink,
+)
 from db.engine import session_ctx
-from db.thing.well import WellThing
+from schemas.thing import CreateWellScreen
+from services.audit_helper import audit_add
+from services.gcs_helper import gcs_upload, check_asset_exists
+
+# from db.observation.groundwaterlevel import GroundwaterLevelObservation
+
+# from db.series.groundwaterlevel import GroundwaterLevelSeries
+# from db.series.series import Series
 from services.lexicon_helper import add_lexicon_term
+from services.thing_helper import add_thing
+
 
 TRANSFORMERS = {}
 
@@ -47,177 +80,492 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
-def extract_locations():
-    """
-    Extracts location data from the database.
-    This function should connect to the database and retrieve location data.
-    """
-    df = pd.read_csv("data/location.csv")
-    df = df[df["SiteType"] == "GW"]
-    df = df[df["Easting"].notna() & df["Northing"].notna()]
-    return df
+def make_location(row):
+    point = Point(row.Easting, row.Northing)
+    transformed_point = transform_srid(
+        point, source_srid=26913, target_srid=4326  # WGS84 SRID
+    )
+
+    return Location(
+        name=row.PointID,
+        point=transformed_point.wkt,
+        release_status="public" if row.PublicRelease else "private",
+        # visible=row_dict["PublicRelease"],
+    )
 
 
-def extract_wells():
-    """
-    Extracts well data from the database.
-    This function should connect to the database and retrieve well data.
-    """
-    df = pd.read_csv("data/welldata.csv")
-    return df
+def transfer_water_levels(session):
+    wd = pd.read_csv("./transfers/data/water_levels.csv")
+    gwd = wd.groupby(["PointID"])
+
+    for index, group in gwd:
+        for row in group.itertuples():
+            if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
+                print(f"Skipping row {row.Index} due to missing data.")
+                continue
+
+            dt = datetime.fromisoformat(row.DateMeasured)
+            thing = session.query(Thing).where(Thing.name == row.PointID).first()
+            if thing is None:
+                print(
+                    f"Thing with PointID {row.PointID} not found. Skipping water level."
+                )
+                continue
+
+            sample = Sample()
+            sample.sampler_name = "unknown"
+            sample.sample_type = "groundwater level:groundwater level"
+
+            sample.field_sample_id = str(uuid.uuid4())
+            sample.sample_date = dt
+            sample.thing = thing
+            session.add(sample)
+
+            obs = Observation()
+            obs.sensor_id = 1
+            obs.sample = sample
+            obs.observation_datetime = dt
+            obs.depth_to_water = row.DepthToWater
+            obs.observed_property = "groundwater level:groundwater level"
+            obs.unit = "ft"
+
+            session.add(obs)
+            session.commit()
 
 
-def transform_locations(df):
-    return df
-
-
-def transform_wells(df):
-    # cover nans to nulls
-    df = df.replace(pd.NA, None)
-    df = df.replace({np.nan: None})
-
-    return df
-
-
-def load_locations(sess, df):
-    def f(row):
-        # Convert the row to a dictionary
-        row_dict = row._asdict()
-
-        e, n = row_dict["Easting"], row_dict["Northing"]
-
-        point = Point(e, n)
-        transformed_point = transform_srid(
-            point, source_srid=26913, target_srid=4326  # WGS84 SRID
-        )
-
-        sl = Location(
-            # name=row_dict["PointID"],
-            point=transformed_point.wkt,
-            # visible=row_dict["PublicRelease"],
-        )
-
-        sess.add(sl)
-        # try:
-        #     sess.commit()  # Commit the changes to the database
-        # except ProgrammingError:
-        #     print(f"skipping row due to ProgrammingError. {row_dict['PointID']}")
-        #     sess.rollback()
-        # Remove the index from the dictionary
-
-    loader(df, sess, f)
-
-
-def loader(df, sess, function):
-    n = len(df)
-    st = time.time()
-    prev = st
-    g = 175
-    for i, row in enumerate(df.itertuples()):
-        if not i % g:
-            print(
-                f"Processing row {i} of {n}, {g/(time.time()-prev)}  rate: {i / (time.time() - st):.2f} rows/sec"
-            )
-            prev = time.time()
-        function(row)
-
-        if not i % g:
-            sess.commit()
+# def migrate_water_levels(session, limit=800):
+#     wd = pd.read_csv("./migration/data/water_levels.csv")
+#     p = pd.read_csv("./migration/data/welldata.csv")
+#     # get first 100 rows
+#     pointids = p["PointID"].unique()[:limit]
+#
+#     wd = wd[wd["PointID"].isin(pointids)]
+#
+#     gwd = wd.groupby(["PointID"])
+#
+#     sensor = Sensor()
+#     sensor.name = '"manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."'
+#     sensor.description = "Groundwater level manual measurement"
+#     session.add(sensor)
+#     session.commit()
+#
+#     for index, group in gwd:
+#
+#         # add a series
+#         # add a groundwater level series
+#         thing = session.query(Thing).filter_by(name=index[0]).first()
+#         print("Processing PointID:", index, thing)
+#         if not thing:
+#             continue
+#
+#         print("found thing:", index, thing.id)
+#         series = Series(name="Groundwater Level Series")
+#         series.observed_property = "groundwater level"
+#         series.unit = "ft"
+#
+#         series.sensor = sensor
+#         series.thing = thing
+#
+#         groundwater_level_series = GroundwaterLevelSeries()
+#         groundwater_level_series.series = series
+#
+#         session.add(series)
+#         session.add(groundwater_level_series)
+#
+#         for row in group.itertuples():
+#             obs = Observation()
+#             obs.series = series
+#             obs.observation_datetime = datetime.fromisoformat(row.DateMeasured)
+#             # print("rw", row.DateMeasured, row.TimeMeasured)
+#             gwl_obs = GroundwaterLevelObservation()
+#             gwl_obs.observation = obs
+#             gwl_obs.depth_to_water = row.DepthToWater
+#             gwl_obs.measuring_point_height = row.MPHeight
+#             session.add(obs)
+#             session.add(gwl_obs)
+#
+#         session.commit()
+#         # break
+#
+#         # print(group)
+#         # print('--------------------------------------------')
+#         # break
+#         # for index, row in group:
+#         # print(index, row)
+#         # print(row.PointID, row.TimeMeasured)
+#         # print(row.PointID, row.WaterLevel, row.WaterLevelDate)
+#         # if pd.isna(row.WaterLevel) or pd.isna(row.WaterLevelDate):
+#         #     continue
+#         #
+#         # obs = add_groundwater_level_observation(
+#         #     session,
+#         #     {
+#         #         "point_id": row.PointID,
+#         #         "water_level": row.WaterLevel,
+#         #         "water_level_date": row.WaterLevelDate,
+#         #     },
+#         # )
+#         # print(obs)
+#
+#         # print(index, row)
+#
+#         # obs = Observation()
 
 
 ADDED = []
 
 
-def load_wells(sess, df):
-    def f(row):
-        row_dict = row._asdict()
+def transfer_thing(session, site_type, make_payload, limit=None):
+    ldf = pd.read_csv("./transfers/data/location.csv")
+    ldf = ldf[ldf["SiteType"] == site_type]
+    ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    n = len(ldf)
+    start_time = time.time()
+    for i, row in enumerate(ldf.itertuples()):
+        if limit and i >= limit:
+            print(f"Reached limit of {limit} rows. Stopping migration.")
+            break
 
-        # location = (
-        #     sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
-        # )
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
+            session.commit()
 
-        # location = sess.query(Location).filter_by(point=row_dict["PointID"]).one_or_none()
+        location = make_location(row)
+        session.add(location)
 
-        if location:
-            well = WellThing()
-            # well.location = location
-            well.well_depth = row_dict["WellDepth"]
-            well.hole_depth = row_dict["HoleDepth"]
-            well.ose_pod_id = row_dict["OSEWellID"]
-            well.casing_depth = row_dict["CasingDepth"]
-            well.casing_diameter = row_dict["CasingDiameter"]
-            well.casing_description = row_dict["CasingDescription"]
+        spring = add_thing(
+            session,
+            make_payload(row),
+        )
+        assoc = LocationThingAssociation()
 
-            wt = row_dict["Meaning"]
-            if wt not in ADDED:
-                add_lexicon_term(
-                    sess, wt, "Current use of the well, aka well type", "current_use"
+        assoc.location = location
+        assoc.thing = spring
+        session.add(assoc)
+
+
+def transfer_springs(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "spring",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "SP", make_payload, limit)
+
+
+def transfer_perennial_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "perennial stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "PS", make_payload, limit)
+
+
+def transfer_ephemeral_stream(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "ephemeral stream",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "ES", make_payload, limit)
+
+
+def transfer_met(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "meteorological station",
+            "release_status": "public" if row.PublicRelease else "private",
+        }
+
+    transfer_thing(session, "M", make_payload, limit)
+
+
+def transfer_owners(session):
+    odf = pd.read_csv("./transfers/data/ownersdata.csv")
+    odf = odf.replace(pd.NA, None)
+    odf = odf.replace({np.nan: None})
+
+    for i, row in odf.iterrows():
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            print(f"Thing with PointID {row.PointID} not foaund. Skipping owner.")
+            continue
+
+        contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role="Primary")
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact1
+        session.add(assoc)
+        session.add(contact1)
+
+        if row.Email:
+            contact1.emails.append(Email(email=row.Email, email_type="Primary"))
+        if row.Phone:
+            contact1.phones.append(Phone(phone_number=row.Phone, phone_type="Primary"))
+        if row.CellPhone:
+            contact1.phones.append(
+                Phone(phone_number=row.CellPhone, phone_type="Mobile")
+            )
+
+        if row.MailingAddress:
+            contact1.addresses.append(
+                Address(
+                    address_line_1=row.MailingAddress,
+                    city=row.MailCity,
+                    state=row.MailState,
+                    postal_code=row.MailZipCode,
+                    address_type="Mailing",
                 )
-                ADDED.append(wt)
+            )
 
-            well.well_type = wt
+            contact1.addresses.append(
+                Address(
+                    address_line_1=row.PhysicalAddress,
+                    city=row.PhysicalCity,
+                    state=row.PhysicalState,
+                    postal_code=row.PhysicalZipCode,
+                    address_type="Physical",
+                )
+            )
 
-            sess.add(well)
+        contact2 = Contact(
+            name=f"{row.SecondFirstName} {row.SecondLastName}", role="Secondary"
+        )
+        if row.SecondCtctEmail:
+            contact2.emails.append(
+                Email(email=row.SecondCtctEmail, email_type="Primary")
+            )
+        if row.SecondCtctPhone:
+            contact2.phones.append(
+                Phone(phone_number=row.SecondCtctPhone, phone_type="Primary")
+            )
 
-    loader(df, sess, f)
-    # print(df.head())
-    # n = len(df)
-    #
-    # for i, row in enumerate(df.itertuples()):
-    #     if not i % 100:
-    #         print(f"Processing row {i} of {n}")
-    #
-    #     row_dict = row._asdict()
-    #
-    #     location = (
-    #         sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
-    #     )
-    #
-    #     if location:
-    #         well = WellThing()
-    #         well.location = location
-    #         well.well_depth = row_dict["WellDepth"]
-    #         well.hole_depth = row_dict["HoleDepth"]
-    #         well.ose_pod_id = row_dict["OSEWellID"]
-    #         well.casing_depth = row_dict["CasingDepth"]
-    #         well.casing_diameter = row_dict["CasingDiameter"]
-    #         well.casing_description = row_dict["CasingDescription"]
-    #
-    #         wt = row_dict["Meaning"]
-    #
-    #         add_lexicon_term(
-    #             sess, wt, "Current use of the well, aka well type", "current_use"
-    #         )
-    #
-    #         well.well_type = wt
-    #
-    #         # print(row_dict)
-    #         sess.add(well)
-    #         sess.commit()
-    #         # break
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact2
+        session.add(assoc)
+        session.add(contact2)
+
+        session.commit()
 
 
-def location_etl(sess):
-    """
-    Extract, Transform, Load (ETL) process for location data.
-    """
-    df = extract_locations()
-    df = transform_locations(df)
-    load_locations(sess, df)
+def transfer_wells(session, limit=None):
+    wdf = pd.read_csv("./transfers/data/welldata.csv")
+    ldf = pd.read_csv("./transfers/data/location.csv")
+
+    wdf = wdf.replace(pd.NA, None)
+    wdf = wdf.replace({np.nan: None})
+
+    wdf = wdf.join(ldf.set_index("PointID"), on="PointID")
+    wdf = wdf[wdf["SiteType"] == "GW"]
+    wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+
+    n = len(wdf)
+    start_time = time.time()
+
+    for i, row in enumerate(wdf.itertuples()):
+        if limit and i >= limit:
+            print("Reached limit of", limit, "rows. Stopping migration.")
+            break
+
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
+            session.commit()
+
+        location = make_location(row)
+        session.add(location)
+
+        well = add_thing(
+            session,
+            {
+                "name": row.PointID,
+                "hole_depth": row.HoleDepth,
+                "well_depth": row.WellDepth,
+                "well_casing_diameter": row.CasingDiameter,
+                "well_casing_depth": row.CasingDepth,
+                "well_casing_description": row.CasingDescription,
+                "thing_type": "water well",
+                "release_status": "public" if row.PublicRelease else "private",
+            },
+        )
+        wt = row.Meaning
+        if wt not in ADDED:
+            add_lexicon_term(
+                session, wt, "Current use of the well, aka well type", "current_use"
+            )
+            ADDED.append(wt)
+
+        well.well_type = wt
+
+        assoc = LocationThingAssociation()
+
+        assoc.location = location
+        assoc.thing = well
+        session.add(assoc)
+        # break
 
 
-def well_etl(sess):
-    """
-    Extract, Transform, Load (ETL) process for well data.
-    """
-    df = extract_wells()
-    df = transform_wells(df)
-    load_wells(sess, df)
+def transfer_wellscreens(session, limit=None):
+    wdf = pd.read_csv("./transfers/data/wellscreens.csv")
+    wdf = wdf.replace(pd.NA, None)
+    wdf = wdf.replace({np.nan: None})
+
+    n = len(wdf)
+    start_time = time.time()
+
+    for i, row in enumerate(wdf.itertuples()):
+        if limit and i >= limit:
+            print("Reached limit of", limit, "rows. Stopping migration.")
+            break
+
+        if i and not i % 100:
+            print(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+            )
+            session.commit()
+        # thing_id: int
+        # screen_depth_bottom: float
+        # screen_depth_top: float
+        # screen_type: str | None = None
+        # print(row)
+
+        sql = select(Thing).where(Thing.name == row.PointID)
+        thing = session.execute(sql).scalar_one_or_none()
+        if not thing:
+            print(f"Thing with PointID {row.PointID} not found. Skipping well screen.")
+            continue
+
+        well_screen_data = {
+            "thing_id": thing.id,
+            "screen_depth_top": row.ScreenTop,
+            "screen_depth_bottom": row.ScreenBottom,
+            # "screen_type": row.ScreenType,
+            "screen_description": row.ScreenDescription,
+            "release_status": "draft",
+        }
+        try:
+            model = CreateWellScreen.model_validate(well_screen_data)
+            adder(session, WellScreen, model)
+        except ValidationError as e:
+            print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
+            continue
+        # session.add(screen)
+
+
+def transfer_assets(session):
+    for p in ("asset1.png", "asset2.png", "asset3.png"):
+        with open(f"./transfers/data/assets/{p}", "rb") as f:
+            uf = UploadFile(file=f, filename=p, size=10)
+            uri, blob_name = gcs_upload(uf)
+            thing_id = 151
+
+            if check_asset_exists(session, blob_name, thing_id):
+                print(f"Asset {blob_name} already exists. Skipping.")
+                continue
+
+            asset = Asset(
+                name=p,
+                label=p,
+                storage_path=blob_name,
+                storage_service="gcs",
+                mime_type="image/png",
+                size=uf.size,
+                uri=uri,
+            )
+            assoc = AssetThingAssociation()
+            audit_add({"sub": "foobar", "name": "Mr. Foobar"}, assoc)
+            thing = session.get(Thing, thing_id)
+            assoc.thing = thing
+            assoc.asset = asset
+            session.add(assoc)
+            session.add(asset)
+            session.commit()
+
+
+def extract_organization(alternate_id):
+    if alternate_id.startswith("TWDB"):
+        return "TWDB"
+    elif alternate_id.startswith("NMED"):
+        return "NMED"
+
+    return "Unknown"
+
+
+def transfer_link_ids(session, site_type="GW"):
+    ldf = pd.read_csv("./transfers/data/location2.csv")
+    ldf = ldf[ldf["SiteType"] == site_type]
+    ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    ldf = ldf[ldf["AlternateSiteID"].notna()]
+    for i, row in enumerate(ldf.itertuples()):
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
+            continue
+        print(
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
+            f"b={row.AlternateSiteID2}"
+        )
+        link_id = ThingIdLink()
+        link_id.thing = thing
+        link_id.relation = "same_as"
+        link_id.alternate_id = row.AlternateSiteID
+
+        # TODO: this needs improvement. use regex to determine the organization from the alternate id?
+
+        link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+
+        print("adding link id: ", link_id)
+
+        # if i>100:
+        #     break
+        session.add(link_id)
+        session.commit()
+
+
+def init_sensor(session):
+    sensor = Sensor()
+    sensor.name = "Groundwater level manual measurement"
+    sensor.description = "manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."
+    sensor.unit = "ft"
+    sensor.datetime_installed = datetime.now()
+    session.add(sensor)
+    session.commit()
 
 
 if __name__ == "__main__":
-    with session_ctx() as session:
-        location_etl(session)
-        # well_etl(session)
-        session.close()
+    init = True
+    with session_ctx() as sess:
+        if init:
+            Base.metadata.drop_all(sess.bind)
+            Base.metadata.create_all(sess.bind)
+
+            init_lexicon()
+
+            init_sensor(sess)
+            transfer_wells(sess, 1000)
+            transfer_springs(sess, 1000)
+            transfer_perennial_stream(sess, 1000)
+            transfer_ephemeral_stream(sess, 1000)
+            transfer_met(sess, 1000)
+            transfer_owners(sess)
+            transfer_wellscreens(sess)
+            transfer_water_levels(sess)
+
+            transfer_assets(sess)
+        transfer_link_ids(sess)
+
+        #
+
 # ============= EOF =============================================
