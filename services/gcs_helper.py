@@ -33,8 +33,8 @@ def get_storage_bucket() -> storage.Bucket:
 
     if settings.mode == "production":
         key_json = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
-        print(key_json)
-        print(json.loads(key_json, strict=False))
+        print( type(key_json),key_json)
+        print(json.loads(key_json))
         # Load service account credentials
         creds = service_account.Credentials.from_service_account_info(
             json.loads(key_json)
