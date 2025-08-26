@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import base64
 import json
 import os
 import datetime
@@ -31,12 +32,12 @@ from google.cloud import storage
 
 def get_storage_client() -> storage.Client:
     if settings.mode == "production":
-        key_json = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
-        print(type(key_json), key_json)
-        print(json.loads(key_json))
+        key_base64 = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
+        decoded = base64.b64decode(key_base64).decode("utf-8")
+        print(decoded)
         # Load service account credentials
         creds = service_account.Credentials.from_service_account_info(
-            json.loads(key_json)
+            json.loads(decoded)
         )
 
         # Create storage client
