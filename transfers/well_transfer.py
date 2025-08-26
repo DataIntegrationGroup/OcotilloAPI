@@ -129,4 +129,6 @@ def transfer_wellscreens(session, limit=None):
         except ValidationError as e:
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
             continue
+
+
 # ============= EOF =============================================

@@ -25,7 +25,13 @@ from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
 
 from transfers.well_transfer import transfer_wells, transfer_wellscreens
-from transfers.thing_transfer import transfer_springs, transfer_perennial_stream, transfer_ephemeral_stream, transfer_met
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
+
 
 def erase_and_initalize(session: Session) -> None:
     Base.metadata.drop_all(session.bind)
@@ -81,7 +87,6 @@ def main_transfer():
 
         if init or transfer_assets_flag:
             transfer_assets(sess)
-
 
 
 if __name__ == "__main__":

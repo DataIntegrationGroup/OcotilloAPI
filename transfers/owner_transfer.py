@@ -86,4 +86,6 @@ def transfer_owners(session):
         session.add(contact2)
 
         session.commit()
+
+
 # ============= EOF =============================================

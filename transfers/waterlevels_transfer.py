@@ -37,8 +37,9 @@ def transfer_water_levels(session):
             dt = datetime.fromisoformat(row.DateMeasured)
             thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:
-                log(row,
-                    f"Thing with PointID {row.PointID} not found. Skipping water level."
+                log(
+                    row,
+                    f"Thing with PointID {row.PointID} not found. Skipping water level.",
                 )
                 continue
 
@@ -64,4 +65,6 @@ def transfer_water_levels(session):
 
             session.add(obs)
             session.commit()
+
+
 # ============= EOF =============================================

@@ -45,7 +45,7 @@ def transform_srid(geometry, source_srid, target_srid):
 
 
 def get_valid_point_ids(session):
-    things = session.query(Thing).where(Thing.thing_type=='water well').all()
+    things = session.query(Thing).where(Thing.thing_type == "water well").all()
     valid_pointids = [thing.name for thing in things]
     return valid_pointids
 
@@ -56,8 +56,7 @@ def extract_organization(alternate_id: str) -> str:
     elif alternate_id.startswith("NMED"):
         return "NMED"
 
-    for regex, org in ((r'^A-Z{1,2}-\d{5,6}$', 'NMOSE'),
-                       (r'\d+(\.\d+){3,}', 'PLSS')):
+    for regex, org in ((r"^A-Z{1,2}-\d{5,6}$", "NMOSE"), (r"\d+(\.\d+){3,}", "PLSS")):
 
         if re.match(regex, alternate_id):
             return org
@@ -68,6 +67,7 @@ def extract_organization(alternate_id: str) -> str:
 def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids(session)
     return df[df["PointID"].isin(valid_point_ids)]
+
 
 def log(row, msg):
     print(f"{row.PointID} {msg}")
@@ -85,5 +85,6 @@ def make_location(row):
         release_status="public" if row.PublicRelease else "private",
         # visible=row_dict["PublicRelease"],
     )
+
 
 # ============= EOF =============================================

@@ -39,25 +39,28 @@ def transfer_link_ids_welldata(session):
             log(row, "Thing not found")
             continue
 
-        for aid, klass, regex in ((row.OSEWellID, 'OSEPOD', r'^[A-Z]{1,2}-\d{5,6}'), (row.OSEWelltagID, 'OSEWellTagID', r'')):
+        for aid, klass, regex in (
+            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,2}-\d{5,6}"),
+            (row.OSEWelltagID, "OSEWellTagID", r""),
+        ):
             if pd.isna(aid):
-                log(row, f'{klass} is null')
+                log(row, f"{klass} is null")
                 continue
 
             # RULE: exclude any id that == 'X', '?'
-            if aid.strip().lower() in  ('x', '?', 'exempt'):
+            if aid.strip().lower() in ("x", "?", "exempt"):
                 log(row, f'{klass} is "X", "?", or "exempt", id={aid}')
                 continue
 
             if regex and not re.match(regex, aid):
-                log(row, f'{klass} id does not match regex {regex}, id={aid}')
+                log(row, f"{klass} id does not match regex {regex}, id={aid}")
                 continue
 
             link_id = ThingIdLink()
             link_id.thing = thing
             link_id.relation = klass
             link_id.alternate_id = aid
-            link_id.alternate_organization = 'NMOSE'
+            link_id.alternate_organization = "NMOSE"
 
             # does link_id need a class e.g.
             # link_id.alternate_id_class = klass
