@@ -264,6 +264,69 @@ def test_patch_category_404_not_found(lexicon_category):
     assert data["detail"] == f"Category with ID {bad_id} not found."
 
 
+def test_patch_triple(lexicon_triple, third_lexicon_term, fourth_lexicon_term):
+    payload = {
+        "subject": third_lexicon_term.term,
+        "predicate": "patched predicate",
+        "object_": fourth_lexicon_term.term,
+    }
+    response = client.patch(f"/lexicon/triple/{lexicon_triple.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["subject"] == payload["subject"]
+    assert data["predicate"] == payload["predicate"]
+    assert data["object_"] == payload["object_"]
+
+    cleanup_patch_test(LexiconTriple, payload, lexicon_triple)
+
+
+def test_patch_triple_404_not_found(
+    lexicon_triple, third_lexicon_term, fourth_lexicon_term
+):
+    bad_id = 99999
+    payload = {
+        "subject": third_lexicon_term.term,
+        "predicate": "patched predicate",
+        "object_": fourth_lexicon_term.term,
+    }
+    response = client.patch(f"/lexicon/triple/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"LexiconTriple with ID {bad_id} not found."
+
+
+def test_patch_triple_409_bad_subject(lexicon_triple, third_lexicon_term):
+    bad_subject = "nonexistent subject"
+    payload = {
+        "subject": bad_subject,
+        "predicate": "patched predicate",
+        "object_": third_lexicon_term.term,
+    }
+    response = client.patch(f"/lexicon/triple/{lexicon_triple.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "subject"]
+    assert data["detail"][0]["msg"] == f"Lexicon with term {bad_subject} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"subject": bad_subject}
+
+
+def test_patch_triple_409_bad_object(lexicon_triple, third_lexicon_term):
+    bad_object = "nonexistent object"
+    payload = {
+        "subject": third_lexicon_term.term,
+        "predicate": "patched predicate",
+        "object_": bad_object,
+    }
+    response = client.patch(f"/lexicon/triple/{lexicon_triple.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "object_"]
+    assert data["detail"][0]["msg"] == f"Lexicon with term {bad_object} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"object_": bad_object}
+
+
 # GET tests ====================================================================
 
 
