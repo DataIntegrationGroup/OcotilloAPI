@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Lexicon, Category
+from db import Lexicon, Category, LexiconTriple
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 from core.dependencies import admin_function, viewer_function, editor_function
@@ -128,33 +128,97 @@ def test_add_lexicon_category():
     cleanup_post_test(Category, data["id"])
 
 
-# def test_add_triple():
-#     subject = {
-#         "term": "MG-030",
-#         "definition": "magdalena well",
-#         "category": "location_identifier",
-#     }
-#     predicate = "same_as"
-#     object_ = {
-#         "term": "USGS1234",
-#         "definition": "magdalena well",
-#         "category": "location_identifier",
-#     }
+def test_add_lexicon_triple_new_terms():
+    subject = {
+        "term": "MG-030",
+        "definition": "magdalena well",
+        "categories": [{"name": "location_identifier"}],
+    }
+    predicate = "same_as"
+    object_ = {
+        "term": "USGS1234",
+        "definition": "magdalena well",
+        "categories": [{"name": "location_identifier"}],
+    }
+    payload = {
+        "subject": subject,
+        "predicate": predicate,
+        "object_": object_,
+    }
 
-#     response = client.post(
-#         "/lexicon/triple/add",
-#         json={
-#             "subject": subject,
-#             "predicate": predicate,
-#             "object_": object_,
-#         },
-#     )
+    response = client.post("/lexicon/triple", json=payload)
 
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert data["subject"] == subject["term"]
-#     assert data["predicate"] == predicate
-#     assert data["object_"] == object_["term"]
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["subject"] == subject["term"]
+    assert data["predicate"] == predicate
+    assert data["object_"] == object_["term"]
+
+    cleanup_post_test(LexiconTriple, data["id"])
+
+    response = client.get(f"/lexicon/term?term={subject['term']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["term"] == subject["term"]
+    assert data["items"][0]["definition"] == subject["definition"]
+
+    cleanup_post_test(Lexicon, data["items"][0]["id"])
+
+    response = client.get(f"/lexicon/term?term={object_['term']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["term"] == object_["term"]
+    assert data["items"][0]["definition"] == object_["definition"]
+
+    cleanup_post_test(Lexicon, data["items"][0]["id"])
+    cleanup_post_test(Category, data["items"][0]["categories"][0]["id"])
+
+
+def test_add_lexicon_triple_existing_terms(lexicon_term, second_lexicon_term):
+    subject = {
+        "term": lexicon_term.term,
+        "definition": lexicon_term.definition,
+        "categories": [
+            {
+                "name": category.name,
+                "description": category.description,
+            }
+            for category in lexicon_term.categories
+        ],
+    }
+    predicate = "same_as"
+    object_ = {
+        "term": second_lexicon_term.term,
+        "definition": second_lexicon_term.definition,
+        "categories": [
+            {
+                "name": category.name,
+                "description": category.description,
+            }
+            for category in second_lexicon_term.categories
+        ],
+    }
+    payload = {
+        "subject": subject,
+        "predicate": predicate,
+        "object_": object_,
+    }
+
+    response = client.post("/lexicon/triple", json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["subject"] == subject["term"]
+    assert data["predicate"] == predicate
+    assert data["object_"] == object_["term"]
+
+    cleanup_post_test(LexiconTriple, data["id"])
 
 
 # PATCH tests ==================================================================

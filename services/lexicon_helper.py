@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.lexicon import Category, Lexicon, TermCategoryAssociation
+from db.lexicon import Category, Lexicon, TermCategoryAssociation, LexiconTriple
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -79,6 +79,39 @@ def add_lexicon_term(
     session.commit()
 
     return dbterm
+
+
+def add_lexicon_triple(
+    session: Session,
+    subject: dict,
+    predicate: str,
+    object_: dict,
+    user: dict = None,
+) -> LexiconTriple:
+    """
+    Add a triple to the lexicon.
+    """
+    # add subject and object to db if they don't already exist
+    for term in subject, object_:
+        if isinstance(term, dict):
+            sql = select(Lexicon).where(Lexicon.term == term["term"])
+            existing_term = session.scalars(sql).one_or_none()
+            if existing_term is None:
+                add_lexicon_term(
+                    session,
+                    term["term"],
+                    term["definition"],
+                    term["categories"],
+                    user=user,
+                )
+
+    triple = LexiconTriple(
+        subject=subject["term"], predicate=predicate, object_=object_["term"]
+    )
+    audit_add(user, triple)
+    session.add(triple)
+    session.commit()
+    return triple
 
 
 # ============= EOF =============================================

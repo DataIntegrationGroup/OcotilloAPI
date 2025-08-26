@@ -26,17 +26,19 @@ from core.dependencies import (
     viewer_function,
 )
 from db import adder
-from db.engine import get_db_session
-from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
+from db.lexicon import Category, Lexicon, TermCategoryAssociation
 from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
     CreateTriple,
     LexiconTermResponse,
     LexiconCategoryResponse,
+    LexiconTripleResponse,
+    UpdateLexiconTerm,
+    UpdateLexiconCategory,
 )
 from services.crud_helper import model_patcher, model_deleter
-from services.lexicon_helper import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term, add_lexicon_triple
 from services.query_helper import (
     paginated_all_getter,
     order_sort_filter,
@@ -83,32 +85,18 @@ def add_term(
 
 
 @router.post(
-    "/triple/add",
+    "/triple",
     summary="Add triple",
     status_code=HTTP_201_CREATED,
 )
-def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
+def add_triple(
+    triple_data: CreateTriple, session: session_dependency, user: admin_dependency
+) -> LexiconTripleResponse:
     triple_data = triple_data.model_dump()
     subject = triple_data["subject"]
     predicate = triple_data["predicate"]
     object_ = triple_data["object_"]
-
-    if isinstance(subject, dict):
-        add_lexicon_term(
-            session, subject["term"], subject["definition"], subject["category"]
-        )
-        subject = subject["term"]
-
-    if isinstance(object_, dict):
-        add_lexicon_term(
-            session, object_["term"], object_["definition"], object_["category"]
-        )
-        object_ = object_["term"]
-
-    triple = LexiconTriple(subject=subject, predicate=predicate, object_=object_)
-    session.add(triple)
-    session.commit()
-    return triple
+    return add_lexicon_triple(session, subject, predicate, object_, user=user)
 
 
 # PATCH ========================================================================
@@ -117,7 +105,7 @@ def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
 @router.patch("/term/{term_id}", status_code=HTTP_200_OK)
 def update_lexicon_term(
     term_id: int,
-    term_data: CreateLexiconTerm,
+    term_data: UpdateLexiconTerm,
     session: session_dependency,
     user: editor_dependency,
 ) -> LexiconTermResponse:
@@ -128,7 +116,7 @@ def update_lexicon_term(
 @router.patch("/category/{category_id}", status_code=HTTP_200_OK)
 def update_lexicon_category(
     category_id: int,
-    category_data: CreateLexiconCategory,
+    category_data: UpdateLexiconCategory,
     session: session_dependency,
     user: editor_dependency,
 ) -> LexiconCategoryResponse:
