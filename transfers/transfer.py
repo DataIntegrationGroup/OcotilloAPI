@@ -31,7 +31,6 @@ from core.app import init_lexicon
 from db import (
     Location,
     LocationThingAssociation,
-    adder,
     WellScreen,
     Thing,
     Observation,
@@ -50,6 +49,7 @@ from db import (
 from db.engine import session_ctx
 from schemas.thing import CreateWellScreen
 from services.audit_helper import audit_add
+from services.crud_helper import model_adder
 from services.gcs_helper import gcs_upload, check_asset_exists
 
 # from db.observation.groundwaterlevel import GroundwaterLevelObservation
@@ -457,7 +457,7 @@ def transfer_wellscreens(session, limit=None):
         }
         try:
             model = CreateWellScreen.model_validate(well_screen_data)
-            adder(session, WellScreen, model)
+            model_adder(session, WellScreen, model)
         except ValidationError as e:
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
             continue
@@ -466,7 +466,7 @@ def transfer_wellscreens(session, limit=None):
 
 def transfer_assets(session):
     for p in ("asset1.png", "asset2.png", "asset3.png"):
-        with open(f"./transfers/data/assets/{p}", "rb") as f:
+        with open(f"./transfers/data/{p}", "rb") as f:
             uf = UploadFile(file=f, filename=p, size=10)
             uri, blob_name = gcs_upload(uf)
             thing_id = 151
