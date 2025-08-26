@@ -48,18 +48,7 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides = {}
 
 
-def test_add_group():
-    response = client.post(
-        "/group",
-        json={
-            "name": "collabnet",
-            "description": "CollabNet Group for testing",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["name"] == "collabnet"
+# POST tests ===================================================================
 
 
 def test_add_well(location):
@@ -172,23 +161,54 @@ def test_add_thing_link():
     assert data["alternate_id"] == "4321-1234"
 
 
-# ===================== get ==========================
-# def test_get_thing_by_id():
-#     # response = client.get("/thing?thing_id=1")
-#     response = client.get("/thing/base/1")
-#     assert response.status_code == 200
-#     data = response.json()
-#     # assert "items" in data
-#     # items = data["items"]
-#     # assert len(items) == 1
-#     assert data["id"] == 1
-#     assert data["name"] == "Test Thing"
+# GET tests ====================================================================
 
 
-def test_get_wells():
-    response = client.get("/thing?thing_type=water well")
+def test_get_water_wells(water_well_thing):
+    response = client.get("/thing/water-well")
     assert response.status_code == 200
-    assert len(response.json()) > 0
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == water_well_thing.id
+    assert data["items"][0][
+        "created_at"
+    ] == water_well_thing.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["name"] == water_well_thing.name
+    assert data["items"][0]["thing_type"] == water_well_thing.thing_type
+    assert data["items"][0]["release_status"] == water_well_thing.release_status
+    assert data["items"][0]["well_type"] == water_well_thing.well_type
+    assert data["items"][0]["well_depth"] == water_well_thing.well_depth
+    assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
+    assert (
+        data["items"][0]["well_construction_notes"]
+        == water_well_thing.well_construction_notes
+    )
+
+
+def test_get_water_well_by_id(water_well_thing):
+    response = client.get(f"/thing/water-well/{water_well_thing.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == water_well_thing.id
+    assert data["created_at"] == water_well_thing.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["name"] == water_well_thing.name
+    assert data["thing_type"] == water_well_thing.thing_type
+    assert data["release_status"] == water_well_thing.release_status
+    assert data["well_type"] == water_well_thing.well_type
+    assert data["well_depth"] == water_well_thing.well_depth
+    assert data["hole_depth"] == water_well_thing.hole_depth
+    assert data["well_construction_notes"] == water_well_thing.well_construction_notes
+
+
+def test_get_water_well_by_id_404_not_found(water_well_thing):
+    bad_id = 99999
+    response = client.get(f"/thing/water-well/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
 
 
 def test_get_springs():

@@ -34,13 +34,18 @@ def second_location():
 
 
 @pytest.fixture(scope="session")
-def thing(location):
+def water_well_thing(location):
     with session_ctx() as session:
         wt = add_thing(
             session,
             {
                 "location_id": location.id,
                 "name": "Test Well",
+                "release_status": "draft",
+                "well_type": "Production",
+                "well_depth": 10,
+                "hole_depth": 10,
+                "well_construction_notes": "Test well construction notes",
             },
             "water well",
         )
@@ -89,11 +94,11 @@ def second_sensor():
 
 
 @pytest.fixture(scope="session")
-def sample(thing, sensor):
+def sample(water_well_thing, sensor):
     with session_ctx() as session:
         sample = Sample(
             sample_date="2025-01-01T00:00:00Z",
-            thing_id=thing.id,
+            thing_id=water_well_thing.id,
             sample_type="groundwater",
             sampler_name="Test Sampler",
             release_status="draft",
@@ -114,10 +119,10 @@ def sample(thing, sensor):
 
 
 @pytest.fixture(scope="function")
-def second_sample(thing, sensor):
+def second_sample(water_well_thing, sensor):
     with session_ctx() as session:
         sample = Sample(
-            thing_id=thing.id,
+            thing_id=water_well_thing.id,
             sample_type="groundwater",
             field_sample_id="FS-9999999",
             sample_date="2025-01-01T00:00:00Z",
@@ -140,7 +145,7 @@ def second_sample(thing, sensor):
 
 
 @pytest.fixture(scope="session")
-def contact(thing):
+def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(
             name="Test Contact",
@@ -150,7 +155,9 @@ def contact(thing):
         session.commit()
         session.refresh(contact)
 
-        association = ThingContactAssociation(thing_id=thing.id, contact_id=contact.id)
+        association = ThingContactAssociation(
+            thing_id=water_well_thing.id, contact_id=contact.id
+        )
         session.add(association)
         session.commit()
         session.refresh(association)
@@ -304,10 +311,10 @@ def asset():
 
 
 @pytest.fixture(scope="function")
-def asset_with_associated_thing(thing):
+def asset_with_associated_thing(water_well_thing):
     with session_ctx() as session:
         asset = Asset(
-            name="Test Asset with thing",
+            name="Test Asset with water_well_thing",
             label="test label",
             mime_type="application/pdf",
             size=12345,
@@ -319,7 +326,9 @@ def asset_with_associated_thing(thing):
         session.commit()
         session.refresh(asset)
 
-        association = AssetThingAssociation(asset_id=asset.id, thing_id=thing.id)
+        association = AssetThingAssociation(
+            asset_id=asset.id, thing_id=water_well_thing.id
+        )
         session.add(association)
         session.commit()
         session.refresh(association)
@@ -429,7 +438,7 @@ def observation_to_delete(sample, sensor):
 
 
 @pytest.fixture(scope="session")
-def group(thing):
+def group(water_well_thing):
     with session_ctx() as session:
         group = Group(
             name="Test Group",
@@ -442,7 +451,7 @@ def group(thing):
         session.refresh(group)
 
         group_thing_association = GroupThingAssociation(
-            group_id=group.id, thing_id=thing.id
+            group_id=group.id, thing_id=water_well_thing.id
         )
         session.add(group_thing_association)
         session.commit()
@@ -454,7 +463,7 @@ def group(thing):
 
 
 @pytest.fixture(scope="function")
-def second_group(thing):
+def second_group(water_well_thing):
     with session_ctx() as session:
         group = Group(
             name="Second Test Group",
@@ -467,7 +476,7 @@ def second_group(thing):
         session.refresh(group)
 
         group_thing_association = GroupThingAssociation(
-            group_id=group.id, thing_id=thing.id
+            group_id=group.id, thing_id=water_well_thing.id
         )
         session.add(group_thing_association)
         session.commit()
