@@ -120,7 +120,7 @@ def update_lexicon_term(
     term_data: CreateLexiconTerm,
     session: session_dependency,
     user: editor_dependency,
-):
+) -> LexiconTermResponse:
 
     return model_patcher(session, Lexicon, term_id, term_data, user=user)
 
@@ -131,7 +131,7 @@ def update_lexicon_category(
     category_data: CreateLexiconCategory,
     session: session_dependency,
     user: editor_dependency,
-):
+) -> LexiconCategoryResponse:
     return model_patcher(session, Category, category_id, category_data, user=user)
 
 
