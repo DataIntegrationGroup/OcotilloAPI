@@ -1,0 +1,97 @@
+# ===============================================================================
+# Copyright 2025 ross
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+import re
+
+import pandas as pd
+
+from db import Thing, ThingIdLink
+from transfers.util import filter_to_valid_point_ids, log, extract_organization
+
+
+# ============= EOF =============================================
+def transfer_link_ids_welldata(session):
+    ldf = pd.read_csv("./data/welldata.csv")
+
+    ldf = filter_to_valid_point_ids(session, ldf)
+
+    for i, row in enumerate(ldf.itertuples()):
+
+        # RULE: exclude rows where both ids are null
+        if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
+            log(row, "Both OSEWellID and OSEWelltagID are null")
+            continue
+
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            log(row, "Thing not found")
+            continue
+
+        for aid, klass, regex in ((row.OSEWellID, 'OSEPOD', r'^[A-Z]{1,2}-\d{5,6}'), (row.OSEWelltagID, 'OSEWellTagID', r'')):
+            if pd.isna(aid):
+                log(row, f'{klass} is null')
+                continue
+
+            # RULE: exclude any id that == 'X', '?'
+            if aid.strip().lower() in  ('x', '?', 'exempt'):
+                log(row, f'{klass} is "X", "?", or "exempt", id={aid}')
+                continue
+
+            if regex and not re.match(regex, aid):
+                log(row, f'{klass} id does not match regex {regex}, id={aid}')
+                continue
+
+            link_id = ThingIdLink()
+            link_id.thing = thing
+            link_id.relation = klass
+            link_id.alternate_id = aid
+            link_id.alternate_organization = 'NMOSE'
+
+            # does link_id need a class e.g.
+            # link_id.alternate_id_class = klass
+
+            session.add(link_id)
+        session.commit()
+
+
+def transfer_link_ids(session, site_type="GW"):
+    ldf = pd.read_csv("./data/location2.csv")
+    ldf = ldf[ldf["SiteType"] == site_type]
+    ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    ldf = ldf[ldf["AlternateSiteID"].notna()]
+    for i, row in enumerate(ldf.itertuples()):
+        thing = session.query(Thing).where(Thing.name == row.PointID).first()
+        if thing is None:
+            # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
+            continue
+        print(
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
+            f"b={row.AlternateSiteID2}"
+        )
+        link_id = ThingIdLink()
+        link_id.thing = thing
+        link_id.relation = "same_as"
+        link_id.alternate_id = row.AlternateSiteID
+
+        # TODO: this needs improvement. use regex to determine the organization from the alternate id?
+
+        link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+
+        print("adding link id: ", link_id)
+
+        # if i>100:
+        #     break
+        session.add(link_id)
+        session.commit()

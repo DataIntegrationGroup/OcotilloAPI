@@ -32,6 +32,9 @@
 
   {"category": "relation", "term": "same_as", "definition": "same as"},
   {"category": "relation", "term": "related_to", "definition": "related to"},
+  {"category": "relation", "term": "OSEWellTagID", "definition": "NM OSE well tag ID"},
+  {"category": "relation", "term": "OSEPOD", "definition": "NM OSE 'Point of Diversion' ID"},
+  {"category": "relation", "term": "PLSS", "definition": "Public Land Survey System ID"},
 
   {"category": "sample_type", "term": "groundwater", "definition": "groundwater sample from a well"},
 
@@ -48,6 +51,7 @@
   {"category": "organization", "term": "TWDB", "definition": "Texas Water Development Board"},
   {"category": "organization", "term": "Unknown", "definition": "Unknown organization"},
   {"category": "organization", "term": "NMED", "definition": "New Mexico Environment Department"},
+  {"category": "organization", "term": "NMOSE", "definition": "New Mexico Office of the State Engineer"},
 
 
   {"category": "collection_method", "term": "manual", "definition": "manual sampling"},
