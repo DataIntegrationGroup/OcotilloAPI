@@ -495,3 +495,24 @@ def test_delete_lexicon_category_404_not_found(second_lexicon_category):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Category with ID {bad_id} not found."
+
+
+def test_delete_lexicon_triple(second_lexicon_triple):
+    response = client.delete(f"/lexicon/triple/{second_lexicon_triple.id}")
+    assert response.status_code == 204
+
+    # verify the lexicon triple was deleted
+    response = client.get(f"/lexicon/triple/{second_lexicon_triple.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"] == f"LexiconTriple with ID {second_lexicon_triple.id} not found."
+    )
+
+
+def test_delete_lexicon_triple_404_not_found(second_lexicon_triple):
+    bad_id = 999999
+    response = client.delete(f"/lexicon/triple/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"LexiconTriple with ID {bad_id} not found."
