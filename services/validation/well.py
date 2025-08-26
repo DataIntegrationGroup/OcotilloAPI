@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from schemas.thing import CreateWellScreen
-from services.validation import get_category
+from services.lexicon_helper import get_terms_by_category
 
 
 async def validate_screens(well_screen_data: CreateWellScreen):
@@ -26,7 +26,7 @@ async def validate_screens(well_screen_data: CreateWellScreen):
     # session = database_sessionmaker()
     # with session:
     # get valid screen types from the database
-    valid_screen_types = get_category("casing_material")
+    valid_screen_types = get_terms_by_category("casing_material")
     if (
         well_screen_data.screen_type
         and well_screen_data.screen_type not in valid_screen_types

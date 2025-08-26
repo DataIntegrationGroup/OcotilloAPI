@@ -481,7 +481,7 @@ def second_group(thing):
 @pytest.fixture(scope="session")
 def lexicon_category():
     with session_ctx() as session:
-        category = Category(
+        category = LexiconCategory(
             name="first test category", description="describes the first test category"
         )
         session.add(category)
@@ -493,7 +493,7 @@ def lexicon_category():
 @pytest.fixture(scope="function")
 def second_lexicon_category():
     with session_ctx() as session:
-        category = Category(
+        category = LexiconCategory(
             name="second test category",
             description="describes the second test category",
         )
@@ -508,7 +508,7 @@ def second_lexicon_category():
 @pytest.fixture(scope="session")
 def lexicon_term(lexicon_category):
     with session_ctx() as session:
-        term = Lexicon(
+        term = LexiconTerm(
             term="first test term",
             definition="defines the first test term",
         )
@@ -516,7 +516,7 @@ def lexicon_term(lexicon_category):
         session.commit()
         session.refresh(term)
 
-        term_category_association = TermCategoryAssociation(
+        term_category_association = LexiconTermCategoryAssociation(
             term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)
@@ -529,7 +529,7 @@ def lexicon_term(lexicon_category):
 @pytest.fixture(scope="session")
 def second_lexicon_term(lexicon_category):
     with session_ctx() as session:
-        term = Lexicon(
+        term = LexiconTerm(
             term="second test term",
             definition="defines the second test term",
         )
@@ -537,7 +537,7 @@ def second_lexicon_term(lexicon_category):
         session.commit()
         session.refresh(term)
 
-        term_category_association = TermCategoryAssociation(
+        term_category_association = LexiconTermCategoryAssociation(
             term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)
@@ -551,7 +551,7 @@ def second_lexicon_term(lexicon_category):
 @pytest.fixture(scope="session")
 def third_lexicon_term(lexicon_category):
     with session_ctx() as session:
-        term = Lexicon(
+        term = LexiconTerm(
             term="third test term",
             definition="defines the third test term",
         )
@@ -559,7 +559,7 @@ def third_lexicon_term(lexicon_category):
         session.commit()
         session.refresh(term)
 
-        term_category_association = TermCategoryAssociation(
+        term_category_association = LexiconTermCategoryAssociation(
             term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)
@@ -573,7 +573,7 @@ def third_lexicon_term(lexicon_category):
 @pytest.fixture(scope="session")
 def fourth_lexicon_term(lexicon_category):
     with session_ctx() as session:
-        term = Lexicon(
+        term = LexiconTerm(
             term="fourth test term",
             definition="defines the fourth test term",
         )
@@ -581,7 +581,7 @@ def fourth_lexicon_term(lexicon_category):
         session.commit()
         session.refresh(term)
 
-        term_category_association = TermCategoryAssociation(
+        term_category_association = LexiconTermCategoryAssociation(
             term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)

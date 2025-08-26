@@ -32,11 +32,16 @@ from core.dependencies import (
     viewer_function,
 )
 from db import adder
-from db.lexicon import Category, Lexicon, TermCategoryAssociation, LexiconTriple
+from db.lexicon import (
+    LexiconCategory,
+    LexiconTerm,
+    LexiconTermCategoryAssociation,
+    LexiconTriple,
+)
 from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
-    CreateTriple,
+    CreateLexiconTriple,
     LexiconTermResponse,
     LexiconCategoryResponse,
     LexiconTripleResponse,
@@ -73,7 +78,7 @@ def database_error_handler(
     ):
         detail = {
             "loc": ["body", "subject"],
-            "msg": f"Lexicon with term {payload.subject} not found.",
+            "msg": f"LexiconTerm with term {payload.subject} not found.",
             "type": "value_error",
             "input": {"subject": payload.subject},
         }
@@ -83,7 +88,7 @@ def database_error_handler(
     ):
         detail = {
             "loc": ["body", "object_"],
-            "msg": f"Lexicon with term {payload.object_} not found.",
+            "msg": f"LexiconTerm with term {payload.object_} not found.",
             "type": "value_error",
             "input": {"object_": payload.object_},
         }
@@ -106,7 +111,7 @@ def add_category(
     """
     Endpoint to add a category to the lexicon.
     """
-    return adder(session, Category, category_data, user=user)
+    return adder(session, LexiconCategory, category_data, user=user)
 
 
 @router.post(
@@ -132,7 +137,9 @@ def add_term(
     status_code=HTTP_201_CREATED,
 )
 def add_triple(
-    triple_data: CreateTriple, session: session_dependency, user: admin_dependency
+    triple_data: CreateLexiconTriple,
+    session: session_dependency,
+    user: admin_dependency,
 ) -> LexiconTripleResponse:
     triple_data = triple_data.model_dump()
     subject = triple_data["subject"]
@@ -152,7 +159,7 @@ def update_lexicon_term(
     user: editor_dependency,
 ) -> LexiconTermResponse:
 
-    return model_patcher(session, Lexicon, term_id, term_data, user=user)
+    return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
 
 
 @router.patch("/category/{category_id}", status_code=HTTP_200_OK)
@@ -162,7 +169,9 @@ def update_lexicon_category(
     session: session_dependency,
     user: editor_dependency,
 ) -> LexiconCategoryResponse:
-    return model_patcher(session, Category, category_id, category_data, user=user)
+    return model_patcher(
+        session, LexiconCategory, category_id, category_data, user=user
+    )
 
 
 @router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
@@ -194,32 +203,32 @@ def get_lexicon_terms(
     Endpoint to retrieve lexicon terms.
     """
 
-    sql = select(Lexicon)
+    sql = select(LexiconTerm)
     if category:
         sql = (
-            sql.join(TermCategoryAssociation)
-            .join(Category)
-            .where(Category.name == category)
+            sql.join(LexiconTermCategoryAssociation)
+            .join(LexiconCategory)
+            .where(LexiconCategory.name == category)
         )
     if term:
-        sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
+        sql = sql.where(LexiconTerm.term.ilike(f"%{term}%"))
 
     # If sort is 'categories', we do not apply sorting or filtering
     if sort == "categories":
         sort = None
         order = None
 
-    sql = order_sort_filter(sql, Lexicon, sort=sort, order=order, filter_=filter_)
+    sql = order_sort_filter(sql, LexiconTerm, sort=sort, order=order, filter_=filter_)
 
     if order is None:
-        sql = sql.order_by(func.lower(Lexicon.term).asc())
+        sql = sql.order_by(func.lower(LexiconTerm.term).asc())
 
     return paginate(query=sql, conn=session)
 
 
 @router.get("/term/{term_id}", status_code=HTTP_200_OK)
 def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
-    return simple_get_by_id(session, Lexicon, term_id)
+    return simple_get_by_id(session, LexiconTerm, term_id)
 
 
 @router.get("/category")
@@ -232,14 +241,14 @@ def get_lexicon_categories(
     """
     Endpoint to retrieve lexicon categories.
     """
-    return paginated_all_getter(session, Category, sort, order, filter_)
+    return paginated_all_getter(session, LexiconCategory, sort, order, filter_)
 
 
 @router.get("/category/{category_id}")
 def get_lexicon_category(
     category_id: int, session: session_dependency
 ) -> LexiconCategoryResponse:
-    return simple_get_by_id(session, Category, category_id)
+    return simple_get_by_id(session, LexiconCategory, category_id)
 
 
 @router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
@@ -273,7 +282,7 @@ async def get_lexicon_triple(
 async def delete_lexicon_term(
     session: session_dependency, user: admin_dependency, term_id: int
 ):
-    return model_deleter(session, Lexicon, term_id)
+    return model_deleter(session, LexiconTerm, term_id)
 
 
 @router.delete(
@@ -284,7 +293,7 @@ async def delete_lexicon_term(
 async def delete_lexicon_category(
     session: session_dependency, user: admin_dependency, category_id: int
 ):
-    return model_deleter(session, Category, category_id)
+    return model_deleter(session, LexiconCategory, category_id)
 
 
 @router.delete(
