@@ -211,10 +211,68 @@ def test_get_water_well_by_id_404_not_found(water_well_thing):
     assert data["detail"] == f"Thing with ID {bad_id} not found."
 
 
-def test_get_springs():
-    response = client.get("/thing?thing_type=spring")
+def test_get_water_well_by_id_404_wrong_type(spring_thing):
+    response = client.get(f"/thing/water-well/{spring_thing.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {spring_thing.id} is not a water well Thing. It is a spring Thing."
+    )
+    assert data["detail"][0]["loc"] == ["path", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
+
+
+def test_get_springs(spring_thing):
+    response = client.get("/thing/spring")
     assert response.status_code == 200
-    assert len(response.json()) > 0
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == spring_thing.id
+    assert data["items"][0][
+        "created_at"
+    ] == spring_thing.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["name"] == spring_thing.name
+    assert data["items"][0]["thing_type"] == spring_thing.thing_type
+    assert data["items"][0]["release_status"] == spring_thing.release_status
+    assert data["items"][0]["spring_type"] == spring_thing.spring_type
+
+
+def test_get_spring_by_id(spring_thing):
+    response = client.get(f"/thing/spring/{spring_thing.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == spring_thing.id
+    assert data["created_at"] == spring_thing.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["name"] == spring_thing.name
+    assert data["thing_type"] == spring_thing.thing_type
+    assert data["release_status"] == spring_thing.release_status
+    assert data["spring_type"] == spring_thing.spring_type
+
+
+def test_get_spring_by_id_404_not_found(spring_thing):
+    bad_id = 99999
+    response = client.get(f"/thing/spring/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
+
+
+def test_get_spring_by_id_404_wrong_type(water_well_thing):
+    response = client.get(f"/thing/spring/{water_well_thing.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {water_well_thing.id} is not a spring Thing. It is a water well Thing."
+    )
+    assert data["detail"][0]["loc"] == ["path", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": water_well_thing.id}
 
 
 # def test_get_well_by_id():

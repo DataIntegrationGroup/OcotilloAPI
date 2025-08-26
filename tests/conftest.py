@@ -56,6 +56,25 @@ def water_well_thing(location):
 
 
 @pytest.fixture(scope="session")
+def spring_thing(location):
+    with session_ctx() as session:
+        st = add_thing(
+            session,
+            {
+                "location_id": location.id,
+                "name": "Test Spring",
+                "release_status": "draft",
+                "spring_type": "Artesian",
+            },
+            "spring",
+        )
+
+        yield st
+
+        session.close()
+
+
+@pytest.fixture(scope="session")
 def sensor():
     with session_ctx() as session:
         sensor = Sensor(

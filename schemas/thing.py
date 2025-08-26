@@ -79,19 +79,6 @@ class CreateWellScreen(BaseModel):
     screen_type: str | None = None
     screen_description: str | None = None
 
-    @model_validator(mode="after")
-    def validate_screen_type(self):
-        if self.screen_type is not None:
-            valid_screen_types = [
-                "PVC",
-            ]  # todo: get valid screen types from database
-            if self.screen_type not in valid_screen_types:
-                raise ValueError(
-                    f"Invalid screen_type: {self.screen_type}. "
-                    f"Valid options are: {', '.join(valid_screen_types)}."
-                )
-        return self
-
     # validate that screen depth bottom is greater than top
     @model_validator(mode="after")
     def check_depths(self):
@@ -106,7 +93,6 @@ class CreateWellScreen(BaseModel):
 class BaseThingResponse(ORMBaseModel):
     name: str
     thing_type: str
-    id: int
     release_status: str
 
 
