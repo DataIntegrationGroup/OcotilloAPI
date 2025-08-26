@@ -38,10 +38,10 @@ class CreateLexiconTerm(BaseModel):
 
     term: str
     definition: str
-    categories: list[CreateLexiconCategory] | None = None
+    categories: list[CreateLexiconCategory]
 
 
-class CreateTriple(BaseModel):
+class CreateLexiconTriple(BaseModel):
     """
     Pydantic model for creating a triple.
     This model can be extended to include additional fields as needed.

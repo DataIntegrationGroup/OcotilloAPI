@@ -13,7 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.lexicon import Category, Lexicon, TermCategoryAssociation, LexiconTriple
+from db.engine import get_db_session
+from db.lexicon import (
+    LexiconCategory,
+    LexiconTerm,
+    LexiconTermCategoryAssociation,
+    LexiconTriple,
+)
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -26,7 +32,7 @@ def add_lexicon_term(
     definition: str,
     categories: list | None,
     user: dict = None,
-) -> Lexicon:
+) -> LexiconTerm:
     """
     Add a term to the lexicon with its definition and category.
 
@@ -36,7 +42,7 @@ def add_lexicon_term(
 
         category_names = [c.get("name") for c in categories]
 
-        sql = select(Category).where(Category.name.in_(category_names))
+        sql = select(LexiconCategory).where(LexiconCategory.name.in_(category_names))
         associated_categories = session.scalars(sql).all()
         associated_category_names = [c.name for c in associated_categories]
 
@@ -47,7 +53,7 @@ def add_lexicon_term(
         ]
         for category in unassociated_categories:
             # Create a new category if it does not exist
-            category = Category(
+            category = LexiconCategory(
                 name=category.get("name"), description=category.get("description")
             )
             audit_add(user, category)
@@ -60,16 +66,16 @@ def add_lexicon_term(
         db_categories.extend(associated_categories)
 
     # Check if the term already exists
-    sql = select(Lexicon).where(Lexicon.term == term)
+    sql = select(LexiconTerm).where(LexiconTerm.term == term)
     dbterm = session.scalars(sql).one_or_none()
     if dbterm is None:
-        dbterm = Lexicon(term=term, definition=definition)
+        dbterm = LexiconTerm(term=term, definition=definition)
         audit_add(user, dbterm)
         session.add(dbterm)
 
     if len(db_categories) > 0:
         for category in db_categories:
-            link = TermCategoryAssociation()
+            link = LexiconTermCategoryAssociation()
 
             link.category = category
             link.term = dbterm
@@ -94,7 +100,7 @@ def add_lexicon_triple(
     # add subject and object to db if they don't already exist
     for term in subject, object_:
         if isinstance(term, dict):
-            sql = select(Lexicon).where(Lexicon.term == term["term"])
+            sql = select(LexiconTerm).where(LexiconTerm.term == term["term"])
             existing_term = session.scalars(sql).one_or_none()
             if existing_term is None:
                 add_lexicon_term(
@@ -112,6 +118,26 @@ def add_lexicon_triple(
     session.add(triple)
     session.commit()
     return triple
+
+
+def get_terms_by_category(category: str) -> list:
+    """
+    Fetches the terms from the database by category.
+
+    Returns:
+        list: A list of terms.
+    """
+
+    with next(get_db_session()) as session:
+
+        sql = select(LexiconTerm)
+        sql = sql.join(LexiconTermCategoryAssociation)
+        sql = sql.join(LexiconCategory)
+        sql = sql.filter(LexiconCategory.name == category)
+
+        categories = [lex.term for lex in session.scalars(sql).all()]
+
+    return categories
 
 
 # ============= EOF =============================================

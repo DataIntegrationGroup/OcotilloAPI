@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Lexicon, Category, LexiconTriple
+from db import LexiconTerm, LexiconCategory, LexiconTriple
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 from core.dependencies import admin_function, viewer_function, editor_function
@@ -63,8 +63,8 @@ def test_add_lexicon_term_with_new_categories():
         data["categories"][0]["description"] == payload["categories"][0]["description"]
     )
 
-    cleanup_post_test(Lexicon, data["id"])
-    cleanup_post_test(Category, data["categories"][0]["id"])
+    cleanup_post_test(LexiconTerm, data["id"])
+    cleanup_post_test(LexiconCategory, data["categories"][0]["id"])
 
 
 def test_add_lexicon_term_with_existing_categories():
@@ -90,29 +90,7 @@ def test_add_lexicon_term_with_existing_categories():
         data["categories"][0]["description"] == payload["categories"][0]["description"]
     )
 
-    cleanup_post_test(Lexicon, data["id"])
-
-
-# TODO: this should raise an error since each term MUST be associated with a category
-def test_add_lexicon_term_with_no_categories():
-    payload = {
-        "term": "test_term_no_categories",
-        "definition": "This is a test definition without categories.",
-        "categories": None,
-    }
-    response = client.post(
-        "/lexicon/term",
-        json=payload,
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert "created_at" in data
-    assert data["term"] == payload["term"]
-    assert data["definition"] == payload["definition"]
-    assert data["categories"] == []
-
-    cleanup_post_test(Lexicon, data["id"])
+    cleanup_post_test(LexiconTerm, data["id"])
 
 
 def test_add_lexicon_category():
@@ -125,7 +103,7 @@ def test_add_lexicon_category():
     assert data["name"] == payload["name"]
     assert data["description"] == payload["description"]
 
-    cleanup_post_test(Category, data["id"])
+    cleanup_post_test(LexiconCategory, data["id"])
 
 
 def test_add_lexicon_triple_new_terms():
@@ -165,7 +143,7 @@ def test_add_lexicon_triple_new_terms():
     assert data["items"][0]["term"] == subject["term"]
     assert data["items"][0]["definition"] == subject["definition"]
 
-    cleanup_post_test(Lexicon, data["items"][0]["id"])
+    cleanup_post_test(LexiconTerm, data["items"][0]["id"])
 
     response = client.get(f"/lexicon/term?term={object_['term']}")
     assert response.status_code == 200
@@ -174,8 +152,8 @@ def test_add_lexicon_triple_new_terms():
     assert data["items"][0]["term"] == object_["term"]
     assert data["items"][0]["definition"] == object_["definition"]
 
-    cleanup_post_test(Lexicon, data["items"][0]["id"])
-    cleanup_post_test(Category, data["items"][0]["categories"][0]["id"])
+    cleanup_post_test(LexiconTerm, data["items"][0]["id"])
+    cleanup_post_test(LexiconCategory, data["items"][0]["categories"][0]["id"])
 
 
 def test_add_lexicon_triple_existing_terms(lexicon_term, second_lexicon_term):
@@ -232,7 +210,7 @@ def test_patch_term(lexicon_term):
     assert data["term"] == payload["term"]
     assert data["definition"] == payload["definition"]
 
-    cleanup_patch_test(Lexicon, payload, lexicon_term)
+    cleanup_patch_test(LexiconTerm, payload, lexicon_term)
 
 
 def test_patch_term_404_not_found(lexicon_term):
@@ -241,7 +219,7 @@ def test_patch_term_404_not_found(lexicon_term):
     response = client.patch(f"/lexicon/term/{bad_id}", json=payload)
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconTerm with ID {bad_id} not found."
 
 
 def test_patch_category(lexicon_category):
@@ -252,7 +230,7 @@ def test_patch_category(lexicon_category):
     assert data["name"] == payload["name"]
     assert data["description"] == payload["description"]
 
-    cleanup_patch_test(Category, payload, lexicon_category)
+    cleanup_patch_test(LexiconCategory, payload, lexicon_category)
 
 
 def test_patch_category_404_not_found(lexicon_category):
@@ -261,7 +239,7 @@ def test_patch_category_404_not_found(lexicon_category):
     response = client.patch(f"/lexicon/category/{bad_id}", json=payload)
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Category with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconCategory with ID {bad_id} not found."
 
 
 def test_patch_triple(lexicon_triple, third_lexicon_term, fourth_lexicon_term):
@@ -306,7 +284,7 @@ def test_patch_triple_409_bad_subject(lexicon_triple, third_lexicon_term):
     assert response.status_code == 409
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "subject"]
-    assert data["detail"][0]["msg"] == f"Lexicon with term {bad_subject} not found."
+    assert data["detail"][0]["msg"] == f"LexiconTerm with term {bad_subject} not found."
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"subject": bad_subject}
 
@@ -322,7 +300,7 @@ def test_patch_triple_409_bad_object(lexicon_triple, third_lexicon_term):
     assert response.status_code == 409
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "object_"]
-    assert data["detail"][0]["msg"] == f"Lexicon with term {bad_object} not found."
+    assert data["detail"][0]["msg"] == f"LexiconTerm with term {bad_object} not found."
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"object_": bad_object}
 
@@ -384,7 +362,7 @@ def test_get_lexicon_term_by_id_404_not_found(lexicon_term):
     response = client.get(f"/lexicon/term/{bad_id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconTerm with ID {bad_id} not found."
 
 
 def test_get_lexicon_categories():
@@ -418,7 +396,7 @@ def test_get_lexicon_category_by_id_404_not_found(lexicon_category):
     response = client.get(f"/lexicon/category/{bad_id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Category with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconCategory with ID {bad_id} not found."
 
 
 def test_get_lexicon_triples(lexicon_triple):
@@ -467,7 +445,7 @@ def test_delete_lexicon_term(second_lexicon_term):
     response = client.get(f"/lexicon/term/{second_lexicon_term.id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Lexicon with ID {second_lexicon_term.id} not found."
+    assert data["detail"] == f"LexiconTerm with ID {second_lexicon_term.id} not found."
 
 
 def test_delete_lexicon_term_404_not_found(second_lexicon_term):
@@ -475,7 +453,7 @@ def test_delete_lexicon_term_404_not_found(second_lexicon_term):
     response = client.delete(f"/lexicon/term/{bad_id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconTerm with ID {bad_id} not found."
 
 
 def test_delete_lexicon_category(second_lexicon_category):
@@ -486,7 +464,10 @@ def test_delete_lexicon_category(second_lexicon_category):
     response = client.get(f"/lexicon/category/{second_lexicon_category.id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Category with ID {second_lexicon_category.id} not found."
+    assert (
+        data["detail"]
+        == f"LexiconCategory with ID {second_lexicon_category.id} not found."
+    )
 
 
 def test_delete_lexicon_category_404_not_found(second_lexicon_category):
@@ -494,7 +475,7 @@ def test_delete_lexicon_category_404_not_found(second_lexicon_category):
     response = client.delete(f"/lexicon/category/{bad_id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Category with ID {bad_id} not found."
+    assert data["detail"] == f"LexiconCategory with ID {bad_id} not found."
 
 
 def test_delete_lexicon_triple(second_lexicon_triple):
