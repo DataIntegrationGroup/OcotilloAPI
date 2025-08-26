@@ -526,7 +526,7 @@ def lexicon_term(lexicon_category):
         yield term
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def second_lexicon_term(lexicon_category):
     with session_ctx() as session:
         term = Lexicon(
@@ -548,3 +548,17 @@ def second_lexicon_term(lexicon_category):
 
         session.delete(term)
         session.commit()
+
+
+@pytest.fixture(scope="session")
+def lexicon_triple(lexicon_term, second_lexicon_term):
+    with session_ctx() as session:
+        triple = LexiconTriple(
+            subject=lexicon_term.term,
+            predicate="related_to",
+            object_=second_lexicon_term.term,
+        )
+        session.add(triple)
+        session.commit()
+        session.refresh(triple)
+        yield triple

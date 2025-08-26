@@ -26,7 +26,7 @@ from core.dependencies import (
     viewer_function,
 )
 from db import adder
-from db.lexicon import Category, Lexicon, TermCategoryAssociation
+from db.lexicon import Category, Lexicon, TermCategoryAssociation, LexiconTriple
 from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
@@ -185,6 +185,26 @@ def get_lexicon_category(
     category_id: int, session: session_dependency
 ) -> LexiconCategoryResponse:
     return simple_get_by_id(session, Category, category_id)
+
+
+@router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
+async def get_lexicon_triples(
+    session: session_dependency,
+    sort: str = "subject",
+    order: str = "asc",
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[LexiconTripleResponse]:
+    """
+    Endpoint to retrieve lexicon triples.
+    """
+    return paginated_all_getter(session, LexiconTriple, sort, order, filter_)
+
+
+@router.get("/triple/{triple_id}", status_code=HTTP_200_OK)
+async def get_lexicon_triple(
+    triple_id: int, session: session_dependency
+) -> LexiconTripleResponse:
+    return simple_get_by_id(session, LexiconTriple, triple_id)
 
 
 # DELETE =======================================================================

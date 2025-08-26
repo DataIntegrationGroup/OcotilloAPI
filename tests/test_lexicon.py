@@ -345,6 +345,41 @@ def test_get_lexicon_category_by_id_404_not_found(lexicon_category):
     assert data["detail"] == f"Category with ID {bad_id} not found."
 
 
+def test_get_lexicon_triples(lexicon_triple):
+    response = client.get("/lexicon/triple")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] > 0
+    assert data["items"][0]["id"] == lexicon_triple.id
+    assert data["items"][0][
+        "created_at"
+    ] == lexicon_triple.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["subject"] == lexicon_triple.subject
+    assert data["items"][0]["predicate"] == lexicon_triple.predicate
+    assert data["items"][0]["object_"] == lexicon_triple.object_
+
+
+def test_get_lexicon_triple_by_id(lexicon_triple):
+    response = client.get(f"/lexicon/triple/{lexicon_triple.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == lexicon_triple.id
+    assert data["created_at"] == lexicon_triple.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["subject"] == lexicon_triple.subject
+    assert data["predicate"] == lexicon_triple.predicate
+    assert data["object_"] == lexicon_triple.object_
+
+
+def test_get_lexicon_triple_by_id_404_not_found(lexicon_triple):
+    bad_id = 999999
+    response = client.get(f"/lexicon/triple/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"LexiconTriple with ID {bad_id} not found."
+
+
 # DELETE tests =================================================================
 
 
