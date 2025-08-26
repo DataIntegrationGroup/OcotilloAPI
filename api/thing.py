@@ -69,12 +69,13 @@ router = APIRouter(
     prefix="/thing", tags=["thing"], dependencies=[Depends(viewer_function)]
 )
 
+# GET ==========================================================================
+
 
 @router.get("")
 def get_things(
     session: session_dependency,
     thing_id: int = None,
-    thing_type: List[str] | str = Query(default=[]),
     within: str = None,
     query: str = None,
     sort: str = None,
@@ -97,7 +98,6 @@ def get_things(
             query,
             session,
             sort,
-            thing_type,
             with_location=True,
             within=within,
         )

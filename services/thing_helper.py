@@ -41,7 +41,6 @@ def get_db_things(
     query,
     session,
     sort,
-    thing_type: str | list[str] = None,
     with_location: bool = False,
     within: str = None,
 ):
@@ -57,13 +56,6 @@ def get_db_things(
         )
         sql = sql.join(Location)
 
-    if isinstance(thing_type, str):
-        thing_type = thing_type.lower()
-        thing_type = [thing_type]
-    elif isinstance(thing_type, list):
-        thing_type = [t.lower() for t in thing_type]
-
-    sql = sql.where(Thing.thing_type.in_(thing_type)) if thing_type else sql
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
     if within:
 
