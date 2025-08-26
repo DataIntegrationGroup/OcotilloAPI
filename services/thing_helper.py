@@ -13,17 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_404_NOT_FOUND
 
 from db import LocationThingAssociation, Thing, Base, Location
 from schemas.location import LocationResponse
 from db.group import Group, GroupThingAssociation
 from services.audit_helper import audit_add
+from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter
+from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from shapely import wkb
 from shapely.geometry import mapping
 
@@ -41,6 +44,7 @@ def get_db_things(
     query,
     session,
     sort,
+    thing_type: str = None,
     with_location: bool = False,
     within: str = None,
 ):
@@ -55,6 +59,9 @@ def get_db_things(
             LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
         )
         sql = sql.join(Location)
+
+    if thing_type:
+        sql = sql.where(Thing.thing_type == thing_type)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
     if within:
@@ -98,6 +105,44 @@ def get_db_things(
         return records
 
     return paginate(query=sql, conn=session, transformer=transformer)
+
+
+def get_thing_type_from_request(request: Request) -> str:
+    path = request.url.path
+    path_components = path.split("/")
+    if len(path_components) == 2:
+        # no thing type specified in path
+        thing_type_in_path = path_components[1]
+    if len(path_components) >= 3:
+        # thing type specified in path
+        thing_type_in_path = path_components[2]
+
+    thing_type = thing_type_in_path.replace("-", " ")
+    return thing_type
+
+
+def verify_thing_type_correspondence(thing: Thing, request: Request):
+    thing_type = get_thing_type_from_request(request)
+    if thing.thing_type != thing_type:
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "thing_id"],
+                    "type": "value_error",
+                    "input": {"thing_id": thing.id},
+                    "msg": f"Thing with ID {thing.id} is not a {thing_type} Thing. It is a {thing.thing_type} Thing.",
+                }
+            ],
+        )
+
+
+def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id: int):
+    thing = simple_get_by_id(session, Thing, thing_id)
+
+    verify_thing_type_correspondence(thing, request)
+
+    return thing
 
 
 # REFACTOR TODO: use enums (or enum-like object) for thing_type
