@@ -25,12 +25,11 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db import adder
 from db.location import Location
 from schemas.location import CreateLocation, LocationResponse, UpdateLocation
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 
 from fastapi import APIRouter
 
@@ -49,7 +48,7 @@ def create_location(
     """
     Create a new sample location in the database.
     """
-    return adder(session, Location, location_data, user=user)
+    return model_adder(session, Location, location_data, user=user)
 
 
 @router.patch(

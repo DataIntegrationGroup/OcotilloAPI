@@ -31,7 +31,6 @@ from core.dependencies import (
     admin_dependency,
     viewer_function,
 )
-from db import adder
 from db.lexicon import (
     LexiconCategory,
     LexiconTerm,
@@ -49,7 +48,7 @@ from schemas.lexicon import (
     UpdateLexiconCategory,
     UpdateLexiconTriple,
 )
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import add_lexicon_term, add_lexicon_triple
 from services.query_helper import (
@@ -111,7 +110,7 @@ def add_category(
     """
     Endpoint to add a category to the lexicon.
     """
-    return adder(session, LexiconCategory, category_data, user=user)
+    return model_adder(session, LexiconCategory, category_data, user=user)
 
 
 @router.post(

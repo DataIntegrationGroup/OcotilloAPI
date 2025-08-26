@@ -27,15 +27,14 @@ from core.dependencies import (
     amp_admin_dependency,
     admin_dependency,
     editor_dependency,
-    amp_viewer_dependency,
-    viewer_dependency,
-    no_permission_dependency,
+    # amp_viewer_dependency,
+    # viewer_dependency,
+    # no_permission_dependency,
     viewer_function,
     amp_viewer_function,
-    no_permission_function,
+    # no_permission_function,
     amp_editor_dependency,
 )
-from db import adder
 from db.engine import get_db_session
 from db.location import LocationThingAssociation, Location
 from db.thing import Thing, WellScreen
@@ -57,7 +56,7 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
-from services.crud_helper import model_patcher
+from services.crud_helper import model_patcher, model_adder
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -242,7 +241,7 @@ def create_thing_id_link(
     """
     Create a new link between a thing and an alternate ID.
     """
-    return adder(session, ThingIdLink, link_data, user=user)
+    return model_adder(session, ThingIdLink, link_data, user=user)
 
 
 @router.post(
@@ -308,7 +307,7 @@ def create_wellscreen(
     """
     Create a new well screen in the database.
     """
-    return adder(session, WellScreen, well_screen_data, user=user)
+    return model_adder(session, WellScreen, well_screen_data, user=user)
 
 
 @router.patch("/{thing_id}", summary="Update thing")
