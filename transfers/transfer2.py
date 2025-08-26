@@ -95,7 +95,7 @@ def make_location(row):
 
 
 def transfer_water_levels(session):
-    wd = pd.read_csv("./data/water_levels.csv")
+    wd = pd.read_csv("./transfers/data/water_levels.csv")
     gwd = wd.groupby(["PointID"])
 
     for index, group in gwd:
@@ -114,7 +114,7 @@ def transfer_water_levels(session):
 
             sample = Sample()
             sample.sampler_name = "unknown"
-            sample.sample_type = "groundwater level"
+            sample.sample_type = "groundwater level:groundwater level"
 
             sample.field_sample_id = str(uuid.uuid4())
             sample.sample_date = dt
@@ -126,7 +126,7 @@ def transfer_water_levels(session):
             obs.sample = sample
             obs.observation_datetime = dt
             obs.depth_to_water = row.DepthToWater
-            obs.observed_property = "groundwater level"
+            obs.observed_property = "groundwater level:groundwater level"
             obs.unit = "ft"
 
             session.add(obs)
@@ -216,7 +216,7 @@ ADDED = []
 
 
 def transfer_thing(session, site_type, make_payload, limit=None):
-    ldf = pd.read_csv("./data/location.csv")
+    ldf = pd.read_csv("./transfers/data/location.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
@@ -291,7 +291,7 @@ def transfer_met(session, limit=None):
 
 
 def transfer_owners(session):
-    odf = pd.read_csv("./data/ownersdata.csv")
+    odf = pd.read_csv("./transfers/data/ownersdata.csv")
     odf = odf.replace(pd.NA, None)
     odf = odf.replace({np.nan: None})
 
@@ -360,8 +360,8 @@ def transfer_owners(session):
 
 
 def transfer_wells(session, limit=None):
-    wdf = pd.read_csv("./data/welldata.csv")
-    ldf = pd.read_csv("./data/location.csv")
+    wdf = pd.read_csv("./transfers/data/welldata.csv")
+    ldf = pd.read_csv("./transfers/data/location.csv")
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
@@ -418,7 +418,7 @@ def transfer_wells(session, limit=None):
 
 
 def transfer_wellscreens(session, limit=None):
-    wdf = pd.read_csv("./data/wellscreens.csv")
+    wdf = pd.read_csv("./transfers/data/wellscreens.csv")
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
 
@@ -466,7 +466,7 @@ def transfer_wellscreens(session, limit=None):
 
 def transfer_assets(session):
     for p in ("asset1.png", "asset2.png", "asset3.png"):
-        with open(f"./data/assets/{p}", "rb") as f:
+        with open(f"./transfers/data/assets/{p}", "rb") as f:
             uf = UploadFile(file=f, filename=p, size=10)
             uri, blob_name = gcs_upload(uf)
             thing_id = 151
@@ -504,7 +504,7 @@ def extract_organization(alternate_id):
 
 
 def transfer_link_ids(session, site_type="GW"):
-    ldf = pd.read_csv("./data/location2.csv")
+    ldf = pd.read_csv("./transfers/data/location2.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     ldf = ldf[ldf["AlternateSiteID"].notna()]
@@ -551,7 +551,7 @@ if __name__ == "__main__":
             Base.metadata.drop_all(sess.bind)
             Base.metadata.create_all(sess.bind)
 
-            init_lexicon("../core/lexicon.json")
+            init_lexicon()
 
             init_sensor(sess)
             transfer_wells(sess, 1000)
