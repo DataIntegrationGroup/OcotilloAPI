@@ -76,14 +76,3 @@ jobs:
           run: |
             rm app.yaml
 
-        # Use PR author's username as git user name
-        - name: Set up git user
-          run: |
-            git config --global user.name "${{ github.actor }}"
-            git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-
-        # ":" are not alloed in git tags, so replace with "-"
-        - name: Tag commit
-          run: |
-            git tag -a "staging-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "staging gcloud deployment: $(date -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
-            git push origin --tags
