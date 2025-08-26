@@ -604,3 +604,17 @@ def lexicon_triple(lexicon_term, second_lexicon_term):
         session.commit()
         session.refresh(triple)
         yield triple
+
+
+@pytest.fixture(scope="session")
+def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
+    with session_ctx() as session:
+        triple = LexiconTriple(
+            subject=third_lexicon_term.term,
+            predicate="related_to",
+            object_=fourth_lexicon_term.term,
+        )
+        session.add(triple)
+        session.commit()
+        session.refresh(triple)
+        yield triple

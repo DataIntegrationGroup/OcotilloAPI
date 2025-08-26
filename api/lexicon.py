@@ -66,7 +66,6 @@ def database_error_handler(
     """
 
     error_message = error.orig.args[0]["M"]
-    print(error_message)
 
     if (
         error_message
@@ -286,6 +285,17 @@ async def delete_lexicon_category(
     session: session_dependency, user: admin_dependency, category_id: int
 ):
     return model_deleter(session, Category, category_id)
+
+
+@router.delete(
+    "/triple/{triple_id}",
+    summary="Delete a lexicon triple by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_triple(
+    session: session_dependency, user: admin_dependency, triple_id: int
+):
+    return model_deleter(session, LexiconTriple, triple_id)
 
 
 # ============= EOF =============================================
