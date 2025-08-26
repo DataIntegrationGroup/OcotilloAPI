@@ -213,4 +213,15 @@ async def delete_lexicon_term(
     return model_deleter(session, Lexicon, term_id)
 
 
+@router.delete(
+    "/category/{category_id}",
+    summary="Delete a lexicon category by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_category(
+    session: session_dependency, user: admin_dependency, category_id: int
+):
+    return model_deleter(session, Category, category_id)
+
+
 # ============= EOF =============================================

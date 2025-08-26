@@ -301,3 +301,22 @@ def test_delete_lexicon_term_404_not_found(second_lexicon_term):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+
+
+def test_delete_lexicon_category(second_lexicon_category):
+    response = client.delete(f"/lexicon/category/{second_lexicon_category.id}")
+    assert response.status_code == 204
+
+    # verify the lexicon category was deleted
+    response = client.get(f"/lexicon/category/{second_lexicon_category.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Category with ID {second_lexicon_category.id} not found."
+
+
+def test_delete_lexicon_category_404_not_found(second_lexicon_category):
+    bad_id = 999999
+    response = client.delete(f"/lexicon/category/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Category with ID {bad_id} not found."
