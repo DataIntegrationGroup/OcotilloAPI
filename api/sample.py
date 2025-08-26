@@ -25,12 +25,11 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db import adder
 from db.sample import Sample
 from schemas import ResourceNotFoundResponse
 from schemas.sample import SampleResponse, CreateSample, UpdateSample
 from services.query_helper import paginated_all_getter, simple_get_by_id
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
 
 router = APIRouter(
@@ -79,7 +78,7 @@ def add_sample(
     Endpoint to add a sample.
     """
     try:
-        return adder(session, Sample, sample_data, user=user)
+        return model_adder(session, Sample, sample_data, user=user)
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 

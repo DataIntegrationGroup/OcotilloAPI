@@ -21,6 +21,27 @@ from starlette.status import HTTP_204_NO_CONTENT
 from services.query_helper import simple_get_by_id
 
 
+def model_adder(session, table, model, user=None, **kwargs):
+    """
+    Helper function to add a new record to the database.
+    """
+
+    md = model.model_dump()
+    if kwargs:
+        md.update(kwargs)
+
+    if user:
+        # TODO: see note in "AuditMixin"
+        md["created_by_id"] = user["sub"]
+        md["created_by_name"] = user["name"]
+
+    obj = table(**md)
+    session.add(obj)
+    session.commit()
+    session.refresh(obj)
+    return obj
+
+
 def model_patcher(
     session: Session,
     model: DeclarativeBase,

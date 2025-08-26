@@ -24,10 +24,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_function,
 )
-from db import adder
 from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -47,7 +46,7 @@ def create_group(
     """
     Create a new group in the database.
     """
-    return adder(session, Group, group_data, user=user)
+    return model_adder(session, Group, group_data, user=user)
 
 
 # @router.post(
