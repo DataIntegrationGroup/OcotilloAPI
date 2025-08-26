@@ -94,4 +94,10 @@ class LexiconTermResponse(ORMBaseModel):
     categories: List[LexiconCategoryResponse] = []
 
 
+class LexiconTripleResponse(ORMBaseModel):
+    subject: str
+    predicate: str
+    object_: str
+
+
 # ============= EOF =============================================
