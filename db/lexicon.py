@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -61,10 +61,12 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
 
     __tablename__ = "lexicon_term_category_association"
 
-    lexicon_term = lexicon_term(foreignkeykw={"ondelete": "CASCADE"})
-    category_name = mapped_column(
-        String(255),
-        ForeignKey("lexicon_category.name", ondelete="CASCADE"),
+    term_id = mapped_column(
+        Integer, ForeignKey("lexicon_term.id", ondelete="CASCADE"), nullable=False
+    )
+    category_id = mapped_column(
+        Integer,
+        ForeignKey("lexicon_category.id", ondelete="CASCADE"),
         nullable=False,
     )
 

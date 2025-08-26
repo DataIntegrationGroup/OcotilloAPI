@@ -502,7 +502,7 @@ def lexicon_term(lexicon_category):
         session.refresh(term)
 
         term_category_association = TermCategoryAssociation(
-            lexicon_term=term.term, category_name=lexicon_category.name
+            term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)
         session.commit()
@@ -523,7 +523,7 @@ def second_lexicon_term(lexicon_category):
         session.refresh(term)
 
         term_category_association = TermCategoryAssociation(
-            lexicon_term=term.term, category_name=lexicon_category.name
+            term_id=term.id, category_id=lexicon_category.id
         )
         session.add(term_category_association)
         session.commit()
