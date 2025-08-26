@@ -35,7 +35,7 @@ def get_storage_bucket() -> storage.Bucket:
     if settings.mode == "production":
         key_base64 = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
         decoded = base64.b64decode(key_base64).decode("utf-8")
-        print(decoded)
+
         # Load service account credentials
         creds = service_account.Credentials.from_service_account_info(
             json.loads(decoded)
