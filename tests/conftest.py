@@ -490,6 +490,21 @@ def lexicon_category():
         yield category
 
 
+@pytest.fixture(scope="function")
+def second_lexicon_category():
+    with session_ctx() as session:
+        category = Category(
+            name="second test category",
+            description="describes the second test category",
+        )
+        session.add(category)
+        session.commit()
+        session.refresh(category)
+        yield category
+        session.delete(category)
+        session.commit()
+
+
 @pytest.fixture(scope="session")
 def lexicon_term(lexicon_category):
     with session_ctx() as session:
