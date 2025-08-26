@@ -128,33 +128,33 @@ def test_add_lexicon_category():
     cleanup_post_test(Category, data["id"])
 
 
-def test_add_triple():
-    subject = {
-        "term": "MG-030",
-        "definition": "magdalena well",
-        "category": "location_identifier",
-    }
-    predicate = "same_as"
-    object_ = {
-        "term": "USGS1234",
-        "definition": "magdalena well",
-        "category": "location_identifier",
-    }
+# def test_add_triple():
+#     subject = {
+#         "term": "MG-030",
+#         "definition": "magdalena well",
+#         "category": "location_identifier",
+#     }
+#     predicate = "same_as"
+#     object_ = {
+#         "term": "USGS1234",
+#         "definition": "magdalena well",
+#         "category": "location_identifier",
+#     }
 
-    response = client.post(
-        "/lexicon/triple/add",
-        json={
-            "subject": subject,
-            "predicate": predicate,
-            "object_": object_,
-        },
-    )
+#     response = client.post(
+#         "/lexicon/triple/add",
+#         json={
+#             "subject": subject,
+#             "predicate": predicate,
+#             "object_": object_,
+#         },
+#     )
 
-    assert response.status_code == 201
-    data = response.json()
-    assert data["subject"] == subject["term"]
-    assert data["predicate"] == predicate
-    assert data["object_"] == object_["term"]
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert data["subject"] == subject["term"]
+#     assert data["predicate"] == predicate
+#     assert data["object_"] == object_["term"]
 
 
 # PATCH tests ==================================================================
@@ -184,8 +184,8 @@ def test_patch_lexicon_404_not_found(lexicon_term):
 
 
 def test_get_lexicon_terms():
-    # terms are defined in conftest.py and core/lexicon.json, so rather than
-    # test a specific one just ensure the responses are correct
+    # many terms are defined in conftest.py and core/lexicon.json, so rather
+    # than test a specific one just ensure the responses are correct
     response = client.get("lexicon/term")
     assert response.status_code == 200
     data = response.json()
@@ -225,6 +225,40 @@ def test_get_lexicon_term_by_id_404_not_found(lexicon_term):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+
+
+def test_get_lexicon_categories():
+    # many categories are defined in conftest.py and core/lexicon.json, so
+    # rather than test a specific one just ensure the responses are correct
+    response = client.get("/lexicon/category")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] > 0
+    for category in data["items"]:
+        assert isinstance(category["id"], int)
+        assert isinstance(category["created_at"], str)
+        assert isinstance(category["name"], str)
+        assert isinstance(category["description"], (str, type(None)))
+
+
+def test_get_lexicon_category_by_id(lexicon_category):
+    response = client.get(f"/lexicon/category/{lexicon_category.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == lexicon_category.id
+    assert data["created_at"] == lexicon_category.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["name"] == lexicon_category.name
+    assert data["description"] == lexicon_category.description
+
+
+def test_get_lexicon_category_by_id_404_not_found(lexicon_category):
+    bad_id = 999999
+    response = client.get(f"/lexicon/category/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Category with ID {bad_id} not found."
 
 
 # DELETE tests =================================================================

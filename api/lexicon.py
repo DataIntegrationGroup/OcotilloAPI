@@ -193,7 +193,9 @@ def get_lexicon_categories(
 
 
 @router.get("/category/{category_id}")
-def get_lexicon_category(category_id: int, session: session_dependency):
+def get_lexicon_category(
+    category_id: int, session: session_dependency
+) -> LexiconCategoryResponse:
     return simple_get_by_id(session, Category, category_id)
 
 
