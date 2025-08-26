@@ -160,7 +160,7 @@ def test_add_lexicon_category():
 # PATCH tests ==================================================================
 
 
-def test_patch_lexicon(lexicon_term):
+def test_patch_term(lexicon_term):
     payload = {"term": "patched term", "definition": "patched definition"}
     response = client.patch(f"/lexicon/term/{lexicon_term.id}", json=payload)
     assert response.status_code == 200
@@ -171,13 +171,33 @@ def test_patch_lexicon(lexicon_term):
     cleanup_patch_test(Lexicon, payload, lexicon_term)
 
 
-def test_patch_lexicon_404_not_found(lexicon_term):
+def test_patch_term_404_not_found(lexicon_term):
     bad_id = 99999
     payload = {"term": "patched term", "definition": "patched definition"}
     response = client.patch(f"/lexicon/term/{bad_id}", json=payload)
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Lexicon with ID {bad_id} not found."
+
+
+def test_patch_category(lexicon_category):
+    payload = {"name": "patched name", "description": "patched description"}
+    response = client.patch(f"/lexicon/category/{lexicon_category.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == payload["name"]
+    assert data["description"] == payload["description"]
+
+    cleanup_patch_test(Category, payload, lexicon_category)
+
+
+def test_patch_category_404_not_found(lexicon_category):
+    bad_id = 99999
+    payload = {"name": "patched name", "definition": "patched definition"}
+    response = client.patch(f"/lexicon/category/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Category with ID {bad_id} not found."
 
 
 # GET tests ====================================================================
