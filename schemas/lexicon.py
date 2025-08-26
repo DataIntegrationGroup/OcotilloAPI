@@ -65,8 +65,10 @@ class UpdateLexiconTerm(BaseModel):
     definition: str | None = None
 
 
-class UpdateTriple(BaseModel):
-    pass
+class UpdateLexiconTriple(BaseModel):
+    subject: str | None = None
+    predicate: str | None = None
+    object_: str | None = None
 
 
 # -------- RESPONSE ----------

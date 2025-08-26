@@ -545,8 +545,50 @@ def second_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
+        session.commit()
 
-        session.delete(term)
+
+@pytest.fixture(scope="session")
+def third_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = Lexicon(
+            term="third test term",
+            definition="defines the third test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = TermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def fourth_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = Lexicon(
+            term="fourth test term",
+            definition="defines the fourth test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = TermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
         session.commit()
 
 

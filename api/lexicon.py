@@ -16,7 +16,13 @@
 from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from sqlalchemy.exc import ProgrammingError
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_409_CONFLICT,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -36,8 +42,10 @@ from schemas.lexicon import (
     LexiconTripleResponse,
     UpdateLexiconTerm,
     UpdateLexiconCategory,
+    UpdateLexiconTriple,
 )
 from services.crud_helper import model_patcher, model_deleter
+from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import add_lexicon_term, add_lexicon_triple
 from services.query_helper import (
     paginated_all_getter,
@@ -48,6 +56,41 @@ from services.query_helper import (
 router = APIRouter(
     prefix="/lexicon", tags=["lexicon"], dependencies=[Depends(viewer_function)]
 )
+
+
+def database_error_handler(
+    payload: UpdateLexiconTriple, error: ProgrammingError
+) -> None:
+    """
+    Handle errors raised by the database when adding or updating a lexicon triple.
+    """
+
+    error_message = error.orig.args[0]["M"]
+    print(error_message)
+
+    if (
+        error_message
+        == 'insert or update on table "lexicon_triple" violates foreign key constraint "lexicon_triple_subject_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "subject"],
+            "msg": f"Lexicon with term {payload.subject} not found.",
+            "type": "value_error",
+            "input": {"subject": payload.subject},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "lexicon_triple" violates foreign key constraint "lexicon_triple_object__fkey"'
+    ):
+        detail = {
+            "loc": ["body", "object_"],
+            "msg": f"Lexicon with term {payload.object_} not found.",
+            "type": "value_error",
+            "input": {"object_": payload.object_},
+        }
+
+    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
+
 
 # POST =========================================================================
 
@@ -121,6 +164,19 @@ def update_lexicon_category(
     user: editor_dependency,
 ) -> LexiconCategoryResponse:
     return model_patcher(session, Category, category_id, category_data, user=user)
+
+
+@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
+def update_lexicon_triple(
+    triple_id: int,
+    triple_data: UpdateLexiconTriple,
+    session: session_dependency,
+    user: editor_dependency,
+) -> LexiconTripleResponse:
+    try:
+        return model_patcher(session, LexiconTriple, triple_id, triple_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(triple_data, e)
 
 
 # GET ==========================================================================
