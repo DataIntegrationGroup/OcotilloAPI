@@ -202,6 +202,41 @@ def test_get_water_well_by_id(water_well_thing):
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
 
 
+def test_get_water_well_well_screens(water_well_thing, well_screen):
+    response = client.get(f"/thing/water-well/{water_well_thing.id}/well-screen")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == well_screen.id
+    assert data["items"][0]["thing_id"] == well_screen.thing_id
+    assert data["items"][0]["screen_depth_top"] == well_screen.screen_depth_top
+    assert data["items"][0]["screen_depth_bottom"] == well_screen.screen_depth_bottom
+    assert data["items"][0]["screen_type"] == well_screen.screen_type
+    assert data["items"][0]["screen_description"] == well_screen.screen_description
+
+
+def test_get_water_well_well_screens_404_not_found(water_well_thing, well_screen):
+    bad_id = 99999
+    response = client.get(f"/thing/water-well/{bad_id}/well-screen")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
+
+
+def test_get_water_well_well_screens_404_wrong_type(spring_thing):
+    response = client.get(f"/thing/water-well/{spring_thing.id}/well-screen")
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {spring_thing.id} is not a water well Thing. It is a spring Thing."
+    )
+    assert data["detail"][0]["loc"] == ["path", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
+
+
 def test_get_water_well_by_id_404_not_found(water_well_thing):
     bad_id = 99999
     response = client.get(f"/thing/water-well/{bad_id}")
@@ -275,18 +310,38 @@ def test_get_spring_by_id_404_wrong_type(water_well_thing):
     assert data["detail"][0]["input"] == {"thing_id": water_well_thing.id}
 
 
-# def test_get_well_by_id():
-#     response = client.get("/thing/well/1")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-
-
-def test_get_well_screens():
-    # TODO: improve test indepedence
+def test_get_well_screens(well_screen):
     response = client.get("/thing/well-screen")
     assert response.status_code == 200
-    assert len(response.json()) > 0
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == well_screen.id
+    assert data["items"][0]["thing_id"] == well_screen.thing_id
+    assert data["items"][0]["screen_depth_top"] == well_screen.screen_depth_top
+    assert data["items"][0]["screen_depth_bottom"] == well_screen.screen_depth_bottom
+    assert data["items"][0]["screen_type"] == well_screen.screen_type
+    assert data["items"][0]["screen_description"] == well_screen.screen_description
+
+
+def test_get_well_screen_by_id(well_screen):
+    response = client.get(f"/thing/well-screen/{well_screen.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == well_screen.id
+    assert data["thing_id"] == well_screen.thing_id
+    assert data["screen_depth_top"] == well_screen.screen_depth_top
+    assert data["screen_depth_bottom"] == well_screen.screen_depth_bottom
+    assert data["screen_type"] == well_screen.screen_type
+    assert data["screen_description"] == well_screen.screen_description
+
+
+def test_get_well_screen_by_id_404_not_found(well_screen):
+    bad_id = 99999
+    response = client.get(f"/thing/well-screen/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert data["detail"] == f"WellScreen with ID {bad_id} not found."
 
 
 def test_get_thing_links():

@@ -56,6 +56,21 @@ def water_well_thing(location):
 
 
 @pytest.fixture(scope="session")
+def well_screen(water_well_thing):
+    with session_ctx() as session:
+        screen = WellScreen(
+            thing_id=water_well_thing.id,
+            screen_depth_top=10.0,
+            screen_depth_bottom=20.0,
+            screen_type="PVC",
+            screen_description="Test well screen description",
+        )
+        session.add(screen)
+        session.commit()
+        yield screen
+
+
+@pytest.fixture(scope="session")
 def spring_thing(location):
     with session_ctx() as session:
         st = add_thing(

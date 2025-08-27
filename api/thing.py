@@ -103,6 +103,22 @@ async def get_well_by_id(
 
 
 @router.get(
+    "/water-well/{thing_id}/well-screen",
+    summary="Get well screens by water well ID",
+    status_code=HTTP_200_OK,
+)
+async def get_well_screens_by_well_id(
+    thing_id: int, session: session_dependency, request: Request
+) -> CustomPage[WellScreenResponse]:
+    """
+    Retrieve all well screens for a specific water well by its ID.
+    """
+    thing = get_thing_of_a_thing_type_by_id(session, request, thing_id)
+    sql = select(WellScreen).where(WellScreen.thing_id == thing.id)
+    return paginate(query=sql, conn=session)
+
+
+@router.get(
     "/well-screen",
     summary="Get well screens",
     dependencies=[Depends(amp_viewer_function)],
@@ -134,8 +150,6 @@ async def get_well_screen_by_id(
     Retrieve a well screen by ID from the database.
     """
     well_screen = simple_get_by_id(session, WellScreen, wellscreen_id)
-    if not well_screen:
-        return {"message": "Well screen not found"}
     return well_screen
 
 
