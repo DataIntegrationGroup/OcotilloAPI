@@ -19,6 +19,7 @@ from pathlib import Path
 import pyproj
 from shapely import Point
 from shapely.ops import transform
+from sqlalchemy.engine import row
 
 from sqlalchemy.orm import Session
 import pandas as pd
@@ -82,18 +83,58 @@ def log(row, msg):
     print(f"{row.PointID} {msg}")
 
 
-def make_location(row):
-    point = Point(row.Easting, row.Northing)
+def convert_to_wgs84_vertical_datum(row, z):
+    if row.VerticalDatum == "NAVD88":
+        z = z + 2.0 # TODO: check this transformation
+    elif row.VerticalDatum == "NGVD29":
+        z = z + 3.0 # TODO: check this transformation
+    return z
+
+
+def make_location(row)->Location:
+    z = row.Altitude if row.Altitude else 0
+    # convert to WGS84 vertical datum
+    z = convert_to_wgs84_vertical_datum(row, z)
+    # convert z from ft to meters
+    z = z * 0.3048
+
+    point = Point(row.Easting, row.Northing, z)
+
+    # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
         point, source_srid=26913, target_srid=4326  # WGS84 SRID
     )
 
-    return Location(
+    state = "Unknown"
+    county = "Unknown"
+    quad_name = "Unknown"
+
+    # TODO: make these functions. Include them in the Location API
+    # state = get_state_from_point(transformed_point)
+    # county = get_county_from_point(transformed_point)
+    # quad_name = get_quad_name_from_point(transformed_point)
+
+    # TODO: determine correct created_at value
+    created_at = row.DateCreated
+
+    location = Location(
         name=row.PointID,
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
-        # visible=row_dict["PublicRelease"],
+        elevation_accuracy=row.AltitudeAccuracy,
+        elevation_method=row.AltitudeMethod,
+
+        nma_pk_location=row.LocationId,
+        created_at=created_at,
+
+        point_accuracy=row.CoordinateAccuracy,
+        point_method=row.CoordinateMethod,
+
+        state = state,
+        county= county,
+        quad_name= quad_name
     )
+    return location
 
 
 # ============= EOF =============================================
