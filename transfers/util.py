@@ -28,6 +28,10 @@ from db import Thing, Location
 
 TRANSFORMERS = {}
 
+def read_csv(name: str) -> pd.DataFrame:
+    p = Path(".")/"data"/name
+    return pd.read_csv(p)
+
 
 def read_csv(name: str) -> pd.DataFrame:
     p = Path(".") / "data" / name
