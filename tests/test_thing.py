@@ -15,7 +15,7 @@
 # ===============================================================================
 import pytest
 
-from db import Thing, WellScreen
+from db import Thing, WellScreen, ThingIdLink
 from tests import client, override_authentication, cleanup_post_test
 from main import app
 from core.dependencies import (
@@ -258,21 +258,41 @@ def test_add_well_screen_409_bad_screen_type(water_well_thing):
     assert data["detail"][0]["input"] == {"screen_type": payload["screen_type"]}
 
 
-# def test_add_thing_link():
-#     response = client.post(
-#         "/thing/id-link",
-#         json={
-#             "thing_id": 1,
-#             "relation": "same_as",
-#             "alternate_id": "4321-1234",
-#             "alternate_organization": "USGS",
-#         },
-#     )
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert "id" in data
-#     assert data["thing_id"] == 1
-#     assert data["alternate_id"] == "4321-1234"
+def test_add_thing_link(spring_thing):
+    payload = {
+        "thing_id": spring_thing.id,
+        "relation": "same_as",
+        "alternate_id": "4321-1234",
+        "alternate_organization": "USGS",
+    }
+    response = client.post("/thing/id-link", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["thing_id"] == spring_thing.id
+    assert data["relation"] == payload["relation"]
+    assert data["alternate_id"] == payload["alternate_id"]
+    assert data["alternate_organization"] == payload["alternate_organization"]
+
+    cleanup_post_test(ThingIdLink, data["id"])
+
+
+def test_add_thing_id_link_409_bad_thing_id():
+    bad_thing_id = 9999
+    payload = {
+        "thing_id": bad_thing_id,
+        "relation": "same_as",
+        "alternate_id": "4321-1234",
+        "alternate_organization": "USGS",
+    }
+    response = client.post("/thing/id-link", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
 # GET tests ====================================================================

@@ -82,6 +82,7 @@ def database_error_handler(
     """
 
     error_message = error.orig.args[0]["M"]
+    print(error_message)
 
     if (
         error_message
@@ -126,6 +127,16 @@ def database_error_handler(
             "msg": f"{payload.screen_type} is an invalid screen type. Valid types are: {valid_screen_types_for_msg}.",
             "type": "value_error",
             "input": {"screen_type": payload.screen_type},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "thing_id_link" violates foreign key constraint "thing_id_link_thing_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} not found.",
+            "type": "value_error",
+            "input": {"thing_id": payload.thing_id},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -336,7 +347,10 @@ def create_thing_id_link(
     """
     Create a new link between a thing and an alternate ID.
     """
-    return model_adder(session, ThingIdLink, link_data, user=user)
+    try:
+        return model_adder(session, ThingIdLink, link_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(link_data, e)
 
 
 @router.post(
@@ -398,6 +412,9 @@ def create_wellscreen(
         database_error_handler(well_screen_data, e)
     except PydanticStyleException as e:
         raise e
+
+
+# PATCH ========================================================================
 
 
 @router.patch("/{thing_id}", summary="Update thing")
