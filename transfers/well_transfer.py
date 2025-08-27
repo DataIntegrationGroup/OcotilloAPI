@@ -62,11 +62,10 @@ def transfer_wells(session, limit=None):
             session,
             {
                 "nma_pk_welldata": row.WellID,
-
                 "name": row.PointID,
                 "hole_depth": row.HoleDepth,
                 "well_depth": row.WellDepth,
-                "driller_name":row.DrillerName,
+                "driller_name": row.DrillerName,
                 "construction_method": row.ConstructionMethod,
                 "casing_diameter": row.CasingDiameter,
                 "casing_depth": row.CasingDepth,
