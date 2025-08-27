@@ -50,7 +50,6 @@ from schemas.thing import (
     UpdateWell,
     SpringResponse,
     CreateSpring,
-    CreateThing,
     ThingIdLinkResponse,
     UpdateThingIdLink,
     UpdateWellScreen,
@@ -64,10 +63,11 @@ from services.query_helper import (
 )
 from services.thing_helper import (
     add_thing,
+    add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
 )
-from services.validation.well import validate_screens
+from services.lexicon_helper import get_terms_by_category
 
 router = APIRouter(
     prefix="/thing", tags=["thing"], dependencies=[Depends(viewer_function)]
@@ -104,6 +104,28 @@ def database_error_handler(
             "msg": f"Location with ID {payload.location_id} not found.",
             "type": "value_error",
             "input": {"location_id": payload.location_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_thing_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "thing_id"],
+            "msg": f"Thing with ID {payload.thing_id} not found.",
+            "type": "value_error",
+            "input": {"thing_id": payload.thing_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "well_screen" violates foreign key constraint "well_screen_screen_type_fkey"'
+    ):
+        valid_screen_types = get_terms_by_category("casing_material")
+        valid_screen_types_for_msg = " | ".join(valid_screen_types)
+        detail = {
+            "loc": ["body", "screen_type"],
+            "msg": f"{payload.screen_type} is an invalid screen type. Valid types are: {valid_screen_types_for_msg}.",
+            "type": "value_error",
+            "input": {"screen_type": payload.screen_type},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -358,22 +380,6 @@ def create_spring(
 
 
 @router.post(
-    "",
-    summary="Create a new thing",
-    status_code=HTTP_201_CREATED,
-)
-def create_thing(
-    thing_data: CreateThing,
-    session: session_dependency,
-    user: admin_dependency,
-) -> ThingResponse:
-    """
-    Create a new well in the database.
-    """
-    return add_thing(session, thing_data, user=user)
-
-
-@router.post(
     "/well-screen",
     summary="Create a new well screen",
     status_code=HTTP_201_CREATED,
@@ -381,12 +387,17 @@ def create_thing(
 def create_wellscreen(
     session: session_dependency,
     user: amp_admin_dependency,
-    well_screen_data: CreateWellScreen = Depends(validate_screens),
+    well_screen_data: CreateWellScreen,  # = Depends(validate_screens),
 ) -> WellScreenResponse:
     """
     Create a new well screen in the database.
     """
-    return model_adder(session, WellScreen, well_screen_data, user=user)
+    try:
+        return add_well_screen(session, well_screen_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(well_screen_data, e)
+    except PydanticStyleException as e:
+        raise e
 
 
 @router.patch("/{thing_id}", summary="Update thing")

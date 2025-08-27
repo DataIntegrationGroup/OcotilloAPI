@@ -18,9 +18,9 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
-from db import LocationThingAssociation, Thing, Base, Location
+from db import LocationThingAssociation, Thing, Base, Location, WellScreen
 from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
 from services.exceptions_helper import PydanticStyleException
@@ -146,6 +146,36 @@ def add_thing(
         session.rollback()
         raise e
     return thing
+
+
+def add_well_screen(session, well_screen_data: BaseModel, user: dict = None):
+    try:
+        well_screen_data_dump = well_screen_data.model_dump()
+        well_screen = WellScreen(**well_screen_data_dump)
+        audit_add(user, well_screen)
+
+        session.add(well_screen)
+        session.flush()
+
+        thing = session.get(Thing, well_screen_data.thing_id)
+        if thing.thing_type != "water well":
+            raise PydanticStyleException(
+                status_code=HTTP_409_CONFLICT,
+                detail=[
+                    {
+                        "loc": ["body", "thing_id"],
+                        "type": "value_error",
+                        "input": {"thing_id": thing.id},
+                        "msg": f"Thing with ID {thing.id} is not a water well Thing. It is a {thing.thing_type} Thing.",
+                    }
+                ],
+            )
+
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    return well_screen
 
 
 # ============= EOF =============================================

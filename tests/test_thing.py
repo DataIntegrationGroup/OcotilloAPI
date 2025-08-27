@@ -15,7 +15,7 @@
 # ===============================================================================
 import pytest
 
-from db import Thing
+from db import Thing, WellScreen
 from tests import client, override_authentication, cleanup_post_test
 from main import app
 from core.dependencies import (
@@ -181,26 +181,81 @@ def test_add_spring_409_bad_location_id(group):
     assert data["detail"][0]["input"] == {"location_id": bad_location_id}
 
 
-# def test_add_well_screen():
-#     # response = client.post(
-#     #     "/lexicon/add",
-#     #     json={"term": "PVC", "definition": "PVC Well Screen"},
-#     # )
-#     # assert response.status_code == 200
-#     response = client.post(
-#         "/thing/well-screen",
-#         json={
-#             "thing_id": 1,
-#             "screen_depth_top": 10.0,
-#             "screen_depth_bottom": 20.0,
-#             "screen_type": "PVC",
-#         },
-#     )
+def test_add_well_screen(water_well_thing):
+    payload = {
+        "thing_id": water_well_thing.id,
+        "screen_depth_top": 10.0,
+        "screen_depth_bottom": 20.0,
+        "screen_type": "PVC",
+    }
+    response = client.post("/thing/well-screen", json=payload)
 
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert "id" in data
-#     assert data["thing_id"] == 1
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["thing_id"] == water_well_thing.id
+    assert data["screen_depth_top"] == payload["screen_depth_top"]
+    assert data["screen_depth_bottom"] == payload["screen_depth_bottom"]
+    assert data["screen_type"] == payload["screen_type"]
+
+    cleanup_post_test(WellScreen, data["id"])
+
+
+def test_add_well_screen_409_bad_thing_id():
+    bad_thing_id = 9999
+    payload = {
+        "thing_id": bad_thing_id,
+        "screen_depth_top": 10.0,
+        "screen_depth_bottom": 20.0,
+        "screen_type": "PVC",
+    }
+    response = client.post("/thing/well-screen", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["msg"] == f"Thing with ID {bad_thing_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
+
+
+def test_well_add_well_screen_409_wrong_thing_type(spring_thing):
+    payload = {
+        "thing_id": spring_thing.id,
+        "screen_depth_top": 10.0,
+        "screen_depth_bottom": 20.0,
+        "screen_type": "PVC",
+    }
+    response = client.post("/thing/well-screen", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {spring_thing.id} is not a water well Thing. It is a spring Thing."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
+
+
+def test_add_well_screen_409_bad_screen_type(water_well_thing):
+    payload = {
+        "thing_id": water_well_thing.id,
+        "screen_depth_top": 10.0,
+        "screen_depth_bottom": 20.0,
+        "screen_type": "NotARealType",
+    }
+    response = client.post("/thing/well-screen", json=payload)
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "screen_type"]
+    assert (
+        data["detail"][0]["msg"]
+        == f"{payload['screen_type']} is an invalid screen type. Valid types are: PVC | Steel | Concrete."
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"screen_type": payload["screen_type"]}
 
 
 # def test_add_thing_link():
@@ -465,7 +520,7 @@ def test_get_things(water_well_thing, spring_thing):
     response = client.get("/thing")
     assert response.status_code == 200
     data = response.json()
-
+    print(data)
     assert data["total"] == 2
 
     assert data["items"][0]["id"] == water_well_thing.id
