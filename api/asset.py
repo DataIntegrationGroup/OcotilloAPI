@@ -78,11 +78,11 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
 
 # POST =========================================================================
 @router.post(
-    "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)]
+    "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)],
 )
 async def upload_asset(
     bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
-):
+) -> dict:
     uri, blob_name = gcs_upload(file, bucket)
     return {
         "uri": uri,
@@ -95,7 +95,6 @@ async def add_asset(
     user: admin_dependency,
     session: session_dependency,
     asset_data: CreateAsset,
-    bucket=Depends(get_storage_bucket),
 ) -> AssetResponse:
 
     try:
@@ -204,6 +203,8 @@ async def update_asset(
 async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):
+
+    # TODO: Interesting issue here.  we don't have a way of tracking who deleted a record
     return model_deleter(session, Asset, asset_id)
 
 
@@ -215,7 +216,6 @@ async def delete_asset(
 async def remove_asset(
     asset_id: int,
     session: session_dependency,
-    user: admin_dependency,
     bucket=Depends(get_storage_bucket),
 ):
     asset = simple_get_by_id(session, Asset, asset_id)

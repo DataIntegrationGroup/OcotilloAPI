@@ -14,17 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 import time
-
+from pathlib import Path
 from sqlalchemy.orm import Session
 import pandas as pd
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location
+from transfers.util import make_location, read_csv
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
-    ldf = pd.read_csv("./data/location.csv")
+
+    ldf = read_csv('location.csv')
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)

@@ -15,12 +15,14 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-
+from pathlib import Path
+from transfers.util import read_csv
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
 
 def transfer_owners(session):
-    odf = pd.read_csv("./data/ownersdata.csv")
+
+    odf = read_csv('ownersdata.csv')
     odf = odf.replace(pd.NA, None)
     odf = odf.replace({np.nan: None})
 

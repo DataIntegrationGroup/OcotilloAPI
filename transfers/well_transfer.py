@@ -19,19 +19,20 @@ import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 from sqlalchemy import select
+from pathlib import Path
 
 from db import LocationThingAssociation, Thing, adder, WellScreen
 from schemas.thing import CreateWellScreen
 from services.lexicon import add_lexicon_term
 from services.thing_helper import add_thing
-from transfers.util import make_location, filter_to_valid_point_ids
+from transfers.util import make_location, filter_to_valid_point_ids, read_csv
 
 ADDED = []
 
 
 def transfer_wells(session, limit=None):
-    wdf = pd.read_csv("./data/welldata.csv")
-    ldf = pd.read_csv("./data/location.csv")
+    wdf = read_csv('welldata.csv')
+    ldf = read_csv('location.csv')
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
@@ -88,7 +89,7 @@ def transfer_wells(session, limit=None):
 
 
 def transfer_wellscreens(session, limit=None):
-    wdf = pd.read_csv("./data/wellscreens.csv")
+    wdf = read_csv("wellscreens.csv")
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
 

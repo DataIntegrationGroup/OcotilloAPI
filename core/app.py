@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
@@ -52,7 +53,9 @@ def init_hypertables():
     # session.close()
 
 
-def init_lexicon(path="./core/lexicon.json"):
+def init_lexicon(path=None):
+    if path is None:
+        path = Path('..')/'core'/'lexicon.json'
 
     with open(path) as f:
         import json

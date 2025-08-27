@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from core.app import init_lexicon
 from db import Base
 from db.engine import session_ctx
-from transfers.asset_transfer import transfer_assets
+from transfers.asset_transfer import transfer_assets_testing
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.owner_transfer import transfer_owners
 from transfers.sensor_transfer import init_sensor
@@ -37,7 +37,7 @@ def erase_and_initalize(session: Session) -> None:
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
 
-    init_lexicon("../core/lexicon.json")
+    init_lexicon()
     init_sensor(session)
 
 
@@ -86,7 +86,7 @@ def main_transfer():
             transfer_link_ids_welldata(sess)
 
         if init or transfer_assets_flag:
-            transfer_assets(sess)
+            transfer_assets_testing(sess)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import re
+from pathlib import Path
 
 import pyproj
 from shapely import Point
@@ -25,6 +26,10 @@ import pandas as pd
 from db import Thing, Location
 
 TRANSFORMERS = {}
+
+def read_csv(name: str) -> pd.DataFrame:
+    p = Path(".")/"data"/name
+    return pd.read_csv(p)
 
 
 def transform_srid(geometry, source_srid, target_srid):
