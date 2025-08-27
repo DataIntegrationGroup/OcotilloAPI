@@ -125,28 +125,60 @@ def test_add_water_well_409_bad_location_id(group):
     assert data["detail"][0]["input"] == {"location_id": bad_location_id}
 
 
-# def test_add_spring():
-#     response = client.post(
-#         "/thing",
-#         json={
-#             "location_id": 1,
-#             "name": "Test Spring",
-#             "thing_type": "spring",
-#             "spring_type": "Ephemeral",
-#         },
-#     )
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert "id" in data
+def test_add_spring(location, group):
+    payload = {
+        "location_id": location.id,
+        "group_id": group.id,
+        "name": "test spring",
+        "release_status": "draft",
+        "spring_type": "Ephemeral",
+    }
+    response = client.post("/thing/spring", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["name"] == payload["name"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["spring_type"] == payload["spring_type"]
 
-#     assert "name" in data
-#     assert data["name"] == "Test Spring"
+    cleanup_post_test(Thing, data["id"])
 
-#     assert "thing_type" in data
-#     assert data["thing_type"] == "spring"
 
-#     assert "spring_type" in data
-#     assert data["spring_type"] == "Ephemeral"
+def test_add_spring_409_bad_group_id(location):
+    bad_group_id = 9999
+    payload = {
+        "location_id": location.id,
+        "group_id": bad_group_id,  # Invalid group ID
+        "name": "test spring",
+        "release_status": "draft",
+        "spring_type": "Ephemeral",
+    }
+    response = client.post("/thing/spring", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "group_id"]
+    assert data["detail"][0]["msg"] == f"Group with ID {bad_group_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"group_id": bad_group_id}
+
+
+def test_add_spring_409_bad_location_id(group):
+    bad_location_id = 9999
+    payload = {
+        "location_id": bad_location_id,
+        "group_id": group.id,  # Invalid group ID
+        "name": "test spring",
+        "release_status": "draft",
+        "spring_type": "Ephemeral",
+    }
+    response = client.post("/thing/spring", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "location_id"]
+    assert data["detail"][0]["msg"] == f"Location with ID {bad_location_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"location_id": bad_location_id}
 
 
 # def test_add_well_screen():

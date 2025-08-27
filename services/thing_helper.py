@@ -44,7 +44,6 @@ def get_db_things(
     session,
     sort,
     thing_type: str = None,
-    with_location: bool = False,
     within: str = None,
 ) -> list:
 
@@ -53,17 +52,14 @@ def get_db_things(
     else:
         sql = select(Thing)
 
-    if with_location or within:
-        sql = sql.join(
-            LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
-        )
-        sql = sql.join(Location)
-
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
 
     if within:
-
+        sql = sql.join(
+            LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
+        )
+        sql = sql.join(Location)
         sql = make_within_wkt(sql, within)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
@@ -120,31 +116,35 @@ def add_thing(
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
 
-    thing = Thing(**data)
-    thing.thing_type = thing_type
+    try:
+        thing = Thing(**data)
+        thing.thing_type = thing_type
 
-    audit_add(user, thing)
+        audit_add(user, thing)
 
-    session.add(thing)
-    session.commit()
-    session.refresh(thing)
+        session.add(thing)
+        session.flush()
+        session.refresh(thing)
 
-    # endpoint catches ProgrammingError if location_id or group_id do not exist
-    if group_id:
-        assoc = GroupThingAssociation()
-        audit_add(user, assoc)
-        assoc.group_id = group_id
-        assoc.thing_id = thing.id
-        session.add(assoc)
+        # endpoint catches ProgrammingError if location_id or group_id do not exist
+        if group_id:
+            assoc = GroupThingAssociation()
+            audit_add(user, assoc)
+            assoc.group_id = group_id
+            assoc.thing_id = thing.id
+            session.add(assoc)
 
-    if location_id is not None:
-        assoc = LocationThingAssociation()
-        audit_add(user, assoc)
-        assoc.location_id = location_id
-        assoc.thing_id = thing.id
-        session.add(assoc)
+        if location_id is not None:
+            assoc = LocationThingAssociation()
+            audit_add(user, assoc)
+            assoc.location_id = location_id
+            assoc.thing_id = thing.id
+            session.add(assoc)
 
-    session.commit()
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
     return thing
 
 

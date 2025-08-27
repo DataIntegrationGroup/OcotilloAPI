@@ -37,6 +37,7 @@ def water_well_thing(location):
     with session_ctx() as session:
         water_well = Thing(
             name="Test Well",
+            thing_type="water well",
             release_status="draft",
             well_type="Production",
             well_depth=10,
@@ -91,6 +92,7 @@ def spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Test Spring",
+            thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
         )

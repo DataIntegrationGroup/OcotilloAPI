@@ -273,7 +273,6 @@ def get_things(
             query,
             session,
             sort,
-            with_location=True,
             within=within,
         )
 
@@ -346,12 +345,16 @@ def create_well(
 def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
+    request: Request,
     user: amp_admin_dependency,
 ) -> SpringResponse:
     """
     Create a new well in the database.
     """
-    return add_thing(session, thing_data, thing_type="spring", user=user)
+    try:
+        return add_thing(session, thing_data, request, user=user)
+    except ProgrammingError as e:
+        database_error_handler(thing_data, e)
 
 
 @router.post(
