@@ -71,6 +71,20 @@ def well_screen(water_well_thing):
 
 
 @pytest.fixture(scope="session")
+def thing_id_link(water_well_thing):
+    with session_ctx() as session:
+        id_link = ThingIdLink(
+            thing_id=water_well_thing.id,
+            relation="same_as",
+            alternate_id="4321-1234",
+            alternate_organization="USGS",
+        )
+        session.add(id_link)
+        session.commit()
+        yield id_link
+
+
+@pytest.fixture(scope="session")
 def spring_thing(location):
     with session_ctx() as session:
         st = add_thing(

@@ -258,7 +258,8 @@ def get_thing_id_links(
     """
     Retrieve all links for a specific thing by its ID.
     """
-    sql = select(ThingIdLink).where(ThingIdLink.thing_id == thing_id)
+    thing = simple_get_by_id(session, Thing, thing_id)
+    sql = select(ThingIdLink).where(ThingIdLink.thing_id == thing.id)
     return paginate(query=sql, conn=session)
 
 
