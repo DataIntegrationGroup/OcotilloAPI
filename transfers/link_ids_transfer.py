@@ -97,14 +97,13 @@ def add_link_plss(session, row, thing):
     section = row.Section
     section_direction = row.SectionDirection
 
-    alternate_id = f'T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}'
-    if not re.match(r'T\d{1,3}.R\d{1,3}.S\d{1,3}', alternate_id):
+    alternate_id = f"T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}"
+    if not re.match(r"T\d{1,3}.R\d{1,3}.S\d{1,3}", alternate_id):
         log(row, f"alternate id {alternate_id} is not a valid PLSS id")
         return
     link_id.alternate_id = alternate_id
     link_id.alternate_organization = "PLSS"
     session.add(link_id)
-
 
 
 def transfer_link_ids(session, site_type="GW"):
@@ -114,7 +113,6 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = ldf[ldf["AlternateSiteID"].notna()]
 
     ldf = filter_to_valid_point_ids(session, ldf)
-
 
     for i, row in enumerate(ldf.itertuples()):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
