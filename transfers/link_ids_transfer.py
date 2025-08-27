@@ -18,12 +18,17 @@ from pathlib import Path
 import pandas as pd
 
 from db import Thing, ThingIdLink
-from transfers.util import filter_to_valid_point_ids, log, extract_organization, read_csv
+from transfers.util import (
+    filter_to_valid_point_ids,
+    log,
+    extract_organization,
+    read_csv,
+)
 
 
 # ============= EOF =============================================
 def transfer_link_ids_welldata(session):
-    ldf = read_csv('welldata.csv')
+    ldf = read_csv("welldata.csv")
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
@@ -70,7 +75,7 @@ def transfer_link_ids_welldata(session):
 
 
 def transfer_link_ids(session, site_type="GW"):
-    ldf = read_csv('location2.csv')
+    ldf = read_csv("location2.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     ldf = ldf[ldf["AlternateSiteID"].notna()]

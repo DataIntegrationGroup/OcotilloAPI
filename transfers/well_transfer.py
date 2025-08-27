@@ -31,8 +31,8 @@ ADDED = []
 
 
 def transfer_wells(session, limit=None):
-    wdf = read_csv('welldata.csv')
-    ldf = read_csv('location.csv')
+    wdf = read_csv("welldata.csv")
+    ldf = read_csv("location.csv")
 
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})

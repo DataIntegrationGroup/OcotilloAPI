@@ -20,7 +20,12 @@ from starlette.datastructures import UploadFile
 
 from db import Asset, AssetThingAssociation, Thing
 from services.audit_helper import audit_add
-from services.gcs_helper import gcs_upload, check_asset_exists, get_storage_bucket, get_storage_client
+from services.gcs_helper import (
+    gcs_upload,
+    check_asset_exists,
+    get_storage_bucket,
+    get_storage_client,
+)
 from transfers.util import get_valid_point_ids
 
 
@@ -33,7 +38,7 @@ def transfer_assets(session: Session) -> None:
     point_ids = get_valid_point_ids(session)
     for p in point_ids:
         # find images in temp bucket
-        blobs = tempbucket.list_blobs(match_glob=f'{p}*')
+        blobs = tempbucket.list_blobs(match_glob=f"{p}*")
 
         # move blobs from temp to assets bucket
         for srcblob in blobs:
@@ -41,7 +46,6 @@ def transfer_assets(session: Session) -> None:
             ff = UploadFile(file=io.BytesIO(f), filename=srcblob.name, size=len(f))
             uri, blob = gcs_upload(ff, bucket)
             add_asset(session, ff, srcblob.name, p, uri, blob.name)
-
 
 
 def transfer_assets_testing(session: Session) -> None:
@@ -57,7 +61,9 @@ def transfer_assets_testing(session: Session) -> None:
             add_asset(session, uf, p, thing_id, uri, blob_name)
 
 
-def add_asset(session: Session, uf: UploadFile, p: str, thing_id: int, uri: str, blob_name: str) -> None:
+def add_asset(
+    session: Session, uf: UploadFile, p: str, thing_id: int, uri: str, blob_name: str
+) -> None:
     asset = Asset(
         name=p,
         label=p,
@@ -75,4 +81,6 @@ def add_asset(session: Session, uf: UploadFile, p: str, thing_id: int, uri: str,
     session.add(assoc)
     session.add(asset)
     session.commit()
+
+
 # ============= EOF =============================================

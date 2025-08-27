@@ -78,7 +78,9 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
 
 # POST =========================================================================
 @router.post(
-    "/upload", status_code=HTTP_201_CREATED, dependencies=[Depends(admin_function)],
+    "/upload",
+    status_code=HTTP_201_CREATED,
+    dependencies=[Depends(admin_function)],
 )
 async def upload_asset(
     bucket=Depends(get_storage_bucket), file: UploadFile = File(...)

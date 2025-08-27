@@ -28,6 +28,7 @@ GCS_BUCKET_BASE_URL = f"https://storage.cloud.google.com/{GCS_BUCKET_NAME}/uploa
 
 from google.cloud import storage
 
+
 def get_storage_client() -> storage.Client:
     if settings.mode == "production":
         key_json = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")

@@ -55,7 +55,7 @@ def init_hypertables():
 
 def init_lexicon(path=None):
     if path is None:
-        path = Path('..')/'core'/'lexicon.json'
+        path = Path("..") / "core" / "lexicon.json"
 
     with open(path) as f:
         import json
