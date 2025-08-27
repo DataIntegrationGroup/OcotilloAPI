@@ -85,13 +85,13 @@ def log(row, msg):
 
 def convert_to_wgs84_vertical_datum(row, z):
     if row.VerticalDatum == "NAVD88":
-        z = z + 2.0 # TODO: check this transformation
+        z = z + 2.0  # TODO: check this transformation
     elif row.VerticalDatum == "NGVD29":
-        z = z + 3.0 # TODO: check this transformation
+        z = z + 3.0  # TODO: check this transformation
     return z
 
 
-def make_location(row)->Location:
+def make_location(row) -> Location:
     z = row.Altitude if row.Altitude else 0
     # convert to WGS84 vertical datum
     z = convert_to_wgs84_vertical_datum(row, z)
@@ -123,16 +123,13 @@ def make_location(row)->Location:
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
         elevation_method=row.AltitudeMethod,
-
         nma_pk_location=row.LocationId,
         created_at=created_at,
-
         point_accuracy=row.CoordinateAccuracy,
         point_method=row.CoordinateMethod,
-
-        state = state,
-        county= county,
-        quad_name= quad_name
+        state=state,
+        county=county,
+        quad_name=quad_name,
     )
     return location
 

@@ -91,13 +91,13 @@ def add_link_site_id(session, row, thing):
     link_id.relation = "same_as"
 
     site_id = row.SiteID.strip()
-    if not re.match(r'^\d{15}$', site_id):
+    if not re.match(r"^\d{15}$", site_id):
         # flag for interrogation
         log(row, f"alternate id {site_id} is not a valid USGS site id")
         return
 
     link_id.alternate_id = row.SiteID
-    link_id.alternate_organization = 'USGS'
+    link_id.alternate_organization = "USGS"
     session.add(link_id)
 
 
@@ -113,8 +113,8 @@ def add_link_plss(session, row, thing):
     section = row.Section
     section_direction = row.SectionDirection
 
-    alternate_id = f'T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}'
-    if not re.match(r'T\d{1,3}.R\d{1,3}.S\d{1,3}', alternate_id):
+    alternate_id = f"T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}"
+    if not re.match(r"T\d{1,3}.R\d{1,3}.S\d{1,3}", alternate_id):
         # flag for interrogation
         log(row, f"alternate id {alternate_id} is not a valid PLSS id")
         return
