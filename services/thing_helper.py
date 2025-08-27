@@ -16,12 +16,11 @@
 from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
 
 from db import LocationThingAssociation, Thing, Base, Location
-from schemas.location import LocationResponse
 from db.group import Group, GroupThingAssociation
 from services.audit_helper import audit_add
 from services.exceptions_helper import PydanticStyleException
@@ -47,7 +46,7 @@ def get_db_things(
     thing_type: str = None,
     with_location: bool = False,
     within: str = None,
-):
+) -> list:
 
     if query:
         sql = select(Thing).where(make_query(Thing, query))
@@ -63,48 +62,13 @@ def get_db_things(
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
 
-    sql = order_sort_filter(sql, Thing, sort, order, filter_)
     if within:
 
         sql = make_within_wkt(sql, within)
 
-    def transformer(records):
-        thing_ids = sorted([record.id for record in records])
-        subq = (
-            select(
-                LocationThingAssociation.thing_id,
-                func.max(LocationThingAssociation.effective_start).label("max_start"),
-            )
-            .where(LocationThingAssociation.thing_id.in_(thing_ids))
-            .group_by(LocationThingAssociation.thing_id)
-            .subquery()
-        )
-        stmt = (
-            select(Location)
-            .join(
-                LocationThingAssociation,
-                Location.id == LocationThingAssociation.location_id,
-            )
-            .join(Thing)
-            .join(
-                subq,
-                and_(
-                    LocationThingAssociation.thing_id == subq.c.thing_id,
-                    LocationThingAssociation.effective_start == subq.c.max_start,
-                ),
-            )
-            .order_by(Thing.id.asc())
-        )
-        locations = session.scalars(stmt).all()
+    sql = order_sort_filter(sql, Thing, sort, order, filter_)
 
-        for r, l in zip(records, locations):
-
-            r.location = LocationResponse.model_validate(l)
-            r.geometry = wkb_to_geojson(l.point) if l.point else None
-
-        return records
-
-    return paginate(query=sql, conn=session, transformer=transformer)
+    return paginate(query=sql, conn=session)
 
 
 def get_thing_type_from_request(request: Request) -> str:

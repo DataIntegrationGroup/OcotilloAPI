@@ -121,8 +121,7 @@ class SpringResponse(BaseThingResponse):
 
 
 class ThingResponse(WellResponse, SpringResponse):
-    location: LocationResponse | None = None  # Optional location details
-    geometry: dict | None = None
+    pass
 
 
 class ThingIdLinkResponse(ORMBaseModel):

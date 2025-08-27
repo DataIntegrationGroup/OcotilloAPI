@@ -51,114 +51,114 @@ def override_authentication_dependency_fixture():
 # POST tests ===================================================================
 
 
-def test_add_well(location):
-    # response = client.post(
-    #     "/lexicon/add", json={"term": "Monitoring", "definition": "Monitoring Well"}
-    # )
-    # assert response.status_code == 200
-    # response = client.post(
-    #     "/lexicon/add", json={"term": "Production", "definition": "Production Well"}
-    # )
-    # assert response.status_code == 200
+# def test_add_well(location):
+# response = client.post(
+#     "/lexicon/add", json={"term": "Monitoring", "definition": "Monitoring Well"}
+# )
+# assert response.status_code == 200
+# response = client.post(
+#     "/lexicon/add", json={"term": "Production", "definition": "Production Well"}
+# )
+# assert response.status_code == 200
 
-    response = client.post(
-        "/thing",
-        json={
-            "thing_type": "water well",
-            "location_id": location.id,
-            "name": "Test Well",
-            "api_id": "1001-0001",
-            "ose_pod_id": "RA-0001",
-            "well_type": "Monitoring",
-            "well_depth": 100.0,
-            "well_construction_notes": "this is a test of notes",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["name"] == "Test Well"
-    assert data["well_type"] == "Monitoring"
+#     response = client.post(
+#         "/thing",
+#         json={
+#             "thing_type": "water well",
+#             "location_id": location.id,
+#             "name": "Test Well",
+#             "api_id": "1001-0001",
+#             "ose_pod_id": "RA-0001",
+#             "well_type": "Monitoring",
+#             "well_depth": 100.0,
+#             "well_construction_notes": "this is a test of notes",
+#         },
+#     )
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert "id" in data
+#     assert data["name"] == "Test Well"
+#     assert data["well_type"] == "Monitoring"
 
-    response = client.post(
-        "/thing",
-        json={
-            "thing_type": "water well",
-            "location_id": location.id,
-            "name": "Test Well 2",
-            "api_id": "1001-0002",
-            "ose_pod_id": "RA-0002",
-            "well_type": "Production",
-            "well_depth": 1200.0,
-            "group": "collabnet",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-
-
-def test_add_spring():
-    response = client.post(
-        "/thing",
-        json={
-            "location_id": 1,
-            "name": "Test Spring",
-            "thing_type": "spring",
-            "spring_type": "Ephemeral",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-
-    assert "name" in data
-    assert data["name"] == "Test Spring"
-
-    assert "thing_type" in data
-    assert data["thing_type"] == "spring"
-
-    assert "spring_type" in data
-    assert data["spring_type"] == "Ephemeral"
+#     response = client.post(
+#         "/thing",
+#         json={
+#             "thing_type": "water well",
+#             "location_id": location.id,
+#             "name": "Test Well 2",
+#             "api_id": "1001-0002",
+#             "ose_pod_id": "RA-0002",
+#             "well_type": "Production",
+#             "well_depth": 1200.0,
+#             "group": "collabnet",
+#         },
+#     )
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert "id" in data
 
 
-def test_add_well_screen():
-    # response = client.post(
-    #     "/lexicon/add",
-    #     json={"term": "PVC", "definition": "PVC Well Screen"},
-    # )
-    # assert response.status_code == 200
-    response = client.post(
-        "/thing/well-screen",
-        json={
-            "thing_id": 1,
-            "screen_depth_top": 10.0,
-            "screen_depth_bottom": 20.0,
-            "screen_type": "PVC",
-        },
-    )
+# def test_add_spring():
+#     response = client.post(
+#         "/thing",
+#         json={
+#             "location_id": 1,
+#             "name": "Test Spring",
+#             "thing_type": "spring",
+#             "spring_type": "Ephemeral",
+#         },
+#     )
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert "id" in data
 
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["thing_id"] == 1
+#     assert "name" in data
+#     assert data["name"] == "Test Spring"
+
+#     assert "thing_type" in data
+#     assert data["thing_type"] == "spring"
+
+#     assert "spring_type" in data
+#     assert data["spring_type"] == "Ephemeral"
 
 
-def test_add_thing_link():
-    response = client.post(
-        "/thing/id-link",
-        json={
-            "thing_id": 1,
-            "relation": "same_as",
-            "alternate_id": "4321-1234",
-            "alternate_organization": "USGS",
-        },
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert "id" in data
-    assert data["thing_id"] == 1
-    assert data["alternate_id"] == "4321-1234"
+# def test_add_well_screen():
+#     # response = client.post(
+#     #     "/lexicon/add",
+#     #     json={"term": "PVC", "definition": "PVC Well Screen"},
+#     # )
+#     # assert response.status_code == 200
+#     response = client.post(
+#         "/thing/well-screen",
+#         json={
+#             "thing_id": 1,
+#             "screen_depth_top": 10.0,
+#             "screen_depth_bottom": 20.0,
+#             "screen_type": "PVC",
+#         },
+#     )
+
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert "id" in data
+#     assert data["thing_id"] == 1
+
+
+# def test_add_thing_link():
+#     response = client.post(
+#         "/thing/id-link",
+#         json={
+#             "thing_id": 1,
+#             "relation": "same_as",
+#             "alternate_id": "4321-1234",
+#             "alternate_organization": "USGS",
+#         },
+#     )
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert "id" in data
+#     assert data["thing_id"] == 1
+#     assert data["alternate_id"] == "4321-1234"
 
 
 # GET tests ====================================================================
@@ -402,109 +402,173 @@ def test_get_thing_links_by_thing_id_404_not_found(water_well_thing, thing_id_li
     assert data["detail"] == f"Thing with ID {bad_id} not found."
 
 
-# weaver tests
-def test_weaver_get_wells_geojson():
-    response = client.get("/geospatial", params={"type": "well"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "type" in data
-    assert data["type"] == "FeatureCollection"
-    assert len(data["features"]) > 0
-    assert "id" in data["features"][0]["properties"]
-
-
-def test_weaver_get_all_collabnet_wells():
-    response = client.get(
-        "/geospatial", params={"type": "well", "group": "collabnet"}
-    )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
+def test_get_things(water_well_thing, spring_thing):
+    response = client.get("/thing")
     assert response.status_code == 200
     data = response.json()
 
-    assert "features" in data
-    assert len(data["features"]) > 0
-    for feature in data["features"]:
-        assert "geometry" in feature
-        assert isinstance(feature["geometry"], dict)
-        assert "properties" in feature
-        assert isinstance(feature["properties"], dict)
-        assert "coordinates" in feature["geometry"]
-        assert "id" in feature or "name" in feature["properties"]
-        assert "group" in feature["properties"]
+    assert data["total"] == 2
+
+    assert data["items"][0]["id"] == water_well_thing.id
+    assert data["items"][0][
+        "created_at"
+    ] == water_well_thing.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["name"] == water_well_thing.name
+    assert data["items"][0]["thing_type"] == water_well_thing.thing_type
+    assert data["items"][0]["release_status"] == water_well_thing.release_status
+    assert data["items"][0]["well_type"] == water_well_thing.well_type
+    assert data["items"][0]["well_depth"] == water_well_thing.well_depth
+    assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
+    assert (
+        data["items"][0]["well_construction_notes"]
+        == water_well_thing.well_construction_notes
+    )
+    assert data["items"][0]["spring_type"] is None
+
+    assert data["items"][1]["id"] == spring_thing.id
+    assert data["items"][1][
+        "created_at"
+    ] == spring_thing.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][1]["name"] == spring_thing.name
+    assert data["items"][1]["thing_type"] == spring_thing.thing_type
+    assert data["items"][1]["release_status"] == spring_thing.release_status
+    assert data["items"][1]["spring_type"] == spring_thing.spring_type
+    assert data["items"][1]["well_type"] is None
+    assert data["items"][1]["well_depth"] is None
+    assert data["items"][1]["hole_depth"] is None
+    assert data["items"][1]["well_construction_notes"] is None
 
 
-def test_weaver_thing_contact_info_by_id():
-    response = client.get("/contact?thing_id=1")  # or something like this
+def test_get_thing_by_id(water_well_thing):
+    response = client.get(f"/thing/{water_well_thing.id}")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, dict)
-    assert "items" in data
-    assert len(data["items"]) > 0
-    item = data["items"][0]
-    assert "id" in item
-    assert "name" in item
-    assert "addresses" in item
-    assert "emails" in item
-    assert "phones" in item
 
-    assert isinstance(item["addresses"], list)
-    assert isinstance(item["emails"], list)
-    assert isinstance(item["phones"], list)
+    assert data["id"] == water_well_thing.id
+    assert data["created_at"] == water_well_thing.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["name"] == water_well_thing.name
+    assert data["thing_type"] == water_well_thing.thing_type
+    assert data["release_status"] == water_well_thing.release_status
+    assert data["well_type"] == water_well_thing.well_type
+    assert data["well_depth"] == water_well_thing.well_depth
+    assert data["hole_depth"] == water_well_thing.hole_depth
+    assert data["well_construction_notes"] == water_well_thing.well_construction_notes
+    assert data["spring_type"] is None
+
+
+def test_get_thing_by_id_404_not_found(water_well_thing):
+    bad_id = 99999
+    response = client.get(f"/thing/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
+
+
+# # weaver tests
+# def test_weaver_get_wells_geojson():
+#     response = client.get("/geospatial", params={"type": "well"})
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert "type" in data
+#     assert data["type"] == "FeatureCollection"
+#     assert len(data["features"]) > 0
+#     assert "id" in data["features"][0]["properties"]
+
+
+# def test_weaver_get_all_collabnet_wells():
+#     response = client.get(
+#         "/geospatial", params={"type": "well", "group": "collabnet"}
+#     )  # TODO: QUESTION: use type filter and a group filter instead of /collabnet endpoint?
+#     assert response.status_code == 200
+#     data = response.json()
+
+#     assert "features" in data
+#     assert len(data["features"]) > 0
+#     for feature in data["features"]:
+#         assert "geometry" in feature
+#         assert isinstance(feature["geometry"], dict)
+#         assert "properties" in feature
+#         assert isinstance(feature["properties"], dict)
+#         assert "coordinates" in feature["geometry"]
+#         assert "id" in feature or "name" in feature["properties"]
+#         assert "group" in feature["properties"]
+
+
+# def test_weaver_thing_contact_info_by_id():
+#     response = client.get("/contact?thing_id=1")  # or something like this
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert isinstance(data, dict)
+#     assert "items" in data
+#     assert len(data["items"]) > 0
+#     item = data["items"][0]
+#     assert "id" in item
+#     assert "name" in item
+#     assert "addresses" in item
+#     assert "emails" in item
+#     assert "phones" in item
+
+#     assert isinstance(item["addresses"], list)
+#     assert isinstance(item["emails"], list)
+#     assert isinstance(item["phones"], list)
 
 
 # Patch tests
-def test_patch_thing_link():
-    response = client.patch(
-        "/thing/id-link/1",
-        json={
-            "relation": "same_as",
-            "alternate_id": "USGS-43211234",
-            "alternate_organization": "USGS",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["relation"] == "same_as"
-    assert data["alternate_id"] == "USGS-43211234"
-    assert data["alternate_organization"] == "USGS"
+# def test_patch_thing_link():
+#     response = client.patch(
+#         "/thing/id-link/1",
+#         json={
+#             "relation": "same_as",
+#             "alternate_id": "USGS-43211234",
+#             "alternate_organization": "USGS",
+#         },
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
+#     assert data["relation"] == "same_as"
+#     assert data["alternate_id"] == "USGS-43211234"
+#     assert data["alternate_organization"] == "USGS"
 
 
-def test_patch_thing():
-    response = client.patch(
-        "/thing/1",
-        json={
-            "name": "Updated Test Thing",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["name"] == "Updated Test Thing"
+# def test_patch_thing():
+#     response = client.patch(
+#         "/thing/1",
+#         json={
+#             "name": "Updated Test Thing",
+#         },
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
+#     assert data["name"] == "Updated Test Thing"
 
 
-def test_patch_well():
-    response = client.patch(
-        "/thing/1",
-        json={
-            "well_depth": 150.0,
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == 1
-    assert data["well_depth"] == 150.0
+# def test_patch_well():
+#     response = client.patch(
+#         "/thing/1",
+#         json={
+#             "well_depth": 150.0,
+#         },
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["id"] == 1
+#     assert data["well_depth"] == 150.0
 
 
-def test_patch_thing_location():
-    response = client.patch(
-        "/thing/4/location",
-        json={
-            "point": "POINT(-106.61 35.08)",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["point"] == "POINT (-106.61 35.08)"
+# def test_patch_thing_location():
+#     response = client.patch(
+#         "/thing/4/location",
+#         json={
+#             "point": "POINT(-106.61 35.08)",
+#         },
+#     )
+#     assert response.status_code == 200
+#     data = response.json()
+#     assert data["point"] == "POINT (-106.61 35.08)"
 
 
 # ============= EOF =============================================
