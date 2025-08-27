@@ -61,12 +61,16 @@ def transfer_wells(session, limit=None):
         well = add_thing(
             session,
             {
+                "nma_pk_welldata": row.WellID,
+
                 "name": row.PointID,
                 "hole_depth": row.HoleDepth,
                 "well_depth": row.WellDepth,
-                "well_casing_diameter": row.CasingDiameter,
-                "well_casing_depth": row.CasingDepth,
-                "well_casing_description": row.CasingDescription,
+                "driller_name":row.DrillerName,
+                "construction_method": row.ConstructionMethod,
+                "casing_diameter": row.CasingDiameter,
+                "casing_depth": row.CasingDepth,
+                "casing_description": row.CasingDescription,
                 "thing_type": "water well",
                 "release_status": "public" if row.PublicRelease else "private",
             },
