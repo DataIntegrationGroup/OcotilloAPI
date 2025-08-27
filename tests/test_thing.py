@@ -14,7 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 import pytest
-from tests import client, override_authentication
+
+from db import Thing
+from tests import client, override_authentication, cleanup_post_test
 from main import app
 from core.dependencies import (
     admin_function,
@@ -51,51 +53,76 @@ def override_authentication_dependency_fixture():
 # POST tests ===================================================================
 
 
-# def test_add_well(location):
-# response = client.post(
-#     "/lexicon/add", json={"term": "Monitoring", "definition": "Monitoring Well"}
-# )
-# assert response.status_code == 200
-# response = client.post(
-#     "/lexicon/add", json={"term": "Production", "definition": "Production Well"}
-# )
-# assert response.status_code == 200
+def test_add_water_well(location, group):
+    payload = {
+        "location_id": location.id,
+        "group_id": group.id,
+        "release_status": "draft",
+        "name": "Test Well",
+        "well_type": "Monitoring",
+        "well_depth": 100.0,
+        "hole_depth": 110,
+        "well_construction_notes": "this is a test of notes",
+    }
 
-#     response = client.post(
-#         "/thing",
-#         json={
-#             "thing_type": "water well",
-#             "location_id": location.id,
-#             "name": "Test Well",
-#             "api_id": "1001-0001",
-#             "ose_pod_id": "RA-0001",
-#             "well_type": "Monitoring",
-#             "well_depth": 100.0,
-#             "well_construction_notes": "this is a test of notes",
-#         },
-#     )
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert "id" in data
-#     assert data["name"] == "Test Well"
-#     assert data["well_type"] == "Monitoring"
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
+    assert data["name"] == payload["name"]
+    assert data["thing_type"] == "water well"
+    assert data["well_type"] == payload["well_type"]
+    assert data["hole_depth"] == payload["hole_depth"]
+    assert data["well_depth"] == payload["well_depth"]
+    assert data["well_construction_notes"] == payload["well_construction_notes"]
 
-#     response = client.post(
-#         "/thing",
-#         json={
-#             "thing_type": "water well",
-#             "location_id": location.id,
-#             "name": "Test Well 2",
-#             "api_id": "1001-0002",
-#             "ose_pod_id": "RA-0002",
-#             "well_type": "Production",
-#             "well_depth": 1200.0,
-#             "group": "collabnet",
-#         },
-#     )
-#     assert response.status_code == 201
-#     data = response.json()
-#     assert "id" in data
+    cleanup_post_test(Thing, data["id"])
+
+
+def test_add_water_well_409_bad_group_id(location):
+    bad_group_id = 9999
+    payload = {
+        "location_id": location.id,
+        "group_id": bad_group_id,  # Invalid group ID
+        "release_status": "draft",
+        "name": "Test Well",
+        "well_type": "Monitoring",
+        "well_depth": 100.0,
+        "hole_depth": 110,
+        "well_construction_notes": "this is a test of notes",
+    }
+
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "group_id"]
+    assert data["detail"][0]["msg"] == f"Group with ID {bad_group_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"group_id": bad_group_id}
+
+
+def test_add_water_well_409_bad_location_id(group):
+    bad_location_id = 9999
+    payload = {
+        "location_id": bad_location_id,
+        "group_id": group.id,  # Invalid group ID
+        "release_status": "draft",
+        "name": "Test Well",
+        "well_type": "Monitoring",
+        "well_depth": 100.0,
+        "hole_depth": 110,
+        "well_construction_notes": "this is a test of notes",
+    }
+
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "location_id"]
+    assert data["detail"][0]["msg"] == f"Location with ID {bad_location_id} not found."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"location_id": bad_location_id}
 
 
 # def test_add_spring():

@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
 
 from db import LocationThingAssociation, Thing, Base, Location
-from db.group import Group, GroupThingAssociation
+from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
 from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
@@ -109,31 +109,16 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
     return thing
 
 
-# REFACTOR TODO: use enums (or enum-like object) for thing_type
 def add_thing(
-    session: Session, data: BaseModel | dict, thing_type: str = None, user: dict = None
+    session: Session, data: BaseModel | dict, request: Request, user: dict = None
 ) -> Base:
+    thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
         data = data.model_dump()
 
     location_id = data.pop("location_id", None)
-
     group_id = data.pop("group_id", None)
-    if not group_id:
-        group_name = data.pop("group", None)
-        if group_name is not None:
-            sql = select(Group).where(Group.name == group_name)
-            dbg = session.scalars(sql).one_or_none()
-            if dbg:
-                group_id = dbg.id
-            else:
-                raise ValueError(f"Group '{group_name}' not found.")
-
-    if not thing_type:
-        thing_type = data.get("thing_type", None)
-        if not thing_type:
-            raise ValueError("Thing type must be specified.")
 
     thing = Thing(**data)
     thing.thing_type = thing_type
@@ -144,6 +129,7 @@ def add_thing(
     session.commit()
     session.refresh(thing)
 
+    # endpoint catches ProgrammingError if location_id or group_id do not exist
     if group_id:
         assoc = GroupThingAssociation()
         audit_add(user, assoc)

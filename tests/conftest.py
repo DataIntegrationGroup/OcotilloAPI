@@ -3,7 +3,6 @@ import uuid
 
 from db import *
 from db.engine import session_ctx
-from services.thing_helper import add_thing
 
 
 @pytest.fixture(scope="session")
@@ -36,21 +35,24 @@ def second_location():
 @pytest.fixture(scope="session")
 def water_well_thing(location):
     with session_ctx() as session:
-        wt = add_thing(
-            session,
-            {
-                "location_id": location.id,
-                "name": "Test Well",
-                "release_status": "draft",
-                "well_type": "Production",
-                "well_depth": 10,
-                "hole_depth": 10,
-                "well_construction_notes": "Test well construction notes",
-            },
-            "water well",
+        water_well = Thing(
+            name="Test Well",
+            release_status="draft",
+            well_type="Production",
+            well_depth=10,
+            hole_depth=10,
+            well_construction_notes="Test well construction notes",
         )
+        session.add(water_well)
+        session.commit()
+        session.refresh(water_well)
 
-        yield wt
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = water_well.id
+        session.add(assoc)
+
+        yield water_well
 
         session.close()
 
@@ -87,18 +89,21 @@ def thing_id_link(water_well_thing):
 @pytest.fixture(scope="session")
 def spring_thing(location):
     with session_ctx() as session:
-        st = add_thing(
-            session,
-            {
-                "location_id": location.id,
-                "name": "Test Spring",
-                "release_status": "draft",
-                "spring_type": "Artesian",
-            },
-            "spring",
+        spring = Thing(
+            name="Test Spring",
+            release_status="draft",
+            spring_type="Artesian",
         )
+        session.add(spring)
+        session.commit()
+        session.refresh(spring)
 
-        yield st
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = spring.id
+        session.add(assoc)
+
+        yield spring
 
         session.close()
 

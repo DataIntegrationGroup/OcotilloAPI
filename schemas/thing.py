@@ -34,11 +34,19 @@ class CreateThingIdLink(BaseModel):
 
 
 class CreateBaseThing(BaseModel):
+    """
+    Developer's notes
+
+    thing_type does not need to be set by the user, this is determined by the
+    POST endpoint
+
+    e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
+    """
+
     location_id: int | None = None  # Optional location ID for the thing
+    group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
-    group: str | None = None  # Optional group ID for the thing
-    thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
-    release_status: str | None = "draft"  # Release status of the thing
+    release_status: str  # Release status of the thing
 
 
 class CreateWell(CreateBaseThing):
@@ -46,8 +54,6 @@ class CreateWell(CreateBaseThing):
     Schema for creating a well.
     """
 
-    # api_id: str | None = None
-    # ose_pod_id: str | None = None
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet

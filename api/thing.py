@@ -17,7 +17,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED
+from sqlalchemy.exc import ProgrammingError
+from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -55,6 +56,7 @@ from schemas.thing import (
     UpdateWellScreen,
 )
 from services.crud_helper import model_patcher, model_adder
+from services.exceptions_helper import PydanticStyleException
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -70,6 +72,42 @@ from services.validation.well import validate_screens
 router = APIRouter(
     prefix="/thing", tags=["thing"], dependencies=[Depends(viewer_function)]
 )
+
+
+def database_error_handler(
+    payload: CreateWell | CreateSpring, error: ProgrammingError
+) -> None:
+    """
+    Handle errors raised by the database when adding or updating a thing.
+    """
+
+    error_message = error.orig.args[0]["M"]
+
+    if (
+        error_message
+        == 'insert or update on table "group_thing_association" violates foreign key constraint "group_thing_association_group_id_fkey"'
+    ):
+
+        detail = {
+            "loc": ["body", "group_id"],
+            "msg": f"Group with ID {payload.group_id} not found.",
+            "type": "value_error",
+            "input": {"group_id": payload.group_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "location_thing_association" violates foreign key constraint "location_thing_association_location_id_fkey"'
+    ):
+
+        detail = {
+            "loc": ["body", "location_id"],
+            "msg": f"Location with ID {payload.location_id} not found.",
+            "type": "value_error",
+            "input": {"location_id": payload.location_id},
+        }
+
+    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
+
 
 # GET ==========================================================================
 
@@ -263,7 +301,7 @@ def get_thing_id_links(
     return paginate(query=sql, conn=session)
 
 
-#  ===== POST =============
+#  POST ========================================================================
 
 
 @router.post(
@@ -281,21 +319,23 @@ def create_thing_id_link(
 
 
 @router.post(
-    "/well",
-    summary="Create a well",
+    "/water-well",
+    summary="Create a water well",
     status_code=HTTP_201_CREATED,
 )
 def create_well(
     thing_data: CreateWell,
     session: session_dependency,
+    request: Request,
     user: amp_admin_dependency,
 ) -> WellResponse:
     """
-    Create a new well in the database.
+    Create a new water well in the database.
     """
-    # print("Creating well with data:", well_data, user)
-
-    return add_thing(session, thing_data, thing_type="water well", user=user)
+    try:
+        return add_thing(session, thing_data, request, user=user)
+    except ProgrammingError as e:
+        database_error_handler(thing_data, e)
 
 
 @router.post(
