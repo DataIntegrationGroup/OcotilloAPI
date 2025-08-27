@@ -387,7 +387,7 @@ def create_spring(
 def create_wellscreen(
     session: session_dependency,
     user: amp_admin_dependency,
-    well_screen_data: CreateWellScreen,  # = Depends(validate_screens),
+    well_screen_data: CreateWellScreen,
 ) -> WellScreenResponse:
     """
     Create a new well screen in the database.
