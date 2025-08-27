@@ -62,6 +62,9 @@ def extract_organization(alternate_id: str) -> str:
     elif alternate_id.startswith("NMED"):
         return "NMED"
 
+    # TODO: There are a bunch of other formats used for AlternateSiteID.
+    # we should try to handle as many as possible but its not the end of the world
+    # if we have to update the organization for a particular alternate id at a later time
     for regex, org in ((r"^A-Z{1,2}-\d{5,6}$", "NMOSE"), (r"\d+(\.\d+){3,}", "PLSS")):
 
         if re.match(regex, alternate_id):

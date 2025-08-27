@@ -26,7 +26,6 @@ from transfers.util import (
 )
 
 
-# ============= EOF =============================================
 def transfer_link_ids_welldata(session):
     ldf = read_csv("welldata.csv")
 
@@ -74,11 +73,49 @@ def transfer_link_ids_welldata(session):
         session.commit()
 
 
+def add_link_alternate_site_id(session, row, thing):
+    link_id = ThingIdLink()
+    link_id.thing = thing
+    link_id.relation = "same_as"
+    link_id.alternate_id = row.AlternateSiteID
+
+    link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+
+    print("adding link id: ", link_id)
+    session.add(link_id)
+
+
+def add_link_plss(session, row, thing):
+    link_id = ThingIdLink()
+    link_id.thing = thing
+    link_id.relation = "same_as"
+    link_id.alternate_organization = "PLSS"
+    township = row.Township
+    township_direction = row.TownshipDirection
+    _range = row.Range
+    range_direction = row.RangeDirection
+    section = row.Section
+    section_direction = row.SectionDirection
+
+    alternate_id = f'T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}'
+    if not re.match(r'T\d{1,3}.R\d{1,3}.S\d{1,3}', alternate_id):
+        log(row, f"alternate id {alternate_id} is not a valid PLSS id")
+        return
+    link_id.alternate_id = alternate_id
+    link_id.alternate_organization = "PLSS"
+    session.add(link_id)
+
+
+
 def transfer_link_ids(session, site_type="GW"):
     ldf = read_csv("location2.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     ldf = ldf[ldf["AlternateSiteID"].notna()]
+
+    ldf = filter_to_valid_point_ids(session, ldf)
+
+
     for i, row in enumerate(ldf.itertuples()):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
@@ -88,18 +125,11 @@ def transfer_link_ids(session, site_type="GW"):
             f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
             f"b={row.AlternateSiteID2}"
         )
-        link_id = ThingIdLink()
-        link_id.thing = thing
-        link_id.relation = "same_as"
-        link_id.alternate_id = row.AlternateSiteID
+        add_link_alternate_site_id(session, row, thing)
+        # add_link_alternate_site_id2(session, row, thing)
+        add_link_plss(session, row, thing)
 
-        # TODO: this needs improvement. use regex to determine the organization from the alternate id?
-
-        link_id.alternate_organization = extract_organization(row.AlternateSiteID)
-
-        print("adding link id: ", link_id)
-
-        # if i>100:
-        #     break
-        session.add(link_id)
         session.commit()
+
+
+# ============= EOF =============================================
