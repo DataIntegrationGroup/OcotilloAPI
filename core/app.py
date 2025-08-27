@@ -22,7 +22,7 @@ from sqlalchemy.exc import DatabaseError
 
 from db.base import Base
 from db.engine import engine, session_ctx
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 from .settings import settings
 
 
@@ -68,7 +68,7 @@ def init_lexicon(path="./core/lexicon.json"):
                     session,
                     term_dict["term"],
                     term_dict["definition"],
-                    term_dict["category"],
+                    term_dict["categories"],
                 )
             except DatabaseError as e:
                 print(

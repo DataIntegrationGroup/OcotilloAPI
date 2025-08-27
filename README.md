@@ -148,6 +148,10 @@ After the database container is running, you can run tests with Pytest from your
 </table>
 
 
+#### Staging Data
+
+To get staging data into the database run `python -m transfers.transfer` from the root directory of the project.
+
 ### 🧭 Project Structure
 ```text
 app/

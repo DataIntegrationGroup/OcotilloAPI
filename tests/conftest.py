@@ -476,3 +476,145 @@ def second_group(thing):
         yield group
 
         session.close()
+
+
+@pytest.fixture(scope="session")
+def lexicon_category():
+    with session_ctx() as session:
+        category = LexiconCategory(
+            name="first test category", description="describes the first test category"
+        )
+        session.add(category)
+        session.commit()
+        session.refresh(category)
+        yield category
+
+
+@pytest.fixture(scope="function")
+def second_lexicon_category():
+    with session_ctx() as session:
+        category = LexiconCategory(
+            name="second test category",
+            description="describes the second test category",
+        )
+        session.add(category)
+        session.commit()
+        session.refresh(category)
+        yield category
+        session.delete(category)
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = LexiconTerm(
+            term="first test term",
+            definition="defines the first test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = LexiconTermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+
+
+@pytest.fixture(scope="session")
+def second_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = LexiconTerm(
+            term="second test term",
+            definition="defines the second test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = LexiconTermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def third_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = LexiconTerm(
+            term="third test term",
+            definition="defines the third test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = LexiconTermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def fourth_lexicon_term(lexicon_category):
+    with session_ctx() as session:
+        term = LexiconTerm(
+            term="fourth test term",
+            definition="defines the fourth test term",
+        )
+        session.add(term)
+        session.commit()
+        session.refresh(term)
+
+        term_category_association = LexiconTermCategoryAssociation(
+            term_id=term.id, category_id=lexicon_category.id
+        )
+        session.add(term_category_association)
+        session.commit()
+        session.refresh(term_category_association)
+
+        yield term
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def lexicon_triple(lexicon_term, second_lexicon_term):
+    with session_ctx() as session:
+        triple = LexiconTriple(
+            subject=lexicon_term.term,
+            predicate="related_to",
+            object_=second_lexicon_term.term,
+        )
+        session.add(triple)
+        session.commit()
+        session.refresh(triple)
+        yield triple
+
+
+@pytest.fixture(scope="session")
+def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
+    with session_ctx() as session:
+        triple = LexiconTriple(
+            subject=third_lexicon_term.term,
+            predicate="related_to",
+            object_=fourth_lexicon_term.term,
+        )
+        session.add(triple)
+        session.commit()
+        session.refresh(triple)
+        yield triple

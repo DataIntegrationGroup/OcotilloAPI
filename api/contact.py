@@ -27,7 +27,7 @@ from core.dependencies import (
     amp_editor_dependency,
     amp_viewer_dependency,
 )
-from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address, adder
+from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address
 from schemas.contact import (
     CreateContact,
     CreateAddress,
@@ -42,7 +42,7 @@ from schemas.contact import (
     UpdatePhone,
     UpdateAddress,
 )
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.contact_helper import (
     add_contact,
 )
@@ -146,7 +146,7 @@ def create_address(
     :return: Response containing the added address
     """
     try:
-        return adder(session, Address, address_data, user=user)
+        return model_adder(session, Address, address_data, user=user)
     except ProgrammingError as e:
         database_error_handler(address_data, e)
 
@@ -162,7 +162,7 @@ def create_email(
     user: amp_admin_dependency,
 ) -> EmailResponse:
     try:
-        return adder(session, Email, email_data, user=user)
+        return model_adder(session, Email, email_data, user=user)
     except ProgrammingError as e:
         database_error_handler(email_data, e)
 
@@ -178,7 +178,7 @@ def create_phone(
     user: amp_admin_dependency,
 ) -> PhoneResponse:
     try:
-        return adder(session, Phone, phone_data, user=user)
+        return model_adder(session, Phone, phone_data, user=user)
     except ProgrammingError as e:
         database_error_handler(phone_data, e)
 

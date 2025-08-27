@@ -15,7 +15,7 @@
 # ===============================================================================
 from db.geochronology import GeochronologyAge
 from fastapi import APIRouter, Depends, status
-from db import adder
+from services.crud_helper import model_adder
 from db.engine import get_db_session
 from schemas.geochronology import CreateGeochronologyAge
 from sqlalchemy.orm import Session
@@ -33,7 +33,7 @@ async def create_age(
     """
     # Placeholder for actual implementation
     # return {"message": "Geochronology age created successfully.", "data": age}
-    return adder(session, GeochronologyAge, age)
+    return model_adder(session, GeochronologyAge, age)
 
 
 @router.get("/age", tags=["geochronology"])

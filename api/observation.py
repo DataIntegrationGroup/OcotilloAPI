@@ -25,7 +25,7 @@ from core.dependencies import (
     amp_viewer_dependency,
     viewer_dependency,
 )
-from db import Observation, adder
+from db import Observation
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
@@ -38,7 +38,7 @@ from schemas.observation import (
     UpdateWaterChemistryObservation,
     UpdateGeothermalObservation,
 )
-from services.crud_helper import model_deleter
+from services.crud_helper import model_deleter, model_adder
 from services.query_helper import simple_get_by_id
 from services.observation_helper import (
     get_observations,
@@ -59,7 +59,7 @@ def add_groundwater_level_observation(
     """
     Add a new groundwater observation to the database.
     """
-    return adder(session, Observation, obs_data, user=user)
+    return model_adder(session, Observation, obs_data, user=user)
 
 
 @router.post("/water-chemistry", status_code=HTTP_201_CREATED)
@@ -72,7 +72,7 @@ def add_water_chemistry_observation(
     Add a new water chemistry observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
     """
-    return adder(session, Observation, obs_data, user=user)
+    return model_adder(session, Observation, obs_data, user=user)
 
 
 @router.post("/geothermal", status_code=HTTP_201_CREATED)
@@ -85,7 +85,7 @@ def add_geothermal_observation(
     Add a new geothermal observation to the database.
     This endpoint is currently a placeholder and does not implement any functionality.
     """
-    return adder(session, Observation, obs_data, user=user)
+    return model_adder(session, Observation, obs_data, user=user)
 
 
 # PATCH ========================================================================

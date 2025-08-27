@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import mapped_column, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 
 from db.base import AutoBaseMixin, Base, lexicon_term
 
 
-class Lexicon(Base, AutoBaseMixin):
+class LexiconTerm(Base, AutoBaseMixin):
     """
     Lexicon model for storing terms and their definitions.
     This model can be extended to include additional fields as needed.
@@ -29,16 +30,18 @@ class Lexicon(Base, AutoBaseMixin):
     term = mapped_column(String(100), unique=True, nullable=False)
     definition = mapped_column(String(255), nullable=False)
 
-    # categories = relationship(
-    #     "Category",
-    #     secondary="lexicon_term_category_association",
-    # )
-    # categories = relationship("TermCategoryAssociation")
+    category_associations = relationship(
+        "LexiconTermCategoryAssociation",
+        back_populates="term",
+        cascade="all, delete-orphan",
+    )
+    categories = association_proxy("category_associations", "category")
+
     def __repr__(self):
-        return f"<Lexicon(term={self.term}, definition={self.definition})>"
+        return f"<LexiconTerm(term={self.term}, definition={self.definition})>"
 
 
-class Category(Base, AutoBaseMixin):
+class LexiconCategory(Base, AutoBaseMixin):
     """
     Model for storing categories of terms.
     This can be used to group terms into different categories.
@@ -49,10 +52,10 @@ class Category(Base, AutoBaseMixin):
     description = mapped_column(String(255), nullable=True)
 
     def __repr__(self):
-        return f"<Category(name={self.name}, description={self.description})>"
+        return f"<LexiconCategory(name={self.name}, description={self.description})>"
 
 
-class TermCategoryAssociation(Base, AutoBaseMixin):
+class LexiconTermCategoryAssociation(Base, AutoBaseMixin):
     """
     Model for linking terms to categories.
     This can be used to create a many-to-many relationship between terms and categories.
@@ -60,18 +63,20 @@ class TermCategoryAssociation(Base, AutoBaseMixin):
 
     __tablename__ = "lexicon_term_category_association"
 
-    lexicon_term = lexicon_term(foreignkeykw={"ondelete": "CASCADE"})
-    category_name = mapped_column(
-        String(255),
-        ForeignKey("lexicon_category.name", ondelete="CASCADE"),
+    term_id = mapped_column(
+        Integer, ForeignKey("lexicon_term.id", ondelete="CASCADE"), nullable=False
+    )
+    category_id = mapped_column(
+        Integer,
+        ForeignKey("lexicon_category.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    term = relationship("Lexicon", backref="categories")
-    category = relationship("Category")
+    term = relationship("LexiconTerm")
+    category = relationship("LexiconCategory")
 
     def __repr__(self):
-        return f"<TermCategoryAssociation(term_id={self.term_id}, category_id={self.category_id})>"
+        return f"<LexiconTermCategoryAssociation(term_id={self.term.id}, category_id={self.category.id})>"
 
 
 class LexiconTriple(Base, AutoBaseMixin):
@@ -80,12 +85,16 @@ class LexiconTriple(Base, AutoBaseMixin):
     This can be used to represent relationships between terms.
     """
 
-    subject = lexicon_term(nullable=False)
+    subject = lexicon_term(nullable=False, foreignkeykw={"ondelete": "CASCADE"})
     predicate = mapped_column(String(100), nullable=False)
-    object_ = lexicon_term(nullable=False)
+    object_ = lexicon_term(nullable=False, foreignkeykw={"ondelete": "CASCADE"})
 
-    subject_term = relationship("Lexicon", foreign_keys=[subject])
-    object_term = relationship("Lexicon", foreign_keys=[object_])
+    subject_term = relationship(
+        "LexiconTerm", foreign_keys=[subject], passive_deletes=True
+    )
+    object_term = relationship(
+        "LexiconTerm", foreign_keys=[object_], passive_deletes=True
+    )
 
     def __repr__(self):
         return f"<LexiconTriples(subject={self.subject}, predicate={self.predicate}, object_={self.object_})>"

@@ -13,31 +13,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
+from sqlalchemy.exc import ProgrammingError
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_409_CONFLICT,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     editor_dependency,
     admin_dependency,
-    viewer_dependency,
     viewer_function,
 )
-from db.engine import get_db_session
-from db.lexicon import Category, LexiconTriple, Lexicon, TermCategoryAssociation
+from db.lexicon import (
+    LexiconCategory,
+    LexiconTerm,
+    LexiconTermCategoryAssociation,
+    LexiconTriple,
+)
 from schemas.lexicon import (
     CreateLexiconTerm,
     CreateLexiconCategory,
-    CreateTriple,
+    CreateLexiconTriple,
     LexiconTermResponse,
     LexiconCategoryResponse,
+    LexiconTripleResponse,
+    UpdateLexiconTerm,
+    UpdateLexiconCategory,
+    UpdateLexiconTriple,
 )
-from services.crud_helper import model_patcher
-from services.lexicon import add_lexicon_term
+from services.crud_helper import model_patcher, model_deleter, model_adder
+from services.exceptions_helper import PydanticStyleException
+from services.lexicon_helper import add_lexicon_term, add_lexicon_triple
 from services.query_helper import (
-    simple_all_getter,
     paginated_all_getter,
     order_sort_filter,
     simple_get_by_id,
@@ -48,30 +62,61 @@ router = APIRouter(
 )
 
 
+def database_error_handler(
+    payload: UpdateLexiconTriple, error: ProgrammingError
+) -> None:
+    """
+    Handle errors raised by the database when adding or updating a lexicon triple.
+    """
+
+    error_message = error.orig.args[0]["M"]
+
+    if (
+        error_message
+        == 'insert or update on table "lexicon_triple" violates foreign key constraint "lexicon_triple_subject_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "subject"],
+            "msg": f"LexiconTerm with term {payload.subject} not found.",
+            "type": "value_error",
+            "input": {"subject": payload.subject},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "lexicon_triple" violates foreign key constraint "lexicon_triple_object__fkey"'
+    ):
+        detail = {
+            "loc": ["body", "object_"],
+            "msg": f"LexiconTerm with term {payload.object_} not found.",
+            "type": "value_error",
+            "input": {"object_": payload.object_},
+        }
+
+    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
+
+
+# POST =========================================================================
+
+
 @router.post(
     "/category",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
 def add_category(
-    category_data: CreateLexiconCategory, session=Depends(get_db_session)
+    category_data: CreateLexiconCategory,
+    session: session_dependency,
+    user: admin_dependency,
 ) -> LexiconCategoryResponse:
     """
     Endpoint to add a category to the lexicon.
     """
-    data = category_data.model_dump()
-    name = data["name"]
-    description = data.get("description", "")
-
-    category = Category(name=name, description=description)
-    session.add(category)
-    session.commit()
-    return category
+    return model_adder(session, LexiconCategory, category_data, user=user)
 
 
 @router.post(
     "/term",
     summary="Add term",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
 def add_term(
     term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
@@ -81,50 +126,70 @@ def add_term(
     """
     data = term_data.model_dump()
     return add_lexicon_term(
-        session, data["term"], data["definition"], data["category"], user=user
+        session, data["term"], data["definition"], data["categories"], user=user
     )
 
 
 @router.post(
-    "/triple/add",
+    "/triple",
     summary="Add triple",
-    status_code=status.HTTP_201_CREATED,
+    status_code=HTTP_201_CREATED,
 )
-def add_triple(triple_data: CreateTriple, session=Depends(get_db_session)):
+def add_triple(
+    triple_data: CreateLexiconTriple,
+    session: session_dependency,
+    user: admin_dependency,
+) -> LexiconTripleResponse:
     triple_data = triple_data.model_dump()
     subject = triple_data["subject"]
     predicate = triple_data["predicate"]
     object_ = triple_data["object_"]
-
-    if isinstance(subject, dict):
-        add_lexicon_term(
-            session, subject["term"], subject["definition"], subject["category"]
-        )
-        subject = subject["term"]
-
-    if isinstance(object_, dict):
-        add_lexicon_term(
-            session, object_["term"], object_["definition"], object_["category"]
-        )
-        object_ = object_["term"]
-
-    triple = LexiconTriple(subject=subject, predicate=predicate, object_=object_)
-    session.add(triple)
-    session.commit()
-    return triple
+    return add_lexicon_triple(session, subject, predicate, object_, user=user)
 
 
-@router.get("/term/{term_id}")
-def get_lexicon_term(term_id: int, session: session_dependency):
-    return simple_get_by_id(session, Lexicon, term_id)
+# PATCH ========================================================================
 
 
-@router.get("/category/{category_id}")
-def get_lexicon_category(category_id: int, session: session_dependency):
-    return simple_get_by_id(session, Category, category_id)
+@router.patch("/term/{term_id}", status_code=HTTP_200_OK)
+def update_lexicon_term(
+    term_id: int,
+    term_data: UpdateLexiconTerm,
+    session: session_dependency,
+    user: editor_dependency,
+) -> LexiconTermResponse:
+
+    return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
 
 
-@router.get("/term", summary="Get lexicon terms")
+@router.patch("/category/{category_id}", status_code=HTTP_200_OK)
+def update_lexicon_category(
+    category_id: int,
+    category_data: UpdateLexiconCategory,
+    session: session_dependency,
+    user: editor_dependency,
+) -> LexiconCategoryResponse:
+    return model_patcher(
+        session, LexiconCategory, category_id, category_data, user=user
+    )
+
+
+@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
+def update_lexicon_triple(
+    triple_id: int,
+    triple_data: UpdateLexiconTriple,
+    session: session_dependency,
+    user: editor_dependency,
+) -> LexiconTripleResponse:
+    try:
+        return model_patcher(session, LexiconTriple, triple_id, triple_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(triple_data, e)
+
+
+# GET ==========================================================================
+
+
+@router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK)
 def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
@@ -137,28 +202,32 @@ def get_lexicon_terms(
     Endpoint to retrieve lexicon terms.
     """
 
-    sql = select(Lexicon)
+    sql = select(LexiconTerm)
     if category:
         sql = (
-            sql.join(TermCategoryAssociation)
-            .join(Category)
-            .where(Category.name == category)
+            sql.join(LexiconTermCategoryAssociation)
+            .join(LexiconCategory)
+            .where(LexiconCategory.name == category)
         )
     if term:
-        sql = sql.where(Lexicon.term.ilike(f"%{term}%"))
+        sql = sql.where(LexiconTerm.term.ilike(f"%{term}%"))
 
     # If sort is 'categories', we do not apply sorting or filtering
     if sort == "categories":
         sort = None
         order = None
 
-    sql = order_sort_filter(sql, Lexicon, sort=sort, order=order, filter_=filter_)
+    sql = order_sort_filter(sql, LexiconTerm, sort=sort, order=order, filter_=filter_)
 
     if order is None:
-        sql = sql.order_by(func.lower(Lexicon.term).asc())
+        sql = sql.order_by(func.lower(LexiconTerm.term).asc())
 
     return paginate(query=sql, conn=session)
-    # return paginated_all_getter(session, sql, filter_)
+
+
+@router.get("/term/{term_id}", status_code=HTTP_200_OK)
+def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
+    return simple_get_by_id(session, LexiconTerm, term_id)
 
 
 @router.get("/category")
@@ -171,28 +240,70 @@ def get_lexicon_categories(
     """
     Endpoint to retrieve lexicon categories.
     """
-    return paginated_all_getter(session, Category, sort, order, filter_)
+    return paginated_all_getter(session, LexiconCategory, sort, order, filter_)
 
 
-@router.patch("/term/{term_id}")
-def update_lexicon_term(
-    term_id: int,
-    term_data: CreateLexiconTerm,
+@router.get("/category/{category_id}")
+def get_lexicon_category(
+    category_id: int, session: session_dependency
+) -> LexiconCategoryResponse:
+    return simple_get_by_id(session, LexiconCategory, category_id)
+
+
+@router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
+async def get_lexicon_triples(
     session: session_dependency,
-    user: editor_dependency,
+    sort: str = "subject",
+    order: str = "asc",
+    filter_: str = Query(alias="filter", default=None),
+) -> CustomPage[LexiconTripleResponse]:
+    """
+    Endpoint to retrieve lexicon triples.
+    """
+    return paginated_all_getter(session, LexiconTriple, sort, order, filter_)
+
+
+@router.get("/triple/{triple_id}", status_code=HTTP_200_OK)
+async def get_lexicon_triple(
+    triple_id: int, session: session_dependency
+) -> LexiconTripleResponse:
+    return simple_get_by_id(session, LexiconTriple, triple_id)
+
+
+# DELETE =======================================================================
+
+
+@router.delete(
+    "/term/{term_id}",
+    summary="Delete a lexicon term by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_term(
+    session: session_dependency, user: admin_dependency, term_id: int
 ):
+    return model_deleter(session, LexiconTerm, term_id)
 
-    return model_patcher(session, Lexicon, term_id, term_data, user=user)
 
-
-@router.patch("/category/{category_id}")
-def update_lexicon_category(
-    category_id: int,
-    category_data: CreateLexiconCategory,
-    session: session_dependency,
-    user: editor_dependency,
+@router.delete(
+    "/category/{category_id}",
+    summary="Delete a lexicon category by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_category(
+    session: session_dependency, user: admin_dependency, category_id: int
 ):
-    return model_patcher(session, Category, category_id, category_data, user=user)
+    return model_deleter(session, LexiconCategory, category_id)
+
+
+@router.delete(
+    "/triple/{triple_id}",
+    summary="Delete a lexicon triple by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_lexicon_triple(
+    session: session_dependency, user: admin_dependency, triple_id: int
+):
+    return model_deleter(session, LexiconTriple, triple_id)
 
 
 # ============= EOF =============================================

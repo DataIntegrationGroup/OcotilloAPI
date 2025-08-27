@@ -26,10 +26,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db import adder, Observation, Sample
-from db.sensor import Sensor
+from db import Observation, Sample, Sensor
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
-from services.crud_helper import model_patcher, model_deleter
+from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
 
@@ -45,7 +44,7 @@ def add_sensor(
     """
     Add a sensor to the system.
     """
-    return adder(session, Sensor, sensor_data, user=user)
+    return model_adder(session, Sensor, sensor_data, user=user)
 
 
 # ====== PATCH =================================================================
