@@ -25,8 +25,14 @@ from services.crud_helper import model_adder
 from schemas.thing import CreateWellScreen
 from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
-from transfers.util import make_location, filter_to_valid_point_ids, read_csv, get_state_from_point, \
-    get_county_from_point, get_quad_name_from_point
+from transfers.util import (
+    make_location,
+    filter_to_valid_point_ids,
+    read_csv,
+    get_state_from_point,
+    get_county_from_point,
+    get_quad_name_from_point,
+)
 
 ADDED = []
 
@@ -52,7 +58,6 @@ def transfer_wells(session, limit=None):
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
-
 
         try:
             location = make_location(row)
@@ -146,15 +151,17 @@ def cleanup_wells(session):
     locations = session.query(Location).all()
     for location in locations:
 
-        y,x = location.latlon
+        y, x = location.latlon
         if not location.state:
-            location.state = get_state_from_point(x,y)
+            location.state = get_state_from_point(x, y)
 
         if not location.county:
-            location.county = get_county_from_point(x,y)
+            location.county = get_county_from_point(x, y)
 
         if not location.quad_name:
-            location.quad_name = get_quad_name_from_point(x,y)
+            location.quad_name = get_quad_name_from_point(x, y)
 
     session.commit()
+
+
 # ============= EOF =============================================

@@ -163,7 +163,6 @@ def transfer_link_ids(session, site_type="GW"):
         # not clear what alternate_id2 is for, or what it maps to
         # add_link_alternate_site_id2(session, row, thing)
 
-
         session.commit()
 
 

@@ -29,6 +29,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
+
 class Location(Base, AutoBaseMixin, ReleaseMixin):
     # name = Column(String(100), nullable=True)
     # description = Column(String(255), nullable=True)
@@ -49,7 +50,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     def latlon(self):
         p = to_shape(self.point)
         return p.y, p.x
-
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):
