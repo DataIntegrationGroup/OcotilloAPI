@@ -438,14 +438,15 @@ async def update_water_well(
 )
 async def update_spring(
     thing_id: int,
-    spring_data: UpdateSpring,
+    thing_data: UpdateSpring,
     session: session_dependency,
     user: amp_editor_dependency,
+    request: Request,
 ) -> SpringResponse:
     """
     Update an existing spring by ID.
     """
-    return model_patcher(session, Thing, thing_id, spring_data, user=user)
+    return patch_thing(session, request, thing_id, thing_data, user=user)
 
 
 @router.patch(

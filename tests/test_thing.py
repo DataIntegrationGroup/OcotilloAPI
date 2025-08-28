@@ -708,3 +708,50 @@ def test_patch_water_well_404_wrong_type(spring_thing):
     assert data["detail"][0]["loc"] == ["path", "thing_id"]
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
+
+
+def test_patch_spring(spring_thing):
+    payload = {
+        "name": "patched spring",
+        "release_status": "private",
+        "spring_type": "Mineral",
+    }
+    response = client.patch(f"/thing/spring/{spring_thing.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == payload["name"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["spring_type"] == payload["spring_type"]
+
+    cleanup_patch_test(Thing, payload, spring_thing)
+
+
+def test_patch_spring_404_not_found(spring_thing):
+    bad_id = 99999
+    payload = {
+        "name": "patched spring",
+        "release_status": "private",
+        "spring_type": "Mineral",
+    }
+    response = client.patch(f"/thing/spring/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
+
+
+def test_patch_spring_404_wrong_type(water_well_thing):
+    payload = {
+        "name": "patched spring",
+        "release_status": "private",
+        "spring_type": "Mineral",
+    }
+    response = client.patch(f"/thing/spring/{water_well_thing.id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {water_well_thing.id} is not a spring Thing. It is a water well Thing."
+    )
+    assert data["detail"][0]["loc"] == ["path", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": water_well_thing.id}
