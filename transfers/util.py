@@ -20,7 +20,6 @@ import httpx
 import pyproj
 from shapely import Point
 from shapely.ops import transform
-from sqlalchemy.engine import row
 
 from sqlalchemy.orm import Session
 import pandas as pd
@@ -92,14 +91,14 @@ def convert_to_wgs84_vertical_datum(row, z):
     return z
 
 
-def get_state_from_point(lon: float, lat: float):
+def get_state_from_point(lon: float, lat: float) -> str:
     attrs = get_tiger_data(lon, lat, layer=0, outfields="BASENAME")
     return attrs["BASENAME"]
 
 
-def get_county_from_point(lon: float, lat: float):
+def get_county_from_point(lon: float, lat: float) -> str:
     """
-    Look up state and county for a given longitude/latitude
+    Look up county for a given longitude/latitude
     using the US Census TIGERWeb REST API.
     """
 
@@ -107,7 +106,7 @@ def get_county_from_point(lon: float, lat: float):
     return attrs["BASENAME"]
 
 
-def get_tiger_data(lon: float, lat: float, layer: int, outfields: str = "*"):
+def get_tiger_data(lon: float, lat: float, layer: int, outfields: str="*") -> dict|None:
     url = f"https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/{layer}/query"
     params = {
         "f": "json",
@@ -149,12 +148,36 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         print("No quad found")
 
 
+def get_epqs_elevation(lon: float, lat: float) -> float:
+    url = "https://epqs.nationalmap.gov/v1/json"
+    params = {
+        "x": lon,
+        "y": lat,
+        "units": "Meters",
+        "wkid": "4326",
+        "includeDate": False
+    }
+
+    resp = httpx.get(url, params=params)
+    data = resp.json()
+
+    return data['value']
+
+
 def make_location(row) -> Location:
-    z = row.Altitude if row.Altitude else 0
-    # convert to WGS84 vertical datum
-    z = convert_to_wgs84_vertical_datum(row, z)
-    # convert z from ft to meters
-    z = z * 0.3048
+
+    # TODO: should the altitude be fetched from USGS'
+    # Elevation Point Query Service https://epqs.nationalmap.gov/v1/docs
+    xypoint = transform_srid(
+        Point(row.Easting, row.Northing), source_srid=26913, target_srid=4326  # WGS84 SRID
+    )
+    z = get_epqs_elevation(xypoint.x, xypoint.y)
+
+    # z = row.Altitude if row.Altitude else 0
+    # # convert to WGS84 vertical datum
+    # z = convert_to_wgs84_vertical_datum(row, z)
+    # # convert z from ft to meters
+    # z = z * 0.3048
 
     point = Point(row.Easting, row.Northing, z)
 
@@ -190,11 +213,13 @@ def make_location(row) -> Location:
 
 
 if __name__ == "__main__":
-    quad = get_quad_name_from_point(-106.5, 34.2)
-    print(quad)
-    state = get_state_from_point(-106.5, 34.2)
-    print(state)
-    county = get_county_from_point(-106.5, 34.2)
-    print(county)
+    # quad = get_quad_name_from_point(-106.5, 34.2)
+    # print(quad)
+    # state = get_state_from_point(-106.5, 34.2)
+    # print(state)
+    # county = get_county_from_point(-106.5, 34.2)
+    # print(county)
+    z = get_epqs_elevation(-106.5, 34.2)
+    print(z)
 
 # ============= EOF =============================================
