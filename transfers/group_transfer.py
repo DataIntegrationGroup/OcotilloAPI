@@ -21,7 +21,9 @@ from db.engine import session_ctx
 from transfers.util import read_csv
 
 
-def transfer_groups(session: Session,) -> None:
+def transfer_groups(
+    session: Session,
+) -> None:
     wdf = read_csv("projects.csv")
     for i, row in enumerate(wdf.itertuples()):
 
@@ -32,7 +34,7 @@ def transfer_groups(session: Session,) -> None:
             group = Group(name=row.Project)
 
         for prefix in row.PointIDPrefix.split(","):
-            prefix =prefix.strip()
+            prefix = prefix.strip()
             if prefix:
                 # get all PointIDs that start with prefix
                 sql = select(Thing).where(Thing.name.like(f"{prefix}%"))
@@ -45,7 +47,7 @@ def transfer_groups(session: Session,) -> None:
         session.commit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     with session_ctx() as session:
         transfer_groups(session)
 # ============= EOF =============================================

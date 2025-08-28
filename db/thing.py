@@ -117,6 +117,7 @@ class WellScreen(Base, AutoBaseMixin):
     # Define a relationship to well if needed
     # well = relationship("Well")
 
+
 # TODO: this could be the model used to handle AMP monitoring
 # class FieldSamplingAdministation(Base, AutoBaseMixin):
 #     # the thing being monitored
@@ -126,7 +127,6 @@ class WellScreen(Base, AutoBaseMixin):
 #     well_logger_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
 #     monitor_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
 #     sample_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
 
 
 # ============= EOF =============================================
