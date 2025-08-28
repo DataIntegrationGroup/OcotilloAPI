@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 from sqlalchemy import select
-from pathlib import Path
 
 from db import LocationThingAssociation, Thing, adder, WellScreen
 from schemas.thing import CreateWellScreen
