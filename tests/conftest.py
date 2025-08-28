@@ -71,6 +71,23 @@ def well_screen(water_well_thing):
         yield screen
 
 
+@pytest.fixture(scope="function")
+def second_well_screen(water_well_thing):
+    with session_ctx() as session:
+        screen = WellScreen(
+            thing_id=water_well_thing.id,
+            screen_depth_top=30.0,
+            screen_depth_bottom=40.0,
+            screen_type="PVC",
+            screen_description="Test well screen description",
+        )
+        session.add(screen)
+        session.commit()
+        yield screen
+        session.delete(screen)
+        session.commit()
+
+
 @pytest.fixture(scope="session")
 def thing_id_link(water_well_thing):
     with session_ctx() as session:
@@ -83,6 +100,22 @@ def thing_id_link(water_well_thing):
         session.add(id_link)
         session.commit()
         yield id_link
+
+
+@pytest.fixture(scope="function")
+def second_thing_id_link(water_well_thing):
+    with session_ctx() as session:
+        id_link = ThingIdLink(
+            thing_id=water_well_thing.id,
+            relation="same_as",
+            alternate_id="4321-1234",
+            alternate_organization="USGS",
+        )
+        session.add(id_link)
+        session.commit()
+        yield id_link
+        session.delete(id_link)
+        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -104,6 +137,29 @@ def spring_thing(location):
         session.add(assoc)
         session.commit()
         yield spring
+
+
+@pytest.fixture(scope="function")
+def second_spring_thing(location):
+    with session_ctx() as session:
+        spring = Thing(
+            name="Second Test Spring",
+            thing_type="spring",
+            release_status="draft",
+            spring_type="Artesian",
+        )
+        session.add(spring)
+        session.commit()
+        session.refresh(spring)
+
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = spring.id
+        session.add(assoc)
+        session.commit()
+        yield spring
+        session.delete(spring)
+        session.commit()
 
 
 @pytest.fixture(scope="session")

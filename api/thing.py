@@ -17,7 +17,12 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_409_CONFLICT,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -50,7 +55,7 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
-from services.crud_helper import model_patcher, model_adder
+from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import (
     simple_get_by_id,
@@ -477,6 +482,55 @@ async def update_well_screen(
     return model_patcher(
         session, WellScreen, well_screen_id, well_screen_data, user=user
     )
+
+
+# DELETE =======================================================================
+
+
+@router.delete(
+    "/{thing_id}", summary="Delete thing by ID", status_code=HTTP_204_NO_CONTENT
+)
+async def delete_thing(
+    thing_id: int,
+    session: session_dependency,
+    user: editor_dependency,
+) -> None:
+    """
+    Delete a thing by ID.
+    """
+    return model_deleter(session, Thing, thing_id)
+
+
+@router.delete(
+    "/well-screen/{well_screen_id}",
+    summary="Delete well screen by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_well_screen(
+    well_screen_id: int,
+    session: session_dependency,
+    user: editor_dependency,
+) -> None:
+    """
+    Delete a well screen by ID.
+    """
+    return model_deleter(session, WellScreen, well_screen_id)
+
+
+@router.delete(
+    "/id-link/{link_id}",
+    summary="Delete thing link by ID",
+    status_code=HTTP_204_NO_CONTENT,
+)
+async def delete_thing_id_link(
+    link_id: int,
+    session: session_dependency,
+    user: editor_dependency,
+) -> None:
+    """
+    Delete a thing link by ID.
+    """
+    return model_deleter(session, ThingIdLink, link_id)
 
 
 # ============= EOF =============================================

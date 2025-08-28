@@ -816,3 +816,63 @@ def test_patch_well_screen_404_not_found():
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"WellScreen with ID {bad_id} not found."
+
+
+# DELETE tests =================================================================
+
+
+def test_delete_thing(second_spring_thing):
+    response = client.delete(f"/thing/{second_spring_thing.id}")
+    assert response.status_code == 204
+
+    # Verify the thing is deleted
+    response = client.get(f"/thing/spring/{second_spring_thing.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Thing with ID {second_spring_thing.id} not found."
+
+
+def test_delete_thing_404_not_found():
+    bad_id = 9999
+    response = client.delete(f"/thing/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
+
+
+def test_delete_well_screen(second_well_screen):
+    response = client.delete(f"/thing/well-screen/{second_well_screen.id}")
+    assert response.status_code == 204
+
+    # Verify the well screen is deleted
+    response = client.get(f"/thing/well-screen/{second_well_screen.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"WellScreen with ID {second_well_screen.id} not found."
+
+
+def test_delete_well_screen_404_not_found():
+    bad_id = 9999
+    response = client.delete(f"/thing/well-screen/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"WellScreen with ID {bad_id} not found."
+
+
+def test_delete_thing_id_link(second_thing_id_link):
+    response = client.delete(f"/thing/id-link/{second_thing_id_link.id}")
+    assert response.status_code == 204
+
+    # Verify the thing ID link is deleted
+    response = client.get(f"/thing/id-link/{second_thing_id_link.id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"ThingIdLink with ID {second_thing_id_link.id} not found."
+
+
+def test_delete_thing_id_link_404_not_found(second_thing_id_link):
+    bad_id = 9999
+    response = client.delete(f"/thing/id-link/{bad_id}")
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
