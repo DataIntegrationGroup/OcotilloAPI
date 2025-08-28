@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 import re
-from pathlib import Path
 import pandas as pd
 
 from db import Thing, ThingIdLink
@@ -45,7 +44,7 @@ def transfer_link_ids_welldata(session):
 
         for aid, klass, regex in (
             (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,2}-\d{5,6}"),
-            (row.OSEWelltagID, "OSEWellTagID", r""),
+            (row.OSEWelltagID, "OSEWellTagID", r""), #TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
                 log(row, f"{klass} is null")
@@ -66,7 +65,7 @@ def transfer_link_ids_welldata(session):
             link_id.alternate_id = aid
             link_id.alternate_organization = "NMOSE"
 
-            # does link_id need a class e.g.
+            # does link_id need a class  e.g.
             # link_id.alternate_id_class = klass
 
             session.add(link_id)
@@ -74,6 +73,9 @@ def transfer_link_ids_welldata(session):
 
 
 def add_link_alternate_site_id(session, row, thing):
+    if not row.AlternateSiteID:
+        return
+
     link_id = ThingIdLink()
     link_id.thing = thing
     link_id.relation = "same_as"
@@ -86,12 +88,16 @@ def add_link_alternate_site_id(session, row, thing):
 
 
 def add_link_site_id(session, row, thing):
+    if not row.SiteID:
+        return
+
     link_id = ThingIdLink()
     link_id.thing = thing
     link_id.relation = "same_as"
 
     site_id = row.SiteID.strip()
     if not re.match(r"^\d{15}$", site_id):
+        # TODO: lets make a sweet function for flagging issues
         # flag for interrogation
         log(row, f"alternate id {site_id} is not a valid USGS site id")
         return
@@ -102,16 +108,21 @@ def add_link_site_id(session, row, thing):
 
 
 def add_link_plss(session, row, thing):
-    link_id = ThingIdLink()
-    link_id.thing = thing
-    link_id.relation = "same_as"
-    link_id.alternate_organization = "PLSS"
+
     township = row.Township
     township_direction = row.TownshipDirection
     _range = row.Range
     range_direction = row.RangeDirection
     section = row.Section
     section_direction = row.SectionDirection
+
+    if not township or not _range or not section:
+        return
+
+    link_id = ThingIdLink()
+    link_id.thing = thing
+    link_id.relation = "same_as"
+    link_id.alternate_organization = "PLSS"
 
     alternate_id = f"T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}"
     if not re.match(r"T\d{1,3}.R\d{1,3}.S\d{1,3}", alternate_id):
@@ -127,13 +138,14 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = read_csv("location2.csv")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
-    ldf = ldf[ldf["AlternateSiteID"].notna()]
+    # ldf = ldf[ldf["AlternateSiteID"].notna()]
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
     for i, row in enumerate(ldf.itertuples()):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
+            # TODO: lets make a sweet function for flagging issues
             # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
             continue
         print(

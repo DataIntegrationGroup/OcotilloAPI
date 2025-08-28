@@ -15,8 +15,7 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
 
@@ -26,12 +25,14 @@ def transfer_owners(session):
     odf = odf.replace(pd.NA, None)
     odf = odf.replace({np.nan: None})
 
+    odf = filter_to_valid_point_ids(session, odf)
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
             print(f"Thing with PointID {row.PointID} not foaund. Skipping owner.")
             continue
 
+        # TODO: put in guards for null values
         contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role="Primary")
         assoc = ThingContactAssociation()
         assoc.thing = thing
@@ -69,6 +70,7 @@ def transfer_owners(session):
                 )
             )
 
+        # TODO: put in guards for null values
         contact2 = Contact(
             name=f"{row.SecondFirstName} {row.SecondLastName}", role="Secondary"
         )

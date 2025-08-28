@@ -72,6 +72,7 @@ def transfer_wells(session, limit=None):
                 "casing_description": row.CasingDescription,
                 "thing_type": "water well",
                 "release_status": "public" if row.PublicRelease else "private",
+                'data_reliability': row.DataReliability,
             },
         )
         wt = row.Meaning
@@ -107,6 +108,8 @@ def transfer_wellscreens(session, limit=None):
             print("Reached limit of", limit, "rows. Stopping migration.")
             break
 
+        # this is for testing only. not sure in practice we have to commit every 100 rows
+        # should we commit every row? or every 1000? or every 10?
         if i and not i % 100:
             print(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
