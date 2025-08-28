@@ -72,7 +72,7 @@ def transfer_wells(session, limit=None):
                 "casing_description": row.CasingDescription,
                 "thing_type": "water well",
                 "release_status": "public" if row.PublicRelease else "private",
-                'data_reliability': row.DataReliability,
+                "data_reliability": row.DataReliability,
             },
         )
         wt = row.Meaning

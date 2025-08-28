@@ -44,7 +44,11 @@ def transfer_link_ids_welldata(session):
 
         for aid, klass, regex in (
             (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,2}-\d{5,6}"),
-            (row.OSEWelltagID, "OSEWellTagID", r""), #TODO: need to figure out regex for this field
+            (
+                row.OSEWelltagID,
+                "OSEWellTagID",
+                r"",
+            ),  # TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
                 log(row, f"{klass} is null")
