@@ -16,7 +16,6 @@
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import ProgrammingError
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_409_CONFLICT
 
@@ -34,11 +33,8 @@ from core.dependencies import (
     # no_permission_function,
     amp_editor_dependency,
 )
-from db.engine import get_db_session
-from db.location import LocationThingAssociation, Location
 from db.thing import Thing, WellScreen
 from db.thing import ThingIdLink
-from schemas.location import LocationResponse, UpdateLocation
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -46,7 +42,7 @@ from schemas.thing import (
     ThingResponse,
     WellResponse,
     WellScreenResponse,
-    UpdateThing,
+    UpdateSpring,
     UpdateWell,
     SpringResponse,
     CreateSpring,
@@ -63,6 +59,7 @@ from services.query_helper import (
 )
 from services.thing_helper import (
     add_thing,
+    patch_thing,
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
@@ -416,69 +413,45 @@ def create_wellscreen(
 # PATCH ========================================================================
 
 
-@router.patch("/{thing_id}", summary="Update thing")
-def update_thing(
-    thing_id: int,
-    thing_data: UpdateWell | UpdateThing,
-    user: editor_dependency,
-    session: Session = Depends(get_db_session),
-) -> ThingResponse:
-    """
-    Update an existing thing by ID.
-    """
-
-    return model_patcher(session, Thing, thing_id, thing_data, user=user)
-
-
-@router.patch("/{thing_id}/location", summary="Update thing location")
-def update_thing_location(
-    thing_id: int,
-    location_data: UpdateLocation,
-    session: session_dependency,
-    user: editor_dependency,
-) -> LocationResponse:
-    """
-    Update the location of an existing thing by ID.
-    """
-
-    # get active location associated with the thing
-    location_id = session.execute(
-        select(LocationThingAssociation.location_id)
-        .where(LocationThingAssociation.thing_id == thing_id)
-        .order_by(LocationThingAssociation.effective_start.desc())
-    ).scalar_one_or_none()
-
-    return model_patcher(session, Location, location_id, location_data, user=user)
-
-
-@router.patch("/{thing_id}", summary="Update thing")
-def update_thing(
-    thing_id: int,
-    thing_data: UpdateThing,
-    session: session_dependency,
-    user: editor_dependency,
-) -> ThingResponse:
-    """
-    Update an existing well by ID.
-    """
-    return model_patcher(session, Thing, thing_id, thing_data, user=user)
-
-
-@router.patch("/well/{thing_id}", summary="Update well by parent thing ID")
-def update_thing(
+@router.patch(
+    "/water-well/{thing_id}",
+    summary="Update well by parent thing ID",
+    status_code=HTTP_200_OK,
+)
+async def update_water_well(
     thing_id: int,
     thing_data: UpdateWell,
     session: session_dependency,
     user: amp_editor_dependency,
+    request: Request,
 ) -> WellResponse:
     """
     Update an existing well by ID.
     """
-    return model_patcher(session, Thing, thing_id, thing_data, user=user)
+    return patch_thing(session, request, thing_id, thing_data, user=user)
 
 
-@router.patch("/id-link/{link_id}", summary="Update thing link by ID")
-def update_thing_id_link(
+@router.patch(
+    "/spring/{thing_id}",
+    summary="Update spring by parent thing ID",
+    status_code=HTTP_200_OK,
+)
+async def update_spring(
+    thing_id: int,
+    spring_data: UpdateSpring,
+    session: session_dependency,
+    user: amp_editor_dependency,
+) -> SpringResponse:
+    """
+    Update an existing spring by ID.
+    """
+    return model_patcher(session, Thing, thing_id, spring_data, user=user)
+
+
+@router.patch(
+    "/id-link/{link_id}", summary="Update thing link by ID", status_code=HTTP_200_OK
+)
+async def update_thing_id_link(
     link_id: int,
     link_data: UpdateThingIdLink,
     session: session_dependency,
@@ -487,8 +460,12 @@ def update_thing_id_link(
     return model_patcher(session, ThingIdLink, link_id, link_data, user=user)
 
 
-@router.patch("/well-screen/{well_screen_id}", summary="Update Well Screen by ID")
-def update_well_screen(
+@router.patch(
+    "/well-screen/{well_screen_id}",
+    summary="Update Well Screen by ID",
+    status_code=HTTP_200_OK,
+)
+async def update_well_screen(
     well_screen_id: int,
     well_screen_data: UpdateWellScreen,
     session: session_dependency,

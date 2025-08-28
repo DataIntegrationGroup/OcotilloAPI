@@ -197,25 +197,20 @@ class UpdateThing(BaseModel):
     Schema for updating a thing.
     """
 
-    # location_id: int | None = None  # Optional location ID for the thing
     name: str | None = None  # Optional name for the thing
     release_status: str | None = None
-    # group: str | None = None  # Optional group for the thing
-    # description: str | None = None  # Optional description of the thing
-    # tags: list[str] | None = None  # Optional tags associated with the thing
 
 
 class UpdateWell(UpdateThing):
-    # location_id: int | None = None  # Optional location ID for the well
-    # name: str | None = None  # Optional name for the well
-    # api_id: str | None = None
-    # ose_pod_id: str | None = None
+
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
 
-    # group: str | None = None  # Optional group for the well
+
+class UpdateSpring(UpdateThing):
+    spring_type: str | None = None
 
 
 class UpdateThingIdLink(BaseModel):

@@ -23,6 +23,7 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db import LocationThingAssociation, Thing, Base, Location, WellScreen
 from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
+from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
@@ -181,6 +182,20 @@ def add_well_screen(session, well_screen_data: BaseModel, user: dict = None):
         session.rollback()
         raise e
     return well_screen
+
+
+def patch_thing(
+    session: Session,
+    request: Request,
+    thing_id: int,
+    payload: BaseModel,
+    user: dict,
+):
+    thing = simple_get_by_id(session, Thing, thing_id)
+
+    verify_thing_type_correspondence(thing, request)
+
+    return model_patcher(session, Thing, thing_id, payload, user)
 
 
 # ============= EOF =============================================

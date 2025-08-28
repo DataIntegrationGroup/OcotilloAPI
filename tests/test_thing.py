@@ -16,7 +16,7 @@
 import pytest
 
 from db import Thing, WellScreen, ThingIdLink
-from tests import client, override_authentication, cleanup_post_test
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 from main import app
 from core.dependencies import (
     admin_function,
@@ -648,60 +648,63 @@ def test_get_thing_by_id_404_not_found(water_well_thing):
 #     assert isinstance(item["phones"], list)
 
 
-# Patch tests
-# def test_patch_thing_link():
-#     response = client.patch(
-#         "/thing/id-link/1",
-#         json={
-#             "relation": "same_as",
-#             "alternate_id": "USGS-43211234",
-#             "alternate_organization": "USGS",
-#         },
-#     )
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["relation"] == "same_as"
-#     assert data["alternate_id"] == "USGS-43211234"
-#     assert data["alternate_organization"] == "USGS"
+# PATCH tests ==================================================================
 
 
-# def test_patch_thing():
-#     response = client.patch(
-#         "/thing/1",
-#         json={
-#             "name": "Updated Test Thing",
-#         },
-#     )
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["name"] == "Updated Test Thing"
+def test_patch_water_well(water_well_thing):
+    payload = {
+        "name": "patched water well",
+        "release_status": "provisional",
+        "well_type": "Injection",
+        "well_depth": 20,
+        "hole_depth": 40,
+        "well_construction_notes": "patched well construction notes",
+    }
+    response = client.patch(f"/thing/water-well/{water_well_thing.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == payload["name"]
+    assert data["release_status"] == payload["release_status"]
+    assert data["well_type"] == payload["well_type"]
+    assert data["well_depth"] == payload["well_depth"]
+    assert data["hole_depth"] == payload["hole_depth"]
+    assert data["well_construction_notes"] == payload["well_construction_notes"]
+
+    cleanup_patch_test(Thing, payload, water_well_thing)
 
 
-# def test_patch_well():
-#     response = client.patch(
-#         "/thing/1",
-#         json={
-#             "well_depth": 150.0,
-#         },
-#     )
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == 1
-#     assert data["well_depth"] == 150.0
+def test_patch_water_well_404_not_found():
+    bad_id = 99999
+    payload = {
+        "name": "patched water well",
+        "release_status": "provisional",
+        "well_type": "Injection",
+        "well_depth": 20,
+        "hole_depth": 40,
+        "well_construction_notes": "patched well construction notes",
+    }
+    response = client.patch(f"/thing/water-well/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"Thing with ID {bad_id} not found."
 
 
-# def test_patch_thing_location():
-#     response = client.patch(
-#         "/thing/4/location",
-#         json={
-#             "point": "POINT(-106.61 35.08)",
-#         },
-#     )
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["point"] == "POINT (-106.61 35.08)"
-
-
-# ============= EOF =============================================
+def test_patch_water_well_404_wrong_type(spring_thing):
+    payload = {
+        "name": "patched water well",
+        "release_status": "provisional",
+        "well_type": "Injection",
+        "well_depth": 20,
+        "hole_depth": 40,
+        "well_construction_notes": "patched well construction notes",
+    }
+    response = client.patch(f"/thing/water-well/{spring_thing.id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert (
+        data["detail"][0]["msg"]
+        == f"Thing with ID {spring_thing.id} is not a water well Thing. It is a spring Thing."
+    )
+    assert data["detail"][0]["loc"] == ["path", "thing_id"]
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
