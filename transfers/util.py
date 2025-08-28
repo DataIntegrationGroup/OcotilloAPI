@@ -107,7 +107,7 @@ def get_county_from_point(lon: float, lat: float):
     return attrs["BASENAME"]
 
 
-def get_tiger_data(lon: float, lat: float, layer: int, outfields: str="*"):
+def get_tiger_data(lon: float, lat: float, layer: int, outfields: str = "*"):
     url = f"https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/{layer}/query"
     params = {
         "f": "json",
@@ -127,7 +127,7 @@ def get_tiger_data(lon: float, lat: float, layer: int, outfields: str="*"):
     return data["features"][0]["attributes"]
 
 
-def get_quad_name_from_point(lon: float, lat: float)-> str:
+def get_quad_name_from_point(lon: float, lat: float) -> str:
     url = "https://carto.nationalmap.gov/arcgis/rest/services/map_indices/MapServer/10/query"
     params = {
         "f": "json",
@@ -163,7 +163,6 @@ def make_location(row) -> Location:
         point, source_srid=26913, target_srid=4326  # WGS84 SRID
     )
 
-
     # TODO: Add tests for these functions. move to a different location
     # use in Location API
     state = get_state_from_point(transformed_point)
@@ -189,7 +188,8 @@ def make_location(row) -> Location:
     )
     return location
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     quad = get_quad_name_from_point(-106.5, 34.2)
     print(quad)
     state = get_state_from_point(-106.5, 34.2)
