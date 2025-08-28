@@ -367,7 +367,7 @@ def create_well(
     Create a new water well in the database.
     """
     try:
-        return add_thing(session, thing_data, request, user=user)
+        return add_thing(session=session, data=thing_data, request=request, user=user)
     except ProgrammingError as e:
         database_error_handler(thing_data, e)
 
@@ -387,7 +387,7 @@ def create_spring(
     Create a new well in the database.
     """
     try:
-        return add_thing(session, thing_data, request, user=user)
+        return add_thing(session=session, data=thing_data, request=request, user=user)
     except ProgrammingError as e:
         database_error_handler(thing_data, e)
 

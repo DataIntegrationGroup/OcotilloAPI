@@ -106,9 +106,14 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
 
 
 def add_thing(
-    session: Session, data: BaseModel | dict, request: Request, user: dict = None
+    session: Session,
+    data: BaseModel | dict,
+    user: dict = None,
+    request: Request | None = None,
+    thing_type: str | None = None,  # to be used only for data transfers, not the API
 ) -> Base:
-    thing_type = get_thing_type_from_request(request)
+    if request is not None:
+        thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
         data = data.model_dump()
