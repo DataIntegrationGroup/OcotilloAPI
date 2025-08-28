@@ -129,15 +129,4 @@ class WellScreen(Base, AutoBaseMixin):
 
 
 
-# TODO: this could be the model used to handle AMP monitoring
-# class FieldSamplingAdministation(Base, AutoBaseMixin):
-#     # the thing being monitored
-#     thing_id: Mapped[int] = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False)
-#
-#     monitoring_frequency: Mapped[str] = mapped_column(lexicon_term(), nullable=False)
-#     well_logger_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
-#     monitor_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
-#     sample_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
-
 # ============= EOF =============================================
