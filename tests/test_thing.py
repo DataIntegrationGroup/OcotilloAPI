@@ -755,3 +755,32 @@ def test_patch_spring_404_wrong_type(water_well_thing):
     assert data["detail"][0]["loc"] == ["path", "thing_id"]
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"thing_id": water_well_thing.id}
+
+
+def test_patch_thing_id_link(thing_id_link):
+    payload = {
+        "relation": "related_to",
+        "alternate_id": "9999-8888",
+        "alternate_organization": "TWDB",
+    }
+    response = client.patch(f"/thing/id-link/{thing_id_link.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["relation"] == payload["relation"]
+    assert data["alternate_id"] == payload["alternate_id"]
+    assert data["alternate_organization"] == payload["alternate_organization"]
+
+    cleanup_patch_test(ThingIdLink, payload, thing_id_link)
+
+
+def test_patch_thing_id_link_404_not_found():
+    bad_id = 9999
+    payload = {
+        "relation": "related_to",
+        "alternate_id": "9999-8888",
+        "alternate_organization": "EPA",
+    }
+    response = client.patch(f"/thing/id-link/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
