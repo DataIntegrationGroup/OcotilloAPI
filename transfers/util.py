@@ -106,7 +106,9 @@ def get_county_from_point(lon: float, lat: float) -> str:
     return attrs["BASENAME"]
 
 
-def get_tiger_data(lon: float, lat: float, layer: int, outfields: str="*") -> dict|None:
+def get_tiger_data(
+    lon: float, lat: float, layer: int, outfields: str = "*"
+) -> dict | None:
     url = f"https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/{layer}/query"
     params = {
         "f": "json",
@@ -155,13 +157,13 @@ def get_epqs_elevation(lon: float, lat: float) -> float:
         "y": lat,
         "units": "Meters",
         "wkid": "4326",
-        "includeDate": False
+        "includeDate": False,
     }
 
     resp = httpx.get(url, params=params)
     data = resp.json()
 
-    return data['value']
+    return data["value"]
 
 
 def make_location(row) -> Location:
@@ -169,7 +171,9 @@ def make_location(row) -> Location:
     # TODO: should the altitude be fetched from USGS'
     # Elevation Point Query Service https://epqs.nationalmap.gov/v1/docs
     xypoint = transform_srid(
-        Point(row.Easting, row.Northing), source_srid=26913, target_srid=4326  # WGS84 SRID
+        Point(row.Easting, row.Northing),
+        source_srid=26913,
+        target_srid=4326,  # WGS84 SRID
     )
     z = get_epqs_elevation(xypoint.x, xypoint.y)
 
