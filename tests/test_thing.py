@@ -784,3 +784,35 @@ def test_patch_thing_id_link_404_not_found():
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
+
+
+def test_patch_well_screen(well_screen):
+    payload = {
+        "screen_depth_bottom": 2,
+        "screen_depth_top": 1,
+        "screen_description": "patched screen description",
+        "screen_type": "Steel",
+    }
+    response = client.patch(f"/thing/well-screen/{well_screen.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["screen_depth_bottom"] == payload["screen_depth_bottom"]
+    assert data["screen_depth_top"] == payload["screen_depth_top"]
+    assert data["screen_description"] == payload["screen_description"]
+    assert data["screen_type"] == data["screen_type"]
+
+    cleanup_patch_test(WellScreen, payload, well_screen)
+
+
+def test_patch_well_screen_404_not_found():
+    bad_id = 9999
+    payload = {
+        "screen_depth_bottom": 2,
+        "screen_depth_top": 1,
+        "screen_desciption": "patched screen description",
+        "screen_type": "Steel",
+    }
+    response = client.patch(f"/thing/well-screen/{bad_id}", json=payload)
+    assert response.status_code == 404
+    data = response.json()
+    assert data["detail"] == f"WellScreen with ID {bad_id} not found."
