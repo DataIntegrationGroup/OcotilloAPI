@@ -16,6 +16,7 @@
 import re
 from pathlib import Path
 
+import httpx
 import pyproj
 from shapely import Point
 from shapely.ops import transform
@@ -91,6 +92,63 @@ def convert_to_wgs84_vertical_datum(row, z):
     return z
 
 
+def get_state_from_point(lon: float, lat: float):
+    attrs = get_tiger_data(lon, lat, layer=0, outfields="BASENAME")
+    return attrs["BASENAME"]
+
+
+def get_county_from_point(lon: float, lat: float):
+    """
+    Look up state and county for a given longitude/latitude
+    using the US Census TIGERWeb REST API.
+    """
+
+    attrs = get_tiger_data(lon, lat, layer=1, outfields="BASENAME")
+    return attrs["BASENAME"]
+
+
+def get_tiger_data(lon: float, lat: float, layer: int, outfields: str="*"):
+    url = f"https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/{layer}/query"
+    params = {
+        "f": "json",
+        "where": "1=1",
+        "geometry": f"{lon},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": outfields,
+        "returnGeometry": "false",
+    }
+    resp = httpx.get(url, params=params, timeout=15)
+    data = resp.json()
+    if not data.get("features"):
+        return None
+
+    return data["features"][0]["attributes"]
+
+
+def get_quad_name_from_point(lon: float, lat: float)-> str:
+    url = "https://carto.nationalmap.gov/arcgis/rest/services/map_indices/MapServer/10/query"
+    params = {
+        "f": "json",
+        "geometry": f"{lon},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "CELL_NAME,CELL_MAPCODE",
+        "returnGeometry": "false",
+    }
+
+    resp = httpx.get(url, params=params)
+    data = resp.json()
+
+    if data["features"]:
+        attrs = data["features"][0]["attributes"]
+        return attrs["CELL_NAME"]
+    else:
+        print("No quad found")
+
+
 def make_location(row) -> Location:
     z = row.Altitude if row.Altitude else 0
     # convert to WGS84 vertical datum
@@ -105,14 +163,12 @@ def make_location(row) -> Location:
         point, source_srid=26913, target_srid=4326  # WGS84 SRID
     )
 
-    state = "Unknown"
-    county = "Unknown"
-    quad_name = "Unknown"
 
-    # TODO: make these functions. Include them in the Location API
-    # state = get_state_from_point(transformed_point)
-    # county = get_county_from_point(transformed_point)
-    # quad_name = get_quad_name_from_point(transformed_point)
+    # TODO: Add tests for these functions. move to a different location
+    # use in Location API
+    state = get_state_from_point(transformed_point)
+    county = get_county_from_point(transformed_point)
+    quad_name = get_quad_name_from_point(transformed_point)
 
     # TODO: determine correct created_at value
     created_at = row.DateCreated
@@ -133,5 +189,12 @@ def make_location(row) -> Location:
     )
     return location
 
+if __name__ == '__main__':
+    quad = get_quad_name_from_point(-106.5, 34.2)
+    print(quad)
+    state = get_state_from_point(-106.5, 34.2)
+    print(state)
+    county = get_county_from_point(-106.5, 34.2)
+    print(county)
 
 # ============= EOF =============================================
