@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from xmlrpc.client import Boolean
+
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
@@ -114,6 +116,17 @@ class WellScreen(Base, AutoBaseMixin):
     )
     # Define a relationship to well if needed
     thing = relationship("Thing")
+
+
+# TODO: this could be the model used to handle AMP monitoring
+# class FieldSamplingAdministation(Base, AutoBaseMixin):
+#     # the thing being monitored
+#     thing_id: Mapped[int] = mapped_column(Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False)
+#
+#     monitoring_frequency: Mapped[str] = mapped_column(lexicon_term(), nullable=False)
+#     well_logger_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
+#     monitor_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
+#     sample_ok: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
 
 # ============= EOF =============================================

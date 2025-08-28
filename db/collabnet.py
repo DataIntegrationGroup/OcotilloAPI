@@ -19,6 +19,7 @@ from sqlalchemy.orm import mapped_column, relationship
 from db.base import AutoBaseMixin, Base
 
 
+# TODO: deprecate this model
 class CollaborativeNetworkWell(Base, AutoBaseMixin):
     """ """
 

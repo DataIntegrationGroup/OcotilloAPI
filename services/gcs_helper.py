@@ -30,8 +30,7 @@ GCS_BUCKET_BASE_URL = f"https://storage.cloud.google.com/{GCS_BUCKET_NAME}/uploa
 from google.cloud import storage
 
 
-def get_storage_bucket() -> storage.Bucket:
-
+def get_storage_client() -> storage.Client:
     if settings.mode == "production":
         key_base64 = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
         decoded = base64.b64decode(key_base64).decode("utf-8")
@@ -47,6 +46,12 @@ def get_storage_bucket() -> storage.Bucket:
         client = storage.Client.from_service_account_json(
             os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
         )
+    return client
+
+
+def get_storage_bucket(client=None) -> storage.Bucket:
+    if client is None:
+        client = get_storage_client()
 
     bucket = client.bucket(GCS_BUCKET_NAME)
     return bucket

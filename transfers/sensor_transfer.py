@@ -13,38 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from dotenv import load_dotenv
+from datetime import datetime
 
-load_dotenv()
+from db import Sensor
 
-import click
-from core.initializers import init_lexicon
-from db.engine import session_ctx
-
-
-# from migration.migration2 import migrate_wells, migrate_water_levels
-#
-#
-# def wells():
-#     with session_ctx() as sess:
-#         migrate_wells(sess, 1000)
-#
-#
-# def waterlevels():
-#     with session_ctx() as sess:
-#         migrate_water_levels(sess, 800)
-@click.group()
-def cli():
-    """Command line interface for managing the application."""
-    pass
-
-
-@cli.command()
-def initialize_lexicon():
-    init_lexicon()
-
-
-if __name__ == "__main__":
-    cli()
 
 # ============= EOF =============================================
+def init_sensor(session):
+    sensor = Sensor()
+    sensor.name = "Groundwater level manual measurement"
+    sensor.description = "manual gwl measurement. needs to be replaced with measurementmethod(?) e.g. steel tape, eprobe, etc."
+    sensor.unit = "ft"
+    sensor.datetime_installed = datetime.now()
+    session.add(sensor)
+    session.commit()

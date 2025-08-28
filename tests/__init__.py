@@ -15,7 +15,7 @@
 # ===============================================================================
 from fastapi.testclient import TestClient
 
-from core.app import init_lexicon
+from core.initializers import init_lexicon
 from db import Base
 from db.engine import engine, session_ctx
 from main import app
