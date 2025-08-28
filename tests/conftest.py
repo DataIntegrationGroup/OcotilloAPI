@@ -52,10 +52,8 @@ def water_well_thing(location):
         assoc.location_id = location.id
         assoc.thing_id = water_well.id
         session.add(assoc)
-
+        session.commit()
         yield water_well
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -104,10 +102,8 @@ def spring_thing(location):
         assoc.location_id = location.id
         assoc.thing_id = spring.id
         session.add(assoc)
-
+        session.commit()
         yield spring
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -125,7 +121,6 @@ def sensor():
         session.add(sensor)
         session.commit()
         yield sensor
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -145,7 +140,6 @@ def second_sensor():
         yield sensor
         session.delete(sensor)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -169,8 +163,6 @@ def sample(water_well_thing, sensor):
         session.add(sample)
         session.commit()
         yield sample
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -196,7 +188,6 @@ def second_sample(water_well_thing, sensor):
         yield sample
         session.delete(sample)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -219,8 +210,6 @@ def contact(water_well_thing):
 
         yield contact
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def address(contact):
@@ -240,8 +229,6 @@ def address(contact):
         session.refresh(address)
         yield address
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def email(contact):
@@ -254,8 +241,6 @@ def email(contact):
         session.refresh(email)
         yield email
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def phone(contact):
@@ -267,8 +252,6 @@ def phone(contact):
         session.commit()
         session.refresh(phone)
         yield phone
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -286,7 +269,6 @@ def second_contact():
 
         session.delete(contact)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -303,7 +285,6 @@ def second_email(second_contact):
         yield email
         session.delete(email)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -320,7 +301,6 @@ def second_phone(second_contact):
         yield phone
         session.delete(phone)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -342,7 +322,6 @@ def second_address(second_contact):
         yield address
         session.delete(address)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -361,8 +340,6 @@ def asset():
         session.commit()
         session.refresh(asset)
         yield asset
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -392,7 +369,6 @@ def asset_with_associated_thing(water_well_thing):
         session.delete(asset)
         session.delete(association)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -412,7 +388,7 @@ def second_asset():
         session.refresh(asset)
         yield asset
         session.delete(asset)
-        session.close()
+        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -433,8 +409,6 @@ def groundwater_level_observation(sensor, sample):
         session.commit()
         yield observation
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def water_chemistry_observation(sensor, sample):
@@ -451,8 +425,6 @@ def water_chemistry_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -471,8 +443,6 @@ def geothermal_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -514,8 +484,6 @@ def group(water_well_thing):
 
         yield group
 
-        session.close()
-
 
 @pytest.fixture(scope="function")
 def second_group(water_well_thing):
@@ -538,8 +506,6 @@ def second_group(water_well_thing):
         session.refresh(group_thing_association)
 
         yield group
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -609,7 +575,6 @@ def second_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -631,7 +596,6 @@ def third_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -653,7 +617,6 @@ def fourth_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")
