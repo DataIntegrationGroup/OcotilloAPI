@@ -86,9 +86,9 @@ def test_upload_asset():
         assert "storage_path" in data
 
 
-def test_add_asset(thing):
+def test_add_asset(water_well_thing):
     payload = {
-        "thing_id": thing.id,
+        "thing_id": water_well_thing.id,
         "name": "test_asset.png",
         "label": "Test Asset",
         "uri": "https://storage.googleapis.com/mock-bucket/mock-asset",
@@ -114,7 +114,7 @@ def test_add_asset(thing):
     cleanup_post_test(Asset, data["id"])
 
 
-def test_add_asset_409_bad_thing_id(thing):
+def test_add_asset_409_bad_thing_id(water_well_thing):
     bad_thing_id = 99999
     payload = {
         "thing_id": bad_thing_id,
@@ -160,9 +160,9 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][1]["signed_url"] == None
 
 
-def test_get_assets_thing_id(asset_with_associated_thing, thing):
+def test_get_assets_thing_id(asset_with_associated_thing, water_well_thing):
     with patch("api.asset.get_storage_bucket", return_value=MockStorageBucket()):
-        query_parameters = {"thing_id": thing.id}
+        query_parameters = {"thing_id": water_well_thing.id}
         response = client.get("/asset", params=query_parameters)
         assert response.status_code == 200
         data = response.json()

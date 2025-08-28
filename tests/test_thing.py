@@ -540,7 +540,6 @@ def test_get_things(water_well_thing, spring_thing):
     response = client.get("/thing")
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert data["total"] == 2
 
     assert data["items"][0]["id"] == water_well_thing.id

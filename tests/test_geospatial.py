@@ -102,6 +102,8 @@ def populate():
         session.delete(loc1)
         session.delete(loc2)
         session.delete(group)
+        session.delete(thing1)
+        session.delete(thing2)
         session.commit()
 
 
@@ -112,7 +114,6 @@ def test_get_project_area():
     assert "type" in data
     assert data["type"] == "FeatureCollection"
     assert "features" in data
-    print(data)
     assert len(data["features"]) > 0
     assert data["features"][0]["properties"]["group_id"] == 1
     assert data["features"][0]["properties"]["group_name"] == "Test Group Foo"

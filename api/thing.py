@@ -82,7 +82,6 @@ def database_error_handler(
     """
 
     error_message = error.orig.args[0]["M"]
-    print(error_message)
 
     if (
         error_message

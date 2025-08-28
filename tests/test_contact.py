@@ -59,11 +59,11 @@ def test_validate_email():
 # ADD tests ====================================================================
 
 
-def test_add_contact(thing):
+def test_add_contact(spring_thing):
     payload = {
         "name": "Test Contact 2",
         "role": "Owner",
-        "thing_id": thing.id,
+        "thing_id": spring_thing.id,
         "emails": [{"email": "testcontact2@gmail.com", "email_type": "Primary"}],
         "phones": [{"phone_number": "+14153334444", "phone_type": "Primary"}],
         "addresses": [
