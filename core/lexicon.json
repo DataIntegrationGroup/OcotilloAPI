@@ -15,14 +15,9 @@
   {"categories": [{"name": "unit", "description": null}], "term": "deg C", "definition": "degree Celsius"},
 
   {"categories": [{"name": "observed_property", "description": null}], "term": "groundwater level:groundwater level", "definition": "groundwater level measurement" },
-
   {"categories": [{"name": "observed_property", "description": null}], "term": "geothermal:temperature", "definition": "Temperature measurement"},
-
   {"categories": [{"name": "observed_property", "description": null}], "term": "water chemistry:pH", "definition": "pH"},
   {"categories": [{"name": "observed_property", "description": null}], "term": "water chemistry:Alkalinity as CaCO3", "definition": "Alkalinity as CaCO3"},
-  
-
-
 
   {"categories": [{"name": "release_status", "description": null}], "term": "draft", "definition": "draft version"},
   {"categories": [{"name": "release_status", "description": null}], "term": "provisional", "definition": "provisional version"},
@@ -34,9 +29,9 @@
 
   {"categories": [{"name": "relation", "description": null}], "term": "same_as", "definition": "same as"},
   {"categories": [{"name": "relation", "description": null}], "term": "related_to", "definition": "related to"},
-  {"category": "relation", "term": "OSEWellTagID", "definition": "NM OSE well tag ID"},
-  {"category": "relation", "term": "OSEPOD", "definition": "NM OSE 'Point of Diversion' ID"},
-  {"category": "relation", "term": "PLSS", "definition": "Public Land Survey System ID"},
+  {"categories": [{"name": "relation", "description": null}], "term": "OSEWellTagID", "definition": "NM OSE well tag ID"},
+  {"categories": [{"name": "relation", "description": null}], "term": "OSEPOD", "definition": "NM OSE 'Point of Diversion' ID"},
+  {"categories": [{"name": "relation", "description": null}], "term": "PLSS", "definition": "Public Land Survey System ID"},
 
   {"categories": [{"name": "sample_type", "description": null}], "term": "groundwater", "definition": "groundwater sample from a well"},
 
@@ -54,7 +49,7 @@
   {"categories": [{"name": "organization", "description": null}], "term": "TWDB", "definition": "Texas Water Development Board"},
   {"categories": [{"name": "organization", "description": null}], "term": "Unknown", "definition": "Unknown organization"},
   {"categories": [{"name": "organization", "description": null}], "term": "NMED", "definition": "New Mexico Environment Department"},
-  {"category": "organization", "term": "NMOSE", "definition": "New Mexico Office of the State Engineer"},
+  {"categories": [{"name": "organization", "description": null}], "term": "NMOSE", "definition": "New Mexico Office of the State Engineer"},
 
 
   {"categories": [{"name": "collection_method", "description": null}], "term": "manual", "definition": "manual sampling"},
@@ -69,6 +64,46 @@
   {"categories": [{"name": "country", "description": null}], "term": "France", "definition": "France"},
   {"categories": [{"name": "country", "description": null}], "term": "Japan", "definition": "Japan"},
 
+  {"categories": [{"name": "state", "description": null}], "term": "New Mexico", "definition": "New Mexico"},
+  {"categories": [{"name": "state", "description": null}], "term": "Texas", "definition": "Texas"},
+  {"categories": [{"name": "state", "description": null}], "term": "Arizona", "definition": "Arizona"},
+  {"categories": [{"name": "state", "description": null}], "term": "Utah", "definition": "Utah"},
+  {"categories": [{"name": "state", "description": null}], "term": "Colorado", "definition": "Colorado"},
+
+  {"categories": [{"name": "county", "description": null}], "term": "Bernalillo", "definition": "Bernalillo"},
+  {"categories": [{"name": "county", "description": null}], "term": "Catron", "definition": "Catron"},
+  {"categories": [{"name": "county", "description": null}], "term": "Chaves", "definition": "Chaves"},
+  {"categories": [{"name": "county", "description": null}], "term": "Cibola", "definition": "Cibola"},
+  {"categories": [{"name": "county", "description": null}], "term": "Colfax", "definition": "Colfax"},
+  {"categories": [{"name": "county", "description": null}], "term": "Curry", "definition": "Curry"},
+  {"categories": [{"name": "county", "description": null}], "term": "De Baca", "definition": "De Baca"},
+  {"categories": [{"name": "county", "description": null}], "term": "Doña Ana", "definition": "Doña Ana"},
+  {"categories": [{"name": "county", "description": null}], "term": "Eddy", "definition": "Eddy"},
+  {"categories": [{"name": "county", "description": null}], "term": "Grant", "definition": "Grant"},
+  {"categories": [{"name": "county", "description": null}], "term": "Guadalupe", "definition": "Guadalupe"},
+  {"categories": [{"name": "county", "description": null}], "term": "Harding", "definition": "Harding"},
+  {"categories": [{"name": "county", "description": null}], "term": "Hidalgo", "definition": "Hidalgo"},
+  {"categories": [{"name": "county", "description": null}], "term": "Lea", "definition": "Lea"},
+  {"categories": [{"name": "county", "description": null}], "term": "Lincoln", "definition": "Lincoln"},
+  {"categories": [{"name": "county", "description": null}], "term": "Los Alamos", "definition": "Los Alamos"},
+  {"categories": [{"name": "county", "description": null}], "term": "Luna", "definition": "Luna"},
+  {"categories": [{"name": "county", "description": null}], "term": "McKinley", "definition": "McKinley"},
+  {"categories": [{"name": "county", "description": null}], "term": "Mora", "definition": "Mora"},
+  {"categories": [{"name": "county", "description": null}], "term": "Otero", "definition": "Otero"},
+  {"categories": [{"name": "county", "description": null}], "term": "Quay", "definition": "Quay"},
+  {"categories": [{"name": "county", "description": null}], "term": "Rio Arriba", "definition": "Rio Arriba"},
+  {"categories": [{"name": "county", "description": null}], "term": "Roosevelt", "definition": "Roosevelt"},
+  {"categories": [{"name": "county", "description": null}], "term": "Sandoval", "definition": "Sandoval"},
+  {"categories": [{"name": "county", "description": null}], "term": "San Juan", "definition": "San Juan"},
+  {"categories": [{"name": "county", "description": null}], "term": "San Miguel", "definition": "San Miguel"},
+  {"categories": [{"name": "county", "description": null}], "term": "Santa Fe", "definition": "Santa Fe"},
+  {"categories": [{"name": "county", "description": null}], "term": "Sierra", "definition": "Sierra"},
+  {"categories": [{"name": "county", "description": null}], "term": "Socorro", "definition": "Socorro"},
+  {"categories": [{"name": "county", "description": null}], "term": "Taos", "definition": "Taos"},
+  {"categories": [{"name": "county", "description": null}], "term": "Torrance", "definition": "Torrance"},
+  {"categories": [{"name": "county", "description": null}], "term": "Union", "definition": "Union"},
+  {"categories": [{"name": "county", "description": null}], "term": "Valencia", "definition": "Valencia"},
+
   {"categories": [{"name": "role", "description": null}], "term": "Owner", "definition": "Owner"},
   {"categories": [{"name": "role", "description": null}], "term": "Primary", "definition": "Primary"},
   {"categories": [{"name": "role", "description": null}], "term": "Secondary", "definition": "Secondary"},
@@ -82,16 +117,20 @@
   {"categories": [{"name": "role", "description": null}], "term": "Technician", "definition": "Technician"},
 
 
-  {"categories": [{"name": "email_type", "description": null}], "term": "Primary", "definition": "Primary"},
-  {"categories": [{"name": "email_type", "description": null}], "term": "Work", "definition": "Primary"},
-  {"categories": [{"name": "email_type", "description": null}], "term": "Personal", "definition": "Primary"},
-  {"categories": [{"name": "address_type", "description": null}], "term": "Primary", "definition": "Primary"},
-  {"categories": [{"name": "address_type", "description": null}], "term": "Work", "definition": "Primary"},
-  {"categories": [{"name": "address_type", "description": null}], "term": "Personal", "definition": "Primary"},
+  {"categories": [{"name": "email_type", "description": null},
+                  {"name": "phone_type", "description": null},
+                  {"name": "address_type", "description": null}], "term": "Primary", "definition": "primary"},
+
+  {"categories": [{"name": "email_type", "description": null},
+                  {"name": "phone_type", "description": null},
+                  {"name": "address_type", "description": null}], "term": "Work", "definition": "work"},
+
+  {"categories": [{"name": "email_type", "description": null},
+                  {"name": "address_type", "description": null}], "term": "Personal", "definition": "personal"},
+
   {"categories": [{"name": "address_type", "description": null}], "term": "Mailing", "definition": "mailing"},
   {"categories": [{"name": "address_type", "description": null}], "term": "Physical", "definition": "physical"},
-  {"categories": [{"name": "phone_type", "description": null}], "term": "Primary", "definition": "Primary"},
-  {"categories": [{"name": "phone_type", "description": null}], "term": "Work", "definition": "Primary"},
+
   {"categories": [{"name": "phone_type", "description": null}], "term": "Home", "definition": "Primary"},
   {"categories": [{"name": "phone_type", "description": null}], "term": "Mobile", "definition": "Primary"},
 
@@ -106,17 +145,13 @@
   {"categories": [{"name": "well_type", "description": null}], "term": "Production", "definition": "Production"},
   {"categories": [{"name": "well_type", "description": null}], "term": "Injection", "definition": "Injection"},
 
-
-
   {"categories": [{"name": "casing_material", "description": null}], "term": "PVC", "definition": "Polyvinyl Chloride"},
   {"categories": [{"name": "casing_material", "description": null}], "term": "Steel", "definition": "Steel"},
   {"categories": [{"name": "casing_material", "description": null}], "term": "Concrete", "definition": "Concrete"},
 
-
   {"categories": [{"name": "quality_control_status", "description": null}], "term": "Provisional", "definition": "Provisional quality control status"},
   {"categories": [{"name": "quality_control_status", "description": null}], "term": "Approved", "definition": "Approved quality control status"},
   {"categories": [{"name": "quality_control_status", "description": null}], "term": "Rejected", "definition": "Rejected quality control status"},
-
 
   {"categories": [{"name": "drilling_fluid", "description": null}], "term": "mud", "definition": "drilling mud"},
 

@@ -15,16 +15,17 @@
 # ===============================================================================
 from sqlalchemy.orm import Session
 
-from core.app import init_lexicon
+from core.initializers import init_lexicon
 from db import Base
 from db.engine import session_ctx
 from transfers.asset_transfer import transfer_assets_testing
+from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.owner_transfer import transfer_owners
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
 
-from transfers.well_transfer import transfer_wells, transfer_wellscreens
+from transfers.well_transfer import transfer_wells, transfer_wellscreens, cleanup_wells
 from transfers.thing_transfer import transfer_springs, transfer_perennial_stream, transfer_ephemeral_stream, transfer_met
 
 def erase_and_initalize(session: Session) -> None:
@@ -37,17 +38,21 @@ def erase_and_initalize(session: Session) -> None:
 
 def main_transfer():
     init = True
-    transfer_well_flag = True
-    transfer_spring_flag = True
-    transfer_perennial_stream_flag = True
-    transfer_ephemeral_stream_flag = True
-    transfer_met_flag = True
-    transfer_owners_flag = True
-    transfer_waterlevels_flag = True
-    transfer_link_ids_flag = True
-    transfer_assets_flag = True
 
-    limit = 500
+    transfer_well_flag = False
+    transfer_spring_flag = False
+    transfer_perennial_stream_flag = False
+    transfer_ephemeral_stream_flag = False
+    transfer_met_flag = False
+    transfer_owners_flag = False
+    transfer_waterlevels_flag = False
+    transfer_link_ids_flag = False
+    transfer_assets_flag = False
+    transfer_groups_flag = False
+
+    cleanup_wells_flag = True
+
+    limit = 100
     with session_ctx() as sess:
 
         if init:
@@ -82,7 +87,11 @@ def main_transfer():
         if init or transfer_assets_flag:
             transfer_assets_testing(sess)
 
+        if init or transfer_groups_flag:
+            transfer_groups(sess)
 
+        if init or cleanup_wells_flag:
+            cleanup_wells(sess)
 
 if __name__ == "__main__":
     main_transfer()

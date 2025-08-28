@@ -20,11 +20,13 @@ import pandas as pd
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from db import LocationThingAssociation, Thing, adder, WellScreen
+from db import LocationThingAssociation, Thing, WellScreen, Location
+from services.crud_helper import model_adder
 from schemas.thing import CreateWellScreen
-from services.lexicon import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
-from transfers.util import make_location, filter_to_valid_point_ids, read_csv
+from transfers.util import make_location, filter_to_valid_point_ids, read_csv, get_state_from_point, \
+    get_county_from_point, get_quad_name_from_point
 
 ADDED = []
 
@@ -32,9 +34,6 @@ ADDED = []
 def transfer_wells(session, limit=None):
     wdf = read_csv("welldata.csv")
     ldf = read_csv("location.csv")
-
-    wdf = wdf.replace(pd.NA, None)
-    wdf = wdf.replace({np.nan: None})
 
     wdf = wdf.join(ldf.set_index("PointID"), on="PointID")
     wdf = wdf[wdf["SiteType"] == "GW"]
@@ -48,30 +47,37 @@ def transfer_wells(session, limit=None):
             print("Reached limit of", limit, "rows. Stopping migration.")
             break
 
-        if i and not i % 100:
+        if i and not i % 25:
             print(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
 
-        location = make_location(row)
+
+        try:
+            location = make_location(row)
+        except Exception as e:
+            print(f"Error making location for row {i}: {e}")
+            break
+
+        # print(location_row)
         session.add(location)
 
         well = add_thing(
             session,
             {
-                "nma_pk_welldata": row.WellID,
+                # "nma_pk_welldata": row.WellID,
                 "name": row.PointID,
                 "hole_depth": row.HoleDepth,
                 "well_depth": row.WellDepth,
-                "driller_name": row.DrillerName,
-                "construction_method": row.ConstructionMethod,
-                "casing_diameter": row.CasingDiameter,
-                "casing_depth": row.CasingDepth,
-                "casing_description": row.CasingDescription,
+                # "driller_name": row.DrillerName,
+                # "construction_method": row.ConstructionMethod,
+                # "casing_diameter": row.CasingDiameter,
+                # "casing_depth": row.CasingDepth,
+                # "casing_description": row.CasingDescription,
                 "thing_type": "water well",
                 "release_status": "public" if row.PublicRelease else "private",
-                "data_reliability": row.DataReliability,
+                # "data_reliability": row.DataReliability,
             },
         )
         wt = row.Meaning
@@ -88,7 +94,6 @@ def transfer_wells(session, limit=None):
         assoc.location = location
         assoc.thing = well
         session.add(assoc)
-        # break
 
 
 def transfer_wellscreens(session, limit=None):
@@ -131,10 +136,25 @@ def transfer_wellscreens(session, limit=None):
         }
         try:
             model = CreateWellScreen.model_validate(well_screen_data)
-            adder(session, WellScreen, model)
+            model_adder(session, WellScreen, model)
         except ValidationError as e:
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
             continue
 
 
+def cleanup_wells(session):
+    locations = session.query(Location).all()
+    for location in locations:
+
+        y,x = location.latlon
+        if not location.state:
+            location.state = get_state_from_point(x,y)
+
+        if not location.county:
+            location.county = get_county_from_point(x,y)
+
+        if not location.quad_name:
+            location.quad_name = get_quad_name_from_point(x,y)
+
+    session.commit()
 # ============= EOF =============================================

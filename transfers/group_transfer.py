@@ -40,7 +40,7 @@ def transfer_groups(
                 sql = select(Thing).where(Thing.name.like(f"{prefix}%"))
                 records = session.scalars(sql).all()
                 if records:
-                    print(f"Adding {len(records)} things to group {group.name}")
+                    print(f"Adding {len(records)} things to group {group.name}, prefix {prefix}")
                     group.things = records
 
         session.add(group)

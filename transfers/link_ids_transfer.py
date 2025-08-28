@@ -85,7 +85,7 @@ def add_link_alternate_site_id(session, row, thing):
     link_id.relation = "same_as"
     link_id.alternate_id = row.AlternateSiteID
 
-    link_id.alternate_organization = extract_organization(row.AlternateSiteID)
+    link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
     print("adding link id: ", link_id)
     session.add(link_id)
@@ -157,9 +157,12 @@ def transfer_link_ids(session, site_type="GW"):
             f"b={row.AlternateSiteID2}"
         )
         add_link_alternate_site_id(session, row, thing)
+        # add_link_site_id(session, row, thing)
+        # add_link_plss(session, row, thing)
+
+        # not clear what alternate_id2 is for, or what it maps to
         # add_link_alternate_site_id2(session, row, thing)
-        add_link_plss(session, row, thing)
-        add_link_site_id(session, row, thing)
+
 
         session.commit()
 

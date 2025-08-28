@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from geoalchemy2 import Geometry, WKBElement
+from geoalchemy2.shape import to_shape
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -24,9 +26,8 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-
 from db.base import Base, AutoBaseMixin, ReleaseMixin
-
+from db.lexicon import lexicon_term
 
 class Location(Base, AutoBaseMixin, ReleaseMixin):
     # name = Column(String(100), nullable=True)
@@ -37,8 +38,18 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     name = mapped_column(String(255), nullable=True)
     notes = mapped_column(Text, nullable=True)
     point: Mapped[WKBElement] = mapped_column(
-        Geometry(geometry_type="POINT", srid=4326, spatial_index=True)
+        Geometry(geometry_type="POINTZ", srid=4326, spatial_index=True)
     )
+
+    state = lexicon_term(nullable=True)
+    county = lexicon_term(nullable=True)
+    quad_name = mapped_column(String(100), nullable=True)
+
+    @property
+    def latlon(self):
+        p = to_shape(self.point)
+        return p.y, p.x
+
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):

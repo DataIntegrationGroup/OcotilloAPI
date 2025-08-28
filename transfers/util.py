@@ -145,7 +145,8 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "returnGeometry": "false",
     }
 
-    resp = httpx.get(url, params=params)
+    resp = httpx.get(url, params=params, timeout=15)
+    print(resp)
     data = resp.json()
 
     if data["features"]:
@@ -171,7 +172,7 @@ def get_epqs_elevation(lon: float, lat: float) -> float:
     return data["value"]
 
 
-def make_location(row) -> Location:
+def make_location(row: pd.Series) -> Location:
 
     # TODO: should the altitude be fetched from USGS'
     # Elevation Point Query Service https://epqs.nationalmap.gov/v1/docs
@@ -180,13 +181,18 @@ def make_location(row) -> Location:
         source_srid=26913,
         target_srid=4326,  # WGS84 SRID
     )
-    z = get_epqs_elevation(xypoint.x, xypoint.y)
+
+    z = 0
+
+    # idx = row.index
+    # idx = df.index.get_loc(row.name)
+    # print('asdfa', idx, row.name)
+    # if not z:
+    #     z = get_epqs_elevation(xypoint.x, xypoint.y)
 
     # z = row.Altitude if row.Altitude else 0
-    # # convert to WGS84 vertical datum
-    # z = convert_to_wgs84_vertical_datum(row, z)
-    # # convert z from ft to meters
-    # z = z * 0.3048
+    # convert z from ft to meters
+    z = z * 0.3048
 
     point = Point(row.Easting, row.Northing, z)
 
@@ -197,26 +203,20 @@ def make_location(row) -> Location:
 
     # TODO: Add tests for these functions. move to a different location
     # use in Location API
-    state = get_state_from_point(transformed_point)
-    county = get_county_from_point(transformed_point)
-    quad_name = get_quad_name_from_point(transformed_point)
 
     # TODO: determine correct created_at value
-    created_at = row.DateCreated
+    # created_at = row.DateCreated
 
     location = Location(
+        # nma_pk_location=row.LocationId,
         name=row.PointID,
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
-        elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=row.AltitudeMethod,
-        nma_pk_location=row.LocationId,
-        created_at=created_at,
-        point_accuracy=row.CoordinateAccuracy,
-        point_method=row.CoordinateMethod,
-        state=state,
-        county=county,
-        quad_name=quad_name,
+        # elevation_accuracy=row.AltitudeAccuracy,
+        # elevation_method=row.AltitudeMethod,
+        # created_at=created_at,
+        # point_accuracy=row.CoordinateAccuracy,
+        # point_method=row.CoordinateMethod,
     )
     return location
 

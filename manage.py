@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import click
-from core.app import init_lexicon
+from core.initializers import init_lexicon
 from db.engine import session_ctx
 
 
