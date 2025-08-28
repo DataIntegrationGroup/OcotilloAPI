@@ -16,7 +16,6 @@
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
-from shapely import wkt
 
 from schemas import ORMBaseModel
 from services.validation.geospatial import validate_wkt_geometry
@@ -94,6 +93,7 @@ class UpdateLocation(BaseModel):
     Schema for updating a location.
     """
 
+    name: str | None = None
     notes: str | None = None
     point: str | None = None
     release_status: str | None = None

@@ -63,13 +63,18 @@ def test_add_location():
 
 
 def test_update_location(location):
-    payload = {"point": "POINT (10.1 20.2)", "release_status": "draft"}
+    payload = {
+        "point": "POINT (10.1 20.2)",
+        "release_status": "draft",
+        "name": "patched name",
+    }
     response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == location.id
     assert data["point"] == payload["point"]
     assert data["release_status"] == payload["release_status"]
+    assert data["name"] == payload["name"]
 
     # cleanup after test
     cleanup_patch_test(Location, payload, location)

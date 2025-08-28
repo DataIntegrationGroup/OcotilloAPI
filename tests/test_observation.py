@@ -429,10 +429,13 @@ def test_get_groundwater_observation_by_sample(sample):
     assert len(items) > 0, "Expected at least one groundwater observation for the thing"
 
 
-def test_get_groundwater_observation_by_thing(thing):
+def test_get_groundwater_observation_by_thing(water_well_thing):
     response = client.get(
         "/observation/groundwater-level",
-        params={"thing_id": thing.id, "observed_property": "groundwater level"},
+        params={
+            "thing_id": water_well_thing.id,
+            "observed_property": "groundwater level",
+        },
     )
     assert response.status_code == 200
     data = response.json()

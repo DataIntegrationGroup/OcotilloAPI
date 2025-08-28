@@ -3,7 +3,6 @@ import uuid
 
 from db import *
 from db.engine import session_ctx
-from services.thing_helper import add_thing
 
 
 @pytest.fixture(scope="session")
@@ -34,20 +33,133 @@ def second_location():
 
 
 @pytest.fixture(scope="session")
-def thing(location):
+def water_well_thing(location):
     with session_ctx() as session:
-        wt = add_thing(
-            session,
-            {
-                "location_id": location.id,
-                "name": "Test Well",
-            },
-            "water well",
+        water_well = Thing(
+            name="Test Well",
+            thing_type="water well",
+            release_status="draft",
+            well_type="Production",
+            well_depth=10,
+            hole_depth=10,
+            well_construction_notes="Test well construction notes",
         )
+        session.add(water_well)
+        session.commit()
+        session.refresh(water_well)
 
-        yield wt
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = water_well.id
+        session.add(assoc)
+        session.commit()
+        yield water_well
 
-        session.close()
+
+@pytest.fixture(scope="session")
+def well_screen(water_well_thing):
+    with session_ctx() as session:
+        screen = WellScreen(
+            thing_id=water_well_thing.id,
+            screen_depth_top=10.0,
+            screen_depth_bottom=20.0,
+            screen_type="PVC",
+            screen_description="Test well screen description",
+        )
+        session.add(screen)
+        session.commit()
+        yield screen
+
+
+@pytest.fixture(scope="function")
+def second_well_screen(water_well_thing):
+    with session_ctx() as session:
+        screen = WellScreen(
+            thing_id=water_well_thing.id,
+            screen_depth_top=30.0,
+            screen_depth_bottom=40.0,
+            screen_type="PVC",
+            screen_description="Test well screen description",
+        )
+        session.add(screen)
+        session.commit()
+        yield screen
+        session.delete(screen)
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def thing_id_link(water_well_thing):
+    with session_ctx() as session:
+        id_link = ThingIdLink(
+            thing_id=water_well_thing.id,
+            relation="same_as",
+            alternate_id="4321-1234",
+            alternate_organization="USGS",
+        )
+        session.add(id_link)
+        session.commit()
+        yield id_link
+
+
+@pytest.fixture(scope="function")
+def second_thing_id_link(water_well_thing):
+    with session_ctx() as session:
+        id_link = ThingIdLink(
+            thing_id=water_well_thing.id,
+            relation="same_as",
+            alternate_id="4321-1234",
+            alternate_organization="USGS",
+        )
+        session.add(id_link)
+        session.commit()
+        yield id_link
+        session.delete(id_link)
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def spring_thing(location):
+    with session_ctx() as session:
+        spring = Thing(
+            name="Test Spring",
+            thing_type="spring",
+            release_status="draft",
+            spring_type="Artesian",
+        )
+        session.add(spring)
+        session.commit()
+        session.refresh(spring)
+
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = spring.id
+        session.add(assoc)
+        session.commit()
+        yield spring
+
+
+@pytest.fixture(scope="function")
+def second_spring_thing(location):
+    with session_ctx() as session:
+        spring = Thing(
+            name="Second Test Spring",
+            thing_type="spring",
+            release_status="draft",
+            spring_type="Artesian",
+        )
+        session.add(spring)
+        session.commit()
+        session.refresh(spring)
+
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = spring.id
+        session.add(assoc)
+        session.commit()
+        yield spring
+        session.delete(spring)
+        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -65,7 +177,6 @@ def sensor():
         session.add(sensor)
         session.commit()
         yield sensor
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -85,15 +196,14 @@ def second_sensor():
         yield sensor
         session.delete(sensor)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
-def sample(thing, sensor):
+def sample(water_well_thing, sensor):
     with session_ctx() as session:
         sample = Sample(
             sample_date="2025-01-01T00:00:00Z",
-            thing_id=thing.id,
+            thing_id=water_well_thing.id,
             sample_type="groundwater",
             sampler_name="Test Sampler",
             release_status="draft",
@@ -110,14 +220,12 @@ def sample(thing, sensor):
         session.commit()
         yield sample
 
-        session.close()
-
 
 @pytest.fixture(scope="function")
-def second_sample(thing, sensor):
+def second_sample(water_well_thing, sensor):
     with session_ctx() as session:
         sample = Sample(
-            thing_id=thing.id,
+            thing_id=water_well_thing.id,
             sample_type="groundwater",
             field_sample_id="FS-9999999",
             sample_date="2025-01-01T00:00:00Z",
@@ -136,11 +244,10 @@ def second_sample(thing, sensor):
         yield sample
         session.delete(sample)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
-def contact(thing):
+def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(
             name="Test Contact",
@@ -150,14 +257,14 @@ def contact(thing):
         session.commit()
         session.refresh(contact)
 
-        association = ThingContactAssociation(thing_id=thing.id, contact_id=contact.id)
+        association = ThingContactAssociation(
+            thing_id=water_well_thing.id, contact_id=contact.id
+        )
         session.add(association)
         session.commit()
         session.refresh(association)
 
         yield contact
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -178,8 +285,6 @@ def address(contact):
         session.refresh(address)
         yield address
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def email(contact):
@@ -192,8 +297,6 @@ def email(contact):
         session.refresh(email)
         yield email
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def phone(contact):
@@ -205,8 +308,6 @@ def phone(contact):
         session.commit()
         session.refresh(phone)
         yield phone
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -224,7 +325,6 @@ def second_contact():
 
         session.delete(contact)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -241,7 +341,6 @@ def second_email(second_contact):
         yield email
         session.delete(email)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -258,7 +357,6 @@ def second_phone(second_contact):
         yield phone
         session.delete(phone)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -280,7 +378,6 @@ def second_address(second_contact):
         yield address
         session.delete(address)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -300,14 +397,12 @@ def asset():
         session.refresh(asset)
         yield asset
 
-        session.close()
-
 
 @pytest.fixture(scope="function")
-def asset_with_associated_thing(thing):
+def asset_with_associated_thing(water_well_thing):
     with session_ctx() as session:
         asset = Asset(
-            name="Test Asset with thing",
+            name="Test Asset with water_well_thing",
             label="test label",
             mime_type="application/pdf",
             size=12345,
@@ -319,7 +414,9 @@ def asset_with_associated_thing(thing):
         session.commit()
         session.refresh(asset)
 
-        association = AssetThingAssociation(asset_id=asset.id, thing_id=thing.id)
+        association = AssetThingAssociation(
+            asset_id=asset.id, thing_id=water_well_thing.id
+        )
         session.add(association)
         session.commit()
         session.refresh(association)
@@ -328,7 +425,6 @@ def asset_with_associated_thing(thing):
         session.delete(asset)
         session.delete(association)
         session.commit()
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -348,7 +444,7 @@ def second_asset():
         session.refresh(asset)
         yield asset
         session.delete(asset)
-        session.close()
+        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -369,8 +465,6 @@ def groundwater_level_observation(sensor, sample):
         session.commit()
         yield observation
 
-        session.close()
-
 
 @pytest.fixture(scope="session")
 def water_chemistry_observation(sensor, sample):
@@ -387,8 +481,6 @@ def water_chemistry_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -407,8 +499,6 @@ def geothermal_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
-
-        session.close()
 
 
 @pytest.fixture(scope="function")
@@ -429,7 +519,7 @@ def observation_to_delete(sample, sensor):
 
 
 @pytest.fixture(scope="session")
-def group(thing):
+def group(water_well_thing):
     with session_ctx() as session:
         group = Group(
             name="Test Group",
@@ -442,7 +532,7 @@ def group(thing):
         session.refresh(group)
 
         group_thing_association = GroupThingAssociation(
-            group_id=group.id, thing_id=thing.id
+            group_id=group.id, thing_id=water_well_thing.id
         )
         session.add(group_thing_association)
         session.commit()
@@ -450,11 +540,9 @@ def group(thing):
 
         yield group
 
-        session.close()
-
 
 @pytest.fixture(scope="function")
-def second_group(thing):
+def second_group(water_well_thing):
     with session_ctx() as session:
         group = Group(
             name="Second Test Group",
@@ -467,15 +555,13 @@ def second_group(thing):
         session.refresh(group)
 
         group_thing_association = GroupThingAssociation(
-            group_id=group.id, thing_id=thing.id
+            group_id=group.id, thing_id=water_well_thing.id
         )
         session.add(group_thing_association)
         session.commit()
         session.refresh(group_thing_association)
 
         yield group
-
-        session.close()
 
 
 @pytest.fixture(scope="session")
@@ -545,7 +631,6 @@ def second_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -567,7 +652,6 @@ def third_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -589,7 +673,6 @@ def fourth_lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
-        session.commit()
 
 
 @pytest.fixture(scope="session")

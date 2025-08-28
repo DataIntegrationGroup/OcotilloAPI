@@ -34,11 +34,19 @@ class CreateThingIdLink(BaseModel):
 
 
 class CreateBaseThing(BaseModel):
+    """
+    Developer's notes
+
+    thing_type does not need to be set by the user, this is determined by the
+    POST endpoint
+
+    e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
+    """
+
     location_id: int | None = None  # Optional location ID for the thing
+    group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
-    group: str | None = None  # Optional group ID for the thing
-    thing_type: str | None = None  # Type of the thing (e.g., "Well", "Spring", etc.)
-    release_status: str | None = "draft"  # Release status of the thing
+    release_status: str  # Release status of the thing
 
 
 class CreateWell(CreateBaseThing):
@@ -46,8 +54,6 @@ class CreateWell(CreateBaseThing):
     Schema for creating a well.
     """
 
-    # api_id: str | None = None
-    # ose_pod_id: str | None = None
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
@@ -79,19 +85,6 @@ class CreateWellScreen(BaseModel):
     screen_type: str | None = None
     screen_description: str | None = None
 
-    @model_validator(mode="after")
-    def validate_screen_type(self):
-        if self.screen_type is not None:
-            valid_screen_types = [
-                "PVC",
-            ]  # todo: get valid screen types from database
-            if self.screen_type not in valid_screen_types:
-                raise ValueError(
-                    f"Invalid screen_type: {self.screen_type}. "
-                    f"Valid options are: {', '.join(valid_screen_types)}."
-                )
-        return self
-
     # validate that screen depth bottom is greater than top
     @model_validator(mode="after")
     def check_depths(self):
@@ -106,7 +99,6 @@ class CreateWellScreen(BaseModel):
 class BaseThingResponse(ORMBaseModel):
     name: str
     thing_type: str
-    id: int
     release_status: str
 
 
@@ -135,8 +127,7 @@ class SpringResponse(BaseThingResponse):
 
 
 class ThingResponse(WellResponse, SpringResponse):
-    location: LocationResponse | None = None  # Optional location details
-    geometry: dict | None = None
+    pass
 
 
 class ThingIdLinkResponse(ORMBaseModel):
@@ -207,32 +198,26 @@ class UpdateThing(BaseModel):
     Schema for updating a thing.
     """
 
-    # location_id: int | None = None  # Optional location ID for the thing
     name: str | None = None  # Optional name for the thing
     release_status: str | None = None
-    # group: str | None = None  # Optional group for the thing
-    # description: str | None = None  # Optional description of the thing
-    # tags: list[str] | None = None  # Optional tags associated with the thing
 
 
 class UpdateWell(UpdateThing):
-    # location_id: int | None = None  # Optional location ID for the well
-    # name: str | None = None  # Optional name for the well
-    # api_id: str | None = None
-    # ose_pod_id: str | None = None
+
     well_type: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
 
-    # group: str | None = None  # Optional group for the well
+
+class UpdateSpring(UpdateThing):
+    spring_type: str | None = None
 
 
 class UpdateThingIdLink(BaseModel):
     alternate_organization: str | None = None
     alternate_id: str | None = None
     relation: str | None = None
-    thing_id: int | None = None
 
 
 class UpdateWellScreen(BaseModel):

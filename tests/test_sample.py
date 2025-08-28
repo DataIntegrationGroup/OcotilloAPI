@@ -53,12 +53,12 @@ def test_validate_sample_top_and_bottom():
 
 
 #  ============= Post tests for samples =============================================
-def test_add_sample(thing, sensor):
+def test_add_sample(spring_thing, sensor):
     """
     Test adding a sample.
     """
     payload = {
-        "thing_id": thing.id,
+        "thing_id": spring_thing.id,
         "sample_type": "groundwater",
         "field_sample_id": "FS-1234567",
         "sample_date": "2025-01-01T00:00:00Z",
@@ -96,12 +96,12 @@ def test_add_sample(thing, sensor):
     cleanup_post_test(Sample, data["id"])
 
 
-def test_409_add_sample_invalid_field_sample_id(sample, thing):
+def test_409_add_sample_invalid_field_sample_id(sample, spring_thing):
     """
     Test adding a sample with an invalid field_sample_id.
     """
     payload = {
-        "thing_id": thing.id,
+        "thing_id": spring_thing.id,
         "sample_type": "groundwater",
         "field_sample_id": sample.field_sample_id,  # This should already exist
         "sample_date": "2025-01-01T00:00:00Z",

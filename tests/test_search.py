@@ -22,14 +22,14 @@ from db.engine import session_ctx
 from tests import client
 
 
-def test_search_api(thing, contact, email, phone, address):
+def test_search_api(water_well_thing, spring_thing, contact):
     response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)
     items = data.get("items")
     assert isinstance(items, list)
-    assert len(items) == 2
+    assert len(items) == 3
 
 
 @pytest.mark.skip(reason="This test is not working .")

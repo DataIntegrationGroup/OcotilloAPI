@@ -13,17 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
-from db import LocationThingAssociation, Thing, Base, Location
-from schemas.location import LocationResponse
-from db.group import Group, GroupThingAssociation
+from db import LocationThingAssociation, Thing, Base, Location, WellScreen
+from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
+from services.crud_helper import model_patcher
+from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter
+from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from shapely import wkb
 from shapely.geometry import mapping
 
@@ -41,124 +44,158 @@ def get_db_things(
     query,
     session,
     sort,
-    thing_type: str | list[str] = None,
-    with_location: bool = False,
+    thing_type: str = None,
     within: str = None,
-):
+) -> list:
 
     if query:
         sql = select(Thing).where(make_query(Thing, query))
     else:
         sql = select(Thing)
 
-    if with_location or within:
+    if thing_type:
+        sql = sql.where(Thing.thing_type == thing_type)
+
+    if within:
         sql = sql.join(
             LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
         )
         sql = sql.join(Location)
-
-    if isinstance(thing_type, str):
-        thing_type = thing_type.lower()
-        thing_type = [thing_type]
-    elif isinstance(thing_type, list):
-        thing_type = [t.lower() for t in thing_type]
-
-    sql = sql.where(Thing.thing_type.in_(thing_type)) if thing_type else sql
-    sql = order_sort_filter(sql, Thing, sort, order, filter_)
-    if within:
-
         sql = make_within_wkt(sql, within)
 
-    def transformer(records):
-        thing_ids = sorted([record.id for record in records])
-        subq = (
-            select(
-                LocationThingAssociation.thing_id,
-                func.max(LocationThingAssociation.effective_start).label("max_start"),
-            )
-            .where(LocationThingAssociation.thing_id.in_(thing_ids))
-            .group_by(LocationThingAssociation.thing_id)
-            .subquery()
+    sql = order_sort_filter(sql, Thing, sort, order, filter_)
+
+    return paginate(query=sql, conn=session)
+
+
+def get_thing_type_from_request(request: Request) -> str:
+    path = request.url.path
+    path_components = path.split("/")
+    if len(path_components) == 2:
+        # no thing type specified in path
+        thing_type_in_path = path_components[1]
+    if len(path_components) >= 3:
+        # thing type specified in path
+        thing_type_in_path = path_components[2]
+
+    thing_type = thing_type_in_path.replace("-", " ")
+    return thing_type
+
+
+def verify_thing_type_correspondence(thing: Thing, request: Request):
+    thing_type = get_thing_type_from_request(request)
+    if thing.thing_type != thing_type:
+        raise PydanticStyleException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=[
+                {
+                    "loc": ["path", "thing_id"],
+                    "type": "value_error",
+                    "input": {"thing_id": thing.id},
+                    "msg": f"Thing with ID {thing.id} is not a {thing_type} Thing. It is a {thing.thing_type} Thing.",
+                }
+            ],
         )
-        stmt = (
-            select(Location)
-            .join(
-                LocationThingAssociation,
-                Location.id == LocationThingAssociation.location_id,
-            )
-            .join(Thing)
-            .join(
-                subq,
-                and_(
-                    LocationThingAssociation.thing_id == subq.c.thing_id,
-                    LocationThingAssociation.effective_start == subq.c.max_start,
-                ),
-            )
-            .order_by(Thing.id.asc())
-        )
-        locations = session.scalars(stmt).all()
-
-        for r, l in zip(records, locations):
-
-            r.location = LocationResponse.model_validate(l)
-            r.geometry = wkb_to_geojson(l.point) if l.point else None
-
-        return records
-
-    return paginate(query=sql, conn=session, transformer=transformer)
 
 
-# REFACTOR TODO: use enums (or enum-like object) for thing_type
+def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id: int):
+    thing = simple_get_by_id(session, Thing, thing_id)
+
+    verify_thing_type_correspondence(thing, request)
+
+    return thing
+
+
 def add_thing(
-    session: Session, data: BaseModel | dict, thing_type: str = None, user: dict = None
+    session: Session,
+    data: BaseModel | dict,
+    user: dict = None,
+    request: Request | None = None,
+    thing_type: str | None = None,  # to be used only for data transfers, not the API
 ) -> Base:
+    if request is not None:
+        thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
         data = data.model_dump()
 
     location_id = data.pop("location_id", None)
-
     group_id = data.pop("group_id", None)
-    if not group_id:
-        group_name = data.pop("group", None)
-        if group_name is not None:
-            sql = select(Group).where(Group.name == group_name)
-            dbg = session.scalars(sql).one_or_none()
-            if dbg:
-                group_id = dbg.id
-            else:
-                raise ValueError(f"Group '{group_name}' not found.")
 
-    if not thing_type:
-        thing_type = data.get("thing_type", None)
-        if not thing_type:
-            raise ValueError("Thing type must be specified.")
+    try:
+        thing = Thing(**data)
+        thing.thing_type = thing_type
 
-    thing = Thing(**data)
-    thing.thing_type = thing_type
+        audit_add(user, thing)
 
-    audit_add(user, thing)
+        session.add(thing)
+        session.flush()
+        session.refresh(thing)
 
-    session.add(thing)
-    session.commit()
-    session.refresh(thing)
+        # endpoint catches ProgrammingError if location_id or group_id do not exist
+        if group_id:
+            assoc = GroupThingAssociation()
+            audit_add(user, assoc)
+            assoc.group_id = group_id
+            assoc.thing_id = thing.id
+            session.add(assoc)
 
-    if group_id:
-        assoc = GroupThingAssociation()
-        audit_add(user, assoc)
-        assoc.group_id = group_id
-        assoc.thing_id = thing.id
-        session.add(assoc)
+        if location_id is not None:
+            assoc = LocationThingAssociation()
+            audit_add(user, assoc)
+            assoc.location_id = location_id
+            assoc.thing_id = thing.id
+            session.add(assoc)
 
-    if location_id is not None:
-        assoc = LocationThingAssociation()
-        audit_add(user, assoc)
-        assoc.location_id = location_id
-        assoc.thing_id = thing.id
-        session.add(assoc)
-
-    session.commit()
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
     return thing
+
+
+def add_well_screen(session, well_screen_data: BaseModel, user: dict = None):
+    try:
+        well_screen_data_dump = well_screen_data.model_dump()
+        well_screen = WellScreen(**well_screen_data_dump)
+        audit_add(user, well_screen)
+
+        session.add(well_screen)
+        session.flush()
+
+        thing = session.get(Thing, well_screen_data.thing_id)
+        if thing.thing_type != "water well":
+            raise PydanticStyleException(
+                status_code=HTTP_409_CONFLICT,
+                detail=[
+                    {
+                        "loc": ["body", "thing_id"],
+                        "type": "value_error",
+                        "input": {"thing_id": thing.id},
+                        "msg": f"Thing with ID {thing.id} is not a water well Thing. It is a {thing.thing_type} Thing.",
+                    }
+                ],
+            )
+
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    return well_screen
+
+
+def patch_thing(
+    session: Session,
+    request: Request,
+    thing_id: int,
+    payload: BaseModel,
+    user: dict,
+):
+    thing = simple_get_by_id(session, Thing, thing_id)
+
+    verify_thing_type_correspondence(thing, request)
+
+    return model_patcher(session, Thing, thing_id, payload, user)
 
 
 # ============= EOF =============================================
