@@ -18,6 +18,7 @@ import pandas as pd
 from transfers.util import read_csv, filter_to_valid_point_ids
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
+
 def extract_owner_role(comment):
     # if comment is None:
     #     return "Owner"
