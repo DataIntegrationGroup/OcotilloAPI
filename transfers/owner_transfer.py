@@ -37,7 +37,6 @@ def transfer_owners(session):
     odf = read_csv("ownersdata.csv")
     odf = odf.replace(pd.NA, None)
     odf = odf.replace({np.nan: None})
-
     odf = filter_to_valid_point_ids(session, odf)
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
@@ -46,7 +45,8 @@ def transfer_owners(session):
             continue
 
         # TODO: extract role from OwnerComment
-        role = extract_owner_role(row.OwnerComment)
+        # role = extract_owner_role(row.OwnerComment)
+        role = "Primary"
 
         # TODO: put in guards for null values
         contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role=role)

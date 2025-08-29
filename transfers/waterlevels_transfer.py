@@ -59,7 +59,8 @@ def transfer_water_levels(session):
 
             obs.sample = sample
             obs.observation_datetime = dt
-            obs.depth_to_water = row.DepthToWater
+            obs.value = row.DepthToWater
+            obs.measuring_point_height = row.MPHeight
             obs.observed_property = "groundwater level:groundwater level"
             obs.unit = "ft"
 

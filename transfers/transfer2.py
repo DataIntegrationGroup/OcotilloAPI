@@ -56,9 +56,9 @@ def main_transfer():
     transfer_assets_flag = False
     transfer_groups_flag = False
 
-    cleanup_wells_flag = True
+    cleanup_wells_flag = False
 
-    limit = 100
+    limit = 1000
     with session_ctx() as sess:
 
         if init:
@@ -96,8 +96,8 @@ def main_transfer():
         if init or transfer_groups_flag:
             transfer_groups(sess)
 
-        if init or cleanup_wells_flag:
-            cleanup_wells(sess)
+        # if init or cleanup_wells_flag:
+        #     cleanup_wells(sess)
 
 
 if __name__ == "__main__":

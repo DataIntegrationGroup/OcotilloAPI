@@ -1,0 +1,9 @@
+
+
+this is used to add a schedule.
+This schedule is used to keeping the api runingl
+
+gcloud scheduler jobs create http keep-alive-job \
+  --schedule="*/10 8-18 * * 1-5" \
+  --uri="https://ocotillo-api-dot-waterdatainitiative-271000.appspot.com/_ah/warmup" \
+  --http-method=GET
