@@ -18,6 +18,18 @@ import pandas as pd
 from transfers.util import read_csv, filter_to_valid_point_ids
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
+def extract_owner_role(comment):
+    # if comment is None:
+    #     return "Owner"
+    # if "Owner" in comment:
+    #     return "Owner"
+    # if "Manager" in comment:
+    #     return "Manager"
+    # if "Director" in comment:
+    #     return "Director"
+
+    return "Primary"
+
 
 def transfer_owners(session):
 
@@ -32,8 +44,11 @@ def transfer_owners(session):
             print(f"Thing with PointID {row.PointID} not foaund. Skipping owner.")
             continue
 
+        # TODO: extract role from OwnerComment
+        role = extract_owner_role(row.OwnerComment)
+
         # TODO: put in guards for null values
-        contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role="Primary")
+        contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role=role)
         assoc = ThingContactAssociation()
         assoc.thing = thing
         assoc.contact = contact1
