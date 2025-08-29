@@ -45,11 +45,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
         session.add(location)
         payload = make_payload(row)
         thing_type = payload.pop("thing_type")
-        spring = add_thing(
-            session,
-            payload,
-            thing_type=thing_type
-        )
+        spring = add_thing(session, payload, thing_type=thing_type)
         assoc = LocationThingAssociation()
 
         assoc.location = location
