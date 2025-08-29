@@ -43,7 +43,7 @@ def override_dependencies_fixture():
 def test_add_location():
     payload = {
         "name": "test location",
-        "point": "POINT (10.1 10.1)",
+        "point": "POINT Z (10.1 10.1 0)",
         "release_status": "draft",
     }
     response = client.post("/location", json=payload)
@@ -64,7 +64,7 @@ def test_add_location():
 
 def test_update_location(location):
     payload = {
-        "point": "POINT (10.1 20.2)",
+        "point": "POINT Z (10.1 20.2 0)",
         "release_status": "draft",
         "name": "patched name",
     }
