@@ -8,7 +8,7 @@ from db.engine import session_ctx
 @pytest.fixture(scope="session")
 def location():
     with session_ctx() as session:
-        loc = Location(point="SRID=4326;POINT(0 0)")
+        loc = Location(point="SRID=4326;POINT(0 0 0)")
         session.add(loc)
         session.commit()
         session.refresh(loc)
@@ -22,7 +22,7 @@ def second_location():
     with session_ctx() as session:
         location = Location(
             name="second location",
-            point="POINT (10.2 10.2)",
+            point="POINT (10.2 10.2 0)",
             release_status="draft",
         )
         session.add(location)
