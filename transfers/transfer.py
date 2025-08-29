@@ -13,211 +13,94 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import time
+from sqlalchemy.orm import Session
 
-import numpy as np
-import pandas as pd
-import pyproj
-from shapely import Point
-from shapely.ops import transform
-
-from db import *
-from db.location import Location
+from core.initializers import init_lexicon
+from db import Base
 from db.engine import session_ctx
-from db.thing.well import WellThing
-from services.lexicon import add_lexicon_term
+from transfers.asset_transfer import transfer_assets_testing
+from transfers.group_transfer import transfer_groups
+from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
+from transfers.owner_transfer import transfer_owners
+from transfers.sensor_transfer import init_sensor
+from transfers.waterlevels_transfer import transfer_water_levels
 
-TRANSFORMERS = {}
-
-
-def transform_srid(geometry, source_srid, target_srid):
-    """
-    geometry must be a shapely geometry object, like Point, Polygon, or MultiPolygon
-    """
-    transformer_key = (source_srid, target_srid)
-    if transformer_key not in TRANSFORMERS:
-        source_crs = pyproj.CRS(f"EPSG:{source_srid}")
-        target_crs = pyproj.CRS(f"EPSG:{target_srid}")
-        transformer = pyproj.Transformer.from_crs(
-            source_crs, target_crs, always_xy=True
-        )
-        TRANSFORMERS[transformer_key] = transformer
-    else:
-        transformer = TRANSFORMERS[transformer_key]
-    return transform(transformer.transform, geometry)
+from transfers.well_transfer import transfer_wells, transfer_wellscreens, cleanup_wells
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
 
 
-def extract_locations():
-    """
-    Extracts location data from the database.
-    This function should connect to the database and retrieve location data.
-    """
-    df = pd.read_csv("data/location.csv")
-    df = df[df["SiteType"] == "GW"]
-    df = df[df["Easting"].notna() & df["Northing"].notna()]
-    return df
+def erase_and_initalize(session: Session) -> None:
+    Base.metadata.drop_all(session.bind)
+    Base.metadata.create_all(session.bind)
+
+    init_lexicon()
+    init_sensor(session)
 
 
-def extract_wells():
-    """
-    Extracts well data from the database.
-    This function should connect to the database and retrieve well data.
-    """
-    df = pd.read_csv("data/welldata.csv")
-    return df
+def main_transfer():
+    init = True
 
+    transfer_well_flag = False
+    transfer_spring_flag = False
+    transfer_perennial_stream_flag = False
+    transfer_ephemeral_stream_flag = False
+    transfer_met_flag = False
+    transfer_owners_flag = False
+    transfer_waterlevels_flag = False
+    transfer_link_ids_flag = False
+    transfer_assets_flag = False
+    transfer_groups_flag = False
 
-def transform_locations(df):
-    return df
+    cleanup_wells_flag = False
 
+    limit = 1000
+    with session_ctx() as sess:
 
-def transform_wells(df):
-    # cover nans to nulls
-    df = df.replace(pd.NA, None)
-    df = df.replace({np.nan: None})
+        if init:
+            erase_and_initalize(sess)
 
-    return df
+        if init or transfer_well_flag:
+            transfer_wells(sess, limit)
+            transfer_wellscreens(sess)
 
+        if init or transfer_spring_flag:
+            transfer_springs(sess, limit)
 
-def load_locations(sess, df):
-    def f(row):
-        # Convert the row to a dictionary
-        row_dict = row._asdict()
+        if init or transfer_perennial_stream_flag:
+            transfer_perennial_stream(sess, limit)
 
-        e, n = row_dict["Easting"], row_dict["Northing"]
+        if init or transfer_ephemeral_stream_flag:
+            transfer_ephemeral_stream(sess, limit)
 
-        point = Point(e, n)
-        transformed_point = transform_srid(
-            point, source_srid=26913, target_srid=4326  # WGS84 SRID
-        )
+        if init or transfer_met_flag:
+            transfer_met(sess, limit)
 
-        sl = Location(
-            # name=row_dict["PointID"],
-            point=transformed_point.wkt,
-            # visible=row_dict["PublicRelease"],
-        )
+        if init or transfer_owners_flag:
+            transfer_owners(sess)
 
-        sess.add(sl)
-        # try:
-        #     sess.commit()  # Commit the changes to the database
-        # except ProgrammingError:
-        #     print(f"skipping row due to ProgrammingError. {row_dict['PointID']}")
-        #     sess.rollback()
-        # Remove the index from the dictionary
+        if init or transfer_waterlevels_flag:
+            transfer_water_levels(sess)
 
-    loader(df, sess, f)
+        if init or transfer_link_ids_flag:
+            transfer_link_ids(sess)
+            transfer_link_ids_welldata(sess)
 
+        if init or transfer_assets_flag:
+            transfer_assets_testing(sess)
 
-def loader(df, sess, function):
-    n = len(df)
-    st = time.time()
-    prev = st
-    g = 175
-    for i, row in enumerate(df.itertuples()):
-        if not i % g:
-            print(
-                f"Processing row {i} of {n}, {g/(time.time()-prev)}  rate: {i / (time.time() - st):.2f} rows/sec"
-            )
-            prev = time.time()
-        function(row)
+        if init or transfer_groups_flag:
+            transfer_groups(sess)
 
-        if not i % g:
-            sess.commit()
-
-
-ADDED = []
-
-
-def load_wells(sess, df):
-    def f(row):
-        row_dict = row._asdict()
-
-        # location = (
-        #     sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
-        # )
-
-        # location = sess.query(Location).filter_by(point=row_dict["PointID"]).one_or_none()
-
-        if location:
-            well = WellThing()
-            # well.location = location
-            well.well_depth = row_dict["WellDepth"]
-            well.hole_depth = row_dict["HoleDepth"]
-            well.ose_pod_id = row_dict["OSEWellID"]
-            well.casing_depth = row_dict["CasingDepth"]
-            well.casing_diameter = row_dict["CasingDiameter"]
-            well.casing_description = row_dict["CasingDescription"]
-
-            wt = row_dict["Meaning"]
-            if wt not in ADDED:
-                add_lexicon_term(
-                    sess, wt, "Current use of the well, aka well type", "current_use"
-                )
-                ADDED.append(wt)
-
-            well.well_type = wt
-
-            sess.add(well)
-
-    loader(df, sess, f)
-    # print(df.head())
-    # n = len(df)
-    #
-    # for i, row in enumerate(df.itertuples()):
-    #     if not i % 100:
-    #         print(f"Processing row {i} of {n}")
-    #
-    #     row_dict = row._asdict()
-    #
-    #     location = (
-    #         sess.query(Location).filter_by(name=row_dict["PointID"]).one_or_none()
-    #     )
-    #
-    #     if location:
-    #         well = WellThing()
-    #         well.location = location
-    #         well.well_depth = row_dict["WellDepth"]
-    #         well.hole_depth = row_dict["HoleDepth"]
-    #         well.ose_pod_id = row_dict["OSEWellID"]
-    #         well.casing_depth = row_dict["CasingDepth"]
-    #         well.casing_diameter = row_dict["CasingDiameter"]
-    #         well.casing_description = row_dict["CasingDescription"]
-    #
-    #         wt = row_dict["Meaning"]
-    #
-    #         add_lexicon_term(
-    #             sess, wt, "Current use of the well, aka well type", "current_use"
-    #         )
-    #
-    #         well.well_type = wt
-    #
-    #         # print(row_dict)
-    #         sess.add(well)
-    #         sess.commit()
-    #         # break
-
-
-def location_etl(sess):
-    """
-    Extract, Transform, Load (ETL) process for location data.
-    """
-    df = extract_locations()
-    df = transform_locations(df)
-    load_locations(sess, df)
-
-
-def well_etl(sess):
-    """
-    Extract, Transform, Load (ETL) process for well data.
-    """
-    df = extract_wells()
-    df = transform_wells(df)
-    load_wells(sess, df)
+        # if init or cleanup_wells_flag:
+        #     cleanup_wells(sess)
 
 
 if __name__ == "__main__":
-    with session_ctx() as session:
-        location_etl(session)
-        # well_etl(session)
-        session.close()
+    main_transfer()
+
 # ============= EOF =============================================
