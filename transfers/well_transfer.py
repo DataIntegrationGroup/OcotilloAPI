@@ -80,10 +80,10 @@ def transfer_wells(session, limit=None):
                 # "casing_diameter": row.CasingDiameter,
                 # "casing_depth": row.CasingDepth,
                 # "casing_description": row.CasingDescription,
-                "thing_type": "water well",
                 "release_status": "public" if row.PublicRelease else "private",
                 # "data_reliability": row.DataReliability,
             },
+            thing_type="water well",
         )
         wt = row.Meaning
         if wt not in ADDED:
