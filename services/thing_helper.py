@@ -63,11 +63,15 @@ def get_db_things(
         sql = select(Thing, Location)
 
     lta_alias = aliased(LocationThingAssociation)
-    sql = (sql.join(lta_alias, Thing.id==lta_alias.thing_id)
-           .join(Location, lta_alias.location_id==Location.id)
-           .join(latest_assoc, (latest_assoc.c.thing_id == lta_alias.thing_id) &
-                                (latest_assoc.c.max_start == lta_alias.effective_start)))
-
+    sql = (
+        sql.join(lta_alias, Thing.id == lta_alias.thing_id)
+        .join(Location, lta_alias.location_id == Location.id)
+        .join(
+            latest_assoc,
+            (latest_assoc.c.thing_id == lta_alias.thing_id)
+            & (latest_assoc.c.max_start == lta_alias.effective_start),
+        )
+    )
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
@@ -80,6 +84,7 @@ def get_db_things(
         sql = make_within_wkt(sql, within)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
+
     def transformer(records):
         def make_new_record(thing, location):
             thing.active_location = location

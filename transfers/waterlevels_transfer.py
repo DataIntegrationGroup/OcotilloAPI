@@ -58,7 +58,7 @@ def transfer_water_levels(session):
             obs.sensor_id = 1
 
             # TODO: this needs to be implemented
-            #obs.nma_pk_observation = row.GlobalID
+            # obs.nma_pk_observation = row.GlobalID
 
             obs.sample = sample
             obs.observation_datetime = dt
