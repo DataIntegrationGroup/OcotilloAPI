@@ -16,8 +16,8 @@
 from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from sqlalchemy.orm import Session, aliased
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from db import LocationThingAssociation, Thing, Base, Location, WellScreen
@@ -48,10 +48,26 @@ def get_db_things(
     within: str = None,
 ) -> list:
 
+    latest_assoc = (
+        select(
+            LocationThingAssociation.thing_id,
+            func.max(LocationThingAssociation.effective_start).label("max_start"),
+        )
+        .group_by(LocationThingAssociation.thing_id)
+        .subquery()
+    )
+
     if query:
-        sql = select(Thing).where(make_query(Thing, query))
+        sql = select(Thing, Location).where(make_query(Thing, query))
     else:
-        sql = select(Thing)
+        sql = select(Thing, Location)
+
+    lta_alias = aliased(LocationThingAssociation)
+    sql = (sql.join(lta_alias, Thing.id==lta_alias.thing_id)
+           .join(Location, lta_alias.location_id==Location.id)
+           .join(latest_assoc, (latest_assoc.c.thing_id == lta_alias.thing_id) &
+                                (latest_assoc.c.max_start == lta_alias.effective_start)))
+
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
@@ -64,8 +80,14 @@ def get_db_things(
         sql = make_within_wkt(sql, within)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
+    def transformer(records):
+        def make_new_record(thing, location):
+            thing.active_location = location
+            return thing
 
-    return paginate(query=sql, conn=session)
+        return [make_new_record(*record) for record in records]
+
+    return paginate(query=sql, conn=session, transformer=transformer)
 
 
 def get_thing_type_from_request(request: Request) -> str:

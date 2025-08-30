@@ -49,7 +49,11 @@ def transfer_owners(session):
         role = "Primary"
 
         # TODO: put in guards for null values
-        contact1 = Contact(name=f"{row.FirstName} {row.LastName}", role=role)
+        contact1 = Contact(name=f"{row.FirstName} {row.LastName}",
+                           role=role,
+                           # TODO: needs to be implemented
+                           # organization_name=company
+                           )
         assoc = ThingContactAssociation()
         assoc.thing = thing
         assoc.contact = contact1

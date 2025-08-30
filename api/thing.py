@@ -284,7 +284,7 @@ def get_thing_id_links(
 @router.get("", summary="Get all things", status_code=HTTP_200_OK)
 def get_things(
     session: session_dependency,
-    thing_id: int = None,
+    # thing_id: int = None,
     within: str = None,
     query: str = None,
     sort: str = None,
@@ -297,18 +297,15 @@ def get_things(
     """
     Retrieve all things or filter by type.
     """
-    if thing_id:
-        sql = select(Thing).where(Thing.id == thing_id)
-        return paginate(query=sql, conn=session)
-    else:
-        return get_db_things(
-            filter_,
-            order,
-            query,
-            session,
-            sort,
-            within=within,
-        )
+
+    return get_db_things(
+        filter_,
+        order,
+        query,
+        session,
+        sort,
+        within=within,
+    )
 
 
 @router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK)
