@@ -47,4 +47,6 @@ app = FastAPI(
 async def warmup(session: session_dependency):
     session.execute("SELECT 1")
     return HTTPStatus.OK
+
+
 # ============= EOF =============================================

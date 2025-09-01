@@ -45,6 +45,7 @@ if AUTHENTIK_ISSUER:
 
     jwks = get_jwks()
 
+
 def get_public_key(token):
     unverified_header = jwt.get_unverified_header(token)
     for key in jwks["keys"]:
