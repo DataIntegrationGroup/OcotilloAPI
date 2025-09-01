@@ -100,7 +100,7 @@ class BaseThingResponse(ORMBaseModel):
     name: str
     thing_type: str
     release_status: str
-    active_location: LocationResponse
+    active_location: LocationResponse | None = None
 
 
 class WellResponse(BaseThingResponse):
