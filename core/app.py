@@ -14,10 +14,13 @@
 # limitations under the License.
 # ===============================================================================
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from sqlalchemy import text
 
+from .dependencies import session_dependency
 from .initializers import init_db, init_lexicon
 from .settings import settings
 
@@ -39,5 +42,12 @@ app = FastAPI(
     version="0.0.1",
     lifespan=lifespan,
 )
+
+
+@app.get("/_ah/warmup")
+async def warmup(session: session_dependency):
+    session.execute(text("SELECT 1"))
+    return HTTPStatus.OK
+
 
 # ============= EOF =============================================

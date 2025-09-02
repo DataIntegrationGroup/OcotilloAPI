@@ -56,10 +56,14 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
-def get_valid_point_ids(session):
-    things = session.query(Thing).where(Thing.thing_type == "water well").all()
+def get_valid_point_ids(session, thing_type="water well"):
+    things = get_valid_things(session, thing_type)
     valid_pointids = [thing.name for thing in things]
     return valid_pointids
+
+
+def get_valid_things(session, thing_type="water well"):
+    return session.query(Thing).where(Thing.thing_type == thing_type).all()
 
 
 def extract_organization(alternate_id: str) -> str:

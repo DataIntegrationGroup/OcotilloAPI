@@ -88,7 +88,10 @@ def transfer_wells(session, limit=None):
         wt = row.Meaning
         if wt not in ADDED:
             add_lexicon_term(
-                session, wt, "Current use of the well, aka well type", "current_use"
+                session,
+                wt,
+                "Current use of the well, aka well purpose",
+                [{"name": "current_use", "desciption": "Current use of the well"}],
             )
             ADDED.append(wt)
 
