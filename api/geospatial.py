@@ -32,7 +32,7 @@ from services.query_helper import simple_get_by_id
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 
-@router.get("")
+@router.get("", operation_id="get_geospatial_data")
 async def get_geospatial(
     session: session_dependency,
     thing_type: Annotated[List[str], Query(title="thing_type")] = None,
@@ -59,7 +59,7 @@ async def get_geospatial(
         return get_location_shapefile(session, thing_type, group)
 
 
-@router.get("/project-area/{group_id}", summary="Get project area for group")
+@router.get("/project-area/{group_id}", summary="Get project area for group", operation_id="get_project_area")
 async def get_project_area(
     session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:

@@ -156,7 +156,7 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
     return results
 
 
-@router.get("")
+@router.get("", operation_id="search")
 def search_api(
     session: session_dependency,
     q: str,

@@ -24,7 +24,7 @@ from sqlalchemy import select
 router = APIRouter(prefix="/geochronology", tags=["geochronology"])
 
 
-@router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED)
+@router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED, operation_id="create_geochronology_age")
 async def create_age(
     age: CreateGeochronologyAge, session: Session = Depends(get_db_session)
 ):
@@ -36,7 +36,7 @@ async def create_age(
     return model_adder(session, GeochronologyAge, age)
 
 
-@router.get("/age", tags=["geochronology"])
+@router.get("/age", tags=["geochronology"], operation_id="get_geochronology_ages")
 async def get_geochronology_age(
     method: str = "arar", session: Session = Depends(get_db_session)
 ):
