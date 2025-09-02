@@ -39,7 +39,7 @@ router = APIRouter(
 # POST =========================================================================
 
 
-@router.post("", summary="Create a new group", status_code=HTTP_201_CREATED)
+@router.post("", summary="Create a new group", status_code=HTTP_201_CREATED, operation_id="create_group")
 def create_group(
     group_data: CreateGroup, session: session_dependency, user: admin_dependency
 ) -> GroupResponse:
@@ -67,7 +67,7 @@ def create_group(
 
 
 # ============= Get =============================================
-@router.get("", summary="Get groups")
+@router.get("", summary="Get groups", operation_id="get_groups")
 async def get_groups(
     session: session_dependency, filter_: str = Query(alias="filter", default=None)
 ) -> CustomPage[GroupResponse]:
@@ -77,7 +77,7 @@ async def get_groups(
     return paginated_all_getter(session, Group, filter_=filter_)
 
 
-@router.get("/{group_id}", summary="Get group by ID")
+@router.get("/{group_id}", summary="Get group by ID", operation_id="get_group_by_id")
 async def get_group_by_id(group_id: int, session: session_dependency) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
@@ -97,7 +97,7 @@ async def get_group_by_id(group_id: int, session: session_dependency) -> GroupRe
 
 
 # ============= Patch =============================================
-@router.patch("/{group_id}", summary="Update a group by ID")
+@router.patch("/{group_id}", summary="Update a group by ID", operation_id="update_group")
 async def update_group(
     user: editor_dependency,
     group_id: int,
@@ -112,7 +112,7 @@ async def update_group(
 
 # DELETE =======================================================================
 @router.delete(
-    "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT
+    "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT, operation_id="delete_group"
 )
 async def delete_group(
     user: admin_dependency, group_id: int, session: session_dependency

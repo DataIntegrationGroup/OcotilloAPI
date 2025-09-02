@@ -101,6 +101,7 @@ def database_error_handler(
 @router.post(
     "/category",
     status_code=HTTP_201_CREATED,
+    operation_id="create_lexicon_category",
 )
 def add_category(
     category_data: CreateLexiconCategory,
@@ -117,6 +118,7 @@ def add_category(
     "/term",
     summary="Add term",
     status_code=HTTP_201_CREATED,
+    operation_id="create_lexicon_term",
 )
 def add_term(
     term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
@@ -134,6 +136,7 @@ def add_term(
     "/triple",
     summary="Add triple",
     status_code=HTTP_201_CREATED,
+    operation_id="create_lexicon_triple",
 )
 def add_triple(
     triple_data: CreateLexiconTriple,
@@ -150,7 +153,7 @@ def add_triple(
 # PATCH ========================================================================
 
 
-@router.patch("/term/{term_id}", status_code=HTTP_200_OK)
+@router.patch("/term/{term_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_term")
 def update_lexicon_term(
     term_id: int,
     term_data: UpdateLexiconTerm,
@@ -161,7 +164,7 @@ def update_lexicon_term(
     return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
 
 
-@router.patch("/category/{category_id}", status_code=HTTP_200_OK)
+@router.patch("/category/{category_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_category")
 def update_lexicon_category(
     category_id: int,
     category_data: UpdateLexiconCategory,
@@ -173,7 +176,7 @@ def update_lexicon_category(
     )
 
 
-@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
+@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_triple")
 def update_lexicon_triple(
     triple_id: int,
     triple_data: UpdateLexiconTriple,
@@ -189,7 +192,7 @@ def update_lexicon_triple(
 # GET ==========================================================================
 
 
-@router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK)
+@router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK, operation_id="get_lexicon_terms")
 def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
@@ -225,12 +228,12 @@ def get_lexicon_terms(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/term/{term_id}", status_code=HTTP_200_OK)
+@router.get("/term/{term_id}", status_code=HTTP_200_OK, operation_id="get_lexicon_term_by_id")
 def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
     return simple_get_by_id(session, LexiconTerm, term_id)
 
 
-@router.get("/category")
+@router.get("/category", operation_id="get_lexicon_categories")
 def get_lexicon_categories(
     session: session_dependency,
     sort: str = "name",
@@ -243,14 +246,14 @@ def get_lexicon_categories(
     return paginated_all_getter(session, LexiconCategory, sort, order, filter_)
 
 
-@router.get("/category/{category_id}")
+@router.get("/category/{category_id}", operation_id="get_lexicon_category_by_id")
 def get_lexicon_category(
     category_id: int, session: session_dependency
 ) -> LexiconCategoryResponse:
     return simple_get_by_id(session, LexiconCategory, category_id)
 
 
-@router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
+@router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK, operation_id="get_lexicon_triples")
 async def get_lexicon_triples(
     session: session_dependency,
     sort: str = "subject",
@@ -263,7 +266,7 @@ async def get_lexicon_triples(
     return paginated_all_getter(session, LexiconTriple, sort, order, filter_)
 
 
-@router.get("/triple/{triple_id}", status_code=HTTP_200_OK)
+@router.get("/triple/{triple_id}", status_code=HTTP_200_OK, operation_id="get_lexicon_triple_by_id")
 async def get_lexicon_triple(
     triple_id: int, session: session_dependency
 ) -> LexiconTripleResponse:
@@ -277,6 +280,7 @@ async def get_lexicon_triple(
     "/term/{term_id}",
     summary="Delete a lexicon term by ID",
     status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_lexicon_term",
 )
 async def delete_lexicon_term(
     session: session_dependency, user: admin_dependency, term_id: int
@@ -288,6 +292,7 @@ async def delete_lexicon_term(
     "/category/{category_id}",
     summary="Delete a lexicon category by ID",
     status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_lexicon_category",
 )
 async def delete_lexicon_category(
     session: session_dependency, user: admin_dependency, category_id: int
@@ -299,6 +304,7 @@ async def delete_lexicon_category(
     "/triple/{triple_id}",
     summary="Delete a lexicon triple by ID",
     status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_lexicon_triple",
 )
 async def delete_lexicon_triple(
     session: session_dependency, user: admin_dependency, triple_id: int
