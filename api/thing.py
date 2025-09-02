@@ -341,7 +341,7 @@ def create_thing_id_link(
     link_data: CreateThingIdLink,
     session: session_dependency,
     user: admin_dependency,
-):
+) -> ThingIdLinkResponse:
     """
     Create a new link between a thing and an alternate ID.
     """

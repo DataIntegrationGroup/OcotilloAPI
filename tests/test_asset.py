@@ -88,6 +88,7 @@ def test_upload_asset():
 
 def test_add_asset(water_well_thing):
     payload = {
+        "release_status": "draft",
         "thing_id": water_well_thing.id,
         "name": "test_asset.png",
         "label": "Test Asset",
@@ -102,6 +103,7 @@ def test_add_asset(water_well_thing):
     data = resp.json()
     assert "id" in data
     assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["label"] == payload["label"]
     assert data["uri"] == payload["uri"]
@@ -125,6 +127,7 @@ def test_add_asset_409_bad_thing_id(water_well_thing):
         "storage_path": "mock/path/to/asset/test_asset.png",
         "mime_type": "image/png",
         "size": 12345,
+        "release_status": "draft",
     }
     resp = client.post("/asset", json=payload)
     assert resp.status_code == 409
@@ -147,6 +150,7 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][0]["created_at"] == asset.created_at.isoformat().replace(
         "+00:00", "Z"
     )
+    assert data["items"][0]["release_status"] == asset.release_status
     assert data["items"][0]["name"] == asset.name
     assert data["items"][0]["label"] == asset.label
     assert data["items"][0]["storage_path"] == asset.storage_path
@@ -157,6 +161,22 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][0]["signed_url"] == None
 
     assert data["items"][1]["id"] == asset_with_associated_thing.id
+    assert data["items"][1][
+        "created_at"
+    ] == asset_with_associated_thing.created_at.isoformat().replace("+00:00", "Z")
+    assert (
+        data["items"][1]["release_status"] == asset_with_associated_thing.release_status
+    )
+    assert data["items"][1]["name"] == asset_with_associated_thing.name
+    assert data["items"][1]["label"] == asset_with_associated_thing.label
+    assert data["items"][1]["storage_path"] == asset_with_associated_thing.storage_path
+    assert data["items"][1]["mime_type"] == asset_with_associated_thing.mime_type
+    assert data["items"][1]["size"] == asset_with_associated_thing.size
+    assert data["items"][1]["uri"] == asset_with_associated_thing.uri
+    assert (
+        data["items"][1]["storage_service"]
+        == asset_with_associated_thing.storage_service
+    )
     assert data["items"][1]["signed_url"] == None
 
 
@@ -180,6 +200,7 @@ def test_get_asset_by_id(asset):
     data = response.json()
     assert data["id"] == asset.id
     assert data["created_at"] == asset.created_at.isoformat().replace("+00:00", "Z")
+    assert data["release_status"] == asset.release_status
     assert data["name"] == asset.name
     assert data["label"] == asset.label
     assert data["storage_path"] == asset.storage_path
@@ -202,13 +223,18 @@ def test_get_asset_by_id_404_not_found(asset):
 
 
 def test_patch_asset(asset):
-    payload = {"name": "patched name", "label": "patched label"}
+    payload = {
+        "name": "patched name",
+        "label": "patched label",
+        "release_status": "public",
+    }
     response = client.patch(f"/asset/{asset.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == asset.id
     assert data["name"] == payload["name"]
     assert data["label"] == payload["label"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Asset, payload, asset)
 

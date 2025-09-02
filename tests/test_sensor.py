@@ -63,11 +63,14 @@ def test_add_sensor():
         "datetime_removed": None,
         "recording_interval": 60,
         "notes": "Test equipment",
+        "release_status": "draft",
     }
     response = client.post("/sensor", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
+    assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["model"] == payload["model"]
     assert data["serial_no"] == payload["serial_no"]
@@ -84,13 +87,18 @@ def test_add_sensor():
 
 
 def test_patch_sensor(sensor):
-    payload = {"name": "patched name", "model": "patched model"}
+    payload = {
+        "name": "patched name",
+        "model": "patched model",
+        "release_status": "draft",
+    }
     response = client.patch(f"/sensor/{sensor.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == sensor.id
     assert data["name"] == payload["name"]
     assert data["model"] == payload["model"]
+    assert data["release_status"] == payload["release_status"]
 
     # cleanup after patch test
     cleanup_patch_test(Sensor, payload, sensor)
@@ -140,6 +148,10 @@ def test_get_sensors(sensor):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
+    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["model"] == sensor.model
     assert data["items"][0]["serial_no"] == sensor.serial_no
@@ -154,6 +166,8 @@ def test_get_sensor_by_id(sensor):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == sensor.id
+    assert data["created_at"] == sensor.created_at.isoformat().replace("+00:00", "Z")
+    assert data["release_status"] == sensor.release_status
     assert data["name"] == sensor.name
     assert data["model"] == sensor.model
     assert data["serial_no"] == sensor.serial_no

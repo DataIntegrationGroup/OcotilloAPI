@@ -187,6 +187,7 @@ def test_add_well_screen(water_well_thing):
         "screen_depth_top": 10.0,
         "screen_depth_bottom": 20.0,
         "screen_type": "PVC",
+        "release_status": "draft",
     }
     response = client.post("/thing/well-screen", json=payload)
 
@@ -194,6 +195,7 @@ def test_add_well_screen(water_well_thing):
     data = response.json()
     assert "id" in data
     assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["thing_id"] == water_well_thing.id
     assert data["screen_depth_top"] == payload["screen_depth_top"]
     assert data["screen_depth_bottom"] == payload["screen_depth_bottom"]
@@ -209,6 +211,7 @@ def test_add_well_screen_409_bad_thing_id():
         "screen_depth_top": 10.0,
         "screen_depth_bottom": 20.0,
         "screen_type": "PVC",
+        "release_status": "draft",
     }
     response = client.post("/thing/well-screen", json=payload)
     assert response.status_code == 409
@@ -225,6 +228,7 @@ def test_well_add_well_screen_409_wrong_thing_type(spring_thing):
         "screen_depth_top": 10.0,
         "screen_depth_bottom": 20.0,
         "screen_type": "PVC",
+        "release_status": "draft",
     }
     response = client.post("/thing/well-screen", json=payload)
     assert response.status_code == 409
@@ -244,6 +248,7 @@ def test_add_well_screen_409_bad_screen_type(water_well_thing):
         "screen_depth_top": 10.0,
         "screen_depth_bottom": 20.0,
         "screen_type": "NotARealType",
+        "release_status": "draft",
     }
     response = client.post("/thing/well-screen", json=payload)
 
@@ -264,12 +269,14 @@ def test_add_thing_link(spring_thing):
         "relation": "same_as",
         "alternate_id": "4321-1234",
         "alternate_organization": "USGS",
+        "release_status": "draft",
     }
     response = client.post("/thing/id-link", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
     assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["thing_id"] == spring_thing.id
     assert data["relation"] == payload["relation"]
     assert data["alternate_id"] == payload["alternate_id"]
@@ -285,6 +292,7 @@ def test_add_thing_id_link_409_bad_thing_id():
         "relation": "same_as",
         "alternate_id": "4321-1234",
         "alternate_organization": "USGS",
+        "release_status": "draft",
     }
     response = client.post("/thing/id-link", json=payload)
     assert response.status_code == 409
@@ -420,6 +428,10 @@ def test_get_well_screens(well_screen):
     assert data["items"][0]["screen_depth_bottom"] == well_screen.screen_depth_bottom
     assert data["items"][0]["screen_type"] == well_screen.screen_type
     assert data["items"][0]["screen_description"] == well_screen.screen_description
+    assert data["items"][0]["release_status"] == well_screen.release_status
+    assert data["items"][0]["created_at"] == well_screen.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
 
 
 def test_get_well_screen_by_id(well_screen):
@@ -432,6 +444,10 @@ def test_get_well_screen_by_id(well_screen):
     assert data["screen_depth_bottom"] == well_screen.screen_depth_bottom
     assert data["screen_type"] == well_screen.screen_type
     assert data["screen_description"] == well_screen.screen_description
+    assert data["release_status"] == well_screen.release_status
+    assert data["created_at"] == well_screen.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
 
 
 def test_get_well_screen_by_id_404_not_found(well_screen):
@@ -484,6 +500,10 @@ def test_get_thing_id_links(thing_id_link):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == thing_id_link.id
+    assert data["items"][0][
+        "created_at"
+    ] == thing_id_link.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["release_status"] == thing_id_link.release_status
     assert data["items"][0]["thing_id"] == thing_id_link.thing_id
     assert data["items"][0]["relation"] == thing_id_link.relation
     assert data["items"][0]["alternate_id"] == thing_id_link.alternate_id
@@ -498,6 +518,10 @@ def test_get_thing_id_link_by_id(thing_id_link):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == thing_id_link.id
+    assert data["created_at"] == thing_id_link.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["release_status"] == thing_id_link.release_status
     assert data["thing_id"] == thing_id_link.thing_id
     assert data["relation"] == thing_id_link.relation
     assert data["alternate_id"] == thing_id_link.alternate_id
@@ -581,6 +605,7 @@ def test_get_thing_by_id(water_well_thing):
     assert data["created_at"] == water_well_thing.created_at.isoformat().replace(
         "+00:00", "Z"
     )
+    assert data["release_status"] == water_well_thing.release_status
     assert data["name"] == water_well_thing.name
     assert data["thing_type"] == water_well_thing.thing_type
     assert data["release_status"] == water_well_thing.release_status
@@ -762,6 +787,7 @@ def test_patch_thing_id_link(thing_id_link):
         "relation": "related_to",
         "alternate_id": "9999-8888",
         "alternate_organization": "TWDB",
+        "release_status": "draft",
     }
     response = client.patch(f"/thing/id-link/{thing_id_link.id}", json=payload)
     assert response.status_code == 200
@@ -769,6 +795,7 @@ def test_patch_thing_id_link(thing_id_link):
     assert data["relation"] == payload["relation"]
     assert data["alternate_id"] == payload["alternate_id"]
     assert data["alternate_organization"] == payload["alternate_organization"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(ThingIdLink, payload, thing_id_link)
 
@@ -792,6 +819,7 @@ def test_patch_well_screen(well_screen):
         "screen_depth_top": 1,
         "screen_description": "patched screen description",
         "screen_type": "Steel",
+        "release_status": "draft",
     }
     response = client.patch(f"/thing/well-screen/{well_screen.id}", json=payload)
     assert response.status_code == 200
@@ -800,6 +828,7 @@ def test_patch_well_screen(well_screen):
     assert data["screen_depth_top"] == payload["screen_depth_top"]
     assert data["screen_description"] == payload["screen_description"]
     assert data["screen_type"] == data["screen_type"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(WellScreen, payload, well_screen)
 

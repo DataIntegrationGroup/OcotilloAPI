@@ -20,15 +20,15 @@ class ResourceNotFoundResponse(BaseModel):
     detail: str
 
 
-class BaseCreateSchema(BaseModel):
+class BaseCreateModel(BaseModel):
     release_status: str
 
 
-class BaseUpdateSchema(BaseCreateSchema):
+class BaseUpdateModel(BaseCreateModel):
     release_status: str | None = None
 
 
-class BaseResponseSchema(BaseModel):
+class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: AwareDatetime
     release_status: str

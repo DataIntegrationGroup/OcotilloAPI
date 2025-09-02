@@ -65,6 +65,7 @@ def well_screen(water_well_thing):
             screen_depth_bottom=20.0,
             screen_type="PVC",
             screen_description="Test well screen description",
+            release_status="draft",
         )
         session.add(screen)
         session.commit()
@@ -80,6 +81,7 @@ def second_well_screen(water_well_thing):
             screen_depth_bottom=40.0,
             screen_type="PVC",
             screen_description="Test well screen description",
+            release_status="private",
         )
         session.add(screen)
         session.commit()
@@ -96,6 +98,7 @@ def thing_id_link(water_well_thing):
             relation="same_as",
             alternate_id="4321-1234",
             alternate_organization="USGS",
+            release_status="private",
         )
         session.add(id_link)
         session.commit()
@@ -110,6 +113,7 @@ def second_thing_id_link(water_well_thing):
             relation="same_as",
             alternate_id="4321-1234",
             alternate_organization="USGS",
+            release_status="private",
         )
         session.add(id_link)
         session.commit()
@@ -173,6 +177,7 @@ def sensor():
             datetime_removed="2023-01-02T00:00:00Z",
             recording_interval=60,
             notes="Test equipment",
+            release_status="draft",
         )
         session.add(sensor)
         session.commit()
@@ -190,6 +195,7 @@ def second_sensor():
             datetime_removed="2023-01-02T00:00:00Z",
             recording_interval=60,
             notes="Test equipment",
+            release_status="draft",
         )
         session.add(sensor)
         session.commit()
@@ -250,6 +256,7 @@ def second_sample(water_well_thing, sensor):
 def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(
+            release_status="private",
             name="Test Contact",
             role="Owner",
         )
@@ -271,6 +278,7 @@ def contact(water_well_thing):
 def address(contact):
     with session_ctx() as session:
         address = Address(
+            release_status="private",
             address_line_1="123 Main St",
             address_line_2="Apt 4B",
             city="Test City",
@@ -290,7 +298,10 @@ def address(contact):
 def email(contact):
     with session_ctx() as session:
         email = Email(
-            email="test@example.com", email_type="Primary", contact_id=contact.id
+            email="test@example.com",
+            email_type="Primary",
+            contact_id=contact.id,
+            release_status="private",
         )
         session.add(email)
         session.commit()
@@ -302,7 +313,10 @@ def email(contact):
 def phone(contact):
     with session_ctx() as session:
         phone = Phone(
-            phone_number="+15051234567", phone_type="Mobile", contact_id=contact.id
+            phone_number="+15051234567",
+            phone_type="Mobile",
+            contact_id=contact.id,
+            release_status="private",
         )
         session.add(phone)
         session.commit()
@@ -314,6 +328,7 @@ def phone(contact):
 def second_contact():
     with session_ctx() as session:
         contact = Contact(
+            release_status="private",
             name="Test Second Contact",
             role="Owner",
         )
@@ -334,6 +349,7 @@ def second_email(second_contact):
             email="testsecondcontact@gmail.com",
             email_type="Primary",
             contact_id=second_contact.id,
+            release_status="private",
         )
         session.add(email)
         session.commit()
@@ -350,6 +366,7 @@ def second_phone(second_contact):
             phone_number="123-456-7890",
             phone_type="Primary",
             contact_id=second_contact.id,
+            release_status="private",
         )
         session.add(phone)
         session.commit()
@@ -363,6 +380,7 @@ def second_phone(second_contact):
 def second_address(second_contact):
     with session_ctx() as session:
         address = Address(
+            release_status="private",
             address_line_1="456 Secondary St",
             address_line_2="Apt 12A",
             city="Test Metropolis",
@@ -384,6 +402,7 @@ def second_address(second_contact):
 def asset():
     with session_ctx() as session:
         asset = Asset(
+            release_status="draft",
             name="Test Asset",
             label="test label",
             mime_type="image/png",
@@ -402,6 +421,7 @@ def asset():
 def asset_with_associated_thing(water_well_thing):
     with session_ctx() as session:
         asset = Asset(
+            release_status="draft",
             name="Test Asset with water_well_thing",
             label="test label",
             mime_type="application/pdf",
@@ -522,6 +542,7 @@ def observation_to_delete(sample, sensor):
 def group(water_well_thing):
     with session_ctx() as session:
         group = Group(
+            release_status="draft",
             name="Test Group",
             description="This is a test group.",
             project_area="MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, -107.2 34.2, -107.2 33.6)))",
@@ -545,6 +566,7 @@ def group(water_well_thing):
 def second_group(water_well_thing):
     with session_ctx() as session:
         group = Group(
+            release_status="draft",
             name="Second Test Group",
             description="This is a second test group.",
             project_area="MULTIPOLYGON(((-107.2 33.6, -106.6 33.6, -106.6 34.2, 0 0, -107.2 34.2, -107.2 33.6)))",

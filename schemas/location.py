@@ -17,7 +17,7 @@ from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
-from schemas import ORMBaseModel
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
 
 """
@@ -29,7 +29,7 @@ Since many fields are optional in the update schemas set check_fields=False in t
 
 
 # -------- CREATE ----------
-class CreateLocation(BaseModel):
+class CreateLocation(BaseCreateModel):
     """
     Schema for creating a sample location.
     """
@@ -55,12 +55,11 @@ class CreateGroupThing(BaseModel):
 
 
 # -------- RESPONSE ----------
-class LocationResponse(ORMBaseModel):
+class LocationResponse(BaseResponseModel):
     """
     Response schema for sample location details.
     """
 
-    id: int
     name: str | None = None
     point: str
     release_status: str
@@ -77,18 +76,17 @@ class LocationResponse(ORMBaseModel):
         return None
 
 
-class GroupLocationResponse(ORMBaseModel):
+class GroupLocationResponse(BaseResponseModel):
     """
     Response schema for group location details.
     """
 
-    id: int
     group_id: int
     location_id: int
 
 
 # -------- UPDATE ----------
-class UpdateLocation(BaseModel):
+class UpdateLocation(BaseUpdateModel):
     """
     Schema for updating a location.
     """
@@ -96,14 +94,6 @@ class UpdateLocation(BaseModel):
     name: str | None = None
     notes: str | None = None
     point: str | None = None
-    release_status: str | None = None
-
-
-class UpdateGroup(BaseModel):
-    name: str
-    description: str | None = None
-    parent_group_id: int | None = None
-    project_area: str | None = None
 
 
 # ============= EOF =============================================

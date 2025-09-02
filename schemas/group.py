@@ -18,7 +18,7 @@ from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator, model_validator
 from typing_extensions import Self
 
-from schemas import ORMBaseModel
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
 
 
@@ -37,7 +37,7 @@ class ValidateGroup(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateGroup(ValidateGroup):
+class CreateGroup(BaseCreateModel, ValidateGroup):
     """
     Schema for creating a group.
     """
@@ -46,7 +46,7 @@ class CreateGroup(ValidateGroup):
 
 
 # -------- RESPONSE --------
-class GroupResponse(ORMBaseModel):
+class GroupResponse(BaseResponseModel):
     """
     Pydantic model for the response of a group.
     This model can be extended to include additional fields as needed.
@@ -65,7 +65,7 @@ class GroupResponse(ORMBaseModel):
 
 
 # -------- UPDATE ----------
-class UpdateGroup(ValidateGroup):
+class UpdateGroup(BaseUpdateModel, ValidateGroup):
     """
     Pydantic model for updating a group.
     This model can be extended to include additional fields as needed.
