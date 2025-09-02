@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+# for testing only. remove later
+from dotenv import load_dotenv
+from db.engine import session_ctx
+load_dotenv()
+# -----------------------------------------------
+
 import io
 
-from requests import Session
 from starlette.datastructures import UploadFile
-
+from sqlalchemy.orm import Session
 from db import Asset, AssetThingAssociation, Thing
 from services.audit_helper import audit_add
 from services.gcs_helper import (
@@ -26,26 +31,25 @@ from services.gcs_helper import (
     get_storage_bucket,
     get_storage_client,
 )
-from transfers.util import get_valid_point_ids
+from transfers.util import get_valid_things
 
 
 def transfer_assets(session: Session) -> None:
     client = get_storage_client()
 
-    tempbucket = client.get_bucket("temp-assets")
     bucket = get_storage_bucket(client)
+    print(f"Using bucket {bucket.name}")
 
-    point_ids = get_valid_point_ids(session)
-    for p in point_ids:
+    for thing in get_valid_things(session):
         # find images in temp bucket
-        blobs = tempbucket.list_blobs(match_glob=f"{p}*")
-
+        print(f"Processing PointID: {thing.name}")
+        blobs = bucket.list_blobs(prefix=f"nma-photos/{thing.name}")
         # move blobs from temp to assets bucket
         for srcblob in blobs:
             f = srcblob.download_as_bytes()
             ff = UploadFile(file=io.BytesIO(f), filename=srcblob.name, size=len(f))
-            uri, blob = gcs_upload(ff, bucket)
-            add_asset(session, ff, srcblob.name, p, uri, blob.name)
+            uri, blob_name = gcs_upload(ff, bucket)
+            add_asset(session, ff, srcblob.name, thing.id, uri, blob_name)
 
 
 def transfer_assets_testing(session: Session) -> None:
@@ -62,11 +66,11 @@ def transfer_assets_testing(session: Session) -> None:
 
 
 def add_asset(
-    session: Session, uf: UploadFile, p: str, thing_id: int, uri: str, blob_name: str
+    session: Session, uf: UploadFile, label: str, thing_id: int, uri: str, blob_name: str
 ) -> None:
     asset = Asset(
-        name=p,
-        label=p,
+        name=label,
+        label=label,
         storage_path=blob_name,
         storage_service="gcs",
         mime_type="image/png",
@@ -82,5 +86,10 @@ def add_asset(
     session.add(asset)
     session.commit()
 
+
+if __name__ == '__main__':
+
+    with session_ctx() as session:
+        transfer_assets(session)
 
 # ============= EOF =============================================

@@ -77,10 +77,6 @@ def get_db_things(
         sql = sql.where(Thing.thing_type == thing_type)
 
     if within:
-        sql = sql.join(
-            LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id
-        )
-        sql = sql.join(Location)
         sql = make_within_wkt(sql, within)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)

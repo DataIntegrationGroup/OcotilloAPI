@@ -18,6 +18,7 @@ from http import HTTPStatus
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from sqlalchemy import text
 
 from .dependencies import session_dependency
 from .initializers import init_db, init_lexicon
@@ -45,7 +46,7 @@ app = FastAPI(
 
 @app.get("/_ah/warmup")
 async def warmup(session: session_dependency):
-    session.execute("SELECT 1")
+    session.execute(text("SELECT 1"))
     return HTTPStatus.OK
 
 
