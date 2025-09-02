@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, AwareDatetime
 
 
@@ -22,9 +20,19 @@ class ResourceNotFoundResponse(BaseModel):
     detail: str
 
 
-class ORMBaseModel(BaseModel):
+class BaseCreateSchema(BaseModel):
+    release_status: str
+
+
+class BaseUpdateSchema(BaseCreateSchema):
+    release_status: str | None = None
+
+
+class BaseResponseSchema(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: AwareDatetime
+    release_status: str
+
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
