@@ -27,7 +27,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/add", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED
+    "/add", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED, operation_id="create_publication"
 )
 async def post_publication(
     publication_data: CreatePublication,  # Replace with your actual schema
