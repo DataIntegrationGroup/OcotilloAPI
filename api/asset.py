@@ -81,6 +81,7 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
     "/upload",
     status_code=HTTP_201_CREATED,
     dependencies=[Depends(admin_function)],
+    operation_id="upload_asset",
 )
 async def upload_asset(
     bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
@@ -92,7 +93,7 @@ async def upload_asset(
     }
 
 
-@router.post("", status_code=HTTP_201_CREATED)
+@router.post("", status_code=HTTP_201_CREATED, operation_id="create_asset")
 async def add_asset(
     user: admin_dependency,
     session: session_dependency,
@@ -146,7 +147,7 @@ signed url is always generated when retrieving assets individually
 """
 
 
-@router.get("")
+@router.get("", operation_id="get_assets")
 async def list_assets(
     session: session_dependency,
     thing_id: int = None,
@@ -169,7 +170,7 @@ async def list_assets(
     return paginate(query=sql, conn=session, transformer=transformer)
 
 
-@router.get("/{asset_id}")
+@router.get("/{asset_id}", operation_id="get_asset_by_id")
 async def get_asset(
     asset_id: int,
     session: session_dependency,
@@ -185,7 +186,7 @@ async def get_asset(
 
 
 # PATCH ========================================================================
-@router.patch("/{asset_id}")
+@router.patch("/{asset_id}", operation_id="update_asset")
 async def update_asset(
     asset_id: int,
     session: session_dependency,
@@ -201,7 +202,7 @@ async def update_asset(
 # DELETE =======================================================================
 
 
-@router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT)
+@router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT, operation_id="delete_asset")
 async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):
@@ -214,6 +215,7 @@ async def delete_asset(
     "/{asset_id}/remove",
     status_code=HTTP_204_NO_CONTENT,
     dependencies=[Depends(admin_function)],
+    operation_id="remove_asset",
 )
 async def remove_asset(
     asset_id: int,

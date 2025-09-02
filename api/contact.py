@@ -118,6 +118,7 @@ def database_error_handler(
     "",
     summary="Create a new contact",
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_contact",
 )
 def create_contact(
     contact_data: CreateContact, session: session_dependency, user: amp_admin_dependency
@@ -132,6 +133,7 @@ def create_contact(
     "/address",
     summary="Add an address to a contact",
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_address",
 )
 def create_address(
     address_data: CreateAddress,
@@ -155,6 +157,7 @@ def create_address(
     "/email",
     summary="Add an email to a contact",
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_email",
 )
 def create_email(
     email_data: CreateEmail,
@@ -171,6 +174,7 @@ def create_email(
     "/phone",
     summary="Add a phone number to a contact",
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_phone",
 )
 def create_phone(
     phone_data: CreatePhone,
@@ -210,6 +214,7 @@ def create_phone(
 #   then return a 409 response
 @router.patch(
     "/email/{email_id}",
+    operation_id="update_email",
 )
 def update_contact_email(
     email_id: int,
@@ -225,6 +230,7 @@ def update_contact_email(
 
 @router.patch(
     "/phone/{phone_id}",
+    operation_id="update_phone",
 )
 def update_contact_phone(
     phone_id: int,
@@ -245,6 +251,7 @@ def update_contact_phone(
 
 @router.patch(
     "/address/{address_id}",
+    operation_id="update_address",
 )
 def update_contact_address(
     address_id: int,
@@ -293,7 +300,7 @@ def update_contact_address(
 #         database_error_handler(thing_contact_association_data, e)
 
 
-@router.patch("/{contact_id}", summary="Update contact")
+@router.patch("/{contact_id}", summary="Update contact", operation_id="update_contact")
 def update_contact(
     contact_id: int,
     contact_data: UpdateContact,
@@ -313,7 +320,7 @@ def update_contact(
 # ====== GET ===================================================================
 
 
-@router.get("/email", summary="Get all emails")
+@router.get("/email", summary="Get all emails", operation_id="get_emails")
 async def get_emails(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
@@ -325,7 +332,7 @@ async def get_emails(
     return paginated_all_getter(session, Email)
 
 
-@router.get("/email/{email_id}", summary="Get email by ID")
+@router.get("/email/{email_id}", summary="Get email by ID", operation_id="get_email_by_id")
 async def get_email_by_id(
     email_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> EmailResponse:
@@ -335,7 +342,7 @@ async def get_email_by_id(
     return simple_get_by_id(session, Email, email_id)
 
 
-@router.get("/phone", summary="Get all phones")
+@router.get("/phone", summary="Get all phones", operation_id="get_phones")
 async def get_phones(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
@@ -347,7 +354,7 @@ async def get_phones(
     return paginated_all_getter(session, Phone)
 
 
-@router.get("/phone/{phone_id}", summary="Get phone by ID")
+@router.get("/phone/{phone_id}", summary="Get phone by ID", operation_id="get_phone_by_id")
 async def get_phone_by_id(
     phone_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> PhoneResponse:
@@ -357,7 +364,7 @@ async def get_phone_by_id(
     return simple_get_by_id(session, Phone, phone_id)
 
 
-@router.get("/address", summary="Get all addresses")
+@router.get("/address", summary="Get all addresses", operation_id="get_addresses")
 async def get_addresses(
     session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
@@ -369,7 +376,7 @@ async def get_addresses(
     return paginated_all_getter(session, Address)
 
 
-@router.get("/address/{address_id}", summary="Get address by ID")
+@router.get("/address/{address_id}", summary="Get address by ID", operation_id="get_address_by_id")
 async def get_address_by_id(
     address_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> AddressResponse:
@@ -408,7 +415,7 @@ async def get_address_by_id(
 #     )
 
 
-@router.get("", summary="Get contacts")
+@router.get("", summary="Get contacts", operation_id="get_contacts")
 async def get_contacts(
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -433,7 +440,7 @@ async def get_contacts(
         return paginated_all_getter(session, Contact, sort, order, filter_)
 
 
-@router.get("/{contact_id}", summary="Get contact by ID")
+@router.get("/{contact_id}", summary="Get contact by ID", operation_id="get_contact_by_id")
 async def get_contact_by_id(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> ContactResponse:
@@ -443,7 +450,7 @@ async def get_contact_by_id(
     return simple_get_by_id(session, Contact, contact_id)
 
 
-@router.get("/{contact_id}/email", summary="Get contact emails")
+@router.get("/{contact_id}/email", summary="Get contact emails", operation_id="get_contact_emails")
 async def get_contact_emails(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[EmailResponse]:
@@ -455,7 +462,7 @@ async def get_contact_emails(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/{contact_id}/phone", summary="Get contact phones")
+@router.get("/{contact_id}/phone", summary="Get contact phones", operation_id="get_contact_phones")
 async def get_contact_phones(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[PhoneResponse]:
@@ -467,7 +474,7 @@ async def get_contact_phones(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/{contact_id}/address", summary="Get contact addresses")
+@router.get("/{contact_id}/address", summary="Get contact addresses", operation_id="get_contact_addresses")
 async def get_contact_addresses(
     contact_id: int, session: session_dependency, user: amp_viewer_dependency
 ) -> CustomPage[AddressResponse]:
@@ -496,7 +503,7 @@ async def get_contact_addresses(
 # DELETE =======================================================================
 
 
-@router.delete("/email/{email_id}", summary="Delete contact email")
+@router.delete("/email/{email_id}", summary="Delete contact email", operation_id="delete_email")
 def delete_contact_email(
     email_id: int, session: session_dependency, user: amp_admin_dependency
 ):
@@ -506,7 +513,7 @@ def delete_contact_email(
     return model_deleter(session, Email, email_id)
 
 
-@router.delete("/phone/{phone_id}", summary="Delete contact phone")
+@router.delete("/phone/{phone_id}", summary="Delete contact phone", operation_id="delete_phone")
 def delete_contact_phone(
     phone_id: int, session: session_dependency, user: amp_admin_dependency
 ):
@@ -516,7 +523,7 @@ def delete_contact_phone(
     return model_deleter(session, Phone, phone_id)
 
 
-@router.delete("/address/{address_id}", summary="Delete contact address")
+@router.delete("/address/{address_id}", summary="Delete contact address", operation_id="delete_address")
 def delete_contact_address(
     address_id: int, session: session_dependency, user: amp_admin_dependency
 ):
@@ -541,7 +548,7 @@ def delete_contact_address(
 #     return model_deleter(session, ThingContactAssociation, thing_contact_association_id)
 
 
-@router.delete("/{contact_id}", summary="Delete contact")
+@router.delete("/{contact_id}", summary="Delete contact", operation_id="delete_contact")
 def delete_contact(
     contact_id: int, session: session_dependency, user: amp_admin_dependency
 ):
