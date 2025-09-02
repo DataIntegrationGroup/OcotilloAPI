@@ -24,6 +24,7 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
+from schemas import ORMBaseModel
 from schemas.thing import ThingResponse
 
 """
@@ -142,9 +143,7 @@ class UpdateSample(ValidateSample):
 
 
 # -------- RESPONSE ----------
-class SampleResponse(BaseModel):
-    id: int
-    thing_id: int
+class SampleResponse(ORMBaseModel):
     thing: ThingResponse
     sample_type: str
     field_sample_id: str
