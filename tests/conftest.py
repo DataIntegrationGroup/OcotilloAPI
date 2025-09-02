@@ -56,7 +56,6 @@ def water_well_thing(location):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
-        session.refresh(assoc)
         yield water_well
 
 
