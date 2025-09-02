@@ -37,7 +37,7 @@ router = APIRouter(prefix="/sensor", tags=["sensor"])
 # ====== POST ==================================================================
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, operation_id="create_sensor")
 def add_sensor(
     sensor_data: CreateSensor, session: session_dependency, user: admin_dependency
 ) -> SensorResponse:
@@ -50,7 +50,7 @@ def add_sensor(
 # ====== PATCH =================================================================
 
 
-@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
+@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="update_sensor")
 def update_sensor(
     sensor_id: int,
     sensor_data: UpdateSensor,
@@ -110,7 +110,7 @@ def update_sensor(
 # ====== DELETE ================================================================
 
 
-@router.delete("/{sensor_id}")
+@router.delete("/{sensor_id}", operation_id="delete_sensor")
 def delete_sensor(
     sensor_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:
@@ -123,7 +123,7 @@ def delete_sensor(
 # ====== GET ===================================================================
 
 
-@router.get("", status_code=status.HTTP_200_OK)
+@router.get("", status_code=status.HTTP_200_OK, operation_id="get_sensors")
 def get_sensors(
     session: session_dependency,
     user: viewer_dependency,
@@ -160,7 +160,7 @@ def get_sensors(
     return paginate(conn=session, query=sql)
 
 
-@router.get("/{sensor_id}", status_code=status.HTTP_200_OK)
+@router.get("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="get_sensor_by_id")
 def get_sensor(
     sensor_id: int, session: session_dependency, user: viewer_dependency
 ) -> SensorResponse:
