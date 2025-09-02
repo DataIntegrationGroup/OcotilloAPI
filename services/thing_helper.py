@@ -38,6 +38,21 @@ def wkb_to_geojson(wkb_element):
     return mapping(geom)
 
 
+def get_active_location(session: Session, thing: Thing) -> Location | None:
+    """
+    The following SQL query retrieves the active location associated with by
+    assuming that the latest effective_start is the active location.
+    """
+    sql = (
+        select(Location)
+        .join(LocationThingAssociation)
+        .where(LocationThingAssociation.thing_id == thing.id)
+        .order_by(LocationThingAssociation.effective_start.desc())
+    )
+    active_location = session.execute(sql).scalars().one_or_none()
+    return active_location
+
+
 def get_db_things(
     filter_,
     order,
@@ -126,6 +141,7 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
 
     verify_thing_type_correspondence(thing, request)
 
+    thing.active_location = get_active_location(session, thing)
     return thing
 
 
@@ -174,6 +190,8 @@ def add_thing(
     except Exception as e:
         session.rollback()
         raise e
+
+    thing.active_location = get_active_location(session, thing)
     return thing
 
 
@@ -218,7 +236,9 @@ def patch_thing(
 
     verify_thing_type_correspondence(thing, request)
 
-    return model_patcher(session, Thing, thing_id, payload, user)
+    thing = model_patcher(session, Thing, thing_id, payload, user)
+    thing.active_location = get_active_location(session, thing)
+    return thing
 
 
 # ============= EOF =============================================

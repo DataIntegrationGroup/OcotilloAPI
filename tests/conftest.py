@@ -8,7 +8,9 @@ from db.engine import session_ctx
 @pytest.fixture(scope="session")
 def location():
     with session_ctx() as session:
-        loc = Location(point="SRID=4326;POINT(0 0 0)")
+        loc = Location(
+            name="first location", release_status="draft", point="POINT(0 0 0)"
+        )
         session.add(loc)
         session.commit()
         session.refresh(loc)
@@ -51,8 +53,10 @@ def water_well_thing(location):
         assoc = LocationThingAssociation()
         assoc.location_id = location.id
         assoc.thing_id = water_well.id
+        assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+        session.refresh(assoc)
         yield water_well
 
 

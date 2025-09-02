@@ -68,6 +68,7 @@ from services.thing_helper import (
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
+    get_active_location,
 )
 from services.lexicon_helper import get_terms_by_category
 
@@ -315,7 +316,9 @@ async def get_thing_by_id(
     """
     Retrieve a thing by ID from the database.
     """
-    return simple_get_by_id(session, Thing, thing_id)
+    thing = simple_get_by_id(session, Thing, thing_id)
+    thing.active_location = get_active_location(session, thing)
+    return thing
 
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
