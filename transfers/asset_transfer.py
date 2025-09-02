@@ -16,6 +16,7 @@
 # for testing only. remove later
 from dotenv import load_dotenv
 from db.engine import session_ctx
+
 load_dotenv()
 # -----------------------------------------------
 
@@ -66,7 +67,12 @@ def transfer_assets_testing(session: Session) -> None:
 
 
 def add_asset(
-    session: Session, uf: UploadFile, label: str, thing_id: int, uri: str, blob_name: str
+    session: Session,
+    uf: UploadFile,
+    label: str,
+    thing_id: int,
+    uri: str,
+    blob_name: str,
 ) -> None:
     asset = Asset(
         name=label,
@@ -87,7 +93,7 @@ def add_asset(
     session.commit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     with session_ctx() as session:
         transfer_assets(session)
