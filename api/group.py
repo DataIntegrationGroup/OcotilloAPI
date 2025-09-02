@@ -40,7 +40,7 @@ router = APIRouter(
 
 
 @router.post("", summary="Create a new group", status_code=HTTP_201_CREATED)
-def create_group(
+async def create_group(
     group_data: CreateGroup, session: session_dependency, user: admin_dependency
 ) -> GroupResponse:
     """

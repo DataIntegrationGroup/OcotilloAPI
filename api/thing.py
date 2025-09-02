@@ -256,7 +256,7 @@ async def get_spring_by_id(
     "/id-link",
     summary="Get all thing links",
 )
-def get_thing_id_links(
+async def get_thing_id_links(
     session: session_dependency,
     filter_: str = Query(alias="filter", default=None),
     sort: str = None,
@@ -272,7 +272,7 @@ def get_thing_id_links(
 
 
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
-def get_thing_id_links(
+async def get_thing_id_links(
     link_id: int,
     session: session_dependency,
 ) -> ThingIdLinkResponse:
@@ -283,7 +283,7 @@ def get_thing_id_links(
 
 
 @router.get("", summary="Get all things", status_code=HTTP_200_OK)
-def get_things(
+async def get_things(
     session: session_dependency,
     # thing_id: int = None,
     within: str = None,
@@ -322,7 +322,7 @@ async def get_thing_by_id(
 
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
-def get_thing_id_links(
+async def get_thing_id_links(
     thing_id: int,
     session: session_dependency,
 ) -> CustomPage[ThingIdLinkResponse]:
@@ -340,7 +340,7 @@ def get_thing_id_links(
 @router.post(
     "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link"
 )
-def create_thing_id_link(
+async def create_thing_id_link(
     link_data: CreateThingIdLink,
     session: session_dependency,
     user: admin_dependency,
@@ -359,7 +359,7 @@ def create_thing_id_link(
     summary="Create a water well",
     status_code=HTTP_201_CREATED,
 )
-def create_well(
+async def create_well(
     thing_data: CreateWell,
     session: session_dependency,
     request: Request,
@@ -379,7 +379,7 @@ def create_well(
     summary="Create a new spring",
     status_code=HTTP_201_CREATED,
 )
-def create_spring(
+async def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     request: Request,
@@ -399,7 +399,7 @@ def create_spring(
     summary="Create a new well screen",
     status_code=HTTP_201_CREATED,
 )
-def create_wellscreen(
+async def create_wellscreen(
     session: session_dependency,
     user: amp_admin_dependency,
     well_screen_data: CreateWellScreen,

@@ -42,7 +42,7 @@ router = APIRouter(prefix="/location", tags=["location"])
     summary="Create a new sample location",
     status_code=status.HTTP_201_CREATED,
 )
-def create_location(
+async def create_location(
     location_data: CreateLocation, session: session_dependency, user: admin_dependency
 ) -> LocationResponse:
     """
@@ -55,7 +55,7 @@ def create_location(
     "/{location_id}",
     summary="Update a location",
 )
-def update_location(
+async def update_location(
     location_id: int,
     location_data: UpdateLocation,
     session: session_dependency,
