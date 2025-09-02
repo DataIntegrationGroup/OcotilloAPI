@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from xmlrpc.client import Boolean
-
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
@@ -86,7 +84,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
     )
 
 
-class ThingIdLink(Base, AutoBaseMixin):
+class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     """
     Represents a link associated with a Thing.
     """
@@ -99,7 +97,7 @@ class ThingIdLink(Base, AutoBaseMixin):
     thing = relationship("Thing", backref="links")
 
 
-class WellScreen(Base, AutoBaseMixin):
+class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     thing_id = Column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )

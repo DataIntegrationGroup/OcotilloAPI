@@ -15,7 +15,6 @@
 # ===============================================================================
 from typing_extensions import Annotated, Self
 from datetime import timezone
-
 from pydantic import (
     BaseModel,
     AwareDatetime,
@@ -23,6 +22,8 @@ from pydantic import (
     model_validator,
     field_validator,
 )
+
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 # ------- VALIDATION ------
 
@@ -50,7 +51,7 @@ class ValidateSensor(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateSensor(ValidateSensor):
+class CreateSensor(BaseCreateModel, ValidateSensor):
     """
     Schema for creating a new sensor.
     """
@@ -66,7 +67,7 @@ class CreateSensor(ValidateSensor):
 
 
 # -------- UPDATE ----------
-class UpdateSensor(ValidateSensor):
+class UpdateSensor(BaseUpdateModel, ValidateSensor):
     name: str | None = None
     model: str | None = None
     serial_no: str | None = None
@@ -77,8 +78,7 @@ class UpdateSensor(ValidateSensor):
 
 
 # -------- RESPONSE ----------
-class SensorResponse(BaseModel):
-    id: int
+class SensorResponse(BaseResponseModel):
     name: str
     model: str | None  # = Column(String(50))
     serial_no: str | None  # = Column(String(50))

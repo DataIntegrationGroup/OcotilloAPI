@@ -21,15 +21,19 @@ from services.audit_helper import audit_add
 from sqlalchemy.orm import Session
 
 
-def add_contact(
-    session: Session, contact_data: CreateContact | dict, user: dict
-) -> Contact:
+def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Contact:
     """
     Add a new contact to the database.
     """
 
-    if isinstance(contact_data, CreateContact):
-        contact_data = contact_data.model_dump(exclude_unset=True)
+    if isinstance(data, CreateContact):
+        data = data.model_dump(exclude_unset=True)
+
+    email_data = data.pop("emails", [])
+    phone_data = data.pop("phones", [])
+    address_data = data.pop("addresses", [])
+    thing_id = data.pop("thing_id", None)
+    contact_data = data
 
     """
     Developer's note
@@ -39,21 +43,18 @@ def add_contact(
     """
 
     try:
-        contact = Contact(
-            name=contact_data["name"],
-            role=contact_data["role"],
-        )
-        for e in contact_data.get("emails", []):
+        contact = Contact(**contact_data)
+        for e in email_data:
             email = Email(**e)
             contact.emails.append(email)
             # session.add(email)
 
-        for p in contact_data.get("phones", []):
+        for p in phone_data:
             phone = Phone(**p)
             contact.phones.append(phone)
             # session.add(phone)
 
-        for a in contact_data.get("addresses", []):
+        for a in address_data:
             address = Address(**a)
             contact.addresses.append(address)
             # session.add(address)
@@ -68,7 +69,7 @@ def add_contact(
         session.refresh(contact)
 
         location_contact_association = ThingContactAssociation()
-        location_contact_association.thing_id = contact_data.get("thing_id")
+        location_contact_association.thing_id = thing_id
         location_contact_association.contact_id = contact.id
 
         audit_add(user, location_contact_association)

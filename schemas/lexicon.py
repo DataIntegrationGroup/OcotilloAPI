@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, AwareDatetime
 from typing import List
-
-from schemas import ORMBaseModel
 
 
 # -------- CREATE ----------
@@ -74,7 +72,17 @@ class UpdateLexiconTriple(BaseModel):
 # -------- RESPONSE ----------
 
 
-class LexiconCategoryResponse(ORMBaseModel):
+class BaseLexiconResponse(BaseModel):
+    id: int
+    created_at: AwareDatetime
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
+
+class LexiconCategoryResponse(BaseLexiconResponse):
     """
     Pydantic model for the response of a lexicon category.
     This model can be extended to include additional fields as needed.
@@ -85,7 +93,7 @@ class LexiconCategoryResponse(ORMBaseModel):
     # terms: list[LexiconTermResponse] | None = None
 
 
-class LexiconTermResponse(ORMBaseModel):
+class LexiconTermResponse(BaseLexiconResponse):
     """
     Pydantic model for the response of a lexicon term.
     This model can be extended to include additional fields as needed.
@@ -96,7 +104,7 @@ class LexiconTermResponse(ORMBaseModel):
     categories: List[LexiconCategoryResponse] = []
 
 
-class LexiconTripleResponse(ORMBaseModel):
+class LexiconTripleResponse(BaseLexiconResponse):
     subject: str
     predicate: str
     object_: str

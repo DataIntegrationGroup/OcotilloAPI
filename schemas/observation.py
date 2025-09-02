@@ -24,7 +24,7 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
-from schemas import ORMBaseModel
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 
 # class GeothermalMixin:
@@ -67,7 +67,7 @@ class ValidateObservation(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateBaseObservation(ValidateObservation):
+class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int | None = None
     sensor_id: int
@@ -95,7 +95,7 @@ class CreateGeothermalObservation(CreateBaseObservation):
 # -------- UPDATE ------------
 
 
-class UpdateBaseObservation(ValidateObservation):
+class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_id: int | None = None
     sensor_id: int | None = None
@@ -121,7 +121,7 @@ class UpdateGeothermalObservation(UpdateBaseObservation):
 
 
 # -------- RESPONSE ----------
-class BaseObservationResponse(ORMBaseModel):
+class BaseObservationResponse(BaseResponseModel):
     sample_id: int
     sensor_id: int
     observation_datetime: AwareDatetime

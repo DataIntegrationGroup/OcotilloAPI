@@ -16,14 +16,14 @@
 from typing import Optional
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Group(Base, AutoBaseMixin):
+class Group(Base, AutoBaseMixin, ReleaseMixin):
     # --- Column Definitions ---
     description: Mapped[str] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)

@@ -18,7 +18,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import TSVectorType
 
-from db.base import Base, AutoBaseMixin, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -33,7 +33,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
     thing = relationship("Thing")
 
 
-class Contact(Base, AutoBaseMixin):
+class Contact(Base, AutoBaseMixin, ReleaseMixin):
     name = Column(String(100), nullable=False)
     role = lexicon_term(nullable=False)
 
@@ -58,7 +58,7 @@ class Contact(Base, AutoBaseMixin):
     things = association_proxy("thing_associations", "thing")
 
 
-class Phone(Base, AutoBaseMixin):
+class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id = Column(
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
@@ -69,7 +69,7 @@ class Phone(Base, AutoBaseMixin):
     search_vector = Column(TSVectorType("phone_number"))
 
 
-class Email(Base, AutoBaseMixin):
+class Email(Base, AutoBaseMixin, ReleaseMixin):
     contact_id = Column(
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
@@ -81,7 +81,7 @@ class Email(Base, AutoBaseMixin):
     search_vector = Column(TSVectorType("email"))
 
 
-class Address(Base, AutoBaseMixin):
+class Address(Base, AutoBaseMixin, ReleaseMixin):
     contact_id = Column(
         Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )

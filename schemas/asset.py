@@ -15,7 +15,7 @@
 # ===============================================================================
 from pydantic import BaseModel
 
-from schemas import ORMBaseModel
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 
 class BaseAsset(BaseModel):
@@ -28,18 +28,18 @@ class BaseAsset(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateAsset(BaseAsset):
+class CreateAsset(BaseCreateModel, BaseAsset):
     thing_id: int | None = None
 
 
 # -------- RESPONSE --------
-class AssetResponse(ORMBaseModel, BaseAsset):
+class AssetResponse(BaseResponseModel, BaseAsset):
     storage_service: str
     signed_url: str | None = None
 
 
 # -------- UPDATE ----------
-class UpdateAsset(BaseModel):
+class UpdateAsset(BaseUpdateModel):
     name: str | None = None
     label: str | None = None
 

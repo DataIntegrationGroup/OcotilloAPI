@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from api.pagination import CustomPage
@@ -157,7 +157,7 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 @router.get("")
-def search_api(
+async def search_api(
     session: session_dependency,
     q: str,
     limit: int = 25,

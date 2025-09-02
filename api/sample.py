@@ -71,7 +71,7 @@ def database_error_handler(
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
-def add_sample(
+async def add_sample(
     sample_data: CreateSample, session: session_dependency, user: admin_dependency
 ) -> SampleResponse:
     """
@@ -85,7 +85,7 @@ def add_sample(
 
 # ============= Update =============================================
 @router.patch("/{sample_id}", summary="Update Sample")
-def update_sample(
+async def update_sample(
     sample_id: int,
     sample_data: UpdateSample,
     session: session_dependency,
@@ -115,7 +115,7 @@ def update_sample(
 
 # ============= Get =============================================
 @router.get("", summary="Get Samples")
-def get_samples(
+async def get_samples(
     session: session_dependency,
     user: viewer_dependency,
     sort: str = None,
@@ -132,7 +132,7 @@ def get_samples(
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
-def get_sample_by_id(
+async def get_sample_by_id(
     sample_id: int, session: session_dependency, user: viewer_dependency
 ) -> SampleResponse | ResourceNotFoundResponse:
     """
@@ -145,7 +145,7 @@ def get_sample_by_id(
 
 
 @router.delete("/{sample_id}", summary="Delete Sample by ID")
-def delete_sample_by_id(
+async def delete_sample_by_id(
     sample_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:
     return model_deleter(session, Sample, sample_id)

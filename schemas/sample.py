@@ -24,6 +24,7 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.thing import ThingResponse
 
 """
@@ -84,12 +85,11 @@ class ValidateSample(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateSample(ValidateSample):
+class CreateSample(BaseCreateModel, ValidateSample):
     thing_id: int
     sample_type: str
     field_sample_id: str
     sample_date: Annotated[AwareDatetime, PastDatetime()]
-    release_status: str
     sampler_name: str  # REFACTOR TODO: update with enum/restricted values
     qc_sample: str = "Original"
 
@@ -110,20 +110,19 @@ class CreateSample(ValidateSample):
 
 
 # -------- UPDATE ----------
-class UpdateSample(ValidateSample):
+class UpdateSample(BaseUpdateModel, ValidateSample):
     """
     Development notes:
 
     setting <type> = None makes the field optional, but if it is defined it must be of that type.
     """
 
-    thing_id: int = None  # REFACTOR TODO: should users be able to change this?
-    sample_type: str = None
-    field_sample_id: str = None
-    sample_date: Annotated[AwareDatetime, PastDatetime()] = None
-    release_status: str = None
-    sampler_name: str = None  # REFACTOR TODO: update with enum/restricted values
-    qc_sample: str = None
+    thing_id: int | None = None  # REFACTOR TODO: should users be able to change this?
+    sample_type: str | None = None
+    field_sample_id: str | None = None
+    sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
+    sampler_name: str | None = None  # REFACTOR TODO: update with enum/restricted values
+    qc_sample: str | None = None
 
     sensor_id: int | None = None  # REFACTOR TODO: should users be able to change this?
     sample_matrix: str | None = (
@@ -142,9 +141,7 @@ class UpdateSample(ValidateSample):
 
 
 # -------- RESPONSE ----------
-class SampleResponse(BaseModel):
-    id: int
-    thing_id: int
+class SampleResponse(BaseResponseModel):
     thing: ThingResponse
     sample_type: str
     field_sample_id: str
