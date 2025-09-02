@@ -41,6 +41,7 @@ router = APIRouter(prefix="/location", tags=["location"])
     # response_model=GetLocation,
     summary="Create a new sample location",
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_location",
 )
 def create_location(
     location_data: CreateLocation, session: session_dependency, user: admin_dependency
@@ -54,6 +55,7 @@ def create_location(
 @router.patch(
     "/{location_id}",
     summary="Update a location",
+    operation_id="update_location",
 )
 def update_location(
     location_id: int,
@@ -125,6 +127,7 @@ def update_location(
 @router.get(
     "",
     summary="Get all locations",
+    operation_id="get_locations",
 )
 async def get_location(
     session: session_dependency,
@@ -162,6 +165,7 @@ async def get_location(
 @router.get(
     "/{location_id}",
     summary="Get location by ID",
+    operation_id="get_location_by_id",
 )
 async def get_location_by_id(
     location_id: int, session: session_dependency, user: viewer_dependency
@@ -173,7 +177,7 @@ async def get_location_by_id(
     return location
 
 
-@router.delete("/{location_id}", summary="Delete location by ID")
+@router.delete("/{location_id}", summary="Delete location by ID", operation_id="delete_location")
 async def delete_location(
     location_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:

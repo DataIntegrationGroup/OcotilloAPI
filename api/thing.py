@@ -146,7 +146,7 @@ def database_error_handler(
 # GET ==========================================================================
 
 
-@router.get("/water-well", summary="Get all water wells", status_code=HTTP_200_OK)
+@router.get("/water-well", summary="Get all water wells", status_code=HTTP_200_OK, operation_id="get_water_wells")
 async def get_water_wells(
     session: session_dependency,
     request: Request,
@@ -163,7 +163,7 @@ async def get_water_wells(
 
 
 @router.get(
-    "/water-well/{thing_id}", summary="Get water well by ID", status_code=HTTP_200_OK
+    "/water-well/{thing_id}", summary="Get water well by ID", status_code=HTTP_200_OK, operation_id="get_water_well_by_id"
 )
 async def get_well_by_id(
     thing_id: int, session: session_dependency, request: Request
@@ -178,6 +178,7 @@ async def get_well_by_id(
     "/water-well/{thing_id}/well-screen",
     summary="Get well screens by water well ID",
     status_code=HTTP_200_OK,
+    operation_id="get_well_screens_by_well_id",
 )
 async def get_well_screens_by_well_id(
     thing_id: int, session: session_dependency, request: Request
@@ -194,6 +195,7 @@ async def get_well_screens_by_well_id(
     "/well-screen",
     summary="Get well screens",
     dependencies=[Depends(amp_viewer_function)],
+    operation_id="get_well_screens",
 )
 async def get_well_screens(
     session: session_dependency,
@@ -213,6 +215,7 @@ async def get_well_screens(
     "/well-screen/{wellscreen_id}",
     dependencies=[Depends(amp_viewer_function)],
     summary="Get well screen by ID",
+    operation_id="get_well_screen_by_id",
 )
 async def get_well_screen_by_id(
     session: session_dependency,
@@ -225,7 +228,7 @@ async def get_well_screen_by_id(
     return well_screen
 
 
-@router.get("/spring", summary="Get all springs")
+@router.get("/spring", summary="Get all springs", operation_id="get_springs")
 async def get_springs(
     session: session_dependency,
     request: Request,
@@ -241,7 +244,7 @@ async def get_springs(
     return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
 
 
-@router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK)
+@router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK, operation_id="get_spring_by_id")
 async def get_spring_by_id(
     thing_id: int, session: session_dependency, request: Request
 ) -> SpringResponse:
@@ -254,6 +257,7 @@ async def get_spring_by_id(
 @router.get(
     "/id-link",
     summary="Get all thing links",
+    operation_id="get_thing_id_links",
 )
 def get_thing_id_links(
     session: session_dependency,
@@ -270,7 +274,7 @@ def get_thing_id_links(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/id-link/{link_id}", summary="Get thing links by link ID")
+@router.get("/id-link/{link_id}", summary="Get thing links by link ID", operation_id="get_thing_id_link_by_id")
 def get_thing_id_links(
     link_id: int,
     session: session_dependency,
@@ -281,7 +285,7 @@ def get_thing_id_links(
     return simple_get_by_id(session, ThingIdLink, link_id)
 
 
-@router.get("", summary="Get all things", status_code=HTTP_200_OK)
+@router.get("", summary="Get all things", status_code=HTTP_200_OK, operation_id="get_things")
 def get_things(
     session: session_dependency,
     # thing_id: int = None,
@@ -308,7 +312,7 @@ def get_things(
     )
 
 
-@router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK)
+@router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK, operation_id="get_thing_by_id")
 async def get_thing_by_id(
     thing_id: int, session: session_dependency, request: Request
 ) -> ThingResponse:
@@ -318,7 +322,7 @@ async def get_thing_by_id(
     return simple_get_by_id(session, Thing, thing_id)
 
 
-@router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
+@router.get("/{thing_id}/id-link", summary="Get thing links by thing ID", operation_id="get_thing_links_by_thing_id")
 def get_thing_id_links(
     thing_id: int,
     session: session_dependency,
@@ -335,7 +339,7 @@ def get_thing_id_links(
 
 
 @router.post(
-    "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link"
+    "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link", operation_id="create_thing_id_link"
 )
 def create_thing_id_link(
     link_data: CreateThingIdLink,
@@ -355,6 +359,7 @@ def create_thing_id_link(
     "/water-well",
     summary="Create a water well",
     status_code=HTTP_201_CREATED,
+    operation_id="create_water_well",
 )
 def create_well(
     thing_data: CreateWell,
@@ -375,6 +380,7 @@ def create_well(
     "/spring",
     summary="Create a new spring",
     status_code=HTTP_201_CREATED,
+    operation_id="create_spring",
 )
 def create_spring(
     thing_data: CreateSpring,
@@ -395,6 +401,7 @@ def create_spring(
     "/well-screen",
     summary="Create a new well screen",
     status_code=HTTP_201_CREATED,
+    operation_id="create_well_screen",
 )
 def create_wellscreen(
     session: session_dependency,
@@ -419,6 +426,7 @@ def create_wellscreen(
     "/water-well/{thing_id}",
     summary="Update well by parent thing ID",
     status_code=HTTP_200_OK,
+    operation_id="update_water_well",
 )
 async def update_water_well(
     thing_id: int,
@@ -437,6 +445,7 @@ async def update_water_well(
     "/spring/{thing_id}",
     summary="Update spring by parent thing ID",
     status_code=HTTP_200_OK,
+    operation_id="update_spring",
 )
 async def update_spring(
     thing_id: int,
@@ -452,7 +461,7 @@ async def update_spring(
 
 
 @router.patch(
-    "/id-link/{link_id}", summary="Update thing link by ID", status_code=HTTP_200_OK
+    "/id-link/{link_id}", summary="Update thing link by ID", status_code=HTTP_200_OK, operation_id="update_thing_id_link"
 )
 async def update_thing_id_link(
     link_id: int,
@@ -467,6 +476,7 @@ async def update_thing_id_link(
     "/well-screen/{well_screen_id}",
     summary="Update Well Screen by ID",
     status_code=HTTP_200_OK,
+    operation_id="update_well_screen",
 )
 async def update_well_screen(
     well_screen_id: int,
@@ -485,7 +495,7 @@ async def update_well_screen(
 
 
 @router.delete(
-    "/{thing_id}", summary="Delete thing by ID", status_code=HTTP_204_NO_CONTENT
+    "/{thing_id}", summary="Delete thing by ID", status_code=HTTP_204_NO_CONTENT, operation_id="delete_thing"
 )
 async def delete_thing(
     thing_id: int,
@@ -502,6 +512,7 @@ async def delete_thing(
     "/well-screen/{well_screen_id}",
     summary="Delete well screen by ID",
     status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_well_screen",
 )
 async def delete_well_screen(
     well_screen_id: int,
@@ -518,6 +529,7 @@ async def delete_well_screen(
     "/id-link/{link_id}",
     summary="Delete thing link by ID",
     status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_thing_id_link",
 )
 async def delete_thing_id_link(
     link_id: int,
