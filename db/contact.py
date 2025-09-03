@@ -34,14 +34,18 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
-    name = Column(String(100), nullable=False)
+    name = Column(String(100), nullable=True)
     role = lexicon_term(nullable=False)
+    organization = Column(String(100), nullable=True)
+    nma_pk_owners = Column(String(100), nullable=True)
 
     phones = relationship("Phone", back_populates="contact", passive_deletes=True)
     emails = relationship("Email", back_populates="contact", passive_deletes=True)
     addresses = relationship("Address", back_populates="contact", passive_deletes=True)
 
-    search_vector = Column(TSVectorType("name", "role"))
+    search_vector = Column(
+        TSVectorType("name", "role", "organization", "nma_pk_owners")
+    )
 
     author_associations = relationship(
         "AuthorContactAssociation",

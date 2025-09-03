@@ -60,7 +60,7 @@ def transfer_assets(session: Session) -> None:
 
 def transfer_assets_testing(session: Session) -> None:
     for p in ("asset1.png", "asset2.png", "asset3.png"):
-        with open(f"./data/assets/{p}", "rb") as f:
+        with open(f"./transfers/data/assets/{p}", "rb") as f:
             uf = UploadFile(file=f, filename=p, size=10)
             uri, blob_name = gcs_upload(uf)
             thing_id = 151

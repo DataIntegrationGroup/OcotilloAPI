@@ -30,14 +30,9 @@ TRANSFORMERS = {}
 
 
 def read_csv(name: str) -> pd.DataFrame:
-    p = Path(".") / "data" / name
-    return pd.read_csv(p)
-
-
-def read_csv(name: str) -> pd.DataFrame:
     # TODO: grab csv from storage bucket instead of local directory
 
-    p = Path(".") / "data" / name
+    p = Path(".") / "transfers" / "data" / name
     return pd.read_csv(p)
 
 
