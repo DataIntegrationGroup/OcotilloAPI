@@ -47,7 +47,6 @@ def transfer_contacts(session):
         # TODO: extract role from OwnerComment
         role = extract_owner_role(row.OwnerComment)
 
-
         # TODO: put in guards for null values
         # name OR organization must be defined, otherwise skip
         if not (row.FirstName or row.LastName) and not row.Company:
@@ -112,11 +111,9 @@ def transfer_contacts(session):
             print(f"Transferring second contact for PointID {row.PointID}")
             contact2 = Contact(
                 name=f"{row.SecondFirstName} {row.SecondLastName}",
-                role="Secondary", #TODO: role needs to be extracted from somewhere
-
+                role="Secondary",  # TODO: role needs to be extracted from somewhere
                 # TODO: needs to be implemented
                 # priority=2,
-
                 organization=row.Company,  # Assumes organization applies to both contacts
                 nma_pk_owners=row.OwnerKey,
             )
@@ -136,8 +133,6 @@ def transfer_contacts(session):
             session.add(contact2)
 
         session.commit()
-
-
 
 
 # ============= EOF =============================================
