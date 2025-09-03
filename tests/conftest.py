@@ -335,7 +335,7 @@ def second_contact():
             release_status="private",
             name="Test Second Contact",
             role="Owner",
-            organization="Test Second Organization",
+            organization=None,
         )
         session.add(contact)
         session.commit()
@@ -400,6 +400,25 @@ def second_address(second_contact):
         session.refresh(address)
         yield address
         session.delete(address)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def third_contact():
+    with session_ctx() as session:
+        contact = Contact(
+            release_status="private",
+            name=None,
+            role="Owner",
+            organization="Third Organization",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        yield contact
+
+        session.delete(contact)
         session.commit()
 
 

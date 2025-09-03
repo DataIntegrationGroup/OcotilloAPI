@@ -725,6 +725,36 @@ def test_patch_contact_404_not_found(contact):
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
 
 
+def test_patch_contact_409_null_name(second_contact):
+    payload = {"name": None}
+    response = client.patch(
+        f"/contact/{second_contact.id}",
+        json=payload,
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "name"]
+    assert data["detail"][0]["msg"] == "name cannot be None if organization is None."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"name": None}
+
+
+def test_patch_contact_409_null_organization(third_contact):
+    payload = {"organization": None}
+    response = client.patch(
+        f"/contact/{third_contact.id}",
+        json=payload,
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "organization"]
+    assert data["detail"][0]["msg"] == "organization cannot be None if name is None."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"organization": None}
+
+
 def test_patch_email(email):
     payload = {"email": "boo@bar.com", "release_status": "archived"}
     response = client.patch(f"/contact/email/{email.id}", json=payload)

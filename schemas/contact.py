@@ -206,6 +206,7 @@ class UpdateContact(BaseUpdateModel):
     name: str | None = None
     role: str | None = None
     thing_id: int | None = None
+    organization: str | None = None
     # email: str | None = None
     # phone: str | None = None
     # address: str | None = None
