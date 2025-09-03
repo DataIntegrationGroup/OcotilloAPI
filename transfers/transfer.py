@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from sqlalchemy.orm import Session
