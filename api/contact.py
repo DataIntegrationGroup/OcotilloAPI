@@ -307,6 +307,41 @@ async def update_contact(
     :param session: Database session
     :return: Updated contact response
     """
+    contact = simple_get_by_id(session, Contact, contact_id)
+
+    if (
+        contact.name is None
+        and contact_data.name is None
+        and contact_data.organization is None
+    ):
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "organization"],
+                    "msg": "organization cannot be None if name is None.",
+                    "type": "value_error",
+                    "input": {"organization": contact_data.organization},
+                }
+            ],
+        )
+    elif (
+        contact.organization is None
+        and contact_data.organization is None
+        and contact_data.name is None
+    ):
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "name"],
+                    "msg": "name cannot be None if organization is None.",
+                    "type": "value_error",
+                    "input": {"name": contact_data.name},
+                }
+            ],
+        )
+
     return model_patcher(session, Contact, contact_id, contact_data, user=user)
 
 

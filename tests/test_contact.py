@@ -6,7 +6,7 @@ from core.dependencies import (
 from db import Contact, Address, Email, Phone
 from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
-from schemas.contact import ValidateEmail, ValidatePhone
+from schemas.contact import ValidateEmail, ValidatePhone, CreateContact
 
 import pytest
 from pydantic import ValidationError
@@ -30,6 +30,13 @@ def override_authentication_dependency_fixture():
 
 
 # VALIDATION tests =============================================================
+
+
+def test_check_empty_fields():
+    with pytest.raises(
+        ValueError, match="Either name or organization must be provided."
+    ):
+        CreateContact(name=None, organization=None)
 
 
 def test_validate_phone():
@@ -64,6 +71,7 @@ def test_add_contact(spring_thing):
         "release_status": "private",
         "name": "Test Contact 2",
         "role": "Owner",
+        "organization": "Well Owner LLC",
         "thing_id": spring_thing.id,
         "emails": [
             {
@@ -148,6 +156,7 @@ def test_add_contact_409_bad_thing_id():
         "release_status": "private",
         "name": "Test Contact 3",
         "role": "Owner",
+        "organization": "Well Owner LLC",
         "thing_id": bad_thing_id,
         "emails": [
             {
@@ -714,6 +723,36 @@ def test_patch_contact_404_not_found(contact):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"Contact with ID {bad_contact_id} not found."
+
+
+def test_patch_contact_409_null_name(second_contact):
+    payload = {"name": None}
+    response = client.patch(
+        f"/contact/{second_contact.id}",
+        json=payload,
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "name"]
+    assert data["detail"][0]["msg"] == "name cannot be None if organization is None."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"name": None}
+
+
+def test_patch_contact_409_null_organization(third_contact):
+    payload = {"organization": None}
+    response = client.patch(
+        f"/contact/{third_contact.id}",
+        json=payload,
+    )
+
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "organization"]
+    assert data["detail"][0]["msg"] == "organization cannot be None if name is None."
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"organization": None}
 
 
 def test_patch_email(email):

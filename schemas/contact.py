@@ -18,7 +18,7 @@ from typing import List
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
-from pydantic import field_validator, BaseModel
+from pydantic import field_validator, BaseModel, model_validator
 
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 from schemas.thing import ThingResponse
@@ -117,8 +117,9 @@ class CreateContact(BaseCreateModel):
     """
 
     thing_id: int
-    name: str
+    name: str | None = None
     role: str
+    organization: str | None = None
     # description: str | None = None
     # email: str | None = None
     # phone: str | None = None
@@ -126,6 +127,12 @@ class CreateContact(BaseCreateModel):
     emails: list[CreateEmail] | None = None
     phones: list[CreatePhone] | None = None
     addresses: list[CreateAddress] | None = None
+
+    @model_validator(mode="before")
+    def check_empty(data: dict) -> dict:
+        if data.get("name", None) is None and data.get("organization", None) is None:
+            raise ValueError("Either name or organization must be provided.")
+        return data
 
 
 # -------- RESPONSE ----------
@@ -199,6 +206,7 @@ class UpdateContact(BaseUpdateModel):
     name: str | None = None
     role: str | None = None
     thing_id: int | None = None
+    organization: str | None = None
     # email: str | None = None
     # phone: str | None = None
     # address: str | None = None
