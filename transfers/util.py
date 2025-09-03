@@ -37,7 +37,6 @@ def read_csv(name: str) -> pd.DataFrame:
 def read_csv(name: str) -> pd.DataFrame:
     # TODO: grab csv from storage bucket instead of local directory
 
-
     p = Path(".") / "data" / name
     return pd.read_csv(p)
 
