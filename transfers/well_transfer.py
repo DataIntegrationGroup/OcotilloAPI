@@ -68,6 +68,7 @@ def transfer_wells(session, limit=None):
         # print(location_row)
         session.add(location)
 
+        # TODO: add guards for null values
         well = add_thing(
             session,
             {

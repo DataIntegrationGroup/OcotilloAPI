@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy.orm import Session
+from dotenv import load_dotenv
+load_dotenv()
 
+from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
 from db import Base
 from db.engine import session_ctx

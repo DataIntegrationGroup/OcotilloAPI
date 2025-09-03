@@ -63,6 +63,7 @@ def transfer_link_ids_welldata(session):
                 log(row, f"{klass} id does not match regex {regex}, id={aid}")
                 continue
 
+            # TODO: add guards for null values
             link_id = ThingIdLink()
             link_id.thing = thing
             link_id.relation = klass
