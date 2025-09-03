@@ -32,7 +32,7 @@ def extract_owner_role(comment):
     return "Primary"
 
 
-def transfer_owners(session):
+def transfer_contacts(session):
 
     odf = read_csv("ownersdata.csv")
     odf = odf.replace(pd.NA, None)

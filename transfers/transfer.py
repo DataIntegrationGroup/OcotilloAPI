@@ -21,11 +21,11 @@ from db.engine import session_ctx
 from transfers.asset_transfer import transfer_assets_testing
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
-from transfers.owner_transfer import transfer_owners
+from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
 
-from transfers.well_transfer import transfer_wells, transfer_wellscreens, cleanup_wells
+from transfers.well_transfer import transfer_wells, transfer_wellscreens
 from transfers.thing_transfer import (
     transfer_springs,
     transfer_perennial_stream,
@@ -50,7 +50,7 @@ def main_transfer():
     transfer_perennial_stream_flag = False
     transfer_ephemeral_stream_flag = False
     transfer_met_flag = False
-    transfer_owners_flag = False
+    transfer_contacts_flag = False
     transfer_waterlevels_flag = False
     transfer_link_ids_flag = False
     transfer_assets_flag = False
@@ -80,8 +80,8 @@ def main_transfer():
         if init or transfer_met_flag:
             transfer_met(sess, limit)
 
-        if init or transfer_owners_flag:
-            transfer_owners(sess)
+        if init or transfer_contacts_flag:
+            transfer_contacts(sess)
 
         if init or transfer_waterlevels_flag:
             transfer_water_levels(sess)
