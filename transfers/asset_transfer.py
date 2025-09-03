@@ -41,16 +41,21 @@ def transfer_assets(session: Session) -> None:
     bucket = get_storage_bucket(client)
     print(f"Using bucket {bucket.name}")
 
+    # for name in ['AR0001']: # for testing
     for thing in get_valid_things(session):
+        name = thing.name
         # find images in temp bucket
-        print(f"Processing PointID: {thing.name}")
-        blobs = bucket.list_blobs(prefix=f"nma-photos/{thing.name}")
+        print(f"Processing PointID: {name}")
+        blobs = bucket.list_blobs(prefix=f"nma-photos/{name}")
         # move blobs from temp to assets bucket
         for srcblob in blobs:
             f = srcblob.download_as_bytes()
-            ff = UploadFile(file=io.BytesIO(f), filename=srcblob.name, size=len(f))
+            head, filename = srcblob.name.split("/")
+
+            ff = UploadFile(file=io.BytesIO(f), filename=filename, size=len(f))
+
             uri, blob_name = gcs_upload(ff, bucket)
-            add_asset(session, ff, srcblob.name, thing.id, uri, blob_name)
+            add_asset(session, ff, filename, thing.id, uri, blob_name)
 
 
 def transfer_assets_testing(session: Session) -> None:
