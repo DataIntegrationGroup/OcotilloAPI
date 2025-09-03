@@ -49,66 +49,84 @@ def transfer_owners(session):
         role = "Primary"
 
         # TODO: put in guards for null values
-        contact1 = Contact(
-            name=f"{row.FirstName} {row.LastName}",
-            role=role,
-            # TODO: needs to be implemented
-            # organization_name=company
-        )
-        assoc = ThingContactAssociation()
-        assoc.thing = thing
-        assoc.contact = contact1
-        session.add(assoc)
-        session.add(contact1)
-
-        if row.Email:
-            contact1.emails.append(Email(email=row.Email, email_type="Primary"))
-        if row.Phone:
-            contact1.phones.append(Phone(phone_number=row.Phone, phone_type="Primary"))
-        if row.CellPhone:
-            contact1.phones.append(
-                Phone(phone_number=row.CellPhone, phone_type="Mobile")
+        # name OR organization must be defined, otherwise skip
+        if not (row.FirstName or row.LastName) and not row.Company:
+            print(
+                f"Skipping first contact for PointID {row.PointID} due to missing name and organization."
             )
+        else:
+            print(f"Transferring first contact for PointID {row.PointID}")
+            contact1 = Contact(
+                name=f"{row.FirstName} {row.LastName}",
+                role=role,
+                organization=row.Company,  # assumes organization applies to both contacts
+                nma_pk_owners=row.OwnerKey,
+            )
+            assoc = ThingContactAssociation()
+            assoc.thing = thing
+            assoc.contact = contact1
+            session.add(assoc)
+            session.add(contact1)
 
-        if row.MailingAddress:
-            contact1.addresses.append(
-                Address(
-                    address_line_1=row.MailingAddress,
-                    city=row.MailCity,
-                    state=row.MailState,
-                    postal_code=row.MailZipCode,
-                    address_type="Mailing",
+            if row.Email:
+                contact1.emails.append(Email(email=row.Email, email_type="Primary"))
+            if row.Phone:
+                contact1.phones.append(
+                    Phone(phone_number=row.Phone, phone_type="Primary")
                 )
-            )
-
-            contact1.addresses.append(
-                Address(
-                    address_line_1=row.PhysicalAddress,
-                    city=row.PhysicalCity,
-                    state=row.PhysicalState,
-                    postal_code=row.PhysicalZipCode,
-                    address_type="Physical",
+            if row.CellPhone:
+                contact1.phones.append(
+                    Phone(phone_number=row.CellPhone, phone_type="Mobile")
                 )
-            )
+
+            if row.MailingAddress:
+                contact1.addresses.append(
+                    Address(
+                        address_line_1=row.MailingAddress,
+                        city=row.MailCity,
+                        state=row.MailState,
+                        postal_code=row.MailZipCode,
+                        address_type="Mailing",
+                    )
+                )
+
+                contact1.addresses.append(
+                    Address(
+                        address_line_1=row.PhysicalAddress,
+                        city=row.PhysicalCity,
+                        state=row.PhysicalState,
+                        postal_code=row.PhysicalZipCode,
+                        address_type="Physical",
+                    )
+                )
 
         # TODO: put in guards for null values
-        contact2 = Contact(
-            name=f"{row.SecondFirstName} {row.SecondLastName}", role="Secondary"
-        )
-        if row.SecondCtctEmail:
-            contact2.emails.append(
-                Email(email=row.SecondCtctEmail, email_type="Primary")
+        if not (row.SecondFirstName or row.SecondLastName) and not row.Company:
+            print(
+                f"Skipping second contact for PointID {row.PointID} due to missing name and organization."
             )
-        if row.SecondCtctPhone:
-            contact2.phones.append(
-                Phone(phone_number=row.SecondCtctPhone, phone_type="Primary")
+        else:
+            print(f"Transferring second contact for PointID {row.PointID}")
+            contact2 = Contact(
+                name=f"{row.SecondFirstName} {row.SecondLastName}",
+                role="Secondary",
+                organization=row.Company,  # Assumes organization applies to both contacts
+                nma_pk_owners=row.OwnerKey,
             )
+            if row.SecondCtctEmail:
+                contact2.emails.append(
+                    Email(email=row.SecondCtctEmail, email_type="Primary")
+                )
+            if row.SecondCtctPhone:
+                contact2.phones.append(
+                    Phone(phone_number=row.SecondCtctPhone, phone_type="Primary")
+                )
 
-        assoc = ThingContactAssociation()
-        assoc.thing = thing
-        assoc.contact = contact2
-        session.add(assoc)
-        session.add(contact2)
+            assoc = ThingContactAssociation()
+            assoc.thing = thing
+            assoc.contact = contact2
+            session.add(assoc)
+            session.add(contact2)
 
         session.commit()
 
