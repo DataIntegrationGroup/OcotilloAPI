@@ -20,10 +20,10 @@ from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
 from sqlalchemy_utils import TSVectorType
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Asset(Base, AutoBaseMixin):
+class Asset(Base, AutoBaseMixin, ReleaseMixin):
     # name = Column(String(100), nullable=False, unique=True)
     # file_type = Column(String(50), nullable=False)
     #

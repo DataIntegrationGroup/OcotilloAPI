@@ -61,13 +61,27 @@ def test_validate_email():
 
 def test_add_contact(spring_thing):
     payload = {
+        "release_status": "private",
         "name": "Test Contact 2",
         "role": "Owner",
         "thing_id": spring_thing.id,
-        "emails": [{"email": "testcontact2@gmail.com", "email_type": "Primary"}],
-        "phones": [{"phone_number": "+14153334444", "phone_type": "Primary"}],
+        "emails": [
+            {
+                "email": "testcontact2@gmail.com",
+                "email_type": "Primary",
+                "release_status": "private",
+            }
+        ],
+        "phones": [
+            {
+                "phone_number": "+14153334444",
+                "phone_type": "Primary",
+                "release_status": "private",
+            }
+        ],
         "addresses": [
             {
+                "release_status": "private",
                 "address_line_1": "123 Default St",
                 "address_line_2": "Apt 8R",
                 "city": "Test Metropolis",
@@ -80,22 +94,33 @@ def test_add_contact(spring_thing):
     }
     response = client.post("/contact", json=payload)
     data = response.json()
+
     assert response.status_code == 201
     assert "id" in data
+    assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["role"] == payload["role"]
 
     assert len(data["emails"]) == 1
+    assert "id" in data["emails"][0]
+    assert "created_at" in data["emails"][0]
     assert data["emails"][0]["contact_id"] == data["id"]
     assert data["emails"][0]["email"] == payload["emails"][0]["email"]
     assert data["emails"][0]["email_type"] == payload["emails"][0]["email_type"]
+    assert data["emails"][0]["release_status"] == payload["emails"][0]["release_status"]
 
     assert len(data["phones"]) == 1
+    assert "id" in data["phones"][0]
+    assert "created_at" in data["phones"][0]
     assert data["phones"][0]["contact_id"] == data["id"]
     assert data["phones"][0]["phone_number"] == payload["phones"][0]["phone_number"]
     assert data["phones"][0]["phone_type"] == payload["phones"][0]["phone_type"]
+    assert data["phones"][0]["release_status"] == payload["phones"][0]["release_status"]
 
     assert len(data["addresses"]) == 1
+    assert "id" in data["addresses"][0]
+    assert "created_at" in data["addresses"][0]
     assert data["addresses"][0]["contact_id"] == data["id"]
     assert (
         data["addresses"][0]["address_line_1"]
@@ -112,6 +137,7 @@ def test_add_contact(spring_thing):
     assert (
         data["addresses"][0]["address_type"] == payload["addresses"][0]["address_type"]
     )
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_post_test(Contact, data["id"])
 
@@ -119,13 +145,27 @@ def test_add_contact(spring_thing):
 def test_add_contact_409_bad_thing_id():
     bad_thing_id = 9999
     payload = {
+        "release_status": "private",
         "name": "Test Contact 3",
         "role": "Owner",
         "thing_id": bad_thing_id,
-        "emails": [{"email": "testcontact3@gmail.com", "email_type": "Primary"}],
-        "phones": [{"phone_number": "+14153334445", "phone_type": "Primary"}],
+        "emails": [
+            {
+                "email": "testcontact3@gmail.com",
+                "email_type": "Primary",
+                "release_status": "private",
+            }
+        ],
+        "phones": [
+            {
+                "phone_number": "+14153334445",
+                "phone_type": "Primary",
+                "release_status": "private",
+            }
+        ],
         "addresses": [
             {
+                "release_status": "private",
                 "address_line_1": "123 Default St",
                 "address_line_2": "Apt 8R",
                 "city": "Test Metropolis",
@@ -152,11 +192,14 @@ def test_add_address(contact):
         "postal_code": "87502",
         "country": "United States",
         "address_type": "Primary",
+        "release_status": "draft",
     }
     response = client.post("/contact/address", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert "created_at" in data
+    assert data["release_status"] == payload["release_status"]
     assert data["contact_id"] == contact.id
     assert data["address_line_1"] == payload["address_line_1"]
     assert data["address_line_2"] == payload["address_line_2"]
@@ -180,6 +223,7 @@ def test_add_address_409_contact_not_found(contact):
         "postal_code": "87502",
         "country": "United States",
         "address_type": "Secondary",
+        "release_status": "draft",
     }
     response = client.post("/contact/address", json=payload)
     assert response.status_code == 409
@@ -195,14 +239,17 @@ def test_add_email(contact):
         "contact_id": contact.id,
         "email": "anothertestemail@nmt.edu",
         "email_type": "Primary",
+        "release_status": "draft",
     }
     response = client.post("/contact/email", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert "created_at" in data
     assert data["contact_id"] == contact.id
     assert data["email"] == payload["email"]
     assert data["email_type"] == payload["email_type"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_post_test(Email, data["id"])
 
@@ -213,6 +260,7 @@ def test_add_email_409_contact_not_found(contact):
         "contact_id": bad_contact_id,
         "email": "anothertestemail@nmt.edu",
         "email_type": "Primary",
+        "release_status": "draft",
     }
     response = client.post("/contact/email", json=payload)
     assert response.status_code == 409
@@ -228,14 +276,17 @@ def test_add_phone(contact):
         "contact_id": contact.id,
         "phone_number": "+12345678901",
         "phone_type": "Primary",
+        "release_status": "draft",
     }
     response = client.post("/contact/phone", json=payload)
     data = response.json()
     assert response.status_code == 201
     assert "id" in data
+    assert "created_at" in data
     assert data["contact_id"] == contact.id
     assert data["phone_number"] == payload["phone_number"]
     assert data["phone_type"] == payload["phone_type"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_post_test(Phone, data["id"])
 
@@ -246,6 +297,7 @@ def test_add_phone_409_contact_not_found(contact):
         "contact_id": bad_contact_id,
         "phone_number": "+12345678901",
         "phone_type": "Primary",
+        "release_status": "draft",
     }
     response = client.post("/contact/phone", json=payload)
     assert response.status_code == 409
@@ -300,23 +352,38 @@ def test_get_contacts(contact, email, address, phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == contact.id
+    assert data["items"][0]["created_at"] == contact.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["name"] == contact.name
     assert data["items"][0]["role"] == contact.role
+    assert data["items"][0]["release_status"] == contact.release_status
 
     assert len(data["items"][0]["emails"]) == 1
     assert data["items"][0]["emails"][0]["id"] == email.id
+    assert data["items"][0]["emails"][0][
+        "created_at"
+    ] == email.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["emails"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["emails"][0]["email"] == email.email
     assert data["items"][0]["emails"][0]["email_type"] == email.email_type
+    assert data["items"][0]["emails"][0]["release_status"] == email.release_status
 
     assert len(data["items"][0]["phones"]) == 1
     assert data["items"][0]["phones"][0]["id"] == phone.id
+    assert data["items"][0]["phones"][0][
+        "created_at"
+    ] == phone.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["phones"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
+    assert data["items"][0]["phones"][0]["release_status"] == phone.release_status
 
     assert len(data["items"][0]["addresses"]) == 1
     assert data["items"][0]["addresses"][0]["id"] == address.id
+    assert data["items"][0]["addresses"][0][
+        "created_at"
+    ] == address.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["addresses"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["addresses"][0]["address_line_2"] == address.address_line_2
@@ -325,6 +392,7 @@ def test_get_contacts(contact, email, address, phone):
     assert data["items"][0]["addresses"][0]["postal_code"] == address.postal_code
     assert data["items"][0]["addresses"][0]["country"] == address.country
     assert data["items"][0]["addresses"][0]["address_type"] == address.address_type
+    assert data["items"][0]["addresses"][0]["release_status"] == address.release_status
 
 
 def test_get_contact_by_id(contact, email, address, phone):
@@ -332,23 +400,36 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == contact.id
+    assert data["created_at"] == contact.created_at.isoformat().replace("+00:00", "Z")
     assert data["name"] == contact.name
     assert data["role"] == contact.role
+    assert data["release_status"] == contact.release_status
 
     assert len(data["emails"]) == 1
     assert data["emails"][0]["id"] == email.id
+    assert data["emails"][0]["created_at"] == email.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["emails"][0]["contact_id"] == email.contact_id
     assert data["emails"][0]["email"] == email.email
     assert data["emails"][0]["email_type"] == email.email_type
+    assert data["emails"][0]["release_status"] == email.release_status
 
     assert len(data["phones"]) == 1
     assert data["phones"][0]["id"] == phone.id
+    assert data["phones"][0]["created_at"] == phone.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["phones"][0]["contact_id"] == phone.contact_id
     assert data["phones"][0]["phone_number"] == phone.phone_number
     assert data["phones"][0]["phone_type"] == phone.phone_type
+    assert data["phones"][0]["release_status"] == phone.release_status
 
     assert len(data["addresses"]) == 1
     assert data["addresses"][0]["id"] == address.id
+    assert data["addresses"][0]["created_at"] == address.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["addresses"][0]["contact_id"] == address.contact_id
     assert data["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["addresses"][0]["address_line_2"] == address.address_line_2
@@ -357,6 +438,7 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["addresses"][0]["postal_code"] == address.postal_code
     assert data["addresses"][0]["country"] == address.country
     assert data["addresses"][0]["address_type"] == address.address_type
+    assert data["addresses"][0]["release_status"] == address.release_status
 
 
 def test_get_contact_by_id_404_not_found(contact):
@@ -373,9 +455,13 @@ def test_get_contact_emails(contact, email):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["created_at"] == email.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["email"] == email.email
     assert data["items"][0]["email_type"] == email.email_type
+    assert data["items"][0]["release_status"] == email.release_status
 
 
 def test_get_contact_emails_404_contact_not_found(contact, email):
@@ -392,9 +478,13 @@ def test_get_contact_phones(contact, phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["created_at"] == phone.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phone_type"] == phone.phone_type
+    assert data["items"][0]["release_status"] == phone.release_status
 
 
 def test_get_contact_phones_404_contact_not_found(contact, phone):
@@ -411,6 +501,9 @@ def test_get_contact_addresses(contact, address):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["created_at"] == address.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["address_line_2"] == address.address_line_2
@@ -419,6 +512,7 @@ def test_get_contact_addresses(contact, address):
     assert data["items"][0]["postal_code"] == address.postal_code
     assert data["items"][0]["country"] == address.country
     assert data["items"][0]["address_type"] == address.address_type
+    assert data["items"][0]["release_status"] == address.release_status
 
 
 def test_get_contact_addresses_404_contact_not_found(contact, address):
@@ -435,9 +529,13 @@ def test_get_emails(email):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == email.id
+    assert data["items"][0]["created_at"] == email.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["email"] == email.email
     assert data["items"][0]["email_type"] == email.email_type
+    assert data["items"][0]["release_status"] == email.release_status
 
 
 def test_get_email_by_id(email):
@@ -445,9 +543,11 @@ def test_get_email_by_id(email):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == email.id
+    assert data["created_at"] == email.created_at.isoformat().replace("+00:00", "Z")
     assert data["contact_id"] == email.contact_id
     assert data["email"] == email.email
     assert data["email_type"] == email.email_type
+    assert data["release_status"] == email.release_status
 
 
 def test_get_email_404_not_found(email):
@@ -464,9 +564,13 @@ def test_get_phones(phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == phone.id
+    assert data["items"][0]["created_at"] == phone.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phone_type"] == phone.phone_type
+    assert data["items"][0]["release_status"] == phone.release_status
 
 
 def test_get_phone_by_id(phone):
@@ -474,9 +578,19 @@ def test_get_phone_by_id(phone):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == phone.id
+    assert data["created_at"] == phone.created_at.isoformat().replace("+00:00", "Z")
     assert data["contact_id"] == phone.contact_id
     assert data["phone_number"] == phone.phone_number
     assert data["phone_type"] == phone.phone_type
+    assert data["release_status"] == phone.release_status
+
+
+def test_get_phone_404_not_found():
+    bad_id = 99999
+    response = client.get(f"/contact/phone/{bad_id}")
+    data = response.json()
+    assert response.status_code == 404
+    assert data["detail"] == f"Phone with ID {bad_id} not found."
 
 
 def test_get_addresses(address):
@@ -485,6 +599,9 @@ def test_get_addresses(address):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == address.id
+    assert data["items"][0]["created_at"] == address.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["items"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["address_line_2"] == address.address_line_2
@@ -493,6 +610,7 @@ def test_get_addresses(address):
     assert data["items"][0]["postal_code"] == address.postal_code
     assert data["items"][0]["country"] == address.country
     assert data["items"][0]["address_type"] == address.address_type
+    assert data["items"][0]["release_status"] == address.release_status
 
 
 def test_get_address_by_id(address):
@@ -500,6 +618,7 @@ def test_get_address_by_id(address):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == address.id
+    assert data["created_at"] == address.created_at.isoformat().replace("+00:00", "Z")
     assert data["contact_id"] == address.contact_id
     assert data["address_line_1"] == address.address_line_1
     assert data["address_line_2"] == address.address_line_2
@@ -508,6 +627,7 @@ def test_get_address_by_id(address):
     assert data["postal_code"] == address.postal_code
     assert data["country"] == address.country
     assert data["address_type"] == address.address_type
+    assert data["release_status"] == address.release_status
 
 
 def test_get_address_by_id_404_not_found(address):
@@ -569,7 +689,7 @@ def test_get_address_by_id_404_not_found(address):
 
 
 def test_patch_contact(contact):
-    payload = {"name": "Updated Contact"}
+    payload = {"name": "Updated Contact", "release_status": "archived"}
     response = client.patch(
         f"/contact/{contact.id}",
         json=payload,
@@ -577,8 +697,8 @@ def test_patch_contact(contact):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == contact.id
     assert data["name"] == payload["name"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Contact, payload, contact)
 
@@ -597,14 +717,12 @@ def test_patch_contact_404_not_found(contact):
 
 
 def test_patch_email(email):
-    payload = {"email": "boo@bar.com"}
+    payload = {"email": "boo@bar.com", "release_status": "archived"}
     response = client.patch(f"/contact/email/{email.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == email.id
-    assert data["contact_id"] == email.contact_id
     assert data["email"] == payload["email"]
-    assert data["email_type"] == email.email_type
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Email, payload, email)
 
@@ -619,14 +737,13 @@ def test_patch_email_404_not_found(email):
 
 
 def test_patch_phone(phone):
-    payload = {"phone_number": "+19709654321"}
+    payload = {"phone_number": "+19709654321", "release_status": "archived"}
     response = client.patch(f"/contact/phone/{phone.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == phone.id
-    assert data["contact_id"] == phone.contact_id
     assert data["phone_number"] == payload["phone_number"]
-    assert data["phone_type"] == phone.phone_type
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Phone, payload, phone)
 
@@ -642,6 +759,7 @@ def test_patch_phone_404_not_found(phone):
 
 def test_edit_address(address):
     payload = {
+        "release_status": "archived",
         "address_line_1": "456 Elm St",
         "address_line_2": "Apt 21B",
         "city": "Updated City",
@@ -652,8 +770,6 @@ def test_edit_address(address):
     response = client.patch(f"/contact/address/{address.id}", json=payload)
     data = response.json()
     assert response.status_code == 200
-    assert data["id"] == address.id
-    assert data["contact_id"] == address.contact_id
     assert data["address_line_1"] == payload["address_line_1"]
     assert data["address_line_2"] == payload["address_line_2"]
     assert data["city"] == payload["city"]
@@ -661,6 +777,7 @@ def test_edit_address(address):
     assert data["postal_code"] == payload["postal_code"]
     assert data["country"] == payload["country"]
     assert data["address_type"] == address.address_type
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Address, payload, address)
 

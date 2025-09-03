@@ -56,6 +56,8 @@ def test_add_water_chemistry_observation(sample, sensor):
     data = response.json()
     assert response.status_code == 201
 
+    assert "id" in data
+    assert "created_at" in data
     assert data["observation_datetime"] == payload["observation_datetime"]
     assert data["release_status"] == payload["release_status"]
     assert data["value"] == payload["value"]
@@ -83,6 +85,8 @@ def test_add_groundwater_level_observation(sample, sensor):
     data = response.json()
     assert response.status_code == 201
 
+    assert "id" in data
+    assert "created_at" in data
     assert data["observation_datetime"] == payload["observation_datetime"]
     assert data["release_status"] == payload["release_status"]
     assert data["value"] == payload["value"]
@@ -113,6 +117,8 @@ def test_add_geothermal_observation(sample, sensor):
     data = response.json()
     assert response.status_code == 201
 
+    assert "id" in data
+    assert "created_at" in data
     assert data["observation_datetime"] == payload["observation_datetime"]
     assert data["release_status"] == payload["release_status"]
     assert data["observation_depth"] == payload["observation_depth"]
@@ -129,7 +135,7 @@ def test_add_geothermal_observation(sample, sensor):
 
 
 def test_patch_groundwater_level_observation(groundwater_level_observation):
-    payload = {"measuring_point_height": 3}
+    payload = {"measuring_point_height": 3, "release_status": "private"}
     response = client.patch(
         f"/observation/groundwater-level/{groundwater_level_observation.id}",
         json=payload,
@@ -138,6 +144,7 @@ def test_patch_groundwater_level_observation(groundwater_level_observation):
     assert response.status_code == 200
 
     assert data["measuring_point_height"] == payload["measuring_point_height"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Observation, payload, groundwater_level_observation)
 
@@ -176,7 +183,7 @@ def test_patch_groundwater_level_observation_404_wrong_observation_class(
 
 
 def test_patch_water_chemistry_observation(water_chemistry_observation):
-    payload = {"value": 8}
+    payload = {"value": 8, "release_status": "private"}
     response = client.patch(
         f"/observation/water-chemistry/{water_chemistry_observation.id}",
         json=payload,
@@ -185,6 +192,7 @@ def test_patch_water_chemistry_observation(water_chemistry_observation):
     assert response.status_code == 200
 
     assert data["value"] == payload["value"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Observation, payload, water_chemistry_observation)
 
@@ -219,13 +227,14 @@ def test_patch_water_chemistry_observation_404_wrong_observation_class(
 
 
 def test_patch_geothermal_observation(geothermal_observation):
-    payload = {"observation_depth": 4}
+    payload = {"observation_depth": 4, "release_status": "private"}
     response = client.patch(
         f"/observation/geothermal/{geothermal_observation.id}", json=payload
     )
     assert response.status_code == 200
     data = response.json()
     assert data["observation_depth"] == payload["observation_depth"]
+    assert data["release_status"] == payload["release_status"]
 
     cleanup_patch_test(Observation, payload, geothermal_observation)
 
@@ -287,6 +296,8 @@ def test_get_observation_by_id(
         data = response.json()
 
         assert data["id"] == obs.id
+        assert data["created_at"] == obs.created_at.isoformat().replace("+00:00", "Z")
+        assert data["release_status"] == obs.release_status
         if obs.observed_property == "groundwater level:groundwater level":
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
             assert data["observation_depth"] is None
@@ -316,6 +327,9 @@ def test_get_groundwater_level_observations(
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == groundwater_level_observation.id
+    assert data["items"][0][
+        "created_at"
+    ] == groundwater_level_observation.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["sample_id"] == groundwater_level_observation.sample_id
     assert data["items"][0]["sensor_id"] == groundwater_level_observation.sensor_id
     assert (
@@ -357,6 +371,9 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == groundwater_level_observation.id
+    assert data[
+        "created_at"
+    ] == groundwater_level_observation.created_at.isoformat().replace("+00:00", "Z")
     assert data["sample_id"] == groundwater_level_observation.sample_id
     assert data["sensor_id"] == groundwater_level_observation.sensor_id
     assert (
@@ -496,6 +513,9 @@ def test_get_water_chemistry_observations(water_chemistry_observation):
     assert data["items"][0][
         "created_at"
     ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    assert (
+        data["items"][0]["release_status"] == water_chemistry_observation.release_status
+    )
     assert data["items"][0]["sample_id"] == water_chemistry_observation.sample_id
     assert data["items"][0]["sensor_id"] == water_chemistry_observation.sensor_id
     assert (
@@ -521,6 +541,7 @@ def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
     assert data[
         "created_at"
     ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    assert data["release_status"] == water_chemistry_observation.release_status
     assert data["sample_id"] == water_chemistry_observation.sample_id
     assert data["sensor_id"] == water_chemistry_observation.sensor_id
     assert (
@@ -573,6 +594,10 @@ def test_get_geothermal_observations(geothermal_observation):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == geothermal_observation.id
+    assert data["items"][0][
+        "created_at"
+    ] == geothermal_observation.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["release_status"] == geothermal_observation.release_status
     assert data["items"][0]["sample_id"] == geothermal_observation.sample_id
     assert data["items"][0]["sensor_id"] == geothermal_observation.sensor_id
     assert (
@@ -600,6 +625,7 @@ def test_get_geothermal_observation_by_id(geothermal_observation):
     assert data["created_at"] == geothermal_observation.created_at.isoformat().replace(
         "+00:00", "Z"
     )
+    assert data["release_status"] == geothermal_observation.release_status
     assert data["sample_id"] == geothermal_observation.sample_id
     assert data["sensor_id"] == geothermal_observation.sensor_id
     assert data["observation_datetime"] == geothermal_observation.observation_datetime

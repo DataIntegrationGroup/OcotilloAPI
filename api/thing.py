@@ -68,6 +68,7 @@ from services.thing_helper import (
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
+    get_active_location,
 )
 from services.lexicon_helper import get_terms_by_category
 
@@ -259,7 +260,7 @@ async def get_spring_by_id(
     summary="Get all thing links",
     operation_id="get_thing_id_links",
 )
-def get_thing_id_links(
+async def get_thing_id_links(
     session: session_dependency,
     filter_: str = Query(alias="filter", default=None),
     sort: str = None,
@@ -275,7 +276,7 @@ def get_thing_id_links(
 
 
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID", operation_id="get_thing_id_link_by_id")
-def get_thing_id_links(
+async def get_thing_id_links(
     link_id: int,
     session: session_dependency,
 ) -> ThingIdLinkResponse:
@@ -286,7 +287,7 @@ def get_thing_id_links(
 
 
 @router.get("", summary="Get all things", status_code=HTTP_200_OK, operation_id="get_things")
-def get_things(
+async def get_things(
     session: session_dependency,
     # thing_id: int = None,
     within: str = None,
@@ -319,11 +320,13 @@ async def get_thing_by_id(
     """
     Retrieve a thing by ID from the database.
     """
-    return simple_get_by_id(session, Thing, thing_id)
+    thing = simple_get_by_id(session, Thing, thing_id)
+    thing.active_location = get_active_location(session, thing)
+    return thing
 
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID", operation_id="get_thing_links_by_thing_id")
-def get_thing_id_links(
+async def get_thing_id_links(
     thing_id: int,
     session: session_dependency,
 ) -> CustomPage[ThingIdLinkResponse]:
@@ -341,11 +344,11 @@ def get_thing_id_links(
 @router.post(
     "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link", operation_id="create_thing_id_link"
 )
-def create_thing_id_link(
+async def create_thing_id_link(
     link_data: CreateThingIdLink,
     session: session_dependency,
     user: admin_dependency,
-):
+) -> ThingIdLinkResponse:
     """
     Create a new link between a thing and an alternate ID.
     """
@@ -361,7 +364,7 @@ def create_thing_id_link(
     status_code=HTTP_201_CREATED,
     operation_id="create_water_well",
 )
-def create_well(
+async def create_well(
     thing_data: CreateWell,
     session: session_dependency,
     request: Request,
@@ -382,7 +385,7 @@ def create_well(
     status_code=HTTP_201_CREATED,
     operation_id="create_spring",
 )
-def create_spring(
+async def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     request: Request,
@@ -403,7 +406,7 @@ def create_spring(
     status_code=HTTP_201_CREATED,
     operation_id="create_well_screen",
 )
-def create_wellscreen(
+async def create_wellscreen(
     session: session_dependency,
     user: amp_admin_dependency,
     well_screen_data: CreateWellScreen,

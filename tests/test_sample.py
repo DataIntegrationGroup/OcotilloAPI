@@ -78,7 +78,9 @@ def test_add_sample(spring_thing, sensor):
     )
     data = response.json()
     assert response.status_code == 201
-    assert data["thing_id"] == payload["thing_id"]
+    assert "id" in data
+    assert "created_at" in data
+    assert data["thing"]["id"] == spring_thing.id
     assert data["sample_type"] == payload["sample_type"]
     assert data["field_sample_id"] == payload["field_sample_id"]
     assert data["sample_date"] == payload["sample_date"]
@@ -173,6 +175,7 @@ def test_patch_sample(sample):
         "sampler_name": "test sample b",
         "sample_method": "continuous",
         "sample_date": "2025-01-02T00:00:00Z",
+        "release_status": "private",
     }
     response = client.patch(f"/sample/{sample.id}", json=payload)
     assert response.status_code == 200
@@ -182,6 +185,7 @@ def test_patch_sample(sample):
     assert data["sampler_name"] == payload["sampler_name"]
     assert data["sample_date"] == payload["sample_date"]
     assert data["sample_method"] == payload["sample_method"]
+    assert data["release_status"] == payload["release_status"]
 
     # rollback after updating the sample
     cleanup_patch_test(Sample, payload, sample)
@@ -248,7 +252,7 @@ def test_409_patch_sample_invalid_thing_id(sample):
 
 
 #  ============= Get tests for samples =============================================
-def test_get_samples(sample):
+def test_get_samples(sample, water_well_thing):
     """
     Test retrieving samples
     """
@@ -257,7 +261,10 @@ def test_get_samples(sample):
     data = response.json()
     assert len(data["items"]) == 1
     assert data["items"][0]["id"] == sample.id
-    assert data["items"][0]["thing_id"] == sample.thing_id
+    assert data["items"][0]["created_at"] == sample.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["thing"]["id"] == water_well_thing.id
     assert data["items"][0]["sample_type"] == sample.sample_type
     assert data["items"][0]["field_sample_id"] == sample.field_sample_id
     assert data["items"][0]["sample_date"] == sample.sample_date
@@ -272,7 +279,7 @@ def test_get_samples(sample):
     assert data["items"][0]["sample_bottom"] == sample.sample_bottom
 
 
-def test_get_sample_by_id(sample):
+def test_get_sample_by_id(sample, water_well_thing):
     """
     Test retrieving a sample by its ID.
     """
@@ -280,7 +287,8 @@ def test_get_sample_by_id(sample):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == sample.id
-    assert data["thing_id"] == sample.thing_id
+    assert data["created_at"] == sample.created_at.isoformat().replace("+00:00", "Z")
+    assert data["thing"]["id"] == water_well_thing.id
     assert data["sample_type"] == sample.sample_type
     assert data["field_sample_id"] == sample.field_sample_id
     assert data["sample_date"] == sample.sample_date

@@ -120,7 +120,7 @@ def database_error_handler(
     status_code=status.HTTP_201_CREATED,
     operation_id="create_contact",
 )
-def create_contact(
+async def create_contact(
     contact_data: CreateContact, session: session_dependency, user: amp_admin_dependency
 ) -> ContactResponse:
     try:
@@ -135,7 +135,7 @@ def create_contact(
     status_code=status.HTTP_201_CREATED,
     operation_id="create_address",
 )
-def create_address(
+async def create_address(
     address_data: CreateAddress,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -159,7 +159,7 @@ def create_address(
     status_code=status.HTTP_201_CREATED,
     operation_id="create_email",
 )
-def create_email(
+async def create_email(
     email_data: CreateEmail,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -176,7 +176,7 @@ def create_email(
     status_code=status.HTTP_201_CREATED,
     operation_id="create_phone",
 )
-def create_phone(
+async def create_phone(
     phone_data: CreatePhone,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -216,7 +216,7 @@ def create_phone(
     "/email/{email_id}",
     operation_id="update_email",
 )
-def update_contact_email(
+async def update_contact_email(
     email_id: int,
     email_data: UpdateEmail,
     session: session_dependency,
@@ -232,7 +232,7 @@ def update_contact_email(
     "/phone/{phone_id}",
     operation_id="update_phone",
 )
-def update_contact_phone(
+async def update_contact_phone(
     phone_id: int,
     phone_data: UpdatePhone,
     session: session_dependency,
@@ -253,7 +253,7 @@ def update_contact_phone(
     "/address/{address_id}",
     operation_id="update_address",
 )
-def update_contact_address(
+async def update_contact_address(
     address_id: int,
     address_data: UpdateAddress,
     session: session_dependency,
@@ -301,7 +301,7 @@ def update_contact_address(
 
 
 @router.patch("/{contact_id}", summary="Update contact", operation_id="update_contact")
-def update_contact(
+async def update_contact(
     contact_id: int,
     contact_data: UpdateContact,
     session: session_dependency,
@@ -504,7 +504,7 @@ async def get_contact_addresses(
 
 
 @router.delete("/email/{email_id}", summary="Delete contact email", operation_id="delete_email")
-def delete_contact_email(
+async def delete_contact_email(
     email_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -514,7 +514,7 @@ def delete_contact_email(
 
 
 @router.delete("/phone/{phone_id}", summary="Delete contact phone", operation_id="delete_phone")
-def delete_contact_phone(
+async def delete_contact_phone(
     phone_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -524,7 +524,7 @@ def delete_contact_phone(
 
 
 @router.delete("/address/{address_id}", summary="Delete contact address", operation_id="delete_address")
-def delete_contact_address(
+async def delete_contact_address(
     address_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """
@@ -549,7 +549,7 @@ def delete_contact_address(
 
 
 @router.delete("/{contact_id}", summary="Delete contact", operation_id="delete_contact")
-def delete_contact(
+async def delete_contact(
     contact_id: int, session: session_dependency, user: amp_admin_dependency
 ):
     """

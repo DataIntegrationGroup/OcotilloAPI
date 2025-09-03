@@ -20,7 +20,7 @@ from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
 from pydantic import field_validator, BaseModel
 
-from schemas import ORMBaseModel
+from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 from schemas.thing import ThingResponse
 
 
@@ -65,7 +65,7 @@ class ValidatePhone(BaseModel):
 
 
 # -------- CREATE ----------
-class CreateEmail(ValidateEmail):
+class CreateEmail(BaseCreateModel, ValidateEmail):
     """
     Schema for creating an email.
     """
@@ -75,7 +75,7 @@ class CreateEmail(ValidateEmail):
     email_type: str = "Primary"  # Default to 'Primary'
 
 
-class CreatePhone(ValidatePhone):
+class CreatePhone(BaseCreateModel, ValidatePhone):
     """
     Schema for creating a phone number.
     """
@@ -85,7 +85,7 @@ class CreatePhone(ValidatePhone):
     phone_type: str = "Primary"  # Default to 'Primary'
 
 
-class CreateAddress(BaseModel):
+class CreateAddress(BaseCreateModel):
     """
     Schema for creating an address.
     """
@@ -102,16 +102,16 @@ class CreateAddress(BaseModel):
     address_type: str = "Primary"
 
 
-class CreateThingAssociation(BaseModel):
-    """
-    Schema for creating a ContactThingAssociation
-    """
+# class CreateThingAssociation(BaseModel):
+#     """
+#     Schema for creating a ContactThingAssociation
+#     """
 
-    contact_id: int
-    thing_id: int
+#     contact_id: int
+#     thing_id: int
 
 
-class CreateContact(BaseModel):
+class CreateContact(BaseCreateModel):
     """
     Schema for creating a contact.
     """
@@ -131,8 +131,7 @@ class CreateContact(BaseModel):
 # -------- RESPONSE ----------
 
 
-class BaseItemResponse(ORMBaseModel):
-    id: int
+class BaseItemResponse(BaseResponseModel):
     contact_id: int
 
 
@@ -168,12 +167,11 @@ class AddressResponse(BaseItemResponse):
     address_type: str
 
 
-class ContactResponse(ORMBaseModel):
+class ContactResponse(BaseResponseModel):
     """
     Response schema for contact details.
     """
 
-    id: int
     name: str
     role: str
     emails: List[EmailResponse] = []
@@ -182,18 +180,18 @@ class ContactResponse(ORMBaseModel):
     things: List[ThingResponse] = []  # List of related things
 
 
-class ThingContactAssociationResponse(ORMBaseModel):
-    """
-    Response schema for thing-contact association details.
-    """
+# class ThingContactAssociationResponse(BaseUpdateModel):
+#     """
+#     Response schema for thing-contact association details.
+#     """
 
-    id: int
-    thing_id: int
-    contact_id: int
+#     id: int
+#     thing_id: int
+#     contact_id: int
 
 
 # -------- UPDATE ----------
-class UpdateContact(BaseModel):
+class UpdateContact(BaseUpdateModel):
     """
     Schema for updating contact information.
     """
@@ -206,7 +204,7 @@ class UpdateContact(BaseModel):
     # address: str | None = None
 
 
-class UpdateEmail(ValidateEmail):
+class UpdateEmail(BaseUpdateModel, ValidateEmail):
     """
     Schema for updating email information.
     """
@@ -216,7 +214,7 @@ class UpdateEmail(ValidateEmail):
     email_type: str | None = None
 
 
-class UpdatePhone(ValidatePhone):
+class UpdatePhone(BaseUpdateModel, ValidatePhone):
     """
     Schema for updating phone information.
     """
@@ -226,7 +224,7 @@ class UpdatePhone(ValidatePhone):
     phone_type: str | None = None
 
 
-class UpdateAddress(BaseModel):
+class UpdateAddress(BaseUpdateModel):
     """
     Schema for updating address information.
     """
@@ -241,13 +239,13 @@ class UpdateAddress(BaseModel):
     address_type: str | None = None
 
 
-class UpdateThingContactAssociation(BaseModel):
-    """
-    Schema for updating thing-contact association information.
-    """
+# class UpdateThingContactAssociation(BaseUpdateModel):
+#     """
+#     Schema for updating thing-contact association information.
+#     """
 
-    thing_id: int | None = None
-    contact_id: int | None = None
+#     thing_id: int | None = None
+#     contact_id: int | None = None
 
 
 # ============= EOF =============================================

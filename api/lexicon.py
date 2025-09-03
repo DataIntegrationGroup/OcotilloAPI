@@ -103,7 +103,7 @@ def database_error_handler(
     status_code=HTTP_201_CREATED,
     operation_id="create_lexicon_category",
 )
-def add_category(
+async def add_category(
     category_data: CreateLexiconCategory,
     session: session_dependency,
     user: admin_dependency,
@@ -120,7 +120,7 @@ def add_category(
     status_code=HTTP_201_CREATED,
     operation_id="create_lexicon_term",
 )
-def add_term(
+async def add_term(
     term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
 ) -> LexiconTermResponse:
     """
@@ -138,7 +138,7 @@ def add_term(
     status_code=HTTP_201_CREATED,
     operation_id="create_lexicon_triple",
 )
-def add_triple(
+async def add_triple(
     triple_data: CreateLexiconTriple,
     session: session_dependency,
     user: admin_dependency,
@@ -154,7 +154,7 @@ def add_triple(
 
 
 @router.patch("/term/{term_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_term")
-def update_lexicon_term(
+async def update_lexicon_term(
     term_id: int,
     term_data: UpdateLexiconTerm,
     session: session_dependency,
@@ -165,7 +165,7 @@ def update_lexicon_term(
 
 
 @router.patch("/category/{category_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_category")
-def update_lexicon_category(
+async def update_lexicon_category(
     category_id: int,
     category_data: UpdateLexiconCategory,
     session: session_dependency,
@@ -177,7 +177,7 @@ def update_lexicon_category(
 
 
 @router.patch("/triple/{triple_id}", status_code=HTTP_200_OK, operation_id="update_lexicon_triple")
-def update_lexicon_triple(
+async def update_lexicon_triple(
     triple_id: int,
     triple_data: UpdateLexiconTriple,
     session: session_dependency,
@@ -193,7 +193,7 @@ def update_lexicon_triple(
 
 
 @router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK, operation_id="get_lexicon_terms")
-def get_lexicon_terms(
+async def get_lexicon_terms(
     session: session_dependency,
     category: str | None = None,
     term: str | None = None,
@@ -229,12 +229,14 @@ def get_lexicon_terms(
 
 
 @router.get("/term/{term_id}", status_code=HTTP_200_OK, operation_id="get_lexicon_term_by_id")
-def get_lexicon_term(term_id: int, session: session_dependency) -> LexiconTermResponse:
+async def get_lexicon_term(
+    term_id: int, session: session_dependency
+) -> LexiconTermResponse:
     return simple_get_by_id(session, LexiconTerm, term_id)
 
 
 @router.get("/category", operation_id="get_lexicon_categories")
-def get_lexicon_categories(
+async def get_lexicon_categories(
     session: session_dependency,
     sort: str = "name",
     order: str = "asc",
@@ -247,7 +249,7 @@ def get_lexicon_categories(
 
 
 @router.get("/category/{category_id}", operation_id="get_lexicon_category_by_id")
-def get_lexicon_category(
+async def get_lexicon_category(
     category_id: int, session: session_dependency
 ) -> LexiconCategoryResponse:
     return simple_get_by_id(session, LexiconCategory, category_id)

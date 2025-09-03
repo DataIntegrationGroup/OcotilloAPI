@@ -15,13 +15,13 @@
 # ===============================================================================
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import String, Integer, DateTime
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
-from db.base import Base, AutoBaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
-class Sensor(Base, AutoBaseMixin):
+class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     """
     Base class for all sensor types.
     This class can be extended to create specific sensor types.

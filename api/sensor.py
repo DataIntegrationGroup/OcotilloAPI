@@ -38,7 +38,7 @@ router = APIRouter(prefix="/sensor", tags=["sensor"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, operation_id="create_sensor")
-def add_sensor(
+async def add_sensor(
     sensor_data: CreateSensor, session: session_dependency, user: admin_dependency
 ) -> SensorResponse:
     """
@@ -51,7 +51,7 @@ def add_sensor(
 
 
 @router.patch("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="update_sensor")
-def update_sensor(
+async def update_sensor(
     sensor_id: int,
     sensor_data: UpdateSensor,
     session: session_dependency,
@@ -111,7 +111,7 @@ def update_sensor(
 
 
 @router.delete("/{sensor_id}", operation_id="delete_sensor")
-def delete_sensor(
+async def delete_sensor(
     sensor_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:
     """
@@ -124,7 +124,7 @@ def delete_sensor(
 
 
 @router.get("", status_code=status.HTTP_200_OK, operation_id="get_sensors")
-def get_sensors(
+async def get_sensors(
     session: session_dependency,
     user: viewer_dependency,
     thing_id: int = None,  # Optional filter for thing_id
@@ -161,7 +161,7 @@ def get_sensors(
 
 
 @router.get("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="get_sensor_by_id")
-def get_sensor(
+async def get_sensor(
     sensor_id: int, session: session_dependency, user: viewer_dependency
 ) -> SensorResponse:
     """

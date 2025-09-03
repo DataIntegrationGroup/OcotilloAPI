@@ -51,7 +51,7 @@ router = APIRouter(prefix="/observation", tags=["observation"])
 
 # ============= Post =============================================
 @router.post("/groundwater-level", status_code=HTTP_201_CREATED, operation_id="create_groundwater_observation")
-def add_groundwater_level_observation(
+async def add_groundwater_level_observation(
     obs_data: CreateGroundwaterLevelObservation,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -63,7 +63,7 @@ def add_groundwater_level_observation(
 
 
 @router.post("/water-chemistry", status_code=HTTP_201_CREATED, operation_id="create_water_chemistry_observation")
-def add_water_chemistry_observation(
+async def add_water_chemistry_observation(
     obs_data: CreateWaterChemistryObservation,
     session: session_dependency,
     user: amp_admin_dependency,
@@ -76,7 +76,7 @@ def add_water_chemistry_observation(
 
 
 @router.post("/geothermal", status_code=HTTP_201_CREATED, operation_id="create_geothermal_observation")
-def add_geothermal_observation(
+async def add_geothermal_observation(
     obs_data: CreateGeothermalObservation,
     session: session_dependency,
     user: admin_dependency,
@@ -92,7 +92,7 @@ def add_geothermal_observation(
 
 
 @router.patch("/groundwater-level/{observation_id}", status_code=HTTP_200_OK, operation_id="update_groundwater_observation")
-def update_groundwater_level_observation(
+async def update_groundwater_level_observation(
     observation_id: int,
     obs_data: UpdateGroundwaterLevelObservation,
     session: session_dependency,
@@ -106,7 +106,7 @@ def update_groundwater_level_observation(
 
 
 @router.patch("/water-chemistry/{observation_id}", status_code=HTTP_200_OK, operation_id="update_water_chemistry_observation")
-def update_water_chemistry_observation(
+async def update_water_chemistry_observation(
     observation_id: int,
     obs_data: UpdateWaterChemistryObservation,
     session: session_dependency,
@@ -120,7 +120,7 @@ def update_water_chemistry_observation(
 
 
 @router.patch("/geothermal/{observation_id}", status_code=HTTP_200_OK, operation_id="update_geothermal_observation")
-def update_geothermal_observation(
+async def update_geothermal_observation(
     observation_id: int,
     obs_data: UpdateGeothermalObservation,
     session: session_dependency,
@@ -137,7 +137,7 @@ def update_geothermal_observation(
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations", operation_id="get_groundwater_observations")
-def get_groundwater_level_observations(
+async def get_groundwater_level_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -172,7 +172,7 @@ def get_groundwater_level_observations(
     summary="Get groundwater level observation by ID",
     operation_id="get_groundwater_observation_by_id",
 )
-def get_groundwater_level_observation_by_id(
+async def get_groundwater_level_observation_by_id(
     session: session_dependency,
     request: Request,
     user: amp_viewer_dependency,
@@ -186,7 +186,7 @@ def get_groundwater_level_observation_by_id(
 
 
 @router.get("/water-chemistry", summary="Get water chemistry observations", operation_id="get_water_chemistry_observations")
-def get_water_chemistry_observations(
+async def get_water_chemistry_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -219,7 +219,7 @@ def get_water_chemistry_observations(
 @router.get(
     "/water-chemistry/{observation_id}", summary="Get water chemistry observation by ID", operation_id="get_water_chemistry_observation_by_id"
 )
-def get_water_chemistry_observation_by_id(
+async def get_water_chemistry_observation_by_id(
     session: session_dependency,
     request: Request,
     user: amp_viewer_dependency,
@@ -233,7 +233,7 @@ def get_water_chemistry_observation_by_id(
 
 
 @router.get("/geothermal", summary="Get geothermal observations", operation_id="get_geothermal_observations")
-def get_geothermal_observations(
+async def get_geothermal_observations(
     request: Request,
     session: session_dependency,
     user: viewer_dependency,
@@ -264,7 +264,7 @@ def get_geothermal_observations(
 
 
 @router.get("/geothermal/{observation_id}", summary="Get geothermal observation by ID", operation_id="get_geothermal_observation_by_id")
-def get_geothermal_observation_by_id(
+async def get_geothermal_observation_by_id(
     session: session_dependency,
     request: Request,
     user: amp_viewer_dependency,
@@ -276,7 +276,7 @@ def get_geothermal_observation_by_id(
 
 
 @router.get("", summary="Get all observations", operation_id="get_observations")
-def get_all_observations(
+async def get_all_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
@@ -304,7 +304,7 @@ def get_all_observations(
 
 
 @router.get("/{observation_id}", summary="Get an observation by its ID", operation_id="get_observation_by_id")
-def get_observation_by_id(
+async def get_observation_by_id(
     session: session_dependency, user: amp_viewer_dependency, observation_id: int
 ) -> ObservationResponse:
     return simple_get_by_id(session, Observation, observation_id)
@@ -319,7 +319,7 @@ def get_observation_by_id(
     status_code=HTTP_204_NO_CONTENT,
     operation_id="delete_observation",
 )
-def delete_observation(
+async def delete_observation(
     session: session_dependency, user: amp_admin_dependency, observation_id: int
 ) -> None:
     return model_deleter(session, Observation, observation_id)
