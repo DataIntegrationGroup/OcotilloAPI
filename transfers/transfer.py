@@ -65,35 +65,45 @@ def main_transfer():
             erase_and_initalize(sess)
 
         if init or transfer_well_flag:
+            print("\n", "*" * 10, "TRANSFERRING WELLS", "*" * 10)
             transfer_wells(sess, limit)
             transfer_wellscreens(sess)
 
         if init or transfer_spring_flag:
+            print("\n", "*" * 10, "TRANSFERRING SPRINGS", "*" * 10)
             transfer_springs(sess, limit)
 
         if init or transfer_perennial_stream_flag:
+            print("\n", "*" * 10, "TRANSFERRING PERENNIAL STREAMS", "*" * 10)
             transfer_perennial_stream(sess, limit)
 
         if init or transfer_ephemeral_stream_flag:
+            print("\n", "*" * 10, "TRANSFERRING EPHEMERAL STREAMS", "*" * 10)
             transfer_ephemeral_stream(sess, limit)
 
         if init or transfer_met_flag:
+            print("\n", "*" * 10, "TRANSFERRING METEOROLOGICAL", "*" * 10)
             transfer_met(sess, limit)
 
         if init or transfer_contacts_flag:
+            print("\n", "*" * 10, "TRANSFERRING CONTACTS", "*" * 10)
             transfer_contacts(sess)
 
         if init or transfer_waterlevels_flag:
+            print("\n", "*" * 10, "TRANSFERRING WATER LEVELS", "*" * 10)
             transfer_water_levels(sess)
 
         if init or transfer_link_ids_flag:
+            print("\n", "*" * 10, "TRANSFERRING LINK IDS", "*" * 10)
             transfer_link_ids(sess)
             transfer_link_ids_welldata(sess)
 
         if init or transfer_assets_flag:
+            print("\n", "*" * 10, "TRANSFERRING ASSETS", "*" * 10)
             transfer_assets_testing(sess)
 
         if init or transfer_groups_flag:
+            print("\n", "*" * 10, "TRANSFERRING GROUPS", "*" * 10)
             transfer_groups(sess)
 
         # if init or cleanup_wells_flag:
