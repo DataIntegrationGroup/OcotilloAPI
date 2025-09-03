@@ -6,7 +6,7 @@ from core.dependencies import (
 from db import Contact, Address, Email, Phone
 from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
-from schemas.contact import ValidateEmail, ValidatePhone
+from schemas.contact import ValidateEmail, ValidatePhone, CreateContact
 
 import pytest
 from pydantic import ValidationError
@@ -30,6 +30,13 @@ def override_authentication_dependency_fixture():
 
 
 # VALIDATION tests =============================================================
+
+
+def test_check_empty_fields():
+    with pytest.raises(
+        ValueError, match="Either name or organization must be provided."
+    ):
+        CreateContact(name=None, organization=None)
 
 
 def test_validate_phone():
@@ -64,6 +71,7 @@ def test_add_contact(spring_thing):
         "release_status": "private",
         "name": "Test Contact 2",
         "role": "Owner",
+        "organization": "Well Owner LLC",
         "thing_id": spring_thing.id,
         "emails": [
             {
@@ -148,6 +156,7 @@ def test_add_contact_409_bad_thing_id():
         "release_status": "private",
         "name": "Test Contact 3",
         "role": "Owner",
+        "organization": "Well Owner LLC",
         "thing_id": bad_thing_id,
         "emails": [
             {

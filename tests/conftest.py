@@ -262,6 +262,7 @@ def contact(water_well_thing):
             release_status="private",
             name="Test Contact",
             role="Owner",
+            organization="Test Organization",
         )
         session.add(contact)
         session.commit()
@@ -334,6 +335,7 @@ def second_contact():
             release_status="private",
             name="Test Second Contact",
             role="Owner",
+            organization="Test Second Organization",
         )
         session.add(contact)
         session.commit()
