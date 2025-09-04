@@ -1,51 +1,51 @@
-anyio @ file:///home/conda/feedstock_root/build_artifacts/anyio_1717693030552/work
-archspec @ file:///home/conda/feedstock_root/build_artifacts/archspec_1708969572489/work
-boltons @ file:///home/conda/feedstock_root/build_artifacts/boltons_1711936407380/work
-Brotli @ file:///Users/runner/miniforge3/conda-bld/brotli-split_1725267563793/work
-brotlipy @ file:///Users/runner/miniforge3/conda-bld/brotlipy_1725393358468/work
-certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1754231422783/work/certifi
-cffi @ file:///Users/runner/miniforge3/conda-bld/cffi_1725560578465/work
-chardet @ file:///home/conda/feedstock_root/build_artifacts/chardet_1741797914774/work
-charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1698833585322/work
-colorama @ file:///home/conda/feedstock_root/build_artifacts/colorama_1666700638685/work
-conda @ file:///Users/runner/miniforge3/conda-bld/conda_1754405355057/work/conda-src
-conda-libmamba-solver @ file:///home/conda/feedstock_root/build_artifacts/conda-libmamba-solver_1745834476052/work/src
-conda-package-handling @ file:///home/conda/feedstock_root/build_artifacts/conda-package-handling_1717678605937/work
-conda_package_streaming @ file:///home/conda/feedstock_root/build_artifacts/conda-package-streaming_1717678526951/work
+anyio
+archspec
+boltons
+Brotli
+brotlipy
+certifi
+cffi
+chardet
+charset-normalizer
+colorama
+conda
+conda-libmamba-solver
+conda-package-handling
+conda_package_streaming
 crcmod==1.7
-cryptography @ file:///Users/runner/miniforge3/conda-bld/cryptography-split_1717559469549/work
-distro @ file:///home/conda/feedstock_root/build_artifacts/distro_1704321475663/work
-exceptiongroup @ file:///home/conda/feedstock_root/build_artifacts/exceptiongroup_1704921103267/work
-frozendict @ file:///Users/runner/miniforge3/conda-bld/frozendict_1756048002891/work
-h11 @ file:///home/conda/feedstock_root/build_artifacts/h11_1664132893548/work
-h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1634280454336/work
+cryptography
+distro
+exceptiongroup
+frozendict
+h11
+h2
 hpack==4.0.0
-httpcore @ file:///home/conda/feedstock_root/build_artifacts/httpcore_1711596990900/work
-httpx @ file:///home/conda/feedstock_root/build_artifacts/httpx_1708530890843/work
-hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1619110129307/work
-idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1713279365350/work
-jsonpatch @ file:///home/conda/feedstock_root/build_artifacts/jsonpatch_1695536281965/work
-jsonpointer @ file:///Users/runner/miniforge3/conda-bld/jsonpointer_1725302931775/work
-libmambapy @ file:///Users/runner/miniforge3/conda-bld/mamba-split_1730277572706/work/libmambapy
-menuinst @ file:///Users/runner/miniforge3/conda-bld/menuinst_1756243597479/work
-packaging @ file:///home/conda/feedstock_root/build_artifacts/packaging_1718189413536/work
-platformdirs @ file:///home/conda/feedstock_root/build_artifacts/platformdirs_1715777629804/work
-pluggy @ file:///home/conda/feedstock_root/build_artifacts/pluggy_1713667077545/work
+httpcore
+httpx
+hyperframe
+idna
+jsonpatch
+jsonpointer
+libmambapy
+menuinst
+packaging
+platformdirs
+pluggy
 psycopg-binary==3.2.9
-pycosat @ file:///Users/runner/miniforge3/conda-bld/pycosat_1732588505673/work
-pycparser @ file:///home/conda/feedstock_root/build_artifacts/pycparser_1711811537435/work
-pyOpenSSL @ file:///home/conda/feedstock_root/build_artifacts/pyopenssl_1706660063483/work
-PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1661604839144/work
-requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1717057054362/work
-ruamel-yaml-conda @ file:///Users/runner/miniforge3/conda-bld/ruamel_yaml_1695546298062/work
-ruamel.yaml @ file:///Users/runner/miniforge3/conda-bld/ruamel.yaml_1755625084805/work
-ruamel.yaml.clib @ file:///Users/runner/miniforge3/conda-bld/ruamel.yaml.clib_1728724504988/work
+pycosat
+pycparser
+pyOpenSSL
+PySocks
+requests
+ruamel-yaml-conda
+ruamel.yaml
+ruamel.yaml.clib
 setuptools==70.1.1
-six @ file:///home/conda/feedstock_root/build_artifacts/six_1620240208055/work
-sniffio @ file:///home/conda/feedstock_root/build_artifacts/sniffio_1708952932303/work
-tqdm @ file:///home/conda/feedstock_root/build_artifacts/tqdm_1714854870413/work
-truststore @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_truststore_1753886790/work
-typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/typing_extensions_1717802530399/work
-urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1719391292974/work
+six
+sniffio
+tqdm
+truststore
+typing_extensions
+urllib3
 wheel==0.43.0
 zstandard==0.23.0
