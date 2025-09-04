@@ -29,7 +29,7 @@ def extract_owner_role(comment):
     # if "Director" in comment:
     #     return "Director"
 
-    return "Primary"
+    return "Owner"
 
 
 def transfer_contacts(session):
@@ -46,7 +46,7 @@ def transfer_contacts(session):
 
         # TODO: extract role from OwnerComment
         # role = extract_owner_role(row.OwnerComment)
-        role = "Primary"
+        role = "Owner"
 
         # TODO: put in guards for null values
         # name OR organization must be defined, otherwise skip
@@ -59,6 +59,7 @@ def transfer_contacts(session):
             contact1 = Contact(
                 name=f"{row.FirstName} {row.LastName}",
                 role=role,
+                contact_type="Primary",
                 organization=row.Company,  # assumes organization applies to both contacts
                 nma_pk_owners=row.OwnerKey,
             )
@@ -109,7 +110,8 @@ def transfer_contacts(session):
             print(f"Transferring second contact for PointID {row.PointID}")
             contact2 = Contact(
                 name=f"{row.SecondFirstName} {row.SecondLastName}",
-                role="Secondary",
+                role="Owner",
+                contact_type="Secondary",
                 organization=row.Company,  # Assumes organization applies to both contacts
                 nma_pk_owners=row.OwnerKey,
             )

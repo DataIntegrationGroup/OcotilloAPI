@@ -262,6 +262,7 @@ def contact(water_well_thing):
             release_status="private",
             name="Test Contact",
             role="Owner",
+            contact_type="Primary",
             organization="Test Organization",
         )
         session.add(contact)
@@ -335,6 +336,7 @@ def second_contact():
             release_status="private",
             name="Test Second Contact",
             role="Owner",
+            contact_type="Primary",
             organization=None,
         )
         session.add(contact)
@@ -410,6 +412,7 @@ def third_contact():
             release_status="private",
             name=None,
             role="Owner",
+            contact_type="Primary",
             organization="Third Organization",
         )
         session.add(contact)
