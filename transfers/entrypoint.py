@@ -17,11 +17,14 @@ from fastapi import FastAPI
 
 from transfers.transfer import main_transfer
 
-app = FastAPI(title='Transfer Service')
+app = FastAPI(title="Transfer Service")
 
-@app.get('/trigger')
+
+@app.get("/trigger")
 async def trigger():
     main_transfer()
 
     return
+
+
 # ============= EOF =============================================
