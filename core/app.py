@@ -47,10 +47,8 @@ app = FastAPI(
 
 @app.get("/ping", include_in_schema=False)
 async def ping() -> JSONResponse:
-    """ Health check endpoint to verify the service is running.
-    """
+    """Health check endpoint to verify the service is running."""
     return JSONResponse(status_code=HTTPStatus.OK, content={"ping": "pong!"})
-
 
 
 # ============= EOF =============================================
