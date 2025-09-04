@@ -24,7 +24,7 @@ from transfers.util import read_csv
 def transfer_groups(
     session: Session,
 ) -> None:
-    wdf = read_csv("projects.csv")
+    wdf = read_csv("Projects")
     for i, row in enumerate(wdf.itertuples()):
 
         sql = select(Group).where(Group.name == row.Project)

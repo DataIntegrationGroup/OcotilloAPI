@@ -38,10 +38,10 @@ ADDED = []
 
 
 def transfer_wells(session, limit=None):
-    wdf = read_csv("welldata.csv")
-    ldf = read_csv("location.csv")
-
-    wdf = wdf.join(ldf.set_index("PointID"), on="PointID")
+    wdf = read_csv("WellData")
+    ldf = read_csv("Location")
+    ldf = ldf.drop(['PointID', 'SSMA_TimeStamp'], axis=1)
+    wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
@@ -55,7 +55,8 @@ def transfer_wells(session, limit=None):
 
         if i and not i % 25:
             print(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second:"
+                f" {i / (time.time() - start_time):.2f}"
             )
             session.commit()
 
@@ -63,6 +64,7 @@ def transfer_wells(session, limit=None):
             location = make_location(row)
         except Exception as e:
             print(f"Error making location for row {i}: {e}")
+            print(row)
             break
 
         # print(location_row)
@@ -86,17 +88,20 @@ def transfer_wells(session, limit=None):
             },
             thing_type="water well",
         )
-        wt = row.Meaning
-        if wt not in ADDED:
-            add_lexicon_term(
-                session,
-                wt,
-                "Current use of the well, aka well purpose",
-                [{"name": "current_use", "desciption": "Current use of the well"}],
-            )
-            ADDED.append(wt)
 
-        well.well_type = wt
+        # TODO: use current use LUT to get well type
+
+        # wt = row.Meaning
+        # if wt not in ADDED:
+        #     add_lexicon_term(
+        #         session,
+        #         wt,
+        #         "Current use of the well, aka well purpose",
+        #         [{"name": "current_use", "desciption": "Current use of the well"}],
+        #     )
+        #     ADDED.append(wt)
+        #
+        # well.well_type = wt
 
         assoc = LocationThingAssociation()
 
@@ -106,7 +111,7 @@ def transfer_wells(session, limit=None):
 
 
 def transfer_wellscreens(session, limit=None):
-    wdf = read_csv("wellscreens.csv")
+    wdf = read_csv("WellScreens")
     wdf = wdf.replace(pd.NA, None)
     wdf = wdf.replace({np.nan: None})
 

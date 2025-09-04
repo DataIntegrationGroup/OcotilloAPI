@@ -45,6 +45,11 @@ def erase_and_initalize(session: Session) -> None:
     init_sensor(session)
 
 
+def message(msg, pad=10):
+    pad = "*" * pad
+    print(f'{pad} {msg} {pad}\n')
+
+
 def main_transfer():
     init = True
 
@@ -61,52 +66,52 @@ def main_transfer():
 
     cleanup_wells_flag = False
 
-    limit = 2000
+    limit = 1000
     with session_ctx() as sess:
 
         if init:
             erase_and_initalize(sess)
 
         if init or transfer_well_flag:
-            print("\n", "*" * 10, "TRANSFERRING WELLS", "*" * 10)
+            message("TRANSFERRING WELLS")
             transfer_wells(sess, limit)
             transfer_wellscreens(sess)
-
-        if init or transfer_spring_flag:
-            print("\n", "*" * 10, "TRANSFERRING SPRINGS", "*" * 10)
-            transfer_springs(sess, limit)
-
-        if init or transfer_perennial_stream_flag:
-            print("\n", "*" * 10, "TRANSFERRING PERENNIAL STREAMS", "*" * 10)
-            transfer_perennial_stream(sess, limit)
-
-        if init or transfer_ephemeral_stream_flag:
-            print("\n", "*" * 10, "TRANSFERRING EPHEMERAL STREAMS", "*" * 10)
-            transfer_ephemeral_stream(sess, limit)
-
-        if init or transfer_met_flag:
-            print("\n", "*" * 10, "TRANSFERRING METEOROLOGICAL", "*" * 10)
-            transfer_met(sess, limit)
+        #
+        # if init or transfer_spring_flag:
+        #     message("TRANSFERRING SPRINGS")
+        #     transfer_springs(sess, limit)
+        #
+        # if init or transfer_perennial_stream_flag:
+        #     message("TRANSFERRING PERENNIAL STREAMS")
+        #     transfer_perennial_stream(sess, limit)
+        #
+        # if init or transfer_ephemeral_stream_flag:
+        #     message("TRANSFERRING EPHEMERAL STREAMS")
+        #     transfer_ephemeral_stream(sess, limit)
+        #
+        # if init or transfer_met_flag:
+        #     message("TRANSFERRING METEOROLOGICAL")
+        #     transfer_met(sess, limit)
 
         if init or transfer_contacts_flag:
-            print("\n", "*" * 10, "TRANSFERRING CONTACTS", "*" * 10)
+            message("TRANSFERRING CONTACTS")
             transfer_contacts(sess)
 
         if init or transfer_waterlevels_flag:
-            print("\n", "*" * 10, "TRANSFERRING WATER LEVELS", "*" * 10)
+            message("TRANSFERRING WATER LEVELS")
             transfer_water_levels(sess)
 
         if init or transfer_link_ids_flag:
-            print("\n", "*" * 10, "TRANSFERRING LINK IDS", "*" * 10)
+            message("TRANSFERRING LINK IDS")
             transfer_link_ids(sess)
             transfer_link_ids_welldata(sess)
 
-        if init or transfer_assets_flag:
-            print("\n", "*" * 10, "TRANSFERRING ASSETS", "*" * 10)
-            transfer_assets_testing(sess)
+        # if init or transfer_assets_flag:
+        #     message("TRANSFERRING ASSETS")
+        #     transfer_assets_testing(sess)
 
         if init or transfer_groups_flag:
-            print("\n", "*" * 10, "TRANSFERRING GROUPS", "*" * 10)
+            message("TRANSFERRING GROUPS")
             transfer_groups(sess)
 
         # if init or cleanup_wells_flag:
