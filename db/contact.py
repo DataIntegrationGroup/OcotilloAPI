@@ -38,6 +38,7 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     name: Mapped[str | None] = mapped_column(String(100))
     organization: Mapped[str | None] = mapped_column(String(100))
     role: Mapped[str] = lexicon_term()
+    contact_type: Mapped[str] = lexicon_term()
     nma_pk_owners: Mapped[str | None] = mapped_column(String(100))
 
     phones: Mapped[List["Phone"]] = relationship(

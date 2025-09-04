@@ -132,8 +132,9 @@ class CreateContact(BaseCreateModel, ValidateContact):
 
     thing_id: int
     name: str | None = None
-    role: str
     organization: str | None = None
+    role: str
+    contact_type: str = "Primary"
     # description: str | None = None
     # email: str | None = None
     # phone: str | None = None
@@ -188,8 +189,9 @@ class ContactResponse(BaseResponseModel):
     """
 
     name: str | None
-    role: str
     organization: str | None
+    role: str
+    contact_type: str
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
@@ -214,6 +216,7 @@ class UpdateContact(BaseUpdateModel, ValidateContact):
 
     name: str | None = None
     role: str | None = None
+    contact_type: str | None = None
     thing_id: int | None = None
     organization: str | None = None
     # email: str | None = None

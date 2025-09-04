@@ -119,7 +119,9 @@
 
   {"categories": [{"name": "email_type", "description": null},
                   {"name": "phone_type", "description": null},
-                  {"name": "address_type", "description": null}], "term": "Primary", "definition": "primary"},
+                  {"name": "address_type", "description": null},
+                  {"name": "contact_type", "description": null}], "term": "Primary", "definition": "primary"},
+  {"categories":[{"name": "contact_type", "description": null}], "term": "Secondary", "definition": "secondary"},     
 
   {"categories": [{"name": "email_type", "description": null},
                   {"name": "phone_type", "description": null},

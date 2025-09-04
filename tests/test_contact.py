@@ -71,6 +71,7 @@ def test_add_contact(spring_thing):
         "release_status": "private",
         "name": "Test Contact 2",
         "role": "Owner",
+        "contact_type": "Primary",
         "organization": "Well Owner LLC",
         "thing_id": spring_thing.id,
         "emails": [
@@ -109,6 +110,7 @@ def test_add_contact(spring_thing):
     assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["role"] == payload["role"]
+    assert data["contact_type"] == payload["contact_type"]
     assert data["organization"] == payload["organization"]
 
     assert len(data["emails"]) == 1
@@ -157,6 +159,7 @@ def test_add_contact_409_bad_thing_id():
         "release_status": "private",
         "name": "Test Contact 3",
         "role": "Owner",
+        "contact_type": "Primary",
         "organization": "Well Owner LLC",
         "thing_id": bad_thing_id,
         "emails": [
@@ -367,6 +370,7 @@ def test_get_contacts(contact, email, address, phone):
     )
     assert data["items"][0]["name"] == contact.name
     assert data["items"][0]["role"] == contact.role
+    assert data["items"][0]["contact_type"] == contact.contact_type
     assert data["items"][0]["release_status"] == contact.release_status
     assert data["items"][0]["organization"] == contact.organization
 
@@ -414,6 +418,7 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["created_at"] == contact.created_at.isoformat().replace("+00:00", "Z")
     assert data["name"] == contact.name
     assert data["role"] == contact.role
+    assert data["contact_type"] == contact.contact_type
     assert data["release_status"] == contact.release_status
     assert data["organization"] == contact.organization
 
@@ -762,6 +767,20 @@ def test_patch_contact_409_null_organization(third_contact):
     )
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"organization": payload["organization"]}
+
+
+def test_patch_contact_409_bad_contact_type(third_contact):
+    payload = {"contact_type": "Tertiary"}
+    response = client.patch(f"/contact/{third_contact.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "contact_type"]
+    assert (
+        data["detail"][0]["msg"]
+        == "Invalid contact_type. Valid terms are: Primary | Secondary"
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_type": payload["contact_type"]}
 
 
 def test_patch_email(email):

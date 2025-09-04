@@ -46,6 +46,7 @@ from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.contact_helper import (
     add_contact,
 )
+from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -106,6 +107,18 @@ def database_error_handler(
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "contact" violates foreign key constraint "contact_contact_type_fkey"'
+    ):
+        valid_terms = get_terms_by_category("contact_type")
+        valid_contact_types_for_msg = " | ".join(valid_terms)
+        detail = {
+            "loc": ["body", "contact_type"],
+            "msg": f"Invalid contact_type. Valid terms are: {valid_contact_types_for_msg}",
+            "type": "value_error",
+            "input": {"contact_type": payload.contact_type},
         }
 
     raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
@@ -353,7 +366,10 @@ async def update_contact(
             ],
         )
 
-    return model_patcher(session, Contact, contact_id, contact_data, user=user)
+    try:
+        return model_patcher(session, Contact, contact_id, contact_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(contact_data, e)
 
 
 # ====== GET ===================================================================
