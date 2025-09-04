@@ -309,35 +309,46 @@ async def update_contact(
     """
     contact = simple_get_by_id(session, Contact, contact_id)
 
+    """
+    if new name is set to None, new organization is unset, and existing organization is already None raise an error
+    if new organization is set to None, new name is unset, and existing name is already None raise an error
+
+    both new name and new organization cannot be set to None - this is a schema restriction
+    """
+    # exclude unsets so only intentional Nones are evaluated
+    payload_excluding_unsets = contact_data.model_dump(exclude_unset=True)
+
     if (
-        contact.name is None
-        and contact_data.name is None
-        and contact_data.organization is None
-    ):
-        raise PydanticStyleException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=[
-                {
-                    "loc": ["body", "organization"],
-                    "msg": "organization cannot be None if name is None.",
-                    "type": "value_error",
-                    "input": {"organization": contact_data.organization},
-                }
-            ],
-        )
-    elif (
         contact.organization is None
-        and contact_data.organization is None
-        and contact_data.name is None
+        and payload_excluding_unsets.get("name", "unset") is None
+        and payload_excluding_unsets.get("organization", "unset") == "unset"
     ):
         raise PydanticStyleException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[
                 {
                     "loc": ["body", "name"],
-                    "msg": "name cannot be None if organization is None.",
+                    "msg": "name cannot be set to None because organization is already None.",
                     "type": "value_error",
-                    "input": {"name": contact_data.name},
+                    "input": {"name": payload_excluding_unsets.get("name")},
+                }
+            ],
+        )
+    elif (
+        contact.name is None
+        and payload_excluding_unsets.get("organization", "unset") is None
+        and payload_excluding_unsets.get("name", "unset") == "unset"
+    ):
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "organization"],
+                    "msg": "organization cannot be set to None because name is already None.",
+                    "type": "value_error",
+                    "input": {
+                        "organization": payload_excluding_unsets.get("organization")
+                    },
                 }
             ],
         )

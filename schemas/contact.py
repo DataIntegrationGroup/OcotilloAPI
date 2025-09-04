@@ -27,6 +27,20 @@ from schemas.thing import ThingResponse
 # -------- VALIDATORS ----------
 
 
+class ValidateContact(BaseModel):
+    name: str | None = None
+    organization: str | None = None
+
+    @model_validator(mode="before")
+    def check_empty(data: dict) -> dict:
+        if (
+            data.get("name", "unset") is None
+            and data.get("organization", "unset") is None
+        ):
+            raise ValueError("Either name or organization must be provided.")
+        return data
+
+
 class ValidateEmail(BaseModel):
 
     email: str | None = None
@@ -111,7 +125,7 @@ class CreateAddress(BaseCreateModel):
 #     thing_id: int
 
 
-class CreateContact(BaseCreateModel):
+class CreateContact(BaseCreateModel, ValidateContact):
     """
     Schema for creating a contact.
     """
@@ -127,12 +141,6 @@ class CreateContact(BaseCreateModel):
     emails: list[CreateEmail] | None = None
     phones: list[CreatePhone] | None = None
     addresses: list[CreateAddress] | None = None
-
-    @model_validator(mode="before")
-    def check_empty(data: dict) -> dict:
-        if data.get("name", None) is None and data.get("organization", None) is None:
-            raise ValueError("Either name or organization must be provided.")
-        return data
 
 
 # -------- RESPONSE ----------
@@ -179,8 +187,9 @@ class ContactResponse(BaseResponseModel):
     Response schema for contact details.
     """
 
-    name: str
+    name: str | None
     role: str
+    organization: str | None
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
@@ -198,7 +207,7 @@ class ContactResponse(BaseResponseModel):
 
 
 # -------- UPDATE ----------
-class UpdateContact(BaseUpdateModel):
+class UpdateContact(BaseUpdateModel, ValidateContact):
     """
     Schema for updating contact information.
     """
