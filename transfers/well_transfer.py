@@ -144,6 +144,7 @@ def transfer_wellscreens(session, limit=None):
         }
         try:
             model = CreateWellScreen.model_validate(well_screen_data)
+            setattr(model, "nma_pk_wellscreens", row.GlobalID)
             model_adder(session, WellScreen, model)
         except ValidationError as e:
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")

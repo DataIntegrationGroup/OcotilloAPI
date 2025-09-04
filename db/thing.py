@@ -112,6 +112,7 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     screen_description = Column(
         String(1000), nullable=True, info={"unit": "description of the screen"}
     )
+    nma_pk_wellscreens = Column(String(100), nullable=True)
     # Define a relationship to well if needed
     thing = relationship("Thing")
 
