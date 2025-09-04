@@ -6,7 +6,7 @@ from core.dependencies import (
 from db import Contact, Address, Email, Phone
 from main import app
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
-from schemas.contact import ValidateEmail, ValidatePhone, CreateContact
+from schemas.contact import ValidateEmail, ValidatePhone, ValidateContact
 
 import pytest
 from pydantic import ValidationError
@@ -36,7 +36,7 @@ def test_check_empty_fields():
     with pytest.raises(
         ValueError, match="Either name or organization must be provided."
     ):
-        CreateContact(name=None, organization=None)
+        ValidateContact(name=None, organization=None)
 
 
 def test_validate_phone():
@@ -71,6 +71,7 @@ def test_add_contact(spring_thing):
         "release_status": "private",
         "name": "Test Contact 2",
         "role": "Owner",
+        "contact_type": "Primary",
         "organization": "Well Owner LLC",
         "thing_id": spring_thing.id,
         "emails": [
@@ -109,6 +110,8 @@ def test_add_contact(spring_thing):
     assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["role"] == payload["role"]
+    assert data["contact_type"] == payload["contact_type"]
+    assert data["organization"] == payload["organization"]
 
     assert len(data["emails"]) == 1
     assert "id" in data["emails"][0]
@@ -156,6 +159,7 @@ def test_add_contact_409_bad_thing_id():
         "release_status": "private",
         "name": "Test Contact 3",
         "role": "Owner",
+        "contact_type": "Primary",
         "organization": "Well Owner LLC",
         "thing_id": bad_thing_id,
         "emails": [
@@ -366,7 +370,9 @@ def test_get_contacts(contact, email, address, phone):
     )
     assert data["items"][0]["name"] == contact.name
     assert data["items"][0]["role"] == contact.role
+    assert data["items"][0]["contact_type"] == contact.contact_type
     assert data["items"][0]["release_status"] == contact.release_status
+    assert data["items"][0]["organization"] == contact.organization
 
     assert len(data["items"][0]["emails"]) == 1
     assert data["items"][0]["emails"][0]["id"] == email.id
@@ -412,7 +418,9 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["created_at"] == contact.created_at.isoformat().replace("+00:00", "Z")
     assert data["name"] == contact.name
     assert data["role"] == contact.role
+    assert data["contact_type"] == contact.contact_type
     assert data["release_status"] == contact.release_status
+    assert data["organization"] == contact.organization
 
     assert len(data["emails"]) == 1
     assert data["emails"][0]["id"] == email.id
@@ -735,9 +743,12 @@ def test_patch_contact_409_null_name(second_contact):
     assert response.status_code == 409
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "name"]
-    assert data["detail"][0]["msg"] == "name cannot be None if organization is None."
+    assert (
+        data["detail"][0]["msg"]
+        == "name cannot be set to None because organization is already None."
+    )
     assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"name": None}
+    assert data["detail"][0]["input"] == {"name": payload["name"]}
 
 
 def test_patch_contact_409_null_organization(third_contact):
@@ -750,9 +761,26 @@ def test_patch_contact_409_null_organization(third_contact):
     assert response.status_code == 409
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "organization"]
-    assert data["detail"][0]["msg"] == "organization cannot be None if name is None."
+    assert (
+        data["detail"][0]["msg"]
+        == "organization cannot be set to None because name is already None."
+    )
     assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"organization": None}
+    assert data["detail"][0]["input"] == {"organization": payload["organization"]}
+
+
+def test_patch_contact_409_bad_contact_type(third_contact):
+    payload = {"contact_type": "Tertiary"}
+    response = client.patch(f"/contact/{third_contact.id}", json=payload)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["detail"][0]["loc"] == ["body", "contact_type"]
+    assert (
+        data["detail"][0]["msg"]
+        == "Invalid contact_type. Valid terms are: Primary | Secondary"
+    )
+    assert data["detail"][0]["type"] == "value_error"
+    assert data["detail"][0]["input"] == {"contact_type": payload["contact_type"]}
 
 
 def test_patch_email(email):
