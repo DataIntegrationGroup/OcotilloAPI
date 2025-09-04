@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
 
-import uvicorn
 from fastapi import FastAPI
 
 from transfers.transfer import main_transfer
@@ -29,8 +27,4 @@ async def trigger():
 
     return
 
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
 # ============= EOF =============================================
