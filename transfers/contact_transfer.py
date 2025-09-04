@@ -35,14 +35,13 @@ def extract_owner_role(comment):
 def transfer_contacts(session):
 
     odf = read_csv("OwnersData")
-    odf = odf.drop(['OBJECTID', 'GlobalID'], axis=1)
+    odf = odf.drop(["OBJECTID", "GlobalID"], axis=1)
     ldf = read_csv("OwnerLink")
-    ldf = ldf.drop(['OBJECTID', 'GlobalID'], axis=1)
+    ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
     locdf = read_csv("Location")
     ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
     odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
-
 
     odf = odf.replace(pd.NA, None)
     odf = odf.replace({np.nan: None})
@@ -94,9 +93,7 @@ def _iterate(session, row):
         if row.Email:
             contact1.emails.append(Email(email=row.Email, email_type="Primary"))
         if row.Phone:
-            contact1.phones.append(
-                Phone(phone_number=row.Phone, phone_type="Primary")
-            )
+            contact1.phones.append(Phone(phone_number=row.Phone, phone_type="Primary"))
         if row.CellPhone:
             contact1.phones.append(
                 Phone(phone_number=row.CellPhone, phone_type="Mobile")
@@ -152,6 +149,7 @@ def _iterate(session, row):
         assoc.contact = contact2
         session.add(assoc)
         session.add(contact2)
+
 
 # ============= EOF =============================================
 # # ===============================================================================

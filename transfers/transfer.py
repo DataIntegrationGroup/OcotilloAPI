@@ -47,7 +47,7 @@ def erase_and_initalize(session: Session) -> None:
 
 def message(msg, pad=10):
     pad = "*" * pad
-    print(f'{pad} {msg} {pad}\n')
+    print(f"{pad} {msg} {pad}\n")
 
 
 def main_transfer():

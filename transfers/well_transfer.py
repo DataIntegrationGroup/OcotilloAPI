@@ -40,7 +40,7 @@ ADDED = []
 def transfer_wells(session, limit=None):
     wdf = read_csv("WellData")
     ldf = read_csv("Location")
-    ldf = ldf.drop(['PointID', 'SSMA_TimeStamp'], axis=1)
+    ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
