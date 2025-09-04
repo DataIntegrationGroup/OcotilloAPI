@@ -105,8 +105,6 @@
   {"categories": [{"name": "county", "description": null}], "term": "Valencia", "definition": "Valencia"},
 
   {"categories": [{"name": "role", "description": null}], "term": "Owner", "definition": "Owner"},
-  {"categories": [{"name": "role", "description": null}], "term": "Primary", "definition": "Primary"},
-  {"categories": [{"name": "role", "description": null}], "term": "Secondary", "definition": "Secondary"},
   {"categories": [{"name": "role", "description": null}], "term": "Manager", "definition": "Manager"},
   {"categories": [{"name": "role", "description": null}], "term": "Operator", "definition": "Operator"},
   {"categories": [{"name": "role", "description": null}], "term": "Driller", "definition": "Driller"},
@@ -121,7 +119,7 @@
                   {"name": "phone_type", "description": null},
                   {"name": "address_type", "description": null},
                   {"name": "contact_type", "description": null}], "term": "Primary", "definition": "primary"},
-  {"categories":[{"name": "contact_type", "description": null}], "term": "Secondary", "definition": "secondary"},     
+  {"categories": [{"name": "contact_type", "description": null}], "term": "Secondary", "definition": "secondary"},     
 
   {"categories": [{"name": "email_type", "description": null},
                   {"name": "phone_type", "description": null},
