@@ -131,7 +131,7 @@ def _iterate(session, row):
         contact2 = Contact(
             name=f"{row.SecondFirstName} {row.SecondLastName}",
             role="Owner",  # TODO: role needs to be extracted from somewhere
-            contact_type='Secondary',
+            contact_type="Secondary",
             # TODO: needs to be implemented
             # priority=2,
             organization=row.Company,  # Assumes organization applies to both contacts
