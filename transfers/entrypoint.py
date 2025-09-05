@@ -23,9 +23,11 @@ app = FastAPI(title="Transfer Service")
 
 
 @app.post("/wells")
-async def wells(session: session_dependency,
-                start_index: int,
-                limit: int=25, ):
+async def wells(
+    session: session_dependency,
+    start_index: int,
+    limit: int = 25,
+):
 
     results = transfer_wells(session, start_index=start_index, limit=limit)
     return results

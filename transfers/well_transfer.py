@@ -43,7 +43,7 @@ def transfer_wells(session, start_index=0, limit=0):
     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
-    wdf = wdf.iloc[start_index:start_index+limit]
+    wdf = wdf.iloc[start_index : start_index + limit]
 
     n = len(wdf)
     start_time = time.time()
