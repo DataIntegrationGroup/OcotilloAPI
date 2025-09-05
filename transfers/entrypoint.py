@@ -16,16 +16,22 @@
 
 from fastapi import FastAPI
 
-from transfers.transfer import main_transfer
+from core.dependencies import session_dependency
+from transfers.well_transfer import transfer_wells
 
 app = FastAPI(title="Transfer Service")
 
 
-@app.get("/trigger")
-async def trigger():
-    main_transfer()
+@app.get("/wells")
+async def wells(session: session_dependency):
 
-    return
+    results = transfer_wells(session, limit=50)
+    return results
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 # ============= EOF =============================================

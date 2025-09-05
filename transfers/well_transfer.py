@@ -46,7 +46,8 @@ def transfer_wells(session, limit=None):
 
     n = len(wdf)
     start_time = time.time()
-
+    results = {"n": n, }
+    made_things = []
     for i, row in enumerate(wdf.itertuples()):
         if limit and i >= limit:
             print("Reached limit of", limit, "rows. Stopping migration.")
@@ -107,6 +108,10 @@ def transfer_wells(session, limit=None):
         assoc.location = location
         assoc.thing = well
         session.add(assoc)
+        made_things.append(row.PointID)
+
+    results["made_things"] = made_things
+    return results
 
 
 def transfer_wellscreens(session, limit=None):
