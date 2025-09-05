@@ -18,6 +18,8 @@ import pandas as pd
 from transfers.util import read_csv, filter_to_valid_point_ids
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
+from schemas.contact import CreateContact
+
 
 def extract_owner_role(comment):
     # if comment is None:
@@ -32,6 +34,14 @@ def extract_owner_role(comment):
     return "Owner"
 
 
+"""
+Developer's notes
+
+Use Pydantic to perform model validations since all restrictions will
+be built into the models
+"""
+
+
 def transfer_contacts(session):
 
     odf = read_csv("ownersdata.csv")
@@ -41,96 +51,161 @@ def transfer_contacts(session):
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
-            print(f"Thing with PointID {row.PointID} not foaund. Skipping owner.")
+            print(f"Thing with PointID {row.PointID} not found. Skipping owner.")
             continue
 
         # TODO: extract role from OwnerComment
         # role = extract_owner_role(row.OwnerComment)
         role = "Owner"
+        release_status = "private"
 
         # TODO: put in guards for null values
-        # name OR organization must be defined, otherwise skip
-        if not (row.FirstName or row.LastName) and not row.Company:
-            print(
-                f"Skipping first contact for PointID {row.PointID} due to missing name and organization."
-            )
-        else:
-            print(f"Transferring first contact for PointID {row.PointID}")
-            contact1 = Contact(
-                name=f"{row.FirstName} {row.LastName}",
-                role=role,
-                contact_type="Primary",
-                organization=row.Company,  # assumes organization applies to both contacts
-                nma_pk_owners=row.OwnerKey,
-            )
+        try:
+
+            if row.FirstName is None and row.LastName is None:
+                name = None
+            elif row.FirstName is not None and row.LastName is None:
+                name = row.FirstName
+            elif row.FirstName is None and row.LastName is not None:
+                name = row.LastName
+            else:
+                name = f"{row.FirstName} {row.LastName}"
+
+            first_contact_data = {
+                "thing_id": thing.id,
+                "release_status": release_status,
+                "name": name,
+                "role": role,
+                "contact_type": "Primary",
+                "organization": row.Company,
+                "nma_pk_owners": row.OwnerKey,
+            }
+
+            CreateContact.model_validate(first_contact_data)
+
+            first_contact_data.pop("thing_id")
+            first_contact = Contact(**first_contact_data)
+
             assoc = ThingContactAssociation()
             assoc.thing = thing
-            assoc.contact = contact1
-            session.add(assoc)
-            session.add(contact1)
+            assoc.contact = first_contact
 
             if row.Email:
-                contact1.emails.append(Email(email=row.Email, email_type="Primary"))
+                first_contact.emails.append(
+                    Email(
+                        email=row.Email,
+                        email_type="Primary",
+                        release_status=release_status,
+                    )
+                )
             if row.Phone:
-                contact1.phones.append(
-                    Phone(phone_number=row.Phone, phone_type="Primary")
+                first_contact.phones.append(
+                    Phone(
+                        phone_number=row.Phone,
+                        phone_type="Primary",
+                        release_status=release_status,
+                    )
                 )
             if row.CellPhone:
-                contact1.phones.append(
-                    Phone(phone_number=row.CellPhone, phone_type="Mobile")
+                first_contact.phones.append(
+                    Phone(
+                        phone_number=row.CellPhone,
+                        phone_type="Mobile",
+                        release_status=release_status,
+                    )
                 )
 
             if row.MailingAddress:
-                contact1.addresses.append(
+                first_contact.addresses.append(
                     Address(
                         address_line_1=row.MailingAddress,
                         city=row.MailCity,
                         state=row.MailState,
                         postal_code=row.MailZipCode,
                         address_type="Mailing",
+                        release_status=release_status,
                     )
                 )
 
-                contact1.addresses.append(
+                first_contact.addresses.append(
                     Address(
                         address_line_1=row.PhysicalAddress,
                         city=row.PhysicalCity,
                         state=row.PhysicalState,
                         postal_code=row.PhysicalZipCode,
                         address_type="Physical",
+                        release_status=release_status,
                     )
                 )
 
-        # TODO: put in guards for null values
-        if not (row.SecondFirstName or row.SecondLastName) and not row.Company:
+            session.add(assoc)
+            session.add(first_contact)
+            session.commit()
+
+        except Exception as e:
             print(
-                f"Skipping second contact for PointID {row.PointID} due to missing name and organization."
+                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
-        else:
-            print(f"Transferring second contact for PointID {row.PointID}")
-            contact2 = Contact(
-                name=f"{row.SecondFirstName} {row.SecondLastName}",
-                role="Owner",
-                contact_type="Secondary",
-                organization=row.Company,  # Assumes organization applies to both contacts
-                nma_pk_owners=row.OwnerKey,
-            )
-            if row.SecondCtctEmail:
-                contact2.emails.append(
-                    Email(email=row.SecondCtctEmail, email_type="Primary")
-                )
-            if row.SecondCtctPhone:
-                contact2.phones.append(
-                    Phone(phone_number=row.SecondCtctPhone, phone_type="Primary")
-                )
+            from pprint import pprint
+
+            pprint(e)
+            session.rollback()
+
+        try:
+            if row.SecondFirstName is None and row.SecondLastName is None:
+                name = None
+            elif row.SecondFirstName is not None and row.SecondLastName is None:
+                name = row.SecondFirstName
+            elif row.SecondFirstName is None and row.SecondLastName is not None:
+                name = row.SecondLastName
+            else:
+                name = f"{row.SecondFirstName} {row.SecondLastName}"
+
+            second_contact_data = {
+                "thing_id": thing.id,
+                "release_status": release_status,
+                "name": name,
+                "role": "Owner",
+                "contact_type": "Secondary",
+                "organization": row.Company,
+                "nma_pk_owners": row.OwnerKey,
+            }
+
+            CreateContact.model_validate(second_contact_data)
+
+            second_contact_data.pop("thing_id")
+            second_contact = Contact(**second_contact_data)
 
             assoc = ThingContactAssociation()
             assoc.thing = thing
-            assoc.contact = contact2
-            session.add(assoc)
-            session.add(contact2)
+            assoc.contact = second_contact
 
-        session.commit()
+            if row.SecondCtctEmail:
+                second_contact.emails.append(
+                    Email(
+                        email=row.SecondCtctEmail,
+                        email_type="Primary",
+                        release_status=release_status,
+                    )
+                )
+
+            if row.SecondCtctPhone:
+                second_contact.phones.append(
+                    Phone(
+                        phone_number=row.SecondCtctPhone,
+                        phone_type="Primary",
+                        release_status=release_status,
+                    )
+                )
+
+            session.add(assoc)
+            session.add(second_contact)
+
+        except Exception as e:
+            print(
+                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
+            )
+            session.rollback()
 
 
 # ============= EOF =============================================

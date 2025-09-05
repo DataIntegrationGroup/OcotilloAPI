@@ -24,10 +24,10 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 class ThingContactAssociation(Base, AutoBaseMixin):
     thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
     contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
 
     contact: Mapped[List["Contact"]] = relationship("Contact")
@@ -35,11 +35,11 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
-    name: Mapped[str | None] = mapped_column(String(100))
-    organization: Mapped[str | None] = mapped_column(String(100))
-    role: Mapped[str] = lexicon_term()
-    contact_type: Mapped[str] = lexicon_term()
-    nma_pk_owners: Mapped[str | None] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(100), nullable=True)
+    organization: Mapped[str] = mapped_column(String(100), nullable=True)
+    role: Mapped[str] = lexicon_term(nullable=False)
+    contact_type: Mapped[str] = lexicon_term(nullable=False)
+    nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)
 
     phones: Mapped[List["Phone"]] = relationship(
         "Phone", back_populates="contact", passive_deletes=True
@@ -74,7 +74,7 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
 
 class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     phone_type: Mapped[str] = lexicon_term(nullable=False)
@@ -101,14 +101,14 @@ class Email(Base, AutoBaseMixin, ReleaseMixin):
 
 class Address(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
     address_line_1: Mapped[str] = mapped_column(String(255), nullable=False)
     address_line_2: Mapped[str | None] = mapped_column(String(255), nullable=True)
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
-    country: Mapped[str] = lexicon_term(nullable=False, default="United States")
+    country: Mapped[str] = lexicon_term(default="United States", nullable=False)
     address_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(
