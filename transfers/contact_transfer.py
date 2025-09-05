@@ -67,7 +67,7 @@ def transfer_contacts(session):
             add_first_contact(session, row, thing)
             session.commit()
             session.flush()
-            print(f'added first contact for PointID {row.PointID}')
+            print(f"added first contact for PointID {row.PointID}")
         except Exception as e:
             print(
                 f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
@@ -78,7 +78,7 @@ def transfer_contacts(session):
             add_second_contact(session, row, thing)
             session.commit()
             session.flush()
-            print(f'added second contact for PointID {row.PointID}')
+            print(f"added second contact for PointID {row.PointID}")
         except Exception as e:
             print(
                 f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
@@ -218,7 +218,6 @@ def add_second_contact(session, row, thing):
         )
 
 
-
 def _make_contact_and_assoc(session, data, thing):
     CreateContact.model_validate(data)
 
@@ -231,4 +230,6 @@ def _make_contact_and_assoc(session, data, thing):
     session.add(assoc)
     session.add(contact)
     return contact
+
+
 # ============= EOF =============================================
