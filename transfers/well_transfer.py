@@ -46,7 +46,9 @@ def transfer_wells(session, limit=None):
 
     n = len(wdf)
     start_time = time.time()
-    results = {"n": n, }
+    results = {
+        "n": n,
+    }
     made_things = []
     for i, row in enumerate(wdf.itertuples()):
         if limit and i >= limit:
