@@ -66,7 +66,7 @@ def main_transfer():
 
     cleanup_wells_flag = False
 
-    limit = 1000
+    limit = 500
     with session_ctx() as sess:
 
         if init:
@@ -77,21 +77,21 @@ def main_transfer():
             transfer_wells(sess, limit)
             transfer_wellscreens(sess)
         #
-        # if init or transfer_spring_flag:
-        #     message("TRANSFERRING SPRINGS")
-        #     transfer_springs(sess, limit)
-        #
-        # if init or transfer_perennial_stream_flag:
-        #     message("TRANSFERRING PERENNIAL STREAMS")
-        #     transfer_perennial_stream(sess, limit)
-        #
-        # if init or transfer_ephemeral_stream_flag:
-        #     message("TRANSFERRING EPHEMERAL STREAMS")
-        #     transfer_ephemeral_stream(sess, limit)
-        #
-        # if init or transfer_met_flag:
-        #     message("TRANSFERRING METEOROLOGICAL")
-        #     transfer_met(sess, limit)
+        if init or transfer_spring_flag:
+            message("TRANSFERRING SPRINGS")
+            transfer_springs(sess, limit)
+
+        if init or transfer_perennial_stream_flag:
+            message("TRANSFERRING PERENNIAL STREAMS")
+            transfer_perennial_stream(sess, limit)
+
+        if init or transfer_ephemeral_stream_flag:
+            message("TRANSFERRING EPHEMERAL STREAMS")
+            transfer_ephemeral_stream(sess, limit)
+
+        if init or transfer_met_flag:
+            message("TRANSFERRING METEOROLOGICAL")
+            transfer_met(sess, limit)
 
         if init or transfer_contacts_flag:
             message("TRANSFERRING CONTACTS")
