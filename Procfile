@@ -1,1 +1,1 @@
-web: gunicorn -b :8080 entrypoint:app -k uvicorn.workers.UvicornWorker
+web: gunicorn -b :8080 transfers.entrypoint:app -k uvicorn.workers.UvicornWorker

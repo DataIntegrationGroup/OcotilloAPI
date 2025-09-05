@@ -24,6 +24,7 @@ migrate.sh
 launcher.sh
 gcs_credentials.json
 transfers/data/assets*
+set_secrets.sh
 
 # deployment files
 app.yaml
