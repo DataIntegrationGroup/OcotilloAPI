@@ -22,10 +22,12 @@ from transfers.well_transfer import transfer_wells
 app = FastAPI(title="Transfer Service")
 
 
-@app.get("/wells")
-async def wells(session: session_dependency):
+@app.post("/wells")
+async def wells(session: session_dependency,
+                start_index: int,
+                limit: int=25, ):
 
-    results = transfer_wells(session, limit=50)
+    results = transfer_wells(session, start_index=start_index, limit=limit)
     return results
 
 

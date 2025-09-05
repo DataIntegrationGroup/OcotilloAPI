@@ -36,13 +36,14 @@ from transfers.util import (
 ADDED = []
 
 
-def transfer_wells(session, limit=None):
+def transfer_wells(session, start_index=0, limit=0):
     wdf = read_csv("WellData")
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+    wdf = wdf.iloc[start_index:start_index+limit]
 
     n = len(wdf)
     start_time = time.time()
