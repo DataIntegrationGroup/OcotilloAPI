@@ -21,7 +21,6 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
-from services.crud_helper import model_adder
 from schemas.thing import CreateWellScreen
 from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
@@ -141,10 +140,14 @@ def transfer_wellscreens(session, limit=None):
             # "screen_type": row.ScreenType,
             "screen_description": row.ScreenDescription,
             "release_status": "draft",
+            "nma_pk_wellscreens": row.GlobalID,
         }
         try:
-            model = CreateWellScreen.model_validate(well_screen_data)
-            model_adder(session, WellScreen, model)
+            # TODO: add validation logic here to ensure no overlapping screens for the same well
+            CreateWellScreen.model_validate(well_screen_data)
+            well_screen = WellScreen(**well_screen_data)
+            session.add(well_screen)
+            session.commit()
         except ValidationError as e:
             print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
             continue

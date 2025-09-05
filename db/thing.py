@@ -15,7 +15,7 @@
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
@@ -98,22 +98,24 @@ class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
 
 
 class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
-    thing_id = Column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    thing_id: Mapped[int] = mapped_column(
+        ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
-    screen_depth_top = Column(
-        Float, nullable=False, info={"unit": "feet below ground surface"}
+    screen_depth_top: Mapped[float] = mapped_column(
+        info={"unit": "feet below ground surface"}, nullable=True
     )
-    screen_depth_bottom = Column(
-        Float, nullable=False, info={"unit": "feet below ground surface"}
+    screen_depth_bottom: Mapped[float] = mapped_column(
+        info={"unit": "feet below ground surface"}, nullable=True
     )
-    screen_type = lexicon_term()  # e.g., "PVC", "Steel", etc.
+    screen_type: Mapped[str] = lexicon_term(nullable=True)  # e.g., "PVC", "Steel", etc.
 
-    screen_description = Column(
-        String(1000), nullable=True, info={"unit": "description of the screen"}
+    screen_description: Mapped[str] = mapped_column(
+        String(1000), info={"unit": "description of the screen"}, nullable=True
     )
+    nma_pk_wellscreens: Mapped[str] = mapped_column(String(100), nullable=True)
+
     # Define a relationship to well if needed
-    thing = relationship("Thing")
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 # TODO: this could be the model used to handle AMP monitoring

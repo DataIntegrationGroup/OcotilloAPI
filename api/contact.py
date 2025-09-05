@@ -46,6 +46,7 @@ from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.contact_helper import (
     add_contact,
 )
+from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -106,6 +107,18 @@ def database_error_handler(
             "msg": f"Contact with ID {payload.contact_id} not found.",
             "type": "value_error",
             "input": {"contact_id": payload.contact_id},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "contact" violates foreign key constraint "contact_contact_type_fkey"'
+    ):
+        valid_terms = get_terms_by_category("contact_type")
+        valid_contact_types_for_msg = " | ".join(valid_terms)
+        detail = {
+            "loc": ["body", "contact_type"],
+            "msg": f"Invalid contact_type. Valid terms are: {valid_contact_types_for_msg}",
+            "type": "value_error",
+            "input": {"contact_type": payload.contact_type},
         }
 
     raise PydanticStyleException(status_code=status.HTTP_409_CONFLICT, detail=[detail])
@@ -314,7 +327,56 @@ async def update_contact(
     :param session: Database session
     :return: Updated contact response
     """
-    return model_patcher(session, Contact, contact_id, contact_data, user=user)
+    contact = simple_get_by_id(session, Contact, contact_id)
+
+    """
+    if new name is set to None, new organization is unset, and existing organization is already None raise an error
+    if new organization is set to None, new name is unset, and existing name is already None raise an error
+
+    both new name and new organization cannot be set to None - this is a schema restriction
+    """
+    # exclude unsets so only intentional Nones are evaluated
+    payload_excluding_unsets = contact_data.model_dump(exclude_unset=True)
+
+    if (
+        contact.organization is None
+        and payload_excluding_unsets.get("name", "unset") is None
+        and payload_excluding_unsets.get("organization", "unset") == "unset"
+    ):
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "name"],
+                    "msg": "name cannot be set to None because organization is already None.",
+                    "type": "value_error",
+                    "input": {"name": payload_excluding_unsets.get("name")},
+                }
+            ],
+        )
+    elif (
+        contact.name is None
+        and payload_excluding_unsets.get("organization", "unset") is None
+        and payload_excluding_unsets.get("name", "unset") == "unset"
+    ):
+        raise PydanticStyleException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[
+                {
+                    "loc": ["body", "organization"],
+                    "msg": "organization cannot be set to None because name is already None.",
+                    "type": "value_error",
+                    "input": {
+                        "organization": payload_excluding_unsets.get("organization")
+                    },
+                }
+            ],
+        )
+
+    try:
+        return model_patcher(session, Contact, contact_id, contact_data, user=user)
+    except ProgrammingError as e:
+        database_error_handler(contact_data, e)
 
 
 # ====== GET ===================================================================

@@ -262,6 +262,8 @@ def contact(water_well_thing):
             release_status="private",
             name="Test Contact",
             role="Owner",
+            contact_type="Primary",
+            organization="Test Organization",
         )
         session.add(contact)
         session.commit()
@@ -334,6 +336,8 @@ def second_contact():
             release_status="private",
             name="Test Second Contact",
             role="Owner",
+            contact_type="Primary",
+            organization=None,
         )
         session.add(contact)
         session.commit()
@@ -398,6 +402,26 @@ def second_address(second_contact):
         session.refresh(address)
         yield address
         session.delete(address)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def third_contact():
+    with session_ctx() as session:
+        contact = Contact(
+            release_status="private",
+            name=None,
+            role="Owner",
+            contact_type="Primary",
+            organization="Third Organization",
+        )
+        session.add(contact)
+        session.commit()
+        session.refresh(contact)
+
+        yield contact
+
+        session.delete(contact)
         session.commit()
 
 
