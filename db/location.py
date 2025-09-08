@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import datetime
+
 from geoalchemy2 import Geometry, WKBElement
 from geoalchemy2.shape import to_shape
+
+from uuid import UUID
 
 from sqlalchemy import (
     Column,
@@ -26,25 +30,39 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
 
 class Location(Base, AutoBaseMixin, ReleaseMixin):
-    # name = Column(String(100), nullable=True)
-    # description = Column(String(255), nullable=True)
-    # visible = Column(Boolean, default=False, nullable=False)
     __versioned__ = {}
 
-    name = mapped_column(String(255), nullable=True)
-    notes = mapped_column(Text, nullable=True)
+    nma_pk_location: Mapped[UUID] = mapped_column(
+        String(36), nullable=True, unique=True
+    )
+    description: Mapped[str] = mapped_column
+    name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINTZ", srid=4326, spatial_index=True)
     )
 
-    state = lexicon_term(nullable=True)
-    county = lexicon_term(nullable=True)
-    quad_name = mapped_column(String(100), nullable=True)
+    state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
+    county: Mapped[str] = lexicon_term(nullable=True)
+    quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # --- Relationship Definitions ---
+    thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
+        back_populates="location", cascade="all, delete-orphan"
+    )
+
+    # --- Proxy Definitions ---
+    things: AssociationProxy[list["Thing"]] = association_proxy(
+        "thing_associations", "thing"
+    )
 
     @property
     def latlon(self):
@@ -53,23 +71,26 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):
-    location_id = Column(
-        Integer, ForeignKey("location.id", ondelete="CASCADE"), primary_key=True
+    location_id: Mapped[int] = mapped_column(
+        ForeignKey("location.id", ondelete="CASCADE"), primary_key=True
     )
-    thing_id = Column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), primary_key=True
+    thing_id: Mapped[int] = mapped_column(
+        ForeignKey("thing.id", ondelete="CASCADE"), primary_key=True
     )
 
     # REFACTOR TODO: when refactoring/updating location/thing schemas and tests, ensure timezone is UTC
-    effective_start = Column(
+    effective_start: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.timezone("UTC", func.now()),
     )
-    effective_end = Column(DateTime(timezone=True), nullable=True)
+    effective_end: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    location = relationship("Location")
-    thing = relationship("Thing")
+    # --- Relationship Definitions ---
+    location: Mapped["Location"] = relationship(back_populates="thing_associations")
+    thing: Mapped["Thing"] = relationship(back_populates="location_associations")
 
 
 # ============= EOF =============================================
