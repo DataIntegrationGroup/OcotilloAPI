@@ -39,8 +39,9 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     # visible = Column(Boolean, default=False, nullable=False)
     __versioned__ = {}
 
+    nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True, unique=True)
+    description: Mapped[str] = mapped_column
     name: Mapped[str] = mapped_column(String(255), nullable=True)
-    notes: Mapped[str] = mapped_column(Text, nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINTZ", srid=4326, spatial_index=True)
     )
@@ -48,6 +49,8 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     state: Mapped[str] = lexicon_term(nullable=True, default = "New Mexico")
     county: Mapped[str] = lexicon_term(nullable=True)
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
 
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
