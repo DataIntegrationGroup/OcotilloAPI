@@ -26,17 +26,17 @@ from sqlalchemy import (
     DateTime,
     func,
     Text,
+    UUID,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+
+from db import Thing
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
 
 class Location(Base, AutoBaseMixin, ReleaseMixin):
-    # name = Column(String(100), nullable=True)
-    # description = Column(String(255), nullable=True)
-    # visible = Column(Boolean, default=False, nullable=False)
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(
