@@ -18,6 +18,8 @@ import datetime
 from geoalchemy2 import Geometry, WKBElement
 from geoalchemy2.shape import to_shape
 
+from uuid import UUID
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -26,7 +28,6 @@ from sqlalchemy import (
     DateTime,
     func,
     Text,
-    UUID,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
