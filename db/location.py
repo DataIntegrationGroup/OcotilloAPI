@@ -28,6 +28,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
@@ -47,6 +48,15 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     state: Mapped[str] = lexicon_term(nullable=True, default = "New Mexico")
     county: Mapped[str] = lexicon_term(nullable=True)
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
+
+    # --- Relationship Definitions ---
+    thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
+        back_populates="location",
+        cascade="all, delete-orphan"
+    )
+
+    # --- Proxy Definitions ---
+    things: AssociationProxy[list["Thing"]] = association_proxy("thing_associations", "thing")
 
     @property
     def latlon(self):
@@ -75,8 +85,9 @@ class LocationThingAssociation(Base, AutoBaseMixin):
         nullable=True
     )
 
-    location = relationship("Location")
-    thing = relationship("Thing")
+    # --- Relationship Definitions ---
+    location: Mapped["Location"] = relationship(back_populates= "thing_associations")
+    thing: Mapped["Thing"] = relationship(back_populates = "location_associations")
 
 
 # ============= EOF =============================================
