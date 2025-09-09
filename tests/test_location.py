@@ -81,7 +81,11 @@ def test_update_location(location):
         "notes": "these are some patched notes",
         "point": "POINT Z (10.1 20.2 0)",
         "release_status": "draft",
-        "name": "patched name",
+        "elevation_accuracy": 2.0,
+        "elevation_method": "Total Station",
+        "coordinate_accuracy": 10.0,
+        "coordinate_accuracy_unit": "ft",
+        "coordinate_method": "Total Station",
     }
     response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
