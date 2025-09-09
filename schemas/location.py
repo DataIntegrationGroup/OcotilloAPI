@@ -38,6 +38,11 @@ class CreateLocation(BaseCreateModel):
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     release_status: str | None = "draft"
+    elevation_accuracy: float | None = None
+    elevation_method: str | None = None
+    coordinate_accuracy: float | None = None
+    coordinate_accuracy_unit: str | None = None
+    coordinate_method: str | None = None
 
     @classmethod
     @field_validator("point")
