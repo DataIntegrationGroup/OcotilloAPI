@@ -69,6 +69,7 @@ class LocationResponse(BaseResponseModel):
     """
 
     name: str | None
+    notes: str | None
     point: str
     release_status: str | None
     elevation_accuracy: float | None
