@@ -21,8 +21,12 @@ from transfers.asset_transfer import transfer_assets_testing
 from transfers.contact_transfer import transfer_contacts
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
-from transfers.thing_transfer import transfer_met, transfer_ephemeral_stream, transfer_perennial_stream, \
-    transfer_springs
+from transfers.thing_transfer import (
+    transfer_met,
+    transfer_ephemeral_stream,
+    transfer_perennial_stream,
+    transfer_springs,
+)
 from transfers.transfer import message
 from transfers.waterlevels_transfer import transfer_water_levels
 from transfers.well_transfer import transfer_wells, cleanup_wells
@@ -32,70 +36,70 @@ app = FastAPI(title="Transfer Service")
 
 @app.post("/wells")
 async def wells(
-        session: session_dependency,
-        start_index: int,
-        limit: int = 25,
+    session: session_dependency,
+    start_index: int,
+    limit: int = 25,
 ):
     results = transfer_wells(session, start_index=start_index, limit=limit)
     return results
 
 
-@app.post('/spring')
+@app.post("/spring")
 async def _(session: session_dependency, limit: int = 25):
     message("TRANSFERRING SPRINGS")
     transfer_springs(session, limit)
 
 
-@app.post('/perennial_stream')
+@app.post("/perennial_stream")
 async def _(session: session_dependency, limit: int = 25):
     message("TRANSFERRING PERENNIAL STREAMS")
     transfer_perennial_stream(session, limit)
 
 
-@app.post('/ephemeral_stream')
+@app.post("/ephemeral_stream")
 async def _(session: session_dependency, limit: int = 25):
     message("TRANSFERRING EPHEMERAL STREAMS")
     transfer_ephemeral_stream(session, limit)
 
 
-@app.post('/met')
+@app.post("/met")
 async def _(session: session_dependency, limit: int = 25):
     message("TRANSFERRING METEOROLOGICAL")
     transfer_met(session, limit)
 
 
-@app.post('/contacts')
+@app.post("/contacts")
 async def _(session: session_dependency):
     message("TRANSFERRING CONTACTS")
     transfer_contacts(session)
 
 
-@app.post('/waterlevels')
+@app.post("/waterlevels")
 async def _(session: session_dependency):
     message("TRANSFERRING WATER LEVELS")
     transfer_water_levels(session)
 
 
-@app.post('/link_ids')
+@app.post("/link_ids")
 async def _(session: session_dependency):
     message("TRANSFERRING LINK IDS")
     transfer_link_ids(session)
     transfer_link_ids_welldata(session)
 
 
-@app.post('assets')
+@app.post("assets")
 async def _transfer_assets(session: session_dependency):
     message("TRANSFERRING ASSETS")
     transfer_assets_testing(session)
 
 
-@app.post('/groups')
+@app.post("/groups")
 async def _transfer_groups(session: session_dependency):
     message("TRANSFERRING GROUPS")
     transfer_groups(session)
 
 
-@app.post('/cleanup_wells')
+@app.post("/cleanup_wells")
 async def _cleanup_wells(session: session_dependency):
     cleanup_wells(session)
 
@@ -103,5 +107,6 @@ async def _cleanup_wells(session: session_dependency):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
 
 # ============= EOF =============================================
