@@ -135,9 +135,17 @@ def test_get_locations(location):
         "+00:00", "Z"
     )
     assert data["items"][0]["name"] == location.name
+    assert data["items"][0]["notes"] == location.notes
     assert data["items"][0]["point"] == to_shape(location.point).wkt
     assert data["items"][0]["release_status"] == location.release_status
-
+    assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
+    assert data["items"][0]["elevation_method"] == location.elevation_method
+    assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
+    assert data["items"][0]["coordinate_accuracy_unit"] == location.coordinate_accuracy_unit
+    assert data["items"][0]["coordinate_method"] == location.coordinate_method
+    assert data["items"][0]["state"] == location.state
+    assert data["items"][0]["county"] == location.county
+    assert data["items"][0]["quad_name"] == location.quad_name
 
 def test_get_location_by_id(location):
     response = client.get(f"/location/{location.id}")
