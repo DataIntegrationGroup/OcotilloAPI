@@ -93,7 +93,7 @@ dependencies = [
     "sqlalchemy-searchable==2.1.0",
     "sqlalchemy-utils==0.41.2",
     "starlette==0.47.3",
-    "typing-extensions==4.14.1",
+    "typing-extensions==4.15.0",
     "typing-inspection==0.4.1",
     "tzdata==2025.2",
     "urllib3==2.5.0",
