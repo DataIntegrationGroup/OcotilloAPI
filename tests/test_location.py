@@ -91,9 +91,15 @@ def test_update_location(location):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == location.id
+    assert data["name"] == payload["name"]
+    assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
     assert data["release_status"] == payload["release_status"]
-    assert data["name"] == payload["name"]
+    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    assert data["elevation_method"] == payload["elevation_method"]
+    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    assert data["coordinate_accuracy_unit"] == payload["coordinate_accuracy_unit"]
+    assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
     cleanup_patch_test(Location, payload, location)
