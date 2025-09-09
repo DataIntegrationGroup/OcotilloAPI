@@ -117,8 +117,6 @@ class UpdateLocation(BaseUpdateModel):
     coordinate_accuracy: float | None = None
     coordinate_accuracy_unit: str | None = None
     coordinate_method: str | None = None
-    county: str | None = None
-    quad_name: str | None = None
 
 
 # ============= EOF =============================================
