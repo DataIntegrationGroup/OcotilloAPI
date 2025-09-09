@@ -20,7 +20,7 @@ def location():
             coordinate_method="GPS",
             state="New Mexico",
             county="some NM county",
-            quad_name="some NM quad"
+            quad_name="some NM quad",
         )
         session.add(loc)
         session.commit()

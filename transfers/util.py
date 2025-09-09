@@ -208,10 +208,8 @@ def make_location(row: pd.Series) -> Location:
 
     location = Location(
         nma_pk_location=row.LocationId,
-
         # TODO: determine if PointID should map to location.name or thing.name or if the Location table needs a name field at all.
         name=row.PointID,
-
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
@@ -220,7 +218,7 @@ def make_location(row: pd.Series) -> Location:
         coordinate_accuracy=row.CoordinateAccuracy,
         coordinate_method=row.CoordinateMethod,
         nma_coordinate_notes=row.CoordinateNotes,
-        nma_notes_location=row.LocationNotes
+        nma_notes_location=row.LocationNotes,
     )
     return location
 
