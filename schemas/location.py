@@ -65,9 +65,14 @@ class LocationResponse(BaseResponseModel):
     Response schema for sample location details.
     """
 
-    name: str | None = None
+    name: str | None
     point: str
-    release_status: str
+    release_status: str | None
+    elevation_accuracy: float | None
+    elevation_method: str | None
+    coordinate_accuracy: float | None
+    coordinate_accuracy_unit: str | None
+    coordinate_method: str | None
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
