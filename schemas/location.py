@@ -43,9 +43,6 @@ class CreateLocation(BaseCreateModel):
     coordinate_accuracy: float | None = None
     coordinate_accuracy_unit: str | None = None
     coordinate_method: str | None = None
-    state: str | None = None
-    county: str | None = None
-    quad_name: str | None = None
 
     @classmethod
     @field_validator("point")
