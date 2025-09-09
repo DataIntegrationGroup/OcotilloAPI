@@ -144,7 +144,9 @@ async def get_sample_by_id(
 # ======= DELETE ===============================================================
 
 
-@router.delete("/{sample_id}", summary="Delete Sample by ID", operation_id="delete_sample")
+@router.delete(
+    "/{sample_id}", summary="Delete Sample by ID", operation_id="delete_sample"
+)
 async def delete_sample_by_id(
     sample_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:

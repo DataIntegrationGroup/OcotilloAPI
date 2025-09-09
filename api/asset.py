@@ -202,7 +202,9 @@ async def update_asset(
 # DELETE =======================================================================
 
 
-@router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT, operation_id="delete_asset")
+@router.delete(
+    "/{asset_id}", status_code=HTTP_204_NO_CONTENT, operation_id="delete_asset"
+)
 async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):

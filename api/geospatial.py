@@ -59,7 +59,11 @@ async def get_geospatial(
         return get_location_shapefile(session, thing_type, group)
 
 
-@router.get("/project-area/{group_id}", summary="Get project area for group", operation_id="get_project_area")
+@router.get(
+    "/project-area/{group_id}",
+    summary="Get project area for group",
+    operation_id="get_project_area",
+)
 async def get_project_area(
     session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:

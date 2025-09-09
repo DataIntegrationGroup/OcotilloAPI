@@ -147,7 +147,12 @@ def database_error_handler(
 # GET ==========================================================================
 
 
-@router.get("/water-well", summary="Get all water wells", status_code=HTTP_200_OK, operation_id="get_water_wells")
+@router.get(
+    "/water-well",
+    summary="Get all water wells",
+    status_code=HTTP_200_OK,
+    operation_id="get_water_wells",
+)
 async def get_water_wells(
     session: session_dependency,
     request: Request,
@@ -164,7 +169,10 @@ async def get_water_wells(
 
 
 @router.get(
-    "/water-well/{thing_id}", summary="Get water well by ID", status_code=HTTP_200_OK, operation_id="get_water_well_by_id"
+    "/water-well/{thing_id}",
+    summary="Get water well by ID",
+    status_code=HTTP_200_OK,
+    operation_id="get_water_well_by_id",
 )
 async def get_well_by_id(
     thing_id: int, session: session_dependency, request: Request
@@ -245,7 +253,12 @@ async def get_springs(
     return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
 
 
-@router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK, operation_id="get_spring_by_id")
+@router.get(
+    "/spring/{thing_id}",
+    summary="Get spring by ID",
+    status_code=HTTP_200_OK,
+    operation_id="get_spring_by_id",
+)
 async def get_spring_by_id(
     thing_id: int, session: session_dependency, request: Request
 ) -> SpringResponse:
@@ -275,7 +288,11 @@ async def get_thing_id_links(
     return paginate(query=sql, conn=session)
 
 
-@router.get("/id-link/{link_id}", summary="Get thing links by link ID", operation_id="get_thing_id_link_by_id")
+@router.get(
+    "/id-link/{link_id}",
+    summary="Get thing links by link ID",
+    operation_id="get_thing_id_link_by_id",
+)
 async def get_thing_id_links(
     link_id: int,
     session: session_dependency,
@@ -286,7 +303,9 @@ async def get_thing_id_links(
     return simple_get_by_id(session, ThingIdLink, link_id)
 
 
-@router.get("", summary="Get all things", status_code=HTTP_200_OK, operation_id="get_things")
+@router.get(
+    "", summary="Get all things", status_code=HTTP_200_OK, operation_id="get_things"
+)
 async def get_things(
     session: session_dependency,
     # thing_id: int = None,
@@ -313,7 +332,12 @@ async def get_things(
     )
 
 
-@router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK, operation_id="get_thing_by_id")
+@router.get(
+    "/{thing_id}",
+    summary="Get thing by ID",
+    status_code=HTTP_200_OK,
+    operation_id="get_thing_by_id",
+)
 async def get_thing_by_id(
     thing_id: int, session: session_dependency, request: Request
 ) -> ThingResponse:
@@ -325,7 +349,11 @@ async def get_thing_by_id(
     return thing
 
 
-@router.get("/{thing_id}/id-link", summary="Get thing links by thing ID", operation_id="get_thing_links_by_thing_id")
+@router.get(
+    "/{thing_id}/id-link",
+    summary="Get thing links by thing ID",
+    operation_id="get_thing_links_by_thing_id",
+)
 async def get_thing_id_links(
     thing_id: int,
     session: session_dependency,
@@ -342,7 +370,10 @@ async def get_thing_id_links(
 
 
 @router.post(
-    "/id-link", status_code=HTTP_201_CREATED, summary="Create a new thing link", operation_id="create_thing_id_link"
+    "/id-link",
+    status_code=HTTP_201_CREATED,
+    summary="Create a new thing link",
+    operation_id="create_thing_id_link",
 )
 async def create_thing_id_link(
     link_data: CreateThingIdLink,
@@ -464,7 +495,10 @@ async def update_spring(
 
 
 @router.patch(
-    "/id-link/{link_id}", summary="Update thing link by ID", status_code=HTTP_200_OK, operation_id="update_thing_id_link"
+    "/id-link/{link_id}",
+    summary="Update thing link by ID",
+    status_code=HTTP_200_OK,
+    operation_id="update_thing_id_link",
 )
 async def update_thing_id_link(
     link_id: int,
@@ -498,7 +532,10 @@ async def update_well_screen(
 
 
 @router.delete(
-    "/{thing_id}", summary="Delete thing by ID", status_code=HTTP_204_NO_CONTENT, operation_id="delete_thing"
+    "/{thing_id}",
+    summary="Delete thing by ID",
+    status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_thing",
 )
 async def delete_thing(
     thing_id: int,

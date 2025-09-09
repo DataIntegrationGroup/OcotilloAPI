@@ -24,7 +24,12 @@ from sqlalchemy import select
 router = APIRouter(prefix="/geochronology", tags=["geochronology"])
 
 
-@router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED, operation_id="create_geochronology_age")
+@router.post(
+    "/age",
+    tags=["geochronology"],
+    status_code=status.HTTP_201_CREATED,
+    operation_id="create_geochronology_age",
+)
 async def create_age(
     age: CreateGeochronologyAge, session: Session = Depends(get_db_session)
 ):

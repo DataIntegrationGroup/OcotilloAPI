@@ -39,7 +39,12 @@ router = APIRouter(
 # POST =========================================================================
 
 
-@router.post("", summary="Create a new group", status_code=HTTP_201_CREATED, operation_id="create_group")
+@router.post(
+    "",
+    summary="Create a new group",
+    status_code=HTTP_201_CREATED,
+    operation_id="create_group",
+)
 async def create_group(
     group_data: CreateGroup, session: session_dependency, user: admin_dependency
 ) -> GroupResponse:
@@ -97,7 +102,9 @@ async def get_group_by_id(group_id: int, session: session_dependency) -> GroupRe
 
 
 # ============= Patch =============================================
-@router.patch("/{group_id}", summary="Update a group by ID", operation_id="update_group")
+@router.patch(
+    "/{group_id}", summary="Update a group by ID", operation_id="update_group"
+)
 async def update_group(
     user: editor_dependency,
     group_id: int,
@@ -112,7 +119,10 @@ async def update_group(
 
 # DELETE =======================================================================
 @router.delete(
-    "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT, operation_id="delete_group"
+    "/{group_id}",
+    summary="Delete a group by ID",
+    status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_group",
 )
 async def delete_group(
     user: admin_dependency, group_id: int, session: session_dependency

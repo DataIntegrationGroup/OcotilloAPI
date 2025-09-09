@@ -177,7 +177,9 @@ async def get_location_by_id(
     return location
 
 
-@router.delete("/{location_id}", summary="Delete location by ID", operation_id="delete_location")
+@router.delete(
+    "/{location_id}", summary="Delete location by ID", operation_id="delete_location"
+)
 async def delete_location(
     location_id: int, session: session_dependency, user: admin_dependency
 ) -> Response:

@@ -50,7 +50,9 @@ async def add_sensor(
 # ====== PATCH =================================================================
 
 
-@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="update_sensor")
+@router.patch(
+    "/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="update_sensor"
+)
 async def update_sensor(
     sensor_id: int,
     sensor_data: UpdateSensor,
@@ -160,7 +162,9 @@ async def get_sensors(
     return paginate(conn=session, query=sql)
 
 
-@router.get("/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="get_sensor_by_id")
+@router.get(
+    "/{sensor_id}", status_code=status.HTTP_200_OK, operation_id="get_sensor_by_id"
+)
 async def get_sensor(
     sensor_id: int, session: session_dependency, user: viewer_dependency
 ) -> SensorResponse:
