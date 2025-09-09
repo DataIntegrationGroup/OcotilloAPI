@@ -56,7 +56,8 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
     elevation_accuracy: Mapped[float] = mapped_column(nullable=True)
     elevation_method: Mapped[str] = lexicon_term(nullable=True)
-    coordinate_accuracy: Mapped[str] = lexicon_term(nullable=True)
+    coordinate_accuracy: Mapped[float] = mapped_column(nullable=True)
+    coordinate_accuracy_unit: Mapped[str] = lexicon_term(nullable=True)
     coordinate_method: Mapped[str] = lexicon_term(nullable=True)
 
     # --- Relationship Definitions ---
