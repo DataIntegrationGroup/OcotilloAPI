@@ -77,7 +77,9 @@ class LocationResponse(BaseResponseModel):
     coordinate_accuracy: float | None
     coordinate_accuracy_unit: str | None
     coordinate_method: str | None
-    notes: str | None
+    state: str | None
+    county: str | None
+    quad_name: str | None
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
