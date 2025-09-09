@@ -111,6 +111,14 @@ class UpdateLocation(BaseUpdateModel):
     name: str | None = None
     notes: str | None = None
     point: str | None = None
+    release_status: str | None = None
+    elevation_accuracy: float | None = None
+    elevation_method: str | None = None
+    coordinate_accuracy: float | None = None
+    coordinate_accuracy_unit: str | None = None
+    coordinate_method: str | None = None
+    county: str | None = None
+    quad_name: str | None = None
 
 
 # ============= EOF =============================================
