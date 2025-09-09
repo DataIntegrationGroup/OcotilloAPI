@@ -43,8 +43,14 @@ def override_dependencies_fixture():
 def test_add_location():
     payload = {
         "name": "test location",
+        "notes": "these are some test notes",
         "point": "POINT Z (10.1 10.1 0)",
         "release_status": "draft",
+        "elevation_accuracy": 1.0,
+        "elevation_method": "GPS",
+        "coordinate_accuracy": 5.0,
+        "coordinate_accuracy_unit": "ft",
+        "coordinate_method": "GPS",
     }
     response = client.post("/location", json=payload)
 
@@ -53,8 +59,14 @@ def test_add_location():
     assert "id" in data
     assert "created_at" in data
     assert data["name"] == payload["name"]
+    assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
     assert data["release_status"] == payload["release_status"]
+    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    assert data["elevation_method"] == payload["elevation_method"]
+    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    assert data["coordinate_accuracy_unit"] == payload["coordinate_accuracy_unit"]
+    assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
     cleanup_post_test(Location, data["id"])
