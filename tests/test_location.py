@@ -77,6 +77,8 @@ def test_add_location():
 
 def test_update_location(location):
     payload = {
+        "name": "patched name",
+        "notes": "these are some patched notes",
         "point": "POINT Z (10.1 20.2 0)",
         "release_status": "draft",
         "name": "patched name",
