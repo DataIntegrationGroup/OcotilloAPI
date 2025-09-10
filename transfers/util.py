@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 import re
 from pathlib import Path
 import logging
@@ -26,12 +27,15 @@ import pandas as pd
 
 from db import Thing, Location
 
+log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)-8s] %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("transfers/transfer.log", mode="a", encoding="utf-8"),
+        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
     ],
 )
 logger = logging.getLogger(__name__)

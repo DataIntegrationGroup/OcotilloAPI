@@ -44,8 +44,8 @@ def erase_and_initalize(session: Session) -> None:
 
 
 def main_transfer():
-    logger.log("")
-    logger.log("Starting transfer\n")
+    logger.info("Starting transfer")
+    logger.info("")
 
     init = True
 
