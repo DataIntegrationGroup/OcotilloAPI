@@ -77,7 +77,7 @@ def test_add_groundwater_level_observation(sample, sensor):
         "measuring_point_height": 53,
         "sample_id": sample.id,
         "sensor_id": sensor.id,
-        "level_status": "normal",
+        "level_status": "Water level not affected by status",
         "observed_property": "groundwater level",
         "unit": "ft",
     }
