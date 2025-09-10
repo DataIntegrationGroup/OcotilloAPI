@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from db import Thing, Group
 from db.engine import session_ctx
-from transfers.util import read_csv
+from transfers.util import read_csv, logger
 
 
 def transfer_groups(
@@ -40,7 +40,7 @@ def transfer_groups(
                 sql = select(Thing).where(Thing.name.like(f"{prefix}%"))
                 records = session.scalars(sql).all()
                 if records:
-                    print(
+                    logger.info(
                         f"Adding {len(records)} things to group {group.name}, prefix {prefix}"
                     )
                     group.things = records

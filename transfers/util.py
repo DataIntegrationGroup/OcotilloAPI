@@ -15,7 +15,7 @@
 # ===============================================================================
 import re
 from pathlib import Path
-
+import logging
 import httpx
 import pyproj
 from shapely import Point
@@ -25,6 +25,16 @@ from sqlalchemy.orm import Session
 import pandas as pd
 
 from db import Thing, Location
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("transfers/transfer.log", mode="a", encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 TRANSFORMERS = {}
 
@@ -81,10 +91,6 @@ def extract_organization(alternate_id: str) -> str:
 def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids(session)
     return df[df["PointID"].isin(valid_point_ids)]
-
-
-def log(row, msg):
-    print(f"{row.PointID} {msg}")
 
 
 def convert_to_wgs84_vertical_datum(row, z):
@@ -145,14 +151,14 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
     }
 
     resp = httpx.get(url, params=params, timeout=15)
-    print(resp)
+    logger.info(resp)
     data = resp.json()
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        print("No quad found")
+        logger.warning(f"No quad name found for POINT ({lon} {lat})")
 
 
 def get_epqs_elevation(lon: float, lat: float) -> float:

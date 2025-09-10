@@ -19,7 +19,7 @@ import pandas as pd
 from db import Thing, ThingIdLink
 from transfers.util import (
     filter_to_valid_point_ids,
-    log,
+    logger,
     extract_organization,
     read_csv,
 )
@@ -34,12 +34,14 @@ def transfer_link_ids_welldata(session):
 
         # RULE: exclude rows where both ids are null
         if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            log(row, "Both OSEWellID and OSEWelltagID are null")
+            logger.warning(f"Both OSEWellID and OSEWelltagID are null for row {i}")
             continue
 
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
-            log(row, "Thing not found")
+            logger.warning(
+                f"Thing not found for row {i} PointID {row.PointID}. Skipping link ids."
+            )
             continue
 
         for aid, klass, regex in (
@@ -51,16 +53,20 @@ def transfer_link_ids_welldata(session):
             ),  # TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
-                log(row, f"{klass} is null")
+                logger.warning(f"{klass} is null for row {i}")
                 continue
 
             # RULE: exclude any id that == 'X', '?'
             if aid.strip().lower() in ("x", "?", "exempt"):
-                log(row, f'{klass} is "X", "?", or "exempt", id={aid}')
+                logger.warning(
+                    f'{klass} is "X", "?", or "exempt", id={aid} for row {i}'
+                )
                 continue
 
             if regex and not re.match(regex, aid):
-                log(row, f"{klass} id does not match regex {regex}, id={aid}")
+                logger.warning(
+                    f"{klass} id does not match regex {regex}, id={aid} for row {i}"
+                )
                 continue
 
             link_id = ThingIdLink()
@@ -87,7 +93,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    print("adding link id: ", link_id)
+    logger.info(f"adding link id: {link_id}")
     session.add(link_id)
 
 
@@ -103,7 +109,7 @@ def add_link_site_id(session, row, thing):
     if not re.match(r"^\d{15}$", site_id):
         # TODO: lets make a sweet function for flagging issues
         # flag for interrogation
-        log(row, f"alternate id {site_id} is not a valid USGS site id")
+        logger.warning(f"alternate id {site_id} is not a valid USGS site id")
         return
 
     link_id.alternate_id = row.SiteID
@@ -131,7 +137,7 @@ def add_link_plss(session, row, thing):
     alternate_id = f"T{township}{township_direction}.R{_range}{range_direction}.S{section}{section_direction}"
     if not re.match(r"T\d{1,3}.R\d{1,3}.S\d{1,3}", alternate_id):
         # flag for interrogation
-        log(row, f"alternate id {alternate_id} is not a valid PLSS id")
+        logger.warning(f"alternate id {alternate_id} is not a valid PLSS")
         return
     link_id.alternate_id = alternate_id
     link_id.alternate_organization = "PLSS"
@@ -149,10 +155,11 @@ def transfer_link_ids(session, site_type="GW"):
     for i, row in enumerate(ldf.itertuples()):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
-            # TODO: lets make a sweet function for flagging issues
-            # print(f"Thing with PointID {row.PointID} not foaund. Skipping link id.")
+            logger.warning(
+                f"Thing with PointID {row.PointID} not found. Skipping link id."
+            )
             continue
-        print(
+        logger.info(
             f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
             f"b={row.AlternateSiteID2}"
         )
