@@ -152,6 +152,13 @@ def test_get_location_by_id(location):
     assert data["name"] == location.name
     assert data["point"] == to_shape(location.point).wkt
     assert data["release_status"] == location.release_status
+    assert data["elevation_accuracy"] == location.elevation_accuracy
+    assert data["elevation_method"] == location.elevation_method
+    assert data["coordinate_accuracy"] == location.coordinate_accuracy
+    assert data["coordinate_method"] == location.coordinate_method
+    assert data["state"] == location.state
+    assert data["county"] == location.county
+    assert data["quad_name"] == location.quad_name
 
 
 def test_get_sample_by_id_404_not_found(location):
