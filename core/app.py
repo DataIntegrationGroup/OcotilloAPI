@@ -18,7 +18,10 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
-from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
+from fastapi.openapi.docs import (
+    get_swagger_ui_html,
+    get_swagger_ui_oauth2_redirect_html,
+)
 from fastapi.openapi.utils import get_openapi
 
 from .initializers import init_db, init_lexicon
@@ -42,6 +45,7 @@ app = FastAPI(
     version=settings.version,
     lifespan=lifespan,
 )
+
 
 # --- full OpenAPI schema ---
 def full_openapi():
@@ -74,7 +78,11 @@ def public_openapi():
             # Recover the actual route handler
 
             route = next(
-                (r for r in app.routes if r.path == path and method.upper() in r.methods),
+                (
+                    r
+                    for r in app.routes
+                    if r.path == path and method.upper() in r.methods
+                ),
                 None,
             )
             if not route:
@@ -97,7 +105,11 @@ def public_openapi():
     def collect_refs(obj):
         if isinstance(obj, dict):
             for k, v in obj.items():
-                if k == "$ref" and isinstance(v, str) and v.startswith("#/components/schemas/"):
+                if (
+                    k == "$ref"
+                    and isinstance(v, str)
+                    and v.startswith("#/components/schemas/")
+                ):
                     referenced.add(v.split("/")[-1])
                 else:
                     collect_refs(v)
@@ -124,7 +136,7 @@ def public_openapi():
 
         collect_refs(model)
         # Add only new schemas we haven’t visited yet
-        to_visit |= (referenced - visited)
+        to_visit |= referenced - visited
 
     # Step 3: Filter components.schemas to only referenced ones
     if "components" in schema and "schemas" in schema["components"]:
@@ -147,7 +159,7 @@ CLIENT_ID = os.environ.get("AUTHENTIK_CLIENT_ID")
 @app.get("/docs-auth", include_in_schema=False)
 async def custom_swagger_ui():
     return get_swagger_ui_html(
-        openapi_url='/openapi-auth.json',
+        openapi_url="/openapi-auth.json",
         title="Swagger UI",
         oauth2_redirect_url="/docs-auth/oauth2-redirect",
         init_oauth={
@@ -156,7 +168,8 @@ async def custom_swagger_ui():
         },
     )
 
-@app.get('/openapi-auth.json', include_in_schema=False)
+
+@app.get("/openapi-auth.json", include_in_schema=False)
 async def get_openapi_auth():
     return full_openapi()
 
@@ -170,4 +183,6 @@ def public_route(func):
     """Mark a route as public for OpenAPI filtering."""
     setattr(func, "_is_public", True)
     return func
+
+
 # ============= EOF =============================================

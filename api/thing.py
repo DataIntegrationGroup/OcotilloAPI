@@ -271,6 +271,7 @@ async def get_thing_id_links(
 
     return paginate(query=sql, conn=session)
 
+
 @public_route
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
 async def get_thing_id_links(
