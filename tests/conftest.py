@@ -16,7 +16,6 @@ def location():
             elevation_accuracy=100,
             elevation_method="GPS",
             coordinate_accuracy=50,
-            coordinate_accuracy_unit="ft",
             coordinate_method="GPS",
             state="New Mexico",
             county="some NM county",

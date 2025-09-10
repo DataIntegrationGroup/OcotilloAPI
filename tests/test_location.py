@@ -49,7 +49,6 @@ def test_add_location():
         "elevation_accuracy": 1.0,
         "elevation_method": "GPS",
         "coordinate_accuracy": 5.0,
-        "coordinate_accuracy_unit": "ft",
         "coordinate_method": "GPS",
     }
     response = client.post("/location", json=payload)
@@ -65,7 +64,6 @@ def test_add_location():
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
-    assert data["coordinate_accuracy_unit"] == payload["coordinate_accuracy_unit"]
     assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
@@ -84,7 +82,6 @@ def test_update_location(location):
         "elevation_accuracy": 2.0,
         "elevation_method": "Total Station",
         "coordinate_accuracy": 10.0,
-        "coordinate_accuracy_unit": "ft",
         "coordinate_method": "Total Station",
     }
     response = client.patch(f"/location/{location.id}", json=payload)
@@ -98,7 +95,6 @@ def test_update_location(location):
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
-    assert data["coordinate_accuracy_unit"] == payload["coordinate_accuracy_unit"]
     assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
@@ -141,10 +137,6 @@ def test_get_locations(location):
     assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
     assert data["items"][0]["elevation_method"] == location.elevation_method
     assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
-    assert (
-        data["items"][0]["coordinate_accuracy_unit"]
-        == location.coordinate_accuracy_unit
-    )
     assert data["items"][0]["coordinate_method"] == location.coordinate_method
     assert data["items"][0]["state"] == location.state
     assert data["items"][0]["county"] == location.county

@@ -41,7 +41,6 @@ class CreateLocation(BaseCreateModel):
     elevation_accuracy: float | None = None
     elevation_method: str | None = None
     coordinate_accuracy: float | None = None
-    coordinate_accuracy_unit: str | None = None
     coordinate_method: str | None = None
 
     @classmethod
@@ -72,7 +71,6 @@ class LocationResponse(BaseResponseModel):
     elevation_accuracy: float | None
     elevation_method: str | None
     coordinate_accuracy: float | None
-    coordinate_accuracy_unit: str | None
     coordinate_method: str | None
     state: str | None
     county: str | None
@@ -112,7 +110,6 @@ class UpdateLocation(BaseUpdateModel):
     elevation_accuracy: float | None = None
     elevation_method: str | None = None
     coordinate_accuracy: float | None = None
-    coordinate_accuracy_unit: str | None = None
     coordinate_method: str | None = None
 
 
