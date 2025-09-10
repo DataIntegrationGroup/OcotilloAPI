@@ -18,7 +18,7 @@ def location():
             coordinate_accuracy=50,
             coordinate_method="GPS",
             state="New Mexico",
-            county="some NM county",
+            county="Socorro",
             quad_name="some NM quad",
         )
         session.add(loc)
