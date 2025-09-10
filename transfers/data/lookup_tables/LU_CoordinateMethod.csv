@@ -1,0 +1,9 @@
+CODE,MEANING,id
+D,Differentially corrected GPS,1
+F,Survey-grade global positioning system (SGPS),2
+G,"GPS, uncorrected",3
+M,Interpolated from map,4
+N,Interpolated from DEM,5
+R,Reported,6
+S,"Transit, theodolite, or other survey method",7
+U,Unknown,8

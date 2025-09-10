@@ -1,0 +1,25 @@
+CODE,MEANING,id,WebDataEntryVisible
+A,Airline measurement,1,1
+B,Analog or graphic recorder,2,0
+C,Calibrated airline measurement,3,0
+D,Differential GPS; especially applicable to surface expression of ground water,4,0
+E,Estimated,5,0
+F,Transducer,6,0
+G,Pressure-gage measurement,7,1
+H,Calibrated pressure-gage measurement,8,0
+L,Interpreted from geophysical logs,9,0
+M,Manometer,10,0
+N,Non-recording gage,11,0
+O,"Observed (required for F, N, and W water level status)",12,0
+P,Sonic water level meter (acoustic pulse),13,1
+R,"Reported, method not known",14,0
+S,Steel-tape measurement,15,1
+T,Electric tape measurement (E-probe),16,1
+U,Unknown (for legacy data only; not for new data entry),17,0
+V,Calibrated electric tape; accuracy of equipment has been checked,18,0
+W,Calibrated electric cable,19,0
+X,Uncalibrated electric cable,20,0
+Z,Other (explain in notes),21,0
+K,Continuous acoustic sounder,22,0
+ZZ,Measurement not attempted,23,1
+0,null placeholder,24,0

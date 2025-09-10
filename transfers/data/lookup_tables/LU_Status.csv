@@ -1,0 +1,6 @@
+CODE,MEANING,id
+A,Abandoned,1
+C,"Active, pumping well",2
+D,"Destroyed, exists but not usable",3
+I,"Inactive, exists but not used",4
+U,Unknown,5

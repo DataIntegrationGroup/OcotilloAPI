@@ -1,0 +1,9 @@
+CODE,MEANING,id
+A,Air-Rotary,1
+B,Bored or augered,2
+C,Cable-tool,3
+H,Hydraulic rotary (mud or water),4
+P,Air percussion,5
+R,Reverse rotary,6
+V,Driven,7
+Z,Other (explain in notes),8

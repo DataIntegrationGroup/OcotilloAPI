@@ -1,0 +1,15 @@
+CODE,MEANING,id
+A,"Open, unequipped well",1
+C,Commercial,2
+D,Domestic,3
+E,Power generation,4
+I,Irrigation,5
+L,Livestock,6
+M,Mining,7
+N,Industrial,8
+O,Observation,9
+P,Public supply,10
+S,Shared domestic,11
+T,Institutional,12
+U,Unknown,13
+X,Unused,14

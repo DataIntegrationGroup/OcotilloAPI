@@ -1,0 +1,24 @@
+CODE,MEANING,id,WebDataEntryVisible
+A,Water level affected by atmospheric pressure,1,0
+C,Water level was frozen (no level recorded).,2,1
+D,Site was dry,3,1
+E,Site was flowing recently.,4,1
+F,Site was flowing. Water level or head couldn't be measured w/out additional equipment.,5,1
+G,Nearby site that taps the same aquifer was flowing.,6,1
+H,Nearby site that taps the same aquifer had been flowing recently.,7,1
+I,Recharge water was being injected into the aquifer at this site.,8,0
+J,Recharge water was being injected into nearby site that taps the same aquifer.,9,0
+K,Water was cascading down the inside of the well.,10,1
+L,Water level was affected by brackish or saline water.,11,0
+M,Well was not in hydraulic contact w/formation (from source other than defined in USGS C714 or C93).,12,0
+N,Measurement was discontinued (no level recorded).,13,0
+O,Obstruction was encountered in the well (no level recorded),14,1
+P,Site was being pumped,15,1
+R,Site was pumped recently,16,1
+S,Nearby site that taps the same aquifer was being pumped,17,1
+T,Nearby site that taps the same aquifer was pumped recently,18,1
+V,Foreign substance present on the water surface,19,1
+W,Well was destroyed (no subsequent water levels should be recorded),20,1
+X,Water level affected by stage in nearby surface-water site,21,1
+Z,Other conditions exist that would affect the level (remarks),22,1
+AA,Water level not affected by status,24,0

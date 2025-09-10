@@ -1,0 +1,23 @@
+CODE,MEANING,id
+ALK,"Alkalinity, Total",1
+Ca,Calcium,2
+Ca(total),"Calcium, total, unfiltered",3
+Cl,Chloride,4
+CO3,Carbonate,5
+CONDLAB,"Conductivity, laboratory (µS)",6
+HCO3,Bicarbonate,7
+HRD,Hardness (CaCO3),8
+IONBAL,Ion Balance,9
+K,Potassium,10
+K(total),"Potassium, total, unfiltered",11
+Mg,Magnesium,12
+Mg(total),"Magnesium, total, unfiltered",13
+Na,Sodium,14
+Na(total),"Sodium, total, unfiltered",15
+Na+K,Sodium and Potassium combined,16
+OH,Alkalinity as OH-,17
+pHL,"pH,laboratory",18
+SO4,Sulfate,19
+TAn,Total Anions,20
+TCat,Total Cations,21
+TDS,Total Dissolved Solids,22

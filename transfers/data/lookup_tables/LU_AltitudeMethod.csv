@@ -1,0 +1,13 @@
+CODE,MEANING,id
+A,Altimeter,1
+D,Differentially corrected GPS,2
+F,Survey-grade GPS,3
+G,Global positioning system (GPS),4
+I,LiDAR DEM,5
+L,Level or other survey method,6
+M,Interpolated from topographic map,7
+N,Interpolated from digital elevation model (DEM),8
+R,Reported,9
+U,Unknown,10
+W,"Survey-grade Global Navigation Satellite Sys, Lvl1",11
+E,USGS National Elevation Dataset (NED),12

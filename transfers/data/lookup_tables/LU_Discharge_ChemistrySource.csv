@@ -1,0 +1,6 @@
+CODE,MEANING,id
+A,Reported by another agency,1
+G,"Private geologist, consultant, or university associate",2
+R,Information from a report,3
+S,Measured by Bureau scientist,4
+Z,Other (explain),5

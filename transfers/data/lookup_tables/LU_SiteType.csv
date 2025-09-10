@@ -1,0 +1,12 @@
+CODE,MEANING,id
+D,"Diversion of surface water, etc",1
+ES,Ephemeral stream,2
+GW,Groundwater other than spring (well),3
+L,"Lake, pond or reservoir",4
+M,"Meteorological (rain, snow)",5
+O,Outfall of wastewater or return flow,6
+OT,Other,7
+PS,Perennial stream,8
+R,Rock sample location,9
+S,Soil gas sample location,10
+SP,Spring,11

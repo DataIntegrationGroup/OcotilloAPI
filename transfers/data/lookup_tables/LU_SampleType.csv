@@ -1,0 +1,12 @@
+CODE,MEANING,id
+BA,Background,1
+EB,Equipment blank,2
+FB,Field blank,3
+FD,Field duplicate,4
+FP,Field parameters only,5
+PR,Precipitation,6
+RE,Repeat sample,7
+SD,Standard field sample,8
+SR,Soil or Rock sample,9
+TB,Trip blank,10
+SB,Source water blank,11

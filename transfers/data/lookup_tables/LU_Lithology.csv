@@ -1,0 +1,77 @@
+TERM,ABBREVIATION,id
+Alluvium,ALVM,1
+Anhydrite,ANDR,2
+Arkose,ARKS,3
+Boulders,BLDR,4
+"Boulders, silt and clay",BLSC,5
+Boulders and sand,BLSD,6
+Bentonite,BNTN,7
+Breccia,BRCC,8
+Basalt,BSLT,9
+Conglomerate,CGLM,10
+Chalk,CHLK,11
+Chert,CHRT,12
+Clay,CLAY,13
+Caliche,CLCH,14
+Calcite,CLCT,15
+"Clay, some sand",CLSD,16
+Claystone,CLSN,17
+Coal,COAL,18
+Cobbles,COBB,19
+"Cobbles, silt and clay",COSC,20
+Cobbles and sand,COSD,21
+Dolomite,DLMT,22
+Dolomite and shale,DLSH,23
+Evaporite,EVPR,24
+Gneiss,GNSS,25
+Gypsum,GPSM,26
+Graywacke,GRCK,27
+Gravel and clay,GRCL,28
+"Gravel, cemented",GRCM,29
+"Gravel, sand and silt",GRDS,30
+"Granite, gneiss",GRGN,31
+Granite,GRNT,32
+"Gravel, silt and clay",GRSC,33
+Gravel,GRVL,34
+Igneous undifferentiated,IGNS,35
+Lignite,LGNT,36
+Limestone and dolomite,LMDM,37
+Limestone and shale,LMSH,38
+Limestone,LMSN,39
+Marl,MARL,40
+Mudstone,MDSN,41
+Metamorphic undifferentiated,MMPC,42
+Marlstone,MRLS,43
+No Recovery,NR,44
+Peat,PEAT,45
+Quartzite,QRTZ,46
+Rhyolite,RYLT,47
+Sand,SAND,48
+Schist,SCST,49
+Sand and clay,SDCL,50
+Sand and gravel,SDGL,51
+Sandstone and shale,SDSL,52
+Sand and silt,SDST,53
+"Sand, gravel and clay",SGVC,54
+Shale,SHLE,55
+Silt,SILT,56
+Siltstone and shale,SLSH,57
+Siltstone,SLSN,58
+Slate,SLTE,59
+"Sand, some clay",SNCL,60
+Sandstone,SNDS,61
+Silt and clay,STCL,62
+Travertine,TRVR,63
+Tuff,TUFF,64
+Volcanic undifferentiated,VLCC,65
+"Clay, yellow",CLYE,66
+"Clay, red",CLRD,67
+Surficial sediment,SUSE,68
+"Limestone and sandstone, interbedded",LMSD,70
+Gravel and boulders,GRBL,71
+"Sand, silt and gravel",SSTG,72
+"Sand, gravel, silt and clay",SGSC,73
+Andesite,ANDS,74
+"Ignesous, intrusive, undifferentiated",IGIN,75
+"Limestone, sandstone and shale",LMSS,76
+"Sand, silt and clay",SDCS,77

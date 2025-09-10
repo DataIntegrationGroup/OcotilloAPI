@@ -1,0 +1,11 @@
+CODE,MEANING,id
+1,+/- 0.1 second (differentially corrected GPS),1
+5,+/- 0.5 second (precise handheld GPS),2
+F,+/- 5 seconds,3
+H,+/- 0.01 second (differentially corrected GPS),4
+M,+/- 1 minute,5
+R,+/- 3 seconds,6
+S,+/- 1 second,7
+T,+/- 10 seconds,8
+U,Unknown,9
+5m,5 meters,10

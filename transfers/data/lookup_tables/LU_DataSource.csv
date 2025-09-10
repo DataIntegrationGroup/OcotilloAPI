@@ -1,0 +1,11 @@
+CODE,MEANING,id
+A,Reported by another agency,2
+D,From driller's log or well report,3
+G,"Private geologist, consultant or univ associate",4
+L,Depth interpreted fr geophys logs by source agency,5
+M,"Memory of owner, operator, driller",6
+O,Reported by owner of well,7
+R,Reported by person other than driller owner agency,8
+S,Measured by NMBGMR staff,9
+Z,Other,10
+P,Data Portal,11
