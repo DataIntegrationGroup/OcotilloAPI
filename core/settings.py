@@ -17,6 +17,7 @@ import os
 
 
 class Settings:
+    version = "0.0.1"
 
     def __init__(self):
         self.mode = os.getenv("MODE", "")  # Default mode
