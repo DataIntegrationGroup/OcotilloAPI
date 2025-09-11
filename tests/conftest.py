@@ -9,7 +9,17 @@ from db.engine import session_ctx
 def location():
     with session_ctx() as session:
         loc = Location(
-            name="first location", release_status="draft", point="POINT(0 0 0)"
+            name="first location",
+            notes="these are some test notes",
+            point="POINT(0 0 0)",
+            release_status="draft",
+            elevation_accuracy=100,
+            elevation_method="Survey-grade GPS",
+            coordinate_accuracy=50,
+            coordinate_method="GPS, uncorrected",
+            state="New Mexico",
+            county="Socorro",
+            quad_name="some NM quad",
         )
         session.add(loc)
         session.commit()

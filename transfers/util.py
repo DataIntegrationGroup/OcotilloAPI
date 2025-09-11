@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 import re
 from pathlib import Path
-
+import logging
 import httpx
 import pyproj
 from shapely import Point
@@ -25,6 +26,19 @@ from sqlalchemy.orm import Session
 import pandas as pd
 
 from db import Thing, Location
+
+log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 TRANSFORMERS = {}
 
@@ -81,10 +95,6 @@ def extract_organization(alternate_id: str) -> str:
 def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids(session)
     return df[df["PointID"].isin(valid_point_ids)]
-
-
-def log(row, msg):
-    print(f"{row.PointID} {msg}")
 
 
 def convert_to_wgs84_vertical_datum(row, z):
@@ -145,14 +155,14 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
     }
 
     resp = httpx.get(url, params=params, timeout=15)
-    print(resp)
+    logger.info(resp)
     data = resp.json()
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        print("No quad found")
+        logger.warning(f"No quad name found for POINT ({lon} {lat})")
 
 
 def get_epqs_elevation(lon: float, lat: float) -> float:
@@ -207,15 +217,18 @@ def make_location(row: pd.Series) -> Location:
     # created_at = row.DateCreated
 
     location = Location(
-        # nma_pk_location=row.LocationId,
+        nma_pk_location=row.LocationId,
+        # TODO: determine if PointID should map to location.name or thing.name or if the Location table needs a name field at all.
         name=row.PointID,
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
-        # elevation_accuracy=row.AltitudeAccuracy,
-        # elevation_method=row.AltitudeMethod,
+        elevation_accuracy=row.AltitudeAccuracy,
+        elevation_method=row.AltitudeMethod,
         # created_at=created_at,
-        # point_accuracy=row.CoordinateAccuracy,
-        # point_method=row.CoordinateMethod,
+        coordinate_accuracy=row.CoordinateAccuracy,
+        coordinate_method=row.CoordinateMethod,
+        nma_coordinate_notes=row.CoordinateNotes,
+        nma_notes_location=row.LocationNotes,
     )
     return location
 
