@@ -26,7 +26,7 @@ from transfers.util import (
 
 
 def transfer_link_ids_welldata(session):
-    ldf = read_csv("WellData")
+    ldf = read_csv("WellData", dtype={"OSEWelltagID": str})
 
     ldf = filter_to_valid_point_ids(session, ldf)
 

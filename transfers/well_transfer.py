@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 import time
-
 import numpy as np
 import pandas as pd
 from pydantic import ValidationError
@@ -37,14 +36,13 @@ ADDED = []
 
 
 def transfer_wells(session, start_index=0, limit=0):
-    wdf = read_csv("WellData")
+    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
     wdf = wdf.iloc[start_index : start_index + limit]
-
     n = len(wdf)
     start_time = time.time()
     results = {
@@ -89,7 +87,7 @@ def transfer_wells(session, start_index=0, limit=0):
             },
             thing_type="water well",
         )
-
+        logger.info("adding well")
         # TODO: use current use LUT to get well type
 
         # wt = row.Meaning
