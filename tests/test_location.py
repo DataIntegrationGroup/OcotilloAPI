@@ -44,7 +44,7 @@ def test_add_location():
     payload = {
         "name": "test location",
         "notes": "these are some test notes",
-        "point": "POINT Z (10.1 10.1 0)",
+        "point": "POINT Z (-106.607784 35.118924 1558.8)",
         "release_status": "draft",
         "elevation_accuracy": 1.0,
         "elevation_method": "Survey-grade GPS",
@@ -65,6 +65,9 @@ def test_add_location():
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
     assert data["coordinate_method"] == payload["coordinate_method"]
+    assert data["state"] == "New Mexico"
+    assert data["county"] == "Bernalillo"
+    assert data["quad_name"] == "Albuquerque East"
 
     # cleanup after test
     cleanup_post_test(Location, data["id"])
@@ -77,7 +80,7 @@ def test_update_location(location):
     payload = {
         "name": "patched name",
         "notes": "these are some patched notes",
-        "point": "POINT Z (10.1 20.2 0)",
+        "point": "POINT Z (-106.904107 34.068198 1408.3)",
         "release_status": "draft",
         "elevation_accuracy": 2.0,
         "elevation_method": "Survey-grade GPS",
@@ -96,8 +99,14 @@ def test_update_location(location):
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
     assert data["coordinate_method"] == payload["coordinate_method"]
+    assert data["state"] == "New Mexico"
+    assert data["county"] == "Socorro"
+    assert data["quad_name"] == "Socorro"
 
     # cleanup after test
+    payload["state"] = location.state
+    payload["county"] = location.county
+    payload["quad_name"] = location.quad_name
     cleanup_patch_test(Location, payload, location)
 
 

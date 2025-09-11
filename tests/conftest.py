@@ -11,15 +11,15 @@ def location():
         loc = Location(
             name="first location",
             notes="these are some test notes",
-            point="POINT(0 0 0)",
+            point="POINT(-107.949533 33.809665 2464.9)",
             release_status="draft",
             elevation_accuracy=100,
             elevation_method="Survey-grade GPS",
             coordinate_accuracy=50,
             coordinate_method="GPS, uncorrected",
             state="New Mexico",
-            county="Socorro",
-            quad_name="some NM quad",
+            county="Catron",
+            quad_name="Luera Mountains West",
         )
         session.add(loc)
         session.commit()

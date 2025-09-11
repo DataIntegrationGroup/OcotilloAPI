@@ -96,3 +96,13 @@ def get_epqs_elevation(lon: float, lat: float) -> float:
     data = resp.json()
 
     return data["value"]
+
+
+if __name__ == "__main__":
+    x = -106.904107
+    y = 34.068198
+
+    print(get_state_from_point(x, y))
+    print(get_county_from_point(x, y))
+    print(get_quad_name_from_point(x, y))
+    print(get_epqs_elevation(x, y))

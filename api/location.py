@@ -30,6 +30,7 @@ from schemas.location import CreateLocation, LocationResponse, UpdateLocation
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from services.crud_helper import model_patcher, model_deleter, model_adder
+from services.location_helper import set_geographic_attributes
 
 from fastapi import APIRouter
 
@@ -48,7 +49,9 @@ async def create_location(
     """
     Create a new sample location in the database.
     """
-    return model_adder(session, Location, location_data, user=user)
+    location = model_adder(session, Location, location_data, user=user)
+    set_geographic_attributes(session, location_data, location)
+    return location
 
 
 @router.patch(
@@ -64,7 +67,9 @@ async def update_location(
     """
     Update a sample location in the database.
     """
-    return model_patcher(session, Location, location_id, location_data, user=user)
+    location = model_patcher(session, Location, location_id, location_data, user=user)
+    set_geographic_attributes(session, location_data, location)
+    return location
 
 
 # @router.get("/shapefile", summary="Get location as shapefile")
