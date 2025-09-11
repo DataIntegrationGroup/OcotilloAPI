@@ -47,12 +47,12 @@ def erase_and_initalize(session: Session) -> None:
 
 def message(msg, pad=10):
     pad = "*" * pad
-    print(f"{pad} {msg} {pad}\n")
+    logger.info("")
+    logger.info(f"{pad} {msg} {pad}")
 
 
 def main_transfer():
     logger.info("Starting transfer")
-    logger.info("")
 
     init = True
 
@@ -76,44 +76,37 @@ def main_transfer():
 
         if init or transfer_well_flag:
             message("TRANSFERRING WELLS")
-            transfer_wells(sess, limit)
+            transfer_wells(sess, limit=limit)
             transfer_wellscreens(sess)
         #
         if init or transfer_spring_flag:
             message("TRANSFERRING SPRINGS")
             transfer_springs(sess, limit)
-            logger.info("")
 
         if init or transfer_perennial_stream_flag:
             message("TRANSFERRING PERENNIAL STREAMS")
             transfer_perennial_stream(sess, limit)
-            logger.info("")
 
         if init or transfer_ephemeral_stream_flag:
             message("TRANSFERRING EPHEMERAL STREAMS")
             transfer_ephemeral_stream(sess, limit)
-            logger.info("")
 
         if init or transfer_met_flag:
             message("TRANSFERRING METEOROLOGICAL")
             transfer_met(sess, limit)
-            logger.info("")
 
         if init or transfer_contacts_flag:
             message("TRANSFERRING CONTACTS")
             transfer_contacts(sess)
-            logger.info("")
 
         if init or transfer_waterlevels_flag:
             message("TRANSFERRING WATER LEVELS")
             transfer_water_levels(sess)
-            logger.info("")
 
         if init or transfer_link_ids_flag:
             message("TRANSFERRING LINK IDS")
             transfer_link_ids(sess)
             transfer_link_ids_welldata(sess)
-            logger.info("")
 
         # if init or transfer_assets_flag:
         #     message("TRANSFERRING ASSETS")
@@ -122,7 +115,6 @@ def main_transfer():
         if init or transfer_groups_flag:
             message("TRANSFERRING GROUPS")
             transfer_groups(sess)
-            logger.info("")
 
         # if init or cleanup_wells_flag:
         #     cleanup_wells(sess)
