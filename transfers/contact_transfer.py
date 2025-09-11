@@ -15,7 +15,7 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from transfers.util import read_csv, filter_to_valid_point_ids
+from transfers.util import read_csv, filter_to_valid_point_ids, logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
 from schemas.contact import CreateContact
@@ -51,7 +51,9 @@ def transfer_contacts(session):
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         if thing is None:
-            print(f"Thing with PointID {row.PointID} not found. Skipping owner.")
+            logger.warning(
+                f"Thing with PointID {row.PointID} not found. Skipping owner."
+            )
             continue
 
         # TODO: extract role from OwnerComment
@@ -143,7 +145,7 @@ def transfer_contacts(session):
             session.commit()
 
         except Exception as e:
-            print(
+            logger.warning(
                 f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
             from pprint import pprint
@@ -202,7 +204,7 @@ def transfer_contacts(session):
             session.add(second_contact)
 
         except Exception as e:
-            print(
+            logger.warning(
                 f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
             )
             session.rollback()
