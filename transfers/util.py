@@ -28,6 +28,23 @@ import pandas as pd
 from db import Thing, Location
 from services.gcs_helper import get_storage_bucket
 
+import sys
+
+
+class StreamToLogger:
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+        self.linebuf = ""
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.level, line.rstrip())
+
+    def flush(self):
+        pass
+
+
 log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
 
@@ -41,14 +58,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# redirect stderr to the logger
+sys.stderr = StreamToLogger(logger, logging.ERROR)
+
 TRANSFORMERS = {}
 
 
-def read_csv(name: str) -> pd.DataFrame:
+def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
-    return pd.read_csv(io.BytesIO(data))
+
+    if dtype:
+        return pd.read_csv(io.BytesIO(data), dtype=dtype)
+    else:
+        return pd.read_csv(io.BytesIO(data))
 
 
 def transform_srid(geometry, source_srid, target_srid):
