@@ -506,7 +506,7 @@ def groundwater_level_observation(sensor, sample):
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            level_status="normal",
+            level_status="Water level not affected by status",
         )
         session.add(observation)
         session.commit()
