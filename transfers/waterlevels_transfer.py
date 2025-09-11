@@ -24,7 +24,7 @@ from transfers.util import filter_to_valid_point_ids, logger, read_csv
 
 def transfer_water_levels(session):
 
-    wd = read_csv("water_levels.csv")
+    wd = read_csv("WaterLevels")
     wd = filter_to_valid_point_ids(session, wd)
     gwd = wd.groupby(["PointID"])
 

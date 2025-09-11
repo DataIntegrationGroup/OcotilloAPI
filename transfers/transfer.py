@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
+load_dotenv()
+
+from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
 from db import Base
 from db.engine import session_ctx
-from transfers.asset_transfer import transfer_assets_testing
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
@@ -43,6 +45,11 @@ def erase_and_initalize(session: Session) -> None:
     init_sensor(session)
 
 
+def message(msg, pad=10):
+    pad = "*" * pad
+    print(f"{pad} {msg} {pad}\n")
+
+
 def main_transfer():
     logger.info("Starting transfer")
     logger.info("")
@@ -62,70 +69,58 @@ def main_transfer():
 
     cleanup_wells_flag = False
 
-    limit = 100
+    limit = 500
     with session_ctx() as sess:
         if init:
             erase_and_initalize(sess)
 
         if init or transfer_well_flag:
-            msg = "*" * 10 + "TRANSFERRING WELLS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING WELLS")
             transfer_wells(sess, limit)
             transfer_wellscreens(sess)
-            logger.info("")
-
+        #
         if init or transfer_spring_flag:
-            msg = "*" * 10 + "TRANSFERRING SPRINGS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING SPRINGS")
             transfer_springs(sess, limit)
             logger.info("")
 
         if init or transfer_perennial_stream_flag:
-            msg = "*" * 10 + "TRANSFERRING PERENNIAL STREAMS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING PERENNIAL STREAMS")
             transfer_perennial_stream(sess, limit)
             logger.info("")
 
         if init or transfer_ephemeral_stream_flag:
-            msg = "*" * 10 + "TRANSFERRING EPHEMERAL STREAMS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING EPHEMERAL STREAMS")
             transfer_ephemeral_stream(sess, limit)
             logger.info("")
 
         if init or transfer_met_flag:
-            msg = "*" * 10 + "TRANSFERRING METEOROLOGICAL" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING METEOROLOGICAL")
             transfer_met(sess, limit)
             logger.info("")
 
         if init or transfer_contacts_flag:
-            msg = "*" * 10 + "TRANSFERRING CONTACTS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING CONTACTS")
             transfer_contacts(sess)
             logger.info("")
 
         if init or transfer_waterlevels_flag:
-            msg = "*" * 10 + "TRANSFERRING WATER LEVELS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING WATER LEVELS")
             transfer_water_levels(sess)
             logger.info("")
 
         if init or transfer_link_ids_flag:
-            msg = "*" * 10 + "TRANSFERRING LINK IDS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING LINK IDS")
             transfer_link_ids(sess)
             transfer_link_ids_welldata(sess)
             logger.info("")
 
-        if init or transfer_assets_flag:
-            msg = "*" * 10 + "TRANSFERRING ASSETS" + "*" * 10
-            logger.info(msg)
-            transfer_assets_testing(sess)
-            logger.info("")
+        # if init or transfer_assets_flag:
+        #     message("TRANSFERRING ASSETS")
+        #     transfer_assets_testing(sess)
 
         if init or transfer_groups_flag:
-            msg = "*" * 10 + "TRANSFERRING GROUPS" + "*" * 10
-            logger.info(msg)
+            message("TRANSFERRING GROUPS")
             transfer_groups(sess)
             logger.info("")
 

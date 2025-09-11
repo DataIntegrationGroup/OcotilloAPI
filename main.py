@@ -1,6 +1,8 @@
 import os
 import sentry_sdk
 from dotenv import load_dotenv
+from starlette.middleware.base import BaseHTTPMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 load_dotenv()
 

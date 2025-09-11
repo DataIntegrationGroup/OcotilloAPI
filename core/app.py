@@ -19,6 +19,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from sqlalchemy import text
+from starlette.responses import JSONResponse
 
 from .dependencies import session_dependency
 from .initializers import init_db, init_lexicon
@@ -44,10 +45,10 @@ app = FastAPI(
 )
 
 
-@app.get("/_ah/warmup")
-async def warmup(session: session_dependency):
-    session.execute(text("SELECT 1"))
-    return HTTPStatus.OK
+@app.get("/ping", include_in_schema=False)
+async def ping() -> JSONResponse:
+    """Health check endpoint to verify the service is running."""
+    return JSONResponse(status_code=HTTPStatus.OK, content={"ping": "pong!"})
 
 
 # ============= EOF =============================================

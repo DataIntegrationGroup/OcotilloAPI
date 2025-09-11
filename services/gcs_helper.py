@@ -42,6 +42,8 @@ def get_storage_client() -> storage.Client:
 
         # Create storage client
         client = storage.Client(credentials=creds)
+    elif settings.mode == "transfer":
+        client = storage.Client()
     else:
         client = storage.Client.from_service_account_json(
             os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")

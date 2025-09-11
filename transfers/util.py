@@ -15,7 +15,7 @@
 # ===============================================================================
 from datetime import datetime
 import re
-from pathlib import Path
+import io
 import logging
 import httpx
 import pyproj
@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 import pandas as pd
 
 from db import Thing, Location
+from services.gcs_helper import get_storage_bucket
 
 log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
@@ -44,8 +45,10 @@ TRANSFORMERS = {}
 
 
 def read_csv(name: str) -> pd.DataFrame:
-    p = Path(".") / "transfers" / "data" / name
-    return pd.read_csv(p)
+    bucket = get_storage_bucket()
+    blob = bucket.blob(f"nma_csv/{name}.csv")
+    data = blob.download_as_bytes()
+    return pd.read_csv(io.BytesIO(data))
 
 
 def transform_srid(geometry, source_srid, target_srid):
@@ -215,10 +218,11 @@ def make_location(row: pd.Series) -> Location:
 
     # TODO: determine correct created_at value
     # created_at = row.DateCreated
+    name = row.PointID
 
     location = Location(
         # nma_pk_location=row.LocationId,
-        name=row.PointID,
+        name=name,
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
         # elevation_accuracy=row.AltitudeAccuracy,
