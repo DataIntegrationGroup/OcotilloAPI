@@ -43,8 +43,13 @@ def override_dependencies_fixture():
 def test_add_location():
     payload = {
         "name": "test location",
+        "notes": "these are some test notes",
         "point": "POINT Z (10.1 10.1 0)",
         "release_status": "draft",
+        "elevation_accuracy": 1.0,
+        "elevation_method": "Survey-grade GPS",
+        "coordinate_accuracy": 5.0,
+        "coordinate_method": "GPS, uncorrected",
     }
     response = client.post("/location", json=payload)
 
@@ -53,8 +58,13 @@ def test_add_location():
     assert "id" in data
     assert "created_at" in data
     assert data["name"] == payload["name"]
+    assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
     assert data["release_status"] == payload["release_status"]
+    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    assert data["elevation_method"] == payload["elevation_method"]
+    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
     cleanup_post_test(Location, data["id"])
@@ -65,17 +75,27 @@ def test_add_location():
 
 def test_update_location(location):
     payload = {
+        "name": "patched name",
+        "notes": "these are some patched notes",
         "point": "POINT Z (10.1 20.2 0)",
         "release_status": "draft",
-        "name": "patched name",
+        "elevation_accuracy": 2.0,
+        "elevation_method": "Survey-grade GPS",
+        "coordinate_accuracy": 10.0,
+        "coordinate_method": "GPS, uncorrected",
     }
     response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == location.id
+    assert data["name"] == payload["name"]
+    assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
     assert data["release_status"] == payload["release_status"]
-    assert data["name"] == payload["name"]
+    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    assert data["elevation_method"] == payload["elevation_method"]
+    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    assert data["coordinate_method"] == payload["coordinate_method"]
 
     # cleanup after test
     cleanup_patch_test(Location, payload, location)
@@ -111,8 +131,16 @@ def test_get_locations(location):
         "+00:00", "Z"
     )
     assert data["items"][0]["name"] == location.name
+    assert data["items"][0]["notes"] == location.notes
     assert data["items"][0]["point"] == to_shape(location.point).wkt
     assert data["items"][0]["release_status"] == location.release_status
+    assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
+    assert data["items"][0]["elevation_method"] == location.elevation_method
+    assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
+    assert data["items"][0]["coordinate_method"] == location.coordinate_method
+    assert data["items"][0]["state"] == location.state
+    assert data["items"][0]["county"] == location.county
+    assert data["items"][0]["quad_name"] == location.quad_name
 
 
 def test_get_location_by_id(location):
@@ -124,6 +152,13 @@ def test_get_location_by_id(location):
     assert data["name"] == location.name
     assert data["point"] == to_shape(location.point).wkt
     assert data["release_status"] == location.release_status
+    assert data["elevation_accuracy"] == location.elevation_accuracy
+    assert data["elevation_method"] == location.elevation_method
+    assert data["coordinate_accuracy"] == location.coordinate_accuracy
+    assert data["coordinate_method"] == location.coordinate_method
+    assert data["state"] == location.state
+    assert data["county"] == location.county
+    assert data["quad_name"] == location.quad_name
 
 
 def test_get_sample_by_id_404_not_found(location):

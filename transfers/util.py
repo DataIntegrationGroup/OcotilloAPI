@@ -245,15 +245,18 @@ def make_location(row: pd.Series) -> Location:
     name = row.PointID
 
     location = Location(
-        # nma_pk_location=row.LocationId,
-        name=name,
+        nma_pk_location=row.LocationId,
+        # TODO: determine if PointID should map to location.name or thing.name or if the Location table needs a name field at all.
+        name=row.PointID,
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
-        # elevation_accuracy=row.AltitudeAccuracy,
-        # elevation_method=row.AltitudeMethod,
+        elevation_accuracy=row.AltitudeAccuracy,
+        elevation_method=row.AltitudeMethod,
         # created_at=created_at,
-        # point_accuracy=row.CoordinateAccuracy,
-        # point_method=row.CoordinateMethod,
+        coordinate_accuracy=row.CoordinateAccuracy,
+        coordinate_method=row.CoordinateMethod,
+        nma_coordinate_notes=row.CoordinateNotes,
+        nma_notes_location=row.LocationNotes,
     )
     return location
 
