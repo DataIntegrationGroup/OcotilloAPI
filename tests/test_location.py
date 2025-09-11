@@ -47,9 +47,9 @@ def test_add_location():
         "point": "POINT Z (10.1 10.1 0)",
         "release_status": "draft",
         "elevation_accuracy": 1.0,
-        "elevation_method": "GPS",
+        "elevation_method": "Survey-grade GPS",
         "coordinate_accuracy": 5.0,
-        "coordinate_method": "GPS",
+        "coordinate_method": "GPS, uncorrected",
     }
     response = client.post("/location", json=payload)
 
@@ -80,9 +80,9 @@ def test_update_location(location):
         "point": "POINT Z (10.1 20.2 0)",
         "release_status": "draft",
         "elevation_accuracy": 2.0,
-        "elevation_method": "Total Station",
+        "elevation_method": "Survey-grade GPS",
         "coordinate_accuracy": 10.0,
-        "coordinate_method": "Total Station",
+        "coordinate_method": "GPS, uncorrected",
     }
     response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
