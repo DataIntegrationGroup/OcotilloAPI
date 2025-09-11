@@ -32,21 +32,21 @@ from services.gcs_helper import (
     get_storage_bucket,
     get_storage_client,
 )
-from transfers.util import get_valid_things
+from transfers.util import get_valid_things, logger
 
 
 def transfer_assets(session: Session) -> None:
     client = get_storage_client()
 
     bucket = get_storage_bucket(client)
-    print(f"Using bucket {bucket.name}")
+    logger.info(f"Using bucket {bucket.name}")
 
     # for name in ['AR0001']: # for testing
     for thing in get_valid_things(session):
         name = thing.name
         # find images in temp bucket
-        print(f"Processing PointID: {name}")
-        blobs = bucket.list_blobs(prefix=f"nma-photos/{name}")
+        logger.info(f"Processing PointID: {thing.name}")
+        blobs = bucket.list_blobs(prefix=f"nma-photos/{thing.name}")
         # move blobs from temp to assets bucket
         for srcblob in blobs:
             f = srcblob.download_as_bytes()
@@ -66,7 +66,7 @@ def transfer_assets_testing(session: Session) -> None:
             thing_id = 151
 
             if check_asset_exists(session, blob_name, thing_id):
-                print(f"Asset {blob_name} already exists. Skipping.")
+                logger.warning(f"Asset {blob_name} already exists. Skipping.")
                 continue
             add_asset(session, uf, p, thing_id, uri, blob_name)
 

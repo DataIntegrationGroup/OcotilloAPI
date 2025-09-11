@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 import re
 import io
 from pathlib import Path
-
+import logging
 import httpx
 import pyproj
 from shapely import Point
@@ -27,6 +28,19 @@ import pandas as pd
 
 from db import Thing, Location
 from services.gcs_helper import get_storage_bucket
+
+log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 TRANSFORMERS = {}
 
@@ -87,10 +101,6 @@ def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFram
     return df[df["PointID"].isin(valid_point_ids)]
 
 
-def log(row, msg):
-    print(f"{row.PointID} {msg}")
-
-
 def convert_to_wgs84_vertical_datum(row, z):
     if row.VerticalDatum == "NAVD88":
         z = z + 2.0  # TODO: check this transformation
@@ -149,14 +159,14 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
     }
 
     resp = httpx.get(url, params=params, timeout=15)
-    print(resp)
+    logger.info(resp)
     data = resp.json()
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        print("No quad found")
+        logger.warning(f"No quad name found for POINT ({lon} {lat})")
 
 
 def get_epqs_elevation(lon: float, lat: float) -> float:

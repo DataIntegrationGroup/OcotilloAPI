@@ -19,7 +19,7 @@ from datetime import datetime
 import pandas as pd
 
 from db import Thing, Sample, Observation
-from transfers.util import filter_to_valid_point_ids, log, read_csv
+from transfers.util import filter_to_valid_point_ids, logger, read_csv
 
 
 def transfer_water_levels(session):
@@ -31,15 +31,14 @@ def transfer_water_levels(session):
     for index, group in gwd:
         for row in group.itertuples():
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
-                log(row, f"Skipping row {row.Index} due to missing data.")
+                logger.warning(f"Skipping row {row.Index} due to missing data.")
                 continue
 
             dt = datetime.fromisoformat(row.DateMeasured)
             thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:
-                log(
-                    row,
-                    f"Thing with PointID {row.PointID} not found. Skipping water level.",
+                logger.warning(
+                    f"Thing with PointID {row.PointID} not found. Skipping water level."
                 )
                 continue
 

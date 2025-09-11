@@ -31,6 +31,7 @@ from transfers.util import (
     get_state_from_point,
     get_county_from_point,
     get_quad_name_from_point,
+    logger,
 )
 
 ADDED = []
@@ -53,21 +54,19 @@ def transfer_wells(session, start_index=0, limit=0):
     made_things = []
     for i, row in enumerate(wdf.itertuples()):
         if limit and i >= limit:
-            print("Reached limit of", limit, "rows. Stopping migration.")
+            logger.warning("Reached limit of %d rows. Stopping migration.", limit)
             break
 
         if i and not i % 25:
-            print(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second:"
-                f" {i / (time.time() - start_time):.2f}"
+            logger.info(
+                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
 
         try:
             location = make_location(row)
         except Exception as e:
-            print(f"Error making location for row {i}: {e}")
-            print(row)
+            logger.warning(f"Error making location for row {i}: {e}")
             break
 
         # print(location_row)
@@ -130,13 +129,13 @@ def transfer_wellscreens(session, limit=None):
 
     for i, row in enumerate(wdf.itertuples()):
         if limit and i >= limit:
-            print("Reached limit of", limit, "rows. Stopping migration.")
+            logger.warning("Reached limit of", limit, "rows. Stopping migration.")
             break
 
         # this is for testing only. not sure in practice we have to commit every 100 rows
         # should we commit every row? or every 1000? or every 10?
         if i and not i % 100:
-            print(
+            logger.info(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()
@@ -144,7 +143,9 @@ def transfer_wellscreens(session, limit=None):
         sql = select(Thing).where(Thing.name == row.PointID)
         thing = session.execute(sql).scalar_one_or_none()
         if not thing:
-            print(f"Thing with PointID {row.PointID} not found. Skipping well screen.")
+            logger.warning(
+                f"Thing with PointID {row.PointID} not found. Skipping well screen."
+            )
             continue
 
         well_screen_data = {
@@ -163,7 +164,9 @@ def transfer_wellscreens(session, limit=None):
             session.add(well_screen)
             session.commit()
         except ValidationError as e:
-            print(f"Validation error for row {i} with PointID {row.PointID}: {e}")
+            logger.warning(
+                f"Validation error for row {i} with PointID {row.PointID}: {e}"
+            )
             continue
 
 

@@ -14,13 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 import time
-from pathlib import Path
 from sqlalchemy.orm import Session
-import pandas as pd
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location, read_csv
+from transfers.util import make_location, read_csv, logger
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
@@ -32,11 +30,11 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     start_time = time.time()
     for i, row in enumerate(ldf.itertuples()):
         if limit and i >= limit:
-            print(f"Reached limit of {limit} rows. Stopping migration.")
+            logger.warning(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
         if i and not i % 25:
-            print(
+            logger.info(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
             session.commit()

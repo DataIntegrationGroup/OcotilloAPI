@@ -15,7 +15,7 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from transfers.util import read_csv, filter_to_valid_point_ids
+from transfers.util import read_csv, filter_to_valid_point_ids, logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
 from schemas.contact import CreateContact
@@ -60,7 +60,9 @@ def transfer_contacts(session):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         print(f"Processing PointID: {i} {row.PointID}")
         if thing is None:
-            print(f"Thing with PointID {row.PointID} not found. Skipping owner.")
+            logger.warning(
+                f"Thing with PointID {row.PointID} not found. Skipping owner."
+            )
             continue
 
         try:
@@ -80,8 +82,8 @@ def transfer_contacts(session):
             session.flush()
             print(f"added second contact for PointID {row.PointID}")
         except Exception as e:
-            print(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
+            logger.warning(
+                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
             session.rollback()
 
