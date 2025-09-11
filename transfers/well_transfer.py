@@ -87,7 +87,6 @@ def transfer_wells(session, start_index=0, limit=0):
             },
             thing_type="water well",
         )
-        logger.info("adding well")
         # TODO: use current use LUT to get well type
 
         # wt = row.Meaning
