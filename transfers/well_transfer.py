@@ -24,13 +24,15 @@ from db import LocationThingAssociation, Thing, WellScreen, Location
 from schemas.thing import CreateWellScreen
 from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
+from services.util import (
+    get_state_from_point,
+    get_county_from_point,
+    get_quad_name_from_point,
+)
 from transfers.util import (
     make_location,
     filter_to_valid_point_ids,
     read_csv,
-    get_state_from_point,
-    get_county_from_point,
-    get_quad_name_from_point,
     logger,
 )
 
