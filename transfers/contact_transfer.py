@@ -18,7 +18,7 @@ import pandas as pd
 from transfers.util import read_csv, filter_to_valid_point_ids, logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
-from schemas.contact import CreateContact
+from schemas.contact import CreateContact, CreateAddress
 
 
 def extract_owner_role(comment):
@@ -148,29 +148,39 @@ def add_first_contact(session, row, thing):
         )
 
     if row.MailingAddress:
-        # TODO: use Pydantic to validate MailingAddress
-        contact.addresses.append(
-            Address(
-                address_line_1=row.MailingAddress,
-                city=row.MailCity,
-                state=row.MailState,
-                postal_code=row.MailZipCode,
-                address_type="Mailing",
-                release_status=release_status,
-            )
-        )
+        address_data = {
+            "address_line_1": row.MailingAddress,
+            "city": row.MailCity,
+            "state": row.MailState,
+            "postal_code": row.MailZipCode,
+            "address_type": "Mailing",
+            "release_status": release_status,
+        }
+        try:
+            CreateAddress.model_validate(address_data)
+            contact.addresses.append(Address(**address_data))
 
-    contact.addresses.append(
-        # TODO: use Pydantic to validate PhysicalAddress
-        Address(
-            address_line_1=row.PhysicalAddress,
-            city=row.PhysicalCity,
-            state=row.PhysicalState,
-            postal_code=row.PhysicalZipCode,
-            address_type="Physical",
-            release_status=release_status,
-        )
-    )
+        except Exception as e:
+            logger.warning(
+                f"Skipping mailing address for first contact {name}. Validation error: {e}"
+            )
+
+    if row.PhysicalAddress:
+        try:
+            address_data = {
+                "address_line_1": row.PhysicalAddress,
+                "city": row.PhysicalCity,
+                "state": row.PhysicalState,
+                "postal_code": row.PhysicalZipCode,
+                "address_type": "Physical",
+                "release_status": release_status,
+            }
+            CreateAddress.model_validate(address_data)
+            contact.addresses.append(Address(**address_data))
+        except Exception as e:
+            logger.warning(
+                f"Skipping physical address for first contact {name}. Validation error: {e}"
+            )
 
 
 def add_second_contact(session, row, thing):
