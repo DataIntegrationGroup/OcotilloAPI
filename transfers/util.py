@@ -23,6 +23,7 @@ from shapely import Point
 from sqlalchemy.orm import Session
 import pandas as pd
 
+from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
 from services.util import (
     transform_srid,
@@ -100,7 +101,7 @@ def make_location(row: pd.Series) -> Location:
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
-        point, source_srid=26913, target_srid=4326  # WGS84 SRID
+        point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
 
     state = get_state_from_point(transformed_point.x, transformed_point.y)

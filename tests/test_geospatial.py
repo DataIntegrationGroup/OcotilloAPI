@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from main import app
+from constants import SRID_WGS84
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -76,11 +77,11 @@ def populate():
 
         loc1 = Location(
             name="Test Location 1",
-            point=geofunc.ST_GeomFromText("POINT(10.1 10.1 0)", srid=4326),
+            point=geofunc.ST_GeomFromText("POINT(10.1 10.1 0)", srid=SRID_WGS84),
         )
         loc2 = Location(
             name="Test Location 2",
-            point=geofunc.ST_GeomFromText("POINT(20 20 0)", srid=4326),
+            point=geofunc.ST_GeomFromText("POINT(20 20 0)", srid=SRID_WGS84),
         )
         session.add(loc1)
         session.add(loc2)

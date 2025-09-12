@@ -2,6 +2,8 @@ from shapely.ops import transform
 import pyproj
 import httpx
 
+from constants import SRID_WGS84
+
 TRANSFORMERS = {}
 
 
@@ -31,7 +33,7 @@ def get_tiger_data(
         "where": "1=1",
         "geometry": f"{lon},{lat}",
         "geometryType": "esriGeometryPoint",
-        "inSR": "4326",
+        "inSR": f"{SRID_WGS84}",
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": outfields,
         "returnGeometry": "false",
@@ -65,7 +67,7 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "f": "json",
         "geometry": f"{lon},{lat}",
         "geometryType": "esriGeometryPoint",
-        "inSR": "4326",
+        "inSR": f"{SRID_WGS84}",
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": "CELL_NAME,CELL_MAPCODE",
         "returnGeometry": "false",
@@ -88,7 +90,7 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float:
         "x": lon,
         "y": lat,
         "units": "Meters",
-        "wkid": "4326",
+        "wkid": f"{SRID_WGS84}",
         "includeDate": False,
     }
 

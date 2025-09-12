@@ -21,8 +21,6 @@ from geoalchemy2.shape import to_shape
 from uuid import UUID
 
 from sqlalchemy import (
-    Column,
-    Integer,
     String,
     ForeignKey,
     DateTime,
@@ -32,6 +30,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
+from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
@@ -45,7 +44,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     description: Mapped[str] = mapped_column
     name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
-        Geometry(geometry_type="POINTZ", srid=4326, spatial_index=True)
+        Geometry(geometry_type="POINTZ", srid=SRID_WGS84, spatial_index=True)
     )
 
     state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
@@ -65,7 +64,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Proxy Definitions ---
-    things: AssociationProxy[list["Thing"]] = association_proxy(
+    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
         "thing_associations", "thing"
     )
 
@@ -95,7 +94,9 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 
     # --- Relationship Definitions ---
     location: Mapped["Location"] = relationship(back_populates="thing_associations")
-    thing: Mapped["Thing"] = relationship(back_populates="location_associations")
+    thing: Mapped["Thing"] = relationship(  # noqa: F821
+        back_populates="location_associations"
+    )
 
 
 # ============= EOF =============================================
