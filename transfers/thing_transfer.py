@@ -23,7 +23,7 @@ from transfers.util import make_location, read_csv, logger
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
 
-    ldf = read_csv("location.csv")
+    ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
@@ -33,7 +33,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             logger.warning(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
-        if i and not i % 100:
+        if i and not i % 25:
             logger.info(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
@@ -49,6 +49,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
         assoc.location = location
         assoc.thing = spring
         session.add(assoc)
+    session.commit()
 
 
 def transfer_springs(session, limit=None):

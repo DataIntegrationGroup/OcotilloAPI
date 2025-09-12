@@ -15,7 +15,7 @@
 # ===============================================================================
 from datetime import datetime
 import re
-from pathlib import Path
+import io
 import logging
 import httpx
 import pyproj
@@ -24,8 +24,27 @@ from shapely.ops import transform
 
 from sqlalchemy.orm import Session
 import pandas as pd
+import numpy as np
 
 from db import Thing, Location
+from services.gcs_helper import get_storage_bucket
+
+import sys
+
+
+class StreamToLogger:
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+        self.linebuf = ""
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.level, line.rstrip())
+
+    def flush(self):
+        pass
+
 
 log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
@@ -40,12 +59,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# redirect stderr to the logger
+sys.stderr = StreamToLogger(logger, logging.ERROR)
+
 TRANSFORMERS = {}
 
 
-def read_csv(name: str) -> pd.DataFrame:
-    p = Path(".") / "transfers" / "data" / name
-    return pd.read_csv(p)
+def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
+    df = df.replace(pd.NA, default)
+    return df.replace({np.nan: default})
+
+
+def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    bucket = get_storage_bucket()
+    blob = bucket.blob(f"nma_csv/{name}.csv")
+    data = blob.download_as_bytes()
+
+    if dtype:
+        return pd.read_csv(io.BytesIO(data), dtype=dtype)
+    else:
+        return pd.read_csv(io.BytesIO(data))
 
 
 def transform_srid(geometry, source_srid, target_srid):
@@ -215,6 +248,7 @@ def make_location(row: pd.Series) -> Location:
 
     # TODO: determine correct created_at value
     # created_at = row.DateCreated
+    name = row.PointID
 
     location = Location(
         nma_pk_location=row.LocationId,
@@ -223,10 +257,13 @@ def make_location(row: pd.Series) -> Location:
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=row.AltitudeMethod,
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        # elevation_method=row.AltitudeMethod,
         # created_at=created_at,
-        coordinate_accuracy=row.CoordinateAccuracy,
-        coordinate_method=row.CoordinateMethod,
+        # TODO: row.CoordinateAccuracy is not a float
+        # coordinate_accuracy=row.CoordinateAccuracy,
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        # coordinate_method=row.CoordinateMethod,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
     )
