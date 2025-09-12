@@ -149,7 +149,7 @@ def make_location(row: pd.Series) -> Location:
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
 
-    setattr(point, z, z)
+    point_with_z = Point(point.x, point.y, z)
 
     # TODO: determine correct created_at value
     # created_at = row.DateCreated
@@ -159,16 +159,14 @@ def make_location(row: pd.Series) -> Location:
         nma_pk_location=row.LocationId,
         # TODO: determine if PointID should map to location.name or thing.name or if the Location table needs a name field at all.
         name=row.PointID,
-        point=transformed_point.wkt,
+        point=point_with_z.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
-        # TODO: map code to meaning since meaning is used as the lexicon term
-        # elevation_method=row.AltitudeMethod,
+        elevation_method=lu_to_lexicon_map[row.AltitudeMethod],
         # created_at=created_at,
         # TODO: row.CoordinateAccuracy is not a float
         # coordinate_accuracy=row.CoordinateAccuracy,
-        # TODO: map code to meaning since meaning is used as the lexicon term
-        # coordinate_method=row.CoordinateMethod,
+        coordinate_method=lu_to_lexicon_map[row.CoordinateMethod],
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
         state=state,
