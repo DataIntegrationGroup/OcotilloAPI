@@ -2,7 +2,7 @@ name: CD (Staging)
 
 on:
   push:
-    branches: [pre-production]
+    branches: [staging]
 
 permissions:
   contents: write
