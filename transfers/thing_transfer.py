@@ -23,7 +23,7 @@ from transfers.util import make_location, read_csv, logger
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
 
-    ldf = read_csv("location.csv")
+    ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     n = len(ldf)
