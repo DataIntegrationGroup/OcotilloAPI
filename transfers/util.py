@@ -65,7 +65,7 @@ sys.stderr = StreamToLogger(logger, logging.ERROR)
 TRANSFORMERS = {}
 
 
-def replace_nans(df: pd.DataFrame, default=None)->pd.DataFrame:
+def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     df = df.replace(pd.NA, default)
     return df.replace({np.nan: default})
 

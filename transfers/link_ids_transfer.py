@@ -23,7 +23,8 @@ from transfers.util import (
     filter_to_valid_point_ids,
     logger,
     extract_organization,
-    read_csv, replace_nans,
+    read_csv,
+    replace_nans,
 )
 
 
@@ -153,7 +154,6 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     # ldf = ldf[ldf["AlternateSiteID"].notna()]
     ldf = replace_nans(ldf)
-
 
     ldf = filter_to_valid_point_ids(session, ldf)
 

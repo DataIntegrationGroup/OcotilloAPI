@@ -29,7 +29,8 @@ from transfers.util import (
     get_state_from_point,
     get_county_from_point,
     get_quad_name_from_point,
-    logger, replace_nans,
+    logger,
+    replace_nans,
 )
 
 ADDED = []
