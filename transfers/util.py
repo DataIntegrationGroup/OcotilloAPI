@@ -217,20 +217,14 @@ def make_lu_to_lexicon_mapper():
                 code = row.CODE
                 meaning = row.MEANING
 
-            mappers.update({code: meaning})
+            mappers.update({f"{lu_table}:{code}": meaning})
     return mappers
 
 
 lu_to_lexicon_map = make_lu_to_lexicon_mapper()
 
+
 if __name__ == "__main__":
-    # quad = get_quad_name_from_point(-106.5, 34.2)
-    # print(quad)
-    # state = get_state_from_point(-106.5, 34.2)
-    # print(state)
-    # county = get_county_from_point(-106.5, 34.2)
-    # print(county)
-    z = get_epqs_elevation_from_point(-106.5, 34.2)
-    print(z)
+    print(lu_to_lexicon_map)
 
 # ============= EOF =============================================
