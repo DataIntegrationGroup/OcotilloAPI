@@ -50,28 +50,28 @@ jobs:
             echo "  MODE: \"production\"" >> app.yaml
             echo "  DB_DRIVER: \"cloudsql\"" >> app.yaml
             echo "  CLOUD_SQL_INSTANCE_NAME: \"${{ secrets.CLOUD_SQL_INSTANCE_NAME }}\"" >> app.yaml
-            echo "  CLOUD_SQL_DATABASE: \"${{ secrets.CLOUD_SQL_DATABASE }}\"" >> app.yaml
+            echo "  CLOUD_SQL_DATABASE: \"${{ vars.CLOUD_SQL_DATABASE }}\"" >> app.yaml
             echo "  CLOUD_SQL_USER: \"${{ secrets.CLOUD_SQL_USER }}\"" >> app.yaml
             echo "  CLOUD_SQL_PASSWORD: \"${{ secrets.CLOUD_SQL_PASSWORD }}\"" >> app.yaml
             echo "  GCS_SERVICE_ACCOUNT_KEY: \"${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}\"" >> app.yaml
-            echo "  GCS_BUCKET_NAME: \"${{secrets.GCS_BUCKET_NAME}}\"" >> app.yaml
-            echo "  AUTHENTIK_URL: \"${{secrets.AUTHENTIK_URL}}\"" >> app.yaml
-            echo "  AUTHENTIK_CLIENT_ID: \"${{secrets.AUTHENTIK_CLIENT_ID}}\"" >> app.yaml
-            echo "  AUTHENTIK_AUTHORIZE_URL: \"${{secrets.AUTHENTIK_AUTHORIZE_URL}}\"" >> app.yaml
-            echo "  AUTHENTIK_TOKEN_URL: \"${{secrets.AUTHENTIK_TOKEN_URL}}\"" >> app.yaml
+            echo "  GCS_BUCKET_NAME: \"${{vars.GCS_BUCKET_NAME}}\"" >> app.yaml
+            echo "  AUTHENTIK_URL: \"${{vars.AUTHENTIK_URL}}\"" >> app.yaml
+            echo "  AUTHENTIK_CLIENT_ID: \"${{vars.AUTHENTIK_CLIENT_ID}}\"" >> app.yaml
+            echo "  AUTHENTIK_AUTHORIZE_URL: \"${{vars.AUTHENTIK_AUTHORIZE_URL}}\"" >> app.yaml
+            echo "  AUTHENTIK_TOKEN_URL: \"${{vars.AUTHENTIK_TOKEN_URL}}\"" >> app.yaml
             
 
         - name: Deploy to Google Cloud
           run: |
-            gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }}
+            gcloud app deploy app.yaml --quiet --project ${{ vars.GCP_PROJECT_ID }}
 
         # Clean up old versions - delete only the oldest version, one created and one destroyed
         - name: Clean up oldest version
           run: |
-            OLDEST_VERSION=$(gcloud app versions list --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID}} --format="value(id)" --sort-by="version.createTime" | head -n 1)
+            OLDEST_VERSION=$(gcloud app versions list --service=ocotillo-api-staging --project=${{ vars.GCP_PROJECT_ID}} --format="value(id)" --sort-by="version.createTime" | head -n 1)
             if [ ! -z "$OLDEST_VERSION" ]; then
               echo "Deleting oldest version: $OLDEST_VERSION"
-              gcloud app versions delete $OLDEST_VERSION --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID }} --quiet
+              gcloud app versions delete $OLDEST_VERSION --service=ocotillo-api-staging --project=${{ vars.GCP_PROJECT_ID }} --quiet
               echo "Deleted oldest version: $OLDEST_VERSION"
             else
               echo "No versions to delete"
