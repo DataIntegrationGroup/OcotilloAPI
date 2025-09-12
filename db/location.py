@@ -42,7 +42,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
         String(36), nullable=True, unique=True
     )
     description: Mapped[str] = mapped_column
-    name: Mapped[str] = mapped_column(String(255), nullable=True)
+    # name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINTZ", srid=SRID_WGS84, spatial_index=True)
     )
