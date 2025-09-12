@@ -97,7 +97,7 @@ def main_transfer():
 
     cleanup_wells_flag = True
 
-    limit = 100
+    limit = 15
     with session_ctx() as sess:
         if init:
             erase_and_initalize(sess)
