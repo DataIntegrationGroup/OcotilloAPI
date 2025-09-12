@@ -15,16 +15,18 @@
 # ===============================================================================
 from datetime import datetime
 import re
-from pathlib import Path
+import io
 import logging
 from shapely import Point
 
 
 from sqlalchemy.orm import Session
 import pandas as pd
+import numpy as np
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
+from services.gcs_helper import get_storage_bucket
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
@@ -32,6 +34,22 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
+import sys
+
+
+class StreamToLogger:
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+        self.linebuf = ""
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.level, line.rstrip())
+
+    def flush(self):
+        pass
+
 
 log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
@@ -46,10 +64,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# redirect stderr to the logger
+sys.stderr = StreamToLogger(logger, logging.ERROR)
 
-def read_csv(name: str) -> pd.DataFrame:
-    p = Path(".") / "transfers" / "data" / name
-    return pd.read_csv(p)
+
+def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
+    df = df.replace(pd.NA, default)
+    return df.replace({np.nan: default})
+
+
+def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    bucket = get_storage_bucket()
+    blob = bucket.blob(f"nma_csv/{name}.csv")
+    data = blob.download_as_bytes()
+
+    if dtype:
+        return pd.read_csv(io.BytesIO(data), dtype=dtype)
+    else:
+        return pd.read_csv(io.BytesIO(data))
 
 
 def get_valid_point_ids(session, thing_type="water well"):
@@ -121,6 +153,7 @@ def make_location(row: pd.Series) -> Location:
 
     # TODO: determine correct created_at value
     # created_at = row.DateCreated
+    name = row.PointID
 
     location = Location(
         nma_pk_location=row.LocationId,
@@ -129,10 +162,13 @@ def make_location(row: pd.Series) -> Location:
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=row.AltitudeMethod,
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        # elevation_method=row.AltitudeMethod,
         # created_at=created_at,
-        coordinate_accuracy=row.CoordinateAccuracy,
-        coordinate_method=row.CoordinateMethod,
+        # TODO: row.CoordinateAccuracy is not a float
+        # coordinate_accuracy=row.CoordinateAccuracy,
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        # coordinate_method=row.CoordinateMethod,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
         state=state,
@@ -141,6 +177,53 @@ def make_location(row: pd.Series) -> Location:
     )
     return location
 
+
+def make_lu_to_lexicon_mapper():
+    lu_tables = [
+        # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
+        "LU_AltitudeMethod",  # CODE/MEANING
+        "LU_CollectionMethod",  # CODE/MEANING
+        "LU_ConstructionMethod",  # CODE/MEANING
+        "LU_CoordinateAccuracy",  # CODE/MEANING
+        # "LU_CoordinateDatum",   # the code is the value, so no need for mapping
+        "LU_CoordinateMethod",  # CODE/MEANING
+        "LU_CurrentUse",  # CODE/MEANING
+        "LU_DataQuality",  # CODE/MEANING
+        "LU_DataSource",  # CODE/MEANING
+        "LU_Depth_CompletionSource",  # CODE/MEANING
+        "LU_Discharge_ChemistrySource",  # CODE/MEANING
+        # "LU_FieldNoteTypes",    # not being used in the transfers since there are no records
+        # "LU_Formations",        # needs to be cleaned before it can be used
+        "LU_LevelStatus",  # CODE/MEANING
+        # "LU_Lithology",         # needs to be cleaned before it can be used
+        "LU_MajorAnalyte",  # CODE/MEANING
+        "LU_MeasurementMethod",  # CODE/MEANING
+        # "LU_MeasuringAgency",   # the abreviation is what is used in the new schema
+        "LU_MinorTraceAnalyte",  # CODE/MEANING
+        "LU_MonitoringStatus",  # CODE/MEANING
+        "LU_SampleType",  # CODE/MEANING
+        "LU_SiteType",  # CODE/MEANING
+        "LU_Status",  # CODE/MEANING
+    ]
+
+    mappers = {}
+
+    for lu_table in lu_tables:
+        table = read_csv(lu_table)
+
+        for i, row in table.iterrows():
+            if lu_table == "LU_Formations":
+                code = row.Code
+                meaning = row.Meaning
+            else:
+                code = row.CODE
+                meaning = row.MEANING
+
+            mappers.update({code: meaning})
+    return mappers
+
+
+lu_to_lexicon_map = make_lu_to_lexicon_mapper()
 
 if __name__ == "__main__":
     # quad = get_quad_name_from_point(-106.5, 34.2)

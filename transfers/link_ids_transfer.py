@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 import re
+
+import numpy as np
 import pandas as pd
 
 from db import Thing, ThingIdLink
@@ -22,11 +24,12 @@ from transfers.util import (
     logger,
     extract_organization,
     read_csv,
+    replace_nans,
 )
 
 
 def transfer_link_ids_welldata(session):
-    ldf = read_csv("welldata.csv")
+    ldf = read_csv("WellData", dtype={"OSEWelltagID": str})
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
@@ -69,6 +72,7 @@ def transfer_link_ids_welldata(session):
                 )
                 continue
 
+            # TODO: add guards for null values
             link_id = ThingIdLink()
             link_id.thing = thing
             link_id.relation = klass
@@ -145,10 +149,11 @@ def add_link_plss(session, row, thing):
 
 
 def transfer_link_ids(session, site_type="GW"):
-    ldf = read_csv("location2.csv")
+    ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
     # ldf = ldf[ldf["AlternateSiteID"].notna()]
+    ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
