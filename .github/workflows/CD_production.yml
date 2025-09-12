@@ -1,4 +1,4 @@
-name: CD (Staging)
+name: CD (Production)
 
 on:
   push:
@@ -59,7 +59,7 @@ jobs:
             echo "  AUTHENTIK_CLIENT_ID: \"${{vars.AUTHENTIK_CLIENT_ID}}\"" >> app.yaml
             echo "  AUTHENTIK_AUTHORIZE_URL: \"${{vars.AUTHENTIK_AUTHORIZE_URL}}\"" >> app.yaml
             echo "  AUTHENTIK_TOKEN_URL: \"${{vars.AUTHENTIK_TOKEN_URL}}\"" >> app.yaml
-            
+            echo "  SENTRY_DSN: \"${{vars.SENTRY_DSN}}\"" >> app.yaml
 
         - name: Deploy to Google Cloud
           run: |
