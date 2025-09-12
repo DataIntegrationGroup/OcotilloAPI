@@ -15,7 +15,7 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from transfers.util import read_csv, filter_to_valid_point_ids, logger
+from transfers.util import read_csv, filter_to_valid_point_ids, logger, replace_nans
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
 from schemas.contact import CreateContact, CreateAddress
@@ -53,8 +53,8 @@ def transfer_contacts(session):
 
     odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
 
-    odf = odf.replace(pd.NA, None)
-    odf = odf.replace({np.nan: None})
+    odf = replace_nans(odf)
+
     odf = filter_to_valid_point_ids(session, odf)
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()

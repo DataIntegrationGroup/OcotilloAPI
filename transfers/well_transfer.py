@@ -29,7 +29,7 @@ from transfers.util import (
     get_state_from_point,
     get_county_from_point,
     get_quad_name_from_point,
-    logger,
+    logger, replace_nans,
 )
 
 ADDED = []
@@ -44,8 +44,7 @@ def transfer_wells(session, start_index=0, limit=0):
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
     wdf = wdf.iloc[start_index : start_index + limit]
 
-    wdf = wdf.replace(pd.NA, None)
-    wdf = wdf.replace({np.nan: None})
+    wdf = replace_nans(wdf)
 
     n = len(wdf)
     start_time = time.time()
@@ -119,8 +118,7 @@ def transfer_wells(session, start_index=0, limit=0):
 
 def transfer_wellscreens(session, limit=None):
     wdf = read_csv("WellScreens")
-    wdf = wdf.replace(pd.NA, None)
-    wdf = wdf.replace({np.nan: None})
+    wdf = replace_nans(wdf)
 
     wdf = filter_to_valid_point_ids(session, wdf)
 

@@ -24,6 +24,7 @@ from shapely.ops import transform
 
 from sqlalchemy.orm import Session
 import pandas as pd
+import numpy as np
 
 from db import Thing, Location
 from services.gcs_helper import get_storage_bucket
@@ -62,6 +63,11 @@ logger = logging.getLogger(__name__)
 sys.stderr = StreamToLogger(logger, logging.ERROR)
 
 TRANSFORMERS = {}
+
+
+def replace_nans(df: pd.DataFrame, default=None)->pd.DataFrame:
+    df = df.replace(pd.NA, default)
+    return df.replace({np.nan: default})
 
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
