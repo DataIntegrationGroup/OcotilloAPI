@@ -38,7 +38,7 @@ def get_tiger_data(
         "outFields": outfields,
         "returnGeometry": "false",
     }
-    resp = httpx.get(url, params=params, timeout=15)
+    resp = httpx.get(url, params=params, timeout=30)
     data = resp.json()
     if not data.get("features"):
         return None
@@ -73,7 +73,7 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "returnGeometry": "false",
     }
 
-    resp = httpx.get(url, params=params, timeout=15)
+    resp = httpx.get(url, params=params, timeout=30)
     data = resp.json()
 
     if data["features"]:
