@@ -15,7 +15,6 @@
 # ===============================================================================
 import re
 
-import numpy as np
 import pandas as pd
 
 from db import Thing, ThingIdLink
@@ -37,7 +36,9 @@ def transfer_link_ids_welldata(session):
 
         # RULE: exclude rows where both ids are null
         if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            logger.warning(f"Both OSEWellID and OSEWelltagID are null for row {i}")
+            logger.warning(
+                f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
+            )
             continue
 
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
