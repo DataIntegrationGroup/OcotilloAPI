@@ -44,7 +44,7 @@ def erase_and_initalize(session: Session) -> None:
     starttime = time.time()
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
-    elapsed_time = time.time() -starttime
+    elapsed_time = time.time() - starttime
     logger.info(f"Done erasing existing data. {elapsed_time:0.2f}s")
 
     logger.info("Initializing lexicon and sensors")
@@ -57,7 +57,6 @@ def erase_and_initalize(session: Session) -> None:
     init_sensor(session)
     elapsed_time = time.time() - starttime
     logger.info(f"Done initializing sensors. {elapsed_time:0.2f}s")
-
 
 
 def message(msg, pad=10):
