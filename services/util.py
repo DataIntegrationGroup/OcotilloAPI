@@ -82,7 +82,7 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         return None
 
 
-def get_epqs_elevation(lon: float, lat: float) -> float:
+def get_epqs_elevation_from_point(lon: float, lat: float) -> float:
     url = "https://epqs.nationalmap.gov/v1/json"
     params = {
         "x": lon,
@@ -105,4 +105,4 @@ if __name__ == "__main__":
     print(get_state_from_point(x, y))
     print(get_county_from_point(x, y))
     print(get_quad_name_from_point(x, y))
-    print(get_epqs_elevation(x, y))
+    print(get_epqs_elevation_from_point(x, y))

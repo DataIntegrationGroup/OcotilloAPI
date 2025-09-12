@@ -24,7 +24,13 @@ from sqlalchemy.orm import Session
 import pandas as pd
 
 from db import Thing, Location
-from services.util import transform_srid, get_epqs_elevation
+from services.util import (
+    transform_srid,
+    get_epqs_elevation_from_point,
+    get_state_from_point,
+    get_county_from_point,
+    get_quad_name_from_point,
+)
 
 log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
@@ -89,33 +95,28 @@ def make_location(row: pd.Series) -> Location:
 
     # TODO: should the altitude be fetched from USGS'
     # Elevation Point Query Service https://epqs.nationalmap.gov/v1/docs
-    xypoint = transform_srid(
-        Point(row.Easting, row.Northing),
-        source_srid=26913,
-        target_srid=4326,  # WGS84 SRID
-    )
 
-    z = 0
-
-    # idx = row.index
-    # idx = df.index.get_loc(row.name)
-    # print('asdfa', idx, row.name)
-    # if not z:
-    #     z = get_epqs_elevation(xypoint.x, xypoint.y)
-
-    # z = row.Altitude if row.Altitude else 0
-    # convert z from ft to meters
-    z = z * 0.3048
-
-    point = Point(row.Easting, row.Northing, z)
+    point = Point(row.Easting, row.Northing)
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
         point, source_srid=26913, target_srid=4326  # WGS84 SRID
     )
 
-    # TODO: Add tests for these functions. move to a different location
-    # use in Location API
+    state = get_state_from_point(transformed_point.x, transformed_point.y)
+    county = get_county_from_point(transformed_point.x, transformed_point.y)
+    quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
+
+    z = row.Altitude
+    if z:
+        z = z * 0.3048
+    else:
+        logger.info(
+            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
+        )
+        z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
+
+    setattr(point, z, z)
 
     # TODO: determine correct created_at value
     # created_at = row.DateCreated
@@ -133,6 +134,9 @@ def make_location(row: pd.Series) -> Location:
         coordinate_method=row.CoordinateMethod,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
+        state=state,
+        county=county,
+        quad_name=quad_name,
     )
     return location
 
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     # print(state)
     # county = get_county_from_point(-106.5, 34.2)
     # print(county)
-    z = get_epqs_elevation(-106.5, 34.2)
+    z = get_epqs_elevation_from_point(-106.5, 34.2)
     print(z)
 
 # ============= EOF =============================================
