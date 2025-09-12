@@ -251,10 +251,16 @@ def make_location(row: pd.Series) -> Location:
         point=transformed_point.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=row.AltitudeMethod,
+
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        # elevation_method=row.AltitudeMethod,
         # created_at=created_at,
-        coordinate_accuracy=row.CoordinateAccuracy,
-        coordinate_method=row.CoordinateMethod,
+
+        # TODO: row.CoordinateAccuracy is not a float
+        # coordinate_accuracy=row.CoordinateAccuracy,
+
+        # TODO: map code to meaning since meaning is used as the lexicon term
+        #coordinate_method=row.CoordinateMethod,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
     )

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import time
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -38,11 +40,24 @@ from transfers.util import logger
 
 
 def erase_and_initalize(session: Session) -> None:
+    logger.info("Erasing existing data and initializing lexicon and sensors")
+    starttime = time.time()
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
+    elapsed_time = time.time() -starttime
+    logger.info(f"Done erasing existing data. {elapsed_time:0.2f}s")
 
+    logger.info("Initializing lexicon and sensors")
+    starttime = time.time()
     init_lexicon()
+    elapsed_time = time.time() - starttime
+    logger.info(f"Done initializing lexicon. {elapsed_time:0.2f}s")
+
+    starttime = time.time()
     init_sensor(session)
+    elapsed_time = time.time() - starttime
+    logger.info(f"Done initializing sensors. {elapsed_time:0.2f}s")
+
 
 
 def message(msg, pad=10):
@@ -69,7 +84,20 @@ def main_transfer():
 
     cleanup_wells_flag = False
 
-    limit = 500
+    transfer_well_flag = True
+    transfer_spring_flag = True
+    transfer_perennial_stream_flag = True
+    transfer_ephemeral_stream_flag = True
+    transfer_met_flag = True
+    transfer_contacts_flag = True
+    transfer_waterlevels_flag = True
+    transfer_link_ids_flag = True
+    transfer_assets_flag = True
+    transfer_groups_flag = True
+
+    cleanup_wells_flag = True
+
+    limit = 100
     with session_ctx() as sess:
         if init:
             erase_and_initalize(sess)

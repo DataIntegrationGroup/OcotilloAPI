@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import time
 import uuid
 from datetime import datetime
 
@@ -28,8 +29,17 @@ def transfer_water_levels(session):
     wd = filter_to_valid_point_ids(session, wd)
     gwd = wd.groupby(["PointID"])
 
+    start_time = time.time()
     for index, group in gwd:
-        for row in group.itertuples():
+        logger.info(f"Processing PointID: {index}")
+        n = len(group)
+        for i, row in enumerate(group.itertuples()):
+            if i and not i % 25:
+                logger.info(
+                    f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+                )
+                session.commit()
+
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
                 logger.warning(f"Skipping row {row.Index} due to missing data.")
                 continue
@@ -67,7 +77,7 @@ def transfer_water_levels(session):
             obs.unit = "ft"
 
             session.add(obs)
-            session.commit()
+        session.commit()
 
 
 # ============= EOF =============================================

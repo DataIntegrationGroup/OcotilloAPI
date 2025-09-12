@@ -43,6 +43,10 @@ def transfer_wells(session, start_index=0, limit=0):
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
     wdf = wdf.iloc[start_index : start_index + limit]
+
+    wdf = wdf.replace(pd.NA, None)
+    wdf = wdf.replace({np.nan: None})
+
     n = len(wdf)
     start_time = time.time()
     results = {
@@ -109,6 +113,7 @@ def transfer_wells(session, start_index=0, limit=0):
         made_things.append(row.PointID)
 
     results["made_things"] = made_things
+    session.commit()
     return results
 
 
@@ -158,12 +163,13 @@ def transfer_wellscreens(session, limit=None):
             CreateWellScreen.model_validate(well_screen_data)
             well_screen = WellScreen(**well_screen_data)
             session.add(well_screen)
-            session.commit()
         except ValidationError as e:
             logger.warning(
                 f"Validation error for row {i} with PointID {row.PointID}: {e}"
             )
             continue
+
+    session.commit()
 
 
 def cleanup_wells(session):
