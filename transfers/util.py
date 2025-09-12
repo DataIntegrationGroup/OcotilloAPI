@@ -272,40 +272,39 @@ def make_location(row: pd.Series) -> Location:
 
 def make_lu_to_lexicon_mapper():
     lu_tables = [
-        # "LU_AltitudeDatum.csv",     # the code is the value, so no need for mapping
-        "LU_AltitudeMethod.csv",  # CODE/MEANING
-        "LU_CollectionMethod.csv",  # CODE/MEANING
-        "LU_ConstructionMethod.csv",  # CODE/MEANING
-        "LU_CoordinateAccuracy.csv",  # CODE/MEANING
-        # "LU_CoordinateDatum.csv",   # the code is the value, so no need for mapping
-        "LU_CoordinateMethod.csv",  # CODE/MEANING
-        "LU_CurrentUse.csv",  # CODE/MEANING
-        "LU_DataQuality.csv",  # CODE/MEANING
-        "LU_DataSource.csv",  # CODE/MEANING
-        "LU_Depth_CompletionSource.csv",  # CODE/MEANING
-        "LU_Discharge_ChemistrySource.csv",  # CODE/MEANING
-        # "LU_FieldNoteTypes.csv",    # not being used in the transfers since there are no records
-        # "LU_Formations.csv",        # needs to be cleaned before it can be used
-        "LU_LevelStatus.csv",  # CODE/MEANING
-        # "LU_Lithology.csv",         # needs to be cleaned before it can be used
-        "LU_MajorAnalyte.csv",  # CODE/MEANING
-        "LU_MeasurementMethod.csv",  # CODE/MEANING
-        # "LU_MeasuringAgency.csv",   # the abreviation is what is used in the new schema
-        "LU_MinorTraceAnalyte.csv",  # CODE/MEANING
-        "LU_MonitoringStatus.csv",  # CODE/MEANING
-        "LU_SampleType.csv",  # CODE/MEANING
-        "LU_SiteType.csv",  # CODE/MEANING
-        "LU_Status.csv",  # CODE/MEANING
+        # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
+        "LU_AltitudeMethod",  # CODE/MEANING
+        "LU_CollectionMethod",  # CODE/MEANING
+        "LU_ConstructionMethod",  # CODE/MEANING
+        "LU_CoordinateAccuracy",  # CODE/MEANING
+        # "LU_CoordinateDatum",   # the code is the value, so no need for mapping
+        "LU_CoordinateMethod",  # CODE/MEANING
+        "LU_CurrentUse",  # CODE/MEANING
+        "LU_DataQuality",  # CODE/MEANING
+        "LU_DataSource",  # CODE/MEANING
+        "LU_Depth_CompletionSource",  # CODE/MEANING
+        "LU_Discharge_ChemistrySource",  # CODE/MEANING
+        # "LU_FieldNoteTypes",    # not being used in the transfers since there are no records
+        # "LU_Formations",        # needs to be cleaned before it can be used
+        "LU_LevelStatus",  # CODE/MEANING
+        # "LU_Lithology",         # needs to be cleaned before it can be used
+        "LU_MajorAnalyte",  # CODE/MEANING
+        "LU_MeasurementMethod",  # CODE/MEANING
+        # "LU_MeasuringAgency",   # the abreviation is what is used in the new schema
+        "LU_MinorTraceAnalyte",  # CODE/MEANING
+        "LU_MonitoringStatus",  # CODE/MEANING
+        "LU_SampleType",  # CODE/MEANING
+        "LU_SiteType",  # CODE/MEANING
+        "LU_Status",  # CODE/MEANING
     ]
 
     mappers = {}
 
     for lu_table in lu_tables:
-        p = Path("lookup_tables") / lu_table
-        table = read_csv(p)
+        table = read_csv(lu_table)
 
         for i, row in table.iterrows():
-            if lu_table == "LU_Formations.csv":
+            if lu_table == "LU_Formations":
                 code = row.Code
                 meaning = row.Meaning
             else:
@@ -317,7 +316,6 @@ def make_lu_to_lexicon_mapper():
 
 
 lu_to_lexicon_map = make_lu_to_lexicon_mapper()
-print(lu_to_lexicon_map)
 
 if __name__ == "__main__":
     # quad = get_quad_name_from_point(-106.5, 34.2)
