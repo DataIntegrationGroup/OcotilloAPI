@@ -66,16 +66,16 @@ jobs:
             gcloud app deploy app.yaml --quiet --project ${{ secrets.GCP_PROJECT_ID }}
 
         # Clean up old versions - delete only the oldest version, one created and one destroyed
-        - name: Clean up oldest version
-          run: |
-            OLDEST_VERSION=$(gcloud app versions list --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID}} --format="value(id)" --sort-by="version.createTime" | head -n 1)
-            if [ ! -z "$OLDEST_VERSION" ]; then
-              echo "Deleting oldest version: $OLDEST_VERSION"
-              gcloud app versions delete $OLDEST_VERSION --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID }} --quiet
-              echo "Deleted oldest version: $OLDEST_VERSION"
-            else
-              echo "No versions to delete"
-            fi
+#        - name: Clean up oldest version
+#          run: |
+#            OLDEST_VERSION=$(gcloud app versions list --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID}} --format="value(id)" --sort-by="version.createTime" | head -n 1)
+#            if [ ! -z "$OLDEST_VERSION" ]; then
+#              echo "Deleting oldest version: $OLDEST_VERSION"
+#              gcloud app versions delete $OLDEST_VERSION --service=ocotillo-api-staging --project=${{ secrets.GCP_PROJECT_ID }} --quiet
+#              echo "Deleted oldest version: $OLDEST_VERSION"
+#            else
+#              echo "No versions to delete"
+#            fi
 
         - name: Remove app.yaml
           run: |
