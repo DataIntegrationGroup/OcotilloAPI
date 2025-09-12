@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import pytz
 import re
 import io
 import logging
@@ -124,11 +125,34 @@ def convert_to_wgs84_vertical_datum(row, z):
     return z
 
 
+def convert_mt_to_utc(dt_record: datetime):
+    """
+    Developer's notes
+
+    Assumes that records with time 00:00 (midnight) are meant to indicate a
+    date and therefore their timezone should just be set to UTC without
+    making any transformations
+    """
+    t = dt_record.time()
+    if t.hour == 0 and t.minute == 0:
+        print("MIDNIGHT")
+        dt_record = dt_record.replace(tzinfo=timezone.utc)
+    else:
+        tz = pytz.timezone("America/Denver")
+        dt_record = tz.localize(dt_record)
+        if dt_record.dst() == timedelta(0):
+            print("MST", dt_record)
+            utc_offset = 7
+        else:
+            print("MDT", dt_record)
+            utc_offset = 6
+        dt_record = dt_record - timedelta(hours=utc_offset)
+        dt_record = dt_record.replace(tzinfo=timezone.utc)
+    print(dt_record)
+    return dt_record
+
+
 def make_location(row: pd.Series) -> Location:
-
-    # TODO: should the altitude be fetched from USGS'
-    # Elevation Point Query Service https://epqs.nationalmap.gov/v1/docs
-
     point = Point(row.Easting, row.Northing)
 
     # Convert the point to a WGS84 coordinate system
@@ -151,22 +175,55 @@ def make_location(row: pd.Series) -> Location:
 
     point_with_z = Point(point.x, point.y, z)
 
-    # TODO: determine correct created_at value
-    # created_at = row.DateCreated
-    name = row.PointID
+    if not (pd.isna(row.AltitudeMethod)):
+        elevation_method = lu_to_lexicon_map[f"LU_AltitudeMethod:{row.AltitudeMethod}"]
+    else:
+        elevation_method = None
+
+    if not (pd.isna(row.CoordinateMethod)):
+        coordinate_method = lu_to_lexicon_map[
+            f"LU_CoordinateMethod:{row.CoordinateMethod}"
+        ]
+    else:
+        coordinate_method = None
+
+    """
+    Developer's notes
+
+    AMP folks said that the earlier date between DateCreated and SiteDate is when
+    the site was inventoried, whereas the later is when the record was made in
+    the database. This was because they were used interchangeably. 
+    """
+    if row.DateCreated and row.SiteDate:
+
+        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
+        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
+
+        if date_created > site_date:
+            created_at = date_created
+        else:
+            created_at = site_date
+    elif row.DateCreated and not row.SiteDate:
+        created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
+    else:
+        # TODO: should this be set to SiteDate if DateCreated is None and SiteDate is populated?
+        created_at = None
+
+    # convert created_at from MST/MDT to UTC
+    if created_at is not None:
+        created_at = convert_mt_to_utc(created_at)
 
     location = Location(
         nma_pk_location=row.LocationId,
-        # TODO: determine if PointID should map to location.name or thing.name or if the Location table needs a name field at all.
-        name=row.PointID,
+        # name=row.PointID,
         point=point_with_z.wkt,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=lu_to_lexicon_map[row.AltitudeMethod],
-        # created_at=created_at,
+        elevation_method=elevation_method,
+        created_at=created_at,
         # TODO: row.CoordinateAccuracy is not a float
         # coordinate_accuracy=row.CoordinateAccuracy,
-        coordinate_method=lu_to_lexicon_map[row.CoordinateMethod],
+        coordinate_method=coordinate_method,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
         state=state,
