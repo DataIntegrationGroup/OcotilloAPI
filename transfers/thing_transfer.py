@@ -39,7 +39,11 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             )
             session.commit()
 
-        location = make_location(row)
+        try:
+            location = make_location(row)
+        except Exception as e:
+            logger.error(f"Error creating location for {row.PointID}: {e}")
+            continue
         session.add(location)
         payload = make_payload(row)
         thing_type = payload.pop("thing_type")

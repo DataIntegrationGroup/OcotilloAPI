@@ -67,8 +67,8 @@ def transfer_wells(session, start_index=0, limit=0):
         try:
             location = make_location(row)
         except Exception as e:
-            logger.warning(f"Error making location for row {i}: {e}")
-            break
+            logger.warning(f"Error making location for {row.PointID}: {e}")
+            continue
 
         # print(location_row)
         session.add(location)
