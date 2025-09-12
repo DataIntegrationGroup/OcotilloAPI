@@ -40,11 +40,6 @@ jobs:
             echo "runtime: python313" >> app.yaml
             echo "entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app" >> app.yaml
             echo "instance_class: F4" >> app.yaml
-            echo "inbound_services:" >> app.yaml
-            echo "  - warmup" >> app.yaml
-            echo "automatic_scaling:" >> app.yaml
-            echo "  min_instances: 0" >> app.yaml
-            echo "  max_instances: 10" >> app.yaml
             echo "" >> app.yaml
             echo "env_variables:" >> app.yaml
             echo "  MODE: \"production\"" >> app.yaml
