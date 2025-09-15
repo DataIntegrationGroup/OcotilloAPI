@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
 from sqlalchemy import (
     ForeignKey,
-    Integer,
-    Float,
     DateTime,
 )
-from sqlalchemy.orm import mapped_column, relationship
+from sqlalchemy.orm import mapped_column, relationship, Mapped
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
@@ -27,47 +26,45 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 class Observation(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
 
-    sample_id = mapped_column(
-        Integer,
+    # NM_Aquifer fields for audits
+    nma_pk_waterlevel: Mapped[str] = mapped_column(nullable=True)
+
+    sample_id: Mapped[int] = mapped_column(
         ForeignKey("sample.id", ondelete="CASCADE"),
         nullable=False,
     )
-    sensor_id = mapped_column(
-        Integer,
+    sensor_id: Mapped[int] = mapped_column(
         ForeignKey("sensor.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    observation_datetime = mapped_column(
+    observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
-    observed_property = lexicon_term()
-    value = mapped_column(
-        Float,
+    observed_property: Mapped[str] = lexicon_term(nullable=False)
+    value: Mapped[float] = mapped_column(
         nullable=True,
     )
-    unit = lexicon_term()
+    unit: Mapped[str] = lexicon_term(nullable=False)
 
     # groundwater
-    measuring_point_height = mapped_column(
-        Float,
+    measuring_point_height: Mapped[float] = mapped_column(
         nullable=True,
         doc="Height of the measuring point above the ground surface in ft",
         info={"unit": "ft"},
     )
 
-    level_status = lexicon_term()
+    level_status: Mapped[str] = lexicon_term(nullable=True)
 
     # geothermal
-    observation_depth = mapped_column(
-        Float,
+    observation_depth: Mapped[float] = mapped_column(
         nullable=True,
         info={"unit": "feet"},
         doc="Depth of the geothermal observation in feet",
     )
 
-    sensor = relationship("Sensor")
-    sample = relationship("Sample")
+    sensor: Mapped["Sensor"] = relationship("Sensor")  # noqa: F821
+    sample: Mapped["Sample"] = relationship("Sample")  # noqa: F821
 
 
 # ============= EOF =============================================
