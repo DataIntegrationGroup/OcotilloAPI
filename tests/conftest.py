@@ -11,7 +11,8 @@ def location():
         loc = Location(
             # name="first location",
             notes="these are some test notes",
-            point="POINT(-107.949533 33.809665 2464.9)",
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
             release_status="draft",
             elevation_accuracy=100,
             elevation_method="Survey-grade GPS",
@@ -34,7 +35,8 @@ def second_location():
     with session_ctx() as session:
         location = Location(
             # name="second location",
-            point="POINT (10.2 10.2 0)",
+            point="POINT (10.2 10.2)",
+            elevation=0,
             release_status="draft",
         )
         session.add(location)

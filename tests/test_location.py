@@ -44,7 +44,8 @@ def test_add_location():
     payload = {
         # "name": "test location",
         "notes": "these are some test notes",
-        "point": "POINT Z (-106.607784 35.118924 1558.8)",
+        "point": "POINT (-106.607784 35.118924)",
+        "elevation": 1558.8,
         "release_status": "draft",
         "elevation_accuracy": 1.0,
         "elevation_method": "Survey-grade GPS",
@@ -60,6 +61,7 @@ def test_add_location():
     # assert data["name"] == payload["name"]
     assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
+    assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
@@ -80,7 +82,8 @@ def test_update_location(location):
     payload = {
         # "name": "patched name",
         "notes": "these are some patched notes",
-        "point": "POINT Z (-106.904107 34.068198 1408.3)",
+        "point": "POINT (-106.904107 34.068198)",
+        "elevation": 1408.3,
         "release_status": "draft",
         "elevation_accuracy": 2.0,
         "elevation_method": "Survey-grade GPS",
@@ -94,6 +97,7 @@ def test_update_location(location):
     # assert data["name"] == payload["name"]
     assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
+    assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
@@ -145,6 +149,7 @@ def test_get_locations(location):
     # assert data["items"][0]["name"] == location.name
     assert data["items"][0]["notes"] == location.notes
     assert data["items"][0]["point"] == to_shape(location.point).wkt
+    assert data["items"][0]["elevation"] == location.elevation
     assert data["items"][0]["release_status"] == location.release_status
     assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
     assert data["items"][0]["elevation_method"] == location.elevation_method
@@ -163,6 +168,7 @@ def test_get_location_by_id(location):
     assert data["created_at"] == location.created_at.isoformat().replace("+00:00", "Z")
     # assert data["name"] == location.name
     assert data["point"] == to_shape(location.point).wkt
+    assert data["elevation"] == location.elevation
     assert data["release_status"] == location.release_status
     assert data["elevation_accuracy"] == location.elevation_accuracy
     assert data["elevation_method"] == location.elevation_method

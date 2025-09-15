@@ -36,7 +36,7 @@ def transfer_water_levels(session):
 
     start_time = time.time()
     for index, group in gwd:
-        logger.info(f"Processing PointID: {index}")
+        logger.info(f"Processing PointID: {index[0]}")
         n = len(group)
         for i, row in enumerate(group.itertuples()):
             if i and not i % 25:

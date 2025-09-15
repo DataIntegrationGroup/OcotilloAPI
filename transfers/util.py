@@ -171,8 +171,6 @@ def make_location(row: pd.Series) -> Location:
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
 
-    point_with_z = Point(point.x, point.y, z)
-
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
     elif not (pd.isna(row.AltitudeMethod)):
@@ -279,7 +277,8 @@ def make_location(row: pd.Series) -> Location:
     location = Location(
         nma_pk_location=row.LocationId,
         # name=row.PointID,
-        point=point_with_z.wkt,
+        point=point.wkt,
+        elevation=z,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
         elevation_method=elevation_method,

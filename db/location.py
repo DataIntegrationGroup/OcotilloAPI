@@ -44,7 +44,10 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     description: Mapped[str] = mapped_column
     # name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
-        Geometry(geometry_type="POINTZ", srid=SRID_WGS84, spatial_index=True)
+        Geometry(geometry_type="POINT", srid=SRID_WGS84, spatial_index=True)
+    )
+    elevation: Mapped[float] = mapped_column(
+        nullable=False, comment="in meters with vertical datum of NAVD88"
     )
 
     state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
