@@ -78,11 +78,10 @@ def transfer_water_levels(session):
             # TODO: this needs to be resolved
             obs.sensor_id = 1
 
-            # TODO: this needs to be implemented
-            # obs.nma_pk_observation = row.GlobalID
+            obs.nma_pk_waterlevels = row.GlobalID
 
             obs.sample = sample
-            obs.observation_datetime = dt
+            obs.observation_datetime = dt_utc
             obs.value = row.DepthToWater
             obs.measuring_point_height = row.MPHeight
             obs.observed_property = "groundwater level:groundwater level"
