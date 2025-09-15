@@ -129,13 +129,6 @@ def convert_to_wgs84_vertical_datum(row, z):
 
 
 def convert_mt_to_utc(dt_record: datetime):
-    """
-    Developer's notes
-
-    Assumes that records with time 00:00 (midnight) are meant to indicate a
-    date and therefore their timezone should just be set to UTC without
-    making any transformations
-    """
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
         # no time was measured, so just set the timezone to UTC and keep
@@ -169,8 +162,10 @@ def make_location(row: pd.Series) -> Location:
 
     z = row.Altitude
     if z:
+        elevation_from_epqs = False
         z = z * 0.3048
     else:
+        elevation_from_epqs = True
         logger.info(
             f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
         )
@@ -178,7 +173,9 @@ def make_location(row: pd.Series) -> Location:
 
     point_with_z = Point(point.x, point.y, z)
 
-    if not (pd.isna(row.AltitudeMethod)):
+    if elevation_from_epqs:
+        elevation_method = "USGS National Elevation Dataset (NED)"
+    elif not (pd.isna(row.AltitudeMethod)):
         elevation_method = lu_to_lexicon_map[f"LU_AltitudeMethod:{row.AltitudeMethod}"]
     else:
         elevation_method = None
