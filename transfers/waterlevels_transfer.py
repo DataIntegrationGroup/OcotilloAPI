@@ -20,7 +20,12 @@ from datetime import datetime
 import pandas as pd
 
 from db import Thing, Sample, Observation
-from transfers.util import filter_to_valid_point_ids, logger, read_csv
+from transfers.util import (
+    filter_to_valid_point_ids,
+    logger,
+    read_csv,
+    convert_mt_to_utc,
+)
 
 
 def transfer_water_levels(session):
@@ -31,7 +36,7 @@ def transfer_water_levels(session):
 
     start_time = time.time()
     for index, group in gwd:
-        logger.info(f"Processing PointID: {index}")
+        logger.info(f"Processing PointID: {index[0]}")
         n = len(group)
         for i, row in enumerate(group.itertuples()):
             if i and not i % 25:
@@ -44,7 +49,14 @@ def transfer_water_levels(session):
                 logger.warning(f"Skipping row {row.Index} due to missing data.")
                 continue
 
-            dt = datetime.fromisoformat(row.DateMeasured)
+            if not pd.isna(row.TimeMeasured):
+                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
+            else:
+                dt_measured = f"{row.DateMeasured} 12:00:00 AM"
+
+            dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
+            dt_utc = convert_mt_to_utc(dt)
+
             thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:
                 logger.warning(
@@ -57,7 +69,7 @@ def transfer_water_levels(session):
             sample.sample_type = "groundwater level"
 
             sample.field_sample_id = str(uuid.uuid4())
-            sample.sample_date = dt
+            sample.sample_date = dt_utc
             sample.thing = thing
             session.add(sample)
 

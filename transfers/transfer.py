@@ -59,14 +59,15 @@ def erase_and_initalize(session: Session) -> None:
     logger.info(f"Done initializing sensors. {elapsed_time:0.2f}s")
 
 
-def message(msg, pad=10):
+def message(msg, pad=10, new_line_at_top=True):
     pad = "*" * pad
-    logger.info("")
+    if new_line_at_top:
+        logger.info("")
     logger.info(f"{pad} {msg} {pad}")
 
 
 def main_transfer():
-    logger.info("Starting transfer")
+    message("STARTING TRANSFER", new_line_at_top=False)
 
     init = True
 
@@ -96,7 +97,7 @@ def main_transfer():
 
     cleanup_wells_flag = True
 
-    limit = 100
+    limit = 15
     with session_ctx() as sess:
         if init:
             erase_and_initalize(sess)

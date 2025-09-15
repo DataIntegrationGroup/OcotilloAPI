@@ -20,6 +20,7 @@ from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
 
+from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 
@@ -28,7 +29,7 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
     description: Mapped[str] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     project_area: Mapped[Optional[WKBElement]] = mapped_column(
-        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=True)
+        Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
     )
 
     # Foreign Keys

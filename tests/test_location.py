@@ -42,9 +42,10 @@ def override_dependencies_fixture():
 
 def test_add_location():
     payload = {
-        "name": "test location",
+        # "name": "test location",
         "notes": "these are some test notes",
-        "point": "POINT Z (10.1 10.1 0)",
+        "point": "POINT (-106.607784 35.118924)",
+        "elevation": 1558.8,
         "release_status": "draft",
         "elevation_accuracy": 1.0,
         "elevation_method": "Survey-grade GPS",
@@ -57,14 +58,18 @@ def test_add_location():
     data = response.json()
     assert "id" in data
     assert "created_at" in data
-    assert data["name"] == payload["name"]
+    # assert data["name"] == payload["name"]
     assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
+    assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
     assert data["coordinate_method"] == payload["coordinate_method"]
+    assert data["state"] == "New Mexico"
+    assert data["county"] == "Bernalillo"
+    assert data["quad_name"] == "Albuquerque East"
 
     # cleanup after test
     cleanup_post_test(Location, data["id"])
@@ -75,9 +80,10 @@ def test_add_location():
 
 def test_update_location(location):
     payload = {
-        "name": "patched name",
+        # "name": "patched name",
         "notes": "these are some patched notes",
-        "point": "POINT Z (10.1 20.2 0)",
+        "point": "POINT (-106.904107 34.068198)",
+        "elevation": 1408.3,
         "release_status": "draft",
         "elevation_accuracy": 2.0,
         "elevation_method": "Survey-grade GPS",
@@ -88,16 +94,23 @@ def test_update_location(location):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == location.id
-    assert data["name"] == payload["name"]
+    # assert data["name"] == payload["name"]
     assert data["notes"] == payload["notes"]
     assert data["point"] == payload["point"]
+    assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
     assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     assert data["elevation_method"] == payload["elevation_method"]
     assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
     assert data["coordinate_method"] == payload["coordinate_method"]
+    assert data["state"] == "New Mexico"
+    assert data["county"] == "Socorro"
+    assert data["quad_name"] == "Socorro"
 
     # cleanup after test
+    payload["state"] = location.state
+    payload["county"] = location.county
+    payload["quad_name"] = location.quad_name
     cleanup_patch_test(Location, payload, location)
 
 
@@ -106,9 +119,9 @@ def test_patch_location_404_not_found(location):
     Testing updating a location that does not exist
     """
     bad_location_id = 99999
-    location_name_patch = "another test name"
+    location_notes_patch = "patched notes"
     response = client.patch(
-        f"/location/{bad_location_id}", json={"name": location_name_patch}
+        f"/location/{bad_location_id}", json={"notes": location_notes_patch}
     )
     data = response.json()
     assert response.status_code == 404
@@ -125,14 +138,18 @@ def test_get_locations(location):
     response = client.get("/location")
     assert response.status_code == 200
     data = response.json()
+    from pprint import pprint
+
+    pprint(data, indent=2)
     assert data["total"] == 1
     assert data["items"][0]["id"] == location.id
     assert data["items"][0]["created_at"] == location.created_at.isoformat().replace(
         "+00:00", "Z"
     )
-    assert data["items"][0]["name"] == location.name
+    # assert data["items"][0]["name"] == location.name
     assert data["items"][0]["notes"] == location.notes
     assert data["items"][0]["point"] == to_shape(location.point).wkt
+    assert data["items"][0]["elevation"] == location.elevation
     assert data["items"][0]["release_status"] == location.release_status
     assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
     assert data["items"][0]["elevation_method"] == location.elevation_method
@@ -149,8 +166,9 @@ def test_get_location_by_id(location):
     data = response.json()
     assert data["id"] == location.id
     assert data["created_at"] == location.created_at.isoformat().replace("+00:00", "Z")
-    assert data["name"] == location.name
+    # assert data["name"] == location.name
     assert data["point"] == to_shape(location.point).wkt
+    assert data["elevation"] == location.elevation
     assert data["release_status"] == location.release_status
     assert data["elevation_accuracy"] == location.elevation_accuracy
     assert data["elevation_method"] == location.elevation_method
