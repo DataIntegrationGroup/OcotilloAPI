@@ -5,7 +5,7 @@ name: Tests
 
 on:
   pull_request:
-    branches: [ "production",'staging', 'transfer']
+    branches: ['production', 'staging', 'transfer']
 
 permissions:
   contents: read
