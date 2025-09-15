@@ -65,6 +65,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# workaround to not redirect httpx logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 # redirect stderr to the logger
 sys.stderr = StreamToLogger(logger, logging.ERROR)
 
@@ -135,20 +138,20 @@ def convert_mt_to_utc(dt_record: datetime):
     """
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
-        print("MIDNIGHT")
+        # no time was measured, so just set the timezone to UTC and keep
+        # time at 00:00
         dt_record = dt_record.replace(tzinfo=timezone.utc)
     else:
         tz = pytz.timezone("America/Denver")
         dt_record = tz.localize(dt_record)
         if dt_record.dst() == timedelta(0):
-            print("MST", dt_record)
+            # MST
             utc_offset = 7
         else:
-            print("MDT", dt_record)
+            # MDT
             utc_offset = 6
         dt_record = dt_record - timedelta(hours=utc_offset)
         dt_record = dt_record.replace(tzinfo=timezone.utc)
-    print(dt_record)
     return dt_record
 
 
