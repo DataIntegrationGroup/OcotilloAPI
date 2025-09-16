@@ -13,6 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+"""
+db/base.py
+
+This file defines the foundational components for the SQLAlchemy models.
+It includes:
+1.  The declarative base class (`Base`) that all models will inherit from.
+2.  A helper function (`lexicon_term`) to create standardized foreign key columns
+    referencing the `lexicon_term` table.
+3. A helper function (`pascal_to_snake`) to convert class names from PascalCase to snake_case
+    for automatic table naming.
+4. Mixins for common functionality:
+    - `AutoBaseMixin`: Adds automatic table naming and an auto-incrementing primary key.
+    - `PropertiesMixin`: Adds a JSONB properties column for storing additional attributes.
+    - `ReleaseMixin`: Adds a release status column referencing the `lexicon_term` table.
+    - `AuditMixin`: Adds standard audit columns (created_at, created_by, updated_at, updated_by).
+5.  A simple `User` model for tracking user information in audit columns.
+6.  Polymorphic helper mixins (`HasStatusHistory`, `HasNotes`, `HasAttribution`, etc.)
+    which provide a clean, reusable way to add relationships to the polymorphic
+    metadata tables. Any model that can have a status history (like Thing or Location)
+    can simply inherit from the `HasStatusHistory` mixin.
+7.  An `AuditMixin` to add standard audit columns to tables.
+"""
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -20,8 +43,6 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
-    Boolean,
-    Text,
     ForeignKey,
 )
 from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
@@ -41,6 +62,12 @@ make_searchable(Base.metadata)
 
 
 def lexicon_term(foreignkeykw=None, **kw):
+    """Create a SQLAlchemy mapped column for a self-referencing lexicon term.
+
+    This helper function simplifies the creation of a string column that also
+    acts as a foreign key to the 'term' column of the 'lexicon_term' table.
+    It standardizes the column type to String(100) and sets the onupdate
+    behavior to "CASCADE"."""
 
     fkw = foreignkeykw if foreignkeykw else {}
 
@@ -56,12 +83,16 @@ def pascal_to_snake(name):
 
 
 class ReleaseMixin:
+    """Mixin to add release status to a model."""
+
     @declared_attr
     def release_status(self):
         return lexicon_term(default="draft")
 
 
 class AuditMixin:
+    """Mixin to add standard audit columns to a model."""
+
     @declared_attr
     def created_at(self):
         return Column(
@@ -109,6 +140,8 @@ class AuditMixin:
 
 
 class AutoBaseMixin(AuditMixin):
+    """Mixin to add automatic table naming and an auto-incrementing primary key."""
+
     @declared_attr
     def __tablename__(self):
         return pascal_to_snake(self.__name__)
@@ -119,6 +152,8 @@ class AutoBaseMixin(AuditMixin):
 
 
 class PropertiesMixin:
+    """Mixin to add a JSONB properties column for storing additional attributes."""
+
     @declared_attr
     def properties(self):
         return Column(
@@ -130,6 +165,8 @@ class PropertiesMixin:
 
 
 class User(Base):
+    """Represents a user in the system."""
+
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
