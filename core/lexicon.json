@@ -251,9 +251,9 @@
   {"categories": [{"name": "relation", "description": null}], "term": "OSEPOD", "definition": "NM OSE 'Point of Diversion' ID"},
   {"categories": [{"name": "relation", "description": null}], "term": "PLSS", "definition": "Public Land Survey System ID"},
 
-  {"categories": [{"name": "sample_type", "description": null}], "term": "groundwater level", "definition": "groundwater level"},
-  {"categories": [{"name": "sample_type", "description": null}], "term": "water chemistry", "definition": "water chemistry"},
-  {"categories": [{"name": "sample_type", "description": null}], "term": "geothermal", "definition": "geothermal"},
+  {"categories": [{"name": "activity_type", "description": null}], "term": "groundwater level", "definition": "groundwater level"},
+  {"categories": [{"name": "activity_type", "description": null}], "term": "water chemistry", "definition": "water chemistry"},
+  {"categories": [{"name": "activity_type", "description": null}], "term": "geothermal", "definition": "geothermal"},
 
   {"categories": [{"name": "sample_matrix", "description": null}], "term": "groundwater", "definition": "groundwater"},
 

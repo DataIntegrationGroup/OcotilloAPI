@@ -87,7 +87,7 @@ class ValidateSample(BaseModel):
 # -------- CREATE ----------
 class CreateSample(BaseCreateModel, ValidateSample):
     thing_id: int
-    sample_type: str
+    activity_type: str
     field_sample_id: str
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sampler_name: str  # REFACTOR TODO: update with enum/restricted values
@@ -118,7 +118,7 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
     """
 
     thing_id: int | None = None  # REFACTOR TODO: should users be able to change this?
-    sample_type: str | None = None
+    activity_type: str | None = None
     field_sample_id: str | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
     sampler_name: str | None = None  # REFACTOR TODO: update with enum/restricted values
@@ -143,7 +143,7 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
 # -------- RESPONSE ----------
 class SampleResponse(BaseResponseModel):
     thing: ThingResponse
-    sample_type: str
+    activity_type: str
     field_sample_id: str
     sample_date: AwareDatetime
     release_status: str

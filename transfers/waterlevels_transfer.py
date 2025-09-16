@@ -25,6 +25,7 @@ from transfers.util import (
     logger,
     read_csv,
     convert_mt_to_utc,
+    lu_to_lexicon_map,
 )
 
 
@@ -65,8 +66,22 @@ def transfer_water_levels(session):
                 continue
 
             sample = Sample()
-            sample.sampler_name = "unknown"
-            sample.sample_type = "groundwater level"
+
+            if pd.isna(row.MeasuredBy):
+                sampler_name = "Unknown"
+            else:
+                sampler_name = row.MeasuredBy
+
+            sample.activity_type = "groundwater level"
+
+            if not pd.isna(row.MeasurementMethod):
+                sample_method = lu_to_lexicon_map[
+                    f"LU_MeasurementMethod:{row.MeasurementMethod}"
+                ]
+            else:
+                sample_method = "null placeholder"
+
+            sample_matrix = "groundwater"
 
             sample.field_sample_id = str(uuid.uuid4())
             sample.sample_date = dt_utc

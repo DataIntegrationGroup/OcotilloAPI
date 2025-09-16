@@ -59,7 +59,7 @@ def test_add_sample(spring_thing, sensor):
     """
     payload = {
         "thing_id": spring_thing.id,
-        "sample_type": "water chemistry",
+        "activity_type": "water chemistry",
         "field_sample_id": "FS-1234567",
         "sample_date": "2025-01-01T00:00:00Z",
         "release_status": "draft",
@@ -81,7 +81,7 @@ def test_add_sample(spring_thing, sensor):
     assert "id" in data
     assert "created_at" in data
     assert data["thing"]["id"] == spring_thing.id
-    assert data["sample_type"] == payload["sample_type"]
+    assert data["activity_type"] == payload["activity_type"]
     assert data["field_sample_id"] == payload["field_sample_id"]
     assert data["sample_date"] == payload["sample_date"]
     assert data["release_status"] == payload["release_status"]
@@ -104,7 +104,7 @@ def test_409_add_sample_invalid_field_sample_id(water_chemistry_sample, spring_t
     """
     payload = {
         "thing_id": spring_thing.id,
-        "sample_type": "water chemistry",
+        "activity_type": "water chemistry",
         "field_sample_id": water_chemistry_sample.field_sample_id,  # This should already exist
         "sample_date": "2025-01-01T00:00:00Z",
         "release_status": "draft",
@@ -140,7 +140,7 @@ def test_409_add_sample_invalid_thing_id():
     """
     payload = {
         "thing_id": 9999999,
-        "sample_type": "water chemistry",
+        "activity_type": "water chemistry",
         "field_sample_id": "FS-9999999",
         "sample_date": "2025-01-01T00:00:00Z",
         "release_status": "draft",
@@ -273,7 +273,7 @@ def test_get_samples(
         assert "id" in item
         assert "created_at" in item
         assert "thing" in item
-        assert "sample_type" in item
+        assert "activity_type" in item
         assert "field_sample_id" in item
         assert "sample_date" in item
         assert "release_status" in item
@@ -299,7 +299,7 @@ def test_get_sample_by_id(water_chemistry_sample, water_well_thing):
         "+00:00", "Z"
     )
     assert data["thing"]["id"] == water_well_thing.id
-    assert data["sample_type"] == water_chemistry_sample.sample_type
+    assert data["activity_type"] == water_chemistry_sample.activity_type
     assert data["field_sample_id"] == water_chemistry_sample.field_sample_id
     assert data["sample_date"] == water_chemistry_sample.sample_date
     assert data["release_status"] == water_chemistry_sample.release_status

@@ -464,7 +464,7 @@ def groundwater_level_sample(water_well_thing, sensor):
         sample = Sample(
             sample_date="2025-01-01T00:00:00Z",
             thing_id=water_well_thing.id,
-            sample_type="groundwater level",
+            activity_type="groundwater level",
             sampler_name="Test Sampler",
             release_status="draft",
             field_sample_id=f"FS-{uuid.uuid4()}",
@@ -487,7 +487,7 @@ def water_chemistry_sample(water_well_thing, sensor):
         sample = Sample(
             sample_date="2025-01-01T00:00:00Z",
             thing_id=water_well_thing.id,
-            sample_type="water chemistry",
+            activity_type="water chemistry",
             sampler_name="Test Sampler",
             release_status="draft",
             field_sample_id=f"FS-{uuid.uuid4()}",
@@ -510,7 +510,7 @@ def geothermal_sample(water_well_thing, sensor):
         sample = Sample(
             sample_date="2025-01-01T00:00:00Z",
             thing_id=water_well_thing.id,
-            sample_type="geothermal",
+            activity_type="geothermal",
             sampler_name="Test Sampler",
             release_status="draft",
             field_sample_id=f"FS-{uuid.uuid4()}",
@@ -532,7 +532,7 @@ def second_sample(water_well_thing, sensor):
     with session_ctx() as session:
         sample = Sample(
             thing_id=water_well_thing.id,
-            sample_type="groundwater level",
+            activity_type="groundwater level",
             field_sample_id="FS-9999999",
             sample_date="2025-01-01T00:00:00Z",
             release_status="draft",

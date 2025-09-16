@@ -19,18 +19,18 @@ from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id, order_sort_filter
 
 
-def get_sample_type_from_request(request: Request) -> str:
+def get_activity_type_from_request(request: Request) -> str:
     path = request.url.path
     path_components = path.split("/")
     if len(path_components) == 2:
         # no sample type specified in path
-        sample_type_in_path = path_components[1]
+        activity_type_in_path = path_components[1]
     if len(path_components) >= 3:
         # sample type specified in path
-        sample_type_in_path = path_components[2]
+        activity_type_in_path = path_components[2]
 
-    sample_type = sample_type_in_path.replace("-", " ")
-    return sample_type
+    activity_type = activity_type_in_path.replace("-", " ")
+    return activity_type
 
 
 def get_observations(
@@ -54,7 +54,7 @@ def get_observations(
     Retrieve all observations
     """
     sample_table_is_joined = False
-    sample_type = get_sample_type_from_request(request)
+    activity_type = get_activity_type_from_request(request)
 
     sql = select(Observation)
     if thing_id is not None:
@@ -72,10 +72,10 @@ def get_observations(
         sql = sql.where(Observation.observation_datetime <= end_time)
 
     # root of path is /observation
-    if sample_type != "observation":
+    if activity_type != "observation":
         if sample_table_is_joined is False:
             sql = sql.join(Sample, Sample.id == Observation.sample_id)
-        sql = sql.where(Sample.sample_type == sample_type)
+        sql = sql.where(Sample.activity_type == activity_type)
 
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
 
@@ -85,13 +85,13 @@ def get_observations(
     return paginate(query=sql, conn=session)
 
 
-def verify_observed_property_corresponds_with_sample_type(
+def verify_observed_property_corresponds_with_activity_type(
     observation: Observation, request: Request
 ):
-    requested_sample_type = get_sample_type_from_request(request)
-    actual_sample_type = observation.sample.sample_type
+    requested_activity_type = get_activity_type_from_request(request)
+    actual_activity_type = observation.sample.activity_type
 
-    if actual_sample_type != requested_sample_type:
+    if actual_activity_type != requested_activity_type:
         raise PydanticStyleException(
             status_code=HTTP_404_NOT_FOUND,
             detail=[
@@ -99,13 +99,13 @@ def verify_observed_property_corresponds_with_sample_type(
                     "loc": ["path", "observation_id"],
                     "type": "value_error",
                     "input": {"observation_id": observation.id},
-                    "msg": f"Observation with ID {observation.id} is not a {requested_sample_type} observation. It is a {actual_sample_type} observation.",
+                    "msg": f"Observation with ID {observation.id} is not a {requested_activity_type} observation. It is a {actual_activity_type} observation.",
                 }
             ],
         )
 
 
-def get_observation_of_a_sample_type_by_id(
+def get_observation_of_an_activity_type_by_id(
     session: Session, request: Request, observation_id: int
 ) -> Observation:
     """
@@ -113,7 +113,7 @@ def get_observation_of_a_sample_type_by_id(
     """
     observation = simple_get_by_id(session, Observation, observation_id)
 
-    verify_observed_property_corresponds_with_sample_type(observation, request)
+    verify_observed_property_corresponds_with_activity_type(observation, request)
 
     return observation
 
@@ -131,7 +131,7 @@ def observation_model_patcher(
     # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
     observation = simple_get_by_id(session, Observation, observation_id)
 
-    verify_observed_property_corresponds_with_sample_type(observation, request)
+    verify_observed_property_corresponds_with_activity_type(observation, request)
 
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(observation, key, value)

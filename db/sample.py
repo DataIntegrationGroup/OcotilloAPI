@@ -79,9 +79,9 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         default=0,
         comment="Identifier for duplicate samples (0 = original sample, not a duplicate, 1 = dup no.1, 2 = dup no.2, etc.).",
     )
-    sample_type: Mapped[str] = lexicon_term(
+    activity_type: Mapped[str] = lexicon_term(
         nullable=False,
-        comment="The type of sample (e.g., 'geochemical', 'geothermal', 'groundwater').",
+        comment="The type of sampling activity (e.g., 'geochemical', 'geothermal', 'groundwater level', 'water chemistry').",
     )
 
     # --- Relationship Definitions ---
