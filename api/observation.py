@@ -48,6 +48,13 @@ from services.observation_helper import (
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
+"""
+TODO
+
+- add validation that the sample_id exists in the database before creating observation
+- add validation that the activity_type of the sample corresponds with the endpoint where the observation is posted/patched
+"""
+
 
 # ============= Post =============================================
 @router.post("/groundwater-level", status_code=HTTP_201_CREATED)
