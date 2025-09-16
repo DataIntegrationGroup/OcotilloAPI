@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import DateTime, ForeignKey, UniqueConstraint, Float
+from sqlalchemy import DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import mapped_column, relationship, Mapped
 
 # import models from classes that are defined in separate files
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 from db.thing import Thing
 from db.sensor import Sensor
 
@@ -52,39 +52,36 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="Date and time of sample collection.",
     )
-    # REFACTOR TODO: update with enum/restricted values
-    sample_matrix: Mapped[Optional[str]] = mapped_column(
-        comment="The material of the sample (e.g., 'gw', 'soil')."
+    sample_matrix: Mapped[str] = lexicon_term(
+        nullable=False, comment="The material of the sample (e.g., 'gw', 'soil')."
     )
-    # REFACTOR TODO: update with enum/restricted values
-    sample_method: Mapped[Optional[str]] = mapped_column(
-        comment="Method used to collect the sample."
+    sample_method: Mapped[str] = lexicon_term(
+        comment="Method used to collect the sample.", nullable=True
     )
     field_sample_id: Mapped[str] = mapped_column(
         unique=True, nullable=False, comment="User-defined ID for field tracking."
     )
-    # REFACTOR TODO: update with enum/restricted values
-    sampler_name: Mapped[Optional[str]] = mapped_column(
+    sampler_name: Mapped[str] = mapped_column(
         nullable=False, comment="Name of the person who collected the sample."
     )
-    # REFACTOR TODO: update with enum/restricted values
     qc_sample: Mapped[str] = mapped_column(
         default="Original",
         nullable=False,
         comment="Quality control sample type (e.g., 'Original', 'field dupe').",
     )
-    sample_top: Mapped[Optional[float]] = mapped_column(
-        Float, comment="Top depth of a discrete sample interval."
+    sample_top: Mapped[float] = mapped_column(
+        nullable=True, comment="Top depth of a discrete sample interval."
     )
-    sample_bottom: Mapped[Optional[float]] = mapped_column(
-        Float, comment="Bottom depth of a discrete sample interval."
+    sample_bottom: Mapped[float] = mapped_column(
+        nullable=True, comment="Bottom depth of a discrete sample interval."
     )
     duplicate_sample_number: Mapped[int] = mapped_column(
         default=0,
         comment="Identifier for duplicate samples (0 = original sample, not a duplicate, 1 = dup no.1, 2 = dup no.2, etc.).",
     )
-    sample_type: Mapped[str] = mapped_column(
-        comment="The type of sample (e.g., 'geochemical', 'geothermal', 'groundwater')."
+    sample_type: Mapped[str] = lexicon_term(
+        nullable=False,
+        comment="The type of sample (e.g., 'geochemical', 'geothermal', 'groundwater').",
     )
 
     # --- Relationship Definitions ---

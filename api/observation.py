@@ -43,7 +43,7 @@ from services.query_helper import simple_get_by_id
 from services.observation_helper import (
     get_observations,
     observation_model_patcher,
-    get_observation_of_an_observation_class_by_id,
+    get_observation_of_a_sample_type_by_id,
 )
 
 router = APIRouter(prefix="/observation", tags=["observation"])
@@ -177,7 +177,7 @@ async def get_groundwater_level_observation_by_id(
     user: amp_viewer_dependency,
     observation_id: int,
 ) -> GroundwaterLevelObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
+    return get_observation_of_a_sample_type_by_id(
         session=session,
         request=request,
         observation_id=observation_id,
@@ -224,7 +224,7 @@ async def get_water_chemistry_observation_by_id(
     user: amp_viewer_dependency,
     observation_id: int,
 ) -> WaterChemistryObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
+    return get_observation_of_a_sample_type_by_id(
         session=session,
         request=request,
         observation_id=observation_id,
@@ -269,7 +269,7 @@ async def get_geothermal_observation_by_id(
     user: amp_viewer_dependency,
     observation_id: int,
 ) -> GeothermalObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
+    return get_observation_of_a_sample_type_by_id(
         session=session, request=request, observation_id=observation_id
     )
 

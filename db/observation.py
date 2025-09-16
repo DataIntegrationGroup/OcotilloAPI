@@ -35,7 +35,7 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     )
     sensor_id: Mapped[int] = mapped_column(
         ForeignKey("sensor.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
 
     observation_datetime: Mapped[datetime] = mapped_column(

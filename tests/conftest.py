@@ -220,54 +220,6 @@ def second_sensor():
 
 
 @pytest.fixture(scope="session")
-def sample(water_well_thing, sensor):
-    with session_ctx() as session:
-        sample = Sample(
-            sample_date="2025-01-01T00:00:00Z",
-            thing_id=water_well_thing.id,
-            sample_type="groundwater",
-            sampler_name="Test Sampler",
-            release_status="draft",
-            field_sample_id=f"FS-{uuid.uuid4()}",
-            qc_sample="Original",
-            sensor_id=sensor.id,
-            sample_matrix="water",
-            sample_method="manual",
-            duplicate_sample_number=0,
-            sample_top=None,
-            sample_bottom=None,
-        )
-        session.add(sample)
-        session.commit()
-        yield sample
-
-
-@pytest.fixture(scope="function")
-def second_sample(water_well_thing, sensor):
-    with session_ctx() as session:
-        sample = Sample(
-            thing_id=water_well_thing.id,
-            sample_type="groundwater",
-            field_sample_id="FS-9999999",
-            sample_date="2025-01-01T00:00:00Z",
-            release_status="draft",
-            sampler_name="Test Sampler",
-            qc_sample="Duplicate",
-            sensor_id=sensor.id,
-            sample_matrix="water",
-            sample_method="manual",
-            duplicate_sample_number=3,
-            sample_top=2,
-            sample_bottom=3,
-        )
-        session.add(sample)
-        session.commit()
-        yield sample
-        session.delete(sample)
-        session.commit()
-
-
-@pytest.fixture(scope="session")
 def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(
@@ -507,13 +459,107 @@ def second_asset():
 
 
 @pytest.fixture(scope="session")
-def groundwater_level_observation(sensor, sample):
+def groundwater_level_sample(water_well_thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            sample_date="2025-01-01T00:00:00Z",
+            thing_id=water_well_thing.id,
+            sample_type="groundwater level",
+            sampler_name="Test Sampler",
+            release_status="draft",
+            field_sample_id=f"FS-{uuid.uuid4()}",
+            qc_sample="Original",
+            sensor_id=sensor.id,
+            sample_matrix="groundwater",
+            sample_method="manual",
+            duplicate_sample_number=0,
+            sample_top=None,
+            sample_bottom=None,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+
+
+@pytest.fixture(scope="session")
+def water_chemistry_sample(water_well_thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            sample_date="2025-01-01T00:00:00Z",
+            thing_id=water_well_thing.id,
+            sample_type="water chemistry",
+            sampler_name="Test Sampler",
+            release_status="draft",
+            field_sample_id=f"FS-{uuid.uuid4()}",
+            qc_sample="Original",
+            sensor_id=sensor.id,
+            sample_matrix="groundwater",
+            sample_method="manual",
+            duplicate_sample_number=0,
+            sample_top=None,
+            sample_bottom=None,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+
+
+@pytest.fixture(scope="session")
+def geothermal_sample(water_well_thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            sample_date="2025-01-01T00:00:00Z",
+            thing_id=water_well_thing.id,
+            sample_type="geothermal",
+            sampler_name="Test Sampler",
+            release_status="draft",
+            field_sample_id=f"FS-{uuid.uuid4()}",
+            qc_sample="Original",
+            sensor_id=sensor.id,
+            sample_matrix="groundwater",
+            sample_method="manual",
+            duplicate_sample_number=0,
+            sample_top=None,
+            sample_bottom=None,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+
+
+@pytest.fixture(scope="function")
+def second_sample(water_well_thing, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            thing_id=water_well_thing.id,
+            sample_type="groundwater level",
+            field_sample_id="FS-9999999",
+            sample_date="2025-01-01T00:00:00Z",
+            release_status="draft",
+            sampler_name="Test Sampler",
+            qc_sample="Duplicate",
+            sensor_id=sensor.id,
+            sample_matrix="groundwater",
+            sample_method="manual",
+            duplicate_sample_number=3,
+            sample_top=2,
+            sample_bottom=3,
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def groundwater_level_observation(sensor, groundwater_level_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:04:00Z",
-            sample_id=sample.id,
+            sample_id=groundwater_level_sample.id,
             sensor_id=sensor.id,
-            observed_property="groundwater level:groundwater level",
+            observed_property="groundwater level",
             release_status="draft",
             value=10.0,
             unit="ft",
@@ -526,13 +572,13 @@ def groundwater_level_observation(sensor, sample):
 
 
 @pytest.fixture(scope="session")
-def water_chemistry_observation(sensor, sample):
+def water_chemistry_observation(sensor, water_chemistry_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:03:00Z",
-            sample_id=sample.id,
+            sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            observed_property="water chemistry:pH",
+            observed_property="pH",
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -543,13 +589,13 @@ def water_chemistry_observation(sensor, sample):
 
 
 @pytest.fixture(scope="session")
-def geothermal_observation(sensor, sample):
+def geothermal_observation(sensor, geothermal_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:02:00Z",
-            sample_id=sample.id,
+            sample_id=geothermal_sample.id,
             sensor_id=sensor.id,
-            observed_property="geothermal:temperature",
+            observed_property="temperature",
             release_status="draft",
             value=20.0,
             unit="deg C",
@@ -561,13 +607,13 @@ def geothermal_observation(sensor, sample):
 
 
 @pytest.fixture(scope="function")
-def observation_to_delete(sample, sensor):
+def observation_to_delete(water_chemistry_sample, sensor):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2019-01-01T00:03:00Z",
-            sample_id=sample.id,
+            sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            observed_property="water chemistry:pH",
+            observed_property="pH",
             release_status="draft",
             value=4.0,
             unit="dimensionless",
