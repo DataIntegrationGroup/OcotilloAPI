@@ -27,7 +27,7 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
 
     # NM_Aquifer fields for audits
-    nma_pk_waterlevel: Mapped[str] = mapped_column(nullable=True)
+    nma_pk_waterlevels: Mapped[str] = mapped_column(nullable=True)
 
     sample_id: Mapped[int] = mapped_column(
         ForeignKey("sample.id", ondelete="CASCADE"),

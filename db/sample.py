@@ -41,9 +41,11 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="Foreign key to the Thing (e.g., sampling location) table.",
     )
+    # nullable because sample can be collected by steel tape
     sensor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("sensor.id"),
         comment="Foreign key for the specific equipment used.",
+        nullable=True,
     )
 
     # Sample Attributes
@@ -64,10 +66,12 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     sampler_name: Mapped[str] = mapped_column(
         nullable=False, comment="Name of the person who collected the sample."
     )
+    # TODO: is qc_sample required if we have duplicate_sample_number? are split samples recorded, or not? could be a user research question
+    #       to guide development and future-proof
     qc_sample: Mapped[str] = mapped_column(
         default="Original",
         nullable=False,
-        comment="Quality control sample type (e.g., 'Original', 'field dupe').",
+        comment="Quality control sample type (e.g., 'Original', 'Split', 'Field duplicate').",
     )
     sample_top: Mapped[float] = mapped_column(
         nullable=True, comment="Top depth of a discrete sample interval."
@@ -75,6 +79,8 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     sample_bottom: Mapped[float] = mapped_column(
         nullable=True, comment="Bottom depth of a discrete sample interval."
     )
+    # TODO: is qc_sample required if we have duplicate_sample_number? are split samples recorded, or not? could be a user research question
+    #       to guide development and future-proof
     duplicate_sample_number: Mapped[int] = mapped_column(
         default=0,
         comment="Identifier for duplicate samples (0 = original sample, not a duplicate, 1 = dup no.1, 2 = dup no.2, etc.).",

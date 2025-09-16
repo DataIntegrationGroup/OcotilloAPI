@@ -1,7 +1,7 @@
 [
 
-  {"categories": [{"name": "qc_sample", "description": null}], "term": "original", "definition": ""},
-  {"categories": [{"name": "qc_sample", "description": null}], "term": "duplicate", "definition": ""},
+  {"categories": [{"name": "qc_sample", "description": null}], "term": "Original", "definition": ""},
+  {"categories": [{"name": "qc_sample", "description": null}], "term": "Duplicate", "definition": ""},
 
   {"categories" : [{"name": "vertical_datum", "description": null}], "term": "NAVD88", "definition": "North American Vertical Datum of 1988"},
   {"categories" : [{"name": "vertical_datum", "description": null}], "term": "NGVD29", "definition": "National Geodetic Vertical Datum of 1929"},
@@ -444,9 +444,11 @@
   {"categories": [{"name": "casing_material", "description": null}], "term": "Steel", "definition": "Steel"},
   {"categories": [{"name": "casing_material", "description": null}], "term": "Concrete", "definition": "Concrete"},
 
-  {"categories": [{"name": "quality_control_status", "description": null}], "term": "Provisional", "definition": "Provisional quality control status"},
-  {"categories": [{"name": "quality_control_status", "description": null}], "term": "Approved", "definition": "Approved quality control status"},
-  {"categories": [{"name": "quality_control_status", "description": null}], "term": "Rejected", "definition": "Rejected quality control status"},
+  {"categories": [{"name": "quality_flag", "description": null}], "term": "Good", "definition": "The measurement was collected and analyzed according to standard procedures and passed all QA/QC checks."},
+  {"categories": [{"name": "quality_flag", "description": null}], "term": "Questionable", "definition": "The measurement is suspect due to a known issue during collection or analysis, but it may still be usable."},
+  {"categories": [{"name": "quality_flag", "description": null}], "term": "Estimated", "definition": "The value is not a direct measurement but an estimate derived from other data or models."},
+  {"categories": [{"name": "quality_flag", "description": null}], "term": "Rejected", "definition": "Rejected"},
+
 
   {"categories": [{"name": "drilling_fluid", "description": null}], "term": "mud", "definition": "drilling mud"},
 

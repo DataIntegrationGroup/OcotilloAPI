@@ -93,17 +93,15 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
 
 
 class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
-    _observation_class: str = "groundwater level"
     measuring_point_height: float | None = None
     level_status: str | None = None
 
 
 class UpdateWaterChemistryObservation(UpdateBaseObservation):
-    _observation_class: str = "water chemistry"
+    pass
 
 
 class UpdateGeothermalObservation(UpdateBaseObservation):
-    _observation_class: str = "geothermal"
     observation_depth: float | None = None
 
 
@@ -149,6 +147,8 @@ class ObservationResponse(
     Response model for observations.
     Combines groundwater level and geothermal observation responses.
     """
+
+    pass
 
 
 # ============= EOF =============================================
