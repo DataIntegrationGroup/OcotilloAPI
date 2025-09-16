@@ -81,28 +81,42 @@ def transfer_water_levels(session):
             else:
                 sample_method = "null placeholder"
 
-            sample_matrix = "groundwater"
-
-            sample.field_sample_id = str(uuid.uuid4())
-            sample.sample_date = dt_utc
-            sample.thing = thing
+            sample = Sample(
+                sampler_name=sampler_name,
+                sample_date=dt_utc,
+                sample_matrix="groundwater",
+                field_sample_id=str(uuid.uuid4()),
+                thing=thing,
+                sample_method=sample_method,
+                qc_sample="Original",
+                sample_top=None,
+                sample_bottom=None,
+                duplicate_sample_number=0,
+                activity_type="groundwater level",
+            )
             session.add(sample)
 
-            obs = Observation()
+            # TODO: update for auto-collectors in the Sensor table, like e-probes
+            sensor_id = None
 
-            # TODO: this needs to be resolved
-            obs.sensor_id = 1
+            if not pd.isna(row.LevelStatus):
+                level_status = lu_to_lexicon_map[f"LU_LevelStatus:{row.LevelStatus}"]
+            else:
+                level_status = None
 
-            obs.nma_pk_waterlevels = row.GlobalID
+            observation = Observation(
+                sensor_id=sensor_id,
+                sample=sample,
+                nma_pk_waterlevels=row.GlobalID,
+                value=row.DepthToWater,
+                measuring_point_height=row.MPHeight,
+                observed_property="groundwater level",
+                unit="ft",
+                level_status=level_status,
+                observation_datetime=dt_utc,
+            )
 
-            obs.sample = sample
-            obs.observation_datetime = dt_utc
-            obs.value = row.DepthToWater
-            obs.measuring_point_height = row.MPHeight
-            obs.observed_property = "groundwater level:groundwater level"
-            obs.unit = "ft"
-
-            session.add(obs)
+            session.add(observation)
         session.commit()
 
 
