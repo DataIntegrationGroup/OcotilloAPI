@@ -45,6 +45,7 @@ def database_error_handler(
     Handle errors raised by the database when adding or updating a sample.
     """
     error_message = error.orig.args[0]["M"]
+    print(error_message)
     if (
         error_message
         == 'duplicate key value violates unique constraint "sample_field_sample_id_key"'
