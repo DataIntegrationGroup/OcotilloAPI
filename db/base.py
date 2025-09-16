@@ -45,7 +45,13 @@ from sqlalchemy import (
     String,
     ForeignKey,
 )
-from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    declared_attr,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
 import re
@@ -82,6 +88,7 @@ def pascal_to_snake(name):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
+# ============= Common Mixins =============================================
 class ReleaseMixin:
     """Mixin to add release status to a model."""
 
@@ -161,6 +168,26 @@ class PropertiesMixin:
             JSON,
             nullable=True,
             comment="JSONB column for storing additional properties",
+        )
+
+
+# ============= Polymorphic Helper Mixins =============================================
+class HasStatusHistory:
+    """
+    Mixin for models that can have a status history (e.g., Thing, Location).
+    It automatically creates a polymorphic One-to-Many relationship to the
+    StatusHistory table.
+    """
+
+    @declared_attr
+    def status_history(self):
+        # One-to-Many polymorphic relationship
+        return relationship(
+            "StatusHistory",
+            primaryjoin=f"and_({self.__name__}.{self.__name__.lower()}_id==StatusHistory.statusable_id, "
+            f"StatusHistory.statusable_type=='{self.__name__}')",
+            cascade="all, delete-orphan",
+            lazy="selectin",
         )
 
 
