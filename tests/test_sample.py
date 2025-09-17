@@ -43,34 +43,31 @@ def override_dependencies_fixture():
 
 def test_validate_sample_top_and_bottom():
     for i in range(2):
-        sample_top = 10.0 if i == 0 else None
-        sample_bottom = 5.0 if i == 1 else None
+        depth_top = 10.0 if i == 0 else None
+        depth_bottom = 5.0 if i == 1 else None
         with pytest.raises(
             ValidationError,
-            match="Sample top and bottom must both be defined or both must be None.",
+            match="Depth top and bottom must both be defined or both must be None.",
         ):
-            ValidateSample(sample_top=sample_top, sample_bottom=sample_bottom)
+            ValidateSample(depth_top=depth_top, depth_bottom=depth_bottom)
 
 
 #  ============= Post tests for samples =============================================
-def test_add_sample(spring_thing, sensor):
+def test_add_sample(groundwater_level_field_activity, sensor):
     """
     Test adding a sample.
     """
     payload = {
-        "thing_id": spring_thing.id,
-        "activity_type": "water chemistry",
-        "field_sample_id": "FS-1234567",
-        "sample_date": "2025-01-01T00:00:00Z",
-        "release_status": "draft",
-        "sampler_name": "Test Sampler",
-        "qc_sample": "Duplicate",
+        "field_activity_id": groundwater_level_field_activity.id,
         "sensor_id": sensor.id,
-        "sample_matrix": "groundwater",
-        "sample_method": "manual",
-        "duplicate_sample_number": 3,
-        "sample_top": 2,
-        "sample_bottom": 3,
+        "sample_date": "2025-01-01T14:00:00Z",
+        "sample_name": "second groundwater level field activity name",
+        "sample_matrix": "water",
+        "sample_method": "grab sample",
+        "sampler_name": "Ptolemy I Soter",
+        "qc_type": "Normal",
+        "depth_top": None,
+        "depth_bottom": None,
     }
     response = client.post(
         "/sample",
@@ -80,19 +77,16 @@ def test_add_sample(spring_thing, sensor):
     assert response.status_code == 201
     assert "id" in data
     assert "created_at" in data
-    assert data["thing"]["id"] == spring_thing.id
-    assert data["activity_type"] == payload["activity_type"]
-    assert data["field_sample_id"] == payload["field_sample_id"]
-    assert data["sample_date"] == payload["sample_date"]
-    assert data["release_status"] == payload["release_status"]
-    assert data["sampler_name"] == payload["sampler_name"]
-    assert data["qc_sample"] == payload["qc_sample"]
+    assert data["field_activity_id"] == payload["field_activity_id"]
     assert data["sensor_id"] == payload["sensor_id"]
+    assert data["sample_date"] == payload["sample_date"]
+    assert data["sample_name"] == payload["sample_name"]
     assert data["sample_matrix"] == payload["sample_matrix"]
     assert data["sample_method"] == payload["sample_method"]
-    assert data["duplicate_sample_number"] == payload["duplicate_sample_number"]
-    assert data["sample_top"] == payload["sample_top"]
-    assert data["sample_bottom"] == payload["sample_bottom"]
+    assert data["sampler_name"] == payload["sampler_name"]
+    assert data["qc_type"] == payload["qc_type"]
+    assert data["depth_top"] == payload["depth_top"]
+    assert data["depth_bottom"] == payload["depth_bottom"]
 
     # cleanup after adding the sample
     cleanup_post_test(Sample, data["id"])

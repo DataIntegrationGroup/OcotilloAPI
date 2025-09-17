@@ -54,22 +54,22 @@ class ValidateSample(BaseModel):
     #     return sample_bottom
 
     sample_date: AwareDatetime | None = None
-    sample_top: float | None = None
-    sample_bottom: float | None = None
+    depth_top: float | None = None
+    depth_bottom: float | None = None
 
     @model_validator(mode="after")
     def validate_top_and_bottom(self) -> Self:
         """
-        Validate that sample_top and sample_bottom are both defined or both None.
+        Validate that depth_top and depth_bottom are both defined or both None.
         """
-        sample_top = getattr(self, "sample_top", None)
-        sample_bottom = getattr(self, "sample_bottom", None)
+        depth_top = getattr(self, "depth_top", None)
+        depth_bottom = getattr(self, "depth_bottom", None)
 
-        if (sample_top is not None and sample_bottom is None) or (
-            sample_top is None and sample_bottom is not None
+        if (depth_top is not None and depth_bottom is None) or (
+            depth_top is None and depth_bottom is not None
         ):
             raise ValueError(
-                "Sample top and bottom must both be defined or both must be None."
+                "Depth top and bottom must both be defined or both must be None."
             )
         return self
 
@@ -86,78 +86,45 @@ class ValidateSample(BaseModel):
 
 # -------- CREATE ----------
 class CreateSample(BaseCreateModel, ValidateSample):
-    thing_id: int
-    activity_type: str
-    field_sample_id: str
-    sample_date: Annotated[AwareDatetime, PastDatetime()]
-    sampler_name: str  # REFACTOR TODO: update with enum/restricted values
-    qc_sample: str = "Original"
-
+    field_activity_id: int
     sensor_id: int | None = None
-    sample_matrix: str | None = (
-        None  # REFACTOR TODO: update with enum/restricted values
-    )
-    sample_method: str | None = (
-        None  # REFACTOR TODO: update with enum/restricted values
-    )
-
-    duplicate_sample_number: int | None = 0
-
-    # REFACTOR TODO: update with numeric restrictions? Are negative values below ground and positive above?
-    # for example: wells below, rain above, and soil/rock could be at ground surface
-    sample_top: float | None = None
-    sample_bottom: float | None = None
+    sample_date: Annotated[AwareDatetime, PastDatetime()]
+    sample_name: str
+    sample_matrix: str
+    sample_method: str
+    sampler_name: str
+    qc_type: str
+    depth_top: float | None = None
+    depth_bottom: float | None = None
 
 
 # -------- UPDATE ----------
 class UpdateSample(BaseUpdateModel, ValidateSample):
-    """
-    Development notes:
-
-    setting <type> = None makes the field optional, but if it is defined it must be of that type.
-    """
-
-    thing_id: int | None = None  # REFACTOR TODO: should users be able to change this?
-    activity_type: str | None = None
-    field_sample_id: str | None = None
+    thing: ThingResponse
+    field_activity_id: int | None = None
+    sensor_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
-    sampler_name: str | None = None  # REFACTOR TODO: update with enum/restricted values
-    qc_sample: str | None = None
-
-    sensor_id: int | None = None  # REFACTOR TODO: should users be able to change this?
-    sample_matrix: str | None = (
-        None  # REFACTOR TODO: update with enum/restricted values
-    )
-    sample_method: str | None = (
-        None  # REFACTOR TODO: update with enum/restricted values
-    )
-
-    duplicate_sample_number: int | None = None
-
-    # REFACTOR TODO: update with numeric restrictions? Are negative values below ground and positive above?
-    # for example: wells below, rain above, and soil/rock could be at ground surface
-    sample_top: float | None = None
-    sample_bottom: float | None = None
+    sample_name: str | None = None
+    sample_matrix: str | None = None
+    sample_method: str | None = None
+    sampler_name: str | None = None
+    qc_type: str | None = None
+    depth_top: float | None = None
+    depth_bottom: float | None = None
 
 
 # -------- RESPONSE ----------
 class SampleResponse(BaseResponseModel):
-    thing: ThingResponse
-    activity_type: str
-    field_sample_id: str
-    sample_date: AwareDatetime
-    release_status: str
-    sampler_name: str
-    qc_sample: str
-
+    field_activity_id: int
     sensor_id: int | None
-    sample_matrix: str | None
-    sample_method: str | None
-
-    duplicate_sample_number: int | None
-
-    sample_top: float | None
-    sample_bottom: float | None
+    sample_date: Annotated[AwareDatetime, PastDatetime()]
+    sample_name: str
+    sample_matrix: str
+    sample_method: str
+    sampler_name: str
+    qc_type: str
+    depth_top: float | None
+    depth_bottom: float | None
 
 
 # ============= EOF =============================================

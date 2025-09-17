@@ -1,7 +1,11 @@
 [
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Normal", "definition": "The primary environmental sample collected from the well, spring, or soil boring."},
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Duplicate", "definition": "A second, independent sample collected at the same location, at the same time, and in the same manner as the normal sample. This sample is sent to the primary laboratory."},
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Split", "definition": "A subsample of a primary environmental sample that is sent to a separate, independent laboratory for analysis."},
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Field Blank", "definition": "A sample of certified pure water that is taken to the field, opened, and processed through the same sampling procedure as a normal sample (e.g., poured into a sample bottle)."},
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Trip Blank", "definition": "A sample of certified pure water that is prepared in the lab, taken to the field, and brought back to the lab without ever being opened."},
+  {"categories": [{"name": "qc_type", "description": null}], "term": "Equipment Blank", "definition": "A sample of certified pure water that is run through the sampling equipment (like a pump and tubing) before the normal sample is collected."},
 
-  {"categories": [{"name": "qc_sample", "description": null}], "term": "Original", "definition": ""},
-  {"categories": [{"name": "qc_sample", "description": null}], "term": "Duplicate", "definition": ""},
 
   {"categories" : [{"name": "vertical_datum", "description": null}], "term": "NAVD88", "definition": "North American Vertical Datum of 1988"},
   {"categories" : [{"name": "vertical_datum", "description": null}], "term": "NGVD29", "definition": "National Geodetic Vertical Datum of 1929"},
@@ -23,18 +27,11 @@
   {"categories": [{"name": "elevation_method", "description": null}], "term": "Survey-grade Global Navigation Satellite Sys, Lvl1", "definition": "Survey-grade Global Navigation Satellite Sys, Lvl1"},
   {"categories": [{"name": "elevation_method", "description": null}], "term": "USGS National Elevation Dataset (NED)", "definition": "USGS National Elevation Dataset (NED)"},
   {"categories": [{"name": "elevation_method", "description": null},
-                  {"name": "collection_method", "description": null},
+                  {"name": "sample_method", "description": null},
                   {"name": "coordinate_method", "description": null},
                   {"name": "current_use", "description": null},
                   {"name": "status", "description": null},
                   {"name": "organization", "description": null}], "term": "Unknown", "definition": "Unknown"},
-
-  {"categories": [{"name": "collection_method", "description": null}], "term": "bailer", "definition": "bailer"},
-  {"categories": [{"name": "collection_method", "description": null}], "term": "faucet at well head", "definition": "faucet at well head"},
-  {"categories": [{"name": "collection_method", "description": null}], "term": "faucet or outlet at house", "definition": "faucet or outlet at house"},
-  {"categories": [{"name": "collection_method", "description": null}], "term": "grab sample", "definition": "grab sample"},
-  {"categories": [{"name": "collection_method", "description": null}], "term": "pump", "definition": "pump"},
-  {"categories": [{"name": "collection_method", "description": null}], "term": "thief sampler", "definition": "thief sampler"},
 
   {"categories": [{"name": "construction_method", "description": null}], "term": "Air-rotary", "definition": "Air-rotary"},
   {"categories": [{"name": "construction_method", "description": null}], "term": "Bored or augered", "definition": "Bored or augered"},
@@ -253,9 +250,9 @@
 
   {"categories": [{"name": "activity_type", "description": null}], "term": "groundwater level", "definition": "groundwater level"},
   {"categories": [{"name": "activity_type", "description": null}], "term": "water chemistry", "definition": "water chemistry"},
-  {"categories": [{"name": "activity_type", "description": null}], "term": "geothermal", "definition": "geothermal"},
 
-  {"categories": [{"name": "sample_matrix", "description": null}], "term": "groundwater", "definition": "groundwater"},
+  {"categories": [{"name": "sample_matrix", "description": null}], "term": "water", "definition": "water"},
+  {"categories": [{"name": "sample_matrix", "description": null}], "term": "soil", "definition": "soil"},
 
   {"categories": [{"name": "thing_type", "description": null}], "term": "observation well", "definition": "a well used to monitor groundwater levels"},
   {"categories": [{"name": "thing_type", "description": null}], "term": "piezometer", "definition": "a type of observation well that measures pressure head in the aquifer"},
@@ -327,6 +324,13 @@
   {"categories": [{"name": "sample_method", "description": null}], "term": "Continuous acoustic sounder", "definition": "Continuous acoustic sounder"},
   {"categories": [{"name": "sample_method", "description": null}], "term": "Measurement not attempted", "definition": "Measurement not attempted"},
   {"categories": [{"name": "sample_method", "description": null}], "term": "null placeholder", "definition": "null placeholder"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "bailer", "definition": "bailer"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "faucet at well head", "definition": "faucet at well head"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "faucet or outlet at house", "definition": "faucet or outlet at house"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "grab sample", "definition": "grab sample"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "pump", "definition": "pump"},
+  {"categories": [{"name": "sample_method", "description": null}], "term": "thief sampler", "definition": "thief sampler"},
+
 
   {"categories": [{"name": "organization", "description": null}], "term": "USGS", "definition": "US Geological Survey"},
   {"categories": [{"name": "organization", "description": null}], "term": "TWDB", "definition": "Texas Water Development Board"},

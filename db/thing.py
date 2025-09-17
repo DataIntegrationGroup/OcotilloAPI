@@ -18,8 +18,6 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
-from uuid import UUID
-
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, ReleaseMixin
 
@@ -82,8 +80,8 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         )
     )
 
-    samples = relationship(
-        "Sample", back_populates="thing", cascade="all, delete-orphan", uselist=True
+    field_events = relationship(
+        "FieldEvent", back_populates="thing", cascade="all, delete-orphan", uselist=True
     )
 
 

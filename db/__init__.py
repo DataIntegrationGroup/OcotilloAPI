@@ -24,6 +24,7 @@ from db.collabnet import *
 from db.contact import *
 from db.geochronology import *
 from db.geothermal import *
+from db.field import *
 from db.group import *
 from db.lexicon import *
 from db.location import *

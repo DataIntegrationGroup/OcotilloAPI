@@ -48,23 +48,13 @@ def database_error_handler(
     print(error_message)
     if (
         error_message
-        == 'duplicate key value violates unique constraint "sample_field_sample_id_key"'
+        == 'duplicate key value violates unique constraint "sample_sample_name_key"'
     ):
         detail = {
-            "loc": ["body", "field_sample_id"],
-            "msg": f"Sample with field_sample_id {payload.field_sample_id} already exists.",
+            "loc": ["body", "sample_name"],
+            "msg": f"Sample with sample_name {payload.sample_name} already exists.",
             "type": "value_error",
-            "input": {"field_sample_id": payload.field_sample_id},
-        }
-    elif (
-        error_message
-        == 'insert or update on table "sample" violates foreign key constraint "sample_thing_id_fkey"'
-    ):
-        detail = {
-            "loc": ["body", "thing_id"],
-            "msg": f"Thing with ID {payload.thing_id} does not exist.",
-            "type": "value_error",
-            "input": {"thing_id": payload.thing_id},
+            "input": {"sample_name": payload.sample_name},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -94,19 +84,6 @@ async def update_sample(
 ) -> SampleResponse | ResourceNotFoundResponse:
     """
     Endpoint to update a sample.
-    """
-
-    """
-    Development notes:
-
-    What do we do if the field is nullable and the schema defaults to None?
-    If that occurs, then we update the field to None, which may not have 
-    been the intension of the user. We could set some string to indicate
-    DO NOT UPDATE. Perhaps coordination between the front and backends?
-    
-    
-    This is handled by the `model_patcher` function, which excludes unset fields from 
-    the update.
     """
     try:
         return model_patcher(session, Sample, sample_id, sample_data, user=user)
