@@ -52,6 +52,13 @@ def model_patcher(
     # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
     item = simple_get_by_id(session, model, item_id)
 
+    """
+    Developer's notes
+
+    exclude_unset ensures that fields that are not set in the payload do not
+    update record fields to None
+    """
+
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, key, value)
 
