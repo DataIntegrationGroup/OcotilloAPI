@@ -29,10 +29,10 @@ It includes:
     - `ReleaseMixin`: Adds a release status column referencing the `lexicon_term` table.
     - `AuditMixin`: Adds standard audit columns (created_at, created_by, updated_at, updated_by).
 5.  A simple `User` model for tracking user information in audit columns.
-6.  Polymorphic helper mixins (`HasStatusHistory`, `HasNotes`, `HasAttribution`, etc.)
+6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `AttributionMixin`, etc.)
     which provide a clean, reusable way to add relationships to the polymorphic
     metadata tables. Any model that can have a status history (like Thing or Location)
-    can simply inherit from the `HasStatusHistory` mixin.
+    can simply inherit from the `StatusHistoryMixin` mixin.
 7.  An `AuditMixin` to add standard audit columns to tables.
 """
 
@@ -172,7 +172,7 @@ class PropertiesMixin:
 
 
 # ============= Polymorphic Helper Mixins =============================================
-class HasStatusHistory:
+class StatusHistoryMixin:
     """
     Mixin for models that can have a status history (e.g., Thing, Location).
     It automatically creates a polymorphic One-to-Many relationship to the

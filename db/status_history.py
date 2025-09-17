@@ -5,7 +5,7 @@ This model defines the `StatusHistory` table, a central, polymorphic log for
 all time-variant operational statuses (e.g., Use Status, Access Status).
 
 **NOTE**: This is a polymorphic table. It does not define outgoing relationships
-itself. Instead, other tables (like Thing and Location) use the `HasStatusHistory`
+itself. Instead, other tables (like Thing and Location) use the `StatusHistoryMixin`
 mixin to establish a One-to-Many relationship TO this table.
 """
 
