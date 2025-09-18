@@ -65,6 +65,7 @@ def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
         "sample_matrix": "water",
         "sample_method": "grab sample",
         "sampler_name": "Ptolemy I Soter",
+        "notes": "posted notes",
         "qc_type": "Normal",
         "depth_top": None,
         "depth_bottom": None,
@@ -89,6 +90,7 @@ def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
     assert data["sample_matrix"] == payload["sample_matrix"]
     assert data["sample_method"] == payload["sample_method"]
     assert data["sampler_name"] == payload["sampler_name"]
+    assert data["notes"] == payload["notes"]
     assert data["qc_type"] == payload["qc_type"]
     assert data["depth_top"] == payload["depth_top"]
     assert data["depth_bottom"] == payload["depth_bottom"]
@@ -186,6 +188,7 @@ def test_patch_sample(
         "release_status": "private",
         "sampler_name": "test sample b",
         "qc_type": "Split",
+        "notes": "patched notes",
         "depth_top": 10.0,
         "depth_bottom": 20.0,
     }
@@ -267,36 +270,42 @@ def test_409_patch_sample_invalid_field_activity_id(water_chemistry_sample):
 
 
 #  ============= Get tests for samples =============================================
-def test_get_samples(
-    water_chemistry_sample, groundwater_level_sample, geothermal_sample
-):
+def test_get_samples(water_chemistry_sample, groundwater_level_sample):
     """
     Test retrieving samples
     """
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["items"]) == 3
+    assert len(data["items"]) == 2
 
     for item in data["items"]:
         assert "id" in item
         assert "created_at" in item
-        assert "thing" in item
-        assert "activity_type" in item
-        assert "field_sample_id" in item
-        assert "sample_date" in item
         assert "release_status" in item
-        assert "sampler_name" in item
-        assert "qc_sample" in item
+        assert "thing" in item
+        assert "field_event" in item
+        assert "field_activity" in item
+        assert "field_activity_id" in item
         assert "sensor_id" in item
+        assert "sample_date" in item
+        assert "sample_name" in item
         assert "sample_matrix" in item
         assert "sample_method" in item
-        assert "duplicate_sample_number" in item
-        assert "sample_top" in item
-        assert "sample_bottom" in item
+        assert "sampler_name" in item
+        assert "qc_type" in item
+        assert "depth_top" in item
+        assert "depth_bottom" in item
+        assert "notes" in item
 
 
-def test_get_sample_by_id(water_chemistry_sample, water_well_thing):
+def test_get_sample_by_id(
+    water_chemistry_sample,
+    water_chemistry_field_activity,
+    field_event,
+    water_well_thing,
+    sensor,
+):
     """
     Test retrieving a sample by its ID.
     """
@@ -308,21 +317,19 @@ def test_get_sample_by_id(water_chemistry_sample, water_well_thing):
         "+00:00", "Z"
     )
     assert data["thing"]["id"] == water_well_thing.id
-    assert data["activity_type"] == water_chemistry_sample.activity_type
-    assert data["field_sample_id"] == water_chemistry_sample.field_sample_id
+    assert data["field_event"]["id"] == field_event.id
+    assert data["field_activity"]["id"] == water_chemistry_field_activity.id
+    assert data["field_activity_id"] == water_chemistry_field_activity.id
+    assert data["sensor_id"] == sensor.id
     assert data["sample_date"] == water_chemistry_sample.sample_date
-    assert data["release_status"] == water_chemistry_sample.release_status
-    assert data["sampler_name"] == water_chemistry_sample.sampler_name
-    assert data["qc_sample"] == water_chemistry_sample.qc_sample
-    assert data["sensor_id"] == water_chemistry_sample.sensor_id
+    assert data["sample_name"] == water_chemistry_sample.sample_name
     assert data["sample_matrix"] == water_chemistry_sample.sample_matrix
     assert data["sample_method"] == water_chemistry_sample.sample_method
-    assert (
-        data["duplicate_sample_number"]
-        == water_chemistry_sample.duplicate_sample_number
-    )
-    assert data["sample_top"] == water_chemistry_sample.sample_top
-    assert data["sample_bottom"] == water_chemistry_sample.sample_bottom
+    assert data["sampler_name"] == water_chemistry_sample.sampler_name
+    assert data["qc_type"] == water_chemistry_sample.qc_type
+    assert data["notes"] == water_chemistry_sample.notes
+    assert data["depth_top"] == water_chemistry_sample.depth_top
+    assert data["depth_bottom"] == water_chemistry_sample.depth_bottom
 
 
 def test_get_sample_by_id_404_not_found(water_chemistry_sample):
@@ -338,18 +345,18 @@ def test_get_sample_by_id_404_not_found(water_chemistry_sample):
 # DELETE tests =================================================================
 
 
-def test_delete_sample(second_sample):
-    response = client.delete(f"/sample/{second_sample.id}")
+def test_delete_sample(sample_to_delete):
+    response = client.delete(f"/sample/{sample_to_delete.id}")
     assert response.status_code == 204
 
     # verify the sample is deleted
-    response = client.get(f"/sample/{second_sample.id}")
+    response = client.get(f"/sample/{sample_to_delete.id}")
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"] == f"Sample with ID {second_sample.id} not found."
+    assert data["detail"] == f"Sample with ID {sample_to_delete.id} not found."
 
 
-def test_delete_sample_404_not_found(second_sample):
+def test_delete_sample_404_not_found(sample_to_delete):
     bad_sample_id = 999999
     response = client.delete(f"/sample/{bad_sample_id}")
     assert response.status_code == 404

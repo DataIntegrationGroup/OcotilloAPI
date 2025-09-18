@@ -546,6 +546,30 @@ def water_chemistry_sample(water_chemistry_field_activity, sensor):
         yield sample
 
 
+@pytest.fixture(scope="function")
+def sample_to_delete(water_chemistry_field_activity, sensor):
+    with session_ctx() as session:
+        sample = Sample(
+            field_activity_id=water_chemistry_field_activity.id,
+            sensor_id=sensor.id,
+            sample_date="2025-01-01T13:00:00Z",
+            sample_name="sample to delete",
+            sample_matrix="water",
+            sample_method="grab sample",
+            sampler_name="Esme Patterson",
+            qc_type="Normal",
+            depth_top=None,
+            depth_bottom=None,
+            notes="water chemistry sample fixture notes",
+            release_status="draft",
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
+
+
 @pytest.fixture(scope="session")
 def groundwater_level_observation(sensor, groundwater_level_sample):
     with session_ctx() as session:

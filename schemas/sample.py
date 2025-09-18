@@ -90,6 +90,7 @@ class CreateSample(BaseCreateModel, ValidateSample):
     sample_method: str
     sampler_name: str
     qc_type: str
+    notes: str | None = None
     depth_top: float | None = None
     depth_bottom: float | None = None
 
@@ -104,6 +105,7 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
     sample_method: str | None = None
     sampler_name: str | None = None
     qc_type: str | None = None
+    notes: str | None = None
     depth_top: float | None = None
     depth_bottom: float | None = None
 
@@ -130,6 +132,7 @@ class SampleResponse(BaseResponseModel):
     sample_method: str
     sampler_name: str
     qc_type: str
+    notes: str | None
     depth_top: float | None
     depth_bottom: float | None
 
