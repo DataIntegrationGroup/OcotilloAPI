@@ -358,6 +358,7 @@ def timeit_direct(func, *args, **kwargs):
 def timeit(func):
     def wrapper(*args, **kwargs):
         return timeit_direct(func, *args, **kwargs)
+
     return wrapper
 
 
