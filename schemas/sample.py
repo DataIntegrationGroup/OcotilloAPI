@@ -26,7 +26,7 @@ from typing_extensions import Self
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.thing import ThingResponse
-from schemas.field import FieldEventResponse
+from schemas.field import FieldEventResponse, FieldActivityResponse
 
 """
 REFACTOR TODO: can we use inheritance for commonly defined fields and then set them as optional 
@@ -101,7 +101,7 @@ class CreateSample(BaseCreateModel, ValidateSample):
 
 # -------- UPDATE ----------
 class UpdateSample(BaseUpdateModel, ValidateSample):
-    field_activity_id: int | None = None
+    field_activity_id: int | None = None  # TODO: should this be editable?
     sensor_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_name: str | None = None
@@ -115,8 +115,18 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
 
 # -------- RESPONSE ----------
 class SampleResponse(BaseResponseModel):
+    """
+    Developer's note
+
+    The frontend uses multiple fields for a thing, field_even, and field_activity,
+    which is why full ThingResponse, FieldEventResponse, and FieldActivityResponse
+    are returned. If the response becomes too large and slow, we can use
+    <model>.model_dump() and exlude fields to reduce the size.
+    """
+
     thing: ThingResponse
     field_event: FieldEventResponse
+    field_activity: FieldActivityResponse
     field_activity_id: int
     sensor_id: int | None
     sample_date: Annotated[AwareDatetime, PastDatetime()]
