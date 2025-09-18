@@ -53,7 +53,7 @@ def test_validate_sample_top_and_bottom():
 
 
 #  ============= Post tests for samples =============================================
-def test_add_sample(groundwater_level_field_activity, sensor):
+def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
     """
     Test adding a sample.
     """
@@ -68,15 +68,19 @@ def test_add_sample(groundwater_level_field_activity, sensor):
         "qc_type": "Normal",
         "depth_top": None,
         "depth_bottom": None,
+        "release_status": "draft",
     }
     response = client.post(
         "/sample",
         json=payload,
     )
     data = response.json()
+
     assert response.status_code == 201
     assert "id" in data
     assert "created_at" in data
+    assert data["thing"]["id"] == water_well_thing.id
+    assert data["field_event"]["id"] == groundwater_level_field_activity.field_event_id
     assert data["field_activity_id"] == payload["field_activity_id"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["sample_date"] == payload["sample_date"]

@@ -89,7 +89,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     notes: Mapped[str] = mapped_column(nullable=True)
 
     # --- Relationship Definitions ---
-    field_activities: Mapped[list["FieldActivity"]] = relationship(  # noqa: F821
+    field_activity: Mapped["FieldActivity"] = relationship(  # noqa: F821
         back_populates="samples"
     )
     sensor: Mapped["Sensor"] = relationship(back_populates="samples")  # noqa: F821

@@ -467,6 +467,7 @@ def field_event(water_well_thing):
             event_lead_name="Sesame Mango",
             collecting_organization="NMBGMR",
             notes="field event fixture notes",
+            release_status="draft",
         )
         session.add(field_event)
         session.commit()
@@ -480,6 +481,7 @@ def groundwater_level_field_activity(field_event):
             field_event_id=field_event.id,
             activity_type="groundwater level",
             notes="field activity fixture notes",
+            release_status="draft",
         )
         session.add(field_activity)
         session.commit()
@@ -493,6 +495,7 @@ def water_chemistry_field_activity(field_event):
             field_event_id=field_event.id,
             activity_type="water chemistry",
             notes="field activity fixture notes",
+            release_status="draft",
         )
         session.add(field_activity)
         session.commit()
@@ -514,6 +517,7 @@ def groundwater_level_sample(groundwater_level_field_activity, sensor):
             depth_top=None,
             depth_bottom=None,
             notes="groundwater level sample fixture notes",
+            release_status="draft",
         )
         session.add(sample)
         session.commit()
@@ -535,6 +539,7 @@ def water_chemistry_sample(water_chemistry_field_activity, sensor):
             depth_top=None,
             depth_bottom=None,
             notes="water chemistry sample fixture notes",
+            release_status="draft",
         )
         session.add(sample)
         session.commit()

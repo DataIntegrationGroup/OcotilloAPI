@@ -69,7 +69,15 @@ async def add_sample(
     Endpoint to add a sample.
     """
     try:
-        return model_adder(session, Sample, sample_data, user=user)
+        sample = model_adder(session, Sample, sample_data, user=user)
+        field_event = sample.field_activity.field_event
+        thing = field_event.thing
+
+        # add related objects to the response for serialization by Pydantic
+        setattr(sample, "field_event", field_event)
+        setattr(sample, "thing", thing)
+
+        return sample
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 

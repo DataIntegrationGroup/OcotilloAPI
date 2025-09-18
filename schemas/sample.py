@@ -26,6 +26,7 @@ from typing_extensions import Self
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.thing import ThingResponse
+from schemas.field import FieldEventResponse
 
 """
 REFACTOR TODO: can we use inheritance for commonly defined fields and then set them as optional 
@@ -100,7 +101,6 @@ class CreateSample(BaseCreateModel, ValidateSample):
 
 # -------- UPDATE ----------
 class UpdateSample(BaseUpdateModel, ValidateSample):
-    thing: ThingResponse
     field_activity_id: int | None = None
     sensor_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
@@ -115,6 +115,8 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
 
 # -------- RESPONSE ----------
 class SampleResponse(BaseResponseModel):
+    thing: ThingResponse
+    field_event: FieldEventResponse
     field_activity_id: int
     sensor_id: int | None
     sample_date: Annotated[AwareDatetime, PastDatetime()]

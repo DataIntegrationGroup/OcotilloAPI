@@ -85,5 +85,5 @@ class FieldActivity(Base, AutoBaseMixin, ReleaseMixin):
     # Relationships
     field_event: Mapped["FieldEvent"] = relationship(back_populates="field_activities")
     samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
-        back_populates="field_activities"
+        back_populates="field_activity"
     )
