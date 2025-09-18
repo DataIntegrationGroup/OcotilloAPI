@@ -28,11 +28,6 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.thing import ThingResponse
 from schemas.field import FieldEventResponse, FieldActivityResponse
 
-"""
-REFACTOR TODO: can we use inheritance for commonly defined fields and then set them as optional 
-or not between Create, Update, and Response schemas?
-"""
-
 
 # -------- VALIDATE ----------
 class ValidateSample(BaseModel):
