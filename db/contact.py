@@ -73,9 +73,9 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
 
     # Proxy to directly access the FieldEvent objects in which this Contact participated.
     # fmt: off
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = ( # noqa: F821
+    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (    # fmt: skip # noqa: F821
     # fmt: on
-        relationship(  
+        relationship(
             "FieldEventContactAssociation",
             back_populates="contact",
             cascade="all, delete-orphan",
