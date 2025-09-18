@@ -41,6 +41,7 @@ router = APIRouter(
 # TODO: add the following database validation handlers
 # invalid sample_id
 # invalid lexicon terms
+# sample_date of the Sample model cannot be before the event_date of the FieldEvent model
 
 
 def database_error_handler(
