@@ -71,6 +71,19 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     )
     things = association_proxy("thing_associations", "thing")
 
+    # Proxy to directly access the FieldEvent objects in which this Contact participated.
+    # fmt: off
+    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = ( # noqa: F821
+    # fmt: on
+        relationship(  
+            "FieldEventContactAssociation",
+            back_populates="contact",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+    field_events = association_proxy("field_event_contact_associations", "field_event")
+
 
 class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(

@@ -1,8 +1,32 @@
 from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship, Mapped
+from sqlalchemy.ext.associationproxy import association_proxy
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+
+
+class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    This association table is to create a many-to-many relationship between
+    FieldEvent and Contact. These are participants in the field event.
+    """
+
+    # --- Foreign keys ---
+    field_event_id: Mapped[int] = mapped_column(
+        ForeignKey("field_event.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Foreign key to the FieldEvent table.",
+    )
+    contact_id: Mapped[str] = mapped_column(
+        ForeignKey("contact.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Foreign key to the Contact table",
+    )
+
+    # --- Relationships ---
+    field_event: Mapped[list["FieldEvent"]] = relationship("FieldEvent")
+    contact: Mapped[list["Contact"]] = relationship("Contact")  # noqa: F821
 
 
 class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
@@ -25,7 +49,6 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # Columns
-    # TODO: do we want to have a list of all present at the field event, or is it enough to capture the event_lead_name and sampler_name(s)? (AMP user research)
     event_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -34,19 +57,33 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     event_lead_name: Mapped[str] = mapped_column(
         nullable=False, comment="The name of the person leading the field event"
     )
-    # TODO: ask AMP if they care about this field. Is it needed? user research
     collecting_organization: Mapped[str] = lexicon_term(
         nullable=False,
+        default="NMBGMR",  # TODO: put default in schema
         comment="The organization that is collecting and storing the samples from the field event",
     )
     notes: Mapped[str] = mapped_column(
         nullable=True,
         comment="Notes or comments about the field event.",
     )
-    # Relationships
+    # --- Relationships ---
     thing: Mapped["Thing"] = relationship(back_populates="field_events")  # noqa: F821
     field_activities: Mapped[list["FieldActivity"]] = relationship(
         back_populates="field_event"
+    )
+    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
+        relationship(
+            "FieldEventContactAssociation",
+            back_populates="field_event",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+
+    # --- Association Proxies ---
+    # Proxy to directly access the Contact objects participating in this event.
+    contacts: Mapped[list["Contact"]] = association_proxy(  # noqa: F821
+        "field_event_contact_associations", "contact"
     )
 
 

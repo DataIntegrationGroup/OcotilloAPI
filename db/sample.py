@@ -15,6 +15,7 @@
 # ===============================================================================
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship, Mapped
+from sqlalchemy.ext.associationproxy import association_proxy
 
 # import models from classes that are defined in separate files
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -93,6 +94,10 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="samples"
     )
     sensor: Mapped["Sensor"] = relationship(back_populates="samples")  # noqa: F821
+
+    # association proxies to help keep code DRY
+    field_event = association_proxy("field_activity", "field_event")
+    thing = association_proxy("field_activity", "field_event.thing")
 
 
 # ============= EOF =============================================
