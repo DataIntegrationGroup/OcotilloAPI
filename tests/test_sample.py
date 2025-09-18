@@ -96,24 +96,24 @@ def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
     cleanup_post_test(Sample, data["id"])
 
 
-def test_409_add_sample_invalid_field_sample_id(water_chemistry_sample, spring_thing):
+def test_409_add_sample_invalid_sample_name(
+    groundwater_level_field_activity, groundwater_level_sample, sensor
+):
     """
-    Test adding a sample with an invalid field_sample_id.
+    Test that a 409 error is raised if a duplicate sample_name is in the payload
     """
     payload = {
-        "thing_id": spring_thing.id,
-        "activity_type": "water chemistry",
-        "field_sample_id": water_chemistry_sample.field_sample_id,  # This should already exist
-        "sample_date": "2025-01-01T00:00:00Z",
+        "field_activity_id": groundwater_level_field_activity.id,
+        "sensor_id": sensor.id,
+        "sample_date": "2025-01-01T14:00:00Z",
+        "sample_name": groundwater_level_sample.sample_name,
+        "sample_matrix": "water",
+        "sample_method": "grab sample",
+        "sampler_name": "Ptolemy I Soter",
+        "qc_type": "Normal",
+        "depth_top": None,
+        "depth_bottom": None,
         "release_status": "draft",
-        "sampler_name": "Test Sampler",
-        "qc_sample": "Duplicate",
-        "sensor_id": None,
-        "sample_matrix": "groundwater",
-        "sample_method": "manual",
-        "duplicate_sample_number": 3,
-        "sample_top": 2,
-        "sample_bottom": 3,
     }
     response = client.post(
         "/sample",
@@ -121,20 +121,20 @@ def test_409_add_sample_invalid_field_sample_id(water_chemistry_sample, spring_t
     )
     data = response.json()
     assert response.status_code == 409
-    assert data["detail"][0]["loc"] == ["body", "field_sample_id"]
+    assert data["detail"][0]["loc"] == ["body", "sample_name"]
     assert (
         data["detail"][0]["msg"]
-        == f"Sample with field_sample_id {water_chemistry_sample.field_sample_id} already exists."
+        == f"Sample with sample_name {groundwater_level_sample.sample_name} already exists."
     )
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {
-        "field_sample_id": water_chemistry_sample.field_sample_id
+        "sample_name": groundwater_level_sample.sample_name
     }
 
 
-def test_409_add_sample_invalid_thing_id():
+def test_409_add_sample_invalid_field_activity_id():
     """
-    Test adding a sample with an invalid thing_id.
+    Test adding a sample with an invalid field_activity_id.
     """
     payload = {
         "thing_id": 9999999,
