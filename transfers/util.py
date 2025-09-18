@@ -156,9 +156,12 @@ def make_location(row: pd.Series) -> Location:
         point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
 
-    state = get_state_from_point(transformed_point.x, transformed_point.y)
-    county = get_county_from_point(transformed_point.x, transformed_point.y)
-    quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
+    # since this is such a time consuming operation, I do not want to run it during this step
+    # cleanup_wells was added for this reason
+
+    # state = get_state_from_point(transformed_point.x, transformed_point.y)
+    # county = get_county_from_point(transformed_point.x, transformed_point.y)
+    # quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
 
     z = row.Altitude
     if z:
@@ -288,9 +291,10 @@ def make_location(row: pd.Series) -> Location:
         coordinate_method=coordinate_method,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
-        state=state,
-        county=county,
-        quad_name=quad_name,
+        # these values will be populated in cleanup_wells
+        # state=state,
+        # county=county,
+        # quad_name=quad_name,
     )
     return location
 
@@ -341,6 +345,20 @@ def make_lu_to_lexicon_mapper():
 
 
 lu_to_lexicon_map = make_lu_to_lexicon_mapper()
+
+
+def timeit_direct(func, *args, **kwargs):
+    start = datetime.now()
+    result = func(*args, **kwargs)
+    end = datetime.now()
+    logger.info(f"{func.__name__} took {(end - start).total_seconds()} seconds")
+    return result
+
+
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        return timeit_direct(func, *args, **kwargs)
+    return wrapper
 
 
 if __name__ == "__main__":

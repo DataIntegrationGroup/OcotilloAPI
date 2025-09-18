@@ -58,7 +58,7 @@ def transfer_contacts(session):
     odf = filter_to_valid_point_ids(session, odf)
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        print(f"Processing PointID: {i} {row.PointID}")
+        logger.info(f"Processing PointID: {i} {row.PointID}")
         if thing is None:
             logger.warning(
                 f"Thing with PointID {row.PointID} not found. Skipping owner."
@@ -71,7 +71,7 @@ def transfer_contacts(session):
             session.flush()
             logger.info(f"added first contact for PointID {row.PointID}")
         except Exception as e:
-            logger.warning(
+            logger.critical(
                 f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
             from pprint import pprint
@@ -83,9 +83,9 @@ def transfer_contacts(session):
             add_second_contact(session, row, thing)
             session.commit()
             session.flush()
-            print(f"added second contact for PointID {row.PointID}")
+            logger.info(f"added second contact for PointID {row.PointID}")
         except Exception as e:
-            print(
+            logger.critical(
                 f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
             )
             session.rollback()

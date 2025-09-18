@@ -16,6 +16,7 @@
 import time
 
 from dotenv import load_dotenv
+from shapely.linear import line_merge
 
 load_dotenv()
 
@@ -36,27 +37,34 @@ from transfers.thing_transfer import (
     transfer_ephemeral_stream,
     transfer_met,
 )
-from transfers.util import logger
+from transfers.util import logger, timeit, timeit_direct
 
 
 def erase_and_initalize(session: Session) -> None:
     logger.info("Erasing existing data and initializing lexicon and sensors")
-    starttime = time.time()
-    Base.metadata.drop_all(session.bind)
-    Base.metadata.create_all(session.bind)
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done erasing existing data. {elapsed_time:0.2f}s")
+    erase(session)
+    lexicon()
+    sensor(session)
 
-    logger.info("Initializing lexicon and sensors")
-    starttime = time.time()
-    init_lexicon()
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done initializing lexicon. {elapsed_time:0.2f}s")
 
-    starttime = time.time()
+@timeit
+def sensor(session: Session):
+    logger.info("Initializing sensors")
     init_sensor(session)
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done initializing sensors. {elapsed_time:0.2f}s")
+
+
+@timeit
+def lexicon():
+    logger.info("Initializing lexicon")
+    init_lexicon()
+
+
+@timeit
+def erase(session: Session):
+    logger.info("Erasing existing data")
+    Base.metadata.drop_all(session.bind)
+    logger.info("Recreating tables")
+    Base.metadata.create_all(session.bind)
 
 
 def message(msg, pad=10, new_line_at_top=True):
@@ -66,6 +74,7 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
+@timeit
 def main_transfer():
     message("STARTING TRANSFER", new_line_at_top=False)
 
@@ -97,44 +106,44 @@ def main_transfer():
 
     cleanup_wells_flag = True
 
-    limit = 15
+    limit = 100
     with session_ctx() as sess:
         if init:
             erase_and_initalize(sess)
 
         if init or transfer_well_flag:
             message("TRANSFERRING WELLS")
-            transfer_wells(sess, limit=limit)
-            transfer_wellscreens(sess)
+            timeit_direct(transfer_wells, sess, limit=limit)
+            timeit_direct(transfer_wellscreens, sess)
         #
         if init or transfer_spring_flag:
             message("TRANSFERRING SPRINGS")
-            transfer_springs(sess, limit)
+            timeit_direct(transfer_springs, sess, limit=limit)
 
         if init or transfer_perennial_stream_flag:
             message("TRANSFERRING PERENNIAL STREAMS")
-            transfer_perennial_stream(sess, limit)
+            timeit_direct(transfer_perennial_stream, sess, limit=limit)
 
         if init or transfer_ephemeral_stream_flag:
             message("TRANSFERRING EPHEMERAL STREAMS")
-            transfer_ephemeral_stream(sess, limit)
+            timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
 
         if init or transfer_met_flag:
             message("TRANSFERRING METEOROLOGICAL")
-            transfer_met(sess, limit)
+            timeit_direct(transfer_met, sess, limit)
 
         if init or transfer_contacts_flag:
             message("TRANSFERRING CONTACTS")
-            transfer_contacts(sess)
+            timeit_direct(transfer_contacts, sess)
 
         if init or transfer_waterlevels_flag:
             message("TRANSFERRING WATER LEVELS")
-            transfer_water_levels(sess)
+            timeit_direct(transfer_water_levels, sess)
 
         if init or transfer_link_ids_flag:
             message("TRANSFERRING LINK IDS")
-            transfer_link_ids(sess)
-            transfer_link_ids_welldata(sess)
+            timeit_direct(transfer_link_ids, sess)
+            timeit_direct(transfer_link_ids_welldata, sess)
 
         # if init or transfer_assets_flag:
         #     message("TRANSFERRING ASSETS")
@@ -142,7 +151,7 @@ def main_transfer():
 
         if init or transfer_groups_flag:
             message("TRANSFERRING GROUPS")
-            transfer_groups(sess)
+            timeit_direct(transfer_groups, sess)
 
         # if init or cleanup_wells_flag:
         #     cleanup_wells(sess)
