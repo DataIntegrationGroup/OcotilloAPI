@@ -38,6 +38,11 @@ router = APIRouter(
 )
 
 
+# TODO: add the following database validation handlers
+# invalid sample_id
+# invalid lexicon terms
+
+
 def database_error_handler(
     payload: CreateSample | UpdateSample, error: IntegrityError | ProgrammingError
 ) -> None:
@@ -45,7 +50,6 @@ def database_error_handler(
     Handle errors raised by the database when adding or updating a sample.
     """
     error_message = error.orig.args[0]["M"]
-    print(error_message)
     if (
         error_message
         == 'duplicate key value violates unique constraint "sample_sample_name_key"'
@@ -55,6 +59,16 @@ def database_error_handler(
             "msg": f"Sample with sample_name {payload.sample_name} already exists.",
             "type": "value_error",
             "input": {"sample_name": payload.sample_name},
+        }
+    elif (
+        error_message
+        == 'insert or update on table "sample" violates foreign key constraint "sample_field_activity_id_fkey"'
+    ):
+        detail = {
+            "loc": ["body", "field_activity_id"],
+            "msg": f"FieldActivity with ID {payload.field_activity_id} does not exist.",
+            "type": "value_error",
+            "input": {"field_activity_id": payload.field_activity_id},
         }
 
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
@@ -69,15 +83,7 @@ async def add_sample(
     Endpoint to add a sample.
     """
     try:
-        sample = model_adder(session, Sample, sample_data, user=user)
-        field_event = sample.field_activity.field_event
-        thing = field_event.thing
-
-        # add related objects to the response for serialization by Pydantic
-        setattr(sample, "field_event", field_event)
-        setattr(sample, "thing", thing)
-
-        return sample
+        return model_adder(session, Sample, sample_data, user=user)
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 

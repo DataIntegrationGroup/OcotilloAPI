@@ -81,6 +81,7 @@ def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
     assert "created_at" in data
     assert data["thing"]["id"] == water_well_thing.id
     assert data["field_event"]["id"] == groundwater_level_field_activity.field_event_id
+    assert data["field_activity"]["id"] == groundwater_level_field_activity.id
     assert data["field_activity_id"] == payload["field_activity_id"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["sample_date"] == payload["sample_date"]
@@ -132,24 +133,24 @@ def test_409_add_sample_invalid_sample_name(
     }
 
 
-def test_409_add_sample_invalid_field_activity_id():
+def test_409_add_sample_invalid_field_activity_id(
+    groundwater_level_field_activity, groundwater_level_sample, sensor
+):
     """
     Test adding a sample with an invalid field_activity_id.
     """
     payload = {
-        "thing_id": 9999999,
-        "activity_type": "water chemistry",
-        "field_sample_id": "FS-9999999",
-        "sample_date": "2025-01-01T00:00:00Z",
+        "field_activity_id": 999999,
+        "sensor_id": sensor.id,
+        "sample_date": "2025-01-01T14:00:00Z",
+        "sample_name": "yet another sample name",
+        "sample_matrix": "water",
+        "sample_method": "grab sample",
+        "sampler_name": "Ptolemy I Soter",
+        "qc_type": "Normal",
+        "depth_top": None,
+        "depth_bottom": None,
         "release_status": "draft",
-        "sampler_name": "Test Sampler",
-        "qc_sample": "Duplicate",
-        "sensor_id": None,
-        "sample_matrix": "groundwater",
-        "sample_method": "manual",
-        "duplicate_sample_number": 3,
-        "sample_top": 2,
-        "sample_bottom": 3,
     }
     response = client.post(
         "/sample",
@@ -157,13 +158,15 @@ def test_409_add_sample_invalid_field_activity_id():
     )
     data = response.json()
     assert response.status_code == 409
-    assert data["detail"][0]["loc"] == ["body", "thing_id"]
+    assert data["detail"][0]["loc"] == ["body", "field_activity_id"]
     assert (
         data["detail"][0]["msg"]
-        == f"Thing with ID {payload['thing_id']} does not exist."
+        == f"FieldActivity with ID {payload['field_activity_id']} does not exist."
     )
     assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"thing_id": payload["thing_id"]}
+    assert data["detail"][0]["input"] == {
+        "field_activity_id": payload["field_activity_id"]
+    }
 
 
 #  ============= Patch tests for samples =============================================
