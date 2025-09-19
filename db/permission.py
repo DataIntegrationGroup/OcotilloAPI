@@ -14,15 +14,14 @@ from sqlalchemy import (
     ForeignKey,
     String,
     Boolean,
+    Date,
     Text,
     and_,
-    DateTime,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column, foreign
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 
-import datetime
 
 if TYPE_CHECKING:
     from db.contact import Contact
@@ -46,12 +45,8 @@ class Permission(Base, AutoBaseMixin, ReleaseMixin):
     allow_installation: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
-    start_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    end_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    start_date: Mapped[Date] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Date] = mapped_column(Date, nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
 
     # --- Polymorphic Columns ---
