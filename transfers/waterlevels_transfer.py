@@ -19,7 +19,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from db import Thing, Sample, Observation
+from db import Thing, Sample, Observation, FieldEvent, FieldActivity
 from transfers.util import (
     filter_to_valid_point_ids,
     logger,
@@ -65,14 +65,40 @@ def transfer_water_levels(session):
                 )
                 continue
 
-            sample = Sample()
+            release_status = "public" if row.PublicRelease else "private"
+
+            """
+            Developer's notes
+
+            Assumes for manual water levels that the date/time of the water level
+            measurement is the same as the date/time of the field event.
+            """
+
+            if pd.isna(row.MeasuringAgency):
+                collecting_organization = "Unknown"
+            else:
+                collecting_organization = row.MeasuringAgency
 
             if pd.isna(row.MeasuredBy):
                 sampler_name = "Unknown"
             else:
                 sampler_name = row.MeasuredBy
 
-            sample.activity_type = "groundwater level"
+            field_event = FieldEvent(
+                thing=thing,
+                event_date=dt_utc,
+                collecting_organization=collecting_organization,
+                release_status=release_status,
+            )
+
+            session.add(field_event)
+
+            field_activity = FieldActivity(
+                field_event=field_event,
+                activity_type="groundwater level",
+                release_status=release_status,
+            )
+            session.add(field_activity)
 
             if not pd.isna(row.MeasurementMethod):
                 sample_method = lu_to_lexicon_map[
@@ -82,21 +108,22 @@ def transfer_water_levels(session):
                 sample_method = "null placeholder"
 
             sample = Sample(
+                field_activity=field_activity,
                 sampler_name=sampler_name,
                 sample_date=dt_utc,
-                sample_matrix="groundwater",
-                field_sample_id=str(uuid.uuid4()),
-                thing=thing,
+                sample_matrix="water",
+                sample_name=str(
+                    uuid.uuid4()
+                ),  # TODO: should this stay as-is for water levels? since there are no lab-assigned names
                 sample_method=sample_method,
-                qc_sample="Original",
-                sample_top=None,
-                sample_bottom=None,
-                duplicate_sample_number=0,
-                activity_type="groundwater level",
+                qc_type="Normal",
+                depth_top=None,
+                depth_bottom=None,
             )
             session.add(sample)
 
             # TODO: update for auto-collectors in the Sensor table, like e-probes
+            #       update the deployment table here
             sensor_id = None
 
             if not pd.isna(row.LevelStatus):
