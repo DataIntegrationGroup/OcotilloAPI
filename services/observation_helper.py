@@ -8,7 +8,7 @@ from fastapi import Request, Query
 from datetime import datetime
 
 from core.dependencies import session_dependency
-from db import Observation, Sample
+from db import Observation, Sample, FieldActivity, FieldEvent, Thing
 from schemas.observation import (
     ObservationResponse,
     WaterChemistryObservationResponse,
@@ -53,14 +53,17 @@ def get_observations(
     """
     Retrieve all observations
     """
-    sample_table_is_joined = False
+    activity_type_is_retrievable = False
     activity_type = get_activity_type_from_request(request)
 
     sql = select(Observation)
     if thing_id is not None:
-        sample_table_is_joined = True
+        activity_type_is_retrievable = True
         sql = sql.join(Sample, Sample.id == Observation.sample_id)
-        sql = sql.where(Sample.thing_id == thing_id)
+        sql = sql.join(FieldActivity, FieldActivity.id == Sample.field_activity_id)
+        sql = sql.join(FieldEvent, FieldEvent.id == FieldActivity.field_event_id)
+        sql = sql.join(Thing, Thing.id == FieldEvent.thing_id)
+        sql = sql.where(Thing.id == thing_id)
     if sample_id is not None:
         sql = sql.where(Observation.sample_id == sample_id)
     if sensor_id is not None:
@@ -73,9 +76,10 @@ def get_observations(
 
     # root of path is /observation
     if activity_type != "observation":
-        if sample_table_is_joined is False:
+        if activity_type_is_retrievable is False:
             sql = sql.join(Sample, Sample.id == Observation.sample_id)
-        sql = sql.where(Sample.activity_type == activity_type)
+            sql = sql.join(FieldActivity, FieldActivity.id == Sample.field_activity_id)
+        sql = sql.where(FieldActivity.activity_type == activity_type)
 
     sql = order_sort_filter(sql, Observation, sort, order, filter_)
 
@@ -88,8 +92,16 @@ def get_observations(
 def verify_observed_property_corresponds_with_activity_type(
     observation: Observation, request: Request
 ):
+    """
+    Developer's notes & TODO
+
+    This is only used when getting one observation by its ID, and when patching
+    a single observation. Since it uses lazy loads that shouldn't be much of an
+    issue, but if we notice performance problems getting the single record
+    should use joinedloads so everything is done in a single database query.
+    """
     requested_activity_type = get_activity_type_from_request(request)
-    actual_activity_type = observation.sample.activity_type
+    actual_activity_type = observation.sample.field_activity.activity_type
 
     if actual_activity_type != requested_activity_type:
         raise PydanticStyleException(
