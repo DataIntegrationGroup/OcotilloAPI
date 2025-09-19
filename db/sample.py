@@ -46,8 +46,6 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         ForeignKey("field_activity.id"), nullable=False
     )
 
-    # --- Column Definitions ---
-
     # nullable because sample can be collected by steel tape
     sensor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("sensor.id"),
@@ -55,7 +53,11 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         nullable=True,
     )
 
-    # Sample Attributes
+    field_event_contact_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("field_event_contact_association.id")
+    )
+
+    # --- Columns ---
     sample_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -71,10 +73,6 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
     sample_method: Mapped[str] = lexicon_term(
         comment="Method used to collect the sample.", nullable=False
-    )
-    sampler_name: Mapped[str] = mapped_column(
-        nullable=False,
-        comment="Name of the person who collected the sample. This may or may not be the person who lead the event (see FieldEvent table)",
     )
     qc_type: Mapped[str] = mapped_column(
         default="Normal",
@@ -94,10 +92,16 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="samples"
     )
     sensor: Mapped["Sensor"] = relationship(back_populates="samples")  # noqa: F821
+    # fmt: off
+    field_event_contact: Mapped["FieldEventContactAssociation"] = relationship( # noqa: F821
+        back_populates="samples"
+    )
+    # fmt: on
 
     # association proxies to help keep code DRY
     field_event = association_proxy("field_activity", "field_event")
     thing = association_proxy("field_activity", "field_event.thing")
+    contact = association_proxy("field_event_contact", "contact")  # noqa: F821
 
 
 # ============= EOF =============================================

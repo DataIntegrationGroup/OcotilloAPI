@@ -251,6 +251,13 @@
   {"categories": [{"name": "activity_type", "description": null}], "term": "groundwater level", "definition": "groundwater level"},
   {"categories": [{"name": "activity_type", "description": null}], "term": "water chemistry", "definition": "water chemistry"},
 
+
+  {"categories": [{"name": "field_event_role", "description": null}], "term": "Lead", "definition": "the leader of the field event"},
+  {"categories": [{"name": "field_event_role", "description": null}], "term": "Participant", "definition": "a person participating in the field event"},
+  {"categories": [{"name": "field_event_role", "description": null}], "term": "Observer", "definition": "a person observing the field event"},
+  {"categories": [{"name": "field_event_role", "description": null}], "term": "Visitor", "definition": "a person visiting the field event"},
+
+
   {"categories": [{"name": "sample_matrix", "description": null}], "term": "water", "definition": "water"},
   {"categories": [{"name": "sample_matrix", "description": null}], "term": "soil", "definition": "soil"},
 

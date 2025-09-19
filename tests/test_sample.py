@@ -53,18 +53,20 @@ def test_validate_sample_top_and_bottom():
 
 
 #  ============= Post tests for samples =============================================
-def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
+def test_add_sample(
+    groundwater_level_field_activity, water_well_thing, sensor, field_event_contact
+):
     """
     Test adding a sample.
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
         "sensor_id": sensor.id,
+        "field_event_contact_id": field_event_contact.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "second groundwater level field activity name",
         "sample_matrix": "water",
         "sample_method": "grab sample",
-        "sampler_name": "Ptolemy I Soter",
         "notes": "posted notes",
         "qc_type": "Normal",
         "depth_top": None,
@@ -84,35 +86,40 @@ def test_add_sample(groundwater_level_field_activity, water_well_thing, sensor):
     assert data["field_event"]["id"] == groundwater_level_field_activity.field_event_id
     assert data["field_activity"]["id"] == groundwater_level_field_activity.id
     assert data["field_activity_id"] == payload["field_activity_id"]
+    assert data["contact"]["id"] == field_event_contact.contact_id
+    assert data["field_event_contact_id"] == payload["field_event_contact_id"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["sample_date"] == payload["sample_date"]
     assert data["sample_name"] == payload["sample_name"]
     assert data["sample_matrix"] == payload["sample_matrix"]
     assert data["sample_method"] == payload["sample_method"]
-    assert data["sampler_name"] == payload["sampler_name"]
     assert data["notes"] == payload["notes"]
     assert data["qc_type"] == payload["qc_type"]
     assert data["depth_top"] == payload["depth_top"]
     assert data["depth_bottom"] == payload["depth_bottom"]
+    assert data["release_status"] == payload["release_status"]
 
     # cleanup after adding the sample
     cleanup_post_test(Sample, data["id"])
 
 
 def test_409_add_sample_invalid_sample_name(
-    groundwater_level_field_activity, groundwater_level_sample, sensor
+    groundwater_level_field_activity,
+    groundwater_level_sample,
+    sensor,
+    field_event_contact,
 ):
     """
     Test that a 409 error is raised if a duplicate sample_name is in the payload
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
+        "field_event_contact_id": field_event_contact.id,
         "sensor_id": sensor.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": groundwater_level_sample.sample_name,
         "sample_matrix": "water",
         "sample_method": "grab sample",
-        "sampler_name": "Ptolemy I Soter",
         "qc_type": "Normal",
         "depth_top": None,
         "depth_bottom": None,
@@ -136,7 +143,10 @@ def test_409_add_sample_invalid_sample_name(
 
 
 def test_409_add_sample_invalid_field_activity_id(
-    groundwater_level_field_activity, groundwater_level_sample, sensor
+    groundwater_level_field_activity,
+    groundwater_level_sample,
+    sensor,
+    field_event_contact,
 ):
     """
     Test adding a sample with an invalid field_activity_id.
@@ -144,11 +154,11 @@ def test_409_add_sample_invalid_field_activity_id(
     payload = {
         "field_activity_id": 999999,
         "sensor_id": sensor.id,
+        "field_event_contact_id": field_event_contact.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "yet another sample name",
         "sample_matrix": "water",
         "sample_method": "grab sample",
-        "sampler_name": "Ptolemy I Soter",
         "qc_type": "Normal",
         "depth_top": None,
         "depth_bottom": None,
@@ -159,6 +169,7 @@ def test_409_add_sample_invalid_field_activity_id(
         json=payload,
     )
     data = response.json()
+    print(data)
     assert response.status_code == 409
     assert data["detail"][0]["loc"] == ["body", "field_activity_id"]
     assert (
@@ -181,12 +192,12 @@ def test_patch_sample(
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
         "sensor_id": second_sensor.id,
+        # "field_event_contact_id": third_contact.id,
         "sample_date": "2025-01-02T00:00:00Z",
         "sample_name": "patched sample name",
         "sample_matrix": "soil",
         "sample_method": "bailer",
         "release_status": "private",
-        "sampler_name": "test sample b",
         "qc_type": "Split",
         "notes": "patched notes",
         "depth_top": 10.0,
@@ -287,16 +298,18 @@ def test_get_samples(water_chemistry_sample, groundwater_level_sample):
         assert "field_event" in item
         assert "field_activity" in item
         assert "field_activity_id" in item
+        assert "contact" in item
+        assert "field_event_contact_id" in item
         assert "sensor_id" in item
         assert "sample_date" in item
         assert "sample_name" in item
         assert "sample_matrix" in item
         assert "sample_method" in item
-        assert "sampler_name" in item
         assert "qc_type" in item
         assert "depth_top" in item
         assert "depth_bottom" in item
         assert "notes" in item
+        assert "release_status" in item
 
 
 def test_get_sample_by_id(
@@ -305,6 +318,7 @@ def test_get_sample_by_id(
     field_event,
     water_well_thing,
     sensor,
+    field_event_contact,
 ):
     """
     Test retrieving a sample by its ID.
@@ -320,16 +334,17 @@ def test_get_sample_by_id(
     assert data["field_event"]["id"] == field_event.id
     assert data["field_activity"]["id"] == water_chemistry_field_activity.id
     assert data["field_activity_id"] == water_chemistry_field_activity.id
+    assert data["field_event_contact_id"] == field_event_contact.id
     assert data["sensor_id"] == sensor.id
     assert data["sample_date"] == water_chemistry_sample.sample_date
     assert data["sample_name"] == water_chemistry_sample.sample_name
     assert data["sample_matrix"] == water_chemistry_sample.sample_matrix
     assert data["sample_method"] == water_chemistry_sample.sample_method
-    assert data["sampler_name"] == water_chemistry_sample.sampler_name
     assert data["qc_type"] == water_chemistry_sample.qc_type
     assert data["notes"] == water_chemistry_sample.notes
     assert data["depth_top"] == water_chemistry_sample.depth_top
     assert data["depth_bottom"] == water_chemistry_sample.depth_bottom
+    assert data["release_status"] == water_chemistry_sample.release_status
 
 
 def test_get_sample_by_id_404_not_found(water_chemistry_sample):

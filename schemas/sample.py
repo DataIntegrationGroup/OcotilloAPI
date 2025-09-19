@@ -27,6 +27,7 @@ from typing_extensions import Self
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.thing import ThingResponse
 from schemas.field import FieldEventResponse, FieldActivityResponse
+from schemas.contact import ContactResponse
 
 
 # -------- VALIDATE ----------
@@ -84,11 +85,11 @@ class ValidateSample(BaseModel):
 class CreateSample(BaseCreateModel, ValidateSample):
     field_activity_id: int
     sensor_id: int | None = None
+    field_event_contact_id: int
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sample_name: str
     sample_matrix: str
     sample_method: str
-    sampler_name: str
     qc_type: str
     notes: str | None = None
     depth_top: float | None = None
@@ -99,11 +100,11 @@ class CreateSample(BaseCreateModel, ValidateSample):
 class UpdateSample(BaseUpdateModel, ValidateSample):
     field_activity_id: int | None = None  # TODO: should this be editable?
     sensor_id: int | None = None
+    field_event_contact_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_name: str | None = None
     sample_matrix: str | None = None
     sample_method: str | None = None
-    sampler_name: str | None = None
     qc_type: str | None = None
     notes: str | None = None
     depth_top: float | None = None
@@ -124,13 +125,14 @@ class SampleResponse(BaseResponseModel):
     thing: ThingResponse
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
+    contact: ContactResponse
     field_activity_id: int
+    field_event_contact_id: int
     sensor_id: int | None
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sample_name: str
     sample_matrix: str
     sample_method: str
-    sampler_name: str
     qc_type: str
     notes: str | None
     depth_top: float | None

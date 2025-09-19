@@ -24,9 +24,23 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
         comment="Foreign key to the Contact table",
     )
 
+    # TODO: get AMP feedback on the roles
+    field_event_role: Mapped[str] = lexicon_term(
+        nullable=False, comment="Role of the contact in the field event"
+    )
+
     # --- Relationships ---
-    field_event: Mapped[list["FieldEvent"]] = relationship("FieldEvent")
-    contact: Mapped[list["Contact"]] = relationship("Contact")  # noqa: F821
+    field_event: Mapped["FieldEvent"] = relationship("FieldEvent")
+    contact: Mapped["Contact"] = relationship("Contact")  # noqa: F821
+
+    # map associated contacts to samples to restrict the people who could have
+    # taken a sample to those present at the field event
+    samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
+        "Sample",
+        back_populates="field_event_contact",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
@@ -53,9 +67,6 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
         DateTime(timezone=True),
         nullable=False,
         comment="Date and time of the field event.",
-    )
-    event_lead_name: Mapped[str] = mapped_column(
-        nullable=False, comment="The name of the person leading the field event"
     )
     collecting_organization: Mapped[str] = lexicon_term(
         nullable=False,
