@@ -28,9 +28,10 @@ from core.dependencies import (
 from db.sample import Sample
 from schemas import ResourceNotFoundResponse
 from schemas.sample import SampleResponse, CreateSample, UpdateSample
-from services.query_helper import paginated_all_getter, simple_get_by_id
+from services.query_helper import simple_get_by_id
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
+from services.sample_helper import get_db_samples
 
 router = APIRouter(
     prefix="/sample",
@@ -84,6 +85,8 @@ async def add_sample(
     Endpoint to add a sample.
     """
     try:
+        # since this is only one instance N+1 is not a concern for
+        # FieldActivity, FieldEvent, and Thing
         return model_adder(session, Sample, sample_data, user=user)
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
@@ -101,6 +104,8 @@ async def update_sample(
     Endpoint to update a sample.
     """
     try:
+        # since this is only one instance N+1 is not a concern for
+        # FieldActivity, FieldEvent, and Thing
         return model_patcher(session, Sample, sample_id, sample_data, user=user)
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
@@ -118,10 +123,7 @@ async def get_samples(
     """
     Endpoint to retrieve samples.
     """
-
-    return paginated_all_getter(
-        session, Sample, sort=sort, order=order, filter_=filter_
-    )
+    return get_db_samples(session, sort=sort, order=order, filter_=filter_)
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
@@ -131,6 +133,8 @@ async def get_sample_by_id(
     """
     Endpoint to retrieve a sample by its ID.
     """
+    # since this is only one instance N+1 is not a concern
+    # FieldActivity, FieldEvent, and Thing
     return simple_get_by_id(session, Sample, sample_id)
 
 
