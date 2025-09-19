@@ -12,7 +12,7 @@ from db import Observation, Sample, FieldActivity, FieldEvent, Thing
 from schemas.observation import (
     ObservationResponse,
     WaterChemistryObservationResponse,
-    GeothermalObservationResponse,
+    # GeothermalObservationResponse,
     GroundwaterLevelObservationResponse,
 )
 from services.exceptions_helper import PydanticStyleException
@@ -47,7 +47,7 @@ def get_observations(
 ) -> (
     List[ObservationResponse]
     | List[WaterChemistryObservationResponse]
-    | List[GeothermalObservationResponse]
+    # | List[GeothermalObservationResponse]
     | List[GroundwaterLevelObservationResponse]
 ):
     """

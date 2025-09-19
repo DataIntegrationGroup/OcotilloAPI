@@ -301,10 +301,8 @@ def test_get_observation_by_id(
         assert data["release_status"] == obs.release_status
         if obs.observed_property == "groundwater level":
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
-            assert data["observation_depth"] is None
         else:
             assert data["depth_to_water_bgs"] is None
-            assert data["observation_depth"] is None
 
 
 def test_get_observation_by_id_404_not_found(
