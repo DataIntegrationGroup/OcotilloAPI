@@ -57,6 +57,11 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     entire visit, such as the date, time, and the person responsible. It acts as
     the parent container for all activities performed and all samples collected
     during that single visit.
+
+    Its purpose is to store the "where and when" of the event.
+    Information about who participated is managed in the
+    FieldEventContactAssociation table. Information about the "what" of the
+    event is managed in the FieldActivity and Sample tables.
     """
 
     # Foreign Keys
