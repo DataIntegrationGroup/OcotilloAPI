@@ -38,7 +38,6 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
     samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
         "Sample",
         back_populates="field_event_contact",
-        cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
