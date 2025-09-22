@@ -4,6 +4,7 @@ from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+from db.contact import Contact
 
 
 class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
@@ -30,8 +31,12 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Relationships ---
-    field_event: Mapped["FieldEvent"] = relationship("FieldEvent")
-    contact: Mapped["Contact"] = relationship("Contact")  # noqa: F821
+    field_event: Mapped["FieldEvent"] = relationship(
+        "FieldEvent", back_populates="field_event_contact_associations"
+    )
+    contact: Mapped["Contact"] = relationship(  # noqa: F821
+        "Contact", back_populates="field_event_contact_associations"
+    )
 
     # map associated contacts to samples to restrict the people who could have
     # taken a sample to those present at the field event
