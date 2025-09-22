@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location, read_csv, logger
+from transfers.util import make_location, read_csv, logger, replace_nans
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
@@ -26,9 +26,15 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    ldf = replace_nans(ldf)
     n = len(ldf)
     start_time = time.time()
     for i, row in enumerate(ldf.itertuples()):
+        pointid = row.PointID
+        if ldf[ldf["PointID"] == pointid].shape[0] > 1:
+            logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
+            continue
+
         if limit and i >= limit:
             logger.warning(f"Reached limit of {limit} rows. Stopping migration.")
             break
@@ -39,7 +45,11 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             )
             session.commit()
 
-        location = make_location(row)
+        try:
+            location = make_location(row)
+        except Exception as e:
+            logger.error(f"Error creating location for {row.PointID}: {e}")
+            continue
         session.add(location)
         payload = make_payload(row)
         thing_type = payload.pop("thing_type")
@@ -49,6 +59,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
         assoc.location = location
         assoc.thing = spring
         session.add(assoc)
+    session.commit()
 
 
 def transfer_springs(session, limit=None):

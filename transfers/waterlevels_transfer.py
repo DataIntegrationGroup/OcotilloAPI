@@ -13,13 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import time
 import uuid
 from datetime import datetime
 
 import pandas as pd
 
 from db import Thing, Sample, Observation
-from transfers.util import filter_to_valid_point_ids, logger, read_csv
+from transfers.util import (
+    filter_to_valid_point_ids,
+    logger,
+    read_csv,
+    convert_mt_to_utc,
+)
 
 
 def transfer_water_levels(session):
@@ -28,13 +34,35 @@ def transfer_water_levels(session):
     wd = filter_to_valid_point_ids(session, wd)
     gwd = wd.groupby(["PointID"])
 
+    start_time = time.time()
     for index, group in gwd:
-        for row in group.itertuples():
+        logger.info(f"Processing PointID: {index[0]}")
+        n = len(group)
+        for i, row in enumerate(group.itertuples()):
+            if i and not i % 25:
+                logger.info(
+                    f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+                )
+                session.commit()
+
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
                 logger.warning(f"Skipping row {row.Index} due to missing data.")
                 continue
 
-            dt = datetime.fromisoformat(row.DateMeasured)
+            if not pd.isna(row.TimeMeasured):
+                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
+            else:
+                dt_measured = f"{row.DateMeasured} 12:00:00 AM"
+
+            try:
+                dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
+                dt_utc = convert_mt_to_utc(dt)
+            except ValueError as e:
+                logger.warning(
+                    f"Skipping row {row.Index} due to invalid date/time: {e}"
+                )
+                continue
+
             thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:
                 logger.warning(
@@ -47,7 +75,7 @@ def transfer_water_levels(session):
             sample.sample_type = "groundwater level"
 
             sample.field_sample_id = str(uuid.uuid4())
-            sample.sample_date = dt
+            sample.sample_date = dt_utc
             sample.thing = thing
             session.add(sample)
 
@@ -67,7 +95,7 @@ def transfer_water_levels(session):
             obs.unit = "ft"
 
             session.add(obs)
-            session.commit()
+        session.commit()
 
 
 # ============= EOF =============================================

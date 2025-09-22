@@ -14,37 +14,37 @@
 # limitations under the License.
 # ===============================================================================
 import time
-
-import numpy as np
-import pandas as pd
 from pydantic import ValidationError
 from sqlalchemy import select
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
 from schemas.thing import CreateWellScreen
-from services.lexicon_helper import add_lexicon_term
 from services.thing_helper import add_thing
+from services.util import (
+    get_state_from_point,
+    get_county_from_point,
+    get_quad_name_from_point,
+)
 from transfers.util import (
     make_location,
     filter_to_valid_point_ids,
     read_csv,
-    get_state_from_point,
-    get_county_from_point,
-    get_quad_name_from_point,
     logger,
+    replace_nans,
 )
 
 ADDED = []
 
 
-def transfer_wells(session, start_index=0, limit=0):
-    wdf = read_csv("WellData")
+def transfer_wells(session, limit=0):
+    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
-    wdf = wdf.iloc[start_index : start_index + limit]
+
+    wdf = replace_nans(wdf)
 
     n = len(wdf)
     start_time = time.time()
@@ -53,6 +53,11 @@ def transfer_wells(session, start_index=0, limit=0):
     }
     made_things = []
     for i, row in enumerate(wdf.itertuples()):
+        pointid = row.PointID
+        if wdf[wdf["PointID"] == pointid].shape[0] > 1:
+            logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
+            continue
+
         if limit and i >= limit:
             logger.warning("Reached limit of %d rows. Stopping migration.", limit)
             break
@@ -66,8 +71,8 @@ def transfer_wells(session, start_index=0, limit=0):
         try:
             location = make_location(row)
         except Exception as e:
-            logger.warning(f"Error making location for row {i}: {e}")
-            break
+            logger.warning(f"Error making location for {row.PointID}: {e}")
+            continue
 
         # print(location_row)
         session.add(location)
@@ -90,7 +95,6 @@ def transfer_wells(session, start_index=0, limit=0):
             },
             thing_type="water well",
         )
-
         # TODO: use current use LUT to get well type
 
         # wt = row.Meaning
@@ -113,13 +117,13 @@ def transfer_wells(session, start_index=0, limit=0):
         made_things.append(row.PointID)
 
     results["made_things"] = made_things
+    session.commit()
     return results
 
 
 def transfer_wellscreens(session, limit=None):
     wdf = read_csv("WellScreens")
-    wdf = wdf.replace(pd.NA, None)
-    wdf = wdf.replace({np.nan: None})
+    wdf = replace_nans(wdf)
 
     wdf = filter_to_valid_point_ids(session, wdf)
 
@@ -162,12 +166,13 @@ def transfer_wellscreens(session, limit=None):
             CreateWellScreen.model_validate(well_screen_data)
             well_screen = WellScreen(**well_screen_data)
             session.add(well_screen)
-            session.commit()
         except ValidationError as e:
             logger.warning(
                 f"Validation error for row {i} with PointID {row.PointID}: {e}"
             )
             continue
+
+    session.commit()
 
 
 def cleanup_wells(session):

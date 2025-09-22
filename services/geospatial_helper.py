@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import json
-
 import shapefile
 from shapely.errors import GEOSException
-from geoalchemy2 import functions as geofunc
 from shapely.io import from_geojson
 
 import constants
@@ -46,7 +43,7 @@ def get_thing_features(
     #     selection_args.append(SpringThing)
 
     sql = (
-        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
+        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"), Location.elevation)
         .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
         .join(Location, LocationThingAssociation.location_id == Location.id)
     )
@@ -77,7 +74,7 @@ def create_shapefile(things: list, filename: str = "things.shp") -> None:
         shp.field("id", "L")
         shp.field("name", "C")
 
-        for thing, point in things:
+        for thing, point, elevation in things:
             # Assume loc.point is WKT or a Shapely geometry or GeoJSON
             if isinstance(point, str):
                 try:
@@ -88,7 +85,7 @@ def create_shapefile(things: list, filename: str = "things.shp") -> None:
                 geom = to_shape(point)
 
             shp.point(geom.x, geom.y)
-            shp.record(thing.id, thing.name)
+            shp.record(thing.id, thing.name, elevation)
 
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:

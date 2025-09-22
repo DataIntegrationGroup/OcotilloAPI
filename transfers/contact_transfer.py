@@ -15,10 +15,10 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from transfers.util import read_csv, filter_to_valid_point_ids, logger
+from transfers.util import read_csv, filter_to_valid_point_ids, logger, replace_nans
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 
-from schemas.contact import CreateContact
+from schemas.contact import CreateContact, CreateAddress
 
 
 def extract_owner_role(comment):
@@ -53,12 +53,12 @@ def transfer_contacts(session):
 
     odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
 
-    odf = odf.replace(pd.NA, None)
-    odf = odf.replace({np.nan: None})
+    odf = replace_nans(odf)
+
     odf = filter_to_valid_point_ids(session, odf)
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        print(f"Processing PointID: {i} {row.PointID}")
+        logger.info(f"Processing PointID: {i} {row.PointID}")
         if thing is None:
             logger.warning(
                 f"Thing with PointID {row.PointID} not found. Skipping owner."
@@ -69,21 +69,24 @@ def transfer_contacts(session):
             add_first_contact(session, row, thing)
             session.commit()
             session.flush()
-            print(f"added first contact for PointID {row.PointID}")
+            logger.info(f"added first contact for PointID {row.PointID}")
         except Exception as e:
-            print(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
+            logger.critical(
+                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
+            from pprint import pprint
+
+            pprint(e)
             session.rollback()
 
         try:
             add_second_contact(session, row, thing)
             session.commit()
             session.flush()
-            print(f"added second contact for PointID {row.PointID}")
+            logger.info(f"added second contact for PointID {row.PointID}")
         except Exception as e:
-            logger.warning(
-                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
+            logger.critical(
+                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
             )
             session.rollback()
 
@@ -145,32 +148,43 @@ def add_first_contact(session, row, thing):
         )
 
     if row.MailingAddress:
-        # TODO: use Pydantic to validate MailingAddress
-        contact.addresses.append(
-            Address(
-                address_line_1=row.MailingAddress,
-                city=row.MailCity,
-                state=row.MailState,
-                postal_code=row.MailZipCode,
-                address_type="Mailing",
-                release_status=release_status,
-            )
-        )
+        address_data = {
+            "address_line_1": row.MailingAddress,
+            "city": row.MailCity,
+            "state": row.MailState,
+            "postal_code": row.MailZipCode,
+            "address_type": "Mailing",
+            "release_status": release_status,
+        }
+        try:
+            CreateAddress.model_validate(address_data)
+            contact.addresses.append(Address(**address_data))
 
-        contact.addresses.append(
-            # TODO: use Pydantic to validate PhysicalAddress
-            Address(
-                address_line_1=row.PhysicalAddress,
-                city=row.PhysicalCity,
-                state=row.PhysicalState,
-                postal_code=row.PhysicalZipCode,
-                address_type="Physical",
-                release_status=release_status,
+        except Exception as e:
+            logger.warning(
+                f"Skipping mailing address for first contact {name}. Validation error: {e}"
             )
-        )
+
+    if row.PhysicalAddress:
+        try:
+            address_data = {
+                "address_line_1": row.PhysicalAddress,
+                "city": row.PhysicalCity,
+                "state": row.PhysicalState,
+                "postal_code": row.PhysicalZipCode,
+                "address_type": "Physical",
+                "release_status": release_status,
+            }
+            CreateAddress.model_validate(address_data)
+            contact.addresses.append(Address(**address_data))
+        except Exception as e:
+            logger.warning(
+                f"Skipping physical address for first contact {name}. Validation error: {e}"
+            )
 
 
 def add_second_contact(session, row, thing):
+
     release_status = "private"
     if row.SecondFirstName is None and row.SecondLastName is None:
         name = None
@@ -191,14 +205,6 @@ def add_second_contact(session, row, thing):
         "nma_pk_owners": row.OwnerKey,
     }
 
-    # CreateContact.model_validate(second_contact_data)
-    #
-    # second_contact_data.pop("thing_id")
-    # second_contact = Contact(**second_contact_data)
-    #
-    # assoc = ThingContactAssociation()
-    # assoc.thing = thing
-    # assoc.contact = second_contact
     contact = _make_contact_and_assoc(session, contact_data, thing)
 
     if row.SecondCtctEmail:

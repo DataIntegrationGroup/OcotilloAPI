@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import re
+
 import pandas as pd
 
 from db import Thing, ThingIdLink
@@ -22,11 +23,12 @@ from transfers.util import (
     logger,
     extract_organization,
     read_csv,
+    replace_nans,
 )
 
 
 def transfer_link_ids_welldata(session):
-    ldf = read_csv("WellData")
+    ldf = read_csv("WellData", dtype={"OSEWelltagID": str})
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
@@ -34,7 +36,9 @@ def transfer_link_ids_welldata(session):
 
         # RULE: exclude rows where both ids are null
         if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            logger.warning(f"Both OSEWellID and OSEWelltagID are null for row {i}")
+            logger.warning(
+                f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
+            )
             continue
 
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
@@ -94,7 +98,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    logger.info(f"adding link id: {link_id}")
+    logger.info(f"adding link id: {row.PointID}")
     session.add(link_id)
 
 
@@ -149,7 +153,7 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
-    # ldf = ldf[ldf["AlternateSiteID"].notna()]
+    ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
@@ -161,8 +165,8 @@ def transfer_link_ids(session, site_type="GW"):
             )
             continue
         logger.info(
-            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
-            f"b={row.AlternateSiteID2}"
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
+            f"AlternateSiteID2={row.AlternateSiteID2}"
         )
         add_link_alternate_site_id(session, row, thing)
         # add_link_site_id(session, row, thing)

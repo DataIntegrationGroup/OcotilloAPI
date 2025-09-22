@@ -21,8 +21,6 @@ from geoalchemy2.shape import to_shape
 from uuid import UUID
 
 from sqlalchemy import (
-    Column,
-    Integer,
     String,
     ForeignKey,
     DateTime,
@@ -32,6 +30,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
+from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
@@ -43,9 +42,12 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
         String(36), nullable=True, unique=True
     )
     description: Mapped[str] = mapped_column
-    name: Mapped[str] = mapped_column(String(255), nullable=True)
+    # name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
-        Geometry(geometry_type="POINTZ", srid=4326, spatial_index=True)
+        Geometry(geometry_type="POINT", srid=SRID_WGS84, spatial_index=True)
+    )
+    elevation: Mapped[float] = mapped_column(
+        nullable=False, comment="in meters with vertical datum of NAVD88"
     )
 
     state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
@@ -53,6 +55,11 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
+    nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    elevation_accuracy: Mapped[float] = mapped_column(nullable=True)
+    elevation_method: Mapped[str] = lexicon_term(nullable=True)
+    coordinate_accuracy: Mapped[float] = mapped_column(nullable=True)
+    coordinate_method: Mapped[str] = lexicon_term(nullable=True)
 
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
@@ -60,7 +67,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Proxy Definitions ---
-    things: AssociationProxy[list["Thing"]] = association_proxy(
+    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
         "thing_associations", "thing"
     )
 
@@ -90,7 +97,9 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 
     # --- Relationship Definitions ---
     location: Mapped["Location"] = relationship(back_populates="thing_associations")
-    thing: Mapped["Thing"] = relationship(back_populates="location_associations")
+    thing: Mapped["Thing"] = relationship(  # noqa: F821
+        back_populates="location_associations"
+    )
 
 
 # ============= EOF =============================================

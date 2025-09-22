@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import json
-from typing import Annotated, List, Union
+from typing import Annotated, List
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
@@ -100,7 +100,9 @@ def get_feature_collection(
 
     things = get_thing_features(session, thing_type, group)
 
-    def make_feature_dict(thing, geometry, *other):
+    def make_feature_dict(thing, geometry, elevation, *other):
+        geometry = json.loads(geometry)
+        geometry["coordinates"].append(elevation)
         return {
             "type": "Feature",
             "properties": {
@@ -109,7 +111,7 @@ def get_feature_collection(
                 "name": thing.name,
                 "group": group,
             },
-            "geometry": json.loads(geometry),
+            "geometry": geometry,
         }
 
     features = [make_feature_dict(*item) for item in things]

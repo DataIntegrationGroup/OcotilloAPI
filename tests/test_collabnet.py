@@ -13,17 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
-
 import pytest
 
+from constants import SRID_WGS84
 from db import Location
-from db.engine import get_db_session, session_ctx
+from db.engine import session_ctx
 
-# from db import get_db_session, database_sessionmaker
-# from db.base import Location
-# from db.thing.well import WellThing
-# from db.collabnet import CollaborativeNetworkWell
 from services.thing_helper import add_thing
 from tests import client
 
@@ -31,7 +26,7 @@ from tests import client
 @pytest.fixture(scope="function")
 def well():
     with session_ctx() as session:
-        loc = Location(point="SRID=4326;POINT(0 0)")
+        loc = Location(point=f"SRID={SRID_WGS84};POINT(0 0)")
         session.add(loc)
         session.commit()
 

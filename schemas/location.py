@@ -34,10 +34,15 @@ class CreateLocation(BaseCreateModel):
     Schema for creating a sample location.
     """
 
-    name: str | None = None
+    # name: str | None = None
     notes: str | None = None
     point: str  # point is required and should be in WKT format
+    elevation: float
     release_status: str | None = "draft"
+    elevation_accuracy: float | None = None
+    elevation_method: str | None = None
+    coordinate_accuracy: float | None = None
+    coordinate_method: str | None = None
 
     @classmethod
     @field_validator("point")
@@ -60,9 +65,20 @@ class LocationResponse(BaseResponseModel):
     Response schema for sample location details.
     """
 
-    name: str | None = None
+    # name: str | None
+    notes: str | None
     point: str
-    release_status: str
+    elevation: float | None
+    horizontal_datum: str = "WGS84"
+    vertical_daum: str = "NAVD88"
+    release_status: str | None
+    elevation_accuracy: float | None
+    elevation_method: str | None
+    coordinate_accuracy: float | None
+    coordinate_method: str | None
+    state: str | None
+    county: str | None
+    quad_name: str | None
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
@@ -91,9 +107,15 @@ class UpdateLocation(BaseUpdateModel):
     Schema for updating a location.
     """
 
-    name: str | None = None
+    # name: str | None = None
     notes: str | None = None
     point: str | None = None
+    elevation: float | None = None
+    release_status: str | None = None
+    elevation_accuracy: float | None = None
+    elevation_method: str | None = None
+    coordinate_accuracy: float | None = None
+    coordinate_method: str | None = None
 
 
 # ============= EOF =============================================
