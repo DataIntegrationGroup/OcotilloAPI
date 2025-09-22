@@ -19,7 +19,15 @@ from datetime import datetime
 
 import pandas as pd
 
-from db import Thing, Sample, Observation, FieldEvent, FieldActivity
+from db import (
+    Thing,
+    Sample,
+    Observation,
+    FieldEvent,
+    FieldActivity,
+    # FieldEventContactAssociation,
+    Contact,
+)
 from transfers.util import (
     filter_to_valid_point_ids,
     logger,
@@ -27,6 +35,9 @@ from transfers.util import (
     convert_mt_to_utc,
     lu_to_lexicon_map,
 )
+
+# keep a dictionary of created Contacts to avoid repeated SQL queries
+CREATED_CONTACTS = {}
 
 
 def transfer_water_levels(session):
@@ -79,10 +90,7 @@ def transfer_water_levels(session):
             else:
                 collecting_organization = row.MeasuringAgency
 
-            if pd.isna(row.MeasuredBy):
-                sampler_name = "Unknown"
-            else:
-                sampler_name = row.MeasuredBy
+            # --- FieldEvent ---
 
             field_event = FieldEvent(
                 thing=thing,
@@ -92,6 +100,9 @@ def transfer_water_levels(session):
             )
 
             session.add(field_event)
+            session.flush()
+
+            # --- FieldActivity ---
 
             field_activity = FieldActivity(
                 field_event=field_event,
@@ -99,6 +110,139 @@ def transfer_water_levels(session):
                 release_status=release_status,
             )
             session.add(field_activity)
+            session.flush()
+
+            # --- Contact/FieldEventContactAssociation ---
+            # AMP feedback:
+            # - is Duke Engring the same as Duke University? Is it from their engineering school?
+            # - speak with AMP to help identify all initials
+            """
+            Developer's notes
+
+            - If MeasuredBy is NULL
+              - If this is the first NULL that has been encountered, create a
+                Contact with name "NM_Aquifer NULL"
+              - If this is not the first NULL that has been encountered, use
+                the existing Contact with name "NM_Aquifer NULL"
+            - If MeasuredBy is not NULL
+                - If a Contact with name MeasuredBy already exists, use it
+                - If a Contact with name MeasuredBy does not exist, create it
+            """
+            if pd.isna(row.MeasuredBy):
+                measured_by = None
+            else:
+                measured_by = row.MeasuredBy
+
+            # TODO: fix
+            if measured_by in CREATED_CONTACTS.keys():
+                contact = CREATED_CONTACTS[measured_by]
+            else:
+                if "AGW" in measured_by:
+                    contact_name = "A. G. Wassenaar, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "CDM":
+                    contact_name = "CDM Smith"
+                    contact_organization = collecting_organization
+                elif measured_by == "CH2MHill":
+                    contact_name = "CH2M Hill"
+                    contact_organization = collecting_organization
+                elif measured_by == "Chevron personnel":
+                    contact_name = "Chevron"
+                    contact_organization = collecting_organization
+                elif measured_by in [
+                    "City of  Santa Fe",
+                    "City of Santa  Fe",
+                    "City of Santa Fe",
+                    "CityofSantaFe",
+                ]:
+                    contact_name = None
+                    contact_organization = "CSF"
+                elif measured_by in ["Consultant", "Consulting Pro."]:
+                    contact_name = None
+                    contact_organization = collecting_organization
+                elif measured_by in ["DBSA", "DBStephens & Assoc"]:
+                    contact_name = "Daniel B. Stephens & Associates, Inc"
+                    contact_organization = collecting_organization
+                elif "Glorieta Geoscienc" in measured_by:
+                    contact_name = "Glorieta Geoscience, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "Golder Ass. For OSE":
+                    contact_name = "Golder Associates, Inc"
+                    contact_organization = "NMOSE"
+                elif measured_by == "Hydroscience Assoc.":
+                    contact_name = "Hydroscience Associates, Inc"
+                    contact_organization = collecting_organization
+                elif "IC Tech" in measured_by or "ICTech" in measured_by:
+                    # AMP: is this also true for IC Tech and IC Tech, Inc? All other names with "IC Tech" in them indicate the measurement was taken for NMOSE
+                    contact_name = "IC Tech, Inc"
+                    contact_organization = "NMOSE"
+                elif "John Shomaker" in measured_by:
+                    contact_name = "John Shomaker & Associates, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "Mario Gonzales NMRWA":
+                    contact_name = "Mario Gonzales"
+                    contact_organization = "NMRWA"
+                elif "Minton" in measured_by:
+                    contact_name = "Minton Engineers"
+                    contact_organization = collecting_organization
+                elif "MJ Darr" in measured_by:
+                    contact_name = "MJDarrconsult, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "NMBGMR":
+                    contact_name = None
+                    contact_organization = "NMBGMR"
+                elif measured_by == "NMED":
+                    contact_name = None
+                    contact_organization = "NMED"
+                elif measured_by in ["NMOSE", "NMOSE?"]:
+                    contact_name = None
+                    contact_organization = "NMOSE"
+                elif measured_by == "NPS":
+                    contact_name = None
+                    contact_organization = "NPS"
+                elif measured_by == "OSE":
+                    contact_name = None
+                    contact_organization = "NMOSE"
+                elif measured_by == "OSE; Doug Rappuhn":
+                    contact_name = "Doug Rappuhn"
+                    contact_organization = "NMOSE"
+                elif measured_by == "Otero SWCD":
+                    contact_name = None
+                    contact_organization = "Otero SWCD"
+                elif measured_by in ["Pump company", "PumpService"]:
+                    contact_name = None
+                    contact_organization = collecting_organization
+                elif measured_by == "PVACD person":
+                    contact_name = None
+                    contact_organization = "PVACD"
+                elif measured_by == "REPORTED":
+                    contact_name = None
+                    contact_organization = collecting_organization
+                elif measured_by == "TWDB":
+                    contact_name = None
+                    contact_organization = "TWDB"
+
+                """
+                Developer's notes
+
+                Use existing contact for the thing if measured by is the owner
+                """
+                if measured_by not in ["Owner", "Owner report"]:
+                    contact = Contact(
+                        name=measured_by,
+                        role="sampler",
+                        contact_type="NM_Aquifer Import",
+                        organization=collecting_organization,
+                        nma_pk_waterlevels=row.GlobalID,
+                    )
+                    session.add(contact)
+                    session.flush()  # to get the contact.id
+
+                    CREATED_CONTACTS[measured_by] = contact
+                else:
+                    contact = thing.contacts[0]
+
+            # --- Sample ---
 
             if not pd.isna(row.MeasurementMethod):
                 sample_method = lu_to_lexicon_map[
@@ -109,7 +253,7 @@ def transfer_water_levels(session):
 
             sample = Sample(
                 field_activity=field_activity,
-                sampler_name=sampler_name,
+                # sampler_name=sampler_name,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(
