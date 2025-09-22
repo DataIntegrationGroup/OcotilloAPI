@@ -25,7 +25,7 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # TODO: get AMP feedback on the roles
-    field_event_role: Mapped[str] = lexicon_term(
+    field_contact_role: Mapped[str] = lexicon_term(
         nullable=False, comment="Role of the contact in the field event"
     )
 
