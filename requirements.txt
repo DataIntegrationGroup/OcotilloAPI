@@ -660,9 +660,9 @@ pg8000==1.31.4 \
     --hash=sha256:d14fb2054642ee80f9a216721892e99e19db60a005358460ffa48872351423d4 \
     --hash=sha256:e7ecce4339891f27b0b22e2f79eb9efe44118bd384207359fc18350f788ace00
     # via nmsamplelocations
-phonenumbers==9.0.12 \
-    --hash=sha256:900633afc3e12191458d710262df5efc117838bd1e2e613b64fa254a86bb20a1 \
-    --hash=sha256:ccadff6b949494bd606836d8c9678bee5b55cb1cbad1e98bf7adae108e6fd0be
+phonenumbers==9.0.14 \
+    --hash=sha256:6bdf5c46dbfefa1d941d122432d1958418d1dfe3f8c8c81d4c8e80f5442ea41f \
+    --hash=sha256:98afb3e86bf9ae02cc7c98ca44fa8827babb72842f90da9884c5d998937572ae
     # via nmsamplelocations
 pillow==11.3.0 \
     --hash=sha256:023f6d2d11784a465f09fd09a34b150ea4672e85fb3d05931d89f373ab14abb2 \
