@@ -29,7 +29,7 @@ It includes:
     - `ReleaseMixin`: Adds a release status column referencing the `lexicon_term` table.
     - `AuditMixin`: Adds standard audit columns (created_at, created_by, updated_at, updated_by).
 5.  A simple `User` model for tracking user information in audit columns.
-6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `AttributionMixin`, etc.)
+6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `AttributionMixin`, `PermissionMixin`.)
     which provide a clean, reusable way to add relationships to the polymorphic
     metadata tables. Any model that can have a status history (like Thing or Location)
     can simply inherit from the `StatusHistoryMixin` mixin.
@@ -188,6 +188,25 @@ class StatusHistoryMixin:
             f"StatusHistory.statusable_type=='{self.__name__}')",
             cascade="all, delete-orphan",
             lazy="selectin",
+        )
+
+
+class PermissionMixin:
+    """
+    Mixin for models that can have permissions (e.g., Thing, Location).
+    It automatically creates a polymorphic One-to-Many relationship to the
+    Permission table.
+    """
+
+    @declared_attr
+    def permissions(self):
+        # One-to-Many polymorphic relationship
+        return relationship(
+            "Permission",
+            primaryjoin=f"and_({self.__name__}.{self.__name__.lower()}_id==Permission.permissible_id, "
+            f"Permission.permissible_type=='{self.__name__}')",
+            lazy="selectin",
+            viewonly=True,
         )
 
 
