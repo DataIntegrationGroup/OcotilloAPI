@@ -54,8 +54,14 @@ def transfer_water_levels(session):
             else:
                 dt_measured = f"{row.DateMeasured} 12:00:00 AM"
 
-            dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
-            dt_utc = convert_mt_to_utc(dt)
+            try:
+                dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
+                dt_utc = convert_mt_to_utc(dt)
+            except ValueError as e:
+                logger.warning(
+                    f"Skipping row {row.Index} due to invalid date/time: {e}"
+                )
+                continue
 
             thing = session.query(Thing).where(Thing.name == row.PointID).first()
             if thing is None:

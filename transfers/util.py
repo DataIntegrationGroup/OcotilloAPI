@@ -280,7 +280,7 @@ def make_location(row: pd.Series) -> Location:
     location = Location(
         nma_pk_location=row.LocationId,
         # name=row.PointID,
-        point=point.wkt,
+        point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
