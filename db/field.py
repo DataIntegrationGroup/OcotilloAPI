@@ -4,6 +4,7 @@ from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+from db.contact import Contact
 
 
 class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
@@ -25,20 +26,23 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # TODO: get AMP feedback on the roles
-    field_event_role: Mapped[str] = lexicon_term(
+    field_contact_role: Mapped[str] = lexicon_term(
         nullable=False, comment="Role of the contact in the field event"
     )
 
     # --- Relationships ---
-    field_event: Mapped["FieldEvent"] = relationship("FieldEvent")
-    contact: Mapped["Contact"] = relationship("Contact")  # noqa: F821
+    field_event: Mapped["FieldEvent"] = relationship(
+        "FieldEvent", back_populates="field_event_contact_associations"
+    )
+    contact: Mapped["Contact"] = relationship(  # noqa: F821
+        "Contact", back_populates="field_event_contact_associations"
+    )
 
     # map associated contacts to samples to restrict the people who could have
     # taken a sample to those present at the field event
     samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
         "Sample",
         back_populates="field_event_contact",
-        cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
@@ -53,6 +57,11 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     entire visit, such as the date, time, and the person responsible. It acts as
     the parent container for all activities performed and all samples collected
     during that single visit.
+
+    Its purpose is to store the "where and when" of the event.
+    Information about who participated is managed in the
+    FieldEventContactAssociation table. Information about the "what" of the
+    event is managed in the FieldActivity and Sample tables.
     """
 
     # Foreign Keys

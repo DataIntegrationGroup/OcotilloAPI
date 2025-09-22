@@ -479,7 +479,7 @@ def field_event_contact(field_event, contact):
         field_event_contact = FieldEventContactAssociation(
             field_event_id=field_event.id,
             contact_id=contact.id,
-            field_event_role="Lead",
+            field_contact_role="Lead",
         )
         session.add(field_event_contact)
         session.commit()
