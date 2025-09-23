@@ -77,11 +77,6 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="Date and time of the field event.",
     )
-    collecting_organization: Mapped[str] = lexicon_term(
-        nullable=False,
-        default="NMBGMR",  # TODO: put default in schema
-        comment="The organization that is collecting the samples from the field event",
-    )
     notes: Mapped[str] = mapped_column(
         nullable=True,
         comment="Notes or comments about the field event.",
