@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import os
 import time
 
 from dotenv import load_dotenv
@@ -117,7 +118,7 @@ def transfer_all(sess, limit=100):
 @timeit
 def main_transfer():
 
-    limit = 100
+    limit = os.environ.get('TRANSFER_LIMIT', 1000)
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
