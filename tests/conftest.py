@@ -515,14 +515,11 @@ def water_chemistry_field_activity(field_event):
 
 
 @pytest.fixture(scope="session")
-def groundwater_level_sample(
-    groundwater_level_field_activity, sensor, field_event_contact
-):
+def groundwater_level_sample(groundwater_level_field_activity, field_event_contact):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=groundwater_level_field_activity.id,
             field_event_contact_id=field_event_contact.id,
-            sensor_id=sensor.id,
             sample_date="2025-01-01T12:00:00Z",
             sample_name="groundwater level sample name",
             sample_matrix="water",
@@ -539,11 +536,10 @@ def groundwater_level_sample(
 
 
 @pytest.fixture(scope="session")
-def water_chemistry_sample(water_chemistry_field_activity, sensor, field_event_contact):
+def water_chemistry_sample(water_chemistry_field_activity, field_event_contact):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=water_chemistry_field_activity.id,
-            sensor_id=sensor.id,
             field_event_contact_id=field_event_contact.id,
             sample_date="2025-01-01T13:00:00Z",
             sample_name="water chemistry sample name",
@@ -561,11 +557,10 @@ def water_chemistry_sample(water_chemistry_field_activity, sensor, field_event_c
 
 
 @pytest.fixture(scope="function")
-def sample_to_delete(water_chemistry_field_activity, sensor, field_event_contact):
+def sample_to_delete(water_chemistry_field_activity, field_event_contact):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=water_chemistry_field_activity.id,
-            sensor_id=sensor.id,
             field_event_contact_id=field_event_contact.id,
             sample_date="2025-01-01T13:00:00Z",
             sample_name="sample to delete",

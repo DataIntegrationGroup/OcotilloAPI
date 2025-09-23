@@ -15,13 +15,10 @@
 # ===============================================================================
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship, Mapped
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 # import models from classes that are defined in separate files
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-from db.sensor import Sensor
-
-from typing import Optional
 
 import datetime
 
@@ -46,15 +43,8 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         ForeignKey("field_activity.id"), nullable=False
     )
 
-    # nullable because sample can be collected by steel tape
-    sensor_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("sensor.id"),
-        comment="Foreign key for the specific equipment used.",
-        nullable=True,
-    )
-
-    field_event_contact_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("field_event_contact_association.id")
+    field_event_contact_id: Mapped[str] = mapped_column(
+        ForeignKey("field_event_contact_association.id"), nullable=True
     )
 
     # --- Columns ---
@@ -91,7 +81,6 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     field_activity: Mapped["FieldActivity"] = relationship(  # noqa: F821
         back_populates="samples"
     )
-    sensor: Mapped["Sensor"] = relationship(back_populates="samples")  # noqa: F821
     # fmt: off
     field_event_contact: Mapped["FieldEventContactAssociation"] = relationship( # noqa: F821
         back_populates="samples"
@@ -99,9 +88,21 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     # fmt: on
 
     # association proxies to help keep code DRY
-    field_event = association_proxy("field_activity", "field_event")
-    thing = association_proxy("field_activity", "field_event.thing")
-    contact = association_proxy("field_event_contact", "contact")  # noqa: F821
+    field_event: AssociationProxy[list["FieldEvent"]] = association_proxy(  # noqa: F821
+        "field_activity", "field_event"
+    )
+    thing: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
+        "field_activity", "field_event.thing"
+    )
+    contact: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+        "field_event_contact", "contact"
+    )  # noqa: F821
+    observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
+        "Observation",
+        back_populates="sample",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 # ============= EOF =============================================

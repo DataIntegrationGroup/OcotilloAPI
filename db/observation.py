@@ -63,8 +63,12 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
         doc="Depth of the geothermal observation in feet",
     )
 
-    sensor: Mapped["Sensor"] = relationship("Sensor")  # noqa: F821
-    sample: Mapped["Sample"] = relationship("Sample")  # noqa: F821
+    sensor: Mapped["Sensor"] = relationship(  # noqa: F821
+        "Sensor", back_populates="observations", passive_deletes=True
+    )  # noqa: F821
+    sample: Mapped["Sample"] = relationship(  # noqa: F821
+        "Sample", back_populates="observations", passive_deletes=True
+    )  # noqa: F821
 
 
 # ============= EOF =============================================

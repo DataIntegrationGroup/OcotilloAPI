@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship, Mapped
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 from db.contact import Contact
@@ -80,7 +80,7 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     collecting_organization: Mapped[str] = lexicon_term(
         nullable=False,
         default="NMBGMR",  # TODO: put default in schema
-        comment="The organization that is collecting and storing the samples from the field event",
+        comment="The organization that is collecting the samples from the field event",
     )
     notes: Mapped[str] = mapped_column(
         nullable=True,
@@ -89,7 +89,7 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     thing: Mapped["Thing"] = relationship(back_populates="field_events")  # noqa: F821
     field_activities: Mapped[list["FieldActivity"]] = relationship(
-        back_populates="field_event"
+        "FieldActivity", back_populates="field_event"
     )
     field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
         relationship(
@@ -102,7 +102,7 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Association Proxies ---
     # Proxy to directly access the Contact objects participating in this event.
-    contacts: Mapped[list["Contact"]] = association_proxy(  # noqa: F821
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
         "field_event_contact_associations", "contact"
     )
 
@@ -140,7 +140,12 @@ class FieldActivity(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # Relationships
-    field_event: Mapped["FieldEvent"] = relationship(back_populates="field_activities")
+    field_event: Mapped["FieldEvent"] = relationship(
+        "FieldEvent", back_populates="field_activities"
+    )
     samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
-        back_populates="field_activity"
+        "Sample",
+        back_populates="field_activity",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
