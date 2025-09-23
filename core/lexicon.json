@@ -346,7 +346,7 @@
   {"categories": [{"name": "organization", "description": null}], "term": "NMOSE", "definition": "New Mexico Office of the State Engineer"},
   {"categories": [{"name": "organization", "description": null}], "term": "NMBGMR", "definition": "New Mexico Bureau of Geology and Mineral Resources"},
   {"categories": [{"name": "organization", "description": null}], "term": "NMRWA", "definition": "New Mexico Rural Water Association"},
-  {"categories": [{"name": "organization", "description": null}], "term": "Bernalillo Cty", "definition": "Bernalillo County"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Bernalillo County", "definition": "Bernalillo County"},
   {"categories": [{"name": "organization", "description": null}], "term": "BLM", "definition": "Bureau of Land Management"},
   {"categories": [{"name": "organization", "description": null}], "term": "SFC", "definition": "Santa Fe County"},
   {"categories": [{"name": "organization", "description": null}], "term": "CSF", "definition": "City of Santa Fe"},
@@ -362,6 +362,24 @@
   {"categories": [{"name": "organization", "description": null}], "term": "NPS", "definition": "National Park Service"},
   {"categories": [{"name": "organization", "description": null}], "term": "Otero SWCD", "definition": "Otero Soil and Water Conservation District"},
   {"categories": [{"name": "organization", "description": null}], "term": "Taos SWCD", "definition": "Taos Soil and Water Conservation District"},
+
+  {"categories": [{"name": "organization", "description": null}], "term": "A&T Pump & Well Service, LLC", "definition": "A&T Pump & Well Service, LLC"},
+  {"categories": [{"name": "organization", "description": null}], "term": "A. G. Wassenaar, Inc", "definition": "A. G. Wassenaar, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "AMEC", "definition": "AMEC"},
+  {"categories": [{"name": "organization", "description": null}], "term": "CDM Smith", "definition": "CDM Smith"},
+  {"categories": [{"name": "organization", "description": null}], "term": "CH2M Hill", "definition": "CH2M Hill"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Chevron", "definition": "Chevron"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Daniel B. Stephens & Associates, Inc", "definition": "Daniel B. Stephens & Associates, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Glorieta Geoscience, Inc", "definition": "Glorieta Geoscience, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Golder Associates, Inc", "definition": "Golder Associates, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Hydroscience Associates, Inc", "definition": "Hydroscience Associates, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "IC Tech, Inc", "definition": "IC Tech, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "John Shomaker & Associates, Inc", "definition": "John Shomaker & Associates, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Minton Engineers", "definition": "Minton Engineers"},
+  {"categories": [{"name": "organization", "description": null}], "term": "MJDarrconsult, Inc", "definition": "MJDarrconsult, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Rodgers & Company, Inc", "definition": "Rodgers & Company, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Statewide Drilling, Inc", "definition": "Statewide Drilling, Inc"},
+
 
   {"categories": [{"name": "collection_method", "description": null}], "term": "manual", "definition": "manual sampling"},
   {"categories": [{"name": "collection_method", "description": null}], "term": "continuous", "definition": "continuous sampling"},
@@ -426,6 +444,7 @@
   {"categories": [{"name": "role", "description": null}], "term": "Technician", "definition": "Technician"},
   {"categories": [{"name": "role", "description": null}], "term": "Organization", "definition": "A contact that is an organization"},
   {"categories": [{"name": "role", "description": null}], "term": "Specialist", "definition": "Specialist"},
+  {"categories": [{"name": "role", "description": null}], "term": "Research Assistant", "definition": "Research Assistant"},
 
 
   {"categories": [{"name": "email_type", "description": null},

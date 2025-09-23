@@ -85,17 +85,11 @@ def transfer_water_levels(session):
             measurement is the same as the date/time of the field event.
             """
 
-            if pd.isna(row.MeasuringAgency):
-                collecting_organization = "Unknown"
-            else:
-                collecting_organization = row.MeasuringAgency
-
             # --- FieldEvent ---
 
             field_event = FieldEvent(
                 thing=thing,
                 event_date=dt_utc,
-                collecting_organization=collecting_organization,
                 release_status=release_status,
             )
 
@@ -133,27 +127,43 @@ def transfer_water_levels(session):
             else:
                 measured_by = row.MeasuredBy
 
+            if pd.isna(row.MeasuringAgency):
+                measuring_agency = "Unknown"
+            else:
+                measuring_agency = row.MeasuringAgency
+
             # sometimes multiple contacts need to be created, so they'll be stored in a list
             # the nth name corresponds with the nth organization
             contact_names = []
             contact_organizations = []
             roles = []
             # --- Companies/Organizations ---
-            if "AGW" in measured_by:
-                contact_names.append("A. G. Wassenaar, Inc")
-                contact_organizations.append(collecting_organization)
+            if measured_by == "A&T Pump & Well Serv":
+                contact_names.append(None)
+                contact_organizations.append("A&T Pump & Well Service, LLC")
+                roles.append("Organization")
+            elif "AGW" in measured_by:
+                if "Turner" in measured_by:
+                    contact_names.append("Turner")
+                else:
+                    contact_names.append(None)
+                contact_organizations.append("A. G. Wassenaar, Inc")
+                roles.append("Organization")
+            elif measured_by == "AMEC":
+                contact_names.append(None)
+                contact_organizations.append("AMEC Earth & Environmental")
                 roles.append("Organization")
             elif measured_by == "CDM":
-                contact_names.append("CDM Smith")
-                contact_organizations.append(collecting_organization)
+                contact_names.append(None)
+                contact_organizations.append("CDM Smith")
                 roles.append("Organization")
             elif measured_by == "CH2MHill":
-                contact_names.append("CH2M Hill")
-                contact_organizations.append(collecting_organization)
+                contact_names.append(None)
+                contact_organizations.append("CH2M Hill")
                 roles.append("Organization")
             elif measured_by == "Chevron personnel":
                 contact_names.append("Chevron")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by in [
                 "City of  Santa Fe",
@@ -166,11 +176,11 @@ def transfer_water_levels(session):
                 roles.append("Organization")
             elif measured_by in ["DBSA", "DBStephens & Assoc"]:
                 contact_names.append("Daniel B. Stephens & Associates, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif "Glorieta Geoscienc" in measured_by:
                 contact_names.append("Glorieta Geoscience, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by == "Golder Ass. For OSE":
                 contact_names.append("Golder Associates, Inc")
@@ -178,7 +188,7 @@ def transfer_water_levels(session):
                 roles.append("Organization")
             elif measured_by == "Hydroscience Assoc.":
                 contact_names.append("Hydroscience Associates, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif "IC Tech" in measured_by or "ICTech" in measured_by:
                 contact_names.append("IC Tech, Inc")
@@ -186,7 +196,7 @@ def transfer_water_levels(session):
                 roles.append("Organization")
             elif "John Shomaker" in measured_by:
                 contact_names.append("John Shomaker & Associates, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by == "Mario Gonzales NMRWA":
                 contact_names.append("Mario Gonzales")
@@ -194,11 +204,11 @@ def transfer_water_levels(session):
                 roles.append("Organization")
             elif "Minton" in measured_by:
                 contact_names.append("Minton Engineers")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif "MJ Darr" in measured_by:
                 contact_names.append("MJDarrconsult, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by == "NMOSE?":
                 contact_names.append(None)
@@ -212,17 +222,13 @@ def transfer_water_levels(session):
                 contact_names.append("Doug Rappuhn")
                 contact_organizations.append("NMOSE")
                 roles.append("Organization")
-            elif measured_by in ["Pump company", "PumpService"]:
-                contact_names.append(None)
-                contact_organizations.append(collecting_organization)
-                roles.append("Organization")
             elif measured_by == "PVACD person":
                 contact_names.append(None)
                 contact_organizations.append("PVACD")
                 roles.append("Organization")
             elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
                 contact_names.append("Rodgers & Company, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by == "Sandia National labs":
                 contact_names.append(None)
@@ -238,12 +244,14 @@ def transfer_water_levels(session):
                 roles.append("Organization")
             elif measured_by == "Statewide Drilling":
                 contact_names.append("Statewide Drilling, Inc")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Organization")
             elif measured_by in [
                 "?",
                 "Consultant",
                 "Consulting Pro.",
+                "Pump company",
+                "PumpService",
                 "REPORTED",
                 "Unknown",
                 "Unknown; reported",
@@ -253,7 +261,7 @@ def transfer_water_levels(session):
             ]:
                 # if measured_by
                 contact_names.append(None)
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Unknown")
             elif measured_by in [
                 "NMBGMR",
@@ -273,19 +281,49 @@ def transfer_water_levels(session):
                 roles.append("Organization")
 
             # --- People ---
-            # TODO: AMP feedback to ask if the roles are correct
-            elif measured_by == "Wagner":
+            elif measured_by == " Wagner":
                 contact_names.append("Stacy Timmons")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append("NMBGMR")
                 roles.append("Hydrogeologist")
+            elif measured_by == "AL":
+                contact_names.append("Angela Lucero")
+                contact_organizations.append("NMBGMR")
+                roles.append("Hydrologist")
+            elif measured_by == "AL, GR":
+                contact_names.extend(["Angela Lucero", "Geoff Rawling"])
+                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+            elif measured_by == "AL, SC":
+                contact_names.extend(["Angela Lucero", " Scott Christenson"])
+                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+                roles.extend(["Hydrologist", "Technician"])
+            elif measured_by == "Amy Kronson":
+                contact_names.append("Amy Kronson")
+                contact_organizations.append("Bernalillo County")
+                roles.append("Technician")
             elif measured_by in ["Anders Lundahl", "Anders Lundalh"]:
                 contact_names.append("Anders Lundahl")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Specialist")
+            elif measured_by == "Andrew Matejunas":
+                contact_names.append(measured_by)
+                contact_organizations.append("NMBGMR")
+                roles.append("Research Assistant")
+            elif measured_by == "Andy Manning":
+                contact_names.append(measured_by)
+                contact_organizations.append("USGS")
+                roles.append("Hydrogeologist")
+            elif measured_by == "Anthony Chavez":
+                # TODO: determine role
+                continue
             elif measured_by == "CE":
                 contact_names.append("Cathy Eisen")
-                contact_organizations.append(collecting_organization)
+                contact_organizations.append(measuring_agency)
                 roles.append("Hydrogeologist")
+
+            else:
+                logger.warning(
+                    f"The following record has not been mapped to a Contact: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID}"
+                )
             """
             Developer's notes
 
@@ -297,11 +335,7 @@ def transfer_water_levels(session):
                         # create new contact if not already created
                         name = contact_names[i]
                         organization = contact_organizations[i]
-
-                        if len(roles) > 0:
-                            role = roles[i]
-                        else:
-                            role = "sampler"
+                        role = roles[i]
 
                         contact = Contact(
                             name=name,
