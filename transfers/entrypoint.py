@@ -104,8 +104,8 @@ async def _cleanup_wells(session: session_dependency):
     cleanup_wells(session)
 
 
-@app.post("/main_transfer")
-async def _(session: session_dependency):
+@app.post("/transfer_all")
+async def _transfer_all(session: session_dependency):
     message("TRANSFERRING ALL")
     transfer_all(session)
 
