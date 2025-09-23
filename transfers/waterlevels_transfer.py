@@ -157,9 +157,6 @@ def transfer_water_levels(session):
                 ]:
                     contact_name = None
                     contact_organization = "CSF"
-                elif measured_by in ["Consultant", "Consulting Pro."]:
-                    contact_name = None
-                    contact_organization = collecting_organization
                 elif measured_by in ["DBSA", "DBStephens & Assoc"]:
                     contact_name = "Daniel B. Stephens & Associates, Inc"
                     contact_organization = collecting_organization
@@ -188,43 +185,28 @@ def transfer_water_levels(session):
                 elif "MJ Darr" in measured_by:
                     contact_name = "MJDarrconsult, Inc"
                     contact_organization = collecting_organization
-                elif measured_by == "NMBGMR":
-                    contact_name = None
-                    contact_organization = "NMBGMR"
-                elif measured_by == "NMED":
-                    contact_name = None
-                    contact_organization = "NMED"
-                elif measured_by in ["NMOSE", "NMOSE?"]:
+                elif measured_by == "NMOSE?":
                     contact_name = None
                     contact_organization = "NMOSE"
-                elif measured_by == "NPS":
-                    contact_name = None
-                    contact_organization = "NPS"
                 elif measured_by == "OSE":
                     contact_name = None
                     contact_organization = "NMOSE"
                 elif measured_by == "OSE; Doug Rappuhn":
                     contact_name = "Doug Rappuhn"
                     contact_organization = "NMOSE"
-                elif measured_by == "Otero SWCD":
-                    contact_name = None
-                    contact_organization = "Otero SWCD"
                 elif measured_by in ["Pump company", "PumpService"]:
                     contact_name = None
                     contact_organization = collecting_organization
                 elif measured_by == "PVACD person":
                     contact_name = None
                     contact_organization = "PVACD"
-                elif measured_by == "REPORTED":
-                    contact_name = None
-                    contact_organization = collecting_organization
                 elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
                     contact_name = "Rodgers & Company, Inc"
                     contact_organization = collecting_organization
                 elif measured_by == "Sandia National labs":
                     contact_name = None
                     contact_organization = "SNL"
-                elif measured_by in ["Santa Fe County", "SFC", "SFCounty LF staff"]:
+                elif measured_by in ["Santa Fe County", "SFCounty LF staff"]:
                     contact_name = None
                     contact_organization = "SFC"
                 elif measured_by == "SFC/Frost":
@@ -232,13 +214,35 @@ def transfer_water_levels(session):
                     contact_organization = "SFC"
                 elif measured_by == "Statewide Drilling":
                     contact_name = "Statewide Drilling, Inc"
+                elif measured_by in [
+                    "?",
+                    "Consultant",
+                    "Consulting Pro.",
+                    "REPORTED",
+                    "Unknown",
+                    "Unknown; reported",
+                    "Water operator",
+                    "Well owner",
+                    "WWTP",
+                    "WWTP personnel",
+                ]:
+                    contact_name = None
                     contact_organization = collecting_organization
-                elif measured_by == "Taos SWCD":
+                elif measured_by in [
+                    "NMBGMR",
+                    "NMED",
+                    "NMOSE",
+                    "NPS",
+                    "Otero SWCD",
+                    "SFC",
+                    "Taos SWCD",
+                    "TWDB",
+                    "USFS",
+                    "USGS",
+                    "USGS WRD",
+                ]:
                     contact_name = None
-                    contact_organization = "Taos SWCD"
-                elif measured_by == "TWDB":
-                    contact_name = None
-                    contact_organization = "TWDB"
+                    contact_organization = measured_by
 
                 """
                 Developer's notes
