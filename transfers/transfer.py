@@ -118,7 +118,7 @@ def transfer_all(sess, limit=100):
 @timeit
 def main_transfer():
 
-    limit = os.environ.get("TRANSFER_LIMIT", 1000)
+    limit = int(os.environ.get('TRANSFER_LIMIT', 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
