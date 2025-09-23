@@ -1,1 +1,1 @@
-web: python3 transfers/transfer.py
+web: python3 -m transfers.transfer
