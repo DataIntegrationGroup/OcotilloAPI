@@ -73,88 +73,52 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
+def transfer_all(sess, limit=100):
+    message("STARTING TRANSFER", new_line_at_top=False)
+    erase_and_initalize(sess)
+
+    message("TRANSFERRING WELLS")
+    timeit_direct(transfer_wells, sess, limit=limit)
+    timeit_direct(transfer_wellscreens, sess)
+
+    message("TRANSFERRING SPRINGS")
+    timeit_direct(transfer_springs, sess, limit=limit)
+
+    message("TRANSFERRING PERENNIAL STREAMS")
+    timeit_direct(transfer_perennial_stream, sess, limit=limit)
+
+    message("TRANSFERRING EPHEMERAL STREAMS")
+    timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+
+    message("TRANSFERRING METEOROLOGICAL")
+    timeit_direct(transfer_met, sess, limit)
+
+    message("TRANSFERRING CONTACTS")
+    timeit_direct(transfer_contacts, sess)
+
+    message("TRANSFERRING WATER LEVELS")
+    timeit_direct(transfer_water_levels, sess)
+
+    message("TRANSFERRING LINK IDS")
+    timeit_direct(transfer_link_ids, sess)
+    timeit_direct(transfer_link_ids_welldata, sess)
+
+    # if init or transfer_assets_flag:
+    #     message("TRANSFERRING ASSETS")
+    #     transfer_assets_testing(sess)
+
+    message("TRANSFERRING GROUPS")
+    timeit_direct(transfer_groups, sess)
+
+    # if init or cleanup_wells_flag:
+    #     cleanup_wells(sess)
+
 @timeit
 def main_transfer():
-    message("STARTING TRANSFER", new_line_at_top=False)
-
-    init = True
-
-    transfer_well_flag = False
-    transfer_spring_flag = False
-    transfer_perennial_stream_flag = False
-    transfer_ephemeral_stream_flag = False
-    transfer_met_flag = False
-    transfer_contacts_flag = False
-    transfer_waterlevels_flag = False
-    transfer_link_ids_flag = False
-    transfer_assets_flag = False
-    transfer_groups_flag = False
-
-    cleanup_wells_flag = False
-
-    transfer_well_flag = True
-    transfer_spring_flag = True
-    transfer_perennial_stream_flag = True
-    transfer_ephemeral_stream_flag = True
-    transfer_met_flag = True
-    transfer_contacts_flag = True
-    transfer_waterlevels_flag = True
-    transfer_link_ids_flag = True
-    transfer_assets_flag = True
-    transfer_groups_flag = True
-
-    cleanup_wells_flag = True
 
     limit = 100
     with session_ctx() as sess:
-        if init:
-            erase_and_initalize(sess)
-
-        if init or transfer_well_flag:
-            message("TRANSFERRING WELLS")
-            timeit_direct(transfer_wells, sess, limit=limit)
-            timeit_direct(transfer_wellscreens, sess)
-        #
-        if init or transfer_spring_flag:
-            message("TRANSFERRING SPRINGS")
-            timeit_direct(transfer_springs, sess, limit=limit)
-
-        if init or transfer_perennial_stream_flag:
-            message("TRANSFERRING PERENNIAL STREAMS")
-            timeit_direct(transfer_perennial_stream, sess, limit=limit)
-
-        if init or transfer_ephemeral_stream_flag:
-            message("TRANSFERRING EPHEMERAL STREAMS")
-            timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-
-        if init or transfer_met_flag:
-            message("TRANSFERRING METEOROLOGICAL")
-            timeit_direct(transfer_met, sess, limit)
-
-        if init or transfer_contacts_flag:
-            message("TRANSFERRING CONTACTS")
-            timeit_direct(transfer_contacts, sess)
-
-        if init or transfer_waterlevels_flag:
-            message("TRANSFERRING WATER LEVELS")
-            timeit_direct(transfer_water_levels, sess)
-
-        if init or transfer_link_ids_flag:
-            message("TRANSFERRING LINK IDS")
-            timeit_direct(transfer_link_ids, sess)
-            timeit_direct(transfer_link_ids_welldata, sess)
-
-        # if init or transfer_assets_flag:
-        #     message("TRANSFERRING ASSETS")
-        #     transfer_assets_testing(sess)
-
-        if init or transfer_groups_flag:
-            message("TRANSFERRING GROUPS")
-            timeit_direct(transfer_groups, sess)
-
-        # if init or cleanup_wells_flag:
-        #     cleanup_wells(sess)
-
+        transfer_all(sess, limit=limit)
 
 if __name__ == "__main__":
     main_transfer()

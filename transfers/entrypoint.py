@@ -27,7 +27,7 @@ from transfers.thing_transfer import (
     transfer_perennial_stream,
     transfer_springs,
 )
-from transfers.transfer import message
+from transfers.transfer import message, main_transfer, transfer_all
 from transfers.waterlevels_transfer import transfer_water_levels
 from transfers.well_transfer import transfer_wells, cleanup_wells
 
@@ -102,6 +102,12 @@ async def _transfer_groups(session: session_dependency):
 @app.post("/cleanup_wells")
 async def _cleanup_wells(session: session_dependency):
     cleanup_wells(session)
+
+
+@app.post("/main_transfer")
+async def _(session: session_dependency):
+    message("TRANSFERRING ALL")
+    transfer_all(session)
 
 
 @app.get("/health")
