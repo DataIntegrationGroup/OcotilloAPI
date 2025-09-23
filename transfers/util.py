@@ -51,6 +51,7 @@ class StreamToLogger:
     def flush(self):
         pass
 
+
 # todo: setup of logging should be moved to function
 log_filename = f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 

@@ -113,12 +113,14 @@ def transfer_all(sess, limit=100):
     # if init or cleanup_wells_flag:
     #     cleanup_wells(sess)
 
+
 @timeit
 def main_transfer():
 
     limit = 100
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
+
 
 if __name__ == "__main__":
     main_transfer()
