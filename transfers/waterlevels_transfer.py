@@ -133,136 +133,205 @@ def transfer_water_levels(session):
             else:
                 measured_by = row.MeasuredBy
 
-            # TODO: fix
-            if measured_by in CREATED_CONTACTS.keys():
-                contact = CREATED_CONTACTS[measured_by]
+            # sometimes multiple contacts need to be created, so they'll be stored in a list
+            # the nth name corresponds with the nth organization
+            contact_names = []
+            contact_organizations = []
+            roles = []
+            # --- Companies/Organizations ---
+            if "AGW" in measured_by:
+                contact_names.append("A. G. Wassenaar, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "CDM":
+                contact_names.append("CDM Smith")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "CH2MHill":
+                contact_names.append("CH2M Hill")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "Chevron personnel":
+                contact_names.append("Chevron")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by in [
+                "City of  Santa Fe",
+                "City of Santa  Fe",
+                "City of Santa Fe",
+                "CityofSantaFe",
+            ]:
+                contact_names.append(None)
+                contact_organizations.append("CSF")
+                roles.append("Organization")
+            elif measured_by in ["DBSA", "DBStephens & Assoc"]:
+                contact_names.append("Daniel B. Stephens & Associates, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif "Glorieta Geoscienc" in measured_by:
+                contact_names.append("Glorieta Geoscience, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "Golder Ass. For OSE":
+                contact_names.append("Golder Associates, Inc")
+                contact_organizations.append("NMOSE")
+                roles.append("Organization")
+            elif measured_by == "Hydroscience Assoc.":
+                contact_names.append("Hydroscience Associates, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif "IC Tech" in measured_by or "ICTech" in measured_by:
+                contact_names.append("IC Tech, Inc")
+                contact_organizations.append("NMOSE")
+                roles.append("Organization")
+            elif "John Shomaker" in measured_by:
+                contact_names.append("John Shomaker & Associates, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "Mario Gonzales NMRWA":
+                contact_names.append("Mario Gonzales")
+                contact_organizations.append("NMRWA")
+                roles.append("Organization")
+            elif "Minton" in measured_by:
+                contact_names.append("Minton Engineers")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif "MJ Darr" in measured_by:
+                contact_names.append("MJDarrconsult, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "NMOSE?":
+                contact_names.append(None)
+                contact_organizations.append("NMOSE")
+                roles.append("Organization")
+            elif measured_by == "OSE":
+                contact_names.append(None)
+                contact_organizations.append("NMOSE")
+                roles.append("Organization")
+            elif measured_by == "OSE; Doug Rappuhn":
+                contact_names.append("Doug Rappuhn")
+                contact_organizations.append("NMOSE")
+                roles.append("Organization")
+            elif measured_by in ["Pump company", "PumpService"]:
+                contact_names.append(None)
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "PVACD person":
+                contact_names.append(None)
+                contact_organizations.append("PVACD")
+                roles.append("Organization")
+            elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
+                contact_names.append("Rodgers & Company, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by == "Sandia National labs":
+                contact_names.append(None)
+                contact_organizations.append("SNL")
+                roles.append("Organization")
+            elif measured_by in ["Santa Fe County", "SFCounty LF staff"]:
+                contact_names.append(None)
+                contact_organizations.append("SFC")
+                roles.append("Organization")
+            elif measured_by == "SFC/Frost":
+                contact_names.append("Frost")
+                contact_organizations.append("SFC")
+                roles.append("Organization")
+            elif measured_by == "Statewide Drilling":
+                contact_names.append("Statewide Drilling, Inc")
+                contact_organizations.append(collecting_organization)
+                roles.append("Organization")
+            elif measured_by in [
+                "?",
+                "Consultant",
+                "Consulting Pro.",
+                "REPORTED",
+                "Unknown",
+                "Unknown; reported",
+                "Water operator",
+                "WWTP",
+                "WWTP personnel",
+            ]:
+                # if measured_by
+                contact_names.append(None)
+                contact_organizations.append(collecting_organization)
+                roles.append("Unknown")
+            elif measured_by in [
+                "NMBGMR",
+                "NMED",
+                "NMOSE",
+                "NPS",
+                "Otero SWCD",
+                "SFC",
+                "Taos SWCD",
+                "TWDB",
+                "USFS",
+                "USGS",
+                "USGS WRD",
+            ]:
+                contact_names.append(None)
+                contact_organizations.append(measured_by)
+                roles.append("Organization")
+
+            # --- People ---
+            # TODO: AMP feedback to ask if the roles are correct
+            elif measured_by == "Wagner":
+                contact_names.append("Stacy Timmons")
+                contact_organizations.append(collecting_organization)
+                roles.append("Hydrogeologist")
+            elif measured_by in ["Anders Lundahl", "Anders Lundalh"]:
+                contact_names.append("Anders Lundahl")
+                contact_organizations.append(collecting_organization)
+                roles.append("Specialist")
+            elif measured_by == "CE":
+                contact_names.append("Cathy Eisen")
+                contact_organizations.append(collecting_organization)
+                roles.append("Hydrogeologist")
+            """
+            Developer's notes
+
+            Use existing contact for the thing if measured by is the owner
+            """
+            if measured_by not in ["Owner", "Owner report", "Well owner"]:
+                for i, c in enumerate(contact_names):
+                    if c not in CREATED_CONTACTS.keys():
+                        # create new contact if not already created
+                        name = contact_names[i]
+                        organization = contact_organizations[i]
+
+                        if len(roles) > 0:
+                            role = roles[i]
+                        else:
+                            role = "sampler"
+
+                        contact = Contact(
+                            name=name,
+                            role="sampler",
+                            contact_type="NM_Aquifer Import",
+                            organization=organization,
+                            nma_pk_waterlevels=row.GlobalID,
+                        )
+                        session.add(contact)
+                        session.flush()  # to get the contact.id
+
+                        CREATED_CONTACTS[c] = contact
+
+                    """
+                    Developer's notes
+
+                    Assumes that the first listed contact is the lead and the
+                    person who took the sample. The subsequent contact will be
+                    participants in the field event
+                    """
+                    if i == 0:
+                        # leader
+                        # sampler
+                        pass
+                    else:
+                        # participant
+                        # not sampler
+                        pass
             else:
-                if "AGW" in measured_by:
-                    contact_name = "A. G. Wassenaar, Inc"
-                    contact_organization = collecting_organization
-                elif measured_by == "CDM":
-                    contact_name = "CDM Smith"
-                    contact_organization = collecting_organization
-                elif measured_by == "CH2MHill":
-                    contact_name = "CH2M Hill"
-                    contact_organization = collecting_organization
-                elif measured_by == "Chevron personnel":
-                    contact_name = "Chevron"
-                    contact_organization = collecting_organization
-                elif measured_by in [
-                    "City of  Santa Fe",
-                    "City of Santa  Fe",
-                    "City of Santa Fe",
-                    "CityofSantaFe",
-                ]:
-                    contact_name = None
-                    contact_organization = "CSF"
-                elif measured_by in ["DBSA", "DBStephens & Assoc"]:
-                    contact_name = "Daniel B. Stephens & Associates, Inc"
-                    contact_organization = collecting_organization
-                elif "Glorieta Geoscienc" in measured_by:
-                    contact_name = "Glorieta Geoscience, Inc"
-                    contact_organization = collecting_organization
-                elif measured_by == "Golder Ass. For OSE":
-                    contact_name = "Golder Associates, Inc"
-                    contact_organization = "NMOSE"
-                elif measured_by == "Hydroscience Assoc.":
-                    contact_name = "Hydroscience Associates, Inc"
-                    contact_organization = collecting_organization
-                elif "IC Tech" in measured_by or "ICTech" in measured_by:
-                    # AMP: is this also true for IC Tech and IC Tech, Inc? All other names with "IC Tech" in them indicate the measurement was taken for NMOSE
-                    contact_name = "IC Tech, Inc"
-                    contact_organization = "NMOSE"
-                elif "John Shomaker" in measured_by:
-                    contact_name = "John Shomaker & Associates, Inc"
-                    contact_organization = collecting_organization
-                elif measured_by == "Mario Gonzales NMRWA":
-                    contact_name = "Mario Gonzales"
-                    contact_organization = "NMRWA"
-                elif "Minton" in measured_by:
-                    contact_name = "Minton Engineers"
-                    contact_organization = collecting_organization
-                elif "MJ Darr" in measured_by:
-                    contact_name = "MJDarrconsult, Inc"
-                    contact_organization = collecting_organization
-                elif measured_by == "NMOSE?":
-                    contact_name = None
-                    contact_organization = "NMOSE"
-                elif measured_by == "OSE":
-                    contact_name = None
-                    contact_organization = "NMOSE"
-                elif measured_by == "OSE; Doug Rappuhn":
-                    contact_name = "Doug Rappuhn"
-                    contact_organization = "NMOSE"
-                elif measured_by in ["Pump company", "PumpService"]:
-                    contact_name = None
-                    contact_organization = collecting_organization
-                elif measured_by == "PVACD person":
-                    contact_name = None
-                    contact_organization = "PVACD"
-                elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
-                    contact_name = "Rodgers & Company, Inc"
-                    contact_organization = collecting_organization
-                elif measured_by == "Sandia National labs":
-                    contact_name = None
-                    contact_organization = "SNL"
-                elif measured_by in ["Santa Fe County", "SFCounty LF staff"]:
-                    contact_name = None
-                    contact_organization = "SFC"
-                elif measured_by == "SFC/Frost":
-                    contact_name = "Frost"
-                    contact_organization = "SFC"
-                elif measured_by == "Statewide Drilling":
-                    contact_name = "Statewide Drilling, Inc"
-                elif measured_by in [
-                    "?",
-                    "Consultant",
-                    "Consulting Pro.",
-                    "REPORTED",
-                    "Unknown",
-                    "Unknown; reported",
-                    "Water operator",
-                    "Well owner",
-                    "WWTP",
-                    "WWTP personnel",
-                ]:
-                    contact_name = None
-                    contact_organization = collecting_organization
-                elif measured_by in [
-                    "NMBGMR",
-                    "NMED",
-                    "NMOSE",
-                    "NPS",
-                    "Otero SWCD",
-                    "SFC",
-                    "Taos SWCD",
-                    "TWDB",
-                    "USFS",
-                    "USGS",
-                    "USGS WRD",
-                ]:
-                    contact_name = None
-                    contact_organization = measured_by
-
-                """
-                Developer's notes
-
-                Use existing contact for the thing if measured by is the owner
-                """
-                if measured_by not in ["Owner", "Owner report"]:
-                    contact = Contact(
-                        name=measured_by,
-                        role="sampler",
-                        contact_type="NM_Aquifer Import",
-                        organization=collecting_organization,
-                        nma_pk_waterlevels=row.GlobalID,
-                    )
-                    session.add(contact)
-                    session.flush()  # to get the contact.id
-
-                    CREATED_CONTACTS[measured_by] = contact
-                else:
-                    contact = thing.contacts[0]
+                contact = thing.contacts[0]
 
             # --- Sample ---
 

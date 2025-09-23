@@ -31,7 +31,8 @@
                   {"name": "coordinate_method", "description": null},
                   {"name": "current_use", "description": null},
                   {"name": "status", "description": null},
-                  {"name": "organization", "description": null}], "term": "Unknown", "definition": "Unknown"},
+                  {"name": "organization", "description": null},
+                  {"name": "role", "description": null}], "term": "Unknown", "definition": "Unknown"},
 
   {"categories": [{"name": "construction_method", "description": null}], "term": "Air-rotary", "definition": "Air-rotary"},
   {"categories": [{"name": "construction_method", "description": null}], "term": "Bored or augered", "definition": "Bored or augered"},
@@ -423,6 +424,8 @@
   {"categories": [{"name": "role", "description": null}], "term": "Hydrogeologist", "definition": "Hydrogeologist"},
   {"categories": [{"name": "role", "description": null}], "term": "Engineer", "definition": "Engineer"},
   {"categories": [{"name": "role", "description": null}], "term": "Technician", "definition": "Technician"},
+  {"categories": [{"name": "role", "description": null}], "term": "Organization", "definition": "A contact that is an organization"},
+  {"categories": [{"name": "role", "description": null}], "term": "Specialist", "definition": "Specialist"},
 
 
   {"categories": [{"name": "email_type", "description": null},
