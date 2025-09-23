@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 
 from core.dependencies import session_dependency
 from transfers.asset_transfer import transfer_assets_testing
@@ -105,9 +105,10 @@ async def _cleanup_wells(session: session_dependency):
 
 
 @app.post("/transfer_all")
-async def _transfer_all(session: session_dependency):
+async def _transfer_all(background_tasks: BackgroundTasks, session: session_dependency):
     message("TRANSFERRING ALL")
-    transfer_all(session)
+    background_tasks.add_task(transfer_all, session)
+    return {"message": "Task started"}
 
 
 @app.get("/health")
