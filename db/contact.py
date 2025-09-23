@@ -36,7 +36,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=True)
-    organization: Mapped[str] = mapped_column(String(100), nullable=True)
+    organization: Mapped[str] = lexicon_term(nullable=True)
     role: Mapped[str] = lexicon_term(nullable=False)
     contact_type: Mapped[str] = lexicon_term(nullable=False)
     nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)

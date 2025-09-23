@@ -227,7 +227,7 @@ def contact(water_well_thing):
             name="Test Contact",
             role="Owner",
             contact_type="Primary",
-            organization="Test Organization",
+            organization="NMBGMR",
         )
         session.add(contact)
         session.commit()
@@ -377,7 +377,7 @@ def third_contact():
             name=None,
             role="Owner",
             contact_type="Primary",
-            organization="Third Organization",
+            organization="NMBGMR",
         )
         session.add(contact)
         session.commit()
@@ -464,7 +464,6 @@ def field_event(water_well_thing):
         field_event = FieldEvent(
             thing_id=water_well_thing.id,
             event_date="2025-01-01T00:00:00Z",
-            collecting_organization="NMBGMR",
             notes="field event fixture notes",
             release_status="draft",
         )
