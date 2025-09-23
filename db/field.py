@@ -80,7 +80,7 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     collecting_organization: Mapped[str] = lexicon_term(
         nullable=False,
         default="NMBGMR",  # TODO: put default in schema
-        comment="The organization that is collecting and storing the samples from the field event",
+        comment="The organization that is collecting the samples from the field event",
     )
     notes: Mapped[str] = mapped_column(
         nullable=True,
