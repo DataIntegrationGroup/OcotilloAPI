@@ -54,14 +54,13 @@ def test_validate_sample_top_and_bottom():
 
 #  ============= Post tests for samples =============================================
 def test_add_sample(
-    groundwater_level_field_activity, water_well_thing, sensor, field_event_contact
+    groundwater_level_field_activity, water_well_thing, field_event_contact
 ):
     """
     Test adding a sample.
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
-        "sensor_id": sensor.id,
         "field_event_contact_id": field_event_contact.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "second groundwater level field activity name",
@@ -88,7 +87,6 @@ def test_add_sample(
     assert data["field_activity_id"] == payload["field_activity_id"]
     assert data["contact"]["id"] == field_event_contact.contact_id
     assert data["field_event_contact_id"] == payload["field_event_contact_id"]
-    assert data["sensor_id"] == payload["sensor_id"]
     assert data["sample_date"] == payload["sample_date"]
     assert data["sample_name"] == payload["sample_name"]
     assert data["sample_matrix"] == payload["sample_matrix"]
@@ -106,7 +104,6 @@ def test_add_sample(
 def test_409_add_sample_invalid_sample_name(
     groundwater_level_field_activity,
     groundwater_level_sample,
-    sensor,
     field_event_contact,
 ):
     """
@@ -115,7 +112,6 @@ def test_409_add_sample_invalid_sample_name(
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
         "field_event_contact_id": field_event_contact.id,
-        "sensor_id": sensor.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": groundwater_level_sample.sample_name,
         "sample_matrix": "water",
@@ -145,7 +141,6 @@ def test_409_add_sample_invalid_sample_name(
 def test_409_add_sample_invalid_field_activity_id(
     groundwater_level_field_activity,
     groundwater_level_sample,
-    sensor,
     field_event_contact,
 ):
     """
@@ -153,7 +148,6 @@ def test_409_add_sample_invalid_field_activity_id(
     """
     payload = {
         "field_activity_id": 999999,
-        "sensor_id": sensor.id,
         "field_event_contact_id": field_event_contact.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "yet another sample name",
@@ -183,15 +177,12 @@ def test_409_add_sample_invalid_field_activity_id(
 
 
 #  ============= Patch tests for samples =============================================
-def test_patch_sample(
-    water_chemistry_sample, second_sensor, groundwater_level_field_activity
-):
+def test_patch_sample(water_chemistry_sample, groundwater_level_field_activity):
     """
     Test updating a sample.
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
-        "sensor_id": second_sensor.id,
         # "field_event_contact_id": third_contact.id,
         "sample_date": "2025-01-02T00:00:00Z",
         "sample_name": "patched sample name",
@@ -300,7 +291,6 @@ def test_get_samples(water_chemistry_sample, groundwater_level_sample):
         assert "field_activity_id" in item
         assert "contact" in item
         assert "field_event_contact_id" in item
-        assert "sensor_id" in item
         assert "sample_date" in item
         assert "sample_name" in item
         assert "sample_matrix" in item
@@ -317,7 +307,6 @@ def test_get_sample_by_id(
     water_chemistry_field_activity,
     field_event,
     water_well_thing,
-    sensor,
     field_event_contact,
 ):
     """
@@ -335,7 +324,6 @@ def test_get_sample_by_id(
     assert data["field_activity"]["id"] == water_chemistry_field_activity.id
     assert data["field_activity_id"] == water_chemistry_field_activity.id
     assert data["field_event_contact_id"] == field_event_contact.id
-    assert data["sensor_id"] == sensor.id
     assert data["sample_date"] == water_chemistry_sample.sample_date
     assert data["sample_name"] == water_chemistry_sample.sample_name
     assert data["sample_matrix"] == water_chemistry_sample.sample_matrix

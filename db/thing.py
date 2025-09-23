@@ -14,11 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String, Column, Float
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
+from db.asset import Asset
 from db.base import AutoBaseMixin, Base, ReleaseMixin
 
 
@@ -35,7 +36,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         overlaps="things",
         cascade="all, delete-orphan",
     )
-    assets = association_proxy("asset_associations", "asset")
+    assets: AssociationProxy[list["Asset"]] = association_proxy(
+        "asset_associations", "asset"
+    )
 
     location_associations = relationship(
         "LocationThingAssociation",
@@ -44,7 +47,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         cascade="all, delete-orphan",
         order_by="LocationThingAssociation.effective_start.desc()",
     )
-    locations = association_proxy("location_associations", "location")
+    locations: AssociationProxy[list["Location"]] = association_proxy(  # noqa: F821
+        "location_associations", "location"
+    )
 
     contact_associations = relationship(
         "ThingContactAssociation",
@@ -52,7 +57,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         overlaps="contacts",
         cascade="all, delete-orphan",
     )
-    contacts = association_proxy("contact_associations", "contact")
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+        "contact_associations", "contact"
+    )
 
     # Well fields
     well_depth = Column(
