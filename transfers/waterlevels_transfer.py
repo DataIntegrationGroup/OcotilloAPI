@@ -218,6 +218,24 @@ def transfer_water_levels(session):
                 elif measured_by == "REPORTED":
                     contact_name = None
                     contact_organization = collecting_organization
+                elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
+                    contact_name = "Rodgers & Company, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "Sandia National labs":
+                    contact_name = None
+                    contact_organization = "SNL"
+                elif measured_by in ["Santa Fe County", "SFC", "SFCounty LF staff"]:
+                    contact_name = None
+                    contact_organization = "SFC"
+                elif measured_by == "SFC/Frost":
+                    contact_name = "Frost"
+                    contact_organization = "SFC"
+                elif measured_by == "Statewide Drilling":
+                    contact_name = "Statewide Drilling, Inc"
+                    contact_organization = collecting_organization
+                elif measured_by == "Taos SWCD":
+                    contact_name = None
+                    contact_organization = "Taos SWCD"
                 elif measured_by == "TWDB":
                     contact_name = None
                     contact_organization = "TWDB"

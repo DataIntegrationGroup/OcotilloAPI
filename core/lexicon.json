@@ -360,6 +360,7 @@
   {"categories": [{"name": "organization", "description": null}], "term": "NMT", "definition": "New Mexico Tech"},
   {"categories": [{"name": "organization", "description": null}], "term": "NPS", "definition": "National Park Service"},
   {"categories": [{"name": "organization", "description": null}], "term": "Otero SWCD", "definition": "Otero Soil and Water Conservation District"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Taos SWCD", "definition": "Taos Soil and Water Conservation District"},
 
   {"categories": [{"name": "collection_method", "description": null}], "term": "manual", "definition": "manual sampling"},
   {"categories": [{"name": "collection_method", "description": null}], "term": "continuous", "definition": "continuous sampling"},
