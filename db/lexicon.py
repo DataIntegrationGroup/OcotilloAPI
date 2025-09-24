@@ -15,7 +15,7 @@
 # ===============================================================================
 from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from db.base import AutoBaseMixin, Base, lexicon_term
 
@@ -35,7 +35,9 @@ class LexiconTerm(Base, AutoBaseMixin):
         back_populates="term",
         cascade="all, delete-orphan",
     )
-    categories = association_proxy("category_associations", "category")
+    categories: AssociationProxy[list["LexiconCategory"]] = association_proxy(
+        "category_associations", "category"
+    )
 
     def __repr__(self):
         return f"<LexiconTerm(term={self.term}, definition={self.definition})>"

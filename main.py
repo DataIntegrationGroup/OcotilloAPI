@@ -1,8 +1,6 @@
 import os
 import sentry_sdk
 from dotenv import load_dotenv
-from starlette.middleware.base import BaseHTTPMiddleware
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 load_dotenv()
 
@@ -44,8 +42,6 @@ from api.observation import router as observation_router
 
 from api.lexicon import router as lexicon_router
 
-from api.geothermal import router as geothermal_router
-from api.geochronology import router as geochronology_router
 from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
@@ -55,9 +51,7 @@ from api.geospatial import router as geospatial_router
 app.include_router(asset_router)
 app.include_router(author_router)
 app.include_router(contact_router)
-app.include_router(geochronology_router)
 app.include_router(geospatial_router)
-app.include_router(geothermal_router)
 app.include_router(group_router)
 app.include_router(lexicon_router)
 app.include_router(location_router)

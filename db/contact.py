@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import Integer, ForeignKey, String
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
 from typing import List
@@ -36,7 +36,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=True)
-    organization: Mapped[str] = mapped_column(String(100), nullable=True)
+    organization: Mapped[str] = lexicon_term(nullable=True)
     role: Mapped[str] = lexicon_term(nullable=False)
     contact_type: Mapped[str] = lexicon_term(nullable=False)
     nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -62,14 +62,33 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
             cascade="all, delete-orphan",
         )
     )
-    authors = association_proxy("author_associations", "author")
+    authors: AssociationProxy[list["Author"]] = association_proxy(  # noqa: F821
+        "author_associations", "author"
+    )
     thing_associations: Mapped[List["ThingContactAssociation"]] = relationship(
         "ThingContactAssociation",
         back_populates="contact",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    things = association_proxy("thing_associations", "thing")
+    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
+        "thing_associations", "thing"
+    )
+
+    # Proxy to directly access the FieldEvent objects in which this Contact participated.
+    # fmt: off
+    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (  # noqa: F821
+        relationship(
+            "FieldEventContactAssociation",
+            back_populates="contact",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+    # fmt: on
+    field_events: AssociationProxy[list["FieldEvent"]] = (  # noqa: F821
+        association_proxy("field_event_contact_associations", "field_event")
+    )
 
 
 class Phone(Base, AutoBaseMixin, ReleaseMixin):

@@ -39,4 +39,14 @@ class BaseResponseModel(BaseModel):
     )
 
 
+# TODO: write function to convert any datetime field to UTC for use throughout
+#       for schema field_validators
+# e.g.
+# def convert_datetime_field_to_utc(dt_field):
+#   ...
+#
+# @field_validator("dt_field_name")
+# def convert_to_utc(dt_field_name):
+#   return convert_datetime_field_to_utc(dt_field_name)
+
 # ============= EOF =============================================

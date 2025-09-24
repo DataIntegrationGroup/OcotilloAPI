@@ -72,7 +72,7 @@ def test_add_contact(spring_thing):
         "name": "Test Contact 2",
         "role": "Owner",
         "contact_type": "Primary",
-        "organization": "Well Owner LLC",
+        "organization": "NMBGMR",
         "thing_id": spring_thing.id,
         "emails": [
             {
@@ -160,7 +160,7 @@ def test_add_contact_409_bad_thing_id():
         "name": "Test Contact 3",
         "role": "Owner",
         "contact_type": "Primary",
-        "organization": "Well Owner LLC",
+        "organization": "NMBGMR",
         "thing_id": bad_thing_id,
         "emails": [
             {
