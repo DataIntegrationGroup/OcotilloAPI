@@ -137,6 +137,11 @@ def transfer_water_levels(session):
             contact_names = []
             contact_organizations = []
             roles = []
+
+            # TODO: get help figuring out (AMP)
+            if measured_by in ["Anthony Chavez", "BEI", "BF/RG"]:
+                continue
+
             # --- Companies/Organizations ---
             if measured_by == "A&T Pump & Well Serv":
                 contact_names.append(None)
@@ -160,6 +165,10 @@ def transfer_water_levels(session):
             elif "Balleau" in measured_by:
                 contact_names.append("Balleau Groundwater, Inc")
                 contact_organizations.append(measuring_agency)
+                roles.append("Organization")
+            elif measured_by == "Bureau":
+                contact_names.append(None)
+                contact_organizations.append("NMBGMR")
                 roles.append("Organization")
             elif measured_by == "CDM":
                 contact_names.append(None)
@@ -186,6 +195,11 @@ def transfer_water_levels(session):
                 contact_names.append("Daniel B. Stephens & Associates, Inc")
                 contact_organizations.append(measuring_agency)
                 roles.append("Organization")
+            elif measured_by == "Calvert":
+                contact_names.append("Calvert")
+                contact_organizations.append("Daniel B. Stephens & Associates, Inc")
+                # TODO: see if AMP knows this person's name and role
+                roles.append("Unknown")
             elif "Glorieta Geoscienc" in measured_by:
                 contact_names.append("Glorieta Geoscience, Inc")
                 contact_organizations.append(measuring_agency)
@@ -322,9 +336,10 @@ def transfer_water_levels(session):
                 contact_names.append(measured_by)
                 contact_organizations.append("USGS")
                 roles.append("Hydrogeologist")
-            elif measured_by == "Anthony Chavez":
-                # TODO: AMP determine role
-                continue
+            elif measured_by in ["Bob Borton", "Borton"]:
+                contact_names.append("Bob Borton")
+                contact_organizations.append("NMOSE")
+                roles.append("Geologist")
             elif measured_by == "CE":
                 contact_names.append("Cathy Eisen")
                 contact_organizations.append(measuring_agency)
