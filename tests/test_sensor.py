@@ -161,13 +161,9 @@ def test_get_sensors(sensor):
     assert data["items"][0]["notes"] == sensor.notes
 
 
-# TODO: update after Deployment table is implemented
 def test_get_sensors_by_thing_id(
     sensor,
-    water_chemistry_observation,
-    water_chemistry_sample,
-    water_chemistry_field_activity,
-    field_event,
+    sensor_to_water_well_thing_deployment,
     water_well_thing,
 ):
     response = client.get(f"/sensor?thing_id={water_well_thing.id}")

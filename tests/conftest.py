@@ -220,6 +220,26 @@ def second_sensor():
 
 
 @pytest.fixture(scope="session")
+def sensor_to_water_well_thing_deployment(sensor, water_well_thing):
+    with session_ctx() as session:
+        deployment = Deployment(
+            sensor_id=sensor.id,
+            thing_id=water_well_thing.id,
+            installation_date="2023-01-01",
+            removal_date=None,
+            recording_interval=24,
+            recording_interval_units="hour",
+            hanging_cable_length=10,
+            hanging_point_height=0,
+            hanging_point_description="hang 10",
+            notes="deployment fixture",
+        )
+        session.add(deployment)
+        session.commit()
+        yield deployment
+
+
+@pytest.fixture(scope="session")
 def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(

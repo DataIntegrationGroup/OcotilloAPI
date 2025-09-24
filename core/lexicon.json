@@ -114,6 +114,9 @@
   {"categories": [{"name": "unit", "description": null}], "term": "deg C", "definition": "degree Celsius"},
   {"categories": [{"name": "unit", "description": null}], "term": "deg second", "definition": "degree second"},
   {"categories": [{"name": "unit", "description": null}], "term": "deg minute", "definition": "degree minute"},
+  {"categories": [{"name": "unit", "description": null}], "term": "second", "definition": "second"},
+  {"categories": [{"name": "unit", "description": null}], "term": "minute", "definition": "minute"},
+  {"categories": [{"name": "unit", "description": null}], "term": "hour", "definition": "hour"},
 
   {"categories": [{"name": "observed_property", "description": null}], "term": "groundwater level", "definition": "groundwater level measurement" },
   {"categories": [{"name": "observed_property", "description": null}], "term": "temperature", "definition": "Temperature measurement"},
