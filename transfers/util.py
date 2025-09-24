@@ -36,7 +36,7 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
-from logger import logger
+from transfers.logger import logger
 
 
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:

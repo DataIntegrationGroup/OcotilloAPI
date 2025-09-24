@@ -24,12 +24,13 @@ from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
 from db import Base
 from db.engine import session_ctx
+
+from transfers.asset_transfer import transfer_assets
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
-
 from transfers.well_transfer import transfer_wells, transfer_wellscreens
 from transfers.thing_transfer import (
     transfer_springs,
@@ -90,6 +91,9 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
+    message("TRANSFERRING ASSETS")
+    timeit_direct(transfer_assets,sess)
+
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
 
@@ -122,10 +126,6 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_link_ids, sess)
     timeit_direct(transfer_link_ids_welldata, sess)
 
-    # if init or transfer_assets_flag:
-    #     message("TRANSFERRING ASSETS")
-    #     transfer_assets_testing(sess)
-
     message("TRANSFERRING GROUPS")
     timeit_direct(transfer_groups, sess)
 
@@ -134,13 +134,14 @@ def transfer_all(sess, limit=100):
 
 
 def main():
-
+    message('START--------------------------------------')
     limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
     # todo: move the log file to a storage bucket
     save_log_to_bucket()
+    message('END--------------------------------------')
 
 
 if __name__ == "__main__":
