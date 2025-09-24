@@ -1,12 +1,12 @@
 """
 This table is an installation log that creates a many-to-many relationship
-between Things and Equipment, tracking which piece of hardware was installed
+between Things and Sensors, tracking which piece of hardware was installed
 at which Thing and for what period of time.
 """
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, String, Date, Numeric, Text
+from sqlalchemy import Integer, ForeignKey, Date, Numeric, Text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -33,7 +33,7 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     # --- Columns ---
     installation_date: Mapped[Date] = mapped_column(Date, nullable=False)
     removal_date: Mapped[Date] = mapped_column(Date, nullable=True)
-    recording_interval: Mapped[int] = mapped_column(String(50), nullable=True)
+    recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     recording_interval_units: Mapped[str] = lexicon_term(nullable=True)
     hanging_cable_length: Mapped[float] = mapped_column(Numeric, nullable=True)
     hanging_point_height: Mapped[float] = mapped_column(Numeric, nullable=True)
