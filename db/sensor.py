@@ -40,11 +40,9 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     notes: Mapped[str] = mapped_column(String(50), nullable=True)
 
-    sample = relationship(
-        "Sample",
+    observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
+        "Observation",
         back_populates="sensor",
-        cascade="all, delete-orphan",
-        uselist=False,
     )
 
 

@@ -101,6 +101,16 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WATER LEVELS")
     timeit_direct(transfer_water_levels, sess)
 
+    """
+    Developer's notes
+
+    When transfering water chemistry data use the qc_type field to indicate
+    normal/blanks/duplicates instead of what comes from LU_SampleType. Use
+    those values, however, to map to the standard qc_type fields if applicable
+    (i.e. not applicable when sample type is "Soil or rock sample" or 
+    "Precipitation," but is applicable when sample type is "Equipment blank"
+    or "Field duplicate")
+    """
     message("TRANSFERRING LINK IDS")
     timeit_direct(transfer_link_ids, sess)
     timeit_direct(transfer_link_ids_welldata, sess)

@@ -19,13 +19,14 @@ from datetime import datetime
 
 import pandas as pd
 
-from db import Thing, Sample, Observation
+from db import Thing, Sample, Observation, FieldEvent, FieldActivity
 from transfers.util import (
     filter_to_valid_point_ids,
     logger,
     read_csv,
     convert_mt_to_utc,
     filter_by_valid_measuring_agency,
+    lu_to_lexicon_map,
 )
 
 
@@ -72,31 +73,85 @@ def transfer_water_levels(session):
                 )
                 continue
 
-            sample = Sample()
-            sample.sampler_name = "unknown"
-            sample.sample_type = "groundwater level"
+            release_status = "public" if row.PublicRelease else "private"
 
-            sample.field_sample_id = str(uuid.uuid4())
-            sample.sample_date = dt_utc
-            sample.thing = thing
+            """
+            Developer's notes
+
+            Assumes for manual water levels that the date/time of the water level
+            measurement is the same as the date/time of the field event.
+            """
+
+            if pd.isna(row.MeasuringAgency):
+                collecting_organization = "Unknown"
+            else:
+                collecting_organization = row.MeasuringAgency
+
+            if pd.isna(row.MeasuredBy):
+                sampler_name = "Unknown"
+            else:
+                sampler_name = row.MeasuredBy
+
+            field_event = FieldEvent(
+                thing=thing,
+                event_date=dt_utc,
+                collecting_organization=collecting_organization,
+                release_status=release_status,
+            )
+
+            session.add(field_event)
+
+            field_activity = FieldActivity(
+                field_event=field_event,
+                activity_type="groundwater level",
+                release_status=release_status,
+            )
+            session.add(field_activity)
+
+            if not pd.isna(row.MeasurementMethod):
+                sample_method = lu_to_lexicon_map[
+                    f"LU_MeasurementMethod:{row.MeasurementMethod}"
+                ]
+            else:
+                sample_method = "null placeholder"
+
+            sample = Sample(
+                field_activity=field_activity,
+                sampler_name=sampler_name,
+                sample_date=dt_utc,
+                sample_matrix="water",
+                sample_name=str(
+                    uuid.uuid4()
+                ),  # TODO: should this stay as-is for water levels? since there are no lab-assigned names
+                sample_method=sample_method,
+                qc_type="Normal",
+                depth_top=None,
+                depth_bottom=None,
+            )
             session.add(sample)
 
-            obs = Observation()
+            # TODO: update for auto-collectors in the Sensor table, like e-probes
+            #       update the deployment table here
+            sensor_id = None
 
-            # TODO: this needs to be resolved
-            obs.sensor_id = 1
+            if not pd.isna(row.LevelStatus):
+                level_status = lu_to_lexicon_map[f"LU_LevelStatus:{row.LevelStatus}"]
+            else:
+                level_status = None
 
-            # TODO: this needs to be implemented
-            # obs.nma_pk_observation = row.GlobalID
+            observation = Observation(
+                sensor_id=sensor_id,
+                sample=sample,
+                nma_pk_waterlevels=row.GlobalID,
+                value=row.DepthToWater,
+                measuring_point_height=row.MPHeight,
+                observed_property="groundwater level",
+                unit="ft",
+                level_status=level_status,
+                observation_datetime=dt_utc,
+            )
 
-            obs.sample = sample
-            obs.observation_datetime = dt
-            obs.value = row.DepthToWater
-            obs.measuring_point_height = row.MPHeight
-            obs.observed_property = "groundwater level:groundwater level"
-            obs.unit = "ft"
-
-            session.add(obs)
+            session.add(observation)
         session.commit()
 
 

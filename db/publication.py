@@ -17,9 +17,9 @@ from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, AuditMixin
-from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 
 class Publication(Base, AutoBaseMixin):
@@ -45,7 +45,9 @@ class Publication(Base, AutoBaseMixin):
         back_populates="publication",
         cascade="all, delete-orphan",
     )
-    authors = association_proxy("author_associations", "author")
+    authors: AssociationProxy[list["Author"]] = association_proxy(
+        "author_associations", "author"
+    )
 
     search_vector = Column(TSVectorType("title", "abstract", "doi", "publisher", "url"))
 
@@ -65,14 +67,18 @@ class Author(Base, AutoBaseMixin):
         back_populates="author",
         cascade="all, delete-orphan",
     )
-    publications = association_proxy("publication_associations", "publication")
+    publications: AssociationProxy[list["Publication"]] = association_proxy(
+        "publication_associations", "publication"
+    )
 
     contact_associations = relationship(
         "AuthorContactAssociation",
         back_populates="author",
         cascade="all, delete-orphan",
     )
-    contacts = association_proxy("author_associations", "contact")
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+        "author_associations", "contact"
+    )
 
     search_vector = Column(TSVectorType("name", "affiliation"))
 
