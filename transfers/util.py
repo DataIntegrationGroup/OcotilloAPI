@@ -118,7 +118,7 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
-    with open("data/valid_welldata_datasources.csv", "r") as f:
+    with open("/workspace/transfers/data/valid_welldata_datasources.csv", "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
@@ -128,7 +128,7 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
-    with open("data/valid_measuring_agency.csv", "r") as f:
+    with open("/workspace/transfers/data/valid_measuring_agency.csv", "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
