@@ -26,7 +26,7 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db import Observation, Sample, Sensor
+from db import Observation, Sample, Sensor, FieldActivity, FieldEvent, Thing
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
@@ -145,9 +145,14 @@ async def get_sensors(
         if observed_property is not None:
             conditions.append(Observation.observed_property == observed_property)
 
+        # TODO: update after Deployment table is implemented
         if thing_id is not None:
+            # Observation is joined for all filters
             joins.append(Sample)
-            conditions.append(Sample.thing_id == thing_id)
+            joins.append(FieldActivity)
+            joins.append(FieldEvent)
+            joins.append(Thing)
+            conditions.append(Thing.id == thing_id)
 
         if conditions:
             sql = sql.join(Observation)

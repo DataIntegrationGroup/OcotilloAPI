@@ -161,6 +161,33 @@ def test_get_sensors(sensor):
     assert data["items"][0]["notes"] == sensor.notes
 
 
+# TODO: update after Deployment table is implemented
+def test_get_sensors_by_thing_id(
+    sensor,
+    water_chemistry_observation,
+    water_chemistry_sample,
+    water_chemistry_field_activity,
+    field_event,
+    water_well_thing,
+):
+    response = client.get(f"/sensor?thing_id={water_well_thing.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == sensor.id
+    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["release_status"] == sensor.release_status
+    assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["model"] == sensor.model
+    assert data["items"][0]["serial_no"] == sensor.serial_no
+    assert data["items"][0]["datetime_installed"] == sensor.datetime_installed
+    assert data["items"][0]["datetime_removed"] == sensor.datetime_removed
+    assert data["items"][0]["recording_interval"] == sensor.recording_interval
+    assert data["items"][0]["notes"] == sensor.notes
+
+
 def test_get_sensor_by_id(sensor):
     response = client.get(f"/sensor/{sensor.id}")
     assert response.status_code == 200
