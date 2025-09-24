@@ -24,10 +24,10 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Foreign Keys ---
     thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.thing_id"), nullable=False
+        Integer, ForeignKey("thing.id"), nullable=False
     )
     sensor_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("sensor.sensor_id"), nullable=False
+        Integer, ForeignKey("sensor.id"), nullable=False
     )
 
     # --- Columns ---
