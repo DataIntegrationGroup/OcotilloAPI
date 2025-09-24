@@ -53,9 +53,12 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 # redirect stderr to the logger
 # sys.stderr = StreamToLogger(logger, logging.ERROR)
 
+
 def save_log_to_bucket():
     bucket = get_storage_bucket()
-    blob = bucket.blob(f'transfer_logs/{log_filename}')
+    blob = bucket.blob(f"transfer_logs/{log_filename}")
     blob.upload_from_filename(log_filename)
     logger.info(f"Uploaded log to gs://{bucket.name}/transfer_logs/{log_filename}")
+
+
 # ============= EOF =============================================

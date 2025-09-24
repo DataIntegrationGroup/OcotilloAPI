@@ -142,6 +142,7 @@ def main():
     # todo: move the log file to a storage bucket
     save_log_to_bucket()
 
+
 if __name__ == "__main__":
     main()
 

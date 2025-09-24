@@ -57,8 +57,10 @@ def transfer_water_levels(session):
                 session.commit()
 
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
-                logger.critical(f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to missing "
-                                f"data.")
+                logger.critical(
+                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to missing "
+                    f"data."
+                )
                 continue
 
             if not pd.isna(row.TimeMeasured):
@@ -117,7 +119,7 @@ def transfer_water_levels(session):
             else:
                 sample_method = "null placeholder"
 
-            #todo: use create schema to validate data
+            # todo: use create schema to validate data
             sample = Sample(
                 field_activity=field_activity,
                 # sampler_name=sampler_name,
