@@ -24,9 +24,9 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .deployment import Deployment
-    from .thing import Thing
-    from .observation import Observation
+    from db.deployment import Deployment
+    from db.thing import Thing
+    from db.observation import Observation
 
 
 class Sensor(Base, AutoBaseMixin, ReleaseMixin):
