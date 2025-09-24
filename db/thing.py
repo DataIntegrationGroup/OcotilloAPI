@@ -109,7 +109,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Association Proxies ---
     # Proxy to directly access the Sensor deployed at this Thing.
-    sensor: AssociationProxy[List["Sensor"]] = association_proxy(
+    sensors: AssociationProxy[List["Sensor"]] = association_proxy(
         "deployments", "sensor"
     )
 
