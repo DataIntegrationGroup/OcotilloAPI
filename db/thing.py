@@ -22,6 +22,15 @@ from db import lexicon_term
 from db.asset import Asset
 from db.base import AutoBaseMixin, Base, ReleaseMixin
 
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from db.location import Location
+    from db.field import FieldEvent
+    from db.deployment import Deployment
+    from db.sensor import Sensor
+    from db.contact import Contact
+
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin):
 
@@ -87,8 +96,21 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin):
         )
     )
 
-    field_events = relationship(
+    # --- Relationships ---
+    # One-To-Many: A Thing can have many FieldEvents over time.
+    field_events: Mapped[List["FieldEvent"]] = relationship(
         "FieldEvent", back_populates="thing", cascade="all, delete-orphan", uselist=True
+    )
+
+    # One-To-Many: A Thing can have many Deployments of sensors (equipment) over time.
+    deployments: Mapped[List["Deployment"]] = relationship(
+        "Deployment", back_populates="thing", cascade="all, delete-orphan"
+    )
+
+    # --- Association Proxies ---
+    # Proxy to directly access the Sensor deployed at this Thing.
+    sensors: AssociationProxy[List["Sensor"]] = association_proxy(
+        "deployments", "sensor"
     )
 
 
