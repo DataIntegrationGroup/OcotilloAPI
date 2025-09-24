@@ -82,18 +82,17 @@ def transfer_wells(session, limit=0):
         # TODO: use schema to validate
 
         data = CreateWell(
-                # "nma_pk_welldata": row.WellID,
-                name=row.PointID,
-                hole_depth= row.HoleDepth,
-                well_depth= row.WellDepth,
-                # "driller_name": row.DrillerName,
-                # "construction_method": row.ConstructionMethod,
-                # "casing_diameter": row.CasingDiameter,
-                # "casing_depth": row.CasingDepth,
-                # "casing_description": row.CasingDescription,
-                release_status= "public" if row.PublicRelease else "private",
-                # "data_reliability": row.DataReliability,
-
+            # "nma_pk_welldata": row.WellID,
+            name=row.PointID,
+            hole_depth=row.HoleDepth,
+            well_depth=row.WellDepth,
+            # "driller_name": row.DrillerName,
+            # "construction_method": row.ConstructionMethod,
+            # "casing_diameter": row.CasingDiameter,
+            # "casing_depth": row.CasingDepth,
+            # "casing_description": row.CasingDescription,
+            release_status="public" if row.PublicRelease else "private",
+            # "data_reliability": row.DataReliability,
         )
         try:
             well = add_thing(

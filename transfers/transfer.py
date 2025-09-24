@@ -63,6 +63,7 @@ def lexicon():
 def erase(session: Session):
     logger.info("Erasing existing data")
     from sqlalchemy import text
+
     with session.bind.connect() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
