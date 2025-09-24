@@ -122,7 +122,7 @@ def main():
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
-    #todo: move the log file to a storage bucket
+    # todo: move the log file to a storage bucket
 
 
 if __name__ == "__main__":

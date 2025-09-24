@@ -118,21 +118,21 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
-    with open('data/valid_welldata_datasources.csv', 'r') as f:
+    with open("data/valid_welldata_datasources.csv", "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
-        valid_datasources = [row[0] for row in reader if row[1]=='Yes']
-        logger.info(f'Valid WellData Datasources: {valid_datasources}')
+        valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
+        logger.info(f"Valid WellData Datasources: {valid_datasources}")
 
     return df[df["DataSource"].isin(valid_datasources)]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
-    with open('data/valid_measuring_agency.csv', 'r') as f:
+    with open("data/valid_measuring_agency.csv", "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
-        valid_measuring_agencies = [row[0] for row in reader if row[1]=='Yes']
-        logger.info(f'Valid Measuring Agencies: {valid_measuring_agencies}')
+        valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
+        logger.info(f"Valid Measuring Agencies: {valid_measuring_agencies}")
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 

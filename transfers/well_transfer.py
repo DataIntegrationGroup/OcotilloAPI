@@ -30,7 +30,8 @@ from transfers.util import (
     filter_to_valid_point_ids,
     read_csv,
     logger,
-    replace_nans, filter_by_welldata_datasource,
+    replace_nans,
+    filter_by_welldata_datasource,
 )
 
 ADDED = []
@@ -46,7 +47,7 @@ def transfer_wells(session, limit=0):
 
     wdf = replace_nans(wdf)
 
-    #todo: filter Locations by DataSource
+    # todo: filter Locations by DataSource
     wdf = filter_by_welldata_datasource(wdf)
 
     n = len(wdf)
