@@ -156,7 +156,6 @@ async def get_sensors(
 
         if conditions:
             sql = sql.where(and_(*conditions))
-    print(sql)
 
     sql = order_sort_filter(sql, Sensor, sort=sort, order=order, filter_=filter_)
     return paginate(conn=session, query=sql)
