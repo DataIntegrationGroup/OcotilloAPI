@@ -57,7 +57,9 @@ def transfer_assets(session: Session) -> None:
 
             uri, blob_name = gcs_upload(ff, bucket)
             add_asset(session, ff, filename, thing.id, uri, blob_name)
-            logger.info(f"Added asset thing.id={thing.id} thing={thing.name} uri: {uri}")
+            logger.info(
+                f"Added asset thing.id={thing.id} thing={thing.name} uri: {uri}"
+            )
 
 
 def transfer_assets_testing(session: Session) -> None:

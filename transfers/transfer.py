@@ -92,7 +92,7 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wellscreens, sess)
 
     message("TRANSFERRING ASSETS")
-    timeit_direct(transfer_assets,sess)
+    timeit_direct(transfer_assets, sess)
 
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
@@ -134,14 +134,14 @@ def transfer_all(sess, limit=100):
 
 
 def main():
-    message('START--------------------------------------')
+    message("START--------------------------------------")
     limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
     # todo: move the log file to a storage bucket
     save_log_to_bucket()
-    message('END--------------------------------------')
+    message("END--------------------------------------")
 
 
 if __name__ == "__main__":
