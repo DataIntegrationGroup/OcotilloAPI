@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
-from schemas.thing import CreateWellScreen
+from schemas.thing import CreateWellScreen, CreateWell
 from services.thing_helper import add_thing
 from services.util import (
     get_state_from_point,
@@ -52,8 +52,8 @@ def transfer_wells(session, limit=0):
 
     n = len(wdf)
 
+    start_time = time.time()
     for i, row in enumerate(wdf.itertuples()):
-        start_time = time.time()
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
             logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
@@ -67,7 +67,7 @@ def transfer_wells(session, limit=0):
             logger.info(
                 f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
             )
-            session.commit()
+            start_time = time.time()
 
         try:
             location = make_location(row)
@@ -79,23 +79,32 @@ def transfer_wells(session, limit=0):
         session.add(location)
 
         # TODO: add guards for null values
-        well = add_thing(
-            session,
-            {
+        # TODO: use schema to validate
+
+        data = CreateWell(
                 # "nma_pk_welldata": row.WellID,
-                "name": row.PointID,
-                "hole_depth": row.HoleDepth,
-                "well_depth": row.WellDepth,
+                name=row.PointID,
+                hole_depth= row.HoleDepth,
+                well_depth= row.WellDepth,
                 # "driller_name": row.DrillerName,
                 # "construction_method": row.ConstructionMethod,
                 # "casing_diameter": row.CasingDiameter,
                 # "casing_depth": row.CasingDepth,
                 # "casing_description": row.CasingDescription,
-                "release_status": "public" if row.PublicRelease else "private",
+                release_status= "public" if row.PublicRelease else "private",
                 # "data_reliability": row.DataReliability,
-            },
-            thing_type="water well",
+
         )
+        try:
+            well = add_thing(
+                session,
+                data,
+                thing_type="water well",
+            )
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Error creating well for {row.PointID}: {e}")
+            continue
         # TODO: use current use LUT to get well type
 
         # wt = row.Meaning
@@ -116,7 +125,12 @@ def transfer_wells(session, limit=0):
         assoc.thing = well
         session.add(assoc)
 
-    session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            logger.exception(f"Error committing well {row.PointID}: {e}")
+            session.rollback()
+            continue
 
 
 def transfer_wellscreens(session, limit=None):

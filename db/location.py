@@ -39,7 +39,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(
-        String(36), nullable=True, unique=True
+        String(36), nullable=True
     )
     description: Mapped[str] = mapped_column
     # name: Mapped[str] = mapped_column(String(255), nullable=True)

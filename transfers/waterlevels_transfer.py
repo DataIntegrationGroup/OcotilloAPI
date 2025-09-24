@@ -82,10 +82,10 @@ def transfer_water_levels(session):
             measurement is the same as the date/time of the field event.
             """
 
-            if pd.isna(row.MeasuringAgency):
-                collecting_organization = "Unknown"
-            else:
-                collecting_organization = row.MeasuringAgency
+            # if pd.isna(row.MeasuringAgency):
+            #     collecting_organization = "Unknown"
+            # else:
+            #     collecting_organization = row.MeasuringAgency
 
             if pd.isna(row.MeasuredBy):
                 sampler_name = "Unknown"
@@ -95,7 +95,7 @@ def transfer_water_levels(session):
             field_event = FieldEvent(
                 thing=thing,
                 event_date=dt_utc,
-                collecting_organization=collecting_organization,
+                # collecting_organization=collecting_organization,
                 release_status=release_status,
             )
 
@@ -117,7 +117,7 @@ def transfer_water_levels(session):
 
             sample = Sample(
                 field_activity=field_activity,
-                sampler_name=sampler_name,
+                # sampler_name=sampler_name,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(

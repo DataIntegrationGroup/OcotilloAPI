@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+import os
 from datetime import datetime, timezone, timedelta
 import pytz
 import re
@@ -118,7 +119,11 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
-    with open("/workspace/transfers/data/valid_welldata_datasources.csv", "r") as f:
+    path = "/workspace/transfers/data/valid_welldata_datasources.csv"
+    if not os.path.exists(path):
+        path = "data/valid_welldata_datasources.csv"
+
+    with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
@@ -128,7 +133,11 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
-    with open("/workspace/transfers/data/valid_measuring_agency.csv", "r") as f:
+    path = "/workspace/transfers/data/valid_measuring_agency.csv"
+    if not os.path.exists(path):
+        path = "data/valid_measuring_agency.csv"
+
+    with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
