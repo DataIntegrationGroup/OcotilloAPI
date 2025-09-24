@@ -24,7 +24,7 @@ from transfers.util import (
     filter_to_valid_point_ids,
     logger,
     read_csv,
-    convert_mt_to_utc,
+    convert_mt_to_utc, filter_by_valid_measuring_agency,
 )
 
 
@@ -32,6 +32,7 @@ def transfer_water_levels(session):
 
     wd = read_csv("WaterLevels")
     wd = filter_to_valid_point_ids(session, wd)
+    wd = filter_by_valid_measuring_agency(wd)
     gwd = wd.groupby(["PointID"])
 
     start_time = time.time()

@@ -74,6 +74,7 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
+@timeit
 def transfer_all(sess, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
     erase_and_initalize(sess)
@@ -115,15 +116,16 @@ def transfer_all(sess, limit=100):
     #     cleanup_wells(sess)
 
 
-@timeit
-def main_transfer():
+def main():
 
     limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
+    #todo: move the log file to a storage bucket
+
 
 if __name__ == "__main__":
-    main_transfer()
+    main()
 
 # ============= EOF =============================================

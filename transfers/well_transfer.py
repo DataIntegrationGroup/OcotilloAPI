@@ -30,7 +30,7 @@ from transfers.util import (
     filter_to_valid_point_ids,
     read_csv,
     logger,
-    replace_nans,
+    replace_nans, filter_by_welldata_datasource,
 )
 
 ADDED = []
@@ -46,13 +46,13 @@ def transfer_wells(session, limit=0):
 
     wdf = replace_nans(wdf)
 
+    #todo: filter Locations by DataSource
+    wdf = filter_by_welldata_datasource(wdf)
+
     n = len(wdf)
-    start_time = time.time()
-    results = {
-        "n": n,
-    }
-    made_things = []
+
     for i, row in enumerate(wdf.itertuples()):
+        start_time = time.time()
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
             logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
@@ -114,11 +114,8 @@ def transfer_wells(session, limit=0):
         assoc.location = location
         assoc.thing = well
         session.add(assoc)
-        made_things.append(row.PointID)
 
-    results["made_things"] = made_things
     session.commit()
-    return results
 
 
 def transfer_wellscreens(session, limit=None):
