@@ -32,7 +32,8 @@ from services.gcs_helper import (
     get_storage_bucket,
     get_storage_client,
 )
-from transfers.util import get_valid_things, logger
+from transfers.util import get_valid_things
+from transfers.logger import logger
 
 
 def transfer_assets(session: Session) -> None:

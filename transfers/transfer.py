@@ -37,7 +37,8 @@ from transfers.thing_transfer import (
     transfer_ephemeral_stream,
     transfer_met,
 )
-from transfers.util import logger, timeit, timeit_direct
+from transfers.util import timeit, timeit_direct
+from transfers.logger import logger, save_log_to_bucket
 
 
 def erase_and_initalize(session: Session) -> None:
@@ -139,7 +140,7 @@ def main():
         transfer_all(sess, limit=limit)
 
     # todo: move the log file to a storage bucket
-
+    save_log_to_bucket()
 
 if __name__ == "__main__":
     main()

@@ -15,9 +15,9 @@
 # ===============================================================================
 import numpy as np
 import pandas as pd
-from transfers.util import read_csv, filter_to_valid_point_ids, logger, replace_nans
+from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
+from transfers.logger import logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
-
 from schemas.contact import CreateContact, CreateAddress
 
 
@@ -60,7 +60,7 @@ def transfer_contacts(session):
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         logger.info(f"Processing PointID: {i} {row.PointID}")
         if thing is None:
-            logger.warning(
+            logger.critical(
                 f"Thing with PointID {row.PointID} not found. Skipping owner."
             )
             continue
@@ -178,7 +178,7 @@ def add_first_contact(session, row, thing):
             CreateAddress.model_validate(address_data)
             contact.addresses.append(Address(**address_data))
         except Exception as e:
-            logger.warning(
+            logger.critical(
                 f"Skipping physical address for first contact {name}. Validation error: {e}"
             )
 

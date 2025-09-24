@@ -39,7 +39,15 @@ def transfer_water_levels(session):
 
     start_time = time.time()
     for index, group in gwd:
-        logger.info(f"Processing PointID: {index[0]}")
+        pointid = index[0]
+        logger.info(f"Processing PointID: {pointid}")
+        thing = session.query(Thing).where(Thing.name == pointid).first()
+        if thing is None:
+            logger.critical(
+                f"Thing with PointID={pointid} not found. Skipping water levels"
+            )
+            continue
+
         n = len(group)
         for i, row in enumerate(group.itertuples()):
             if i and not i % 25:
@@ -49,7 +57,8 @@ def transfer_water_levels(session):
                 session.commit()
 
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
-                logger.warning(f"Skipping row {row.Index} due to missing data.")
+                logger.critical(f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to missing "
+                                f"data.")
                 continue
 
             if not pd.isna(row.TimeMeasured):
@@ -62,14 +71,7 @@ def transfer_water_levels(session):
                 dt_utc = convert_mt_to_utc(dt)
             except ValueError as e:
                 logger.warning(
-                    f"Skipping row {row.Index} due to invalid date/time: {e}"
-                )
-                continue
-
-            thing = session.query(Thing).where(Thing.name == row.PointID).first()
-            if thing is None:
-                logger.warning(
-                    f"Thing with PointID {row.PointID} not found. Skipping water level."
+                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to invalid date/time: {e}"
                 )
                 continue
 
@@ -87,10 +89,10 @@ def transfer_water_levels(session):
             # else:
             #     collecting_organization = row.MeasuringAgency
 
-            if pd.isna(row.MeasuredBy):
-                sampler_name = "Unknown"
-            else:
-                sampler_name = row.MeasuredBy
+            # if pd.isna(row.MeasuredBy):
+            #     sampler_name = "Unknown"
+            # else:
+            #     sampler_name = row.MeasuredBy
 
             field_event = FieldEvent(
                 thing=thing,
@@ -115,6 +117,7 @@ def transfer_water_levels(session):
             else:
                 sample_method = "null placeholder"
 
+            #todo: use create schema to validate data
             sample = Sample(
                 field_activity=field_activity,
                 # sampler_name=sampler_name,
@@ -139,6 +142,7 @@ def transfer_water_levels(session):
             else:
                 level_status = None
 
+            # TODO: use create schema to validate data
             observation = Observation(
                 sensor_id=sensor_id,
                 sample=sample,

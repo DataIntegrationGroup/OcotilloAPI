@@ -19,7 +19,6 @@ from datetime import datetime, timezone, timedelta
 import pytz
 import re
 import io
-import logging
 from shapely import Point
 
 
@@ -37,42 +36,7 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
-import sys
-
-
-class StreamToLogger:
-    def __init__(self, logger, level):
-        self.logger = logger
-        self.level = level
-        self.linebuf = ""
-
-    def write(self, buf):
-        for line in buf.rstrip().splitlines():
-            self.logger.log(self.level, line.rstrip())
-
-    def flush(self):
-        pass
-
-
-# todo: setup of logging should be moved to function
-log_filename = f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)-8s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
-    ],
-)
-logger = logging.getLogger(__name__)
-
-# workaround to not redirect httpx logging
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# redirect stderr to the logger
-sys.stderr = StreamToLogger(logger, logging.ERROR)
+from logger import logger
 
 
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
