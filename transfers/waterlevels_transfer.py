@@ -153,6 +153,14 @@ def transfer_water_levels(session):
                 contact_names.append(None)
                 contact_organizations.append("AMEC Earth & Environmental")
                 roles.append("Organization")
+            elif measured_by == "ARCADIS":
+                contact_names.append(None)
+                contact_organizations.append("Arcadis")
+                roles.append("Organization")
+            elif "Balleau" in measured_by:
+                contact_names.append("Balleau Groundwater, Inc")
+                contact_organizations.append(measuring_agency)
+                roles.append("Organization")
             elif measured_by == "CDM":
                 contact_names.append(None)
                 contact_organizations.append("CDM Smith")
@@ -259,11 +267,12 @@ def transfer_water_levels(session):
                 "WWTP",
                 "WWTP personnel",
             ]:
-                # if measured_by
+                # Unknowns
                 contact_names.append(None)
                 contact_organizations.append(measuring_agency)
                 roles.append("Unknown")
             elif measured_by in [
+                "Arcadis",
                 "NMBGMR",
                 "NMED",
                 "NMOSE",
@@ -276,6 +285,7 @@ def transfer_water_levels(session):
                 "USGS",
                 "USGS WRD",
             ]:
+                # organizations whose names do not need to be changed
                 contact_names.append(None)
                 contact_organizations.append(measured_by)
                 roles.append("Organization")
@@ -313,7 +323,7 @@ def transfer_water_levels(session):
                 contact_organizations.append("USGS")
                 roles.append("Hydrogeologist")
             elif measured_by == "Anthony Chavez":
-                # TODO: determine role
+                # TODO: AMP determine role
                 continue
             elif measured_by == "CE":
                 contact_names.append("Cathy Eisen")
