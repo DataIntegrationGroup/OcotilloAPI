@@ -63,13 +63,15 @@ def transfer_water_levels(session):
                 )
                 continue
 
-            if not pd.isna(row.TimeMeasured):
-                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
-            else:
+            if pd.isna(row.TimeMeasured):
+                fmt = "%Y-%m-%d %I:%M:%S %p"
                 dt_measured = f"{row.DateMeasured} 12:00:00 AM"
+            else:
+                fmt = "%Y-%m-%d %I:%M:%S"
+                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
 
             try:
-                dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
+                dt = datetime.strptime(dt_measured, fmt)
                 dt_utc = convert_mt_to_utc(dt)
             except ValueError as e:
                 logger.warning(
