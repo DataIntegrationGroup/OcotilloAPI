@@ -54,7 +54,7 @@ def transfer_assets(session: Session) -> None:
 
         for i, row in enumerate(photos.itertuples()):
             photo_path = row.OLEPath
-            srcblob = bucket.get_blob(f'nma-photos/{photo_path}')
+            srcblob = bucket.get_blob(f"nma-photos/{photo_path}")
 
             head, filename = srcblob.name.split("/")
             f = srcblob.download_as_bytes()
