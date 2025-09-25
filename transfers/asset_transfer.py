@@ -56,7 +56,7 @@ def transfer_assets(session: Session) -> None:
             photo_path = row.OLEPath
             srcblob = bucket.get_blob(f"nma-photos/{photo_path}")
             if not srcblob:
-                logger.crtical(
+                logger.critical(
                     f"No photo found for PointID: {thing.name}, {photo_path}"
                 )
                 continue
