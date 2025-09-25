@@ -64,11 +64,16 @@ def transfer_water_levels(session):
                 continue
 
             if pd.isna(row.TimeMeasured):
-                fmt = "%Y-%m-%d %I:%M:%S %p"
-                dt_measured = f"{row.DateMeasured} 12:00:00 AM"
+                fmt = "%Y-%m-%d"
+                dt_measured = row.DateMeasured
             else:
-                fmt = "%Y-%m-%d %I:%M:%S"
-                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
+                fmt = "%Y-%m-%d %H:%M:%S.%f"
+                t = row.TimeMeasured
+                # Truncate microseconds to 6 digits if present
+                if '.' in t:
+                    t = t[:-6]
+
+                dt_measured = f"{row.DateMeasured} {t}"
 
             try:
                 dt = datetime.strptime(dt_measured, fmt)
