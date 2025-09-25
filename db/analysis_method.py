@@ -7,8 +7,7 @@ from typing import List, TYPE_CHECKING
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from db.base import Base
-from tests.conftest import lexicon_term
+from db.base import Base, lexicon_term
 
 if TYPE_CHECKING:
     from db.observation import Observation
