@@ -124,8 +124,8 @@ class SampleResponse(BaseResponseModel):
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
     contact: ContactResponse
-    field_activity_id: int
-    field_event_contact_id: int
+    # field_activity_id: int
+    # field_event_contact_id: int
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sample_name: str
     sample_matrix: str
