@@ -20,16 +20,16 @@ class AnalysisMethod(Base):
     """
 
     # --- Columns ---
-    method_code: Mapped[str] = mapped_column(
+    analysis_method_code: Mapped[str] = mapped_column(
         nullable=True,
         unique=True,
         comment="The official code or identifier for the method (e.g., 'EPA 300.0').",
     )
-    method_name: Mapped[str] = mapped_column(
+    analysis_method_name: Mapped[str] = mapped_column(
         nullable=False,
         comment="The common, human-readable name of the method (e.g., Ion Chromatography for Anions).",
     )
-    method_type: Mapped[str] = mapped_column(
+    analysis_method_type: Mapped[str] = mapped_column(
         nullable=True,
         comment="A controlled vocabulary field to categorize the method (e.g., 'Laboratory', 'Field Procedure', 'Calculation').",
     )
