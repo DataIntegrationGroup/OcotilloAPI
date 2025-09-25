@@ -138,87 +138,92 @@ def transfer_water_levels(session):
             contact_organizations = []
             roles = []
 
+            # ns --> names
+            # os --> organizations
+            # rs --> roles
+
             # TODO: get help figuring out (AMP)
             if measured_by in ["Anthony Chavez", "BEI", "BF/RG"]:
                 continue
 
             # --- Companies/Organizations ---
             if measured_by == "A&T Pump & Well Serv":
-                contact_names.append(None)
-                contact_organizations.append("A&T Pump & Well Service, LLC")
-                roles.append("Organization")
+                ns = [None]
+                os = ["A&T Pump & Well Service, LLC"]
+                rs = ["Organization"]
             elif "AGW" in measured_by:
                 if "Turner" in measured_by:
-                    contact_names.append("Turner")
+                    ns = ["Turner"]
                 else:
-                    contact_names.append(None)
-                contact_organizations.append("A. G. Wassenaar, Inc")
-                roles.append("Organization")
+                    ns = [None]
+                os = ["A. G. Wassenaar, Inc"]
+                rs = ["Organization"]
             elif measured_by == "AMEC":
-                contact_names.append(None)
-                contact_organizations.append("AMEC Earth & Environmental")
-                roles.append("Organization")
+                ns = [None]
+                os = ["AMEC Earth & Environmental"]
+                rs = ["Organization"]
             elif measured_by == "ARCADIS":
-                contact_names.append(None)
-                contact_organizations.append("Arcadis")
-                roles.append("Organization")
+                ns = [None]
+                os = ["Arcadis"]
+                rs = ["Organization"]
             elif "Balleau" in measured_by:
-                contact_names.append("Balleau Groundwater, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Balleau Groundwater, Inc"]
+                rs = ["Organization"]
             elif measured_by == "Bureau":
-                contact_names.append(None)
-                contact_organizations.append("NMBGMR")
-                roles.append("Organization")
+                ns = [None]
+                os = ["NMBGMR"]
+                rs = ["Organization"]
             elif measured_by == "CDM":
-                contact_names.append(None)
-                contact_organizations.append("CDM Smith")
-                roles.append("Organization")
+                ns = [None]
+                os = ["CDM Smith"]
+                rs = ["Organization"]
             elif measured_by == "CH2MHill":
-                contact_names.append(None)
-                contact_organizations.append("CH2M Hill")
-                roles.append("Organization")
+                ns = [None]
+                os = ["CH2M Hill"]
+                rs = ["Organization"]
             elif measured_by == "Chevron personnel":
-                contact_names.append("Chevron")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Chevron"]
+                rs = ["Organization"]
             elif measured_by in [
                 "City of  Santa Fe",
                 "City of Santa  Fe",
                 "City of Santa Fe",
                 "CityofSantaFe",
             ]:
-                contact_names.append(None)
-                contact_organizations.append("CSF")
-                roles.append("Organization")
+                ns = [None]
+                os = ["CSF"]
+                rs = ["Organization"]
             elif measured_by in ["DBSA", "DBStephens & Assoc"]:
-                contact_names.append("Daniel B. Stephens & Associates, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Daniel B. Stephens & Associates, Inc"]
+                rs = ["Organization"]
             elif measured_by == "Calvert":
-                contact_names.append("Calvert")
-                contact_organizations.append("Daniel B. Stephens & Associates, Inc")
+                ns = ["Calvert"]
+                os = ["Daniel B. Stephens & Associates, Inc"]
                 # TODO: see if AMP knows this person's name and role
-                roles.append("Unknown")
+                rs = ["Unknown"]
             elif "Glorieta Geoscienc" in measured_by:
-                contact_names.append("Glorieta Geoscience, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Glorieta Geoscience, Inc"]
+                rs = ["Organization"]
             elif measured_by == "Golder Ass. For OSE":
-                contact_names.append("Golder Associates, Inc")
-                contact_organizations.append("NMOSE")
-                roles.append("Organization")
+                ns = [None]
+                os = ["Golder Associates, Inc"]
+                rs = ["Organization"]
             elif measured_by == "Hydroscience Assoc.":
-                contact_names.append("Hydroscience Associates, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Hydroscience Associates, Inc"]
+                rs = ["Organization"]
             elif "IC Tech" in measured_by or "ICTech" in measured_by:
-                contact_names.append("IC Tech, Inc")
-                contact_organizations.append("NMOSE")
-                roles.append("Organization")
+                ns = [None]
+                os = ["IC Tech, Inc"]
+                rs = ["Organization"]
             elif "John Shomaker" in measured_by:
-                contact_names.append("John Shomaker & Associates, Inc")
-                contact_organizations.append(measuring_agency)
+                ns = [None]
+                os = ["John Shomaker & Associates, Inc"]
+                rs = ["Organization"]
                 roles.append("Organization")
             elif measured_by == "Mario Gonzales NMRWA":
                 contact_names.append("Mario Gonzales")
@@ -342,8 +347,24 @@ def transfer_water_levels(session):
                 roles.append("Geologist")
             elif measured_by == "CE":
                 contact_names.append("Cathy Eisen")
-                contact_organizations.append(measuring_agency)
+                contact_organizations.append("NMBGMR")
                 roles.append("Hydrogeologist")
+            elif measured_by == "CE PJ":
+                contact_names.extend(["Cathy Eisen", "Peggy Johnson"])
+                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+            elif measured_by in ["CE TK", "CE, TK"]:
+                contact_names.extend(["Cathy Eisen", "Trevor Kludt"])
+                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+            elif measured_by == "CE, GR":
+                contact_names.extend(["Cathy Eisen", "Geoff Rawling"])
+                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+            elif measured_by == "CM":
+                contact_names.extend(["Cris Morton"])
+                contact_organizations.extend(["NMBGMR"])
+                roles.extend(["Hydrogeologist"])
 
             else:
                 logger.warning(
@@ -355,6 +376,9 @@ def transfer_water_levels(session):
             Use existing contact for the thing if measured by is the owner
             """
             if measured_by not in ["Owner", "Owner report", "Well owner"]:
+                contact_names.extend(ns)
+                contact_organizations.extend(os)
+                roles.extend(rs)
                 for i, c in enumerate(contact_names):
                     if c not in CREATED_CONTACTS.keys():
                         # create new contact if not already created
