@@ -41,5 +41,5 @@ class AnalysisMethod(Base):
     # --- Relationships ---
     # One-To-Many: An AnalysisMethod can be used for many Observations.
     observations: Mapped[List["Observation"]] = relationship(
-        "Observation", back_populates="method"
+        "Observation", back_populates="analysis_method"
     )
