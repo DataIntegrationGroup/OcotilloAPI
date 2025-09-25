@@ -73,7 +73,7 @@ def transfer_wells(session, limit=0):
         try:
             location = make_location(row)
         except Exception as e:
-            logger.warning(f"Error making location for {row.PointID}: {e}")
+            logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
         # print(location_row)
@@ -103,7 +103,7 @@ def transfer_wells(session, limit=0):
             )
         except Exception as e:
             session.rollback()
-            logger.warning(f"Error creating well for {row.PointID}: {e}")
+            logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
         # TODO: use current use LUT to get well type
 
@@ -128,7 +128,7 @@ def transfer_wells(session, limit=0):
         try:
             session.commit()
         except Exception as e:
-            logger.exception(f"Error committing well {row.PointID}: {e}")
+            logger.critical(f"Error committing well {row.PointID}: {e}")
             session.rollback()
             continue
 
