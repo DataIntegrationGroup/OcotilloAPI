@@ -8,6 +8,7 @@ from typing import List, TYPE_CHECKING
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base
+from tests.conftest import lexicon_term
 
 if TYPE_CHECKING:
     from db.observation import Observation
@@ -29,11 +30,11 @@ class AnalysisMethod(Base):
         nullable=False,
         comment="The common, human-readable name of the method (e.g., Ion Chromatography for Anions).",
     )
-    analysis_method_type: Mapped[str] = mapped_column(
+    analysis_method_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field to categorize the method (e.g., 'Laboratory', 'Field Procedure', 'Calculation').",
     )
-    source_organization: Mapped[str] = mapped_column(
+    source_organization: Mapped[str] = lexicon_term(
         nullable=True,
         comment="The organization that published the method (e.g., 'US EPA', 'USGS').",
     )
