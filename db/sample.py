@@ -88,13 +88,13 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     # fmt: on
 
     # association proxies to help keep code DRY
-    field_event: AssociationProxy[list["FieldEvent"]] = association_proxy(  # noqa: F821
+    field_event: AssociationProxy["FieldEvent"] = association_proxy(  # noqa: F821
         "field_activity", "field_event"
     )
-    thing: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
+    thing: AssociationProxy["Thing"] = association_proxy(  # noqa: F821
         "field_activity", "field_event.thing"
     )
-    contact: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+    contact: AssociationProxy["Contact"] = association_proxy(  # noqa: F821
         "field_event_contact", "contact"
     )  # noqa: F821
     observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
