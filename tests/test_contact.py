@@ -410,6 +410,15 @@ def test_get_contacts(contact, email, address, phone):
     assert data["items"][0]["addresses"][0]["release_status"] == address.release_status
 
 
+def test_get_contacts_by_thing_id(contact, second_contact, water_well_thing):
+    response = client.get(f"/contact?thing_id={water_well_thing.id}")
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == contact.id
+
+
 def test_get_contact_by_id(contact, email, address, phone):
     response = client.get(f"/contact/{contact.id}")
     assert response.status_code == 200

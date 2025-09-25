@@ -17,8 +17,36 @@ from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
 from schemas.contact import (
     CreateContact,
 )
+from services.query_helper import order_sort_filter
 from services.audit_helper import audit_add
-from sqlalchemy.orm import Session
+
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy.orm import Session, joinedload
+
+
+def get_db_contacts(
+    session: Session,
+    thing_id: int | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str | None = None,
+):
+    sql = session.query(Contact).options(
+        # eagerly load related tables to avoid N+1 problems
+        joinedload(Contact.emails),
+        joinedload(Contact.phones),
+        joinedload(Contact.addresses),
+        joinedload(Contact.thing_associations).joinedload(
+            ThingContactAssociation.thing
+        ),
+    )
+
+    if thing_id:
+        sql = sql.join(ThingContactAssociation)
+        sql = sql.where(ThingContactAssociation.thing_id == thing_id)
+
+    sql = order_sort_filter(sql, Contact, sort, order, filter_)
+    return paginate(sql)
 
 
 def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Contact:
