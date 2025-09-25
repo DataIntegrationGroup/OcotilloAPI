@@ -19,6 +19,7 @@
 from db.base import *
 from db.base import Base
 
+from db.analysis_method import *
 from db.asset import *
 from db.collabnet import *
 from db.contact import *
