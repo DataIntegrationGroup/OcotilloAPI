@@ -52,6 +52,7 @@ def transfer_wells(session, limit=0):
 
     n = len(wdf)
 
+    step = 25
     start_time = time.time()
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
@@ -63,9 +64,9 @@ def transfer_wells(session, limit=0):
             logger.warning("Reached limit of %d rows. Stopping migration.", limit)
             break
 
-        if i and not i % 25:
+        if i and not i % step:
             logger.info(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+                f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
             )
             start_time = time.time()
 
