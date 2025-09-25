@@ -1,6 +1,8 @@
 name: Code Format
 on:
   push:
+    branches-ignore:
+      - transfer
 permissions:
   contents: read
 jobs:
