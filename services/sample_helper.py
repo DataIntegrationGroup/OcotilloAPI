@@ -7,6 +7,7 @@ from services.query_helper import order_sort_filter
 
 def get_db_samples(
     session: Session,
+    thing_id: int | None = None,
     order: str | None = None,
     sort: str | None = None,
     filter_: str | None = None,
@@ -20,6 +21,11 @@ def get_db_samples(
             FieldEventContactAssociation.contact
         ),  # Eagerly load related Contact
     )
+
+    if thing_id:
+        query = query.join(FieldActivity)
+        query = query.join(FieldEvent)
+        query = query.where(FieldEvent.thing_id == thing_id)
 
     query = order_sort_filter(query, Sample, sort, order, filter_)
 

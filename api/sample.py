@@ -116,6 +116,7 @@ async def update_sample(
 async def get_samples(
     session: session_dependency,
     user: viewer_dependency,
+    thing_id: int | None = None,
     sort: str = None,
     order: str = None,
     filter_: str = Query(alias="filter", default=None),
@@ -123,7 +124,7 @@ async def get_samples(
     """
     Endpoint to retrieve samples.
     """
-    return get_db_samples(session, sort=sort, order=order, filter_=filter_)
+    return get_db_samples(session, thing_id, sort=sort, order=order, filter_=filter_)
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
