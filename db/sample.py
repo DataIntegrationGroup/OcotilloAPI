@@ -21,6 +21,13 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from db.field import FieldEvent, FieldActivity, FieldEventContactAssociation
+    from db.thing import Thing
+    from db.contact import Contact
+    from db.observation import Observation
 
 
 class Sample(Base, AutoBaseMixin, ReleaseMixin):
@@ -78,26 +85,22 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     notes: Mapped[str] = mapped_column(nullable=True)
 
     # --- Relationship Definitions ---
-    field_activity: Mapped["FieldActivity"] = relationship(  # noqa: F821
+    field_activity: Mapped["FieldActivity"] = relationship(back_populates="samples")
+    field_event_contact: Mapped["FieldEventContactAssociation"] = relationship(
         back_populates="samples"
     )
-    # fmt: off
-    field_event_contact: Mapped["FieldEventContactAssociation"] = relationship( # noqa: F821
-        back_populates="samples"
-    )
-    # fmt: on
 
     # association proxies to help keep code DRY
-    field_event: AssociationProxy["FieldEvent"] = association_proxy(  # noqa: F821
+    field_event: AssociationProxy["FieldEvent"] = association_proxy(
         "field_activity", "field_event"
     )
-    thing: AssociationProxy["Thing"] = association_proxy(  # noqa: F821
+    thing: AssociationProxy["Thing"] = association_proxy(
         "field_activity", "field_event.thing"
     )
-    contact: AssociationProxy["Contact"] = association_proxy(  # noqa: F821
+    contact: AssociationProxy["Contact"] = association_proxy(
         "field_event_contact", "contact"
-    )  # noqa: F821
-    observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
+    )
+    observations: Mapped[list["Observation"]] = relationship(
         "Observation",
         back_populates="sample",
         cascade="all, delete-orphan",
