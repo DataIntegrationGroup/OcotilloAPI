@@ -7,13 +7,13 @@ from typing import List, TYPE_CHECKING
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from db.base import Base, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.observation import Observation
 
 
-class AnalysisMethod(Base):
+class AnalysisMethod(Base, AutoBaseMixin, ReleaseMixin):
     """
     Represents a single, citable analytical method or standard procedure.
     This is a lookup table.
