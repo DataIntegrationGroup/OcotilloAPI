@@ -299,6 +299,22 @@ def test_get_samples(water_chemistry_sample, groundwater_level_sample):
         assert "release_status" in item
 
 
+def test_get_samples_by_thing_id(
+    water_chemistry_sample, groundwater_level_sample, water_well_thing
+):
+    response = client.get(f"/sample?thing_id={water_well_thing.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+
+    data_ids = [d["id"] for d in data["items"]]
+    sorted_data_ids = sorted(data_ids)
+
+    assert sorted_data_ids == sorted(
+        [water_chemistry_sample.id, groundwater_level_sample.id]
+    )
+
+
 def test_get_sample_by_id(
     water_chemistry_sample,
     water_chemistry_field_activity,
