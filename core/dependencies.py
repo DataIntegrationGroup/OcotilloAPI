@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import Annotated, Callable
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from core.permissions import authenticated
@@ -44,12 +44,27 @@ amp_viewer_function = authenticated(permissions=["AMPViewer"])
 # for testing
 no_permission_function = authenticated(permissions=["NoPermission"])
 
+lexicon_editor = authenticated(permissions=["LexiconEditor"])
+lexicon_admin = authenticated(permissions=["LexiconAdmin"])
+def _unauthorized(func):
+    user = func()
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+def lexicon_admin_function():
+    return _unauthorized(lexicon_admin)
+
+def lexicon_editor_function():
+    return _unauthorized(lexicon_editor)
+
 
 # permissions dependencies
 admin_dependency = Annotated[Callable, Depends(admin_function)]
 editor_dependency = Annotated[Callable, Depends(editor_function)]
 viewer_dependency = Annotated[Callable, Depends(viewer_function)]
 
+lexicon_admin_dependency = Annotated[Callable, Depends(lexicon_admin_function)]
+lexicon_editor_dependency = Annotated[Callable, Depends(lexicon_editor_function)]
 
 amp_admin_dependency = Annotated[Callable, Depends(amp_admin_function)]
 amp_editor_dependency = Annotated[Callable, Depends(amp_editor_function)]
