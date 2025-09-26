@@ -38,7 +38,6 @@ class RegulatoryLimit(Base, AutoBaseMixin, ReleaseMixin):
     )
     limit_value: Mapped[float] = mapped_column(Numeric, nullable=False)
     limit_unit: Mapped[str] = lexicon_term(nullable=False)
-    # TODO: Add valid limit type values to lexicon.json file
     limit_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field to categorize the limit (e.g., 'MCL', 'PQL', 'MDL', etc.).",
