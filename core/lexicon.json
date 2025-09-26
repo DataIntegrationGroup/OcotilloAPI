@@ -515,5 +515,17 @@
   {"categories": [{"name": "sample_type", "description": null}], "term": "Standard field sample", "definition": "Standard field sample"},
   {"categories": [{"name": "sample_type", "description": null}], "term": "Soil or Rock sample", "definition": "Soil or Rock sample"},
   {"categories": [{"name": "sample_type", "description": null}], "term": "Trip blank", "definition": "Trip blank"},
-  {"categories": [{"name": "sample_type", "description": null}], "term": "Source water blank", "definition": "Source water blank"}
+  {"categories": [{"name": "sample_type", "description": null}], "term": "Source water blank", "definition": "Source water blank"},
+
+  {"categories": [{"name": "limit_type", "description": null}], "term": "MCL", "definition": "Maximum Contaminant Level. The highest level of a contaminant that is legally allowed in public drinking water systems under the Safe Drinking Water Act. This is an enforceable standard."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "SMCL", "definition": "Secondary MCL. A non-enforceable federal guideline for contaminants that may cause cosmetic effects (e.g., skin or tooth discoloration) or aesthetic effects (e.g., taste, odor, color) in drinking water."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "AL", "definition": "Action Level. The concentration of a contaminant which, if exceeded, triggers specific treatment or other requirements that a water system must follow. Used for contaminants like Lead and Copper."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "GWQS", "definition": "Groundwater Quality Standard. State-specific standards for groundwater quality."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "RSL", "definition": "Regional Screening Level. Health-based risk screening levels developed by the EPA. They are used to help determine if a site requires further investigation or cleanup but are not legally enforceable cleanup standards themselves."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "MRL", "definition": "Method Reporting Limit. The lowest concentration of an analyte that a laboratory can reliably quantify within specified limits of precision and accuracy for a given analytical method. This is the most common 'limit of detection' you will see on a final lab report. Often used interchangeably with PQL."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "PQL", "definition": "Practical Quantitation Limit. Similar to the MRL, this is the lowest concentration achievable by a lab during routine operating conditions. It represents the practical, real-world limit of quantification."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "MDL", "definition": "Method Detection Limit. The minimum measured concentration of a substance that can be reported with 99% confidence that the analyte concentration is greater than zero. It is a statistical value determined under ideal lab conditions and is typically lower than the MRL/PQL."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "IDL", "definition": "Instrument Detection Limit. The lowest concentration of an analyte that can be reliably detected by a specific piece of laboratory equipment. It measures the capability of the instrument itself, which is a component of the overall MDL."},
+  {"categories": [{"name": "limit_type", "description": null}], "term": "RL", "definition": "Reporting Limit. A generic term often used by labs to mean their MRL or PQL. It is the lowest concentration they are willing to report as a quantitative result."},
+
 ]
