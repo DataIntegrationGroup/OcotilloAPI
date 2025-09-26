@@ -18,7 +18,7 @@ import pandas as pd
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 from transfers.logger import logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
-from schemas.contact import CreateContact, CreateAddress
+from schemas.contact import CreateContact, CreateAddress, CreatePhone, CreateEmail
 
 
 def extract_owner_role(comment):
@@ -65,8 +65,9 @@ def transfer_contacts(session):
             )
             continue
 
+        # TODO: use contact_helper.add_contact
         try:
-            add_first_contact(session, row, thing)
+            _add_first_contact(session, row, thing)
             session.commit()
             session.flush()
             logger.info(f"added first contact for PointID {row.PointID}")
@@ -74,13 +75,10 @@ def transfer_contacts(session):
             logger.critical(
                 f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
             )
-            from pprint import pprint
-
-            pprint(e)
             session.rollback()
 
         try:
-            add_second_contact(session, row, thing)
+            _add_second_contact(session, row, thing)
             session.commit()
             session.flush()
             logger.info(f"added second contact for PointID {row.PointID}")
@@ -91,21 +89,13 @@ def transfer_contacts(session):
             session.rollback()
 
 
-def add_first_contact(session, row, thing):
+def _add_first_contact(session, row, thing):
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
     release_status = "private"
 
-    # TODO: put in guards for null values
-    if row.FirstName is None and row.LastName is None:
-        name = None
-    elif row.FirstName is not None and row.LastName is None:
-        name = row.FirstName
-    elif row.FirstName is None and row.LastName is not None:
-        name = row.LastName
-    else:
-        name = f"{row.FirstName} {row.LastName}"
+    name = _make_name(row.FirstName, row.LastName)
 
     contact_data = {
         "thing_id": thing.id,
@@ -115,85 +105,64 @@ def add_first_contact(session, row, thing):
         "contact_type": "Primary",
         "organization": row.Company,
         "nma_pk_owners": row.OwnerKey,
+        "addresses": [],
+        "emails": [],
+        "phones": []
     }
 
     contact = _make_contact_and_assoc(session, contact_data, thing)
 
     if row.Email:
-        # TODO: use Pydantic to validate email
-        contact.emails.append(
-            Email(
-                email=row.Email,
-                email_type="Primary",
-                release_status=release_status,
-            )
-        )
+        email = _make_email('first', row.OwnerKey, email=row.Email,
+                            email_type="Primary",
+                            release_status=release_status)
+        if email:
+            contact.emails.append(email)
+
     if row.Phone:
-        # TODO: use Pydantic to validate phone
-        contact.phones.append(
-            Phone(
-                phone_number=row.Phone,
-                phone_type="Primary",
-                release_status=release_status,
-            )
-        )
+        phone = _make_phone('first', row.OwnerKey, phone_number=row.Phone,
+                            phone_type="Primary",
+                            release_status=release_status)
+        if phone:
+            contact.phones.append(phone)
+
     if row.CellPhone:
-        # TODO: use Pydantic to validate cell phone
-        contact.phones.append(
-            Phone(
-                phone_number=row.CellPhone,
-                phone_type="Mobile",
-                release_status=release_status,
-            )
-        )
+        phone = _make_phone('first', row.OwnerKey, phone_number=row.CellPhone,
+                            phone_type="Mobile",
+                            release_status=release_status)
+        if phone:
+            contact.phones.append(phone)
 
     if row.MailingAddress:
-        address_data = {
-            "address_line_1": row.MailingAddress,
-            "city": row.MailCity,
-            "state": row.MailState,
-            "postal_code": row.MailZipCode,
-            "address_type": "Mailing",
-            "release_status": release_status,
-        }
-        try:
-            CreateAddress.model_validate(address_data)
-            contact.addresses.append(Address(**address_data))
-
-        except Exception as e:
-            logger.warning(
-                f"Skipping mailing address for first contact {name}. Validation error: {e}"
-            )
+        address = _make_address('first', row.OwnerKey,
+                                'mailing',
+                                address_line_1=row.MailingAddress,
+                                city=row.MailCity,
+                                state=row.MailState,
+                                postal_code=row.MailZipCode,
+                                address_type="Mailing",
+                                release_status=release_status)
+        if address:
+            contact.addresses.append(address)
 
     if row.PhysicalAddress:
-        try:
-            address_data = {
-                "address_line_1": row.PhysicalAddress,
-                "city": row.PhysicalCity,
-                "state": row.PhysicalState,
-                "postal_code": row.PhysicalZipCode,
-                "address_type": "Physical",
-                "release_status": release_status,
-            }
-            CreateAddress.model_validate(address_data)
-            contact.addresses.append(Address(**address_data))
-        except Exception as e:
-            logger.critical(
-                f"Skipping physical address for first contact {name}. Validation error: {e}"
-            )
+        address = _make_address('first', row.OwnerKey,
+                                'physical',
+                                address_line_1=row.PhysicalAddress,
+                                city=row.PhysicalCity,
+                                state=row.PhysicalState,
+                                postal_code=row.PhysicalZipCode,
+                                address_type="Physical",
+                                release_status=release_status
+                                )
+        if address:
+            contact.addresses.append(address)
 
 
-def add_second_contact(session, row, thing):
+def _add_second_contact(session, row, thing):
 
     release_status = "private"
-    if row.SecondFirstName is None and row.SecondLastName is None:
-        name = None
-    elif row.SecondFirstName is not None and row.SecondLastName is None:
-        name = row.SecondFirstName
-    elif row.SecondFirstName is None and row.SecondLastName is not None:
-        name = row.SecondLastName
-    else:
-        name = f"{row.SecondFirstName} {row.SecondLastName}"
+    name = _make_name(row.SecondFirstName, row.SecondLastName)
 
     contact_data = {
         "thing_id": thing.id,
@@ -203,34 +172,71 @@ def add_second_contact(session, row, thing):
         "contact_type": "Secondary",
         "organization": row.Company,
         "nma_pk_owners": row.OwnerKey,
+        "addresses": [],
+        "emails": [],
+        "phones": []
     }
 
     contact = _make_contact_and_assoc(session, contact_data, thing)
 
     if row.SecondCtctEmail:
-        contact.emails.append(
-            Email(
-                email=row.SecondCtctEmail,
-                email_type="Primary",
-                release_status=release_status,
-            )
-        )
+        email = _make_email('second', row.OwnerKey, email=row.SecondCtctEmail,
+                            email_type="Primary",
+                            release_status=release_status)
+        if email:
+            contact.emails.append(email)
 
     if row.SecondCtctPhone:
-        contact.phones.append(
-            Phone(
-                phone_number=row.SecondCtctPhone,
-                phone_type="Primary",
-                release_status=release_status,
-            )
+        phone = _make_phone('second', row.OwnerKey, phone_number=row.SecondCtctPhone,
+                            phone_type="Primary",
+                            release_status=release_status)
+        if phone:
+            contact.phones.append(phone)
+
+
+# helpers
+def _make_name(first, last):
+    if first is None and last is None:
+        return None
+    elif first is not None and last is None:
+        return first
+    elif first is None and last is not None:
+        return last
+    else:
+        return f"{first} {last}"
+
+def _make_email(first_second, ownerkey, **kw):
+    try:
+        email = CreateEmail(**kw)
+        return Email(**email.model_dump())
+    except Exception as e:
+        logger.warning(
+            f"{first_second} '{ownerkey}' Skipping email. Validation error: {e}"
         )
 
+def _make_phone(first_second, ownerkey, **kw):
+    try:
+        phone = CreatePhone(**kw)
+        return Phone(**phone.model_dump())
+    except Exception as e:
+        logger.warning(
+            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e}"
+        )
 
+def _make_address(first_second, ownerkey, kind, **kw):
+    try:
+        address = CreateAddress(**kw)
+        return Address(**address.model_dump())
+    except Exception as e:
+        logger.warning(
+            f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e}"
+        )
+#
 def _make_contact_and_assoc(session, data, thing):
-    CreateContact.model_validate(data)
-
-    data.pop("thing_id")
-    contact = Contact(**data)
+    contact = CreateContact(**data)
+    contact_data = contact.model_dump()
+    contact_data.pop("thing_id")
+    contact = Contact(**contact_data)
 
     assoc = ThingContactAssociation()
     assoc.thing = thing
