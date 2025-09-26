@@ -25,6 +25,7 @@ class AnalysisMethod(Base, AutoBaseMixin, ReleaseMixin):
         unique=True,
         comment="The official code or identifier for the method (e.g., 'EPA 300.0').",
     )
+    # TODO: get AMP feedback on if this should be restricted (i.e. lexicon term)
     analysis_method_name: Mapped[str] = mapped_column(
         nullable=False,
         comment="The common, human-readable name of the method (e.g., Ion Chromatography for Anions).",
