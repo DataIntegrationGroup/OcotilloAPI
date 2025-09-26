@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import csv
+import os
 from datetime import datetime, timezone, timedelta
 import pytz
 import re
 import io
-import logging
 from shapely import Point
 
 
@@ -35,41 +36,7 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
-import sys
-
-
-class StreamToLogger:
-    def __init__(self, logger, level):
-        self.logger = logger
-        self.level = level
-        self.linebuf = ""
-
-    def write(self, buf):
-        for line in buf.rstrip().splitlines():
-            self.logger.log(self.level, line.rstrip())
-
-    def flush(self):
-        pass
-
-
-log_filename = f"transfers/transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)-8s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
-    ],
-)
-logger = logging.getLogger(__name__)
-
-# workaround to not redirect httpx logging
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# redirect stderr to the logger
-sys.stderr = StreamToLogger(logger, logging.ERROR)
+from transfers.logger import logger
 
 
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
@@ -115,6 +82,33 @@ def extract_organization(alternate_id: str) -> str:
     return "Unknown"
 
 
+def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
+    path = "/workspace/transfers/data/valid_welldata_datasources.csv"
+    if not os.path.exists(path):
+        path = "data/valid_welldata_datasources.csv"
+
+    with open(path, "r") as f:
+        reader = csv.reader(f)
+        _ = next(reader)
+        valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
+        logger.info(f"Valid WellData Datasources: {valid_datasources}")
+
+    return df[df["DataSource"].isin(valid_datasources)]
+
+
+def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
+    path = "/workspace/transfers/data/valid_measuring_agency.csv"
+    if not os.path.exists(path):
+        path = "data/valid_measuring_agency.csv"
+
+    with open(path, "r") as f:
+        reader = csv.reader(f)
+        _ = next(reader)
+        valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
+        logger.info(f"Valid Measuring Agencies: {valid_measuring_agencies}")
+    return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
+
+
 def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids(session)
     return df[df["PointID"].isin(valid_point_ids)]
@@ -156,9 +150,12 @@ def make_location(row: pd.Series) -> Location:
         point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
 
-    state = get_state_from_point(transformed_point.x, transformed_point.y)
-    county = get_county_from_point(transformed_point.x, transformed_point.y)
-    quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
+    # since this is such a time consuming operation, I do not want to run it during this step
+    # cleanup_wells was added for this reason
+
+    # state = get_state_from_point(transformed_point.x, transformed_point.y)
+    # county = get_county_from_point(transformed_point.x, transformed_point.y)
+    # quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
 
     z = row.Altitude
     if z:
@@ -277,7 +274,7 @@ def make_location(row: pd.Series) -> Location:
     location = Location(
         nma_pk_location=row.LocationId,
         # name=row.PointID,
-        point=point.wkt,
+        point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
         elevation_accuracy=row.AltitudeAccuracy,
@@ -288,9 +285,10 @@ def make_location(row: pd.Series) -> Location:
         coordinate_method=coordinate_method,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
-        state=state,
-        county=county,
-        quad_name=quad_name,
+        # these values will be populated in cleanup_wells
+        # state=state,
+        # county=county,
+        # quad_name=quad_name,
     )
     return location
 
@@ -341,6 +339,21 @@ def make_lu_to_lexicon_mapper():
 
 
 lu_to_lexicon_map = make_lu_to_lexicon_mapper()
+
+
+def timeit_direct(func, *args, **kwargs):
+    start = datetime.now()
+    result = func(*args, **kwargs)
+    end = datetime.now()
+    logger.info(f"{func.__name__} took {(end - start).total_seconds()} seconds")
+    return result
+
+
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        return timeit_direct(func, *args, **kwargs)
+
+    return wrapper
 
 
 if __name__ == "__main__":
