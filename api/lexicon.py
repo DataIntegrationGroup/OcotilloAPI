@@ -59,9 +59,7 @@ from services.query_helper import (
     simple_get_by_id,
 )
 
-router = APIRouter(
-    prefix="/lexicon", tags=["lexicon"]
-)
+router = APIRouter(prefix="/lexicon", tags=["lexicon"])
 
 
 def database_error_handler(
@@ -121,7 +119,9 @@ async def add_category(
     status_code=HTTP_201_CREATED,
 )
 async def add_term(
-    term_data: CreateLexiconTerm, session: session_dependency, user: lexicon_admin_dependency
+    term_data: CreateLexiconTerm,
+    session: session_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconTermResponse:
     """
     Endpoint to add a term to the lexicon.

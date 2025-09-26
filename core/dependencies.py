@@ -46,13 +46,17 @@ no_permission_function = authenticated(permissions=["NoPermission"])
 
 lexicon_editor = authenticated(permissions=["LexiconEditor"])
 lexicon_admin = authenticated(permissions=["LexiconAdmin"])
+
+
 def _unauthorized(func):
     user = func()
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+
 def lexicon_admin_function():
     return _unauthorized(lexicon_admin)
+
 
 def lexicon_editor_function():
     return _unauthorized(lexicon_editor)

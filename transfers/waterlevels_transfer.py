@@ -70,7 +70,7 @@ def transfer_water_levels(session):
                 fmt = "%Y-%m-%d %H:%M:%S.%f"
                 t = row.TimeMeasured
                 # Truncate microseconds to 6 digits if present
-                if '.' in t:
+                if "." in t:
                     t = t[:-6]
 
                 dt_measured = f"{row.DateMeasured} {t}"
