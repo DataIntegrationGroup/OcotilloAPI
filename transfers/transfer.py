@@ -91,20 +91,17 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
-    message("TRANSFERRING ASSETS")
-    timeit_direct(transfer_assets, sess)
-
-    message("TRANSFERRING SPRINGS")
-    timeit_direct(transfer_springs, sess, limit=limit)
-
-    message("TRANSFERRING PERENNIAL STREAMS")
-    timeit_direct(transfer_perennial_stream, sess, limit=limit)
-
-    message("TRANSFERRING EPHEMERAL STREAMS")
-    timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-
-    message("TRANSFERRING METEOROLOGICAL")
-    timeit_direct(transfer_met, sess, limit)
+    # message("TRANSFERRING SPRINGS")
+    # timeit_direct(transfer_springs, sess, limit=limit)
+    #
+    # message("TRANSFERRING PERENNIAL STREAMS")
+    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING EPHEMERAL STREAMS")
+    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING METEOROLOGICAL")
+    # timeit_direct(transfer_met, sess, limit)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -129,13 +126,16 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING GROUPS")
     timeit_direct(transfer_groups, sess)
 
+    # message("TRANSFERRING ASSETS")
+    # timeit_direct(transfer_assets, sess)
+
     # if init or cleanup_wells_flag:
     #     cleanup_wells(sess)
 
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

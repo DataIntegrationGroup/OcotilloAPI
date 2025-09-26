@@ -57,11 +57,11 @@ def transfer_wells(session, limit=0):
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
-            logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
+            logger.critical(f"transfer_wells. PointID {pointid} has duplicate records. Skipping.")
             continue
 
         if limit and i >= limit:
-            logger.warning("Reached limit of %d rows. Stopping migration.", limit)
+            logger.info(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
         if i and not i % step:
@@ -76,7 +76,6 @@ def transfer_wells(session, limit=0):
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
-        # print(location_row)
         session.add(location)
 
         # TODO: add guards for null values
@@ -87,6 +86,7 @@ def transfer_wells(session, limit=0):
             name=row.PointID,
             hole_depth=row.HoleDepth,
             well_depth=row.WellDepth,
+            well_construction_notes=row.ConstructionNotes,
             # "driller_name": row.DrillerName,
             # "construction_method": row.ConstructionMethod,
             # "casing_diameter": row.CasingDiameter,

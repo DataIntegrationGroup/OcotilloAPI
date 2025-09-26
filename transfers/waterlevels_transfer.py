@@ -58,7 +58,8 @@ def transfer_water_levels(session):
 
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
                 logger.critical(
-                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to missing "
+                    f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to "
+                    f"missing "
                     f"data."
                 )
                 continue
@@ -80,7 +81,8 @@ def transfer_water_levels(session):
                 dt_utc = convert_mt_to_utc(dt)
             except ValueError as e:
                 logger.warning(
-                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to invalid date/time: {e}"
+                    f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to "
+                    f"invalid date/time: {e}"
                 )
                 continue
 
