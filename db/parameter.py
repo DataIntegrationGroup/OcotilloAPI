@@ -23,7 +23,7 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
 
     # --- Columns ---
-    # TODO: The lexicon is currently storing parameter names in the 'observed_property' category. Should we update the lexicon category name to parameter_name?
+    # TODO: Parameter names are currently associated with the 'observed_property' category in the lexicon. Should we update the lexicon category name to 'parameter_name'?
     parameter_name: Mapped[str] = lexicon_term(
         nullable=False,
         unique=True,
