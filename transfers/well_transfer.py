@@ -57,7 +57,9 @@ def transfer_wells(session, limit=0):
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
-            logger.critical(f"transfer_wells. PointID {pointid} has duplicate records. Skipping.")
+            logger.critical(
+                f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
+            )
             continue
 
         if limit and i >= limit:
