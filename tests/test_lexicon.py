@@ -16,7 +16,7 @@
 from db import LexiconTerm, LexiconCategory, LexiconTriple
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
-from core.dependencies import admin_function, viewer_function, editor_function
+from core.dependencies import viewer_function, editor_function, lexicon_admin_function, lexicon_editor_function
 from main import app
 
 import pytest
@@ -25,10 +25,10 @@ import pytest
 @pytest.fixture(scope="module", autouse=True)
 def override_authentication_dependency_fixture():
 
-    app.dependency_overrides[admin_function] = override_authentication(
+    app.dependency_overrides[lexicon_admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
-    app.dependency_overrides[editor_function] = override_authentication(
+    app.dependency_overrides[lexicon_editor_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[viewer_function] = override_authentication()
