@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from sqlalchemy.exc import ProgrammingError
@@ -27,9 +27,7 @@ from starlette.status import (
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
-    editor_dependency,
-    admin_dependency,
-    viewer_function,
+    viewer_dependency,
     lexicon_editor_dependency,
     lexicon_admin_dependency,
 )
@@ -194,6 +192,7 @@ async def update_lexicon_triple(
 @router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK)
 async def get_lexicon_terms(
     session: session_dependency,
+    user: viewer_dependency,
     category: str | None = None,
     term: str | None = None,
     sort: str = None,
@@ -229,7 +228,7 @@ async def get_lexicon_terms(
 
 @router.get("/term/{term_id}", status_code=HTTP_200_OK)
 async def get_lexicon_term(
-    term_id: int, session: session_dependency
+    term_id: int, session: session_dependency, user: viewer_dependency
 ) -> LexiconTermResponse:
     return simple_get_by_id(session, LexiconTerm, term_id)
 
@@ -237,6 +236,7 @@ async def get_lexicon_term(
 @router.get("/category")
 async def get_lexicon_categories(
     session: session_dependency,
+    user: viewer_dependency,
     sort: str = "name",
     order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
@@ -249,7 +249,7 @@ async def get_lexicon_categories(
 
 @router.get("/category/{category_id}")
 async def get_lexicon_category(
-    category_id: int, session: session_dependency
+    category_id: int, user: viewer_dependency, session: session_dependency
 ) -> LexiconCategoryResponse:
     return simple_get_by_id(session, LexiconCategory, category_id)
 
@@ -257,6 +257,7 @@ async def get_lexicon_category(
 @router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
 async def get_lexicon_triples(
     session: session_dependency,
+    user: viewer_dependency,
     sort: str = "subject",
     order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
@@ -269,7 +270,7 @@ async def get_lexicon_triples(
 
 @router.get("/triple/{triple_id}", status_code=HTTP_200_OK)
 async def get_lexicon_triple(
-    triple_id: int, session: session_dependency
+    triple_id: int, session: session_dependency, user: viewer_dependency
 ) -> LexiconTripleResponse:
     return simple_get_by_id(session, LexiconTriple, triple_id)
 
@@ -283,7 +284,7 @@ async def get_lexicon_triple(
     status_code=HTTP_204_NO_CONTENT,
 )
 async def delete_lexicon_term(
-    session: session_dependency, user: admin_dependency, term_id: int
+    session: session_dependency, user: lexicon_admin_dependency, term_id: int
 ):
     return model_deleter(session, LexiconTerm, term_id)
 
@@ -294,7 +295,7 @@ async def delete_lexicon_term(
     status_code=HTTP_204_NO_CONTENT,
 )
 async def delete_lexicon_category(
-    session: session_dependency, user: admin_dependency, category_id: int
+    session: session_dependency, user: lexicon_admin_dependency, category_id: int
 ):
     return model_deleter(session, LexiconCategory, category_id)
 
@@ -305,7 +306,7 @@ async def delete_lexicon_category(
     status_code=HTTP_204_NO_CONTENT,
 )
 async def delete_lexicon_triple(
-    session: session_dependency, user: admin_dependency, triple_id: int
+    session: session_dependency, user: lexicon_admin_dependency, triple_id: int
 ):
     return model_deleter(session, LexiconTriple, triple_id)
 
