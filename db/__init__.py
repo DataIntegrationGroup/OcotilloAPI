@@ -30,6 +30,7 @@ from db.group import *
 from db.lexicon import *
 from db.location import *
 from db.observation import *
+from db.parameter import *
 from db.publication import *
 from db.sample import *
 from db.sensor import *
