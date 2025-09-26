@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location, read_csv, logger, replace_nans
+from transfers.util import make_location, read_csv, replace_nans
+from transfers.logger import logger
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
@@ -32,7 +33,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     for i, row in enumerate(ldf.itertuples()):
         pointid = row.PointID
         if ldf[ldf["PointID"] == pointid].shape[0] > 1:
-            logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
+            logger.critical(f"PointID {pointid} has duplicate records. Skipping.")
             continue
 
         if limit and i >= limit:
@@ -48,7 +49,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
         try:
             location = make_location(row)
         except Exception as e:
-            logger.error(f"Error creating location for {row.PointID}: {e}")
+            logger.critical(f"Error creating location for {row.PointID}: {e}")
             continue
         session.add(location)
         payload = make_payload(row)

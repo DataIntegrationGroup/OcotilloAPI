@@ -25,6 +25,7 @@ from transfers.util import (
     logger,
     read_csv,
     convert_mt_to_utc,
+    filter_by_valid_measuring_agency,
     lu_to_lexicon_map,
 )
 
@@ -33,11 +34,20 @@ def transfer_water_levels(session):
 
     wd = read_csv("WaterLevels")
     wd = filter_to_valid_point_ids(session, wd)
+    wd = filter_by_valid_measuring_agency(wd)
     gwd = wd.groupby(["PointID"])
 
     start_time = time.time()
     for index, group in gwd:
-        logger.info(f"Processing PointID: {index[0]}")
+        pointid = index[0]
+        logger.info(f"Processing PointID: {pointid}")
+        thing = session.query(Thing).where(Thing.name == pointid).first()
+        if thing is None:
+            logger.critical(
+                f"Thing with PointID={pointid} not found. Skipping water levels"
+            )
+            continue
+
         n = len(group)
         for i, row in enumerate(group.itertuples()):
             if i and not i % 25:
@@ -47,21 +57,30 @@ def transfer_water_levels(session):
                 session.commit()
 
             if pd.isna(row.DepthToWater) or pd.isna(row.DateMeasured):
-                logger.warning(f"Skipping row {row.Index} due to missing data.")
+                logger.critical(
+                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to missing "
+                    f"data."
+                )
                 continue
 
-            if not pd.isna(row.TimeMeasured):
-                dt_measured = f"{row.DateMeasured} {row.TimeMeasured}"
+            if pd.isna(row.TimeMeasured):
+                fmt = "%Y-%m-%d"
+                dt_measured = row.DateMeasured
             else:
-                dt_measured = f"{row.DateMeasured} 12:00:00 AM"
+                fmt = "%Y-%m-%d %H:%M:%S.%f"
+                t = row.TimeMeasured
+                # Truncate microseconds to 6 digits if present
+                if '.' in t:
+                    t = t[:-6]
 
-            dt = datetime.strptime(dt_measured, "%Y-%m-%d %I:%M:%S %p")
-            dt_utc = convert_mt_to_utc(dt)
+                dt_measured = f"{row.DateMeasured} {t}"
 
-            thing = session.query(Thing).where(Thing.name == row.PointID).first()
-            if thing is None:
+            try:
+                dt = datetime.strptime(dt_measured, fmt)
+                dt_utc = convert_mt_to_utc(dt)
+            except ValueError as e:
                 logger.warning(
-                    f"Thing with PointID {row.PointID} not found. Skipping water level."
+                    f"Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to invalid date/time: {e}"
                 )
                 continue
 
@@ -74,20 +93,20 @@ def transfer_water_levels(session):
             measurement is the same as the date/time of the field event.
             """
 
-            if pd.isna(row.MeasuringAgency):
-                collecting_organization = "Unknown"
-            else:
-                collecting_organization = row.MeasuringAgency
+            # if pd.isna(row.MeasuringAgency):
+            #     collecting_organization = "Unknown"
+            # else:
+            #     collecting_organization = row.MeasuringAgency
 
-            if pd.isna(row.MeasuredBy):
-                sampler_name = "Unknown"
-            else:
-                sampler_name = row.MeasuredBy
+            # if pd.isna(row.MeasuredBy):
+            #     sampler_name = "Unknown"
+            # else:
+            #     sampler_name = row.MeasuredBy
 
             field_event = FieldEvent(
                 thing=thing,
                 event_date=dt_utc,
-                collecting_organization=collecting_organization,
+                # collecting_organization=collecting_organization,
                 release_status=release_status,
             )
 
@@ -107,9 +126,10 @@ def transfer_water_levels(session):
             else:
                 sample_method = "null placeholder"
 
+            # todo: use create schema to validate data
             sample = Sample(
                 field_activity=field_activity,
-                sampler_name=sampler_name,
+                # sampler_name=sampler_name,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(
@@ -131,6 +151,7 @@ def transfer_water_levels(session):
             else:
                 level_status = None
 
+            # TODO: use create schema to validate data
             observation = Observation(
                 sensor_id=sensor_id,
                 sample=sample,

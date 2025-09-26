@@ -98,7 +98,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    logger.info(f"adding link id: {link_id}")
+    logger.info(f"adding link id: {row.PointID}")
     session.add(link_id)
 
 
@@ -153,7 +153,6 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
-    # ldf = ldf[ldf["AlternateSiteID"].notna()]
     ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
@@ -166,8 +165,8 @@ def transfer_link_ids(session, site_type="GW"):
             )
             continue
         logger.info(
-            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
-            f"b={row.AlternateSiteID2}"
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
+            f"AlternateSiteID2={row.AlternateSiteID2}"
         )
         add_link_alternate_site_id(session, row, thing)
         # add_link_site_id(session, row, thing)
