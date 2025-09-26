@@ -16,7 +16,12 @@
 from db import LexiconTerm, LexiconCategory, LexiconTriple
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
-from core.dependencies import viewer_function, editor_function, lexicon_admin_function, lexicon_editor_function
+from core.dependencies import (
+    viewer_function,
+    editor_function,
+    lexicon_admin_function,
+    lexicon_editor_function,
+)
 from main import app
 
 import pytest
