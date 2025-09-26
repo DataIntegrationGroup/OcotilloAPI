@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import os
 import time
 
 from dotenv import load_dotenv
@@ -23,12 +24,13 @@ from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
 from db import Base
 from db.engine import session_ctx
+
+from transfers.asset_transfer import transfer_assets
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
-
 from transfers.well_transfer import transfer_wells, transfer_wellscreens
 from transfers.thing_transfer import (
     transfer_springs,
@@ -36,27 +38,41 @@ from transfers.thing_transfer import (
     transfer_ephemeral_stream,
     transfer_met,
 )
-from transfers.util import logger
+from transfers.util import timeit, timeit_direct
+from transfers.logger import logger, save_log_to_bucket
 
 
 def erase_and_initalize(session: Session) -> None:
     logger.info("Erasing existing data and initializing lexicon and sensors")
-    starttime = time.time()
-    Base.metadata.drop_all(session.bind)
-    Base.metadata.create_all(session.bind)
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done erasing existing data. {elapsed_time:0.2f}s")
+    erase(session)
+    lexicon()
+    sensor(session)
 
-    logger.info("Initializing lexicon and sensors")
-    starttime = time.time()
-    init_lexicon()
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done initializing lexicon. {elapsed_time:0.2f}s")
 
-    starttime = time.time()
+@timeit
+def sensor(session: Session):
+    logger.info("Initializing sensors")
     init_sensor(session)
-    elapsed_time = time.time() - starttime
-    logger.info(f"Done initializing sensors. {elapsed_time:0.2f}s")
+
+
+@timeit
+def lexicon():
+    logger.info("Initializing lexicon")
+    init_lexicon()
+
+
+@timeit
+def erase(session: Session):
+    logger.info("Erasing existing data")
+    from sqlalchemy import text
+
+    with session.bind.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+
+    Base.metadata.drop_all(session.bind)
+    logger.info("Recreating tables")
+    Base.metadata.create_all(session.bind)
 
 
 def message(msg, pad=10, new_line_at_top=True):
@@ -66,100 +82,69 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
-def main_transfer():
+@timeit
+def transfer_all(sess, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
+    erase_and_initalize(sess)
 
-    init = True
+    message("TRANSFERRING WELLS")
+    timeit_direct(transfer_wells, sess, limit=limit)
+    timeit_direct(transfer_wellscreens, sess)
 
-    transfer_well_flag = False
-    transfer_spring_flag = False
-    transfer_perennial_stream_flag = False
-    transfer_ephemeral_stream_flag = False
-    transfer_met_flag = False
-    transfer_contacts_flag = False
-    transfer_waterlevels_flag = False
-    transfer_link_ids_flag = False
-    transfer_assets_flag = False
-    transfer_groups_flag = False
+    # message("TRANSFERRING SPRINGS")
+    # timeit_direct(transfer_springs, sess, limit=limit)
+    #
+    # message("TRANSFERRING PERENNIAL STREAMS")
+    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING EPHEMERAL STREAMS")
+    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING METEOROLOGICAL")
+    # timeit_direct(transfer_met, sess, limit)
 
-    cleanup_wells_flag = False
+    message("TRANSFERRING CONTACTS")
+    timeit_direct(transfer_contacts, sess)
 
-    transfer_well_flag = True
-    transfer_spring_flag = True
-    transfer_perennial_stream_flag = True
-    transfer_ephemeral_stream_flag = True
-    transfer_met_flag = True
-    transfer_contacts_flag = True
-    transfer_waterlevels_flag = True
-    transfer_link_ids_flag = True
-    transfer_assets_flag = True
-    transfer_groups_flag = True
+    message("TRANSFERRING WATER LEVELS")
+    timeit_direct(transfer_water_levels, sess)
 
-    cleanup_wells_flag = True
+    """
+    Developer's notes
 
-    limit = 15
+    When transfering water chemistry data use the qc_type field to indicate
+    normal/blanks/duplicates instead of what comes from LU_SampleType. Use
+    those values, however, to map to the standard qc_type fields if applicable
+    (i.e. not applicable when sample type is "Soil or rock sample" or 
+    "Precipitation," but is applicable when sample type is "Equipment blank"
+    or "Field duplicate")
+    """
+    message("TRANSFERRING LINK IDS")
+    timeit_direct(transfer_link_ids, sess)
+    timeit_direct(transfer_link_ids_welldata, sess)
+
+    message("TRANSFERRING GROUPS")
+    timeit_direct(transfer_groups, sess)
+
+    # message("TRANSFERRING ASSETS")
+    # timeit_direct(transfer_assets, sess)
+
+    # if init or cleanup_wells_flag:
+    #     cleanup_wells(sess)
+
+
+def main():
+    message("START--------------------------------------")
+    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
     with session_ctx() as sess:
-        if init:
-            erase_and_initalize(sess)
+        transfer_all(sess, limit=limit)
 
-        if init or transfer_well_flag:
-            message("TRANSFERRING WELLS")
-            transfer_wells(sess, limit=limit)
-            transfer_wellscreens(sess)
-        #
-        if init or transfer_spring_flag:
-            message("TRANSFERRING SPRINGS")
-            transfer_springs(sess, limit)
-
-        if init or transfer_perennial_stream_flag:
-            message("TRANSFERRING PERENNIAL STREAMS")
-            transfer_perennial_stream(sess, limit)
-
-        if init or transfer_ephemeral_stream_flag:
-            message("TRANSFERRING EPHEMERAL STREAMS")
-            transfer_ephemeral_stream(sess, limit)
-
-        if init or transfer_met_flag:
-            message("TRANSFERRING METEOROLOGICAL")
-            transfer_met(sess, limit)
-
-        if init or transfer_contacts_flag:
-            message("TRANSFERRING CONTACTS")
-            transfer_contacts(sess)
-
-        if init or transfer_waterlevels_flag:
-            message("TRANSFERRING WATER LEVELS")
-            transfer_water_levels(sess)
-
-        """
-        Developer's notes
-
-        When transfering water chemistry data use the qc_type field to indicate
-        normal/blanks/duplicates instead of what comes from LU_SampleType. Use
-        those values, however, to map to the standard qc_type fields if applicable
-        (i.e. not applicable when sample type is "Soil or rock sample" or 
-        "Precipitation," but is applicable when sample type is "Equipment blank"
-        or "Field duplicate")
-        """
-
-        if init or transfer_link_ids_flag:
-            message("TRANSFERRING LINK IDS")
-            transfer_link_ids(sess)
-            transfer_link_ids_welldata(sess)
-
-        # if init or transfer_assets_flag:
-        #     message("TRANSFERRING ASSETS")
-        #     transfer_assets_testing(sess)
-
-        if init or transfer_groups_flag:
-            message("TRANSFERRING GROUPS")
-            transfer_groups(sess)
-
-        # if init or cleanup_wells_flag:
-        #     cleanup_wells(sess)
+    # todo: move the log file to a storage bucket
+    save_log_to_bucket()
+    message("END--------------------------------------")
 
 
 if __name__ == "__main__":
-    main_transfer()
+    main()
 
 # ============= EOF =============================================

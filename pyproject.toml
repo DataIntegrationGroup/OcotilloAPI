@@ -54,7 +54,6 @@ dependencies = [
     "multidict==6.6.3",
     "numpy==2.3.2",
     "packaging==25.0",
-    "pact-python>=2.3.3",
     "pandas==2.3.2",
     "pandas-stubs==2.3.0.250703",
     "pg8000==1.31.4",

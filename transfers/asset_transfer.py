@@ -32,7 +32,8 @@ from services.gcs_helper import (
     get_storage_bucket,
     get_storage_client,
 )
-from transfers.util import get_valid_things, logger
+from transfers.util import get_valid_things, read_csv
+from transfers.logger import logger
 
 
 def transfer_assets(session: Session) -> None:
@@ -41,21 +42,34 @@ def transfer_assets(session: Session) -> None:
     bucket = get_storage_bucket(client)
     logger.info(f"Using bucket {bucket.name}")
 
+    well_photos = read_csv("WellPhotos")
     # for name in ['AR0001']: # for testing
     for thing in get_valid_things(session):
-        name = thing.name
-        # find images in temp bucket
-        logger.info(f"Processing PointID: {thing.name}")
-        blobs = bucket.list_blobs(prefix=f"nma-photos/{thing.name}")
-        # move blobs from temp to assets bucket
-        for srcblob in blobs:
-            f = srcblob.download_as_bytes()
-            head, filename = srcblob.name.split("/")
+        photos = well_photos[well_photos["PointID"] == thing.name]
+        if photos.empty:
+            photos = well_photos[well_photos["PointID"] == thing.name.replace("-", "")]
+            if photos.empty:
+                logger.info(f"No photos found for PointID: {thing.name}")
+                continue
 
+        for i, row in enumerate(photos.itertuples()):
+            photo_path = row.OLEPath
+            srcblob = bucket.get_blob(f"nma-photos/{photo_path}")
+            if not srcblob:
+                logger.critical(
+                    f"No photo found for PointID: {thing.name}, {photo_path}"
+                )
+                continue
+
+            head, filename = srcblob.name.split("/")
+            f = srcblob.download_as_bytes()
             ff = UploadFile(file=io.BytesIO(f), filename=filename, size=len(f))
 
             uri, blob_name = gcs_upload(ff, bucket)
             add_asset(session, ff, filename, thing.id, uri, blob_name)
+            logger.info(
+                f"Added asset thing.id={thing.id} thing={thing.name} uri: {uri}"
+            )
 
 
 def transfer_assets_testing(session: Session) -> None:

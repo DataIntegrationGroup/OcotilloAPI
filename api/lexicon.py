@@ -30,6 +30,8 @@ from core.dependencies import (
     editor_dependency,
     admin_dependency,
     viewer_function,
+    lexicon_editor_dependency,
+    lexicon_admin_dependency,
 )
 from db.lexicon import (
     LexiconCategory,
@@ -57,9 +59,7 @@ from services.query_helper import (
     simple_get_by_id,
 )
 
-router = APIRouter(
-    prefix="/lexicon", tags=["lexicon"], dependencies=[Depends(viewer_function)]
-)
+router = APIRouter(prefix="/lexicon", tags=["lexicon"])
 
 
 def database_error_handler(
@@ -105,7 +105,7 @@ def database_error_handler(
 async def add_category(
     category_data: CreateLexiconCategory,
     session: session_dependency,
-    user: admin_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconCategoryResponse:
     """
     Endpoint to add a category to the lexicon.
@@ -119,7 +119,9 @@ async def add_category(
     status_code=HTTP_201_CREATED,
 )
 async def add_term(
-    term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
+    term_data: CreateLexiconTerm,
+    session: session_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconTermResponse:
     """
     Endpoint to add a term to the lexicon.
@@ -138,7 +140,7 @@ async def add_term(
 async def add_triple(
     triple_data: CreateLexiconTriple,
     session: session_dependency,
-    user: admin_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconTripleResponse:
     triple_data = triple_data.model_dump()
     subject = triple_data["subject"]
@@ -155,7 +157,7 @@ async def update_lexicon_term(
     term_id: int,
     term_data: UpdateLexiconTerm,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconTermResponse:
 
     return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
@@ -166,7 +168,7 @@ async def update_lexicon_category(
     category_id: int,
     category_data: UpdateLexiconCategory,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconCategoryResponse:
     return model_patcher(
         session, LexiconCategory, category_id, category_data, user=user
@@ -178,7 +180,7 @@ async def update_lexicon_triple(
     triple_id: int,
     triple_data: UpdateLexiconTriple,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconTripleResponse:
     try:
         return model_patcher(session, LexiconTriple, triple_id, triple_data, user=user)

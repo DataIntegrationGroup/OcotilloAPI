@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
-from schemas.thing import CreateWellScreen
+from schemas.thing import CreateWellScreen, CreateWell
 from services.thing_helper import add_thing
 from services.util import (
     get_state_from_point,
@@ -31,6 +31,7 @@ from transfers.util import (
     read_csv,
     logger,
     replace_nans,
+    filter_by_welldata_datasource,
 )
 
 ADDED = []
@@ -46,55 +47,64 @@ def transfer_wells(session, limit=0):
 
     wdf = replace_nans(wdf)
 
+    # todo: filter Locations by DataSource
+    wdf = filter_by_welldata_datasource(wdf)
+
     n = len(wdf)
+
+    step = 25
     start_time = time.time()
-    results = {
-        "n": n,
-    }
-    made_things = []
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
-            logger.warning(f"PointID {pointid} has duplicate records. Skipping.")
+            logger.critical(f"transfer_wells. PointID {pointid} has duplicate records. Skipping.")
             continue
 
         if limit and i >= limit:
-            logger.warning("Reached limit of %d rows. Stopping migration.", limit)
+            logger.info(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
-        if i and not i % 25:
+        if i and not i % step:
             logger.info(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
+                f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
             )
-            session.commit()
+            start_time = time.time()
 
         try:
             location = make_location(row)
         except Exception as e:
-            logger.warning(f"Error making location for {row.PointID}: {e}")
+            logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
-        # print(location_row)
         session.add(location)
 
         # TODO: add guards for null values
-        well = add_thing(
-            session,
-            {
-                # "nma_pk_welldata": row.WellID,
-                "name": row.PointID,
-                "hole_depth": row.HoleDepth,
-                "well_depth": row.WellDepth,
-                # "driller_name": row.DrillerName,
-                # "construction_method": row.ConstructionMethod,
-                # "casing_diameter": row.CasingDiameter,
-                # "casing_depth": row.CasingDepth,
-                # "casing_description": row.CasingDescription,
-                "release_status": "public" if row.PublicRelease else "private",
-                # "data_reliability": row.DataReliability,
-            },
-            thing_type="water well",
+        # TODO: use schema to validate
+
+        data = CreateWell(
+            # "nma_pk_welldata": row.WellID,
+            name=row.PointID,
+            hole_depth=row.HoleDepth,
+            well_depth=row.WellDepth,
+            well_construction_notes=row.ConstructionNotes,
+            # "driller_name": row.DrillerName,
+            # "construction_method": row.ConstructionMethod,
+            # "casing_diameter": row.CasingDiameter,
+            # "casing_depth": row.CasingDepth,
+            # "casing_description": row.CasingDescription,
+            release_status="public" if row.PublicRelease else "private",
+            # "data_reliability": row.DataReliability,
         )
+        try:
+            well = add_thing(
+                session,
+                data,
+                thing_type="water well",
+            )
+        except Exception as e:
+            session.rollback()
+            logger.critical(f"Error creating well for {row.PointID}: {e}")
+            continue
         # TODO: use current use LUT to get well type
 
         # wt = row.Meaning
@@ -114,11 +124,13 @@ def transfer_wells(session, limit=0):
         assoc.location = location
         assoc.thing = well
         session.add(assoc)
-        made_things.append(row.PointID)
 
-    results["made_things"] = made_things
-    session.commit()
-    return results
+        try:
+            session.commit()
+        except Exception as e:
+            logger.critical(f"Error committing well {row.PointID}: {e}")
+            session.rollback()
+            continue
 
 
 def transfer_wellscreens(session, limit=None):
