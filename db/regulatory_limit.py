@@ -34,7 +34,7 @@ class RegulatoryLimit(Base, AutoBaseMixin, ReleaseMixin):
     # --- Columns ---
     limit_source: Mapped[str] = lexicon_term(
         nullable=False,
-        comment="The official source of the limit (e.g., 'EPA MCL', 'NMED GWQS', 'EPA RSL').",
+        comment="The official source of the limit (e.g., 'EPA', 'NMED', 'EPA').",
     )
     limit_value: Mapped[float] = mapped_column(Numeric, nullable=False)
     limit_unit: Mapped[str] = lexicon_term(nullable=False)
