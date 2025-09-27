@@ -164,10 +164,47 @@ def transfer_water_levels(session):
             # rs --> roles
 
             # TODO: get help figuring out (AMP)
-            if measured_by in ["Anthony Chavez", "BEI", "BF/RG"]:
+            if measured_by in [
+                "Anthony Chavez",
+                "BEI",
+                "BF/RG",
+                "Borchert",
+                "Borton & Cooper",
+                "CDWR",
+                "Chaves/Cruz",
+                "Chavez/Cruz",
+                "CM, AK" "Cook",
+                "Coons",
+                "Cooper",
+                "Corbin",
+                "Crocker",
+                "Cruz",
+                "Cruz-Tribble",
+                "Cruz/Frost",
+                "D.Bird",
+                "D.D.",
+                "D.Duncan",
+                "Dames & Moore",
+                "Dames/Moore",
+                "Dave Snider",
+                "David N Jenkins",
+                "David N. Jenkins",
+                "DC",
+                "Decker",
+                "DL, TK",
+                "DR",
+                "DR, ST",
+                "Duke Engring",
+                "Duncan",
+            ]:
+                logger.critical(
+                    f"Skipping water level for PointID {row.PointID} because contact could not be determined for {measured_by}"
+                )
+                # TODO: if any of these people are not knowable after AMP review put them into db
+                #   as Unknown/Unknown. These can be audited in the future with nma_pk_waterlevels
                 continue
 
-            # --- Companies/Organizations ---
+            # --- Companies/Organizations/Misc ---
             if measured_by == "A&T Pump & Well Serv":
                 ns = [None]
                 os = ["A&T Pump & Well Service, LLC"]
@@ -225,6 +262,10 @@ def transfer_water_levels(session):
                 os = ["Daniel B. Stephens & Associates, Inc"]
                 # TODO: see if AMP knows this person's name and role
                 rs = ["Unknown"]
+            elif measured_by == "Driller":
+                ns = [None]
+                os = [measuring_agency]
+                rs = ["Driller"]
             elif "Glorieta Geoscienc" in measured_by:
                 ns = [None]
                 os = ["Glorieta Geoscience, Inc"]
@@ -262,7 +303,8 @@ def transfer_water_levels(session):
                 ns = [None]
                 os = ["NMOSE"]
                 rs = ["Organization"]
-            elif measured_by == "OSE; Doug Rappuhn":
+            elif measured_by in ["OSE; Doug Rappuhn", "D.Rappuhn OSE"]:
+                # TODO: verify role with AMP
                 ns = ["Doug Rappuhn"]
                 os = ["NMOSE"]
                 rs = ["Hydrologist"]
@@ -383,6 +425,35 @@ def transfer_water_levels(session):
                 ns = ["Cris Morton"]
                 os = ["NMBGMR"]
                 rs = ["Hydrogeologist"]
+            elif measured_by == "CM, EM":
+                ns = ["Cris Morton", "Ethan Mamer"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "CM, LS, KP":
+                # TODO: verify Kitty's role with AMP
+                ns = ["Cris Morton", "Laila Sturgis", "Kitty Pokorny"]
+                os = ["NMBGMR", "NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "CM, LS, KrPe":
+                ns = ["Cris Morton", "Laila Sturgis", "Kirsten Pearthree"]
+                os = ["NMBGMR", "NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist", "Research Scientist"]
+            elif measured_by == "CM, SC":
+                ns = ["Cris Morton", "Scott Christenson"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Technician"]
+            elif measured_by == "CM, TK":
+                ns = ["Cris Morton", "Trevor Kludt"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "Dan McGregor":
+                ns = [measured_by]
+                os = ["Bernalillo County"]
+                rs = ["Hydrogeologist"]
+            elif measured_by in ["Dennis Cooper", "Dennis R. Cooper"]:
+                ns = ["Dennis Cooper"]
+                os = ["NMOSE"]
+                rs = ["Engineer"]
 
             else:
                 logger.warning(
