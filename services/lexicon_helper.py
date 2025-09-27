@@ -58,8 +58,8 @@ def add_lexicon_term(
             )
             audit_add(user, category)
             session.add(category)
-            session.commit()
-            session.flush()
+            # session.commit()
+            # session.flush()
 
             db_categories.append(category)
 

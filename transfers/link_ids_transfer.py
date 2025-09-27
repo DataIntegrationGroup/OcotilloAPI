@@ -57,19 +57,19 @@ def transfer_link_ids_welldata(session):
             ),  # TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
-                logger.warning(f"{klass} is null for row {i}")
+                logger.warning(f"{klass} is null for {row.PointID}")
                 continue
 
             # RULE: exclude any id that == 'X', '?'
             if aid.strip().lower() in ("x", "?", "exempt"):
                 logger.warning(
-                    f'{klass} is "X", "?", or "exempt", id={aid} for row {i}'
+                    f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
                 )
                 continue
 
             if regex and not re.match(regex, aid):
-                logger.warning(
-                    f"{klass} id does not match regex {regex}, id={aid} for row {i}"
+                logger.critical(
+                    f"{klass} id does not match regex {regex}, id={aid} for {row.PointID}"
                 )
                 continue
 
@@ -98,7 +98,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    logger.info(f"adding link id: {link_id}")
+    logger.info(f"adding link id: {row.PointID}")
     session.add(link_id)
 
 
@@ -114,7 +114,7 @@ def add_link_site_id(session, row, thing):
     if not re.match(r"^\d{15}$", site_id):
         # TODO: lets make a sweet function for flagging issues
         # flag for interrogation
-        logger.warning(f"alternate id {site_id} is not a valid USGS site id")
+        logger.critical(f"{row.PointID} alternate id {site_id} is not a valid USGS site id")
         return
 
     link_id.alternate_id = row.SiteID
@@ -153,7 +153,6 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = read_csv("Location")
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
-    # ldf = ldf[ldf["AlternateSiteID"].notna()]
     ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
@@ -166,8 +165,8 @@ def transfer_link_ids(session, site_type="GW"):
             )
             continue
         logger.info(
-            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, a={row.AlternateSiteID}, "
-            f"b={row.AlternateSiteID2}"
+            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
+            f"AlternateSiteID2={row.AlternateSiteID2}"
         )
         add_link_alternate_site_id(session, row, thing)
         # add_link_site_id(session, row, thing)

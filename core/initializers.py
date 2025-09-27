@@ -50,7 +50,7 @@ def init_hypertables():
     # session.close()
 
 
-def init_lexicon(path=None):
+def init_lexicon(path: str = None) -> None:
     if path is None:
         path = Path(__file__).parent / "lexicon.json"
 

@@ -16,9 +16,17 @@
 from datetime import datetime
 
 from sqlalchemy import String, Integer, DateTime
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
+
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from db.deployment import Deployment
+    from db.thing import Thing
+    from db.observation import Observation
 
 
 class Sensor(Base, AutoBaseMixin, ReleaseMixin):
@@ -40,10 +48,21 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     notes: Mapped[str] = mapped_column(String(50), nullable=True)
 
-    observations: Mapped[list["Observation"]] = relationship(  # noqa: F821
+    # --- Relationships ---
+    # One-To-Many: A piece of Equipment can generate many Observations.
+    observations: Mapped[List["Observation"]] = relationship(  # noqa: F821
         "Observation",
         back_populates="sensor",
     )
+
+    # One-To-Many: A Sensor (or piece of equipment) can have many Deployments over its lifetime.
+    deployments: Mapped[List["Deployment"]] = relationship(
+        "Deployment", back_populates="sensor"
+    )
+
+    # --- Association Proxies ---
+    # Proxy to directly access the Things where this Equipment has been deployed.
+    things: AssociationProxy[List["Thing"]] = association_proxy("deployments", "thing")
 
 
 # ============= EOF =============================================

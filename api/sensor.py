@@ -26,7 +26,7 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db import Observation, Sample, Sensor
+from db import Observation, Sensor, Deployment, Thing
 from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
@@ -138,22 +138,23 @@ async def get_sensors(
     This endpoint is a placeholder and should be implemented with actual logic.
     """
     sql = select(Sensor)
-    # TODO: a sensor is not yet related to observation, so this won't work at the moment
     if thing_id is not None or observed_property is not None:
         conditions = []
         joins = []
         if observed_property is not None:
+            joins.append(Observation)
             conditions.append(Observation.observed_property == observed_property)
 
         if thing_id is not None:
-            joins.append(Sample)
-            conditions.append(Sample.thing_id == thing_id)
+            joins.append(Deployment)
+            joins.append(Thing)
+            conditions.append(Thing.id == thing_id)
 
-        if conditions:
-            sql = sql.join(Observation)
+        if joins:
             for j in joins:
                 sql = sql.join(j)
 
+        if conditions:
             sql = sql.where(and_(*conditions))
 
     sql = order_sort_filter(sql, Sensor, sort=sort, order=order, filter_=filter_)

@@ -19,9 +19,11 @@
 from db.base import *
 from db.base import Base
 
+from db.analysis_method import *
 from db.asset import *
 from db.collabnet import *
 from db.contact import *
+from db.deployment import *
 from db.geochronology import *
 from db.geothermal import *
 from db.field import *

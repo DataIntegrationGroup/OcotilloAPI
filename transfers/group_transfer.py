@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 
 from db import Thing, Group
 from db.engine import session_ctx
-from transfers.util import read_csv, logger
+from transfers.util import read_csv
+from transfers.logger import logger
 
 
 def transfer_groups(

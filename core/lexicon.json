@@ -115,6 +115,9 @@
   {"categories": [{"name": "unit", "description": null}], "term": "deg C", "definition": "degree Celsius"},
   {"categories": [{"name": "unit", "description": null}], "term": "deg second", "definition": "degree second"},
   {"categories": [{"name": "unit", "description": null}], "term": "deg minute", "definition": "degree minute"},
+  {"categories": [{"name": "unit", "description": null}], "term": "second", "definition": "second"},
+  {"categories": [{"name": "unit", "description": null}], "term": "minute", "definition": "minute"},
+  {"categories": [{"name": "unit", "description": null}], "term": "hour", "definition": "hour"},
 
   {"categories": [{"name": "observed_property", "description": null}], "term": "groundwater level", "definition": "groundwater level measurement" },
   {"categories": [{"name": "observed_property", "description": null}], "term": "temperature", "definition": "Temperature measurement"},
@@ -339,6 +342,9 @@
   {"categories": [{"name": "sample_method", "description": null}], "term": "pump", "definition": "pump"},
   {"categories": [{"name": "sample_method", "description": null}], "term": "thief sampler", "definition": "thief sampler"},
 
+  {"categories": [{"name": "analysis_method_type", "description": null}], "term": "Laboratory", "definition": "A procedure performed on a physical sample in a controlled, off-site laboratory environment. These methods typically involve complex instrumentation, standardized reagents, and formal quality control protocols."},
+  {"categories": [{"name": "analysis_method_type", "description": null}], "term": "Field Procedure", "definition": "A standardized procedure performed on-site at the time of sample collection. This can involve direct measurement of the environmental medium using a calibrated field instrument or a specific, documented technique for collecting a sample."},
+  {"categories": [{"name": "analysis_method_type", "description": null}], "term": "Calculation", "definition": "A mathematical procedure used to derive a new data point from one or more directly measured values. This type is used to document the provenance of calculated data, providing an auditable trail."},
 
   {"categories": [{"name": "organization", "description": null}], "term": "USGS", "definition": "US Geological Survey"},
   {"categories": [{"name": "organization", "description": null}], "term": "TWDB", "definition": "Texas Water Development Board"},
