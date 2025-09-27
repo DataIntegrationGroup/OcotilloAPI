@@ -245,55 +245,51 @@ def transfer_water_levels(session):
                 ns = [None]
                 os = ["John Shomaker & Associates, Inc"]
                 rs = ["Organization"]
-                roles.append("Organization")
             elif measured_by == "Mario Gonzales NMRWA":
-                contact_names.append("Mario Gonzales")
-                contact_organizations.append("NMRWA")
-                roles.append("Organization")
+                # TODO: does AMP know this person's role at NMRWA?
+                ns = ["Mario Gonzalez"]
+                os = ["NMRWA"]
+                rs = ["Unknown"]
             elif "Minton" in measured_by:
-                contact_names.append("Minton Engineers")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Minton Engineers"]
+                rs = ["Organization"]
             elif "MJ Darr" in measured_by:
-                contact_names.append("MJDarrconsult, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
-            elif measured_by == "NMOSE?":
-                contact_names.append(None)
-                contact_organizations.append("NMOSE")
-                roles.append("Organization")
-            elif measured_by == "OSE":
-                contact_names.append(None)
-                contact_organizations.append("NMOSE")
-                roles.append("Organization")
+                ns = [None]
+                rs = ["MJDarrconsult, Inc"]
+                os = [measuring_agency]
+            elif measured_by in ["NMOSE?", "OSE"]:
+                ns = [None]
+                os = ["NMOSE"]
+                rs = ["Organization"]
             elif measured_by == "OSE; Doug Rappuhn":
-                contact_names.append("Doug Rappuhn")
-                contact_organizations.append("NMOSE")
-                roles.append("Organization")
+                ns = ["Doug Rappuhn"]
+                os = ["NMOSE"]
+                rs = ["Hydrologist"]
             elif measured_by == "PVACD person":
-                contact_names.append(None)
-                contact_organizations.append("PVACD")
-                roles.append("Organization")
+                ns = [None]
+                os = ["PVACD"]
+                rs = ["Organization"]
             elif measured_by in ["Rodgers & Co", "Rodgers & Co."]:
-                contact_names.append("Rodgers & Company, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Rodgers & Company, Inc"]
+                rs = ["Organization"]
             elif measured_by == "Sandia National labs":
-                contact_names.append(None)
-                contact_organizations.append("SNL")
-                roles.append("Organization")
+                ns = [None]
+                os = ["SNL"]
+                rs = ["Organization"]
             elif measured_by in ["Santa Fe County", "SFCounty LF staff"]:
-                contact_names.append(None)
-                contact_organizations.append("SFC")
-                roles.append("Organization")
+                ns = [None]
+                os = ["SFC"]
+                rs = ["Organization"]
             elif measured_by == "SFC/Frost":
-                contact_names.append("Frost")
-                contact_organizations.append("SFC")
-                roles.append("Organization")
+                ns = ["Frost"]
+                os = ["SFC"]
+                rs = ["Unknown"]
             elif measured_by == "Statewide Drilling":
-                contact_names.append("Statewide Drilling, Inc")
-                contact_organizations.append(measuring_agency)
-                roles.append("Organization")
+                ns = [None]
+                os = ["Statewide Drilling, Inc"]
+                rs = ["Organization"]
             elif measured_by in [
                 "?",
                 "Consultant",
@@ -308,9 +304,9 @@ def transfer_water_levels(session):
                 "WWTP personnel",
             ]:
                 # Unknowns
-                contact_names.append(None)
-                contact_organizations.append(measuring_agency)
-                roles.append("Unknown")
+                ns = [None]
+                os = [measuring_agency]
+                rs = ["Unknown"]
             elif measured_by in [
                 "Arcadis",
                 "NMBGMR",
@@ -326,66 +322,67 @@ def transfer_water_levels(session):
                 "USGS WRD",
             ]:
                 # organizations whose names do not need to be changed
-                contact_names.append(None)
-                contact_organizations.append(measured_by)
-                roles.append("Organization")
+                ns = [None]
+                os = [measured_by]
+                rs = ["Organization"]
 
             # --- People ---
             elif measured_by == " Wagner":
-                contact_names.append("Stacy Timmons")
-                contact_organizations.append("NMBGMR")
-                roles.append("Hydrogeologist")
+                ns = ["Stacy Timmons"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
             elif measured_by == "AL":
-                contact_names.append("Angela Lucero")
-                contact_organizations.append("NMBGMR")
-                roles.append("Hydrologist")
+                ns = ["Angela Lucero"]
+                os = ["NMBGMR"]
+                rs = ["Hydrologist"]
             elif measured_by == "AL, GR":
-                contact_names.extend(["Angela Lucero", "Geoff Rawling"])
-                contact_organizations.extend(["NMBGMR", "NMBGMR"])
+                ns = ["Angela Lucero", "Geoff Rawling"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrologist", "Hydrogeologist"]
             elif measured_by == "AL, SC":
-                contact_names.extend(["Angela Lucero", " Scott Christenson"])
-                contact_organizations.extend(["NMBGMR", "NMBGMR"])
-                roles.extend(["Hydrologist", "Technician"])
+                ns = ["Angela Lucero", "Scott Christenson"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrologist", "Technician"]
             elif measured_by == "Amy Kronson":
-                contact_names.append("Amy Kronson")
-                contact_organizations.append("Bernalillo County")
-                roles.append("Technician")
+                ns = ["Amy Kronson"]
+                os = ["NMBGMR"]
+                rs = ["Technician"]
             elif measured_by in ["Anders Lundahl", "Anders Lundalh"]:
-                contact_names.append("Anders Lundahl")
-                contact_organizations.append(measuring_agency)
-                roles.append("Specialist")
+                ns = ["Anders Lundahl"]
+                os = [measuring_agency]
+                rs = ["Specialist"]
             elif measured_by == "Andrew Matejunas":
-                contact_names.append(measured_by)
-                contact_organizations.append("NMBGMR")
-                roles.append("Research Assistant")
+                ns = [measured_by]
+                os = ["NMBGMR"]
+                rs = ["Research Assistant"]
             elif measured_by == "Andy Manning":
-                contact_names.append(measured_by)
-                contact_organizations.append("USGS")
-                roles.append("Hydrogeologist")
+                ns = [measured_by]
+                os = ["USGS"]
+                rs = ["Hydrogeologist"]
             elif measured_by in ["Bob Borton", "Borton"]:
-                contact_names.append("Bob Borton")
-                contact_organizations.append("NMOSE")
-                roles.append("Geologist")
+                ns = ["Bob Borton"]
+                os = ["NMBGMR"]
+                rs = ["Geologist"]
             elif measured_by == "CE":
-                contact_names.append("Cathy Eisen")
-                contact_organizations.append("NMBGMR")
-                roles.append("Hydrogeologist")
+                ns = ["Cathy Eisen"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
             elif measured_by == "CE PJ":
-                contact_names.extend(["Cathy Eisen", "Peggy Johnson"])
-                contact_organizations.extend(["NMBGMR", "NMBGMR"])
-                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+                ns = ["Cathy Eisen", "Peggy Johnson"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
             elif measured_by in ["CE TK", "CE, TK"]:
-                contact_names.extend(["Cathy Eisen", "Trevor Kludt"])
-                contact_organizations.extend(["NMBGMR", "NMBGMR"])
-                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+                ns = ["Cathy Eisen", "Trevor Kludt"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
             elif measured_by == "CE, GR":
-                contact_names.extend(["Cathy Eisen", "Geoff Rawling"])
-                contact_organizations.extend(["NMBGMR", "NMBGMR"])
-                roles.extend(["Hydrogeologist", "Hydrogeologist"])
+                ns = ["Cathy Eisen", "Geoff Rawling"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
             elif measured_by == "CM":
-                contact_names.extend(["Cris Morton"])
-                contact_organizations.extend(["NMBGMR"])
-                roles.extend(["Hydrogeologist"])
+                ns = ["Cris Morton"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
 
             else:
                 logger.warning(
