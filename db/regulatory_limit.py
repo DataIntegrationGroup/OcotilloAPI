@@ -46,5 +46,5 @@ class RegulatoryLimit(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     # Many-To-One: A RegulatoryLimit is for one Parameter.
     parameter: Mapped["Parameter"] = relationship(
-        "Parameter", back_populates="reg_limits"
+        "Parameter", back_populates="regulatory_limits"
     )

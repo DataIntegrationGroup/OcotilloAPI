@@ -50,6 +50,6 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
 
     # One-To-Many: A Parameter can have many associated RegulatoryLimits.
     # If a Parameter is deleted, all its associated limits are deleted as well.
-    reg_limits: Mapped[List["RegulatoryLimit"]] = relationship(
+    regulatory_limits: Mapped[List["RegulatoryLimit"]] = relationship(
         "RegulatoryLimit", back_populates="parameter", cascade="all, delete-orphan"
     )
