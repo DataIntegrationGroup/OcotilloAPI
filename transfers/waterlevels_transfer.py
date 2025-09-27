@@ -173,7 +173,8 @@ def transfer_water_levels(session):
                 "CDWR",
                 "Chaves/Cruz",
                 "Chavez/Cruz",
-                "CM, AK" "Cook",
+                "CM, AK",
+                "Cook",
                 "Coons",
                 "Cooper",
                 "Corbin",
@@ -196,13 +197,36 @@ def transfer_water_levels(session):
                 "DR, ST",
                 "Duke Engring",
                 "Duncan",
+                "EA",
+                "EA/HB",
+                "Fleming",
+                "Fleming - Shomaker",
+                "Fleming/Shomaker",
+                "Frost",
+                "G.Boylan",
+                "GLR, SC",
+                "GLR, SK, SC",
+                "GR, MM",
+                "GR/PW",
+                "GR/RG",
+                "HB",
+                "Heaton",
+                "Horner-Crocker",
+                "HR",
+                "Hydrogeologic Serv",
+                "J.Evans",
+                "J.Frost",
+                "Jenkins",
+                "Johnson/Cruz",
+                "Johnson/Robbins",
+                "Kilmer/Jenkins",
             ]:
-                logger.critical(
-                    f"Skipping water level for PointID {row.PointID} because contact could not be determined for {measured_by}"
+                ns = ["NM_Aquifer WaterLevels Unknown"]
+                os = ["Unknown"]
+                rs = ["Unknown"]
+                logger.warning(
+                    f"The following record has not been mapped to a Contact: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID} (which comes from the WaterLevels table)"
                 )
-                # TODO: if any of these people are not knowable after AMP review put them into db
-                #   as Unknown/Unknown. These can be audited in the future with nma_pk_waterlevels
-                continue
 
             # --- Companies/Organizations/Misc ---
             if measured_by == "A&T Pump & Well Serv":
@@ -240,6 +264,10 @@ def transfer_water_levels(session):
                 ns = [None]
                 os = ["CH2M Hill"]
                 rs = ["Organization"]
+            elif measured_by == "Jerome Salazar":
+                ns = ["Jerome Salazar"]
+                os = ["Chevron"]
+                rs = ["Unknown"]
             elif measured_by == "Chevron personnel":
                 ns = [None]
                 os = ["Chevron"]
@@ -266,13 +294,35 @@ def transfer_water_levels(session):
                 ns = [None]
                 os = [measuring_agency]
                 rs = ["Driller"]
-            elif "Glorieta Geoscienc" in measured_by:
+            elif measured_by == "EnecoTech":
+                # TODO: verify organization name with AMP
+                ns = [None]
+                os = ["EnecoTech"]
+                rs = ["Organization"]
+            elif measured_by == "Faith Engineering":
+                ns = [None]
+                os = ["Faith Engineering, Inc"]
+                rs = ["Organization"]
+            elif measured_by in [
+                "GGI",
+                "GGI for OSE",
+                "GGI-OSE",
+                "Glorieta Geoscienc" "Glorieta Geoscience",
+            ]:
                 ns = [None]
                 os = ["Glorieta Geoscience, Inc"]
                 rs = ["Organization"]
+            elif measured_by == "Hodgins, GCI":
+                ns = ["Meghan Hodgins"]
+                os = ["Glorieta Geoscience, Inc"]
+                rs = ["Geologist"]
             elif measured_by == "Golder Ass. For OSE":
                 ns = [None]
                 os = ["Golder Associates, Inc"]
+                rs = ["Organization"]
+            elif measured_by == "Hathorn Well Service":
+                ns = [None]
+                os = ["Hathorn's Well Service"]
                 rs = ["Organization"]
             elif measured_by == "Hydroscience Assoc.":
                 ns = [None]
@@ -282,7 +332,14 @@ def transfer_water_levels(session):
                 ns = [None]
                 os = ["IC Tech, Inc"]
                 rs = ["Organization"]
-            elif "John Shomaker" in measured_by:
+            elif measured_by in [
+                "John Shomaker",
+                "John Shomaker & Asso",
+                "John Shomaker Assoc.",
+                "JS&A",
+                "JSA",
+                "JSAI",
+            ]:
                 ns = [None]
                 os = ["John Shomaker & Associates, Inc"]
                 rs = ["Organization"]
@@ -336,6 +393,7 @@ def transfer_water_levels(session):
                 "?",
                 "Consultant",
                 "Consulting Pro.",
+                "Gamma log unit",
                 "Pump company",
                 "PumpService",
                 "REPORTED",
@@ -454,6 +512,134 @@ def transfer_water_levels(session):
                 ns = ["Dennis Cooper"]
                 os = ["NMOSE"]
                 rs = ["Engineer"]
+            elif measured_by == "EM":
+                ns = ["Ethan Mamer"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
+            elif measured_by == "EM, AL":
+                ns = ["Ethan Mamer", "Angela Lucero"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrologist"]
+            elif measured_by in ["EM, CM", "EM,CM"]:
+                ns = ["Ethan Mamer", "Cris Morton"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "EM, JB":
+                ns = ["Ethan Mamer", "Joseph Beman"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Technician"]
+            elif measured_by == "EM, KP":
+                # TODO: verify Kitty's role with AMP
+                ns = ["Ethan Mamer", "Kitty Pokorny"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "EM, LS":
+                ns = ["Ethan Mamer", "Laila Sturgis"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "EM, MF":
+                ns = ["Ethan Mamer", "Marissa Fichera"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "EM, SMC":
+                # TODO: verify Sara's role with AMP
+                ns = ["Ethan Mamer", "Sara Chudnoff"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Geologist"]
+            elif measured_by == "EM, TK":
+                ns = ["Ethan Mamer", "Trevor Kludt"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "EM, TN":
+                ns = ["Ethan Mamer", "Talon Newton"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "Gary Goss":
+                ns = [measured_by]
+                os = [measuring_agency]
+                rs = ["Operator"]
+            elif measured_by == "GCR":
+                ns = ["Geoff Rawling"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
+            elif measured_by in ["GCR/ST", "GCRST", "GR/ST"]:
+                ns = ["Geoff Rawling", "Stacy Timmons"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "GCR/ST/JM":
+                # TODO: verify Joe's role with AMP
+                ns = ["Geoff Rawling", "Stacy Timmons", "Joe Marcoline"]
+                os = ["NMBGMR", "NMBGMR", "NMED"]
+                rs = ["Hydrogeologist", "Hydrogeologist", "Unknown"]
+            elif measured_by == "GR":
+                ns = ["Geoff Rawling"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
+            elif measured_by == "GR, AL":
+                ns = ["Geoff Rawling", "Angela Lucero"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrologist"]
+            elif measured_by == "GR, CE":
+                ns = ["Geoff Rawling", "Cathy Eisen"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "GR, SC":
+                ns = ["Geoff Rawling", "Scott Christenson"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Technician"]
+            elif measured_by in ["GR, TK", "GR/TK"]:
+                ns = ["Geoff Rawling", "Trevor Kludt"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by == "GR/LL":
+                ns = ["Geoff Rawling", "Lewis Land"]
+                os = ["NMBGMR", "NMBGMR"]
+                rs = ["Hydrogeologist", "Hydrogeologist"]
+            elif measured_by in ["JB", "JEB"]:
+                ns = ["Joseph Beman"]
+                os = ["NMBGMR"]
+                rs = ["Technician"]
+            elif measured_by == "Jim Corbin":
+                ns = ["Jim Corbin"]
+                os = ["Corbin Consulting, Inc"]
+                rs = ["Unknown"]
+            elif measured_by in ["JM", "Joe Marcoline"]:
+                ns = ["Joe Marcoline"]
+                os = ["NMED"]
+                rs = ["Unknown"]
+            elif measured_by == "Johnson":
+                ns = ["Peggy Johnson"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
+            elif measured_by in ["Johnson - Kuck", "Johnson-Kuck", "Johnson/Kuck"]:
+                # TODO: get Kuckleman's first name, role, organization from AMP
+                ns = ["Peggy Johnson", "Kuckleman"]
+                os = ["NMBGMR", "Unknown"]
+                rs = ["Hydrogeologist", "Unknown"]
+            elif measured_by in ["Johnson-Lyman", "Johnson/Lyman"]:
+                ns = ["Peggy Johnson", "John Lyman"]
+                os = ["NMBGMR", "Unknown"]
+                rs = ["Hydrogeologist", "Unknown"]
+            elif measured_by == "Jose Varela Lopez":
+                ns = ["Jose Varela Lopez"]
+                os = ["Puerta del Canon Ranch"]
+                rs = ["Operator"]
+            elif measured_by == "K. McLain":
+                ns = ["Katie McLain"]
+                os = ["NMBGMR"]
+                rs = ["Hydrogeologist"]
+            elif measured_by == "K. McLain, M. Hein":
+                ns = ["Katie McLain", "Marina Hein"]
+                os = ["NMBGMR", "NMT"]
+                rs = ["Hydrogeologist", "Biologist"]
+            elif measured_by == "K.Summers":
+                ns = ["Kelly Summers"]
+                os = ["NMBGMR"]
+                rs = ["Hydrologist"]
+            elif measured_by == "Kelsey McNamara":
+                ns = [measured_by]
+                os = ["NMBGMR"]
+                rs = ["Geologist"]
 
             else:
                 logger.warning(
