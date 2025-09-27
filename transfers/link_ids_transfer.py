@@ -114,7 +114,9 @@ def add_link_site_id(session, row, thing):
     if not re.match(r"^\d{15}$", site_id):
         # TODO: lets make a sweet function for flagging issues
         # flag for interrogation
-        logger.critical(f"{row.PointID} alternate id {site_id} is not a valid USGS site id")
+        logger.critical(
+            f"{row.PointID} alternate id {site_id} is not a valid USGS site id"
+        )
         return
 
     link_id.alternate_id = row.SiteID

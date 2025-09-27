@@ -107,54 +107,71 @@ def _add_first_contact(session, row, thing):
         "nma_pk_owners": row.OwnerKey,
         "addresses": [],
         "emails": [],
-        "phones": []
+        "phones": [],
     }
 
     contact = _make_contact_and_assoc(session, contact_data, thing)
 
     if row.Email:
-        email = _make_email('first', row.OwnerKey, email=row.Email,
-                            email_type="Primary",
-                            release_status=release_status)
+        email = _make_email(
+            "first",
+            row.OwnerKey,
+            email=row.Email,
+            email_type="Primary",
+            release_status=release_status,
+        )
         if email:
             contact.emails.append(email)
 
     if row.Phone:
-        phone = _make_phone('first', row.OwnerKey, phone_number=row.Phone,
-                            phone_type="Primary",
-                            release_status=release_status)
+        phone = _make_phone(
+            "first",
+            row.OwnerKey,
+            phone_number=row.Phone,
+            phone_type="Primary",
+            release_status=release_status,
+        )
         if phone:
             contact.phones.append(phone)
 
     if row.CellPhone:
-        phone = _make_phone('first', row.OwnerKey, phone_number=row.CellPhone,
-                            phone_type="Mobile",
-                            release_status=release_status)
+        phone = _make_phone(
+            "first",
+            row.OwnerKey,
+            phone_number=row.CellPhone,
+            phone_type="Mobile",
+            release_status=release_status,
+        )
         if phone:
             contact.phones.append(phone)
 
     if row.MailingAddress:
-        address = _make_address('first', row.OwnerKey,
-                                'mailing',
-                                address_line_1=row.MailingAddress,
-                                city=row.MailCity,
-                                state=row.MailState,
-                                postal_code=row.MailZipCode,
-                                address_type="Mailing",
-                                release_status=release_status)
+        address = _make_address(
+            "first",
+            row.OwnerKey,
+            "mailing",
+            address_line_1=row.MailingAddress,
+            city=row.MailCity,
+            state=row.MailState,
+            postal_code=row.MailZipCode,
+            address_type="Mailing",
+            release_status=release_status,
+        )
         if address:
             contact.addresses.append(address)
 
     if row.PhysicalAddress:
-        address = _make_address('first', row.OwnerKey,
-                                'physical',
-                                address_line_1=row.PhysicalAddress,
-                                city=row.PhysicalCity,
-                                state=row.PhysicalState,
-                                postal_code=row.PhysicalZipCode,
-                                address_type="Physical",
-                                release_status=release_status
-                                )
+        address = _make_address(
+            "first",
+            row.OwnerKey,
+            "physical",
+            address_line_1=row.PhysicalAddress,
+            city=row.PhysicalCity,
+            state=row.PhysicalState,
+            postal_code=row.PhysicalZipCode,
+            address_type="Physical",
+            release_status=release_status,
+        )
         if address:
             contact.addresses.append(address)
 
@@ -174,22 +191,30 @@ def _add_second_contact(session, row, thing):
         "nma_pk_owners": row.OwnerKey,
         "addresses": [],
         "emails": [],
-        "phones": []
+        "phones": [],
     }
 
     contact = _make_contact_and_assoc(session, contact_data, thing)
 
     if row.SecondCtctEmail:
-        email = _make_email('second', row.OwnerKey, email=row.SecondCtctEmail,
-                            email_type="Primary",
-                            release_status=release_status)
+        email = _make_email(
+            "second",
+            row.OwnerKey,
+            email=row.SecondCtctEmail,
+            email_type="Primary",
+            release_status=release_status,
+        )
         if email:
             contact.emails.append(email)
 
     if row.SecondCtctPhone:
-        phone = _make_phone('second', row.OwnerKey, phone_number=row.SecondCtctPhone,
-                            phone_type="Primary",
-                            release_status=release_status)
+        phone = _make_phone(
+            "second",
+            row.OwnerKey,
+            phone_number=row.SecondCtctPhone,
+            phone_type="Primary",
+            release_status=release_status,
+        )
         if phone:
             contact.phones.append(phone)
 
@@ -205,6 +230,7 @@ def _make_name(first, last):
     else:
         return f"{first} {last}"
 
+
 def _make_email(first_second, ownerkey, **kw):
     try:
         email = CreateEmail(**kw)
@@ -213,6 +239,7 @@ def _make_email(first_second, ownerkey, **kw):
         logger.warning(
             f"{first_second} '{ownerkey}' Skipping email. Validation error: {e}"
         )
+
 
 def _make_phone(first_second, ownerkey, **kw):
     try:
@@ -223,6 +250,7 @@ def _make_phone(first_second, ownerkey, **kw):
             f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e}"
         )
 
+
 def _make_address(first_second, ownerkey, kind, **kw):
     try:
         address = CreateAddress(**kw)
@@ -231,6 +259,8 @@ def _make_address(first_second, ownerkey, kind, **kw):
         logger.warning(
             f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e}"
         )
+
+
 #
 def _make_contact_and_assoc(session, data, thing):
     contact = CreateContact(**data)

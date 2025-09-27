@@ -14,10 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 # import os
-from inspect import Signature, Parameter
 from typing import Optional, List, Union, cast, Callable
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, OAuth2AuthorizationCodeBearer
 from jwt.algorithms import RSAAlgorithm
 from starlette import status
@@ -93,7 +92,9 @@ def authenticated(
         # and verify the user's permissions.
 
         if not token or not verify_token(token, scope, permissions):
-            response.status_code = status.HTTP_401_UNAUTHORIZED
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+            )
 
         # this is a placeholder for the actual authentication logic
         return _get_token_payload(token) if token else None
