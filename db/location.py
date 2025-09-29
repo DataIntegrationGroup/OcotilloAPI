@@ -48,8 +48,10 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False, comment="in meters with vertical datum of NAVD88"
     )
 
-    state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
-    county: Mapped[str] = lexicon_term(nullable=True)
+    # state: Mapped[str] = lexicon_term(nullable=True, default="New Mexico")
+    # county: Mapped[str] = lexicon_term(nullable=True)
+    county: Mapped[str] = mapped_column(String(100), nullable=True)
+    state: Mapped[str] = mapped_column(String(100), nullable=True)
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
