@@ -20,7 +20,13 @@ from sqlalchemy_utils import TSVectorType
 
 from db import lexicon_term
 from db.asset import Asset
-from db.base import AutoBaseMixin, Base, ReleaseMixin
+from db.base import (
+    AutoBaseMixin,
+    Base,
+    ReleaseMixin,
+    StatusHistoryMixin,
+    PermissionMixin,
+)
 
 from typing import List, TYPE_CHECKING
 
@@ -32,7 +38,7 @@ if TYPE_CHECKING:
     from db.contact import Contact
 
 
-class Thing(Base, AutoBaseMixin, ReleaseMixin):
+class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
 
     name = mapped_column(String(255), nullable=False)
     description = mapped_column(String(500))
