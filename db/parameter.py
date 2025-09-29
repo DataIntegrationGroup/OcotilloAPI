@@ -35,7 +35,7 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
     )
     cas_number: Mapped[str] = mapped_column(
         nullable=True,
-        comment="he Chemical Abstracts Service (CAS) registry number, a globally unique identifier for a chemical substance.",
+        comment="The Chemical Abstracts Service (CAS) registry number, a globally unique identifier for a chemical substance.",
     )
     default_unit: Mapped[str] = lexicon_term(
         nullable=False,
