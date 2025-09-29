@@ -85,7 +85,7 @@ def extract_organization(alternate_id: str) -> str:
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_welldata_datasources.csv"
     if not os.path.exists(path):
-        path = "data/valid_welldata_datasources.csv"
+        path = "transfers/data/valid_welldata_datasources.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)
@@ -99,7 +99,7 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_measuring_agency.csv"
     if not os.path.exists(path):
-        path = "data/valid_measuring_agency.csv"
+        path = "transfers/data/valid_measuring_agency.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)

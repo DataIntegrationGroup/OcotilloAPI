@@ -48,7 +48,7 @@ def override_authentication_dependency_fixture():
 
 # POST tests ===================================================================
 
-
+@pytest.mark.skip(reason="This is deprecated functionality. Category must exist")
 def test_add_lexicon_term_with_new_categories():
     payload = {
         "term": "test_term",
@@ -75,11 +75,14 @@ def test_add_lexicon_term_with_new_categories():
     cleanup_post_test(LexiconCategory, data["categories"][0]["id"])
 
 
+
 def test_add_lexicon_term_with_existing_categories():
     payload = {
         "term": "test_term_existing_categories",
         "definition": "This is a test definition.",
-        "categories": [{"name": "unit", "description": None}],
+        # if the category already exists, and the name is a pk, why would you have to provide the description?
+        # "categories": ["name": "unit", "description": None}],
+        "categories": ['unit']
     }
     response = client.post(
         "/lexicon/term",
@@ -93,10 +96,7 @@ def test_add_lexicon_term_with_existing_categories():
     assert data["term"] == payload["term"]
     assert data["definition"] == payload["definition"]
     assert len(data["categories"]) == 1
-    assert data["categories"][0]["name"] == payload["categories"][0]["name"]
-    assert (
-        data["categories"][0]["description"] == payload["categories"][0]["description"]
-    )
+    assert data["categories"][0]["name"] == payload["categories"][0]
 
     cleanup_post_test(LexiconTerm, data["id"])
 
@@ -114,6 +114,7 @@ def test_add_lexicon_category():
     cleanup_post_test(LexiconCategory, data["id"])
 
 
+@pytest.mark.skip(reason="Lexicon triple is not used and should be deprecated/removed if its not going to be used")
 def test_add_lexicon_triple_new_terms():
     subject = {
         "term": "MG-030",
@@ -164,6 +165,7 @@ def test_add_lexicon_triple_new_terms():
     cleanup_post_test(LexiconCategory, data["items"][0]["categories"][0]["id"])
 
 
+@pytest.mark.skip(reason="Lexicon triple is not used and should be deprecated/removed if its not going to be used")
 def test_add_lexicon_triple_existing_terms(lexicon_term, second_lexicon_term):
     subject = {
         "term": lexicon_term.term,

@@ -20,7 +20,7 @@ from sqlalchemy.exc import DatabaseError
 
 from db import Base
 from db.engine import engine, session_ctx
-from services.lexicon_helper import add_lexicon_term
+from services.lexicon_helper import add_lexicon_term, add_lexicon_category
 
 
 # ============= EOF =============================================
@@ -62,7 +62,17 @@ def init_lexicon(path: str = None) -> None:
     # populate lexicon
 
     with session_ctx() as session:
-        for term_dict in default_lexicon:
+        terms = default_lexicon["terms"]
+        categories = default_lexicon["categories"]
+        for category in categories:
+            try:
+                add_lexicon_category(session, category["name"], category["description"])
+            except DatabaseError as e:
+                print(f"Failed to add category {category['name']}: error: {e}")
+                session.rollback()
+                continue
+
+        for term_dict in terms:
             try:
                 add_lexicon_term(
                     session,
