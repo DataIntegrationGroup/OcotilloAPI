@@ -61,6 +61,47 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         nullable=True,
         comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
     )
+    # Well-related columns
+    well_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Total depth of the well, from ground surface to the bottom of the well (in feet).",
+    )
+    hole_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
+    )
+    well_purpose: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
+    )
+    well_casing_diameter: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "inches"},
+        comment="Diameter of the well casing in inches.",
+    )
+    well_casing_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
+    )
+    well_casing_material: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="Material of the well casing (e.g., 'PVC', 'Steel', 'Concrete', 'Wood').",
+    )
+
+    well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # Spring-related columns
+    spring_type: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
+    )
 
     # --- Relationships ---
     asset_associations = relationship(
@@ -102,48 +143,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     # Proxy to directly access the Sensor (Equipment) deployed at this Thing.
     sensor: AssociationProxy[List["Sensor"]] = association_proxy(
         "deployments", "sensor"
-    )
-
-    # Well-related fields
-    well_depth: Mapped[float] = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "feet below ground surface"},
-        comment="Total depth of the well, from ground surface to the bottom of the well (in feet).",
-    )
-    hole_depth: Mapped[float] = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "feet below ground surface"},
-        comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
-    )
-    well_purpose: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
-    )
-    well_casing_diameter: Mapped[float] = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "inches"},
-        comment="Diameter of the well casing in inches.",
-    )
-    well_casing_depth: Mapped[float] = mapped_column(
-        Float,
-        nullable=True,
-        info={"unit": "feet below ground surface"},
-        comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
-    )
-    well_casing_material: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="Material of the well casing (e.g., 'PVC', 'Steel', 'Concrete', 'Wood').",
-    )
-
-    well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
-
-    # Spring-related fields
-    spring_type: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
     )
 
     search_vector = Column(
