@@ -931,6 +931,7 @@ dependencies = [
     { name = "multidict" },
     { name = "numpy" },
     { name = "packaging" },
+    { name = "pact-python" },
     { name = "pandas" },
     { name = "pandas-stubs" },
     { name = "pg8000" },
@@ -1038,7 +1039,7 @@ requires-dist = [
     { name = "pandas", specifier = "==2.3.2" },
     { name = "pandas-stubs", specifier = "==2.3.0.250703" },
     { name = "pg8000", specifier = "==1.31.4" },
-    { name = "phonenumbers", specifier = "==9.0.13" },
+    { name = "phonenumbers", specifier = "==9.0.15" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "pluggy", specifier = "==1.6.0" },
     { name = "pre-commit", specifier = "==4.3.0" },
@@ -1158,6 +1159,31 @@ wheels = [
 ]
 
 [[package]]
+name = "pact-python"
+version = "2.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+    { name = "click" },
+    { name = "fastapi" },
+    { name = "psutil" },
+    { name = "requests" },
+    { name = "six" },
+    { name = "uvicorn" },
+    { name = "yarl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/ca/de5ce2f6ad2a777696f632cef39501cf6eba070bb56df42f1b3f3acf755f/pact_python-2.3.3.tar.gz", hash = "sha256:c6e4ef70894db51d876fb765bc97eb9118b8da880e4fc3a2eef11eb9977919ec", size = 152378, upload-time = "2025-07-17T11:41:02.851Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/a8/7a8d5034d9ac9f93aaab1830fc15a0ec6f84a5b1fac2c58011a9090bab6d/pact_python-2.3.3-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:f939e673b0268d90c13aa6a6ab18b7a32dd44a7a6587de64a5f95a25f690293f", size = 30508131, upload-time = "2025-07-17T11:40:19.53Z" },
+    { url = "https://files.pythonhosted.org/packages/22/42/fba3d6f8b2d5440d3e47518ae24b606747f640cc5632c0e94f933da53066/pact_python-2.3.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ee83357872fca5cc7ab07ff53ffc88065557787663188154f849c4edaa838ba4", size = 31478250, upload-time = "2025-07-17T11:40:22.991Z" },
+    { url = "https://files.pythonhosted.org/packages/41/12/41ee486adb75876aca30ce3931c85d201443c36ae9b9aa4aa46221849106/pact_python-2.3.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:11433275e3b6d7eea8b0d328d3711a5c458575f69f50815027860a291d48f62f", size = 33945574, upload-time = "2025-07-17T11:40:26.27Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/1a/0a803dfc09a60354d8d870ad7cf99a7ad5b6950a29873a542d9e4501fbbc/pact_python-2.3.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5bfda6100b0a146c8238a0c822cab918936192e2ea4b03e48da4bedb93756510", size = 32805592, upload-time = "2025-07-17T11:40:30.025Z" },
+    { url = "https://files.pythonhosted.org/packages/10/d8/fd95a3dd8cbf3e8ce654e3aa17982f6bcf9e19aa60f184c2be26ad47df0d/pact_python-2.3.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:7c382743eb89a18b10d0b387a022fed1ec0cce7881bbddd409844e6e172af9e8", size = 15265439, upload-time = "2025-07-17T11:40:33.437Z" },
+    { url = "https://files.pythonhosted.org/packages/94/66/287ad59f1abccb51b4bcdd457d74605579b8f6de1b088908332727830572/pact_python-2.3.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:c696cad249b23c8bf926664dd294b0bd6e5e7fd910dcc002f96998f1b6a37a8e", size = 14242800, upload-time = "2025-07-17T11:40:35.881Z" },
+    { url = "https://files.pythonhosted.org/packages/80/7d/1f10f77b1162808ee91a7266bc0881ecf929abdd7592d8c217a15ff6383d/pact_python-2.3.3-cp313-cp313-win_amd64.whl", hash = "sha256:c41ff6911cc054b11c79c1e7524f30ff676ee1aaa85dca1a4dff0e83ca98d2bd", size = 22455236, upload-time = "2025-07-17T11:40:38.99Z" },
+]
+
+[[package]]
 name = "pandas"
 version = "2.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1212,11 +1238,11 @@ wheels = [
 
 [[package]]
 name = "phonenumbers"
-version = "9.0.13"
+version = "9.0.15"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d4/9a/66002928beba17a01e39c4cd17d0a73677788ddaf314b500ceeeae6b2323/phonenumbers-9.0.13.tar.gz", hash = "sha256:eca06e01382412c45316868f86a44bb217c02f9ee7196589041556a2f54a7639", size = 2297900, upload-time = "2025-08-29T09:39:52.564Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/8e/755749f61b93c39493730428cbfe14897198c0151e8b6d832f0a3c71ff16/phonenumbers-9.0.15.tar.gz", hash = "sha256:345ff7f23768332d866f37732f815cdf1d33c7f0961246562a5c5b78c12c3ff3", size = 2298105, upload-time = "2025-09-26T05:32:39.052Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/d8/fb5066b2cbb03fd373833b54d8a6a2c1a2b54a369a1c469db47d2d21ea84/phonenumbers-9.0.13-py2.py3-none-any.whl", hash = "sha256:b97661e177773e7509c6d503e0f537cd0af22aa3746231654590876eb9430915", size = 2583732, upload-time = "2025-08-29T09:39:48.294Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/52/e9bbc1b092bb17b86f56da84a36ca98320330a1904d9b0ca3d685155db2c/phonenumbers-9.0.15-py2.py3-none-any.whl", hash = "sha256:269b73bc05258e8fd57582770b9559307099ea677c8f1dc5272476f661344776", size = 2583916, upload-time = "2025-09-26T05:32:35.736Z" },
 ]
 
 [[package]]
@@ -1373,6 +1399,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/7b/607764ebe6c7a23dcee06e054fd1de3d5841b7648a90fd6def9a3bb58c5e/protobuf-6.32.0-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:501fe6372fd1c8ea2a30b4d9be8f87955a64d6be9c88a973996cef5ef6f0abf1", size = 322869, upload-time = "2025-08-14T21:21:18.282Z" },
     { url = "https://files.pythonhosted.org/packages/40/01/2e730bd1c25392fc32e3268e02446f0d77cb51a2c3a8486b1798e34d5805/protobuf-6.32.0-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:75a2aab2bd1aeb1f5dc7c5f33bcb11d82ea8c055c9becbb41c26a8c43fd7092c", size = 322009, upload-time = "2025-08-14T21:21:19.893Z" },
     { url = "https://files.pythonhosted.org/packages/9c/f2/80ffc4677aac1bc3519b26bc7f7f5de7fce0ee2f7e36e59e27d8beb32dd1/protobuf-6.32.0-py3-none-any.whl", hash = "sha256:ba377e5b67b908c8f3072a57b63e2c6a4cbd18aea4ed98d2584350dbf46f2783", size = 169287, upload-time = "2025-08-14T21:21:23.515Z" },
+]
+
+[[package]]
+name = "psutil"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/31/4723d756b59344b643542936e37a31d1d3204bcdc42a7daa8ee9eb06fb50/psutil-7.1.0.tar.gz", hash = "sha256:655708b3c069387c8b77b072fc429a57d0e214221d01c0a772df7dfedcb3bcd2", size = 497660, upload-time = "2025-09-17T20:14:52.902Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/62/ce4051019ee20ce0ed74432dd73a5bb087a6704284a470bb8adff69a0932/psutil-7.1.0-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:76168cef4397494250e9f4e73eb3752b146de1dd950040b29186d0cce1d5ca13", size = 245242, upload-time = "2025-09-17T20:14:56.126Z" },
+    { url = "https://files.pythonhosted.org/packages/38/61/f76959fba841bf5b61123fbf4b650886dc4094c6858008b5bf73d9057216/psutil-7.1.0-cp36-abi3-macosx_11_0_arm64.whl", hash = "sha256:5d007560c8c372efdff9e4579c2846d71de737e4605f611437255e81efcca2c5", size = 246682, upload-time = "2025-09-17T20:14:58.25Z" },
+    { url = "https://files.pythonhosted.org/packages/88/7a/37c99d2e77ec30d63398ffa6a660450b8a62517cabe44b3e9bae97696e8d/psutil-7.1.0-cp36-abi3-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:22e4454970b32472ce7deaa45d045b34d3648ce478e26a04c7e858a0a6e75ff3", size = 287994, upload-time = "2025-09-17T20:14:59.901Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/de/04c8c61232f7244aa0a4b9a9fbd63a89d5aeaf94b2fc9d1d16e2faa5cbb0/psutil-7.1.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8c70e113920d51e89f212dd7be06219a9b88014e63a4cec69b684c327bc474e3", size = 291163, upload-time = "2025-09-17T20:15:01.481Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/58/c4f976234bf6d4737bc8c02a81192f045c307b72cf39c9e5c5a2d78927f6/psutil-7.1.0-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7d4a113425c037300de3ac8b331637293da9be9713855c4fc9d2d97436d7259d", size = 293625, upload-time = "2025-09-17T20:15:04.492Z" },
+    { url = "https://files.pythonhosted.org/packages/79/87/157c8e7959ec39ced1b11cc93c730c4fb7f9d408569a6c59dbd92ceb35db/psutil-7.1.0-cp37-abi3-win32.whl", hash = "sha256:09ad740870c8d219ed8daae0ad3b726d3bf9a028a198e7f3080f6a1888b99bca", size = 244812, upload-time = "2025-09-17T20:15:07.462Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/e9/b44c4f697276a7a95b8e94d0e320a7bf7f3318521b23de69035540b39838/psutil-7.1.0-cp37-abi3-win_amd64.whl", hash = "sha256:57f5e987c36d3146c0dd2528cd42151cf96cd359b9d67cfff836995cc5df9a3d", size = 247965, upload-time = "2025-09-17T20:15:09.673Z" },
+    { url = "https://files.pythonhosted.org/packages/26/65/1070a6e3c036f39142c2820c4b52e9243246fcfc3f96239ac84472ba361e/psutil-7.1.0-cp37-abi3-win_arm64.whl", hash = "sha256:6937cb68133e7c97b6cc9649a570c9a18ba0efebed46d8c5dae4c07fa1b67a07", size = 244971, upload-time = "2025-09-17T20:15:12.262Z" },
 ]
 
 [[package]]
