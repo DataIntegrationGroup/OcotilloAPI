@@ -26,7 +26,7 @@ from transfers.util import (
     logger,
     read_csv,
     convert_mt_to_utc,
-    filter_by_valid_measuring_agency
+    filter_by_valid_measuring_agency,
 )
 
 
@@ -149,7 +149,9 @@ def transfer_water_levels(session):
             sensor_id = None
 
             if not pd.isna(row.LevelStatus):
-                level_status = lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
+                level_status = lexicon_mapper.map_value(
+                    f"LU_LevelStatus:{row.LevelStatus}"
+                )
             else:
                 level_status = None
 

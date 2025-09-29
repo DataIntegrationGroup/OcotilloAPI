@@ -13,14 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from services.util import get_state_from_point, get_county_from_point, get_quad_name_from_point
+from services.util import (
+    get_state_from_point,
+    get_county_from_point,
+    get_quad_name_from_point,
+)
 
 
 def test_quad_name_from_point():
     x = -106.904107
     y = 34.068198
-    quad = get_quad_name_from_point(x,y)
+    quad = get_quad_name_from_point(x, y)
     assert quad == "Socorro"
+
 
 def test_state_name_from_point():
     x = -100.904107
@@ -35,17 +40,20 @@ def test_county_name_from_point():
     county = get_county_from_point(x, y)
     assert county == "Socorro"
 
+
 def test_quad_name_from_point_bad_point():
     x = 1.904107
     y = 34.068198
-    quad = get_quad_name_from_point(x,y)
+    quad = get_quad_name_from_point(x, y)
     assert quad is None
+
 
 def test_state_name_from_point_bad_point():
     x = 1.904107
     y = 34.068198
     state = get_state_from_point(x, y)
     assert state is None
+
 
 def test_county_name_from_point_bad_point():
     x = 1.904107
