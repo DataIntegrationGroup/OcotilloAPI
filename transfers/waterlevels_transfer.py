@@ -34,8 +34,8 @@ from transfers.util import (
     read_csv,
     convert_mt_to_utc,
     filter_by_valid_measuring_agency,
-    lu_to_lexicon_map,
 )
+from services.lexicon_mapper import lexicon_mapper
 
 # keep a dictionary of created Contacts to avoid repeated SQL queries
 CREATED_CONTACTS = {}
@@ -879,9 +879,9 @@ def transfer_water_levels(session):
             # --- Sample ---
 
             if not pd.isna(row.MeasurementMethod):
-                sample_method = lu_to_lexicon_map[
+                sample_method = lexicon_mapper.map_value(
                     f"LU_MeasurementMethod:{row.MeasurementMethod}"
-                ]
+                )
             else:
                 sample_method = "null placeholder"
 
@@ -906,7 +906,9 @@ def transfer_water_levels(session):
             sensor_id = None
 
             if not pd.isna(row.LevelStatus):
-                level_status = lu_to_lexicon_map[f"LU_LevelStatus:{row.LevelStatus}"]
+                level_status = lexicon_mapper.map_value(
+                    f"LU_LevelStatus:{row.LevelStatus}"
+                )
             else:
                 level_status = None
 

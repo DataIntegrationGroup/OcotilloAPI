@@ -18,9 +18,9 @@ def location():
             elevation_method="Survey-grade GPS",
             coordinate_accuracy=50,
             coordinate_method="GPS, uncorrected",
-            state="New Mexico",
-            county="Catron",
-            quad_name="Luera Mountains West",
+            # state="New Mexico",
+            # county="Catron",
+            # quad_name="Luera Mountains West",
         )
         session.add(loc)
         session.commit()

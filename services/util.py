@@ -1,3 +1,5 @@
+import json
+
 from shapely.ops import transform
 import pyproj
 import httpx
@@ -46,19 +48,21 @@ def get_tiger_data(
     return data["features"][0]["attributes"]
 
 
-def get_state_from_point(lon: float, lat: float) -> str:
+def get_state_from_point(lon: float, lat: float) -> str | None:
     attrs = get_tiger_data(lon, lat, layer=0, outfields="BASENAME")
-    return attrs["BASENAME"]
+    if attrs:
+        return attrs["BASENAME"]
 
 
-def get_county_from_point(lon: float, lat: float) -> str:
+def get_county_from_point(lon: float, lat: float) -> str | None:
     """
     Look up county for a given longitude/latitude
     using the US Census TIGERWeb REST API.
     """
 
     attrs = get_tiger_data(lon, lat, layer=1, outfields="BASENAME")
-    return attrs["BASENAME"]
+    if attrs:
+        return attrs["BASENAME"]
 
 
 def get_quad_name_from_point(lon: float, lat: float) -> str:
@@ -84,7 +88,7 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         return None
 
 
-def get_epqs_elevation_from_point(lon: float, lat: float) -> float:
+def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     url = "https://epqs.nationalmap.gov/v1/json"
     params = {
         "x": lon,
@@ -95,7 +99,10 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float:
     }
 
     resp = httpx.get(url, params=params)
-    data = resp.json()
+    try:
+        data = resp.json()
+    except json.decoder.JSONDecodeError:
+        return None
 
     return data["value"]
 

@@ -130,7 +130,9 @@ class Address(Base, AutoBaseMixin, ReleaseMixin):
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
-    country: Mapped[str] = lexicon_term(default="United States", nullable=False)
+    country: Mapped[str] = mapped_column(
+        String(50), default="United States", nullable=False
+    )
     address_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(

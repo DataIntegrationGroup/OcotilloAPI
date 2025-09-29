@@ -29,6 +29,7 @@ import numpy as np
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
 from services.gcs_helper import get_storage_bucket
+from services.lexicon_mapper import lexicon_mapper
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
@@ -171,14 +172,17 @@ def make_location(row: pd.Series) -> Location:
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
     elif not (pd.isna(row.AltitudeMethod)):
-        elevation_method = lu_to_lexicon_map[f"LU_AltitudeMethod:{row.AltitudeMethod}"]
+        elevation_method = lexicon_mapper.map_value(
+            f"LU_AltitudeMethod:{row.AltitudeMethod}"
+        )
+
     else:
         elevation_method = None
 
     if not (pd.isna(row.CoordinateMethod)):
-        coordinate_method = lu_to_lexicon_map[
+        coordinate_method = lexicon_mapper.map_value(
             f"LU_CoordinateMethod:{row.CoordinateMethod}"
-        ]
+        )
     else:
         coordinate_method = None
 
@@ -293,54 +297,6 @@ def make_location(row: pd.Series) -> Location:
     return location
 
 
-def make_lu_to_lexicon_mapper():
-    lu_tables = [
-        # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
-        "LU_AltitudeMethod",  # CODE/MEANING
-        "LU_CollectionMethod",  # CODE/MEANING
-        "LU_ConstructionMethod",  # CODE/MEANING
-        "LU_CoordinateAccuracy",  # CODE/MEANING
-        # "LU_CoordinateDatum",   # the code is the value, so no need for mapping
-        "LU_CoordinateMethod",  # CODE/MEANING
-        "LU_CurrentUse",  # CODE/MEANING
-        "LU_DataQuality",  # CODE/MEANING
-        "LU_DataSource",  # CODE/MEANING
-        "LU_Depth_CompletionSource",  # CODE/MEANING
-        "LU_Discharge_ChemistrySource",  # CODE/MEANING
-        # "LU_FieldNoteTypes",    # not being used in the transfers since there are no records
-        # "LU_Formations",        # needs to be cleaned before it can be used
-        "LU_LevelStatus",  # CODE/MEANING
-        # "LU_Lithology",         # needs to be cleaned before it can be used
-        "LU_MajorAnalyte",  # CODE/MEANING
-        "LU_MeasurementMethod",  # CODE/MEANING
-        # "LU_MeasuringAgency",   # the abreviation is what is used in the new schema
-        "LU_MinorTraceAnalyte",  # CODE/MEANING
-        "LU_MonitoringStatus",  # CODE/MEANING
-        "LU_SampleType",  # CODE/MEANING
-        "LU_SiteType",  # CODE/MEANING
-        "LU_Status",  # CODE/MEANING
-    ]
-
-    mappers = {}
-
-    for lu_table in lu_tables:
-        table = read_csv(lu_table)
-
-        for i, row in table.iterrows():
-            if lu_table == "LU_Formations":
-                code = row.Code
-                meaning = row.Meaning
-            else:
-                code = row.CODE
-                meaning = row.MEANING
-
-            mappers.update({f"{lu_table}:{code}": meaning})
-    return mappers
-
-
-lu_to_lexicon_map = make_lu_to_lexicon_mapper()
-
-
 def timeit_direct(func, *args, **kwargs):
     start = datetime.now()
     result = func(*args, **kwargs)
@@ -355,8 +311,5 @@ def timeit(func):
 
     return wrapper
 
-
-if __name__ == "__main__":
-    print(lu_to_lexicon_map)
 
 # ============= EOF =============================================
