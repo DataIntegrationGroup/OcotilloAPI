@@ -63,7 +63,7 @@ dependencies = [
     "pre-commit==4.3.0",
     "propcache==0.3.2",
     "proto-plus==1.26.1",
-    "protobuf==6.32.0",
+    "protobuf==6.32.1",
     "psycopg2-binary>=2.9.10",
     "pyasn1==0.6.1",
     "pyasn1-modules==0.4.2",
