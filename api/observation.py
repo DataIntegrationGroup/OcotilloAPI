@@ -21,6 +21,7 @@ from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     amp_admin_dependency,
+    amp_editor_dependency,
     amp_viewer_dependency,
 )
 from db import Observation
@@ -101,7 +102,7 @@ async def update_groundwater_level_observation(
     observation_id: int,
     obs_data: UpdateGroundwaterLevelObservation,
     session: session_dependency,
-    user: amp_admin_dependency,
+    user: amp_editor_dependency,
     request: Request,
 ) -> GroundwaterLevelObservationResponse:
     """
@@ -115,7 +116,7 @@ async def update_water_chemistry_observation(
     observation_id: int,
     obs_data: UpdateWaterChemistryObservation,
     session: session_dependency,
-    user: amp_admin_dependency,
+    user: amp_editor_dependency,
     request: Request,
 ) -> WaterChemistryObservationResponse:
     """

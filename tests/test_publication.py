@@ -13,7 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from tests import client
+import pytest
+
+from main import app
+from core.dependencies import admin_function, editor_function, viewer_function
+from tests import client, override_authentication
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_add_publication():

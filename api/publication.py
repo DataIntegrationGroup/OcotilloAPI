@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, status
 from schemas.publication import PublicationResponse, CreatePublication
 from services.publication_helper import add_publication
 from sqlalchemy.orm import Session
-
+from core.dependencies import admin_dependency
 
 router = APIRouter(
     prefix="/publication",
@@ -30,6 +30,7 @@ router = APIRouter(
     "/add", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED
 )
 async def post_publication(
+    user: admin_dependency,
     publication_data: CreatePublication,  # Replace with your actual schema
     session: Session = Depends(
         get_db_session

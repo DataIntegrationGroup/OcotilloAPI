@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from fastapi import Depends, APIRouter, Query
+from fastapi import APIRouter, Query
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
@@ -22,7 +22,7 @@ from core.dependencies import (
     session_dependency,
     admin_dependency,
     editor_dependency,
-    viewer_function,
+    viewer_dependency,
 )
 from db.group import Group
 from schemas.group import UpdateGroup, CreateGroup, GroupResponse
@@ -32,9 +32,7 @@ from services.query_helper import (
     paginated_all_getter,
 )
 
-router = APIRouter(
-    prefix="/group", tags=["group"], dependencies=[Depends(viewer_function)]
-)
+router = APIRouter(prefix="/group", tags=["group"])
 
 # POST =========================================================================
 
@@ -69,7 +67,9 @@ async def create_group(
 # ============= Get =============================================
 @router.get("", summary="Get groups")
 async def get_groups(
-    session: session_dependency, filter_: str = Query(alias="filter", default=None)
+    user: viewer_dependency,
+    session: session_dependency,
+    filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[GroupResponse]:
     """
     Retrieve all groups from the database.
@@ -78,7 +78,9 @@ async def get_groups(
 
 
 @router.get("/{group_id}", summary="Get group by ID")
-async def get_group_by_id(group_id: int, session: session_dependency) -> GroupResponse:
+async def get_group_by_id(
+    user: viewer_dependency, group_id: int, session: session_dependency
+) -> GroupResponse:
     """
     Retrieve a group by ID from the database.
     """

@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from db.engine import get_db_session
+from core.dependencies import viewer_dependency, session_dependency
 from db.publication import Author
 from schemas.publication import PublicationResponse
 
@@ -32,7 +31,7 @@ router = APIRouter(
     response_model=list[PublicationResponse],
 )
 async def get_author_publications(
-    author_id: int, session: Session = Depends(get_db_session)
+    user: viewer_dependency, author_id: int, session: session_dependency
 ):
     """
     Retrieve all publications for a specific author.
