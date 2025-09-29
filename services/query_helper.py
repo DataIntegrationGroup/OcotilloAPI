@@ -18,7 +18,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, Float, Integer, Column, Select, func
+from sqlalchemy import select, Float, Integer, Column, Select, func, String
 from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.sql.elements import OperatorExpression
 from starlette.status import HTTP_404_NOT_FOUND
@@ -130,7 +130,12 @@ def order_sort_filter(
                 "Sort parameter is required when order is specified. "
                 f"The sort parameter should be a column name in the table {table}."
             )
-        attr = func.lower(getattr(table, sort))
+
+        attr = getattr(table, sort)
+        # test if column is a string col
+        if isinstance(attr.type, String):
+            attr = func.lower(attr)
+
         if order.lower() == "asc":
             sql = sql.order_by(attr.asc())
         elif order.lower() == "desc":
