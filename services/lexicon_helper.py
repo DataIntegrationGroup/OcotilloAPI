@@ -25,11 +25,12 @@ from sqlalchemy import select
 
 from services.audit_helper import audit_add
 
+
 def add_lexicon_category(
-        session: Session,
-        name: str,
-        description: str,
-        ):
+    session: Session,
+    name: str,
+    description: str,
+):
 
     category = LexiconCategory(name=name, description=description)
     session.add(category)
