@@ -61,10 +61,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         nullable=True,
         comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
     )
-    spring_type: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
-    )
 
     # --- Relationships ---
     asset_associations = relationship(
@@ -108,7 +104,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         "deployments", "sensor"
     )
 
-    # Well fields
+    # Well-related fields
     well_depth: Mapped[float] = mapped_column(
         Float,
         nullable=True,
@@ -144,7 +140,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # Spring fields
+    # Spring-related fields
+    spring_type: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
+    )
 
     search_vector = Column(
         TSVectorType(
