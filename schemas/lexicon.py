@@ -36,7 +36,7 @@ class CreateLexiconTerm(BaseModel):
 
     term: str
     definition: str
-    categories: list[CreateLexiconCategory]
+    categories: list[str]
 
 
 class CreateLexiconTriple(BaseModel):
