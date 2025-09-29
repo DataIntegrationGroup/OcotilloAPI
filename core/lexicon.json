@@ -380,6 +380,7 @@
   {"categories": [{"name": "organization", "description": null}], "term": "Daniel B. Stephens & Associates, Inc", "definition": "Daniel B. Stephens & Associates, Inc"},
   {"categories": [{"name": "organization", "description": null}], "term": "EnecoTech", "definition": "EnecoTech"},
   {"categories": [{"name": "organization", "description": null}], "term": "Faith Engineering, Inc", "definition": "Faith Engineering, Inc"},
+  {"categories": [{"name": "organization", "description": null}], "term": "Foster Well Service, Inc", "definition": "Foster Well Service, Inc"},
   {"categories": [{"name": "organization", "description": null}], "term": "Glorieta Geoscience, Inc", "definition": "Glorieta Geoscience, Inc"},
   {"categories": [{"name": "organization", "description": null}], "term": "Golder Associates, Inc", "definition": "Golder Associates, Inc"},
   {"categories": [{"name": "organization", "description": null}], "term": "Hathorn's Well Service, Inc", "definition": "Hathorn's Well Service, Inc"},
@@ -391,7 +392,7 @@
   {"categories": [{"name": "organization", "description": null}], "term": "Puerta del Canon Ranch", "definition": "Puerta del Canon Ranch"},
   {"categories": [{"name": "organization", "description": null}], "term": "Rodgers & Company, Inc", "definition": "Rodgers & Company, Inc"},
   {"categories": [{"name": "organization", "description": null}], "term": "Statewide Drilling, Inc", "definition": "Statewide Drilling, Inc"},
-
+  {"categories": [{"name": "organization", "description": null}], "term": "Zeigler Geologic Consulting, LLC", "definition": "Zeigler Geologic Consulting, LLC"},
 
   {"categories": [{"name": "collection_method", "description": null}], "term": "manual", "definition": "manual sampling"},
   {"categories": [{"name": "collection_method", "description": null}], "term": "continuous", "definition": "continuous sampling"},
