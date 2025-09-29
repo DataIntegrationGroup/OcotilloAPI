@@ -44,6 +44,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     Stores static, core attributes of the physical installation.
     """
 
+    __versioned__ = {}
     # --- Foreign Keys ---
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("location.id"), nullable=False
