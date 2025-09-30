@@ -84,6 +84,12 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
     notes: Mapped[str] = mapped_column(nullable=True)
 
+    # --- Auditing Fields from NM_Aquifer ---
+    nma_pk_waterlevels: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="NM_Aquifer primary key for waterlevels - to be used for transfer audits",
+    )
+
     # --- Relationship Definitions ---
     field_activity: Mapped["FieldActivity"] = relationship(back_populates="samples")
     field_event_contact: Mapped["FieldEventContactAssociation"] = relationship(
