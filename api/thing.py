@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
@@ -28,16 +28,9 @@ from api.pagination import CustomPage
 from core.app import public_route
 from core.dependencies import (
     session_dependency,
-    amp_admin_dependency,
     admin_dependency,
     editor_dependency,
-    # amp_viewer_dependency,
-    # viewer_dependency,
-    # no_permission_dependency,
-    viewer_function,
-    amp_viewer_function,
-    # no_permission_function,
-    amp_editor_dependency,
+    viewer_dependency,
 )
 from db.thing import Thing, WellScreen
 from db.thing import ThingIdLink
@@ -73,9 +66,7 @@ from services.thing_helper import (
 )
 from services.lexicon_helper import get_terms_by_category
 
-router = APIRouter(
-    prefix="/thing", tags=["thing"], dependencies=[Depends(viewer_function)]
-)
+router = APIRouter(prefix="/thing", tags=["thing"])
 
 
 def database_error_handler(
@@ -150,6 +141,7 @@ def database_error_handler(
 
 @router.get("/water-well", summary="Get all water wells", status_code=HTTP_200_OK)
 async def get_water_wells(
+    user: viewer_dependency,
     session: session_dependency,
     request: Request,
     sort: str = None,
@@ -168,7 +160,10 @@ async def get_water_wells(
     "/water-well/{thing_id}", summary="Get water well by ID", status_code=HTTP_200_OK
 )
 async def get_well_by_id(
-    thing_id: int, session: session_dependency, request: Request
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
 ) -> WellResponse:
     """
     Retrieve a water well by ID from the database.
@@ -182,7 +177,10 @@ async def get_well_by_id(
     status_code=HTTP_200_OK,
 )
 async def get_well_screens_by_well_id(
-    thing_id: int, session: session_dependency, request: Request
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
 ) -> CustomPage[WellScreenResponse]:
     """
     Retrieve all well screens for a specific water well by its ID.
@@ -195,9 +193,9 @@ async def get_well_screens_by_well_id(
 @router.get(
     "/well-screen",
     summary="Get well screens",
-    dependencies=[Depends(amp_viewer_function)],
 )
 async def get_well_screens(
+    user: viewer_dependency,
     session: session_dependency,
     thing_id: int = None,
 ) -> CustomPage[WellScreenResponse]:
@@ -213,10 +211,10 @@ async def get_well_screens(
 
 @router.get(
     "/well-screen/{wellscreen_id}",
-    dependencies=[Depends(amp_viewer_function)],
     summary="Get well screen by ID",
 )
 async def get_well_screen_by_id(
+    user: viewer_dependency,
     session: session_dependency,
     wellscreen_id: int,
 ) -> WellScreenResponse:
@@ -229,6 +227,7 @@ async def get_well_screen_by_id(
 
 @router.get("/spring", summary="Get all springs")
 async def get_springs(
+    user: viewer_dependency,
     session: session_dependency,
     request: Request,
     sort: str = None,
@@ -245,7 +244,10 @@ async def get_springs(
 
 @router.get("/spring/{thing_id}", summary="Get spring by ID", status_code=HTTP_200_OK)
 async def get_spring_by_id(
-    thing_id: int, session: session_dependency, request: Request
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
 ) -> SpringResponse:
     """
     Retrieve a spring by ID from the database.
@@ -258,6 +260,7 @@ async def get_spring_by_id(
     summary="Get all thing links",
 )
 async def get_thing_id_links(
+    user: viewer_dependency,
     session: session_dependency,
     filter_: str = Query(alias="filter", default=None),
     sort: str = None,
@@ -275,6 +278,7 @@ async def get_thing_id_links(
 @public_route
 @router.get("/id-link/{link_id}", summary="Get thing links by link ID")
 async def get_thing_id_links(
+    user: viewer_dependency,
     link_id: int,
     session: session_dependency,
 ) -> ThingIdLinkResponse:
@@ -287,6 +291,7 @@ async def get_thing_id_links(
 @public_route
 @router.get("", summary="Get all things", status_code=HTTP_200_OK)
 async def get_things(
+    user: viewer_dependency,
     session: session_dependency,
     # thing_id: int = None,
     within: str = None,
@@ -314,7 +319,10 @@ async def get_things(
 
 @router.get("/{thing_id}", summary="Get thing by ID", status_code=HTTP_200_OK)
 async def get_thing_by_id(
-    thing_id: int, session: session_dependency, request: Request
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
 ) -> ThingResponse:
     """
     Retrieve a thing by ID from the database.
@@ -326,6 +334,7 @@ async def get_thing_by_id(
 
 @router.get("/{thing_id}/id-link", summary="Get thing links by thing ID")
 async def get_thing_id_links(
+    user: viewer_dependency,
     thing_id: int,
     session: session_dependency,
 ) -> CustomPage[ThingIdLinkResponse]:
@@ -366,7 +375,7 @@ async def create_well(
     thing_data: CreateWell,
     session: session_dependency,
     request: Request,
-    user: amp_admin_dependency,
+    user: admin_dependency,
 ) -> WellResponse:
     """
     Create a new water well in the database.
@@ -386,7 +395,7 @@ async def create_spring(
     thing_data: CreateSpring,
     session: session_dependency,
     request: Request,
-    user: amp_admin_dependency,
+    user: admin_dependency,
 ) -> SpringResponse:
     """
     Create a new well in the database.
@@ -404,7 +413,7 @@ async def create_spring(
 )
 async def create_wellscreen(
     session: session_dependency,
-    user: amp_admin_dependency,
+    user: admin_dependency,
     well_screen_data: CreateWellScreen,
 ) -> WellScreenResponse:
     """
@@ -430,7 +439,7 @@ async def update_water_well(
     thing_id: int,
     thing_data: UpdateWell,
     session: session_dependency,
-    user: amp_editor_dependency,
+    user: editor_dependency,
     request: Request,
 ) -> WellResponse:
     """
@@ -448,7 +457,7 @@ async def update_spring(
     thing_id: int,
     thing_data: UpdateSpring,
     session: session_dependency,
-    user: amp_editor_dependency,
+    user: editor_dependency,
     request: Request,
 ) -> SpringResponse:
     """
@@ -496,7 +505,7 @@ async def update_well_screen(
 async def delete_thing(
     thing_id: int,
     session: session_dependency,
-    user: editor_dependency,
+    user: admin_dependency,
 ) -> None:
     """
     Delete a thing by ID.
@@ -512,7 +521,7 @@ async def delete_thing(
 async def delete_well_screen(
     well_screen_id: int,
     session: session_dependency,
-    user: editor_dependency,
+    user: admin_dependency,
 ) -> None:
     """
     Delete a well screen by ID.
@@ -528,7 +537,7 @@ async def delete_well_screen(
 async def delete_thing_id_link(
     link_id: int,
     session: session_dependency,
-    user: editor_dependency,
+    user: admin_dependency,
 ) -> None:
     """
     Delete a thing link by ID.

@@ -18,6 +18,7 @@ from core.dependencies import (
     amp_admin_function,
     admin_function,
     amp_viewer_function,
+    amp_editor_function,
     viewer_function,
 )
 from main import app
@@ -31,6 +32,9 @@ def override_authentication_dependency_fixture():
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_editor_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[amp_viewer_function] = override_authentication()

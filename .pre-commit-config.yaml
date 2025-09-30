@@ -15,6 +15,15 @@ repos:
           '--statistics'
           ]
         exclude: ^db/__init__.py$ # all models need to be imported for Alembic, but are not used directly
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest  # Or your specific test command, e.g., poetry run pytest
+        language: system
+        types: [python] # Specify relevant file types for your tests
+        pass_filenames: false
+        always_run: true
 
   # - repo: https://github.com/pre-commit/mirrors-mypy
   #   rev: v1.10.0  # Use the latest stable version or pin to your preference
