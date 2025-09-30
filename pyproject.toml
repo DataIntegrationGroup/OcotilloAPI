@@ -10,7 +10,7 @@ dependencies = [
     "aiohttp==3.12.15",
     "aiosignal==1.4.0",
     "aiosqlite==0.21.0",
-    "alembic==1.16.4",
+    "alembic==1.16.5",
     "annotated-types==0.7.0",
     "anyio==4.10.0",
     "asgiref==3.9.1",
