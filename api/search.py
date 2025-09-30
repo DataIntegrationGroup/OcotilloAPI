@@ -20,7 +20,7 @@ from api.pagination import CustomPage
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
 
-from core.dependencies import session_dependency
+from core.dependencies import session_dependency, viewer_dependency
 from db import (
     Contact,
     Email,
@@ -158,6 +158,7 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 @router.get("")
 async def search_api(
+    user: viewer_dependency,
     session: session_dependency,
     q: str,
     limit: int = 25,

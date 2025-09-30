@@ -14,19 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 from db.geochronology import GeochronologyAge
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 from services.crud_helper import model_adder
-from db.engine import get_db_session
 from schemas.geochronology import CreateGeochronologyAge
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from core.dependencies import viewer_dependency, session_dependency
 
 router = APIRouter(prefix="/geochronology", tags=["geochronology"])
 
 
 @router.post("/age", tags=["geochronology"], status_code=status.HTTP_201_CREATED)
 async def create_age(
-    age: CreateGeochronologyAge, session: Session = Depends(get_db_session)
+    user: viewer_dependency, age: CreateGeochronologyAge, session: session_dependency
 ):
     """
     Create a new geochronology age entry.
@@ -38,7 +37,7 @@ async def create_age(
 
 @router.get("/age", tags=["geochronology"])
 async def get_geochronology_age(
-    method: str = "arar", session: Session = Depends(get_db_session)
+    user: viewer_dependency, session: session_dependency, method: str = "arar"
 ):
     """
     Retrieve geochronology age data.
