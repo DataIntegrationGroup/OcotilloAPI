@@ -1,0 +1,750 @@
+2025-09-30 11:12:26,784 [INFO    ] 
+2025-09-30 11:12:26,784 [INFO    ] ********** START-------------------------------------- **********
+2025-09-30 11:12:26,785 [INFO    ] ********** STARTING TRANSFER **********
+2025-09-30 11:12:26,785 [INFO    ] Erasing existing data and initializing lexicon and sensors
+2025-09-30 11:12:26,785 [INFO    ] Erasing existing data
+2025-09-30 11:12:27,152 [INFO    ] Recreating tables
+2025-09-30 11:12:27,456 [INFO    ] erase took 0.670932 seconds
+2025-09-30 11:12:27,457 [INFO    ] Initializing lexicon
+2025-09-30 11:12:34,019 [INFO    ] lexicon took 6.561986 seconds
+2025-09-30 11:12:34,019 [INFO    ] Initializing sensors
+2025-09-30 11:12:34,029 [INFO    ] sensor took 0.009682 seconds
+2025-09-30 11:12:34,029 [INFO    ] 
+2025-09-30 11:12:34,029 [INFO    ] ********** TRANSFERRING WELLS **********
+2025-09-30 11:12:45,073 [INFO    ] Valid WellData Datasources:
+2025-09-30 11:12:45,073 [INFO    ]   (Author?), 1998, Geohydrology of River Bend Subdivision Taos County, New Mexico, Glorieta Geoscience, Inc. Appendix A.  (Full report filed w/TV-121).
+2025-09-30 11:12:45,073 [INFO    ]   1) Author?, 1995, Town of Taos San Juan/Chama Diversion Proj., Phase 2, Vol. 1, Production Well & Observation Well Installation, Testing, and Determination of Aquifer Coefficients, GGI. 2) Water Level
+2025-09-30 11:12:45,074 [INFO    ]   1) Bernalillo County, Sara Chudnoff; 2) San Pedro Creek Estates HOA
+2025-09-30 11:12:45,074 [INFO    ]   1) BLM - Part of the Capitan Aquifer Observation-Well Network
+2025-09-30 11:12:45,074 [INFO    ]   1) BLM, 2) Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38, 3) Sandia Report SAND2018-12018 NM Permian Basin
+2025-09-30 11:12:45,074 [INFO    ]   1) BLM, 2) Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38.
+2025-09-30 11:12:45,075 [INFO    ]   1) Discussion of Geology, Hydrogeol., & H2O Quality of Tailings Area, Molycorp Facility, Taos Cty, NM, 1995, South Pass Resources
+2025-09-30 11:12:45,075 [INFO    ]   1) Discussion of Geology, Hydrogeol., & H2O Quality of Tailings Area, Molycorp Facility, Taos Cty, NM, 1995, South Pass Resources  2) Pre-Design Groundwater Investigation at the Tailing Facil. ARCADIS
+2025-09-30 11:12:45,075 [INFO    ]   1) Drakos, P., Riesterer, J., Lazarus, J., 2007, Drilling and Completion Report, Rio Pueblo 3200 Feet Deep Production Well (RG-37303-S), Taos, NM, GGI (Filed w/TV-171). 2) Water Level Monitoring Prgm.
+2025-09-30 11:12:45,075 [INFO    ]   1) GW3: Geology and Ground-Water Resources of Eddy County, NM (1952) G.E. Hendrickson & R.S. Jones, NM Bureau of Geology; 2) USGS
+2025-09-30 11:12:45,075 [INFO    ]   1) Lowry, T.S., et al. (2018) Water Resource Assessment in the NM Permian Basin, Sandia Report SAND2018-12018, 2) 3) Sandia Natl. Labs Report SAND2021-1869
+2025-09-30 11:12:45,075 [INFO    ]   1) Lowry, T.S., et al. (2018) Water Resource Assessment in the NM Permian Basin, Sandia Report SAND2018-12018, 2) Sandia Natl. Labs Report SAND2021-1869
+2025-09-30 11:12:45,076 [INFO    ]   1) Myers, Everheart, Wilson (1994) Geohydrol. of San Agustin Basin, Alamosa Creek Basin upstream from Monticello Box & Upper Gila Basin in parts of Catron, Socorro & Sierra Cty, NM, USGS WRI 94-4125
+2025-09-30 11:12:45,076 [INFO    ]   1) Sandia National Labs/ BLM Wells, 2) Sandia Natl. Labs Report SAND2021-1869
+2025-09-30 11:12:45,076 [INFO    ]   1) Turner, B., 1996, Water Availability for the El Mirador Subdvn, Taos Cty, NM, Turner Environ. Consult., Appd 2&3 (filed w/TV-229). 2) Vista del Valle report (filed w/TV-153). 3) Drakos, P. 2005, Ge
+2025-09-30 11:12:45,076 [INFO    ]   1) USGS - WL; 2) Brandvold - WQ
+2025-09-30 11:12:45,076 [INFO    ]   1) USGS - WLs 2) Brandvold -WQ
+2025-09-30 11:12:45,077 [INFO    ]   1) USGS - WLs 2) Brandvold -WQ, 3) OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,077 [INFO    ]   1) USGS 2) BLM, 3) Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38, 4) Sandia National Labs SAND2018-12018 NM Permian Basin
+2025-09-30 11:12:45,077 [INFO    ]   1) USGS 2) David Chace of Hydro Resolutions
+2025-09-30 11:12:45,077 [INFO    ]   1) USGS 2) Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38.
+2025-09-30 11:12:45,077 [INFO    ]   1) USGS 2) San Pedro Creek Estates HOA
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS 2) Sandia National Labs/ BLM Well, 3) Sandia Natl. Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS 2) Sandia National Labs/BLM Well
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS and 2) Data from Lynn Brandvold with NMBGMR chemistry lab, 3) OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS, 2) BLM, 3) Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38, 4) Sandia Report SAND2018-12018 NM Permian Basin
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS, 2) Circular 26: Water Well Records and Well Water Quality in Southwestern San Agustin Plains, Catron Cty, NM (1954) Bushman, F.X. and Valentine, C.P., NMBGMR
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS, 2) OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,078 [INFO    ]   1) USGS, 2) Sandia National Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin
+2025-09-30 11:12:45,079 [INFO    ]   1) USGS, 2) Sandia Natl. Lab Report SAND2018-12018 Water Resource Assessment in the NM Permian Basin.
+2025-09-30 11:12:45,079 [INFO    ]   1) USGS, 2) Sandia Natl. Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin
+2025-09-30 11:12:45,079 [INFO    ]   1) USGS, 2) Sandia Natl. Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin, 3) GW3: Geol. & Groundwater Res. of Eddy Cty. (1952) Hendrickson & Jones, NMBGMR, 4) SNL SAND2021-1869
+2025-09-30 11:12:45,079 [INFO    ]   1) USGS, 2) Sandia Natl. Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin, 3) Sandia Natl. Labs Report SAND2021-1869
+2025-09-30 11:12:45,079 [INFO    ]   1) USGS, 2) Sandia Natl. Labs Report SAND2021-1869
+2025-09-30 11:12:45,079 [INFO    ]   1) Well depth and screen info. from spreadsheet from mayor of Questa.  2) Pre-design groundwater investigation at the tailing facility - Final work plan. April 24, 2013, Arcadis.
+2025-09-30 11:12:45,080 [INFO    ]   AGW Consultants, 12/85, Geohydro of R.San Marcos Property; Balleau GWA, 1999; field check
+2025-09-30 11:12:45,080 [INFO    ]   AGW Consultants, 12/85, Geohydrology of Rancho San Marcos
+2025-09-30 11:12:45,080 [INFO    ]   AGW Consultants, May 1984, Hydrogeology of the Santa Fe Downs Resort Area Near Santa  Fe, Santa Fe County, NM
+2025-09-30 11:12:45,080 [INFO    ]   AGWC, Inc., 1983, Hydrogeology of the Great Cloud Zen Center,  Oct 1983
+2025-09-30 11:12:45,080 [INFO    ]   Also see: Drakos, P., 2007, Geohydrology of the Estancias Atalaya Subdivision, Taos County, New Mexico, Glorieta Geoscience, Inc. (Filed w/TV-103).
+2025-09-30 11:12:45,080 [INFO    ]   American Ground Water Consultants, 1983, Hydrogeology of the Villa Marika Property, October 1983.
+2025-09-30 11:12:45,080 [INFO    ]   AMP visited this well on 5/25/2022 but we didn't do a well inventory.
+2025-09-30 11:12:45,080 [INFO    ]   ARCADIS Project B0046795.0019, Early Design Actions-Pre-Design Tailing Facility Groundwater Invest. Results from Monitoring Wells MW-43, MW-44 and MW-45 (May 1, 2015).
+2025-09-30 11:12:45,081 [INFO    ]   ARCADIS well/lithologic log
+2025-09-30 11:12:45,081 [INFO    ]   Author (?), 1998, Geohydrology of River Bend Subdivision, Taos County, New Mexico, Glorieta Geoscience, Inc.  Also in NMGS Gdbk 55 pg 396.
+2025-09-30 11:12:45,081 [INFO    ]   Balleau Groundwater, 2001, CDEX1 Completion Report
+2025-09-30 11:12:45,081 [INFO    ]   Balleau Groundwater, 2002, CDPROD1 Completion Report, 2/02
+2025-09-30 11:12:45,081 [INFO    ]   Balleau Groundwater, Inc., Oct 2007, Injection Demonstration Well -- Well Completion  Report
+2025-09-30 11:12:45,082 [INFO    ]   Balleau Groundwater, Inc., Oct 2007, Observation Well  A  -- Well Completion  Report
+2025-09-30 11:12:45,082 [INFO    ]   Balleau Groundwater, Inc., Oct 2007, Observation Well  B  -- Well Completion  Report
+2025-09-30 11:12:45,082 [INFO    ]   Balleau Groundwater, Inc., written communication, 11/27/2007
+2025-09-30 11:12:45,082 [INFO    ]   Balleau GW, 2002, CDPROD Completion Report; well log
+2025-09-30 11:12:45,082 [INFO    ]   Balleau GWA, 1999; Balleau GWA
+2025-09-30 11:12:45,082 [INFO    ]   Balleau GWA, 1999; field check
+2025-09-30 11:12:45,082 [INFO    ]   Balleau GWA, 1999; field check; Jenkins, 1977, Geohydro Investigation of Turquoise Trail Subdivision
+2025-09-30 11:12:45,082 [INFO    ]   Bjorklund, L.J. (1957) Reconnaissance of Groundwater Conditions in the Crow Flats Area Otero Cty, NM, OSE Tech Rep 8.
+2025-09-30 11:12:45,082 [INFO    ]   Black & Veatch Consulting Engineers, 1978, Construction and Testing Report Buckman Well No. 2;  Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; C. Borchert, written communication, 3/23/09
+2025-09-30 11:12:45,083 [INFO    ]   Black & Veatch Consulting Engrs, 1978, Construction and Testing Rept Buckman Well No. 1; NMED DWB (1999) via Jemez y Sangre Database (2000); Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis
+2025-09-30 11:12:45,083 [INFO    ]   Bob Hubbard
+2025-09-30 11:12:45,083 [INFO    ]   Bureau scientists performed a pump test on this well.
+2025-09-30 11:12:45,083 [INFO    ]   C. Borchert, written comm.; WATERS
+2025-09-30 11:12:45,083 [INFO    ]   Carrol Wood, well owner.
+2025-09-30 11:12:45,083 [INFO    ]   Cathie.
+2025-09-30 11:12:45,083 [INFO    ]   CB00107524CCA
+2025-09-30 11:12:45,084 [INFO    ]   CDM completion log to NMED SW Bureau
+2025-09-30 11:12:45,084 [INFO    ]   CDM well completion log to NMED SW Bureau; written communications from NMED SolidWaste Bureau
+2025-09-30 11:12:45,084 [INFO    ]   CH2M Hill report to NMED UST Bureau
+2025-09-30 11:12:45,084 [INFO    ]   CH2M Hill water level measurements at WWTP (entered into db).
+2025-09-30 11:12:45,084 [INFO    ]   Charles Heaton, Sinagua Consultants, 1999, Well Hydrology Report Elmer Garcia Property, Aug 1999; County Records; well log; field check
+2025-09-30 11:12:45,084 [INFO    ]   Charles Walker
+2025-09-30 11:12:45,084 [INFO    ]   Chemistry data from Lynn Brandvold with NMBGMR chemistry lab. NMBGMR visited the site after chem. data input.
+2025-09-30 11:12:45,085 [INFO    ]   Chemistry from Matt Sophy
+2025-09-30 11:12:45,085 [INFO    ]   Chemistry in Excel spreadsheet (See documents in Aquifer_mapping\BrackishWater\BW_database\BOR-Desal-Wells)
+2025-09-30 11:12:45,085 [INFO    ]   Circular 26: Water Well Records and Well Water Quality in Southwestern San Agustin Plains, Catron Cty, NM (1954) Bushman, F.X. and Valentine, C.P., NMBGMR
+2025-09-30 11:12:45,085 [INFO    ]   City of Santa Fe; OSE records. NMED DWB (1999) via Jemez y Sangre Database (2000). Shomaker, J.W., 1998, Sustainable Ground-Water Production from City Well Field, Santa Fe, NM, 4/98;  CDM, Jan 2001
+2025-09-30 11:12:45,085 [INFO    ]   City of Santa Fe; OSE records. NMED DWB (1999) via Jemez y Sangre Database (2000); Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis
+2025-09-30 11:12:45,085 [INFO    ]   City of Santa Fe; OSE records; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis
+2025-09-30 11:12:45,085 [INFO    ]   Claudia Borchert, 2002, MS Thesis
+2025-09-30 11:12:45,086 [INFO    ]   Compiled by Susan VonGonten, NMED UST Bureau
+2025-09-30 11:12:45,086 [INFO    ]   Consulting Professionals, Inc, Hydrogeologic Rept La Tierra Subdn, Phase 4, Santa Fe Cnty, Dec1978
+2025-09-30 11:12:45,086 [INFO    ]   Consulting Professionals, Inc., VeneKlasen, 1975, Hydrogeologic Report for La Tierra Subdivision, 6/75; well log
+2025-09-30 11:12:45,086 [INFO    ]   Cooper, 1991, Geohydro Rept for Country Boarding Kennel, 5/1991
+2025-09-30 11:12:45,086 [INFO    ]   Cooper, 1995, Garcia Ranch report; Wilson, 1978, SFC water plan Table 1-28; field check by Johnson; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis.
+2025-09-30 11:12:45,086 [INFO    ]   Cooper, 1995, rept to Garcia  Ranch; Kuckleman, 2003
+2025-09-30 11:12:45,086 [INFO    ]   Cooper, D. R., 1995, Geohydrology Report for Cottonwood Ranch Subdn, Santa Fe Cty, NM, April 1995
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., 1998, Geohydrology for WK Jones, Santa Fe Cnty,  Oct 1998
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., Geohydrologic Report for Rancho De Los Cuervos, Santa Fe Cnty, Sept1986; Berman Tract
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., Geohydrology Report for Frank M Gallegos & Andrew M Leyba, Santa Fe Cnty, Oct, 1999
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., Geohydrology Report for Friendly Construction, Inc., Santa Fe Cnty,  July 1994
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., Geohydrology Report for Tano Vista Grande, Santa Fe Cnty, NM, Nov 1996
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D. R., Geohydrology Rept for Marvin Pollock &  Bettina Lancaster, Santa Fe Cnty,  May 1994
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D.R., Geohydrology Rept for El Prado Subdn, Santa Fe Cnty, Sept 1994
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, D.R., Santa Fe Design Assoc, Geohydrology Rept for Rancho Oso Loco, Santa Fe Cnty, 1985
+2025-09-30 11:12:45,087 [INFO    ]   Cooper, Dennis R., Geohydrology for Rancho De Los Ninos, Santa Fe Cnty, NM, April 1999; Rick Borrego
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Report for Bob Shipp, Santa Fe County, NM, June 1995
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Report for Heartstone Development LLC, Dec 2001
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Report for James B. Alley Jr., Santa Fe Cnty, NM, March 1995
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Report for Lawrence Tuchman, Santa Fe Cnty,  Oct 1994; Frost & Assoc., Santa Fe County WQ Monitoring, June 1996
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Report For Los Suenos, Santa Fe County, NM, April 1994
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., Geohydrology Rept for Jeffrey Jacobs & Thad Bowman, Santa Fe Cnty, Jan 1996
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., July 1995, Analysis of water levels in wells on Garcia Ranch, unpub consult rept
+2025-09-30 11:12:45,088 [INFO    ]   Cooper, Dennis R., July 1995, Unpub report to Garcia Ranch; well log; WATERS; USGS field notes
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis, 1990, Geohydrology Report for San Juan Complex Partnership Ltd., Sept 1990; Field check by Johnson; well log; SFO files
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis, 1993, Geohydrology Rept for Neighbors, Inc., Santa Fe Cnty, Dec 1993; well log Joe Briscoe
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis, 2000, Geohydro Rept for Roybal Subdivision, Santa Fe Cnty, NM, Oct 2000; field check
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis, Geohydrol Rept for Hacienda Del Cerezo, Santa Fe Cnty, NM, Jan 1994; well logs
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis, Geohydrology Rept for B. Howard & J.Morris, Santa Fe Cnty, NM, Dec 1994
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Dennis,1991, Geohydrology Rept for  Sheila Cooper; field check by Johnson
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Geohydro Report for Land Ventures, LLC, 6/2001; field check by Johnson; well log
+2025-09-30 11:12:45,089 [INFO    ]   Cooper, Geohydrology Rept for Welsh Family Ltd Partnership, Santa Fe Cnty,  March 1995
+2025-09-30 11:12:45,089 [INFO    ]   Corbin Consulting, Inc., 2005, Geohydrology Report (RG-27728-S) Longanecker Property.  March 8, 2005
+2025-09-30 11:12:45,090 [INFO    ]   Corbin Consulting, Inc., 2005, Geo-Hydrology Report McMillan Subdivision, June 6, 2005
+2025-09-30 11:12:45,090 [INFO    ]   Corbin, J., 2004, Constant Property Geohydrology Report, Corbin Consulting Inc. June 3, 2004.  Field checked.
+2025-09-30 11:12:45,090 [INFO    ]   Corbin, James, 2005, Reconnaissance Report McMillan Property.  Feb. 28, 2005 (EB-618)
+2025-09-30 11:12:45,090 [INFO    ]   Corbin, James, 2005, Reconnaissance Report McMillan Property.  Feb. 28, 2005; (EB-618)
+2025-09-30 11:12:45,090 [INFO    ]   Corbin, James, 2005.
+2025-09-30 11:12:45,090 [INFO    ]   County records; WATERS; drilling log
+2025-09-30 11:12:45,090 [INFO    ]   County records; well log
+2025-09-30 11:12:45,090 [INFO    ]   CT890 also at same site, cinfusing records not sure which well is correct, this one has a log
+2025-09-30 11:12:45,091 [INFO    ]   Cuttings from NMBG. Bill White has cuttings. Geophysics: gamma ray, neutron, 3-arm-caliper, resistivitity, single pt resistance, SP, temperature profile
+2025-09-30 11:12:45,091 [INFO    ]   Dames & Moore, Inc., 1995, Geohydroloy Report Komis Estates for Southwest Surveying Co., Inc., Dec. 1995; J. Corbin personal communication, 2005
+2025-09-30 11:12:45,091 [INFO    ]   Daniel B. Stephens & Associates report on Campbell Ranch subdivision wells
+2025-09-30 11:12:45,091 [INFO    ]   Daniel B. Stevens & Associates consultant report (AMP\data\datasets\Campbell Ranch Bernalillo County)
+2025-09-30 11:12:45,091 [INFO    ]   Darr, M.J., 2006, Geohydrologic Investigation Report: Proposed "Ocotillo" Subdivision, Taos County, NM. MJDarrconsult, Inc / Hydroscience Assoc. Inc, 2006, Analysis of Aquifer Test Run Using RG-87080
+2025-09-30 11:12:45,091 [INFO    ]   Darr, M.J., 2008, Geohydrologic Investigation Report: Proposed Los Llanos Subdivision, Taos County, New Mexico, MJDarrconsult, Inc.
+2025-09-30 11:12:45,091 [INFO    ]   Darr, Michael J., 2007, Geohydrologic Investigation Report: Proposed "Golf Country" Subdivision, Taos County, New Mexico, MJDarrconsult, Inc.
+2025-09-30 11:12:45,091 [INFO    ]   Data from Groundwater Report 2: Geology & Groundwater Resources of San Miguel County, NM. (1951) NMBGMR by R.L. Griggs and G.E. Hendrickson.
+2025-09-30 11:12:45,092 [INFO    ]   Data from Lynn Brandvold with NMBGMR chemistry lab.
+2025-09-30 11:12:45,092 [INFO    ]   Data from Lynn Brandvold with NMBGMR chemistry lab., OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,092 [INFO    ]   Data from owner well testing via NMBGMR water lab.
+2025-09-30 11:12:45,092 [INFO    ]   David Chace of Hydro Resolutions
+2025-09-30 11:12:45,092 [INFO    ]   David Jenkins, Geohydrology of the Los Vaqueros Subdn, Santa Fe Cnty, May 1983
+2025-09-30 11:12:45,092 [INFO    ]   David N Jenkins, Geohydrolgoy of the Las Dos, Phase II Area, Santa Fe County, NM, October 1982
+2025-09-30 11:12:45,092 [INFO    ]   David N Jenkins, Geohydrologic Conditions at the San Juan Residences, Santa Fe Cnty, April 1982
+2025-09-30 11:12:45,092 [INFO    ]   David N Jenkins, Geohydrology of the Los Vaqueros Subdn, Santa Fe Cnty, May 1983
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Los Vaqueros Subdn, Santa Fe Cnty, May 1983;
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Los Vaqueros Subdn, Santa Fe Cnty, May 1983; Steinberger log of R1 test hole, K.Summers files
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Los Vaqueros Subdn, Santa Fe Cnty, May 1983; WK Summers project files
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Vista Subdivision, Santa Fe County, Dec 1979
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Vista Subdivision, Santa Fe County, Dec 1979; Mourant; Spiegel & Baldwin, p 241
+2025-09-30 11:12:45,093 [INFO    ]   David N Jenkins, Geohydrology of the Vista Subdivision, Santa Fe County, Dec 1979; WATERS
+2025-09-30 11:12:45,093 [INFO    ]   David N. Jenkins, Geohydrologic Conditions at the Thorpe Condominiums, Santa Fe Cnty,  Nov 1982
+2025-09-30 11:12:45,093 [INFO    ]   David Updegraff & William Lyons, 1978, Geohydrology of the Hyde Park Estates Unit 3 Subdiv'n, Aug 1978
+2025-09-30 11:12:45,094 [INFO    ]   DBStephens report to NMED UST Bureau
+2025-09-30 11:12:45,094 [INFO    ]   depth made up by GCR based on nearby wells, no actual data
+2025-09-30 11:12:45,094 [INFO    ]   depth made up by GCR, no actual data, assume similar to well K-14 (UC 30)
+2025-09-30 11:12:45,094 [INFO    ]   Discussion of Geology, Hydrogeology, and Water Quality of the Tailings Area, Molycorp Facility, Taos County, NM, 1995, South Pass Resources, Inc.
+2025-09-30 11:12:45,094 [INFO    ]   Drakos, P. & Hodgins, M., 2000, Drilling and Testing Report, Bureau of Reclamation 2000-Feet Deep Nested Piezometer/Exploratory Well (BOR #1), Taos, NM, GGI.  Also, Water Level Monitoring Prgm. 2002-2
+2025-09-30 11:12:45,094 [INFO    ]   Drakos, P. and Hodgins, M., 2000, Drilling and Testing Report, Bureau of Reclamation 2000-Feet Deep Nested Piezometer/Exploratory Well (BOR #1), Taos, NM, Glorieta Geoscience, Inc.   Also, Water Level
+2025-09-30 11:12:45,094 [INFO    ]   Drakos, P., 2007, Geohydrology of the Estancias Atalaya Subdivision, Taos County, New Mexico, Glorieta Geoscience, Inc.
+2025-09-30 11:12:45,094 [INFO    ]   Drakos, P., et al., 2004, Hydrologic Characteristics of Basin-Fill Aquifers in the Southern San Luis Basin, NM, NMGS Guidebook 55, pg. 391.
+2025-09-30 11:12:45,095 [INFO    ]   Drakos, P., Hodgins, M., 2000, Drilling & Testing Report, Bureau of Reclamation 2000-Ft. Deep Nested Piezometer/Exploratory Well (BOR #1), Taos, NM, GGI. 2) Water Level Monitoring Prgm. 2002-2007, GGI
+2025-09-30 11:12:45,095 [INFO    ]   Drakos, P., Hodgins, M., Lazarus, J. & Riesterer, J, 2002, Drilling & Testing Report, BOR 2000-Ft. Deep Nested Piezometer/Expl. Well (BOR-2) & 2100-Ft. Deep Production Well (BOR-3), Paseo del Canon We
+2025-09-30 11:12:45,095 [INFO    ]   Drakos, P., Hodgins, M., Lazarus, J. and Riesterer, J, 2002, Drilling & Testing Report, BOR 2000-Feet Deep Nested Piezometer/Exploratory Well (BOR-2) & 2100-Feet Deep Production Well (BOR-3), Paseo de
+2025-09-30 11:12:45,095 [INFO    ]   Drakos, P., Riesterer, J., and Lazarus, J., 2007, Drilling and Completion Report, Rio Pueblo 3200 Feet Deep Production Well (RG-37303-S), Taos, NM, Glorieta Geoscience, Inc. Also,  Water Level Monitor
+2025-09-30 11:12:45,095 [INFO    ]   Driller's log; OSE network WLs
+2025-09-30 11:12:45,095 [INFO    ]   dubiousOSE match, depth and location are off
+2025-09-30 11:12:45,095 [INFO    ]   Duncan, 2004.
+2025-09-30 11:12:45,095 [INFO    ]   Duncan, 2004; field check by Johnson 12-22-05
+2025-09-30 11:12:45,096 [INFO    ]   Duncan, 2004; Frost, 1999, ElDorado Area Water & Sanitation District Project files
+2025-09-30 11:12:45,096 [INFO    ]   Duncan, 2004; J.Frost, 1999, Eldorado Area WQ study
+2025-09-30 11:12:45,096 [INFO    ]   Duncan, 2004; J.Frost, 1999, Eldorado Area WQ study.
+2025-09-30 11:12:45,096 [INFO    ]   Duncan, 2004; JSAI, 2001, App. #6
+2025-09-30 11:12:45,096 [INFO    ]   Exploratory & Shallow Well Drilling Rio Grande Watershed Study-Phase 1 San Acacia Surface Water/Groundwater Investigation (Dec. 5, 2003) S.S. Papadopulos & Associates for US Army Corps of Engineer
+2025-09-30 11:12:45,096 [INFO    ]   Faith Engineering, Inc., 1994, Pump Test Report for the  Alto St Well, 12/5/94
+2025-09-30 11:12:45,096 [INFO    ]   Field check by Johnson
+2025-09-30 11:12:45,096 [INFO    ]   Field check by Johnson, Cruz, Frost; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; D.Koning log review
+2025-09-30 11:12:45,096 [INFO    ]   Field check by Johnson; Cooper, 1995, report to Garcia Ranch; Borton field notes
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; Kuckleman Pump Service, report of visit 2/14/2002
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; Kuckleman Pump Service, report of visit 7/2/98
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; owner info
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; WATERS
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; WATERS; Mourant
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; WATERS; sample site for Anderholm, 1994 USGS WRI Report 94-4078
+2025-09-30 11:12:45,097 [INFO    ]   Field check by Johnson; well log
+2025-09-30 11:12:45,098 [INFO    ]   Field check by Johnson; well log; owner
+2025-09-30 11:12:45,098 [INFO    ]   Field check by Johnson; well log; SFO files
+2025-09-30 11:12:45,098 [INFO    ]   Field check by Johnson; well record
+2025-09-30 11:12:45,098 [INFO    ]   Field check by Johnson; well/owner records
+2025-09-30 11:12:45,098 [INFO    ]   Field check by Lyman
+2025-09-30 11:12:45,098 [INFO    ]   Field check with Lyman and BLM realtor Hal Knox; plat map
+2025-09-30 11:12:45,098 [INFO    ]   Field check, WATERS
+2025-09-30 11:12:45,098 [INFO    ]   Field check; owner
+2025-09-30 11:12:45,099 [INFO    ]   Field check; owner; well log
+2025-09-30 11:12:45,099 [INFO    ]   Field check; WATERS
+2025-09-30 11:12:45,099 [INFO    ]   Field check; WATERS. OSE Well Record.
+2025-09-30 11:12:45,099 [INFO    ]   Field check; WATERS.OSE Well Record.
+2025-09-30 11:12:45,099 [INFO    ]   Field check; well log
+2025-09-30 11:12:45,099 [INFO    ]   Field check; well logg
+2025-09-30 11:12:45,099 [INFO    ]   Field check; well record
+2025-09-30 11:12:45,099 [INFO    ]   Field checked
+2025-09-30 11:12:45,100 [INFO    ]   Field checked, WATERS
+2025-09-30 11:12:45,100 [INFO    ]   Field checked, Well owners recollection of well info
+2025-09-30 11:12:45,100 [INFO    ]   Field checked. WATERS. OSE Well Record.
+2025-09-30 11:12:45,100 [INFO    ]   Field checked; WATERS
+2025-09-30 11:12:45,100 [INFO    ]   Field checked; WATERS. OSE Well Record.
+2025-09-30 11:12:45,100 [INFO    ]   Field checks; WATERS; well record.
+2025-09-30 11:12:45,100 [INFO    ]   Finch & Petronis (JS&A), Sept. 2006, Hydrogeologic Report for the Galisteo Basin Preserve, Santa Fe County, NM, for Commonweal Conservancy, unpub. consultant report
+2025-09-30 11:12:45,100 [INFO    ]   Finch, S.T., Jr., 2001, Hydrogeologic Evaluation of T-255 Et. Al., Near Carrizozo, New Mexico, John Shomaker & Associates, Inc.
+2025-09-30 11:12:45,101 [INFO    ]   Finch, Steven T., and Melis, Erwin A., October 2008, Hydrogeologic evaluation of ground-water supply for the Spaceport America Site near Upham, NM, John Shomaker & Associates.
+2025-09-30 11:12:45,101 [INFO    ]   Fleming, WM, Geohydrology Report for the Matthews Property, Santa Fe County, July 26, 1991
+2025-09-30 11:12:45,101 [INFO    ]   Foreman
+2025-09-30 11:12:45,101 [INFO    ]   Frost MWB notes, 1994
+2025-09-30 11:12:45,101 [INFO    ]   Frost MWB Survey notes
+2025-09-30 11:12:45,101 [INFO    ]   Frost, 1996, Santa Fe Cnty Ground Water Levels, 1995-96 Results; GWSI; USGS log books; well record
+2025-09-30 11:12:45,101 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results, Jan 1996
+2025-09-30 11:12:45,101 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results, Jan 1996; field check
+2025-09-30 11:12:45,101 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results, Jan 1996; Lewis database; NMED DWB (1999) via Jemez y Sangre Database (2000)
+2025-09-30 11:12:45,102 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results, Jan 1996; Mourant
+2025-09-30 11:12:45,102 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results; Mourant; GWSI; fieldchk by Johnso
+2025-09-30 11:12:45,102 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results; Mourant; GWSI; fieldchk by Johnson
+2025-09-30 11:12:45,102 [INFO    ]   Frost, 1996, Santa Fe County Ground Water Levels, 1995-96 Results; Mourant; GWSI; well record
+2025-09-30 11:12:45,102 [INFO    ]   Frost, 1999; WATERS
+2025-09-30 11:12:45,102 [INFO    ]   Frost, MWB Survey notes; D.Koning log review
+2025-09-30 11:12:45,102 [INFO    ]   Full EPA ID #TB-B011-150811-21
+2025-09-30 11:12:45,102 [INFO    ]   Full EPA ID #TB-B023-150814-021
+2025-09-30 11:12:45,103 [INFO    ]   Full EPA ID #TD-D001-150812-21
+2025-09-30 11:12:45,103 [INFO    ]   Full EPA ID #TD-D003-150812-21
+2025-09-30 11:12:45,103 [INFO    ]   Garrabrant, L.A., 1993, Water resources of Taos County, NM: USGS WRIR 93-4107.
+2025-09-30 11:12:45,103 [INFO    ]   Geohydrologic Assessment of the Augustin Plains Ranch Area, NM (Tech. Memorandum), March 2, 2012, Geoscience. Cuttings archived in our core shed.
+2025-09-30 11:12:45,103 [INFO    ]   Geohydrologic Assessment of the Augustin Plains Ranch Area, NM (Tech. Memorandum), March 2, 2012, Geoscience. Pump test from driller (JSAI). Cuttings/chip boards archived in our core shed.
+2025-09-30 11:12:45,103 [INFO    ]   Geohydrology Assoc., Inc. 1983, Geohydrology of Rancho Viejo Prop, SFC, NM, Feb 1983, LMCoons
+2025-09-30 11:12:45,103 [INFO    ]   Geohydrology Assoc., Inc. 1983, Geohydrology of Rancho Viejo Prop, SFC, NM, Feb 1983, LMCoons; map
+2025-09-30 11:12:45,103 [INFO    ]   Geohydrology Assoc., Inc. lithologic log to NMED SW Bureau; field check by Johnson
+2025-09-30 11:12:45,104 [INFO    ]   Geohydrology Assoc., Inc., 1988, Hydrogeologic Investigation of Cottonwood Estates, 2//88; WATERS
+2025-09-30 11:12:45,104 [INFO    ]   Geophysics: dual induction guard, dual spaced neutron,microlog, high-resol temp log. WQ: Sorrell, John D. and Banet, Christopher, Karavas Tract Exploratory Well, Nov. 1993, Bureau of Indian Affairs.
+2025-09-30 11:12:45,104 [INFO    ]   GGI
+2025-09-30 11:12:45,104 [INFO    ]   GGI report (has WQ sample). Requested from P. Drakos; have not received response.
+2025-09-30 11:12:45,104 [INFO    ]   GGI report for NMED UST Bureau
+2025-09-30 11:12:45,104 [INFO    ]   GGI report to NMED UST Bureau
+2025-09-30 11:12:45,104 [INFO    ]   GGI reports: 1) 2001 report on RP-2500 in Town of Taos, 2) Water Level Monitoring
+2025-09-30 11:12:45,104 [INFO    ]   GGI,  Geohydrology of the Woods Property, Santa Fe Cnty, NM,3/19/92; Sangre de Cristo Estates rept
+2025-09-30 11:12:45,104 [INFO    ]   GGI, 100-Yr Water Availability Santa Fe Metro Center, 12/01; AND La Cienega de Santa Fe Proj, 10/91
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1988, Geohydrology of the Picture Rock Development Co. Property, Santa Fe, May, 1988.
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1989, Geohydrology of the Baird Joint Venture Property, Taos County, NM, Glorieta Geoscience, Inc.
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1989, Reconnaissance Geohydrology of the Lumpkins Property, Santa Fe County, NM,  August 1989
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1990, Geohydrology of the Bajo Del Cielo Subdivision, Santa Fe County, NM. Dec. 1990
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1990, Geohydrology of the Beaver and Henry Properties, Santa Fe Cnty,  Aug 1990
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1991, Geohydrology of the Walker Property, Santa Fe, May, 1991.
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1995, Geohydrology of the Santa Fe Opera Tract Prop, Santa Fe Cnty, 3/95; G.Ellis; well log
+2025-09-30 11:12:45,105 [INFO    ]   GGI, 1995, Geohydrology of the Vereda Serena Property, Santa Fe, October, 1995.
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 1995, Production well and observation well installation, testing, and determination of aquifer coefficients: unpub consultant report for Town of Taos, March 1995
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 1998, Ground Water Conditions in the Vicinity of the Gonzales Tract San Marcos Arroyo Santa Fe County, NM, Dec. 1998
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2001, Geohydrologic report for the Village at Eldorado, July, 2001.
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2001, Vista del Valle Subdivision Report, Taos County, New Mexico
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2002, Addendum To: Reconnaissance Geohydrologic Characterization of Tesuque Ridge, 8/28/2002
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2002, Reconnaissance Geohydrologic Characterization of Tesuque Ridge Subdivn, 7/17/02
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2003, Geohydrologic Report for the Luna Rosa LLC Equestrian Center Property,  July 2003.
+2025-09-30 11:12:45,106 [INFO    ]   GGI, 2003, Reconnaissance Geohydrology report of the Clements Property, Santa Fe, April, 2003.
+2025-09-30 11:12:45,107 [INFO    ]   GGI, 2003, Reconnaissance Water Availability Assessment of the Santa Fe Waldorf School - High School
+2025-09-30 11:12:45,107 [INFO    ]   GGI, 2004, Geohydrology of the Estancia Subdivision, Santa Fe County, December, 2004
+2025-09-30 11:12:45,107 [INFO    ]   GGI, 2004, Reconnaissance Geohydrology Report for the Beaty Property, Santa Fe Cty, Dec. 22, 2004.
+2025-09-30 11:12:45,107 [INFO    ]   GGI, Chapter VI Geohydrology of the La Cienega de  Santa Fe Project, Oct 1991; GGI, 100-Yr Water Availability, Downs at Santa Fe, March 2001 for Pojoaque Pueblo Development Corp
+2025-09-30 11:12:45,107 [INFO    ]   GGI, Geohydro of Naiche Property, 12/92; field check by Johnson; well recd
+2025-09-30 11:12:45,107 [INFO    ]   GGI, Geohydrologic report for the Rancho San Lucas Subdivision, Feb 2002
+2025-09-30 11:12:45,107 [INFO    ]   GGI, Geohydrology of La Canada Subdivision, Santa Fe County, NM, July 1985
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of Pop's Convenience Store, Santa Fe County, NM, Sept 29, 1997
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Brenner Property, Santa Fe County, NM, Aug 1990
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Bryant Prop, Santa Fe Cnty,  May 1995; GGI, San Ysidro de Tesuque, May 1990
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Bryant Property, Santa Fe County, NM, May 1995; GGI, 1989
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Circle Drive Compound Prop, Santa Fe Cnty,  May 1991
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Hansen Property, Santa Fe County, NM,  June 1990
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Insight Investments Property, Santa Fe Cnty, NM, 2/20/90
+2025-09-30 11:12:45,108 [INFO    ]   GGI, Geohydrology of the Lane Property, Santa Fe Cnty, NM, 4/29/92
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the McElvain/Patania Property, 6/92
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the McMahon Property, Santa Fe Cnty, Oct 1990
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the McMahon Property, Santa Fe Cnty, Oct 1990; GGI, Geohydrology of the Santa Fe Arroyo Hondo Vistas Subdivision, SFe County, Aug. 1989
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Migel Property, Santa Fe Cnty, 2/90; GGI, Geohydro of McMahon Prop 10/90
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Mountain Vista Subdivision, Santa Fe County, July 10, 2002
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Myers Property, Santa Fe Cnty, July 1992
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Naiche Property, Santa Fe County, NM, Dec 1992
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Prince Property, 8/91; McElvain-Patania Prop, 6/92
+2025-09-30 11:12:45,109 [INFO    ]   GGI, Geohydrology of the Santa Fe Animal Shelter Site, Santa Fe County, NM, May 15, 2002
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Santa Fe Opera Tr, Santa Fe Cnty, 3/95; GGI, San Ysidro de Tesuque, 5/90
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Shulman Property, Santa Fe Cnty, April 1990
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Vrtiak Property, Santa Fe Cnty, June, 1991
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the West Alameda Proj, Santa Fe Cnty, NM, Jan 1989
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Woods Property, Santa Fe Cnty, March 19, 1992
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Yamada Property, Santa Fe Cnty,  Oct 14, 1994; GGI, Bryant Prop; WATERS
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology of the Yamada Property, Santa Fe Cnty, Oct, 1994; GGI, Sangre de Cr Est, Jan 1989
+2025-09-30 11:12:45,110 [INFO    ]   GGI, Geohydrology Rept for Rancho San Lucas, Santa Fe Cnty, NM, Feb 2002; Geophysical logs
+2025-09-30 11:12:45,111 [INFO    ]   GGI, January 2005 Alexsis Geohydrology report (by Meghan Hodgins).
+2025-09-30 11:12:45,111 [INFO    ]   GGI, Reconnaissance Geohydrology Report, Leibman Property, Santa Fe County, NM. March 23, 1994
+2025-09-30 11:12:45,111 [INFO    ]   GGI, Reconnaissance Geohydrology Report, Neufeld Property, Santa Fe Cnty,  Nov 1988
+2025-09-30 11:12:45,111 [INFO    ]   Glorieta Geoscience Inc.
+2025-09-30 11:12:45,111 [INFO    ]   Glorieta Geoscience, Inc., 2006, Geohydrology and Water Availability for Phase 1, Santa Fe Canyon Ranch Subdivision, Santa Fe County, NM, March 22, 2006.
+2025-09-30 11:12:45,111 [INFO    ]   GW-1: Geology & Ground-Water Resources of the Eastern Part of Colfax Cty, NM (1948) Griggs, Roy L., NMBGMR
+2025-09-30 11:12:45,111 [INFO    ]   GW3: Geology and Ground-Water Resources of Eddy County, NM (1952) G.E. Hendrickson & R.S. Jones, NM Bureau of Geology
+2025-09-30 11:12:45,111 [INFO    ]   GW-4: Geology & Groundwater Res. of NE Socorro Cty, NM (1955) Spiegel, Zane, NM Bureau of Geology
+2025-09-30 11:12:45,112 [INFO    ]   GW5: Geology and Ground-Water Resources of Torrance County, NM (1957) R.E. Smith, NM Bureau of Geology
+2025-09-30 11:12:45,112 [INFO    ]   GW9: Groundwater Resources & Geology of Quay County, NM (1966) Charles Berkstresser, Jr. & Walter A. Mourant, NM Bureau of Geology
+2025-09-30 11:12:45,112 [INFO    ]   GWSI
+2025-09-30 11:12:45,112 [INFO    ]   GWSI/USGS well sheet; field check by Johnson
+2025-09-30 11:12:45,112 [INFO    ]   GWSI/USGS well sheet; field check by Johnson; D.Koning log review
+2025-09-30 11:12:45,112 [INFO    ]   GWSI/USGS well sheet; OFR 89-37; field check by Johnson; D.Koning log review
+2025-09-30 11:12:45,112 [INFO    ]   GWSI/USGS well sheet; WATERS
+2025-09-30 11:12:45,112 [INFO    ]   GWSI/USGS well sheet; WATERS; Cooper, 1995; field check by Johnson
+2025-09-30 11:12:45,113 [INFO    ]   GWSI/USGS well sheet; WATERS; field check by Johnson
+2025-09-30 11:12:45,113 [INFO    ]   GWSI/USGS well sheet; well record; field check by Johnson
+2025-09-30 11:12:45,113 [INFO    ]   GWSI/USGS well sheet; well record; field check by Johnson.
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; D.Koning log review
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; D.Koning log review; D.Koning log review
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; field check by Johnson
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; field check by Johnson; D.Koning log review
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; field check Johnson
+2025-09-30 11:12:45,113 [INFO    ]   GWSI; Mourant; well record; field check by Johnson
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS log books; field check by Johnson
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS log sheets; field check by Johnson; field check by Lyman and SFC Utilities
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS log sheets; well log; field check by Johnson
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS log sheets; well record; field check by Johnson
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS log sheets; well record; field check by Johnson; field check by Lyman and SFC Utilities
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS logbooks; field check by Johnson
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS logbooks; Frost, 1996, Santa Fe County GWLs, 1995-96 Results, 1/96; K.Summers notes from 11/16/70 aquifer test; Frost, 1999, written comm.
+2025-09-30 11:12:45,114 [INFO    ]   GWSI; USGS well sheet; field check by Johnson
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; USGS well sheet; well log; Johnson, 2003; VeneKlasen, 2/86, Geohydro Rept Arroyo Hondo West
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; USGS well sheets; field check by Johnson
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; water right declaration; field check by Johnson
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; water right declaration; field check Johnson; Aqua Drilling well log. WQ from Longmire
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; WATERS
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; well log; field check by Johnson
+2025-09-30 11:12:45,115 [INFO    ]   GWSI; well record; field check by Johnson
+2025-09-30 11:12:45,115 [INFO    ]   Hall, J., 2010, Blackstone Ranch Well RG-82913 48-hr Pumping Test, Taos, NM, GGI.
+2025-09-30 11:12:45,116 [INFO    ]   Heaton (Sinagua Consultants), Well Hydro Report Capitol Ford Body Shop, Jan 1999
+2025-09-30 11:12:45,116 [INFO    ]   Hiss, W.L. (1973) Capitan Aquifer Observation-Well Network Carlsbad to Jal, NM, OSE Technical Report #38.
+2025-09-30 11:12:45,116 [INFO    ]   Hood, J.W. and Kister, L.R. (1962) Saline-Water Resources of NM. USGS Water-Supply Paper 1601
+2025-09-30 11:12:45,116 [INFO    ]   Hood, J.W. and Kister, L.R. (1962) Saline-Water Resources of NM. USGS Water-Supply Paper 1601; Bjorklund, L.J. (1957) Recon. of Groundwater Conditions in Crow Flats Area Otero Cty, NM, OSE Tech Rep 8
+2025-09-30 11:12:45,116 [INFO    ]   Hood, J.W. and Kister, L.R. (1962) Saline-Water Resources of NM. USGS Water-Supply Paper 1601; Bjorklund, L.J. (1957) Recon. of Groundwater Conditions in Crow Flats Area Otero Cty, NM, OSE Tech Rep 8.
+2025-09-30 11:12:45,116 [INFO    ]   HR-1: Geology & Ground-Water Resources of Central & Western Dona Ana County, NM (1971) King, W.E., Hawley, J.W., Taylor, A.M. and Wilson, R.P. New Mexico Bureau of Geology
+2025-09-30 11:12:45,116 [INFO    ]   HR5: Groundwater in the Sandia and Northern Manzano Mtns, NM (1980) Frank B. Titus, NM Bureau of Geology
+2025-09-30 11:12:45,116 [INFO    ]   Huff, G.F. (1996) Analysis of Ground-water data for selected wells near Holloman AFB, NM, 1950-1995. USGS WRIR-96-4116.
+2025-09-30 11:12:45,116 [INFO    ]   Hydrogeology and Underflow Estimates in the Vicinity of the Proposed Guadalupe Mountain Tailings Facility, Dames & Moore, 1988.
+2025-09-30 11:12:45,117 [INFO    ]   Hydrogeology and Underflow Estimates in the Vicinity of the Proposed Guadalupe Mountain Tailings Facility, Dames & Moore, March 17, 1988.
+2025-09-30 11:12:45,117 [INFO    ]   Hydrologic and hydrogeologic analysis for the Guadalupe Mtn. ground-water discharge plan. June 1984, Water Resources Associates, Inc.
+2025-09-30 11:12:45,117 [INFO    ]   Hydroscience Associates, Inc., 2006, Analysis of Aquifer Test Run Using Well RG-87082, Taos County, New Mexico. Lauren Sherson established USGS Site ID for the NGWMN project (5/29/18 - KP).
+2025-09-30 11:12:45,117 [INFO    ]   Info. from technical memorandums on construction\development of supply & observation wells. (See documents in Aquifer_mapping\BrackishWater\BW_database\BOR-Desal-Wells)
+2025-09-30 11:12:45,117 [INFO    ]   Info. from technical memorandums on construction\development of supply & observation wells. Chemistry in Excel spreadsheet (See documents in Aquifer_mapping\BrackishWater\BW_database\BOR-Desal-Wells)
+2025-09-30 11:12:45,117 [INFO    ]   Information as personal communication from GGI
+2025-09-30 11:12:45,117 [INFO    ]   Inventoried previously on 4/21/2015 as part of Clovis-Portales project
+2025-09-30 11:12:45,117 [INFO    ]   Inventoried previously on 6/2/2015 as part of Clovis-Portales project
+2025-09-30 11:12:45,118 [INFO    ]   J. Corbin, 2007 written communication
+2025-09-30 11:12:45,118 [INFO    ]   J. Corbin, 2007, written communication
+2025-09-30 11:12:45,118 [INFO    ]   J.Frost, 1999; WATERS
+2025-09-30 11:12:45,118 [INFO    ]   Jemez y Sangre (2000); NMED DWB Info Sheet; WATERS
+2025-09-30 11:12:45,118 [INFO    ]   Jenkins, 1979, Geohydrology of the Vista Subdivn, 12/79; C.A. Coonce & Assoc., 1977, Montoya Subdivn Water Availability Study for Cipriano Martinez, 12/77
+2025-09-30 11:12:45,118 [INFO    ]   Jenkins, 1980, Geohydro Rept for Rancho Caballero; IN Jenkins 1982, Geohydro Las Cuadras de Ocate
+2025-09-30 11:12:45,118 [INFO    ]   Jenkins, 1980, Geohydro Rept for Rancho Caballero; IN Jenkins 1982, Geohydro Las Cuadras de Ocate. also Jenkins, Dec 1979, Geohydrology of the Vista Subdivision
+2025-09-30 11:12:45,118 [INFO    ]   Jenkins, D.L., 1978, Supplemental Geohydrologic Data for the Proposed Los Caminitos Subdivision, Phase 1, Santa Fe, NM. Sept. 1978
+2025-09-30 11:12:45,118 [INFO    ]   Jenkins, D.L., 1978, Supplemental Geohydrologic Data for the Proposed Los Caminitos Subdivision, Phase 1, Santa Fe, NM. Sept. 1978. OSE Well Record.
+2025-09-30 11:12:45,119 [INFO    ]   Jenkins, David,- Geohydrologic Investigation of the Turquoise Trail Subdivision, SF Cnty,  July 1977
+2025-09-30 11:12:45,119 [INFO    ]   Jenkins, July 1977, Geohydrologic Investigation of Turquoise Trail  Subdvn
+2025-09-30 11:12:45,119 [INFO    ]   Jenkins, July 1977, Geohydrologic Investigation of Turquoise Trail  Subdvn;  Corbin Consulting, Inc., Mar 8, 2005, Geohydrology Report Longanecker Property
+2025-09-30 11:12:45,119 [INFO    ]   JHA, May 2004, Well Report Buckman Wells No. 10-13, City of Santa Fe
+2025-09-30 11:12:45,119 [INFO    ]   John  Shomaker & Assoc., April 1995, Well report Sangre de Cristo Water Company Buckman Well No. 3a;  Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; C.Borchert, 3/23/09, written comm.
+2025-09-30 11:12:45,119 [INFO    ]   John Shomaker & Assoc, 1999,  Well Report: Drilling, Construction, &  Testing Hickox Well No. 2, 5/99; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; D.Koning review
+2025-09-30 11:12:45,119 [INFO    ]   Johnson, P., et al. (2005) Hydrogeology & Water Resource Assessment of the Pueblo of Picuris, Taos County, NM. NMBGMR
+2025-09-30 11:12:45,119 [INFO    ]   Johnson, P., et al. (2005) Hydrogeology & Water Resource Assessment of the Pueblo of Picuris, Taos County, NM. NMBGMR.
+2025-09-30 11:12:45,120 [INFO    ]   JSA completion log to NMED SW Bureau; written communications from NMED SolidWaste Bureau
+2025-09-30 11:12:45,120 [INFO    ]   JSAI Well report for Proposed Desalination Well Field, City of Alamogordo, NM. June 2006.
+2025-09-30 11:12:45,120 [INFO    ]   Kendall Taylor
+2025-09-30 11:12:45,120 [INFO    ]   Kendall Taylor and drill log
+2025-09-30 11:12:45,120 [INFO    ]   Kendall Taylor; OSE well log
+2025-09-30 11:12:45,120 [INFO    ]   L. Sherson @ USGS determined that all but one water level taken by contractors for OSE at 334819108084801 were really taken from this location 334819108084601. Level on 9/25/2008 was at *4801 NM-15416
+2025-09-30 11:12:45,120 [INFO    ]   Lauren Sherson established USGS Site ID for the NGWMN project (5/29/18 - KP).
+2025-09-30 11:12:45,120 [INFO    ]   Lauren Sherson established USGS Site ID for the NGWMN project (5/29/18 - KP). Part of OSE network, so thought it would have been in their system already.
+2025-09-30 11:12:45,120 [INFO    ]   Lewis database of city wells; field check by Johnson; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis
+2025-09-30 11:12:45,121 [INFO    ]   Lewis database, 2001; Faith Engineering, Inc., 1994, Pump Test Report for the  Alto St Well, 12/5/94; Shomaker, J.W., 1998, Sustainable Ground-Water Production from City Well Field, Santa Fe, NM, 4/98
+2025-09-30 11:12:45,121 [INFO    ]   Lithlog personal communication w/GGI.
+2025-09-30 11:12:45,121 [INFO    ]   local individuals: Layne Preslar, Bob Hubbard
+2025-09-30 11:12:45,121 [INFO    ]   Longmire, Patrick, July 1985, Hydrogeochemical Study Along the Santa Fe River; field check
+2025-09-30 11:12:45,121 [INFO    ]   Longmire, Patrick, July 1985.  A Hydrogeochemical Study Along the Valley of the Santa Fe River
+2025-09-30 11:12:45,121 [INFO    ]   Lou Wilkerson
+2025-09-30 11:12:45,121 [INFO    ]   Lowry, T.S., et al. (2018) Water Resource Assessment in the NM Permian Basin, Sandia Report SAND2018-12018
+2025-09-30 11:12:45,121 [INFO    ]   M.J. Darr consulting letter to Roy Cunnyngham, 2006.
+2025-09-30 11:12:45,122 [INFO    ]   M.J. Darr consulting letter to Roy Cunnyngham, 2006. References additional well tests by M.J. Darr.
+2025-09-30 11:12:45,122 [INFO    ]   Mark Defibaugh
+2025-09-30 11:12:45,122 [INFO    ]   Martinez Surveying Co., [Hydrogeologic Report for] Miller Subdivision, Jan 1984
+2025-09-30 11:12:45,122 [INFO    ]   McCoy, Annie M. and Peery, Roger, 2008, Water-Availability Assessment for Miranda Canyon Preserve Subdivision, Taos County, NM, John Shomaker & Associates.  Full report in file called "Reports w/multi
+2025-09-30 11:12:45,122 [INFO    ]   McCoy, Annie M. and Peery, Roger, 2008, Water-Availability Assessment for Miranda Canyon Preserve Subdivision, Taos County, NM, John Shomaker & Associates. Full report in file called "Reports w/multip
+2025-09-30 11:12:45,122 [INFO    ]   McLean, J.S. (1970) Saline Ground-Water Resources of the Tularosa Basin, NM. Office of Saline Water, R&D Progress Rpt 561
+2025-09-30 11:12:45,122 [INFO    ]   Meyers et al, 1994, USGS WRI 94-4125
+2025-09-30 11:12:45,122 [INFO    ]   Meyers et al, 1994, USGS WRI 94-4125 (1980 water level)
+2025-09-30 11:12:45,123 [INFO    ]   MJ Darr (July 2006) Pump Test of WL-0007.
+2025-09-30 11:12:45,123 [INFO    ]   Mourant; GWSI; field check by Johnson; USGS well schedules
+2025-09-30 11:12:45,123 [INFO    ]   Mourant; GWSI; field check by Johnson; well log.
+2025-09-30 11:12:45,123 [INFO    ]   MS thesis by Sigstedt, S. (2010) Environmental Tracers in Groundwater of the Salt Basin, NM and Implications for Water Resources
+2025-09-30 11:12:45,123 [INFO    ]   Myers, Everheart, Wilson (1994) Geohydrol. of San Agustin Basin, Alamosa Creek Basin upstream from Monticello Box & Upper Gila Basin in parts of Catron, Socorro & Sierra Cty, NM, USGS WRI 94-4125
+2025-09-30 11:12:45,123 [INFO    ]   Myers, Everheart, Wilson (1994) Geohydrol. of San Agustin Basin, Alamosa Creek Basin upstream from Monticello Box & Upper Gila Basin in parts of Catron/Socorro/Sierra Cty, NM, USGS WRI 94-4125
+2025-09-30 11:12:45,123 [INFO    ]   NA03200901BBB
+2025-09-30 11:12:45,123 [INFO    ]   NA03200912ACC
+2025-09-30 11:12:45,124 [INFO    ]   NA03201066BBB
+2025-09-30 11:12:45,124 [INFO    ]   NA03300814CCC
+2025-09-30 11:12:45,124 [INFO    ]   NA03300914CCC
+2025-09-30 11:12:45,124 [INFO    ]   NA03300921CCC
+2025-09-30 11:12:45,124 [INFO    ]   NA03300922ACC
+2025-09-30 11:12:45,124 [INFO    ]   NA03300933CAB
+2025-09-30 11:12:45,124 [INFO    ]   NA03300933CAB2
+2025-09-30 11:12:45,124 [INFO    ]   NA03300935DBB
+2025-09-30 11:12:45,125 [INFO    ]   NA03300936DBB
+2025-09-30 11:12:45,125 [INFO    ]   NA03301014DDD
+2025-09-30 11:12:45,125 [INFO    ]   NA03301019CCD
+2025-09-30 11:12:45,125 [INFO    ]   NA03301020CCB
+2025-09-30 11:12:45,125 [INFO    ]   NMBG
+2025-09-30 11:12:45,125 [INFO    ]   NMBGMR
+2025-09-30 11:12:45,125 [INFO    ]   NMBGMR & USGS
+2025-09-30 11:12:45,125 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000). Shomaker, J.W., 1998, Sustainable Ground-Water Production from City Well Field, Santa Fe, NM, 4/98; Camp Dresser & McKee, Jan. 2000,
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); OSE 2005 WL field sheets; WATERS
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS. OSE Well Record.
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; J. Corbin, written communication, 2007
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; K. Summers project files; JSAI, 2001,App. #6
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; K.Summers project files; JSAI (2001) App. #6
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; K.Summers project files; Minton log and pump test; JS&A, 2001 well log and water levels
+2025-09-30 11:12:45,126 [INFO    ]   NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; Summer's project files; Minton log; Frost, 1996, Review of El Dorado area water production and GW resource, June '96; JSAI, 2001,  App. #6
+2025-09-30 11:12:45,126 [INFO    ]   NMED Solid Waste Bureau monitoring reports.
+2025-09-30 11:12:45,127 [INFO    ]   NMED Spring Survey and Monitor Well Survey
+2025-09-30 11:12:45,127 [INFO    ]   NMED SW Bureau data report, URS Corp.; written communications from NMED SolidWaste Bureau
+2025-09-30 11:12:45,127 [INFO    ]   NMED SWP Atlas online
+2025-09-30 11:12:45,127 [INFO    ]   NMOSE POD only
+2025-09-30 11:12:45,127 [INFO    ]   NMOSE Well log
+2025-09-30 11:12:45,127 [INFO    ]   No well inventory form for this site. Just coordinates, photo and well log.
+2025-09-30 11:12:45,127 [INFO    ]   NRCS Well development document (Excel spreadsheet)
+2025-09-30 11:12:45,127 [INFO    ]   OCD AP-100 report by Conestoga-Rovers & Associates
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-101 Report by Arcadis U.S. Inc.
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-104 Report by Conestoga-Rovers and Associates
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-105 Report by GHD
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-107 Report by Arcadis U.S. Inc
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-112 Report by Larson & Associates, Inc. 
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-114 Report by Tasman Geosciences
+2025-09-30 11:12:45,128 [INFO    ]   OCD AP-115 Report by Conestoga-Rovers and Associates
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-118 Report by GHD
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-120 Report by GHD Services Inc.
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-56 Report by GHD
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-62 Report by R.T. Hicks Consultants, Ltd
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-71 Report by Rice Operating Company
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-73 Report by Enviro Clean Cardinal LLC
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-75 Report by Rice Environmental Consulting & Safety, LLC
+2025-09-30 11:12:45,129 [INFO    ]   OCD AP-87 Report by by Tetra Tech
+2025-09-30 11:12:45,130 [INFO    ]   OCD AP-88 Report by Tetra Tech
+2025-09-30 11:12:45,130 [INFO    ]   OCD AP-91 Report by Talon/LPE
+2025-09-30 11:12:45,130 [INFO    ]   OCD AP-94 Report by Tetra Tech
+2025-09-30 11:12:45,130 [INFO    ]   OCD AP-95 report by Tetra Tech
+2025-09-30 11:12:45,130 [INFO    ]   OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,130 [INFO    ]   OFR-51: Hydrogeology of the San Agustin Plains, NM (1973) Blodgett, Daniel D. and Titus, Frank B., NMBGMR
+2025-09-30 11:12:45,130 [INFO    ]   Onwer
+2025-09-30 11:12:45,130 [INFO    ]   Original data and chemistry from Lynn Brandvold with NMBGMR chemistry lab. We visited site in July 2015 took GPS location and found well record.
+2025-09-30 11:12:45,131 [INFO    ]   OSE
+2025-09-30 11:12:45,131 [INFO    ]   OSE and Foreman.
+2025-09-30 11:12:45,131 [INFO    ]   OSE database. Lauren Sherson established USGS Site ID for the NGWMN project (5/29/18 - KP).
+2025-09-30 11:12:45,131 [INFO    ]   OSE field notes
+2025-09-30 11:12:45,131 [INFO    ]   OSE field sheet
+2025-09-30 11:12:45,131 [INFO    ]   OSE macth doubtful, usgs depth is much different, 311 vs 375
+2025-09-30 11:12:45,131 [INFO    ]   OSE POD record
+2025-09-30 11:12:45,131 [INFO    ]   OSE POD record.
+2025-09-30 11:12:45,132 [INFO    ]   OSE Record and owner recollection
+2025-09-30 11:12:45,132 [INFO    ]   OSE records
+2025-09-30 11:12:45,132 [INFO    ]   OSE records and owner recollection.
+2025-09-30 11:12:45,132 [INFO    ]   OSE records and well owner records.
+2025-09-30 11:12:45,132 [INFO    ]   OSE records online.
+2025-09-30 11:12:45,132 [INFO    ]   OSE Records, some info from well owner
+2025-09-30 11:12:45,132 [INFO    ]   OSE Records, well owner provided info.
+2025-09-30 11:12:45,132 [INFO    ]   OSE Records, well owner recollection.
+2025-09-30 11:12:45,132 [INFO    ]   OSE Records.
+2025-09-30 11:12:45,133 [INFO    ]   OSE Records. Gary Goss at TWSD.
+2025-09-30 11:12:45,133 [INFO    ]   OSE records. PN031 may not be it.  Well is very old.
+2025-09-30 11:12:45,133 [INFO    ]   OSE WATERS site
+2025-09-30 11:12:45,133 [INFO    ]   OSE website
+2025-09-30 11:12:45,133 [INFO    ]   OSE website info, no well record. Meyers et al, 1994, USGS WRI 94-4125
+2025-09-30 11:12:45,133 [INFO    ]   OSE website, no well record.
+2025-09-30 11:12:45,133 [INFO    ]   OSE website, no well record. Meyers et al, 1994, USGS WRI 94-4125
+2025-09-30 11:12:45,133 [INFO    ]   OSE website, well record available at OSE office.
+2025-09-30 11:12:45,134 [INFO    ]   OSE website, well record maybe available at OSE office.
+2025-09-30 11:12:45,134 [INFO    ]   OSE Well Log and PNM Public Water System Information Sheet; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; C. Borchert, written communication, 3/23/09
+2025-09-30 11:12:45,134 [INFO    ]   OSE Well Log and PNM Public Water System Information Sheet; NMED DWB (1999) via Jemez y Sangre Database (2000); Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; C.Borchert, 3/23/09
+2025-09-30 11:12:45,134 [INFO    ]   OSE well log. Some data from USGS. Overlapping site data.
+2025-09-30 11:12:45,134 [INFO    ]   OSE Well record
+2025-09-30 11:12:45,134 [INFO    ]   OSE well record and owner
+2025-09-30 11:12:45,134 [INFO    ]   OSE well record and owner info
+2025-09-30 11:12:45,134 [INFO    ]   OSE well record and site visit
+2025-09-30 11:12:45,135 [INFO    ]   OSE Well Record and well owner
+2025-09-30 11:12:45,135 [INFO    ]   OSE well record.
+2025-09-30 11:12:45,135 [INFO    ]   OSE Well Record.  NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS
+2025-09-30 11:12:45,135 [INFO    ]   OSE Well Record.  NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS; K. Summers project file and Sandia Drilling well log
+2025-09-30 11:12:45,135 [INFO    ]   OSE Well Record. NMED DWB (1999) via Jemez y Sangre Database (2000); WATERS
+2025-09-30 11:12:45,135 [INFO    ]   Owner
+2025-09-30 11:12:45,135 [INFO    ]   Owner - well dirlled in 60s.
+2025-09-30 11:12:45,135 [INFO    ]   owner - well drilled by father, using septic auger.
+2025-09-30 11:12:45,135 [INFO    ]   Owner - well drilled in 50's. owner has some records.
+2025-09-30 11:12:45,136 [INFO    ]   Owner and OSE record
+2025-09-30 11:12:45,136 [INFO    ]   Owner and OSE site.
+2025-09-30 11:12:45,136 [INFO    ]   Owner and OSE well record.
+2025-09-30 11:12:45,136 [INFO    ]   Owner and well record.
+2025-09-30 11:12:45,136 [INFO    ]   Owner field check; WATERS
+2025-09-30 11:12:45,136 [INFO    ]   Owner recollection
+2025-09-30 11:12:45,136 [INFO    ]   Owner recollection and limited OSE records.
+2025-09-30 11:12:45,136 [INFO    ]   Owner recollection and OSE POD record.
+2025-09-30 11:12:45,137 [INFO    ]   Owner recollection of well depth and water level
+2025-09-30 11:12:45,137 [INFO    ]   Owner recollection.
+2025-09-30 11:12:45,137 [INFO    ]   Owner recollection; OSE Records
+2025-09-30 11:12:45,137 [INFO    ]   Owner.
+2025-09-30 11:12:45,137 [INFO    ]   Owner. OSE well records
+2025-09-30 11:12:45,137 [INFO    ]   P. Drakos, et al., 2004, Chemical & Isotopic Constraints on Source-Waters and Connectivity of Basin-Fill Aquifers in the Southern San Luis Basin, NM. NMGS Guidebook 55, pg 405.
+2025-09-30 11:12:45,137 [INFO    ]   PhD thesis by Mayer, J.R. (1995)  Role of Fractures in Regional GW Flow: Field Evidence and Model Results from the Basin/Range of TX and NM
+2025-09-30 11:12:45,137 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID # S264)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S037)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S040)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S101)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S146)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S164)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S220)
+2025-09-30 11:12:45,138 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131 (ID #S265)
+2025-09-30 11:12:45,139 [INFO    ]   Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131.
+2025-09-30 11:12:45,139 [INFO    ]   Plummer, LN, Bexfield, LM, et al., 2004 Geochem. Characterization of Grd-water Flow in the Santa Fe Grp Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131.
+2025-09-30 11:12:45,139 [INFO    ]   Pre-design groundwater investigation at the tailing facility - Final work plan. April 24, 2013, Arcadis
+2025-09-30 11:12:45,139 [INFO    ]   Pretty certain C011 is Burns EPA sample.
+2025-09-30 11:12:45,139 [INFO    ]   Prindle-Hinds well completion log to NMED SW Bureau
+2025-09-30 11:12:45,139 [INFO    ]   Pump test performed as noted in Meyers report.  USGS WRI 94-4125
+2025-09-30 11:12:45,139 [INFO    ]   Ranch foreman.
+2025-09-30 11:12:45,139 [INFO    ]   Rankin, Dale, 2005, Personal Communication USGS Well Drilling Reports
+2025-09-30 11:12:45,139 [INFO    ]   Reardon et al. (2021) Addendum to Water Res. Assessment NM Permian Basin SAND2021-1869
+2025-09-30 11:12:45,140 [INFO    ]   Reardon, et al. (2021) Addendum to Water Res. Assessment in NM Permian Basin. SAND2021-1869.
+2025-09-30 11:12:45,140 [INFO    ]   RGDSSP12
+2025-09-30 11:12:45,140 [INFO    ]   Romero
+2025-09-30 11:12:45,140 [INFO    ]   San Pedro Creek Estates HOA
+2025-09-30 11:12:45,140 [INFO    ]   Sandia Drilling well log from JSA, 2001, App. 6; Frost & Assoc., 1996, Review of El Dorado Area Water Production and GW Resource, June 1996; WKSummers files
+2025-09-30 11:12:45,140 [INFO    ]   Sandia Drilling well log from JSA, 2001, App. 6; Frost & Assoc., 1996, Review of El Dorado Area Water Production and GW Resource, June 1996; WKSummers files; DKoning cutting review
+2025-09-30 11:12:45,140 [INFO    ]   Sandia National Labs/ BLM Wells
+2025-09-30 11:12:45,141 [INFO    ]   Sandia Natl. Labs Report SAND2018-12018 Water Assessment in the NM Permian Basin
+2025-09-30 11:12:45,141 [INFO    ]   Sangre de Cristo/OSE, WATERS, Borchert report, Watson and Rappuhn/Shomaker & Assoc., 4/99, WellReport: Drilling, Construction and Testing, City of Santa Fe Northwest Area Test Well; D.Koning review
+2025-09-30 11:12:45,141 [INFO    ]   Santa Fe County records; well log; field check
+2025-09-30 11:12:45,141 [INFO    ]   Santa Fe County Utilities field notes;
+2025-09-30 11:12:45,141 [INFO    ]   SECOR report to NMED UST Bureau
+2025-09-30 11:12:45,141 [INFO    ]   Shoemaker & Fleming, MWB Survey, 1990; Mourant, 1980
+2025-09-30 11:12:45,141 [INFO    ]   Shomaker & Associates, 2004, Well Report  Buckman Wells No. 10-13 City of Santa Fe, New Mexico, May 2004; C. Borchert, written communication, 3/23/09
+2025-09-30 11:12:45,141 [INFO    ]   Shomaker & Associates, April 2003, Well Report: Drilling, Construction, and Testing of SF Buckman 9; C. Borchert, written communication, 3/23/09
+2025-09-30 11:12:45,142 [INFO    ]   Site check; well record
+2025-09-30 11:12:45,142 [INFO    ]   Site visit by Johnson during drilling; drillers report; J. Corbin, written communication, 2007
+2025-09-30 11:12:45,142 [INFO    ]   Slinglerland & Borton, Geohydro of Avanti Business Park, 8/85 (App F to GGI, Santa Fe Metro, 12/01); lithologic log by GGI, review by D.Koning
+2025-09-30 11:12:45,142 [INFO    ]   SNL report for manual water level and water quality
+2025-09-30 11:12:45,142 [INFO    ]   Some chemistry from EPA via NM Health Dept.
+2025-09-30 11:12:45,142 [INFO    ]   Some data from USGS. Overlapping site data.
+2025-09-30 11:12:45,142 [INFO    ]   Some data from USGS. Overlapping site data. Aquifer type from USGS.
+2025-09-30 11:12:45,142 [INFO    ]   Some data from USGS. Overlapping site data. Formation pick from USGS.
+2025-09-30 11:12:45,143 [INFO    ]   Some limited WQ measurements at well and nearby stream. Filed. Not entered.
+2025-09-30 11:12:45,143 [INFO    ]   Some water levels from USGS
+2025-09-30 11:12:45,143 [INFO    ]   Some WL's from Lee Foster Well Services
+2025-09-30 11:12:45,143 [INFO    ]   Some WLs from USGS & Dames and Moore (4/11/1986). Some WQ from Vail Engineering (Sept. 1993).
+2025-09-30 11:12:45,143 [INFO    ]   Souder-Miller & Assoc., 1995, Unpublished Consultant's Report, Fig 2, well completion diagram
+2025-09-30 11:12:45,143 [INFO    ]   Source data for some chemistry for this location is from the US EPA.
+2025-09-30 11:12:45,143 [INFO    ]   Source data for this location is from the US EPA & NMED water quality.
+2025-09-30 11:12:45,143 [INFO    ]   Source data for this location is from the US EPA.
+2025-09-30 11:12:45,144 [INFO    ]   T.Decker, written comm., 2000 (letter to B.McLean "Testing - EUI Well #15", 2/25/2000);
+2025-09-30 11:12:45,144 [INFO    ]   Taos Soil & Water Concervation District
+2025-09-30 11:12:45,144 [INFO    ]   Taos Soil & Water Conservation District
+2025-09-30 11:12:45,144 [INFO    ]   Taos Soil & Water Conservation District water sample study.
+2025-09-30 11:12:45,144 [INFO    ]   Tetra Tech EM, Inc., Aug 2004, Geohydrologic Report for Proposed Suerte del Sur Subdivision, Santa Fe County, NM
+2025-09-30 11:12:45,144 [INFO    ]   Tetra Tech EM, Inc., Aug 2004, Geohydrologic Report for Proposed Suerte del Sur Subdivision, Santa Fe County, NM; field check by Johnson
+2025-09-30 11:12:45,144 [INFO    ]   Theis, C.V., Taylor, Jr., G.C., and Murray, C.R. (1941) Thermal Waters of the Hot Springs Artesian Basin Sierra County, New Mexico. U.S. Geological Survey in cooperation with State Engineer of New Mex
+2025-09-30 11:12:45,145 [INFO    ]   TSWCD
+2025-09-30 11:12:45,145 [INFO    ]   Turner, B., 1996, The Water Availability for the El Mirador Subdivision, Taos County, New Mexico, Turner Environmental Consultants, Apdx. 2 & 3. (Data from Drakos, GGI, 1996) Report filed w/TV-229. Al
+2025-09-30 11:12:45,145 [INFO    ]   Turner, B., 1996, The Water Availability for the El Mirador Subdivision, Taos County, New Mexico, Turner Environmental Consultants, Appendices 1, 3, 4
+2025-09-30 11:12:45,145 [INFO    ]   Turner, B., 1996, The Water Availability for the El Mirador Subdivision, Taos County, New Mexico, Turner Environmental Consultants, pg. 7, Table 1.
+2025-09-30 11:12:45,145 [INFO    ]   Turner, B., 1996, The Water Availability for the El Mirador Subdivison, Taos County, New Mexico, Turner Environmental Consultants, Pg. 18, Table 1, and Appendices 2,3. (Data from Jenkins in 1982). Ful
+2025-09-30 11:12:45,145 [INFO    ]   undeclared well.
+2025-09-30 11:12:45,145 [INFO    ]   URS Corp. for Chevron
+2025-09-30 11:12:45,145 [INFO    ]   USFS - Espanola Ranger District - Range Improvement records.
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Garrabrant, L.A. (1993) Water Resources of Taos County, NM USGS WRIR 93-4107 (chemistry sample). This well matched to Garrabrant well via notes from Tony Benson's Sunshine notebooks.
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Myers, Everheart, Wilson (1994) Geohydrol. Of San Agustin Basin, Alamosa Creek Basin upstream from Monticello Box & Upper Gila Basin in parts of Catron, Socorro & Sierra Cty, NM, WRI 94-4125
+2025-09-30 11:12:45,146 [INFO    ]   USGS & NMED SWP Atlas online
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Texas Water Development Board
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Winograd, I.J. (1959) Ground-water Conditions & Geology of Sunshine Valley & Western Taos Cty, NM, NMSEO, Tech. Report #12. & Garrabrant, L.A. (1993) USGS WRIR 93-4107
+2025-09-30 11:12:45,146 [INFO    ]   USGS & Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12
+2025-09-30 11:12:45,147 [INFO    ]   USGS & Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12.
+2025-09-30 11:12:45,147 [INFO    ]   USGS and Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12.
+2025-09-30 11:12:45,147 [INFO    ]   USGS Chem Analysis Sheet from R.L. Borton Files. 1970; WATERS; C.Borchert, 3/23/09, written communication
+2025-09-30 11:12:45,147 [INFO    ]   USGS Drillers reports
+2025-09-30 11:12:45,147 [INFO    ]   USGS drillers reports; D.Koning cuttings review
+2025-09-30 11:12:45,147 [INFO    ]   USGS drilling reports; D.Koning cutting review
+2025-09-30 11:12:45,147 [INFO    ]   USGS Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12
+2025-09-30 11:12:45,147 [INFO    ]   USGS, chemistry from Lynn Brandvold with NMBGMR chemistry lab, OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,148 [INFO    ]   USGS. POD log not available.
+2025-09-30 11:12:45,148 [INFO    ]   USGS. Well screens/WQ from Plummer, LN, Bexfield, LM, et al. (2004) Geochem. Characterization of Ground-water Flow in the Santa Fe Group Aquifer System, Middle Rio Grande Basin, NM. USGS WRI-03-4131
+2025-09-30 11:12:45,148 [INFO    ]   USGS/OSE water-level data sheets; WATERS
+2025-09-30 11:12:45,148 [INFO    ]   USGS; Bjorklund, L.J. (1957) Recon. of Groundwater Conditions in Crow Flats Area Otero Cty, NM, OSE Tech Rep 8.
+2025-09-30 11:12:45,148 [INFO    ]   USGS; Bjorklund, L.J. (1957) Reconnaissance of Ground-water Conditions in the Crow Flats Area Otero County, New Mexico, NM OSE Technical Report 8.
+2025-09-30 11:12:45,148 [INFO    ]   USGS; Bjorklund, L.J. (1957) Reconnaissance of Ground-water Conditions in the Crow Flats Area Otero County, NM, OSE Technical Report 8.
+2025-09-30 11:12:45,149 [INFO    ]   USGS; Screens from NPS water level and well documentation
+2025-09-30 11:12:45,149 [INFO    ]   VeneKlasen & Assoc, 1984, Remuda Ridge Warehouse, Santa Fe County, NM, October 1984
+2025-09-30 11:12:45,149 [INFO    ]   VeneKlasen & Assoc, Inc., 1982, Geohydrology Rept, Pecos Trail Subdn, Santa Fe Cnty,  Aug 1982
+2025-09-30 11:12:45,149 [INFO    ]   VeneKlasen & Assoc., 1984, Geohydrology Report, Hondo Trails Subdn, Santa Fe Cnty, Dec 1984
+2025-09-30 11:12:45,149 [INFO    ]   VeneKlasen & Assoc., Inc., 1986, Geohydrology Report, Talbot Subdivision, May 1986
+2025-09-30 11:12:45,149 [INFO    ]   VeneKlasen, 1975, Hydrogeologic Report for La Tierra Subdivision, 6/75
+2025-09-30 11:12:45,150 [INFO    ]   Veneklasen, 1977, Geohydro Lanphere -- Rio Villa Subdivision, AguaFria Rd, 5/77
+2025-09-30 11:12:45,150 [INFO    ]   Veneklasen, 1977, Hydrogeologic Report La Tierra Subdivn, Phase III, May 1977, Consulting Prof Inc
+2025-09-30 11:12:45,150 [INFO    ]   VeneKlasen, 1977, Hydrogeologic Rept La Tierra Ph. III, May 1977
+2025-09-30 11:12:45,150 [INFO    ]   VeneKlasen, 1977, Hydrogeologic Rept La Tierra Ph. III, May 1977; field check Cruz/Frost
+2025-09-30 11:12:45,150 [INFO    ]   Veneklasen, 1980, Geohydro of Santiago Subdivision, 10/80
+2025-09-30 11:12:45,150 [INFO    ]   VeneKlasen, 6/75, Hydrogeo Rept La Tierra; field check by Johnson
+2025-09-30 11:12:45,150 [INFO    ]   VeneKlasen, Hydrogeologic Report for La Tierra Subdivision 6/75; well log; field check Johnson
+2025-09-30 11:12:45,151 [INFO    ]   Water chemistry from TSWCD. Fairly sure this is COS-11, eventhough there is a descrepency between well log depth and well depth on chemistry sheet.
+2025-09-30 11:12:45,151 [INFO    ]   Water Quality: Sorrell, John D. and Banet, Christopher, Karavas Tract Exploratory Well, Nov. 1993, Bureau of Indian Affairs.
+2025-09-30 11:12:45,151 [INFO    ]   WATERS; field check
+2025-09-30 11:12:45,151 [INFO    ]   WATERS; Lewis database, 2001; VeneKlasen, 1975, Hydrogeologic Report LaTierra, 6/75; Camp Dresser & McKee, Inc., Jan 2001, Water Supply Analysis; D.Koning log review; C.Borchert, 3/23/09, written comm
+2025-09-30 11:12:45,151 [INFO    ]   WATERS; WK Summers project files; JSAI, 2001, App. #6; J. Frost project files (1999)
+2025-09-30 11:12:45,151 [INFO    ]   Watson/Shomaker & Assoc., 5/97, Well Report, Drilling, Construction, and Testing, City of Santa Fe, Torreon Well No. 2, for PNM Water Services Santa Fe, NM;  CDM, Jan 2000, Water Supply Analysis
+2025-09-30 11:12:45,151 [INFO    ]   Well  owner.
+2025-09-30 11:12:45,152 [INFO    ]   Well also in PhD thesis by Mayer, J.R. (1995)  Role of Fractures in Regional GW Flow: Field Evidence and Model Results from the Basin/Range of TX and NM
+2025-09-30 11:12:45,152 [INFO    ]   well depth from Meyers et al, 1994, USGS WRI 94-4125
+2025-09-30 11:12:45,152 [INFO    ]   Well in Meyers report: Meyers et al, 1994, USGS WRI 94-4125
+2025-09-30 11:12:45,152 [INFO    ]   Well info from inside well cap, presumably from driller?
+2025-09-30 11:12:45,152 [INFO    ]   Well Log
+2025-09-30 11:12:45,152 [INFO    ]   Well log and completion diagrams
+2025-09-30 11:12:45,152 [INFO    ]   Well log and field check by Johnson; not previously in GWSI
+2025-09-30 11:12:45,152 [INFO    ]   Well log and well completion diagrams
+2025-09-30 11:12:45,152 [INFO    ]   Well log and well completion diagrams. WQ data from P. Longmire Santa Fe River 1985 Report
+2025-09-30 11:12:45,153 [INFO    ]   Well log/record by GGI; field check by Johnson
+2025-09-30 11:12:45,153 [INFO    ]   Well log; field check
+2025-09-30 11:12:45,153 [INFO    ]   Well log; field check by Johnson
+2025-09-30 11:12:45,153 [INFO    ]   well log; field check by Johnson; owner
+2025-09-30 11:12:45,153 [INFO    ]   well log; Johnson field check
+2025-09-30 11:12:45,153 [INFO    ]   Well Log; JSAI, 2001, App. #6
+2025-09-30 11:12:45,153 [INFO    ]   Well owner
+2025-09-30 11:12:45,153 [INFO    ]   Well owner and old well record.
+2025-09-30 11:12:45,154 [INFO    ]   Well owner and OSE site info.
+2025-09-30 11:12:45,154 [INFO    ]   Well owner, and well record.
+2025-09-30 11:12:45,154 [INFO    ]   Well owner.
+2025-09-30 11:12:45,154 [INFO    ]   Well record.
+2025-09-30 11:12:45,154 [INFO    ]   Well record; field check
+2025-09-30 11:12:45,154 [INFO    ]   Well record; field check by Cruz/Frost
+2025-09-30 11:12:45,154 [INFO    ]   well record; field check by Johnson
+2025-09-30 11:12:45,154 [INFO    ]   Well record; field check by Johnson; owner
+2025-09-30 11:12:45,154 [INFO    ]   Well record; field check by Lyman
+2025-09-30 11:12:45,155 [INFO    ]   Well record; field check by Lyman; SWL measured by GGI/reported by Cooper, 2000, Rept for Roybal
+2025-09-30 11:12:45,155 [INFO    ]   Well record; field check with SFC Utilities (Leonard Quintana 490-0065)
+2025-09-30 11:12:45,155 [INFO    ]   Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12
+2025-09-30 11:12:45,155 [INFO    ]   Winograd, I.J., 1959, Ground-water Conditions and Geology of Sunshine Valley and Western Taos County, NM, State of New Mexico, State Engineer Office, Technical Report #12.
+2025-09-30 11:12:45,155 [INFO    ]   WK Summers project files; WATERS; Water Industries, Inc., 1982, Testing of Eldorado Well #1, Jan. 1982; water levels from W-1 and EUI#1; JSAI, 2001, App. #6
+2025-09-30 11:12:45,155 [INFO    ]   WL from USGS; chemistry and other data from Lynn Brandvold with NMBGMR chemistry lab & OFR-469 Hydrogeology & Water Resources of the Placitas Area
+2025-09-30 11:12:45,155 [INFO    ]   WQ also from MS thesis by Sigstedt, S. (2010) Environmental Tracers in Groundwater of the Salt Basin, NM and Implications for Water Resources.
+2025-09-30 11:12:45,155 [INFO    ]   WQ from Taos Soil & Water Conservation District
+2025-09-30 11:12:45,156 [INFO    ]   Z. Spiegel, 1972, Interpretation and application of an aquifer performance test on well RG-20228 at Pojoaque Terrace trailer court site HC McDonald Property, Santa Fe County, NM, 9/14/72
+2025-09-30 11:13:01,665 [INFO    ] Reached limit of 10 rows. Stopping migration.
+2025-09-30 11:13:01,677 [INFO    ] transfer_wells took 27.647673 seconds
+2025-09-30 11:13:02,705 [INFO    ] transfer_wellscreens took 1.027705 seconds
+2025-09-30 11:13:02,705 [INFO    ] 
+2025-09-30 11:13:02,706 [INFO    ] ********** TRANSFERRING CONTACTS **********
+2025-09-30 11:13:06,296 [INFO    ] Processing PointID: 221 EB-663
+2025-09-30 11:13:06,310 [WARNING ] first 'Thompson, Warren' Skipping physical address. Validation error: 1 validation error for CreateAddress
+postal_code
+  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2025-09-30 11:13:06,319 [CRITICAL] Skipping first contact for PointID EB-663 due to validation error: (pg8000.dbapi.ProgrammingError) {'S': 'ERROR', 'V': 'ERROR', 'C': '23503', 'M': 'insert or update on table "contact" violates foreign key constraint "contact_organization_fkey"', 'D': 'Key (organization)=(Los Atrevidos, Inc.) is not present in table "lexicon_term".', 's': 'public', 't': 'contact', 'n': 'contact_organization_fkey', 'F': 'ri_triggers.c', 'L': '2599', 'R': 'ri_ReportViolation'}
+[SQL: INSERT INTO contact (name, organization, role, contact_type, nma_pk_owners, nma_pk_waterlevels, search_vector, created_by_name, created_by_id, updated_by_name, updated_by_id, release_status) VALUES (%s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR) RETURNING contact.id, contact.created_at]
+[parameters: ('Warren Thompson', 'Los Atrevidos, Inc.', 'Owner', 'Primary', None, None, None, None, None, None, None, 'private')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-09-30 11:13:06,329 [CRITICAL] Skipping second contact for PointID EB-663 due to validation error: (pg8000.dbapi.ProgrammingError) {'S': 'ERROR', 'V': 'ERROR', 'C': '23503', 'M': 'insert or update on table "contact" violates foreign key constraint "contact_organization_fkey"', 'D': 'Key (organization)=(Los Atrevidos, Inc.) is not present in table "lexicon_term".', 's': 'public', 't': 'contact', 'n': 'contact_organization_fkey', 'F': 'ri_triggers.c', 'L': '2599', 'R': 'ri_ReportViolation'}
+[SQL: INSERT INTO contact (name, organization, role, contact_type, nma_pk_owners, nma_pk_waterlevels, search_vector, created_by_name, created_by_id, updated_by_name, updated_by_id, release_status) VALUES (%s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR, %s::VARCHAR) RETURNING contact.id, contact.created_at]
+[parameters: ("Warren's son", 'Los Atrevidos, Inc.', 'Owner', 'Secondary', None, None, None, None, None, None, None, 'private')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-09-30 11:13:06,332 [INFO    ] Processing PointID: 441 EB-057
+2025-09-30 11:13:06,342 [INFO    ] added first contact for PointID EB-057
+2025-09-30 11:13:06,343 [CRITICAL] Skipping second contact for PointID EB-057 due to validation error: 1 validation error for CreateContact
+  Value error, Either name or organization must be provided. [type=value_error, input_value={'thing_id': 8, 'release_...ails': [], 'phones': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/value_error
+2025-09-30 11:13:06,343 [INFO    ] transfer_contacts took 3.63708 seconds
+2025-09-30 11:13:06,343 [INFO    ] 
+2025-09-30 11:13:06,343 [INFO    ] ********** TRANSFERRING LINK IDS **********
+2025-09-30 11:13:08,328 [INFO    ] Processing PointID: DE-0219, Thing ID: 1, AlternateSiteID=None, AlternateSiteID2=None
+2025-09-30 11:13:08,334 [INFO    ] Processing PointID: EB-057, Thing ID: 8, AlternateSiteID=None, AlternateSiteID2=None
+2025-09-30 11:13:08,340 [INFO    ] Processing PointID: BW-0131, Thing ID: 5, AlternateSiteID=11S9E22.441, AlternateSiteID2=None
+2025-09-30 11:13:08,341 [INFO    ] adding link id: BW-0131
+2025-09-30 11:13:08,360 [INFO    ] Processing PointID: EB-663, Thing ID: 9, AlternateSiteID=None, AlternateSiteID2=None
+2025-09-30 11:13:08,366 [INFO    ] Processing PointID: TO-0225, Thing ID: 3, AlternateSiteID=6N8E11.42, AlternateSiteID2=None
+2025-09-30 11:13:08,366 [INFO    ] adding link id: TO-0225
+2025-09-30 11:13:08,379 [INFO    ] Processing PointID: UC-0100, Thing ID: 6, AlternateSiteID=None, AlternateSiteID2=None
+2025-09-30 11:13:08,384 [INFO    ] Processing PointID: QY-0274, Thing ID: 4, AlternateSiteID=11.31.19.333, AlternateSiteID2=None
+2025-09-30 11:13:08,385 [INFO    ] adding link id: QY-0274
+2025-09-30 11:13:08,398 [INFO    ] Processing PointID: PC-037, Thing ID: 10, AlternateSiteID=PW-060, AlternateSiteID2=None
+2025-09-30 11:13:08,399 [INFO    ] adding link id: PC-037
+2025-09-30 11:13:08,408 [INFO    ] Processing PointID: NM-26878, Thing ID: 2, AlternateSiteID=None, AlternateSiteID2=None
+2025-09-30 11:13:08,414 [INFO    ] Processing PointID: QY-0181, Thing ID: 7, AlternateSiteID=11.30.14.143b, AlternateSiteID2=None
+2025-09-30 11:13:08,414 [INFO    ] adding link id: QY-0181
+2025-09-30 11:13:08,422 [INFO    ] transfer_link_ids took 2.07784 seconds
+2025-09-30 11:13:09,998 [WARNING ] Both OSEWellID and OSEWelltagID are null for DE-0219
+2025-09-30 11:13:09,999 [WARNING ] Both OSEWellID and OSEWelltagID are null for NM-26878
+2025-09-30 11:13:09,999 [WARNING ] Both OSEWellID and OSEWelltagID are null for TO-0225
+2025-09-30 11:13:09,999 [WARNING ] Both OSEWellID and OSEWelltagID are null for QY-0274
+2025-09-30 11:13:09,999 [WARNING ] Both OSEWellID and OSEWelltagID are null for BW-0131
+2025-09-30 11:13:10,002 [WARNING ] OSEPOD is "X", "?", or "exempt", id=X for UC-0100
+2025-09-30 11:13:10,003 [WARNING ] OSEWellTagID is null for UC-0100
+2025-09-30 11:13:10,004 [WARNING ] Both OSEWellID and OSEWelltagID are null for QY-0181
+2025-09-30 11:13:10,009 [WARNING ] OSEWellTagID is null for EB-057
+2025-09-30 11:13:10,028 [WARNING ] OSEWellTagID is null for EB-663
+2025-09-30 11:13:10,037 [WARNING ] OSEPOD is "X", "?", or "exempt", id=X for PC-037
+2025-09-30 11:13:10,037 [WARNING ] OSEWellTagID is null for PC-037
+2025-09-30 11:13:10,039 [INFO    ] transfer_link_ids_welldata took 1.617317 seconds
+2025-09-30 11:13:10,039 [INFO    ] 
+2025-09-30 11:13:10,040 [INFO    ] ********** TRANSFERRING GROUPS **********
+2025-09-30 11:13:10,997 [INFO    ] Adding 2 things to group La Cienega, prefix EB
+2025-09-30 11:13:11,030 [INFO    ] Adding 2 things to group Espanola Basin, prefix EB
+2025-09-30 11:13:11,064 [INFO    ] Adding 1 things to group Union County, prefix UC
+2025-09-30 11:13:11,170 [INFO    ] Adding 1 things to group New Mexico, prefix NM
+2025-09-30 11:13:11,255 [INFO    ] Adding 2 things to group Quay County, prefix QY
+2025-09-30 11:13:11,278 [INFO    ] Adding 1 things to group Brackish Water, prefix BW
+2025-09-30 11:13:11,327 [INFO    ] Adding 1 things to group Torrance County, prefix TO
+2025-09-30 11:13:11,386 [INFO    ] Adding 1 things to group Placitas, prefix PC
+2025-09-30 11:13:11,482 [INFO    ] Adding 1 things to group Delaware Basin, prefix DE
+2025-09-30 11:13:11,497 [INFO    ] Adding 1 things to group ABCWUA, prefix NM
+2025-09-30 11:13:11,536 [INFO    ] transfer_groups took 1.49604 seconds
+2025-09-30 11:13:11,536 [INFO    ] 
+2025-09-30 11:13:11,536 [INFO    ] ********** TRANSFERRING WATER LEVELS **********
+2025-09-30 11:13:15,354 [INFO    ] Valid Measuring Agencies:
+2025-09-30 11:13:15,354 [INFO    ]   NMBGMR
+2025-09-30 11:13:15,354 [INFO    ]   NMT
+2025-09-30 11:13:15,355 [INFO    ]   NPS
+2025-09-30 11:13:15,355 [INFO    ]   SNL
+2025-09-30 11:13:15,355 [INFO    ]   TSWCD
+2025-09-30 11:13:15,355 [INFO    ]   USFS
+2025-09-30 11:13:15,359 [INFO    ] Processing PointID: EB-663
+2025-09-30 11:13:15,368 [INFO    ]     Created field event: <db.field.FieldEvent object at 0x000001B96BA9BCB0>.
+2025-09-30 11:13:15,373 [INFO    ]     Created field activity: <db.field.FieldActivity object at 0x000001B96BA9BE00>.
+2025-09-30 11:13:15,377 [INFO    ]    Created contact: <db.contact.Contact object at 0x000001B9731A7820>
+2025-09-30 11:13:15,383 [INFO    ]     Created field event contact: <db.field.FieldEventContactAssociation object at 0x000001B96BA9B4D0>
+2025-09-30 11:13:15,384 [INFO    ]    Created sample: <db.sample.Sample object at 0x000001B96BA9B380>
+2025-09-30 11:13:15,384 [INFO    ]       Created observation: <db.observation.Observation object at 0x000001B96BA9B230>
+2025-09-30 11:13:15,417 [INFO    ]     Created field event: <db.field.FieldEvent object at 0x000001B96A66ED50>.
+2025-09-30 11:13:15,420 [INFO    ]     Created field activity: <db.field.FieldActivity object at 0x000001B96A66F110>.
+2025-09-30 11:13:15,424 [INFO    ]     Created field event contact: <db.field.FieldEventContactAssociation object at 0x000001B96A66EC10>
+2025-09-30 11:13:15,425 [INFO    ]    Created sample: <db.sample.Sample object at 0x000001B96A66EAD0>
+2025-09-30 11:13:15,425 [INFO    ]       Created observation: <db.observation.Observation object at 0x000001B96A66E990>
+2025-09-30 11:13:15,441 [INFO    ] transfer_water_levels took 3.90455 seconds
+2025-09-30 11:13:15,441 [INFO    ] transfer_all took 48.656553 seconds
+2025-09-30 11:13:16,477 [INFO    ] Uploaded log to gs://ocotillo/transfer_logs/transfer_2025-09-30T11h12m26s.log
+2025-09-30 11:13:16,477 [INFO    ] 
+2025-09-30 11:13:16,477 [INFO    ] ********** END-------------------------------------- **********

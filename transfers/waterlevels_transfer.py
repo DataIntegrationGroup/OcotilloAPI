@@ -34,8 +34,8 @@ from transfers.util import (
     read_csv,
     convert_mt_to_utc,
     filter_by_valid_measuring_agency,
+    lexicon_mapper,
 )
-from services.lexicon_mapper import lexicon_mapper
 
 # keep a dictionary of created Contacts to avoid repeated SQL queries
 CREATED_CONTACTS = {}
@@ -117,6 +117,10 @@ def transfer_water_levels(session):
             session.add(field_event)
             session.flush()
 
+            logger.info(
+                f"    Created field event: ID {field_event.id} | Date {field_event.event_date} | Thing ID {field_event.thing.id} | Thing Name {field_event.thing.name}."
+            )
+
             # --- FieldActivity ---
 
             field_activity = FieldActivity(
@@ -126,6 +130,10 @@ def transfer_water_levels(session):
             )
             session.add(field_activity)
             session.flush()
+
+            logger.info(
+                f"    Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}."
+            )
 
             # --- Contact/FieldEventContactAssociation ---
             # AMP feedback:
@@ -1037,6 +1045,10 @@ def transfer_water_levels(session):
                         session.add(contact)
                         session.flush()  # to get the contact.id
 
+                        logger.info(
+                            f"        Created contact: ID {contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization}"
+                        )
+
                         CREATED_CONTACTS[c] = contact
 
                     """
@@ -1050,7 +1062,7 @@ def transfer_water_levels(session):
                         field_event_contact = FieldEventContactAssociation(
                             field_event=field_event,
                             contact=contact,
-                            field_contact_role="Leader",
+                            field_contact_role="Lead",
                         )
                         sampler = field_event_contact
                     else:
@@ -1059,6 +1071,11 @@ def transfer_water_levels(session):
                             contact=contact,
                             field_contact_role="Participant",
                         )
+                    session.add(field_event_contact)
+                    session.flush()
+                    logger.info(
+                        f"        Created field event contact: ID {field_event_contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization}"
+                    )
             else:
                 contact = thing.contacts[0]
 
@@ -1086,6 +1103,10 @@ def transfer_water_levels(session):
                 depth_bottom=None,
             )
             session.add(sample)
+            session.flush()
+            logger.info(
+                f"        Created sample: ID {sample.id} | Date {sample.sample_date} | Matrix {sample.sample_matrix} | Method {sample.sample_method}"
+            )
 
             if not pd.isna(row.LevelStatus):
                 level_status = lexicon_mapper.map_value(
@@ -1107,8 +1128,11 @@ def transfer_water_levels(session):
                 measuring_point_height=row.MPHeight,
                 level_status=level_status,
             )
-
             session.add(observation)
+            session.flush()
+            logger.info(
+                f"        Created observation: ID {observation.id} | DT {observation.observation_datetime} | Value {observation.value} | MPHeight {observation.measuring_point_height}"
+            )
         session.commit()
 
 

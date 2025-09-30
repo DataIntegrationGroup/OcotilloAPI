@@ -93,7 +93,9 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info(f"Valid WellData Datasources: {valid_datasources}")
+        logger.info("Valid WellData Datasources:")
+        for vd in valid_datasources:
+            logger.info(f"  {vd}")
 
     return df[df["DataSource"].isin(valid_datasources)]
 
@@ -107,7 +109,9 @@ def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
         reader = csv.reader(f)
         _ = next(reader)
         valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info(f"Valid Measuring Agencies: {valid_measuring_agencies}")
+        logger.info("Valid Measuring Agencies:")
+        for vma in valid_measuring_agencies:
+            logger.info(f"  {vma}")
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 

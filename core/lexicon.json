@@ -409,6 +409,7 @@
     {"categories": ["role"], "term": "Engineer", "definition": "Engineer"},
     {"categories": ["role"], "term": "Organization", "definition": "A contact that is an organization"},
     {"categories": ["role"], "term": "Specialist", "definition": "Specialist"},
+    {"categories": ["role"], "term": "Technician", "definition": "Technician"},
     {"categories": ["role"], "term": "Research Assistant", "definition": "Research Assistant"},
     {"categories": ["role"], "term": "Research Scientist", "definition": "Research Scientist"},
     {"categories": ["role"], "term": "Operator", "definition": "Operator"},
