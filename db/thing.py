@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from db.deployment import Deployment
     from db.sensor import Sensor
     from db.contact import Contact
+    from db.group import Group, GroupThingAssociation
 
 
 class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
@@ -45,10 +46,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     """
 
     __versioned__ = {}
-    # --- Foreign Keys ---
-    location_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("location.id"), nullable=False
-    )
 
     # --- Columns ---
     # TODO: should `name` be unique?
@@ -105,6 +102,8 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # --- Relationships ---
+    # One-To-Many: A Thing can have many associated Assets.
+    # If the Thing is deleted, its asset associations will be deleted.
     asset_associations = relationship(
         "AssetThingAssociation",
         back_populates="thing",
@@ -112,6 +111,8 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         cascade="all, delete-orphan",
     )
 
+    # One-To-Many: A Thing can be at many locations over time.
+    # If the Thing is deleted, its location history will be deleted.
     location_associations = relationship(
         "LocationThingAssociation",
         back_populates="thing",
@@ -127,11 +128,27 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         cascade="all, delete-orphan",
     )
 
+    # One-To-Many: A Thing can have many FieldEvents over time.
+    field_events: Mapped[List["FieldEvent"]] = relationship(
+        "FieldEvent", back_populates="thing", cascade="all, delete-orphan"
+    )
+
+    # One-To-Many: A Thing can have many Deployments of sensors (equipment) over time.
+    deployments: Mapped[List["Deployment"]] = relationship(
+        "Deployment", back_populates="thing", cascade="all, delete-orphan"
+    )
+
+    # One To-Many: A Thing can be in many Groups over time.
+    group_thing_associations: Mapped[List["GroupThingAssociation"]] = relationship(
+        "GroupThingAssociation", back_populates="thing", cascade="all, delete-orphan"
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
     )
 
+    # Proxy to directly access the Location associated with this Thing
     locations: AssociationProxy[list["Location"]] = association_proxy(  # noqa: F821
         "location_associations", "location"
     )
@@ -146,27 +163,16 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         "deployments", "sensor"
     )
 
+    # Proxy to directly access the Group(s) this Thing is a member of.
+    groups: AssociationProxy[List["Group"]] = association_proxy(
+        "group_thing_associations", "group"
+    )
+
+    # Full-text search vector
     search_vector = Column(
         TSVectorType(
             "name", "well_construction_notes", "well_type", "well_casing_description"
         )
-    )
-
-    # --- Relationships ---
-    # One-To-Many: A Thing can have many FieldEvents over time.
-    field_events: Mapped[List["FieldEvent"]] = relationship(
-        "FieldEvent", back_populates="thing", cascade="all, delete-orphan", uselist=True
-    )
-
-    # One-To-Many: A Thing can have many Deployments of sensors (equipment) over time.
-    deployments: Mapped[List["Deployment"]] = relationship(
-        "Deployment", back_populates="thing", cascade="all, delete-orphan"
-    )
-
-    # --- Association Proxies ---
-    # Proxy to directly access the Sensor deployed at this Thing.
-    sensors: AssociationProxy[List["Sensor"]] = association_proxy(
-        "deployments", "sensor"
     )
 
 
