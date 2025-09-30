@@ -145,7 +145,10 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     # One-To-Many: A Thing (well) can have multiple screened intervals.
     screens: Mapped[List["WellScreen"]] = relationship(
-        "WellScreen", back_populates="thing", cascade="all, delete-orphan"
+        "WellScreen",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
