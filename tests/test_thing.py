@@ -60,6 +60,7 @@ def test_add_water_well(location, group):
         "group_id": group.id,
         "release_status": "draft",
         "name": "Test Well",
+        "first_visit_date": "2023-01-01",
         "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
@@ -73,6 +74,7 @@ def test_add_water_well(location, group):
     assert "created_at" in data
     assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
+    assert data["first_visit_date"] == payload["first_visit_date"]
     assert data["thing_type"] == "water well"
     assert data["well_purpose"] == payload["well_purpose"]
     assert data["hole_depth"] == payload["hole_depth"]
@@ -95,6 +97,7 @@ def test_add_water_well_409_bad_group_id(location):
         "group_id": bad_group_id,  # Invalid group ID
         "release_status": "draft",
         "name": "Test Well",
+        "first_visit_date": "2023-01-01",
         "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
@@ -117,6 +120,7 @@ def test_add_water_well_409_bad_location_id(group):
         "group_id": group.id,  # Invalid group ID
         "release_status": "draft",
         "name": "Test Well",
+        "first_visit_date": "2023-01-01",
         "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
@@ -137,6 +141,7 @@ def test_add_spring(location, group):
         "location_id": location.id,
         "group_id": group.id,
         "name": "test spring",
+        "first_visit_date": "2023-01-01",
         "release_status": "draft",
         "spring_type": "Ephemeral",
     }
@@ -146,6 +151,7 @@ def test_add_spring(location, group):
     assert "id" in data
     assert "created_at" in data
     assert data["name"] == payload["name"]
+    assert data["first_visit_date"] == payload["first_visit_date"]
     assert data["release_status"] == payload["release_status"]
     assert data["spring_type"] == payload["spring_type"]
 
@@ -164,6 +170,7 @@ def test_add_spring_409_bad_group_id(location):
         "location_id": location.id,
         "group_id": bad_group_id,  # Invalid group ID
         "name": "test spring",
+        "first_visit_date": "2023-01-01",
         "release_status": "draft",
         "spring_type": "Ephemeral",
     }
@@ -182,6 +189,7 @@ def test_add_spring_409_bad_location_id(group):
         "location_id": bad_location_id,
         "group_id": group.id,  # Invalid group ID
         "name": "test spring",
+        "first_visit_date": "2023-01-01",
         "release_status": "draft",
         "spring_type": "Ephemeral",
     }
@@ -329,6 +337,10 @@ def test_get_water_wells(water_well_thing, location):
         "created_at"
     ] == water_well_thing.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["name"] == water_well_thing.name
+    assert (
+        data["items"][0]["first_visit_date"]
+        == water_well_thing.first_visit_date.isoformat()
+    )
     assert data["items"][0]["thing_type"] == water_well_thing.thing_type
     assert data["items"][0]["release_status"] == water_well_thing.release_status
     assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
@@ -354,6 +366,7 @@ def test_get_water_well_by_id(water_well_thing, location):
         "+00:00", "Z"
     )
     assert data["name"] == water_well_thing.name
+    assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()
     assert data["thing_type"] == water_well_thing.thing_type
     assert data["release_status"] == water_well_thing.release_status
     assert data["well_purpose"] == water_well_thing.well_purpose
@@ -399,6 +412,10 @@ def test_get_springs(spring_thing, location):
         "created_at"
     ] == spring_thing.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["name"] == spring_thing.name
+    assert (
+        data["items"][0]["first_visit_date"]
+        == spring_thing.first_visit_date.isoformat()
+    )
     assert data["items"][0]["thing_type"] == spring_thing.thing_type
     assert data["items"][0]["release_status"] == spring_thing.release_status
     assert data["items"][0]["spring_type"] == spring_thing.spring_type
@@ -418,6 +435,7 @@ def test_get_spring_by_id(spring_thing, location):
         "+00:00", "Z"
     )
     assert data["name"] == spring_thing.name
+    assert data["first_visit_date"] == spring_thing.first_visit_date.isoformat()
     assert data["thing_type"] == spring_thing.thing_type
     assert data["release_status"] == spring_thing.release_status
     assert data["spring_type"] == spring_thing.spring_type
@@ -610,6 +628,10 @@ def test_get_things(water_well_thing, spring_thing, location):
         "created_at"
     ] == water_well_thing.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][0]["name"] == water_well_thing.name
+    assert (
+        data["items"][0]["first_visit_date"]
+        == water_well_thing.first_visit_date.isoformat()
+    )
     assert data["items"][0]["thing_type"] == water_well_thing.thing_type
     assert data["items"][0]["release_status"] == water_well_thing.release_status
     assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
@@ -627,6 +649,10 @@ def test_get_things(water_well_thing, spring_thing, location):
         "created_at"
     ] == spring_thing.created_at.isoformat().replace("+00:00", "Z")
     assert data["items"][1]["name"] == spring_thing.name
+    assert (
+        data["items"][1]["first_visit_date"]
+        == spring_thing.first_visit_date.isoformat()
+    )
     assert data["items"][1]["thing_type"] == spring_thing.thing_type
     assert data["items"][1]["release_status"] == spring_thing.release_status
     assert data["items"][1]["spring_type"] == spring_thing.spring_type
@@ -648,6 +674,7 @@ def test_get_thing_by_id(water_well_thing, location):
     )
     assert data["release_status"] == water_well_thing.release_status
     assert data["name"] == water_well_thing.name
+    assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()
     assert data["thing_type"] == water_well_thing.thing_type
     assert data["release_status"] == water_well_thing.release_status
     assert data["well_purpose"] == water_well_thing.well_purpose
@@ -726,6 +753,7 @@ def test_get_thing_by_id_404_not_found(water_well_thing):
 def test_patch_water_well(water_well_thing, location):
     payload = {
         "name": "patched water well",
+        "first_visit_date": "2023-02-02",
         "release_status": "provisional",
         "well_purpose": "Injection",
         "well_depth": 20,
@@ -736,6 +764,7 @@ def test_patch_water_well(water_well_thing, location):
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == payload["name"]
+    assert data["first_visit_date"] == payload["first_visit_date"]
     assert data["release_status"] == payload["release_status"]
     assert data["well_purpose"] == payload["well_purpose"]
     assert data["well_depth"] == payload["well_depth"]
@@ -755,6 +784,7 @@ def test_patch_water_well_404_not_found():
     bad_id = 99999
     payload = {
         "name": "patched water well",
+        "first_visit_date": "2023-02-02",
         "release_status": "provisional",
         "well_purpose": "Injection",
         "well_depth": 20,
@@ -770,6 +800,7 @@ def test_patch_water_well_404_not_found():
 def test_patch_water_well_404_wrong_type(spring_thing):
     payload = {
         "name": "patched water well",
+        "first_visit_date": "2023-02-02",
         "release_status": "provisional",
         "well_purpose": "Injection",
         "well_depth": 20,
@@ -791,6 +822,7 @@ def test_patch_water_well_404_wrong_type(spring_thing):
 def test_patch_spring(spring_thing, location):
     payload = {
         "name": "patched spring",
+        "first_visit_date": "2023-03-03",
         "release_status": "private",
         "spring_type": "Mineral",
     }
@@ -798,6 +830,7 @@ def test_patch_spring(spring_thing, location):
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == payload["name"]
+    assert data["first_visit_date"] == payload["first_visit_date"]
     assert data["release_status"] == payload["release_status"]
     assert data["spring_type"] == payload["spring_type"]
 
@@ -814,6 +847,7 @@ def test_patch_spring_404_not_found(spring_thing):
     bad_id = 99999
     payload = {
         "name": "patched spring",
+        "first_visit_date": "2023-03-03",
         "release_status": "private",
         "spring_type": "Mineral",
     }
@@ -826,6 +860,7 @@ def test_patch_spring_404_not_found(spring_thing):
 def test_patch_spring_404_wrong_type(water_well_thing):
     payload = {
         "name": "patched spring",
+        "first_visit_date": "2023-03-03",
         "release_status": "private",
         "spring_type": "Mineral",
     }
