@@ -192,6 +192,11 @@ class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
 
 
 class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents a single, discrete screened interval in a well.
+    A Thing can have multiple WellScreens.
+    """
+
     thing_id: Mapped[int] = mapped_column(
         ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
@@ -208,8 +213,9 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     )
     nma_pk_wellscreens: Mapped[str] = mapped_column(String(100), nullable=True)
 
-    # Define a relationship to well if needed
-    thing: Mapped["Thing"] = relationship("Thing")
+    # --- Relationships ---
+    # Many-To-One: A WellScreen belongs to one Thing.
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="screens")
 
 
 # TODO: this could be the model used to handle AMP monitoring
