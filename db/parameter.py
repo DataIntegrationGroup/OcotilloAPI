@@ -29,6 +29,10 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
         unique=True,
         comment="The official, full name of the parameter (e.g., 'Arsenic, Dissolved').",
     )
+    matrix: Mapped[str] = lexicon_term(
+        nullable=False,
+        comment="A controlled vocabulary field defining the physical medium the analyte is measured in (e.g., 'Water', 'Soil', 'Air').",
+    )
     parameter_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field defining the category of the parameter (e.g., 'Metals', 'Nutrients', 'Field Parameter'). Used for grouping and filtering.",
@@ -52,4 +56,13 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
     # If a Parameter is deleted, all its associated limits are deleted as well.
     regulatory_limits: Mapped[List["RegulatoryLimit"]] = relationship(
         "RegulatoryLimit", back_populates="parameter", cascade="all, delete-orphan"
+    )
+
+    # --- Table Arguments ---
+    # An analyte is defined by its name and matrix. This constraint
+    # ensures a single, specific analyte can only be defined once.
+    from sqlalchemy import UniqueConstraint
+
+    __table_args__ = (
+        UniqueConstraint("parameter_name", "matrix", name="uq_parameter_name_matrix"),
     )
