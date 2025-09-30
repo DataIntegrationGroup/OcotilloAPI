@@ -33,6 +33,7 @@ from db.location import *
 from db.observation import *
 from db.parameter import *
 from db.publication import *
+from db.regulatory_limit import *
 from db.sample import *
 from db.sensor import *
 from db.thing import *
