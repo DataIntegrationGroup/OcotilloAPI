@@ -351,7 +351,8 @@ def transfer_water_levels(session):
                 "GGI",
                 "GGI for OSE",
                 "GGI-OSE",
-                "Glorieta Geoscienc" "Glorieta Geoscience",
+                "Glorieta Geoscienc",
+                "Glorieta Geoscience",
             ]:
                 ns = [None]
                 os = ["Glorieta Geoscience, Inc"]
