@@ -24,7 +24,7 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Foreign Keys ---
     thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id"), nullable=False
+        Integer, ForeignKey("thing.id"), nullable=False, ondelete="CASCADE"
     )
     sensor_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("sensor.id"), nullable=False
