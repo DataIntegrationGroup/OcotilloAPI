@@ -109,6 +109,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         back_populates="thing",
         overlaps="things",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # One-To-Many: A Thing can be at many locations over time.
