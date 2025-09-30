@@ -25,7 +25,7 @@ from db import (
     Observation,
     FieldEvent,
     FieldActivity,
-    # FieldEventContactAssociation,
+    FieldEventContactAssociation,
     Contact,
 )
 from transfers.util import (
@@ -1029,8 +1029,8 @@ def transfer_water_levels(session):
 
                         contact = Contact(
                             name=name,
-                            role="sampler",
-                            contact_type="NM_Aquifer Import",
+                            role=role,
+                            contact_type="Field Event Participant",
                             organization=organization,
                             nma_pk_waterlevels=row.GlobalID,
                         )
@@ -1047,13 +1047,18 @@ def transfer_water_levels(session):
                     participants in the field event
                     """
                     if i == 0:
-                        # leader
-                        # sampler
-                        pass
+                        field_event_contact = FieldEventContactAssociation(
+                            field_event=field_event,
+                            contact=contact,
+                            field_contact_role="Leader",
+                        )
+                        sampler = field_event_contact
                     else:
-                        # participant
-                        # not sampler
-                        pass
+                        field_event_contact = FieldEventContactAssociation(
+                            field_event=field_event,
+                            contact=contact,
+                            field_contact_role="Participant",
+                        )
             else:
                 contact = thing.contacts[0]
 
@@ -1069,7 +1074,7 @@ def transfer_water_levels(session):
             # todo: use create schema to validate data
             sample = Sample(
                 field_activity=field_activity,
-                # sampler_name=sampler_name,
+                field_event_contact=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(
@@ -1082,10 +1087,6 @@ def transfer_water_levels(session):
             )
             session.add(sample)
 
-            # TODO: update for auto-collectors in the Sensor table, like e-probes
-            #       update the deployment table here
-            sensor_id = None
-
             if not pd.isna(row.LevelStatus):
                 level_status = lexicon_mapper.map_value(
                     f"LU_LevelStatus:{row.LevelStatus}"
@@ -1095,15 +1096,16 @@ def transfer_water_levels(session):
 
             # TODO: use create schema to validate data
             observation = Observation(
-                sensor_id=sensor_id,
-                sample=sample,
                 nma_pk_waterlevels=row.GlobalID,
-                value=row.DepthToWater,
-                measuring_point_height=row.MPHeight,
-                observed_property="groundwater level",
-                unit="ft",
-                level_status=level_status,
+                sample=sample,
+                sensor_id=None,
+                analysis_method_id=None,
                 observation_datetime=dt_utc,
+                observed_property="groundwater level",
+                value=row.DepthToWater,
+                unit="ft",
+                measuring_point_height=row.MPHeight,
+                level_status=level_status,
             )
 
             session.add(observation)
