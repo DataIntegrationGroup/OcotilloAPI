@@ -143,6 +143,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         "GroupThingAssociation", back_populates="thing", cascade="all, delete-orphan"
     )
 
+    # One-To-Many: A Thing (well) can have multiple screened intervals.
+    screens: Mapped[List["WellScreen"]] = relationship(
+        "WellScreen", back_populates="thing", cascade="all, delete-orphan"
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
