@@ -118,6 +118,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         back_populates="thing",
         overlaps="location",
         cascade="all, delete-orphan",
+        passive_deletes=True,
         order_by="LocationThingAssociation.effective_start.desc()",
     )
 
@@ -130,17 +131,26 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     # One-To-Many: A Thing can have many FieldEvents over time.
     field_events: Mapped[List["FieldEvent"]] = relationship(
-        "FieldEvent", back_populates="thing", cascade="all, delete-orphan"
+        "FieldEvent",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # One-To-Many: A Thing can have many Deployments of sensors (equipment) over time.
     deployments: Mapped[List["Deployment"]] = relationship(
-        "Deployment", back_populates="thing", cascade="all, delete-orphan"
+        "Deployment",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # One To-Many: A Thing can be in many Groups over time.
     thing_groups: Mapped[List["GroupThingAssociation"]] = relationship(
-        "GroupThingAssociation", back_populates="thing", cascade="all, delete-orphan"
+        "GroupThingAssociation",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # One-To-Many: A Thing (well) can have multiple screened intervals.
