@@ -786,7 +786,7 @@ def test_patch_contact_409_bad_contact_type(third_contact):
     assert data["detail"][0]["loc"] == ["body", "contact_type"]
     assert (
         data["detail"][0]["msg"]
-        == "Invalid contact_type. Valid terms are: Primary | Secondary"
+        == "Invalid contact_type. Valid terms are: Primary | Secondary | Field Event Participant"
     )
     assert data["detail"][0]["type"] == "value_error"
     assert data["detail"][0]["input"] == {"contact_type": payload["contact_type"]}
