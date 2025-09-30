@@ -139,7 +139,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # One To-Many: A Thing can be in many Groups over time.
-    group_thing_associations: Mapped[List["GroupThingAssociation"]] = relationship(
+    thing_groups: Mapped[List["GroupThingAssociation"]] = relationship(
         "GroupThingAssociation", back_populates="thing", cascade="all, delete-orphan"
     )
 
