@@ -35,7 +35,7 @@ def test_add_location_all():
 def test_add_well_minimum():
     well = {
         "location_id": 1,
-        "well_type": "Monitoring",
+        "well_purpose": "Monitoring",
     }
 
 
@@ -44,7 +44,7 @@ def test_add_well_all():
         "location_id": 1,
         "api_id": "1001-0001",
         "ose_pod_id": "RA-0001",
-        "well_type": "Monitoring",
+        "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 100.0,
         "casing_diameter": 10.0,

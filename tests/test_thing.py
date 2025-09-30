@@ -60,7 +60,7 @@ def test_add_water_well(location, group):
         "group_id": group.id,
         "release_status": "draft",
         "name": "Test Well",
-        "well_type": "Monitoring",
+        "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -74,7 +74,7 @@ def test_add_water_well(location, group):
     assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
     assert data["thing_type"] == "water well"
-    assert data["well_type"] == payload["well_type"]
+    assert data["well_purpose"] == payload["well_purpose"]
     assert data["hole_depth"] == payload["hole_depth"]
     assert data["well_depth"] == payload["well_depth"]
     assert data["well_construction_notes"] == payload["well_construction_notes"]
@@ -95,7 +95,7 @@ def test_add_water_well_409_bad_group_id(location):
         "group_id": bad_group_id,  # Invalid group ID
         "release_status": "draft",
         "name": "Test Well",
-        "well_type": "Monitoring",
+        "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -117,7 +117,7 @@ def test_add_water_well_409_bad_location_id(group):
         "group_id": group.id,  # Invalid group ID
         "release_status": "draft",
         "name": "Test Well",
-        "well_type": "Monitoring",
+        "well_purpose": "Monitoring",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -331,7 +331,7 @@ def test_get_water_wells(water_well_thing, location):
     assert data["items"][0]["name"] == water_well_thing.name
     assert data["items"][0]["thing_type"] == water_well_thing.thing_type
     assert data["items"][0]["release_status"] == water_well_thing.release_status
-    assert data["items"][0]["well_type"] == water_well_thing.well_type
+    assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
     assert data["items"][0]["well_depth"] == water_well_thing.well_depth
     assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
     assert (
@@ -356,7 +356,7 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["name"] == water_well_thing.name
     assert data["thing_type"] == water_well_thing.thing_type
     assert data["release_status"] == water_well_thing.release_status
-    assert data["well_type"] == water_well_thing.well_type
+    assert data["well_purpose"] == water_well_thing.well_purpose
     assert data["well_depth"] == water_well_thing.well_depth
     assert data["hole_depth"] == water_well_thing.hole_depth
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
@@ -612,7 +612,7 @@ def test_get_things(water_well_thing, spring_thing, location):
     assert data["items"][0]["name"] == water_well_thing.name
     assert data["items"][0]["thing_type"] == water_well_thing.thing_type
     assert data["items"][0]["release_status"] == water_well_thing.release_status
-    assert data["items"][0]["well_type"] == water_well_thing.well_type
+    assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
     assert data["items"][0]["well_depth"] == water_well_thing.well_depth
     assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
     assert (
@@ -630,7 +630,7 @@ def test_get_things(water_well_thing, spring_thing, location):
     assert data["items"][1]["thing_type"] == spring_thing.thing_type
     assert data["items"][1]["release_status"] == spring_thing.release_status
     assert data["items"][1]["spring_type"] == spring_thing.spring_type
-    assert data["items"][1]["well_type"] is None
+    assert data["items"][1]["well_purpose"] is None
     assert data["items"][1]["well_depth"] is None
     assert data["items"][1]["hole_depth"] is None
     assert data["items"][1]["well_construction_notes"] is None
@@ -650,7 +650,7 @@ def test_get_thing_by_id(water_well_thing, location):
     assert data["name"] == water_well_thing.name
     assert data["thing_type"] == water_well_thing.thing_type
     assert data["release_status"] == water_well_thing.release_status
-    assert data["well_type"] == water_well_thing.well_type
+    assert data["well_purpose"] == water_well_thing.well_purpose
     assert data["well_depth"] == water_well_thing.well_depth
     assert data["hole_depth"] == water_well_thing.hole_depth
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
@@ -727,7 +727,7 @@ def test_patch_water_well(water_well_thing, location):
     payload = {
         "name": "patched water well",
         "release_status": "provisional",
-        "well_type": "Injection",
+        "well_purpose": "Injection",
         "well_depth": 20,
         "hole_depth": 40,
         "well_construction_notes": "patched well construction notes",
@@ -737,7 +737,7 @@ def test_patch_water_well(water_well_thing, location):
     data = response.json()
     assert data["name"] == payload["name"]
     assert data["release_status"] == payload["release_status"]
-    assert data["well_type"] == payload["well_type"]
+    assert data["well_purpose"] == payload["well_purpose"]
     assert data["well_depth"] == payload["well_depth"]
     assert data["hole_depth"] == payload["hole_depth"]
     assert data["well_construction_notes"] == payload["well_construction_notes"]
@@ -756,7 +756,7 @@ def test_patch_water_well_404_not_found():
     payload = {
         "name": "patched water well",
         "release_status": "provisional",
-        "well_type": "Injection",
+        "well_purpose": "Injection",
         "well_depth": 20,
         "hole_depth": 40,
         "well_construction_notes": "patched well construction notes",
@@ -771,7 +771,7 @@ def test_patch_water_well_404_wrong_type(spring_thing):
     payload = {
         "name": "patched water well",
         "release_status": "provisional",
-        "well_type": "Injection",
+        "well_purpose": "Injection",
         "well_depth": 20,
         "hole_depth": 40,
         "well_construction_notes": "patched well construction notes",
