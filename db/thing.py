@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text
+from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
@@ -58,6 +58,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     thing_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
+    )
+    first_visit_date: Mapped[Date] = mapped_column(
+        Date,
+        nullable=True,
+        comment="The date of NMBGMR's first recorded interaction with this specific `Thing`.",
     )
     # Well-related columns
     well_depth: Mapped[float] = mapped_column(
