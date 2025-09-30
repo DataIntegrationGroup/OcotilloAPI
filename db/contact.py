@@ -17,9 +17,14 @@ from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+
+if TYPE_CHECKING:
+    from db.thing import Thing
+    from db.field import FieldEvent
+    from db.field import FieldEventContactAssociation
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -30,8 +35,12 @@ class ThingContactAssociation(Base, AutoBaseMixin):
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
 
-    contact: Mapped[List["Contact"]] = relationship("Contact")
-    thing: Mapped[List["Thing"]] = relationship("Thing")  # noqa: F821
+    contact: Mapped["Contact"] = relationship(
+        "Contact", back_populates="thing_associations"
+    )
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="contact_associations"
+    )  # noqa: F821
 
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):

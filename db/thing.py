@@ -183,9 +183,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # Proxy to directly access the Group(s) this Thing is a member of.
-    groups: AssociationProxy[List["Group"]] = association_proxy(
-        "group_thing_associations", "group"
-    )
+    groups: AssociationProxy[List["Group"]] = association_proxy("thing_groups", "group")
 
     # Full-text search vector
     search_vector = Column(
