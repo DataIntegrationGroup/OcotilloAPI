@@ -51,6 +51,7 @@ def water_well_thing(location):
     with session_ctx() as session:
         water_well = Thing(
             name="Test Well",
+            first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
             well_type="Production",
@@ -142,6 +143,7 @@ def spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Test Spring",
+            first_visit_date="2023-03-03",
             thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
@@ -163,6 +165,7 @@ def second_spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Second Test Spring",
+            first_visit_date="2023-03-03",
             thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
