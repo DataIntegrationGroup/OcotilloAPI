@@ -328,7 +328,38 @@ class LexiconMapper:
         if self._mappers:
             return self._mappers
 
+        # Lookup tables where CODE maps to MEANING
         lu_tables = [
+          "LU_AltitudeMethod",
+          "LU_CollectionMethod",
+          "LU_ConstructionMethod",
+          "LU_CoordinateAccuracy",
+          "LU_CoordinateMethod",
+          "LU_CurrentUse",
+          "LU_DataQuality",
+          "LU_DataSource",
+          "LU_Depth_CompletionSource",
+          "LU_Discharge_ChemistrySource",
+          "LU_LevelStatus",
+          "LU_MajorAnalyte",
+          "LU_MeasurementMethod",
+          "LU_MinorTraceAnalyte",
+          "LU_MonitoringStatus",
+          "LU_SampleType",
+          "LU_SiteType",
+          "LU_Status",
+      ]
+      
+      # Lookup tables intentionally skipped (kept for documentation only)
+      # Each entry explains why the table is excluded
+      _lu_tables_skipped = {
+          "LU_AltitudeDatum": "code is the value, so no need for mapping",
+          "LU_CoordinateDatum": "code is the value, so no need for mapping",
+          "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
+          "LU_Formations": "needs to be cleaned before it can be used",
+          "LU_Lithology": "needs to be cleaned before it can be used",
+          "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
+      }
             # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
             "LU_AltitudeMethod",  # CODE/MEANING
             "LU_CollectionMethod",  # CODE/MEANING
