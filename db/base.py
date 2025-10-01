@@ -184,7 +184,7 @@ class StatusHistoryMixin:
         # One-to-Many polymorphic relationship
         return relationship(
             "StatusHistory",
-            primaryjoin=f"and_({self.__name__}.{self.__name__.lower()}_id==StatusHistory.statusable_id, "
+            primaryjoin=f"and_({self.__name__}.id==StatusHistory.statusable_id, "
             f"StatusHistory.statusable_type=='{self.__name__}')",
             cascade="all, delete-orphan",
             lazy="selectin",
@@ -203,7 +203,7 @@ class PermissionMixin:
         # One-to-Many polymorphic relationship
         return relationship(
             "Permission",
-            primaryjoin=f"and_({self.__name__}.{self.__name__.lower()}_id==Permission.permissible_id, "
+            primaryjoin=f"and_({self.__name__}.id==Permission.permissible_id, "
             f"Permission.permissible_type=='{self.__name__}')",
             lazy="selectin",
             viewonly=True,
