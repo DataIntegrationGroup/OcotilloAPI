@@ -526,7 +526,7 @@ def water_chemistry_field_activity(field_event):
         field_activity = FieldActivity(
             field_event_id=field_event.id,
             activity_type="water chemistry",
-            activity_status="Water chemistry affected by status",
+            activity_status="Sample not affected by status",
             notes="field activity fixture notes",
             release_status="draft",
         )

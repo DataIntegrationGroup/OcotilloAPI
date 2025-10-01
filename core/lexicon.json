@@ -307,7 +307,7 @@
     {"categories": ["activity_status"], "term": "Water level affected by stage in nearby surface-water site", "definition": "Water level affected by stage in nearby surface-water site"},
     {"categories": ["activity_status"], "term": "Other conditions exist that would affect the level (remarks)", "definition": "Other conditions exist that would affect the level (remarks)"},
     {"categories": ["activity_status"], "term": "Water level not affected by status", "definition": "Water level not affected by status"},
-    {"categories": ["activity_status"], "term": "Water chemistry affected by status", "definition": "Water chemistry affected by status"},
+    {"categories": ["activity_status"], "term": "Sample not affected by status", "definition": "Sample not affected by status"},
     {"categories": ["status"], "term": "Abandoned", "definition": "Abandoned"},
     {"categories": ["status"], "term": "Active, pumping well", "definition": "Active, pumping well"},
     {"categories": ["status"], "term": "Destroyed, exists but not usable", "definition": "Destroyed, exists but not usable"},
