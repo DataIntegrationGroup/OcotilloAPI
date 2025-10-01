@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from db.field import FieldEvent
     from db.field import FieldEventContactAssociation
     from db.permission import Permission
+    from db.publication import AuthorContactAssociation, Author
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -68,34 +69,20 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     permissions: Mapped[List["Permission"]] = relationship(
         "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
     )
-
-    search_vector: Mapped[TSVectorType] = mapped_column(
-        TSVectorType("name", "role", "organization", "nma_pk_owners")
+    # One-To-Many: A Contact can be associated with many Authors (in Publications).
+    author_associations: Mapped[List["AuthorContactAssociation"]] = relationship(
+        "AuthorContactAssociation",
+        back_populates="contact",
+        cascade="all, delete-orphan",
     )
-
-    author_associations: Mapped[List["AuthorContactAssociation"]] = (  # noqa: F821
-        relationship(
-            "AuthorContactAssociation",
-            back_populates="contact",
-            cascade="all, delete-orphan",
-        )
-    )
-    authors: AssociationProxy[list["Author"]] = association_proxy(  # noqa: F821
-        "author_associations", "author"
-    )
+    # One-To-Many: A Contact can be associated with many Things.
     thing_associations: Mapped[List["ThingContactAssociation"]] = relationship(
         "ThingContactAssociation",
         back_populates="contact",
         cascade="all, delete-orphan",
-        passive_deletes=True,
     )
-    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
-        "thing_associations", "thing"
-    )
-
-    # Proxy to directly access the FieldEvent objects in which this Contact participated.
-    # fmt: off
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (  # noqa: F821
+    # One-To-Many: A Contact can participate in many Field Events.
+    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
         relationship(
             "FieldEventContactAssociation",
             back_populates="contact",
@@ -103,9 +90,26 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
             passive_deletes=True,
         )
     )
-    # fmt: on
-    field_events: AssociationProxy[list["FieldEvent"]] = (  # noqa: F821
-        association_proxy("field_event_contact_associations", "field_event")
+
+    # --- Association Proxies ---
+    # Proxy to directly access the Author objects associated with this Contact
+    authors: AssociationProxy[list["Author"]] = association_proxy(
+        "author_associations", "author"
+    )
+
+    # Proxy to directly access the Thing objects associated with this Contact
+    things: AssociationProxy[list["Thing"]] = association_proxy(
+        "thing_associations", "thing"
+    )
+
+    # Proxy to directly access the FieldEvent objects in which this Contact participated.
+    field_events: AssociationProxy[list["FieldEvent"]] = association_proxy(
+        "field_event_contact_associations", "field_event"
+    )
+
+    # Full-Text Search Vector
+    search_vector: Mapped[TSVectorType] = mapped_column(
+        TSVectorType("name", "role", "organization", "nma_pk_owners")
     )
 
 
