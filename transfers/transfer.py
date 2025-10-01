@@ -17,6 +17,14 @@ import os
 
 from dotenv import load_dotenv
 
+from transfers.asset_transfer import transfer_assets
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
+
 load_dotenv()
 
 from sqlalchemy.orm import Session
@@ -29,7 +37,11 @@ from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_wel
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
-from transfers.well_transfer import transfer_wells, transfer_wellscreens
+from transfers.well_transfer import (
+    transfer_wells,
+    transfer_wellscreens,
+    cleanup_locations,
+)
 
 from transfers.util import timeit, timeit_direct
 from transfers.logger import logger, save_log_to_bucket
@@ -84,17 +96,17 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
-    # message("TRANSFERRING SPRINGS")
-    # timeit_direct(transfer_springs, sess, limit=limit)
-    #
-    # message("TRANSFERRING PERENNIAL STREAMS")
-    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING EPHEMERAL STREAMS")
-    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING METEOROLOGICAL")
-    # timeit_direct(transfer_met, sess, limit)
+    message("TRANSFERRING SPRINGS")
+    timeit_direct(transfer_springs, sess, limit=limit)
+
+    message("TRANSFERRING PERENNIAL STREAMS")
+    timeit_direct(transfer_perennial_stream, sess, limit=limit)
+
+    message("TRANSFERRING EPHEMERAL STREAMS")
+    timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+
+    message("TRANSFERRING METEOROLOGICAL")
+    timeit_direct(transfer_met, sess, limit)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -119,11 +131,11 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WATER LEVELS")
     timeit_direct(transfer_water_levels, sess)
 
-    # message("TRANSFERRING ASSETS")
-    # timeit_direct(transfer_assets, sess)
+    message("TRANSFERRING ASSETS")
+    timeit_direct(transfer_assets, sess)
 
     # if init or cleanup_wells_flag:
-    #     cleanup_wells(sess)
+    cleanup_locations(sess)
 
 
 def main():

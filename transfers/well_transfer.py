@@ -189,21 +189,27 @@ def transfer_wellscreens(session, limit=None):
     session.commit()
 
 
-def cleanup_wells(session):
+def cleanup_locations(session):
     locations = session.query(Location).all()
     for location in locations:
 
         y, x = location.latlon
         if not location.state:
-            location.state = get_state_from_point(x, y)
+            state = get_state_from_point(x, y)
+            if state:
+                location.state = state
 
         if not location.county:
-            location.county = get_county_from_point(x, y)
+            county = get_county_from_point(x, y)
+            if county:
+                location.county = county
 
         if not location.quad_name:
-            location.quad_name = get_quad_name_from_point(x, y)
+            quad_name = get_quad_name_from_point(x, y)
+            if quad_name:
+                location.quad_name = quad_name
 
-    session.commit()
+        session.commit()
 
 
 # ============= EOF =============================================
