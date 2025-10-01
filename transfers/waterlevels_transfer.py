@@ -42,10 +42,175 @@ from transfers.util import (
 SPACE_2 = " " * 2
 SPACE_4 = " " * 4
 
-# keep a dictionary of created Contacts to avoid repeated SQL queries
+
+def get_dt_utc(row):
+    if pd.isna(row.DateMeasured):
+        logger.critical(
+            f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} because there is no DateMeasured"
+        )
+        return
+
+    if pd.isna(row.TimeMeasured):
+        fmt = "%Y-%m-%d"
+        dt_measured = row.DateMeasured
+    else:
+        fmt = "%Y-%m-%d %H:%M:%S.%f"
+        t = row.TimeMeasured
+        # Truncate microseconds to 6 digits if present
+        if "." in t:
+            t = t[:-6]
+
+        dt_measured = f"{row.DateMeasured} {t}"
+
+    try:
+        dt = datetime.strptime(dt_measured, fmt)
+        return convert_mt_to_utc(dt)
+    except ValueError as e:
+        logger.critical(
+            f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to "
+            f"invalid date/time: {e}"
+        )
+
+
+def get_contacts_info(row, measured_by, measured_by_mapper):
+
+    measuring_agency = (
+        "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
+    )
+
+    # ns --> names
+    # os --> organizations
+    # rs --> roles
+
+    # TODO: get help figuring out (AMP)
+    if measured_by in measured_by_mapper:
+        args = measured_by_mapper[measured_by]
+        if isinstance(args[0], list):
+            ns, os, rs = zip(*args)
+        else:
+            ns = [args[0]]
+            os = [args[1]]
+            rs = [args[2]]
+    elif measured_by is None:
+        ns = [None]
+        os = ["Unknown"]
+        rs = ["Unknown"]
+    elif measured_by in [
+        "Anthony Chavez",
+        "BEI",
+        "BF/RG",
+        "Borchert",
+        "Borton & Cooper",
+        "CDWR",
+        "Chaves/Cruz",
+        "Chavez/Cruz",
+        "CM, AK",
+        "Coons",
+        "Cooper",
+        "Corbin",
+        "Crocker",
+        "Cruz",
+        "Cruz-Tribble",
+        "Cruz/Frost",
+        "D.Bird",
+        "D.D.",
+        "D.Duncan",
+        "Dames & Moore",
+        "Dames/Moore",
+        "Dave Snider",
+        "David N Jenkins",
+        "David N. Jenkins",
+        "DC",
+        "Decker",
+        "DL, TK",
+        "DR",
+        "DR, ST",
+        "Duke Engring",
+        "Duncan",
+        "EA",
+        "EA/HB",
+        "Frost",
+        "G.Boylan",
+        "GLR, SC",
+        "GLR, SK, SC",
+        "GR, MM",
+        "GR/PW",
+        "GR/RG",
+        "HB",
+        "Heaton",
+        "Horner-Crocker",
+        "HR",
+        "Hydrogeologic Serv",
+        "J.Evans",
+        "J.Frost",
+        "Jenkins",
+        "Johnson/Cruz",
+        "Johnson/Robbins",
+        "Kilmer/Jenkins",
+        "KP, MR",
+        "KP, MT",
+        "Lazarus",
+        "Mike Rodgers",
+        "Mourant",
+        "MWB Consultant",
+        "Myers report",
+        "Rankin",
+        "Sandia Drillers",
+        "SC, MR",
+        "SdC",
+        "SM&Assoc",
+        "SMA",
+        "Spiegel",
+        "Spiegel & Baldwin",
+        "SPRI",
+        "Steve",
+        "T.Decker",
+        "Topol",
+        "URS",
+        "UTM",
+        "VeneKlasen",
+        "Vista del Oro",
+    ]:
+        # set name to measured_by so that water level is logged to that
+        # person even if they are not known. this allows future updates
+        ns = [measured_by]
+        os = ["Unknown"]
+        rs = ["Unknown"]
+        logger.warning(
+            f"{SPACE_4}The following record has not been mapped to a Contact: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID} (which comes from the WaterLevels table)"
+        )
+
+    elif measured_by in [
+        "?",
+        "Consultant",
+        "Consulting Pro.",
+        "Gamma log unit",
+        "Pump company",
+        "PumpService",
+        "REPORTED",
+        "Theis report",
+        "Unknown",
+        "Unknown; reported",
+        "Water operator",
+        "WWTP",
+        "WWTP personnel",
+    ]:
+        # Unknowns
+        ns = [None]
+        os = [measuring_agency]
+        rs = ["Unknown"]
+
+    else:
+        logger.critical(
+            f"Skipping the following record because it has no mappings: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID}"
+        )
+        return
+
+    return ns, os, rs
 
 
 def transfer_water_levels(session):
+    # keep a dictionary of created Contacts to avoid repeated SQL queries
     created_contacts = {}
     with open("transfers/data/measured_by_mapper.json", "r") as f:
         measured_by_mapper = json.load(f)
@@ -74,31 +239,13 @@ def transfer_water_levels(session):
                 )
                 session.commit()
 
-            if pd.isna(row.DateMeasured):
-                logger.critical(
-                    f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} because there is no DateMeasured"
-                )
+            dt_utc = get_dt_utc(row)
+            if dt_utc is None:
                 continue
 
-            if pd.isna(row.TimeMeasured):
-                fmt = "%Y-%m-%d"
-                dt_measured = row.DateMeasured
-            else:
-                fmt = "%Y-%m-%d %H:%M:%S.%f"
-                t = row.TimeMeasured
-                # Truncate microseconds to 6 digits if present
-                if "." in t:
-                    t = t[:-6]
-
-                dt_measured = f"{row.DateMeasured} {t}"
-
-            try:
-                dt = datetime.strptime(dt_measured, fmt)
-                dt_utc = convert_mt_to_utc(dt)
-            except ValueError as e:
+            if pd.isna(row.DepthToWater):
                 logger.warning(
-                    f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to "
-                    f"invalid date/time: {e}"
+                    f"{SPACE_4}No sample and observation have been made for WaterLevels record with GlobalID {row.GlobalID} because DepthToWater is NULL"
                 )
                 continue
 
@@ -139,145 +286,9 @@ def transfer_water_levels(session):
             logger.info(
                 f"{SPACE_4}Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}"
             )
-            # --- Contact/FieldEventContactAssociation ---
+
             measured_by = None if pd.isna(row.MeasuredBy) else row.MeasuredBy
-            measuring_agency = (
-                "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
-            )
 
-            # sometimes multiple contacts need to be created, so they'll be stored in a list
-            # the nth name corresponds with the nth organization
-            contact_names = []
-            contact_organizations = []
-            roles = []
-
-            # ns --> names
-            # os --> organizations
-            # rs --> roles
-
-            # TODO: get help figuring out (AMP)
-            if measured_by in measured_by_mapper:
-                args = measured_by_mapper[measured_by]
-                if isinstance(args[0], list):
-                    ns, os, rs = zip(*args)
-                else:
-                    ns = [args[0]]
-                    os = [args[1]]
-                    rs = [args[2]]
-            elif measured_by is None:
-                ns = [None]
-                os = ["Unknown"]
-                rs = ["Unknown"]
-            elif measured_by in [
-                "Anthony Chavez",
-                "BEI",
-                "BF/RG",
-                "Borchert",
-                "Borton & Cooper",
-                "CDWR",
-                "Chaves/Cruz",
-                "Chavez/Cruz",
-                "CM, AK",
-                "Coons",
-                "Cooper",
-                "Corbin",
-                "Crocker",
-                "Cruz",
-                "Cruz-Tribble",
-                "Cruz/Frost",
-                "D.Bird",
-                "D.D.",
-                "D.Duncan",
-                "Dames & Moore",
-                "Dames/Moore",
-                "Dave Snider",
-                "David N Jenkins",
-                "David N. Jenkins",
-                "DC",
-                "Decker",
-                "DL, TK",
-                "DR",
-                "DR, ST",
-                "Duke Engring",
-                "Duncan",
-                "EA",
-                "EA/HB",
-                "Frost",
-                "G.Boylan",
-                "GLR, SC",
-                "GLR, SK, SC",
-                "GR, MM",
-                "GR/PW",
-                "GR/RG",
-                "HB",
-                "Heaton",
-                "Horner-Crocker",
-                "HR",
-                "Hydrogeologic Serv",
-                "J.Evans",
-                "J.Frost",
-                "Jenkins",
-                "Johnson/Cruz",
-                "Johnson/Robbins",
-                "Kilmer/Jenkins",
-                "KP, MR",
-                "KP, MT",
-                "Lazarus",
-                "Mike Rodgers",
-                "Mourant",
-                "MWB Consultant",
-                "Myers report",
-                "Rankin",
-                "Sandia Drillers",
-                "SC, MR",
-                "SdC",
-                "SM&Assoc",
-                "SMA",
-                "Spiegel",
-                "Spiegel & Baldwin",
-                "SPRI",
-                "Steve",
-                "T.Decker",
-                "Topol",
-                "URS",
-                "UTM",
-                "VeneKlasen",
-                "Vista del Oro",
-            ]:
-                # set name to measured_by so that water level is logged to that
-                # person even if they are not known. this allows future updates
-                ns = [measured_by]
-                os = ["Unknown"]
-                rs = ["Unknown"]
-                logger.warning(
-                    f"{SPACE_4}The following record has not been mapped to a Contact: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID} (which comes from the WaterLevels table)"
-                )
-
-            elif measured_by in [
-                "?",
-                "Consultant",
-                "Consulting Pro.",
-                "Gamma log unit",
-                "Pump company",
-                "PumpService",
-                "REPORTED",
-                "Theis report",
-                "Unknown",
-                "Unknown; reported",
-                "Water operator",
-                "WWTP",
-                "WWTP personnel",
-            ]:
-                # Unknowns
-                ns = [None]
-                os = [measuring_agency]
-                rs = ["Unknown"]
-
-            else:
-                logger.critical(
-                    f"Skipping the following record because it has no mappings: {row.MeasuredBy} // {row.MeasuringAgency} for PointID {row.PointID}"
-                )
-                continue
             """
             Developer's notes
 
@@ -285,11 +296,15 @@ def transfer_water_levels(session):
             """
             field_event_contacts = []
             if measured_by not in ["Owner", "Owner report", "Well owner"]:
-                contact_names.extend(ns)
-                contact_organizations.extend(os)
-                roles.extend(rs)
+                # --- Contact/FieldEventContactAssociation ---
+                contact_names, contact_organizations, roles = get_contacts_info(
+                    row, measured_by, measured_by_mapper
+                )
+
                 for i, c in enumerate(contact_names):
-                    if c not in created_contacts.keys():
+                    if c in created_contacts:
+                        contact = created_contacts[c]
+                    else:
                         # create new contact if not already created
                         name = contact_names[i]
                         organization = contact_organizations[i]
@@ -310,8 +325,7 @@ def transfer_water_levels(session):
                         )
 
                         created_contacts[c] = contact
-                    else:
-                        contact = created_contacts[c]
+
                     field_event_contacts.append(contact)
             else:
                 contact = thing.contacts[0]
@@ -325,32 +339,22 @@ def transfer_water_levels(session):
             participants in the field event
             """
             for i, fec in enumerate(field_event_contacts):
+                field_event_contact = FieldEventContactAssociation(
+                    field_event=field_event, contact=fec
+                )
                 if i == 0:
-                    field_event_contact = FieldEventContactAssociation(
-                        field_event=field_event,
-                        contact=fec,
-                        field_contact_role="Lead",
-                    )
+                    field_event_contact.field_contact_role = "Lead"
                     sampler = field_event_contact
                 else:
-                    field_event_contact = FieldEventContactAssociation(
-                        field_event=field_event,
-                        contact=fec,
-                        field_contact_role="Participant",
-                    )
+                    field_event_contact.field_contact_role = "Participant"
+
                 session.add(field_event_contact)
                 session.flush()
                 logger.info(
                     f"{SPACE_4}Created field event contact: ID {field_event_contact.id} | Contact Name {field_event_contact.contact.name} | Field Contact Role {field_event_contact.field_contact_role}"
                 )
 
-            if pd.isna(row.DepthToWater):
-                logger.warning(
-                    f"{SPACE_4}No sample and observation have been made for WaterLevels record with GlobalID {row.GlobalID} because DepthToWater is NULL"
-                )
-                continue
             # --- Sample ---
-
             if not pd.isna(row.MeasurementMethod):
                 sample_method = lexicon_mapper.map_value(
                     f"LU_MeasurementMethod:{row.MeasurementMethod}"
@@ -365,9 +369,7 @@ def transfer_water_levels(session):
                 field_event_contact=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
-                sample_name=str(
-                    uuid.uuid4()
-                ),  # TODO: should this stay as-is for water levels? since there are no lab-assigned names
+                sample_name=str(uuid.uuid4()),
                 sample_method=sample_method,
                 qc_type="Normal",
                 depth_top=None,
