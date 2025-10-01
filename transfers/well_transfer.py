@@ -191,9 +191,11 @@ def transfer_wellscreens(session, limit=None):
 
 def cleanup_locations(session):
     locations = session.query(Location).all()
-    for location in locations:
+    n = len(locations)
+    for i, location in enumerate(locations):
 
         y, x = location.latlon
+
         if not location.state:
             state = get_state_from_point(x, y)
             if state:
@@ -209,6 +211,10 @@ def cleanup_locations(session):
             if quad_name:
                 location.quad_name = quad_name
 
+        logger.info(
+            f"{i}/{n} lat: {y} lon: {x} state={location.state} county={location.county} quad"
+            f"={location.quad_name}"
+        )
         session.commit()
 
 

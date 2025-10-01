@@ -96,6 +96,14 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
+    """
+    Developer's note
+    this is a very time consuming operation and the results should 
+    be saved to a file for later use.
+    """
+    message("CLEANING UP LOCATIONS")
+    timeit_direct(cleanup_locations(sess))
+
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
 
@@ -133,9 +141,6 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
-
-    # if init or cleanup_wells_flag:
-    cleanup_locations(sess)
 
 
 def main():

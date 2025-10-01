@@ -66,14 +66,17 @@ class ValidatePhone(BaseModel):
         if phone_number_str is not None:
             region = "US"
             try:
-                parsed_number = phonenumbers.parse(phone_number_str, region)
-                if phonenumbers.is_valid_number(parsed_number):
-                    formatted_number = phonenumbers.format_number(
-                        parsed_number, phonenumbers.PhoneNumberFormat.E164
-                    )
-                    return formatted_number
-                else:
-                    raise ValueError(f"Invalid phone number. {phone_number_str}")
+                # this is a major hack to deal with the phone numbers entered into
+                # NM_Aquifer without an area code
+                for p in (phone_number_str, f"505{phone_number_str}"):
+                    parsed_number = phonenumbers.parse(p, region)
+                    if phonenumbers.is_valid_number(parsed_number):
+                        formatted_number = phonenumbers.format_number(
+                            parsed_number, phonenumbers.PhoneNumberFormat.E164
+                        )
+                        return formatted_number
+                    else:
+                        raise ValueError(f"Invalid phone number. {phone_number_str}")
             except NumberParseException as e:
                 raise ValueError(f"Invalid phone number. {phone_number_str}")
 
