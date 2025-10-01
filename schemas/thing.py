@@ -196,6 +196,7 @@ class UpdateThing(BaseUpdateModel):
     """
 
     name: str | None = None  # Optional name for the thing
+    first_visit_date: date | None = None  # Date of NMBGMR's first visit
 
 
 class UpdateWell(UpdateThing):

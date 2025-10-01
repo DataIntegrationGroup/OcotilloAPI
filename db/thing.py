@@ -53,8 +53,8 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         nullable=False,
         comment="The name of the thing (e.g., well name or identifier).",
     )
-    # TODO: what is the purpose of the `description` field?
-    description: Mapped[str] = mapped_column(String(500))
+    # TODO: what is the purpose of the `description` field? Is it ever used?
+    # description: Mapped[str] = mapped_column(String(500), nullable=True)
     thing_type: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",

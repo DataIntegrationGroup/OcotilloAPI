@@ -54,7 +54,7 @@ def water_well_thing(location):
             first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_type="Production",
+            well_purpose="Production",
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
