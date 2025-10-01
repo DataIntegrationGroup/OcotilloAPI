@@ -36,7 +36,7 @@ class Permission(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Foreign Keys ---
     contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contact.contact_id"), nullable=False
+        Integer, ForeignKey("contact.id"), nullable=False
     )
 
     # --- Columns ---
