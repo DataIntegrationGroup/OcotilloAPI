@@ -56,7 +56,8 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     )
     observed_property: Mapped[str] = lexicon_term(nullable=False)
     value: Mapped[float] = mapped_column(
-        nullable=True,
+        nullable=False,
+        comment="The value of the observation. If a value could not be retrieved then an observation could not be made. The reason for the missing value should be documented in the correct table, like field_activity.",
     )
     unit: Mapped[str] = lexicon_term(nullable=False)
 
@@ -66,8 +67,6 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
         doc="Height of the measuring point above the ground surface in ft",
         info={"unit": "ft"},
     )
-
-    level_status: Mapped[str] = lexicon_term(nullable=True)
 
     # geothermal
     observation_depth: Mapped[float] = mapped_column(

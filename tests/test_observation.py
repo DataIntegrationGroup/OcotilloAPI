@@ -81,7 +81,6 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
         "measuring_point_height": 53,
         "sample_id": groundwater_level_sample.id,
         "sensor_id": sensor.id,
-        "level_status": "Water level not affected by status",
         "observed_property": "groundwater level",
         "unit": "ft",
     }
@@ -96,7 +95,6 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     assert data["value"] == payload["value"]
     assert data["measuring_point_height"] == payload["measuring_point_height"]
     assert data["sensor_id"] == payload["sensor_id"]
-    assert data["level_status"] == payload["level_status"]
     assert data["observed_property"] == payload["observed_property"]
     assert (
         data["depth_to_water_bgs"]
@@ -343,9 +341,6 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
         data["items"][0]["release_status"]
         == groundwater_level_observation.release_status
     )
-    assert (
-        data["items"][0]["level_status"] == groundwater_level_observation.level_status
-    )
     assert data["items"][0]["value"] == groundwater_level_observation.value
     assert data["items"][0]["unit"] == groundwater_level_observation.unit
     assert (
@@ -356,9 +351,6 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
     assert (
         data["items"][0]["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
-    )
-    assert (
-        data["items"][0]["level_status"] == groundwater_level_observation.level_status
     )
 
 
@@ -384,7 +376,6 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
         == groundwater_level_observation.observed_property[colon_index + 1 :]
     )
     assert data["release_status"] == groundwater_level_observation.release_status
-    assert data["level_status"] == groundwater_level_observation.level_status
     assert data["value"] == groundwater_level_observation.value
     assert data["unit"] == groundwater_level_observation.unit
     assert (
@@ -396,7 +387,6 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
         data["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
     )
-    assert data["level_status"] == groundwater_level_observation.level_status
 
 
 def test_get_groundwater_level_observation_by_id_404_not_found(

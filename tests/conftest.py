@@ -511,6 +511,7 @@ def groundwater_level_field_activity(field_event):
         field_activity = FieldActivity(
             field_event_id=field_event.id,
             activity_type="groundwater level",
+            activity_status="Water level not affected by status",
             notes="field activity fixture notes",
             release_status="draft",
         )
@@ -525,6 +526,7 @@ def water_chemistry_field_activity(field_event):
         field_activity = FieldActivity(
             field_event_id=field_event.id,
             activity_type="water chemistry",
+            activity_status="Water chemistry affected by status",
             notes="field activity fixture notes",
             release_status="draft",
         )
@@ -610,7 +612,6 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            level_status="Water level not affected by status",
         )
         session.add(observation)
         session.commit()

@@ -68,7 +68,6 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
     measuring_point_height: float
-    level_status: str
 
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
@@ -94,7 +93,6 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
 
 class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
     measuring_point_height: float | None = None
-    level_status: str | None = None
 
 
 class UpdateWaterChemistryObservation(UpdateBaseObservation):
@@ -119,7 +117,6 @@ class BaseObservationResponse(BaseResponseModel):
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water_bgs: float | None
     measuring_point_height: float | None
-    level_status: str | None
 
     @model_validator(mode="before")
     def calculate_depth_to_water_bgs(self: Self) -> Self:

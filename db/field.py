@@ -129,6 +129,10 @@ class FieldActivity(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="The type of activity performed during the field event (e.g., 'groundwater level', 'water chemistry', 'geothermal').",
     )
+    activity_status: Mapped[str] = lexicon_term(
+        nullable=False,
+        comment="The status of the activity, whether normal or impacted by external factors like roving bovine, dry well, or equipment failure.",
+    )
     notes: Mapped[str] = mapped_column(
         nullable=True,
         comment="Notes or comments about the field activity.",

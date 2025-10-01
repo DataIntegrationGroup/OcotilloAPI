@@ -9,6 +9,7 @@ from schemas import BaseResponseModel
 class FieldActivityResponse(BaseResponseModel):
     field_event_id: int
     activity_type: str
+    activity_status: str
 
 
 class FieldEventResponse(BaseResponseModel):
