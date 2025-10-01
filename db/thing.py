@@ -193,7 +193,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     # Full-text search vector
     search_vector = Column(
         TSVectorType(
-            "name", "well_construction_notes", "well_purpose", "well_casing_description"
+            "name", "well_construction_notes", "well_purpose", "well_casing_material"
         )
     )
 
