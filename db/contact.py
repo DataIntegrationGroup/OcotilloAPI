@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from db.thing import Thing
     from db.field import FieldEvent
     from db.field import FieldEventContactAssociation
+    from db.permission import Permission
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -58,6 +59,10 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     )
     addresses: Mapped[List["Address"]] = relationship(
         "Address", back_populates="contact", passive_deletes=True
+    )
+    # One-To-Many: A Contact can grant many Permissions.
+    permissions: Mapped[List["Permission"]] = relationship(
+        "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
     )
 
     search_vector: Mapped[TSVectorType] = mapped_column(
