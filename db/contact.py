@@ -51,14 +51,18 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     contact_type: Mapped[str] = lexicon_term(nullable=False)
     nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)
 
+    # --- Relationships ---
+    # One-To-Many: A Contact can have many phone numbers.
     phones: Mapped[List["Phone"]] = relationship(
-        "Phone", back_populates="contact", passive_deletes=True
+        "Phone", back_populates="contact", cascade="all, delete, delete-orphan"
     )
+    # One-To-Many: A Contact can have many email addresses.
     emails: Mapped[List["Email"]] = relationship(
-        "Email", back_populates="contact", passive_deletes=True
+        "Email", back_populates="contact", cascade="all, delete, delete-orphan"
     )
+    # One-To-Many: A Contact can have many addresses.
     addresses: Mapped[List["Address"]] = relationship(
-        "Address", back_populates="contact", passive_deletes=True
+        "Address", back_populates="contact", cascade="all, delete, delete-orphan"
     )
     # One-To-Many: A Contact can grant many Permissions.
     permissions: Mapped[List["Permission"]] = relationship(
