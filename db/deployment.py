@@ -4,7 +4,6 @@ between Things and Sensors, tracking which piece of hardware was installed
 at which Thing and for what period of time.
 """
 
-from tkinter.constants import CASCADE
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Integer, ForeignKey, Date, Numeric, Text
@@ -26,7 +25,7 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     # --- Foreign Keys ---
     thing_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("thing.id", ondelete=CASCADE),
+        ForeignKey("thing.id", ondelete="CASCADE"),
         nullable=False,
     )
     sensor_id: Mapped[int] = mapped_column(
