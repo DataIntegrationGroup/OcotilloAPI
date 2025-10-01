@@ -297,9 +297,10 @@ def transfer_water_levels(session):
             field_event_contacts = []
             if measured_by not in ["Owner", "Owner report", "Well owner"]:
                 # --- Contact/FieldEventContactAssociation ---
-                contact_names, contact_organizations, roles = get_contacts_info(
-                    row, measured_by, measured_by_mapper
-                )
+                contact_info = get_contacts_info(row, measured_by, measured_by_mapper)
+                if contact_info is None:
+                    continue
+                contact_names, contact_organizations, roles = contact_info
 
                 for i, c in enumerate(contact_names):
                     if c in created_contacts:
