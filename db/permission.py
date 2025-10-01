@@ -63,14 +63,14 @@ class Permission(Base, AutoBaseMixin, ReleaseMixin):
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
         primaryjoin=and_(
-            foreign(permissible_id) == Thing.thing_id, permissible_type == "Thing"
+            foreign(permissible_id) == Thing.id, permissible_type == "Thing"
         ),
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
         primaryjoin=and_(
-            foreign(permissible_id) == Location.location_id,
+            foreign(permissible_id) == Location.id,
             permissible_type == "Location",
         ),
         viewonly=True,
