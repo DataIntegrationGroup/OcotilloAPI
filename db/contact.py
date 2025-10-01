@@ -39,7 +39,10 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     organization: Mapped[str] = lexicon_term(nullable=True)
     role: Mapped[str] = lexicon_term(nullable=False)
     contact_type: Mapped[str] = lexicon_term(nullable=False)
+
+    # primary keys of the nm aquifer tables from which the contacts originate
     nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)
+    nma_pk_waterlevels: Mapped[str] = mapped_column(String(100), nullable=True)
 
     phones: Mapped[List["Phone"]] = relationship(
         "Phone", back_populates="contact", passive_deletes=True
@@ -127,7 +130,9 @@ class Address(Base, AutoBaseMixin, ReleaseMixin):
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
-    country: Mapped[str] = lexicon_term(default="United States", nullable=False)
+    country: Mapped[str] = mapped_column(
+        String(50), default="United States", nullable=False
+    )
     address_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(

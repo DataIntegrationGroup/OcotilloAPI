@@ -23,7 +23,7 @@ from shapely.io import to_geojson
 
 # from starlette.responses import FileResponse
 
-from core.dependencies import session_dependency
+from core.dependencies import session_dependency, viewer_dependency
 from db import Group
 from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
@@ -34,6 +34,7 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 @router.get("")
 async def get_geospatial(
+    user: viewer_dependency,
     session: session_dependency,
     thing_type: Annotated[List[str], Query(title="thing_type")] = None,
     group: Annotated[str | int, Query(title="group")] = None,
@@ -61,7 +62,7 @@ async def get_geospatial(
 
 @router.get("/project-area/{group_id}", summary="Get project area for group")
 async def get_project_area(
-    session: session_dependency, group_id: int
+    user: viewer_dependency, session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:
 
     group = simple_get_by_id(session, Group, group_id)

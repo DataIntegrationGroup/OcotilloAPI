@@ -29,12 +29,14 @@ import numpy as np
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
 from services.gcs_helper import get_storage_bucket
+
+# from services.lexicon_mapper import lexicon_mapper
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
-    get_state_from_point,
-    get_county_from_point,
-    get_quad_name_from_point,
+    # get_state_from_point,
+    # get_county_from_point,
+    # get_quad_name_from_point,
 )
 from transfers.logger import logger
 
@@ -85,13 +87,14 @@ def extract_organization(alternate_id: str) -> str:
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_welldata_datasources.csv"
     if not os.path.exists(path):
-        path = "data/valid_welldata_datasources.csv"
+        path = "transfers/data/valid_welldata_datasources.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info(f"Valid WellData Datasources: {valid_datasources}")
+        logger.info("Valid WellData Datasources:")
+        logger.info("\n".join(f"  {vd}" for vd in valid_datasources))
 
     return df[df["DataSource"].isin(valid_datasources)]
 
@@ -99,13 +102,15 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_measuring_agency.csv"
     if not os.path.exists(path):
-        path = "data/valid_measuring_agency.csv"
+        path = "transfers/data/valid_measuring_agency.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_measuring_agencies = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info(f"Valid Measuring Agencies: {valid_measuring_agencies}")
+        logger.info("Valid Measuring Agencies:")
+        for vma in valid_measuring_agencies:
+            logger.info(f"  {vma}")
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 
@@ -171,14 +176,17 @@ def make_location(row: pd.Series) -> Location:
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
     elif not (pd.isna(row.AltitudeMethod)):
-        elevation_method = lu_to_lexicon_map[f"LU_AltitudeMethod:{row.AltitudeMethod}"]
+        elevation_method = lexicon_mapper.map_value(
+            f"LU_AltitudeMethod:{row.AltitudeMethod}"
+        )
+
     else:
         elevation_method = None
 
     if not (pd.isna(row.CoordinateMethod)):
-        coordinate_method = lu_to_lexicon_map[
+        coordinate_method = lexicon_mapper.map_value(
             f"LU_CoordinateMethod:{row.CoordinateMethod}"
-        ]
+        )
     else:
         coordinate_method = None
 
@@ -285,60 +293,8 @@ def make_location(row: pd.Series) -> Location:
         coordinate_method=coordinate_method,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
-        # these values will be populated in cleanup_wells
-        # state=state,
-        # county=county,
-        # quad_name=quad_name,
     )
     return location
-
-
-def make_lu_to_lexicon_mapper():
-    lu_tables = [
-        # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
-        "LU_AltitudeMethod",  # CODE/MEANING
-        "LU_CollectionMethod",  # CODE/MEANING
-        "LU_ConstructionMethod",  # CODE/MEANING
-        "LU_CoordinateAccuracy",  # CODE/MEANING
-        # "LU_CoordinateDatum",   # the code is the value, so no need for mapping
-        "LU_CoordinateMethod",  # CODE/MEANING
-        "LU_CurrentUse",  # CODE/MEANING
-        "LU_DataQuality",  # CODE/MEANING
-        "LU_DataSource",  # CODE/MEANING
-        "LU_Depth_CompletionSource",  # CODE/MEANING
-        "LU_Discharge_ChemistrySource",  # CODE/MEANING
-        # "LU_FieldNoteTypes",    # not being used in the transfers since there are no records
-        # "LU_Formations",        # needs to be cleaned before it can be used
-        "LU_LevelStatus",  # CODE/MEANING
-        # "LU_Lithology",         # needs to be cleaned before it can be used
-        "LU_MajorAnalyte",  # CODE/MEANING
-        "LU_MeasurementMethod",  # CODE/MEANING
-        # "LU_MeasuringAgency",   # the abreviation is what is used in the new schema
-        "LU_MinorTraceAnalyte",  # CODE/MEANING
-        "LU_MonitoringStatus",  # CODE/MEANING
-        "LU_SampleType",  # CODE/MEANING
-        "LU_SiteType",  # CODE/MEANING
-        "LU_Status",  # CODE/MEANING
-    ]
-
-    mappers = {}
-
-    for lu_table in lu_tables:
-        table = read_csv(lu_table)
-
-        for i, row in table.iterrows():
-            if lu_table == "LU_Formations":
-                code = row.Code
-                meaning = row.Meaning
-            else:
-                code = row.CODE
-                meaning = row.MEANING
-
-            mappers.update({f"{lu_table}:{code}": meaning})
-    return mappers
-
-
-lu_to_lexicon_map = make_lu_to_lexicon_mapper()
 
 
 def timeit_direct(func, *args, **kwargs):
@@ -356,7 +312,68 @@ def timeit(func):
     return wrapper
 
 
-if __name__ == "__main__":
-    print(lu_to_lexicon_map)
+class LexiconMapper:
+    def __init__(self):
+        self._mappers = None
+
+    def map_value(self, value):
+        return self._make_lu_to_lexicon_mapper().get(value, value)
+
+    def _make_lu_to_lexicon_mapper(self):
+        if self._mappers:
+            return self._mappers
+
+        # Lookup tables where CODE maps to MEANING
+        lu_tables = [
+            "LU_AltitudeMethod",
+            "LU_CollectionMethod",
+            "LU_ConstructionMethod",
+            "LU_CoordinateAccuracy",
+            "LU_CoordinateMethod",
+            "LU_CurrentUse",
+            "LU_DataQuality",
+            "LU_DataSource",
+            "LU_Depth_CompletionSource",
+            "LU_Discharge_ChemistrySource",
+            "LU_LevelStatus",
+            "LU_MajorAnalyte",
+            "LU_MeasurementMethod",
+            "LU_MinorTraceAnalyte",
+            "LU_MonitoringStatus",
+            "LU_SampleType",
+            "LU_SiteType",
+            "LU_Status",
+        ]
+
+        # Lookup tables intentionally skipped (kept for documentation only)
+        # Each entry explains why the table is excluded
+        _lu_tables_skipped = {
+            "LU_AltitudeDatum": "code is the value, so no need for mapping",
+            "LU_CoordinateDatum": "code is the value, so no need for mapping",
+            "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
+            "LU_Formations": "needs to be cleaned before it can be used",
+            "LU_Lithology": "needs to be cleaned before it can be used",
+            "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
+        }
+        mappers = {}
+
+        for lu_table in lu_tables:
+            table = read_csv(lu_table)
+
+            for i, row in table.iterrows():
+                if lu_table == "LU_Formations":
+                    code = row.Code
+                    meaning = row.Meaning
+                else:
+                    code = row.CODE
+                    meaning = row.MEANING
+
+                mappers.update({f"{lu_table}:{code}": meaning})
+        self._mappers = mappers
+        return mappers
+
+
+lexicon_mapper = LexiconMapper()
+
 
 # ============= EOF =============================================

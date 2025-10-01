@@ -495,5 +495,6 @@
     {"categories": ["limit_type"], "term": "PQL", "definition": "Practical Quantitation Limit. Similar to the MRL, this is the lowest concentration achievable by a lab during routine operating conditions. It represents the practical, real-world limit of quantification."},
     {"categories": ["limit_type"], "term": "MDL", "definition": "Method Detection Limit. The minimum measured concentration of a substance that can be reported with 99% confidence that the analyte concentration is greater than zero. It is a statistical value determined under ideal lab conditions and is typically lower than the MRL/PQL."},
     {"categories": ["limit_type"], "term": "RL", "definition": "Reporting Limit. A generic term often used by labs to mean their MRL or PQL. It is the lowest concentration they are willing to report as a quantitative result."}
+
   ]
 }
