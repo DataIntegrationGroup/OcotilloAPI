@@ -16,9 +16,8 @@ from sqlalchemy import (
     Boolean,
     Date,
     Text,
-    and_,
 )
-from sqlalchemy.orm import relationship, Mapped, mapped_column, foreign
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 
@@ -62,17 +61,14 @@ class Permission(Base, AutoBaseMixin, ReleaseMixin):
     # They tell SQLAlchemy exactly how to find the specific parent record for a given child.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin=and_(
-            foreign(permissible_id) == Thing.id, permissible_type == "Thing"
-        ),
+        primaryjoin="and_(foreign(Permission.permissible_id) == Thing.id, "
+        "Permission.permissible_type == 'Thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin=and_(
-            foreign(permissible_id) == Location.id,
-            permissible_type == "Location",
-        ),
+        primaryjoin="and_(foreign(Permission.permissible_id) == Location.id, "
+        "Permission.permissible_type == 'Location')",
         viewonly=True,
     )
 
