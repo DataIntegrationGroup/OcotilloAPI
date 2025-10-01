@@ -43,13 +43,12 @@ SPACE_2 = " " * 2
 SPACE_4 = " " * 4
 
 # keep a dictionary of created Contacts to avoid repeated SQL queries
-CREATED_CONTACTS = {}
-
-with open("transfers/data/measured_by_mapper.json", "r") as f:
-    measured_by_mapper = json.load(f)
 
 
 def transfer_water_levels(session):
+    created_contacts = {}
+    with open("transfers/data/measured_by_mapper.json", "r") as f:
+        measured_by_mapper = json.load(f)
 
     wd = read_csv("WaterLevels")
     wd = filter_to_valid_point_ids(session, wd)
@@ -113,7 +112,7 @@ def transfer_water_levels(session):
             """
 
             # --- FieldEvent ---
-
+            # TODO: use create schema to validate data
             field_event = FieldEvent(
                 thing=thing,
                 event_date=dt_utc,
@@ -128,7 +127,7 @@ def transfer_water_levels(session):
             )
 
             # --- FieldActivity ---
-
+            # TODO: use create schema to validate data
             field_activity = FieldActivity(
                 field_event=field_event,
                 activity_type="groundwater level",
@@ -141,18 +140,10 @@ def transfer_water_levels(session):
                 f"{SPACE_4}Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}"
             )
             # --- Contact/FieldEventContactAssociation ---
-            # AMP feedback:
-            # - is Duke Engring the same as Duke University? Is it from their engineering school?
-            # - speak with AMP to help identify all initials
-            if pd.isna(row.MeasuredBy):
-                measured_by = None
-            else:
-                measured_by = row.MeasuredBy
-
-            if pd.isna(row.MeasuringAgency):
-                measuring_agency = "Unknown"
-            else:
-                measuring_agency = row.MeasuringAgency
+            measured_by = None if pd.isna(row.MeasuredBy) else row.MeasuredBy
+            measuring_agency = (
+                "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
+            )
 
             # sometimes multiple contacts need to be created, so they'll be stored in a list
             # the nth name corresponds with the nth organization
@@ -165,7 +156,7 @@ def transfer_water_levels(session):
             # rs --> roles
 
             # TODO: get help figuring out (AMP)
-            if measured_by in measured_by_mapper.keys():
+            if measured_by in measured_by_mapper:
                 args = measured_by_mapper[measured_by]
                 if isinstance(args[0], list):
                     ns, os, rs = zip(*args)
@@ -298,7 +289,7 @@ def transfer_water_levels(session):
                 contact_organizations.extend(os)
                 roles.extend(rs)
                 for i, c in enumerate(contact_names):
-                    if c not in CREATED_CONTACTS.keys():
+                    if c not in created_contacts.keys():
                         # create new contact if not already created
                         name = contact_names[i]
                         organization = contact_organizations[i]
@@ -318,9 +309,9 @@ def transfer_water_levels(session):
                             f"{SPACE_4}Created contact: ID {contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
                         )
 
-                        CREATED_CONTACTS[c] = contact
+                        created_contacts[c] = contact
                     else:
-                        contact = CREATED_CONTACTS[c]
+                        contact = created_contacts[c]
                     field_event_contacts.append(contact)
             else:
                 contact = thing.contacts[0]

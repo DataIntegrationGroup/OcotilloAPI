@@ -95,7 +95,6 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
         logger.info("Valid WellData Datasources:")
         logger.info("\n".join(f"  {vd}" for vd in valid_datasources))
-            logger.info(f"  {vd}")
 
     return df[df["DataSource"].isin(valid_datasources)]
 
@@ -294,10 +293,6 @@ def make_location(row: pd.Series) -> Location:
         coordinate_method=coordinate_method,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
-        # these values will be populated in cleanup_wells
-        # state=state,
-        # county=county,
-        # quad_name=quad_name,
     )
     return location
 
@@ -330,62 +325,36 @@ class LexiconMapper:
 
         # Lookup tables where CODE maps to MEANING
         lu_tables = [
-          "LU_AltitudeMethod",
-          "LU_CollectionMethod",
-          "LU_ConstructionMethod",
-          "LU_CoordinateAccuracy",
-          "LU_CoordinateMethod",
-          "LU_CurrentUse",
-          "LU_DataQuality",
-          "LU_DataSource",
-          "LU_Depth_CompletionSource",
-          "LU_Discharge_ChemistrySource",
-          "LU_LevelStatus",
-          "LU_MajorAnalyte",
-          "LU_MeasurementMethod",
-          "LU_MinorTraceAnalyte",
-          "LU_MonitoringStatus",
-          "LU_SampleType",
-          "LU_SiteType",
-          "LU_Status",
-      ]
-      
-      # Lookup tables intentionally skipped (kept for documentation only)
-      # Each entry explains why the table is excluded
-      _lu_tables_skipped = {
-          "LU_AltitudeDatum": "code is the value, so no need for mapping",
-          "LU_CoordinateDatum": "code is the value, so no need for mapping",
-          "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
-          "LU_Formations": "needs to be cleaned before it can be used",
-          "LU_Lithology": "needs to be cleaned before it can be used",
-          "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
-      }
-            # "LU_AltitudeDatum",     # the code is the value, so no need for mapping
-            "LU_AltitudeMethod",  # CODE/MEANING
-            "LU_CollectionMethod",  # CODE/MEANING
-            "LU_ConstructionMethod",  # CODE/MEANING
-            "LU_CoordinateAccuracy",  # CODE/MEANING
-            # "LU_CoordinateDatum",   # the code is the value, so no need for mapping
-            "LU_CoordinateMethod",  # CODE/MEANING
-            "LU_CurrentUse",  # CODE/MEANING
-            "LU_DataQuality",  # CODE/MEANING
-            "LU_DataSource",  # CODE/MEANING
-            "LU_Depth_CompletionSource",  # CODE/MEANING
-            "LU_Discharge_ChemistrySource",  # CODE/MEANING
-            # "LU_FieldNoteTypes",    # not being used in the transfers since there are no records
-            # "LU_Formations",        # needs to be cleaned before it can be used
-            "LU_LevelStatus",  # CODE/MEANING
-            # "LU_Lithology",         # needs to be cleaned before it can be used
-            "LU_MajorAnalyte",  # CODE/MEANING
-            "LU_MeasurementMethod",  # CODE/MEANING
-            # "LU_MeasuringAgency",   # the abreviation is what is used in the new schema
-            "LU_MinorTraceAnalyte",  # CODE/MEANING
-            "LU_MonitoringStatus",  # CODE/MEANING
-            "LU_SampleType",  # CODE/MEANING
-            "LU_SiteType",  # CODE/MEANING
-            "LU_Status",  # CODE/MEANING
+            "LU_AltitudeMethod",
+            "LU_CollectionMethod",
+            "LU_ConstructionMethod",
+            "LU_CoordinateAccuracy",
+            "LU_CoordinateMethod",
+            "LU_CurrentUse",
+            "LU_DataQuality",
+            "LU_DataSource",
+            "LU_Depth_CompletionSource",
+            "LU_Discharge_ChemistrySource",
+            "LU_LevelStatus",
+            "LU_MajorAnalyte",
+            "LU_MeasurementMethod",
+            "LU_MinorTraceAnalyte",
+            "LU_MonitoringStatus",
+            "LU_SampleType",
+            "LU_SiteType",
+            "LU_Status",
         ]
 
+        # Lookup tables intentionally skipped (kept for documentation only)
+        # Each entry explains why the table is excluded
+        _lu_tables_skipped = {
+            "LU_AltitudeDatum": "code is the value, so no need for mapping",
+            "LU_CoordinateDatum": "code is the value, so no need for mapping",
+            "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
+            "LU_Formations": "needs to be cleaned before it can be used",
+            "LU_Lithology": "needs to be cleaned before it can be used",
+            "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
+        }
         mappers = {}
 
         for lu_table in lu_tables:
