@@ -94,7 +94,7 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
         logger.info("Valid WellData Datasources:")
-        for vd in valid_datasources:
+        logger.info("\n".join(f"  {vd}" for vd in valid_datasources))
             logger.info(f"  {vd}")
 
     return df[df["DataSource"].isin(valid_datasources)]
