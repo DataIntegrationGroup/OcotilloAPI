@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, PastDate
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -48,7 +48,7 @@ class CreateBaseThing(BaseCreateModel):
     location_id: int | None = None  # Optional location ID for the thing
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
-    first_visit_date: date | None = None  # Date of NMBGMR's first visit
+    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
 class CreateWell(CreateBaseThing):
