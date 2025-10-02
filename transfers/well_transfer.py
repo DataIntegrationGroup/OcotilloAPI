@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 import time
 from pydantic import ValidationError
 from sqlalchemy import select
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
 from schemas.thing import CreateWellScreen, CreateWell
+from services.gcs_helper import get_storage_bucket
 from services.thing_helper import add_thing
 from services.util import (
     get_state_from_point,
@@ -192,30 +194,51 @@ def transfer_wellscreens(session, limit=None):
 def cleanup_locations(session):
     locations = session.query(Location).all()
     n = len(locations)
+    lut = {}
+
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/location_cleanup.json"
+    blob = bucket.blob(log_filename)
+    if blob.exists():
+        lut = json.loads(blob.download_as_string())
+
     for i, location in enumerate(locations):
 
         y, x = location.latlon
+        xykey = f"{y},{x}"
+        if xykey in lut:
+            state, county, quad_name = lut[xykey]
+            location.state = state
+            location.county = county
+            location.quad_name = quad_name
+        else:
+            state = location.state
+            county = location.county
+            quad_name = location.quad_name
+            if not state:
+                state = get_state_from_point(x, y)
+                if state:
+                    location.state = state
 
-        if not location.state:
-            state = get_state_from_point(x, y)
-            if state:
-                location.state = state
+            if not county:
+                county = get_county_from_point(x, y)
+                if county:
+                    location.county = county
 
-        if not location.county:
-            county = get_county_from_point(x, y)
-            if county:
-                location.county = county
+            if not quad_name:
+                quad_name = get_quad_name_from_point(x, y)
+                if quad_name:
+                    location.quad_name = quad_name
 
-        if not location.quad_name:
-            quad_name = get_quad_name_from_point(x, y)
-            if quad_name:
-                location.quad_name = quad_name
+            lut[xykey] = [state, county, quad_name]
+        session.commit()
 
         logger.info(
-            f"{i}/{n} lat: {y} lon: {x} state={location.state} county={location.county} quad"
+            f"{i}/{n} lat: {y} lon: {x} state={location.state}, county={location.county}, quad"
             f"={location.quad_name}"
         )
-        session.commit()
+
+    blob.upload_from_string(json.dumps(lut))
 
 
 # ============= EOF =============================================

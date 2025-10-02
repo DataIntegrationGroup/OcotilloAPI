@@ -87,7 +87,7 @@ def extract_organization(alternate_id: str) -> str:
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_welldata_datasources.csv"
     if not os.path.exists(path):
-        path = "transfers/data/valid_welldata_datasources.csv"
+        path = "../transfers/data/valid_welldata_datasources.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)
@@ -102,7 +102,7 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     path = "/workspace/transfers/data/valid_measuring_agency.csv"
     if not os.path.exists(path):
-        path = "transfers/data/valid_measuring_agency.csv"
+        path = "../transfers/data/valid_measuring_agency.csv"
 
     with open(path, "r") as f:
         reader = csv.reader(f)
@@ -175,7 +175,7 @@ def make_location(row: pd.Series) -> Location:
 
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
-    elif not (pd.isna(row.AltitudeMethod)):
+    elif pd.isna(row.AltitudeMethod).empty:
         elevation_method = lexicon_mapper.map_value(
             f"LU_AltitudeMethod:{row.AltitudeMethod}"
         )
@@ -183,7 +183,7 @@ def make_location(row: pd.Series) -> Location:
     else:
         elevation_method = None
 
-    if not (pd.isna(row.CoordinateMethod)):
+    if pd.isna(row.CoordinateMethod).empty:
         coordinate_method = lexicon_mapper.map_value(
             f"LU_CoordinateMethod:{row.CoordinateMethod}"
         )

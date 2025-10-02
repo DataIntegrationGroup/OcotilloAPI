@@ -102,7 +102,7 @@ def transfer_all(sess, limit=100):
     be saved to a file for later use.
     """
     message("CLEANING UP LOCATIONS")
-    timeit_direct(cleanup_locations(sess))
+    timeit_direct(cleanup_locations, sess)
 
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
@@ -125,7 +125,7 @@ def transfer_all(sess, limit=100):
     When transfering water chemistry data use the qc_type field to indicate
     normal/blanks/duplicates instead of what comes from LU_SampleType. Use
     those values, however, to map to the standard qc_type fields if applicable
-    (i.e. not applicable when sample type is "Soil or rock sample" or 
+    (i.e. not applicable when sample type is "Soil or rock sample" or
     "Precipitation," but is applicable when sample type is "Equipment blank"
     or "Field duplicate")
     """
@@ -145,7 +145,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 20))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
