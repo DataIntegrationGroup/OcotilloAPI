@@ -173,12 +173,12 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # Proxy to directly access the Location associated with this Thing
-    locations: AssociationProxy[list["Location"]] = association_proxy(  # noqa: F821
+    locations: AssociationProxy[list["Location"]] = association_proxy(
         "location_associations", "location"
     )
 
     # Proxy to directly access the Contact objects associated with this Thing
-    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(
         "contact_associations", "contact"
     )
 
