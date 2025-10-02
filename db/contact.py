@@ -24,7 +24,7 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 if TYPE_CHECKING:
     from db.thing import Thing
     from db.field import FieldEvent
-    from db.field import FieldEventContactAssociation
+    from db.field import FieldEventParticipants
     from db.permission import Permission
     from db.publication import AuthorContactAssociation, Author
 
@@ -82,13 +82,11 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
         cascade="all, delete-orphan",
     )
     # One-To-Many: A Contact can participate in many Field Events.
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
-        relationship(
-            "FieldEventContactAssociation",
-            back_populates="contact",
-            cascade="all, delete-orphan",
-            passive_deletes=True,
-        )
+    field_event_participants: Mapped[list["FieldEventParticipants"]] = relationship(
+        "FieldEventParticipants",
+        back_populates="contact",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
@@ -104,7 +102,7 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
 
     # Proxy to directly access the FieldEvent objects in which this Contact participated.
     field_events: AssociationProxy[list["FieldEvent"]] = association_proxy(
-        "field_event_contact_associations", "field_event"
+        "field_event_participants", "field_event"
     )
 
     # Full-Text Search Vector

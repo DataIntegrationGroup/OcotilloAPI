@@ -498,7 +498,7 @@ def field_event(water_well_thing):
 @pytest.fixture(scope="session")
 def field_event_contact(field_event, contact):
     with session_ctx() as session:
-        field_event_contact = FieldEventContactAssociation(
+        field_event_contact = FieldEventParticipants(
             field_event_id=field_event.id,
             contact_id=contact.id,
             field_contact_role="Lead",

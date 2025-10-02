@@ -24,7 +24,7 @@ import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from db.field import FieldEvent, FieldActivity, FieldEventContactAssociation
+    from db.field import FieldEvent, FieldActivity, FieldEventParticipants
     from db.thing import Thing
     from db.contact import Contact
     from db.observation import Observation
@@ -51,7 +51,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     field_event_contact_id: Mapped[str] = mapped_column(
-        ForeignKey("field_event_contact_association.id"), nullable=True
+        ForeignKey("field_event_participant.id"), nullable=True
     )
 
     # --- Columns ---
@@ -86,7 +86,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationship Definitions ---
     field_activity: Mapped["FieldActivity"] = relationship(back_populates="samples")
-    field_event_contact: Mapped["FieldEventContactAssociation"] = relationship(
+    field_event_contact: Mapped["FieldEventParticipants"] = relationship(
         back_populates="samples"
     )
 

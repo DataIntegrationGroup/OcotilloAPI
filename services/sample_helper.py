@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from fastapi_pagination.ext.sqlalchemy import paginate
 
-from db import FieldEvent, FieldActivity, FieldEventContactAssociation, Sample
+from db import FieldEvent, FieldActivity, FieldEventParticipants, Sample
 from services.query_helper import order_sort_filter
 
 
@@ -18,7 +18,7 @@ def get_db_samples(
         .joinedload(FieldActivity.field_event)
         .joinedload(FieldEvent.thing),
         joinedload(Sample.field_event_contact).joinedload(
-            FieldEventContactAssociation.contact
+            FieldEventParticipants.contact
         ),  # Eagerly load related Contact
     )
 
