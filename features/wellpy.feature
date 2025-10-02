@@ -1,10 +1,10 @@
 Feature: Correcting groundwater level measurements using hydrograph visualization
-  As a hydrologist
+  As a hydrogeologist and data manager
   I want to visualize, add, and adjust groundwater level data
   So that continuous transducer data can be referenced and corrected to manual measurements
 
   Background:
-    Given I am logged in as a hydrologist
+    Given I am logged in as myself and have the "HydrographEditor" permission
     And I have existing manual and continuous groundwater level data in the system
 
   Scenario: Display existing data on a hydrograph
