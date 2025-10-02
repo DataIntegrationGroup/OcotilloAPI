@@ -1,65 +1,84 @@
-Feature: Recall and share well information in the field
+Feature: Record groundwater level measurement in the field
   As a field technician
-  I want to recall information about a well while in the field
-  And share a link with the well owner
-  So that I can provide them with details and measurements such as a hydrograph
+  I want a digital form to record all necessary information when measuring groundwater levels
+  So that field data can be consistently collected and stored in the system
 
   Background:
     Given I am logged in as a field technician
-    And I am using the Ocotillo mobile web UI in the field
+    And I am at a well site with Ocotillo open on a mobile device
 
   # --- Happy Path ---
 
-  Scenario: Recall well details in the field
-    Given I search for well ID "NM-123"
-    When I open the well record
-    Then I should see details including the well owner, construction information, and location
-    And I should see a hydrograph of historical water level measurements
+  Scenario: Record a groundwater level measurement with all required fields
+    When I open the "New Measurement" form
+    And I enter the well ID "NM-123"
+    And I enter the date "2025-10-02" and time "09:30"
+    And I enter the measured groundwater level "145.3"
+    And I select the measurement method "Electric tape"
+    And I enter my initials as the observer
+    And I save the form
+    Then the measurement should be stored in the system
+    And the new record should appear in the well’s measurement history
 
-  Scenario: Share well details with the owner
-    Given I am viewing the well record for well ID "NM-123"
-    When I choose to share the well details
-    Then the system should generate a shareable link
-    And the link should display the well’s details and hydrograph when accessed
-    And the link should be accessible without login for the well owner
+  # --- Required Fields ---
 
-  # --- Display & Content ---
+  Scenario Outline: Required field validation
+    When I open the "New Measurement" form
+    And I leave the <field> blank
+    And I attempt to save the form
+    Then I should receive an error message indicating the <field> is required
+    And the form should not be submitted
 
-  Scenario: Display well construction information
-    Given I open a well record with construction details
-    Then I should see casing diameter, depth, screen intervals, and well purpose if available
+    Examples:
+      | field               |
+      | Well ID             |
+      | Date                |
+      | Time                |
+      | Groundwater Level   |
+      | Measurement Method  |
+      | Observer Initials   |
 
-  Scenario: Display hydrograph in well record
-    Given the well has historical water level measurements
-    When I view the well record
-    Then I should see a hydrograph with manual and continuous measurements clearly identified
+  # --- Optional Fields ---
 
-  # --- Edge Cases ---
+  Scenario Outline: Record optional field values
+    When I open the "New Measurement" form
+    And I enter a value in the <field> field: "<value>"
+    And I save the form
+    Then the <field> should be stored with the measurement record
 
-  Scenario: Well record not found
-    Given I search for well ID "NM-9999" that does not exist
-    When I attempt to open the well record
-    Then I should see an error message indicating the well cannot be found
+    Examples:
+      | field                | value                    |
+      | Notes                | "Well cap was damaged"   |
+      | Environmental Cond.  | "Rainy, muddy conditions"|
+      | GPS Coordinates      | "34.051N, 106.892W"      |
+      | Depth to Pump Intake | "60 ft"                  |
 
-  Scenario: Well with no water level data
-    Given I open a well record with no water level measurements
-    Then I should see well details
-    And a message stating that no hydrograph data is available
+  # --- Value Validation ---
 
-  Scenario: Link access permissions
-    Given I share a well record link with the owner
-    When someone else tries to access the link
-    Then the system should require permission or deny access
-    And only the intended well owner should be able to view the shared details
+  Scenario: Invalid groundwater level value
+    When I open the "New Measurement" form
+    And I enter "ABC" in the groundwater level field
+    And I attempt to save the form
+    Then I should receive an error message indicating the groundwater level must be numeric
+    And the form should not be submitted
 
-  Scenario: Expiring shared links
-    Given I share a well record link with the owner
-    When the link expires after 30 days
-    Then the link should no longer be accessible
-    And the system should prompt the field technician to generate a new link if needed
+  Scenario: Invalid date or time
+    When I enter a future date "2050-01-01"
+    And I attempt to save the form
+    Then I should receive an error message indicating the date is invalid
 
-  Scenario: Offline access to well information
-    Given I am in an area with no connectivity
-    When I open a well record that was synced to my device earlier
-    Then I should still be able to view the well details and most recent water level data
-    And I should be notified that sharing links is unavailable offline
+  # --- Offline & Sync ---
+
+  Scenario: Record measurement offline
+    Given I have no connectivity
+    When I fill out and save the "New Measurement" form
+    Then the record should be stored locally on my device
+    And when connectivity is restored
+    Then the record should sync automatically to the system
+
+  Scenario: Sync conflict resolution
+    Given I record a measurement offline
+    And another technician records a measurement for the same well and time online
+    When my record syncs
+    Then I should be notified of a conflict
+    And I should have the option to review and resolve it before final submission
