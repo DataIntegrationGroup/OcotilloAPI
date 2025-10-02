@@ -2,13 +2,8 @@ from behave import when, then
 from selenium.webdriver.common.by import By
 
 
-@when("I visit the Ocotillo staging site for while not logged in")
+@when("I visit the Ocotillo staging site when not logged in")
 def step_visit_staging(context):
-    # options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")        # run headless so no browser window pops up
-    # options.add_argument("--no-sandbox")
-    # options.add_argument("--disable-dev-shm-usage")
-    # context.browser = webdriver.Chrome(options=options)
     context.browser.get("https://ocotillo-staging.newmexicowaterdata.org")
 
 

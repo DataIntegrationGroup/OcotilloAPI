@@ -4,7 +4,7 @@ Feature: Ocotillo staging login page
   So that I know authentication is required
 
   Scenario: View login page when not logged in
-    When I visit the Ocotillo staging site for while not logged in
+    When I visit the Ocotillo staging site when not logged in
     Then I should see the login page with body:
       """
       NMBGMR Ocotillo

@@ -20,6 +20,7 @@ Feature: Well details page in Ocotillo
     And when I hover over a site marker the site name should appear
     And when I click a site marker I should be navigated to that site’s well details page
     And I should see a table of water level measurements with date, method, and observed values
+    And I should see a table of water level statistics including min, max, mean, latest, and total measurements
     And I should see a metadata section including well status, project, coordinates, formation, monitoring status, current use, well construction, and a link to OSE PODs
     And I should see an equipment table listing associated instruments
     And I should see a contacts table listing well owner, property manager, or other associated contacts
