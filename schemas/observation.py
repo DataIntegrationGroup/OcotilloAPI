@@ -75,10 +75,6 @@ class CreateWaterChemistryObservation(CreateBaseObservation):
     pass
 
 
-# class CreateGeothermalObservation(CreateBaseObservation):
-#     observation_depth: float
-
-
 # -------- UPDATE ------------
 
 
@@ -99,10 +95,6 @@ class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
 
 class UpdateWaterChemistryObservation(UpdateBaseObservation):
     pass
-
-
-# class UpdateGeothermalObservation(UpdateBaseObservation):
-#     observation_depth: float | None = None
 
 
 # -------- RESPONSE ----------
@@ -134,10 +126,6 @@ class GroundwaterLevelObservationResponse(BaseObservationResponse):
 
 class WaterChemistryObservationResponse(BaseObservationResponse):
     pass
-
-
-# class GeothermalObservationResponse(BaseObservationResponse):
-#     observation_depth: float | None
 
 
 class ObservationResponse(
