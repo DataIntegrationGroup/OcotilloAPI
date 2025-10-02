@@ -203,6 +203,9 @@ def cleanup_locations(session):
         lut = json.loads(blob.download_as_string())
 
     for i, location in enumerate(locations):
+        if i and not i % 100:
+            logger.info(f"Processing row {i} of {n}. dumping lut to {log_filename}")
+            blob.upload_from_string(json.dumps(lut))
 
         y, x = location.latlon
         xykey = f"{y},{x}"
