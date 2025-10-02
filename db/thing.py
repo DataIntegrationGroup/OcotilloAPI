@@ -152,7 +152,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # One To-Many: A Thing can be in many Groups over time.
-    thing_groups: Mapped[List["GroupThingAssociation"]] = relationship(
+    group_associations: Mapped[List["GroupThingAssociation"]] = relationship(
         "GroupThingAssociation",
         back_populates="thing",
         cascade="all, delete-orphan",
@@ -188,7 +188,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # Proxy to directly access the Group(s) this Thing is a member of.
-    groups: AssociationProxy[List["Group"]] = association_proxy("thing_groups", "group")
+    groups: AssociationProxy[List["Group"]] = association_proxy(
+        "group_associations", "group"
+    )
 
     # Full-text search vector
     search_vector = Column(

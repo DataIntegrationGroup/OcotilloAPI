@@ -66,7 +66,7 @@ class GroupThingAssociation(Base, AutoBaseMixin):
 
     # --- Relationship Definitions ---
     # Many-To-One: This association links to one Thing.
-    thing: Mapped["Thing"] = relationship("Thing", back_populates="thing_groups")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="group_associations")
 
     # Many-To-One: This association links to one Group.
     group: Mapped["Group"] = relationship("Group", back_populates="thing_associations")
