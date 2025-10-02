@@ -65,7 +65,7 @@
     {"categories": ["elevation_method"], "term": "Reported", "definition": "Reported"},
     {"categories": ["elevation_method"], "term": "Survey-grade Global Navigation Satellite Sys, Lvl1", "definition": "Survey-grade Global Navigation Satellite Sys, Lvl1"},
     {"categories": ["elevation_method"], "term": "USGS National Elevation Dataset (NED)", "definition": "USGS National Elevation Dataset (NED)"},
-    {"categories": ["elevation_method", "sample_method", "coordinate_method", "current_use", "status", "organization", "role"], "term": "Unknown", "definition": "Unknown"},
+    {"categories": ["elevation_method", "sample_method", "coordinate_method", "current_use", "status", "organization", "role", "level_status"], "term": "Unknown", "definition": "Unknown"},
     {"categories": ["construction_method"], "term": "Air-rotary", "definition": "Air-rotary"},
     {"categories": ["construction_method"], "term": "Bored or augered", "definition": "Bored or augered"},
     {"categories": ["construction_method"], "term": "Cable-tool", "definition": "Cable-tool"},
