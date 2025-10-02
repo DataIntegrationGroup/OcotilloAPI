@@ -610,7 +610,7 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            level_status="Water level not affected by status",
+            value_reason="Water level not affected by status",
         )
         session.add(observation)
         session.commit()
@@ -628,28 +628,29 @@ def water_chemistry_observation(sensor, water_chemistry_sample):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
+            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()
         yield observation
 
 
-@pytest.fixture(scope="session")
-def geothermal_observation(sensor, geothermal_sample):
-    with session_ctx() as session:
-        observation = Observation(
-            observation_datetime="2025-01-01T00:02:00Z",
-            sample_id=geothermal_sample.id,
-            sensor_id=sensor.id,
-            observed_property="temperature",
-            release_status="draft",
-            value=20.0,
-            unit="deg C",
-            observation_depth=200.0,
-        )
-        session.add(observation)
-        session.commit()
-        yield observation
+# @pytest.fixture(scope="session")
+# def geothermal_observation(sensor, geothermal_sample):
+#     with session_ctx() as session:
+#         observation = Observation(
+#             observation_datetime="2025-01-01T00:02:00Z",
+#             sample_id=geothermal_sample.id,
+#             sensor_id=sensor.id,
+#             observed_property="temperature",
+#             release_status="draft",
+#             value=20.0,
+#             unit="deg C",
+#             observation_depth=200.0,
+#         )
+#         session.add(observation)
+#         session.commit()
+#         yield observation
 
 
 @pytest.fixture(scope="function")
@@ -663,6 +664,7 @@ def observation_to_delete(water_chemistry_sample, sensor):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
+            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()
