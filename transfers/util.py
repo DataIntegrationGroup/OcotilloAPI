@@ -175,7 +175,7 @@ def make_location(row: pd.Series) -> Location:
 
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
-    elif pd.isna(row.AltitudeMethod).empty:
+    elif pd.isna(row.AltitudeMethod):
         elevation_method = lexicon_mapper.map_value(
             f"LU_AltitudeMethod:{row.AltitudeMethod}"
         )
@@ -183,7 +183,7 @@ def make_location(row: pd.Series) -> Location:
     else:
         elevation_method = None
 
-    if pd.isna(row.CoordinateMethod).empty:
+    if pd.isna(row.CoordinateMethod):
         coordinate_method = lexicon_mapper.map_value(
             f"LU_CoordinateMethod:{row.CoordinateMethod}"
         )
