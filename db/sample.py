@@ -51,7 +51,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     field_event_contact_id: Mapped[str] = mapped_column(
-        ForeignKey("field_event_participant.id"), nullable=True
+        ForeignKey("field_event_participants.id"), nullable=True
     )
 
     # --- Columns ---
