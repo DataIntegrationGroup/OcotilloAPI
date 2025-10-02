@@ -81,9 +81,12 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "outFields": "CELL_NAME,CELL_MAPCODE",
         "returnGeometry": "false",
     }
-
-    resp = httpx.get(url, params=params, timeout=30)
-    data = resp.json()
+    try:
+        resp = httpx.get(url, params=params, timeout=30)
+        data = resp.json()
+    except Exception as e:
+        print(f"Error getting quad name for POINT ({lon} {lat}) {e}")
+        return None
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
