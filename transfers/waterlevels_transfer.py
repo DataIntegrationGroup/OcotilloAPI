@@ -327,15 +327,15 @@ def transfer_water_levels(session):
                     field_event=field_event, contact=fec
                 )
                 if i == 0:
-                    field_event_participant.field_contact_role = "Lead"
+                    field_event_participant.participant_role = "Lead"
                     sampler = field_event_participant
                 else:
-                    field_event_participant.field_contact_role = "Participant"
+                    field_event_participant.participant_role = "Participant"
 
                 session.add(field_event_participant)
                 session.flush()
                 logger.info(
-                    f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.field_contact_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
+                    f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.participant_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
                 )
 
             value_reason = (
