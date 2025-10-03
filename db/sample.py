@@ -104,7 +104,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         "field_activity", "field_event.thing"
     )
     contact: AssociationProxy["Contact"] = association_proxy(
-        "field_event_participant", "contact"
+        "field_event_participant", "participant"
     )
     observations: Mapped[list["Observation"]] = relationship(
         "Observation",

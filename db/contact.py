@@ -87,7 +87,7 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     # One-To-Many: A Contact can participate in many Field Events.
     field_event_participants: Mapped[list["FieldEventParticipant"]] = relationship(
         "FieldEventParticipant",
-        back_populates="contact",
+        back_populates="participant",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
