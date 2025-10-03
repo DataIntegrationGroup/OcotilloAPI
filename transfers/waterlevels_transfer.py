@@ -76,51 +76,12 @@ def get_dt_utc(row):
 
 def get_contacts_info(row, measured_by, measured_by_mapper):
     """
+    Those that are not mapped have "NM_Aquifer Unmapped: "
+    prepended to their name.
     Developer's notes
 
     Known unmapped MeasuredBys as of 10/1/2025
 
-    BEI
-    BF/RG
-    Borchert
-    Borton & Cooper
-    CDWR
-    Chaves/Cruz
-    Chavez/Cruz
-    CM, AK
-    Coons
-    Cooper
-    Corbin
-    Crocker
-    Cruz
-    Cruz-Tribble
-    Cruz/Frost
-    D.Bird
-    D.D.
-    D.Duncan
-    Dames & Moore
-    Dames/Moore
-    Dave Snider
-    David N Jenkins
-    David N. Jenkins
-    DC
-    Decker
-    DL, TK
-    DR
-    DR, ST
-    Driller
-    Duke Engring
-    Duncan
-    EA
-    EA/HB
-    Frost
-    G.Boylan
-    GLR, SC
-    GLR, SK, SC
-    GR, MM
-    GR/PW
-    GR/RG
-    HB
     Heaton
     Horner-Crocker
     HR
