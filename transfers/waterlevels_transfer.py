@@ -26,7 +26,7 @@ from db import (
     Observation,
     FieldEvent,
     FieldActivity,
-    FieldEventContactAssociation,
+    FieldEventParticipant,
     Contact,
 )
 from transfers.util import (
@@ -252,13 +252,12 @@ def transfer_water_levels(session):
             it altogether and note in the log file. There must be at least one
             contact associated with an event
             """
-            field_event_contacts = []
+            field_event_participants = []
             if measured_by not in ["Owner", "Owner report", "Well owner"]:
-                # --- Contact/FieldEventContactAssociation ---
+                # --- Contact/FieldEventParticipant ---
                 contact_info = get_contacts_info(row, measured_by, measured_by_mapper)
 
                 for name, organization, role in zip(*contact_info):
-                    print(name, organization, role)
                     if (name, organization) in created_contacts:
                         contact = created_contacts[(name, organization)]
                     else:
@@ -283,12 +282,12 @@ def transfer_water_levels(session):
                             logger.critical(
                                 f"Contact cannot be created: Name {name} | Role {role} | Organization {organization} because of the following: {str(e)}"
                             )
-                    field_event_contacts.append(contact)
+                    field_event_participants.append(contact)
             else:
                 contact = thing.contacts[0]
-                field_event_contacts.append(contact)
+                field_event_participants.append(contact)
 
-            if len(field_event_contacts) == 0:
+            if len(field_event_participants) == 0:
                 logger.critical(
                     f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}, therefore no field event, field activity, sample, and observation can be made. Skipping."
                 )
@@ -337,20 +336,20 @@ def transfer_water_levels(session):
             person who took the sample. The subsequent contact will be
             participants in the field event
             """
-            for i, fec in enumerate(field_event_contacts):
-                field_event_contact = FieldEventContactAssociation(
+            for i, fec in enumerate(field_event_participants):
+                field_event_participant = FieldEventParticipant(
                     field_event=field_event, contact=fec
                 )
                 if i == 0:
-                    field_event_contact.field_contact_role = "Lead"
-                    sampler = field_event_contact
+                    field_event_participant.field_contact_role = "Lead"
+                    sampler = field_event_participant
                 else:
-                    field_event_contact.field_contact_role = "Participant"
+                    field_event_participant.field_contact_role = "Participant"
 
-                session.add(field_event_contact)
+                session.add(field_event_participant)
                 session.flush()
                 logger.info(
-                    f"{SPACE_4}Created field event contact: ID {field_event_contact.id} | Role {field_event_contact.field_contact_role} | Contact ID {field_event_contact.contact.id} | Contact Name {field_event_contact.contact.name} | Contact Org {field_event_contact.contact.organization}"
+                    f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.field_contact_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
                 )
 
             # --- Sample ---
@@ -366,7 +365,7 @@ def transfer_water_levels(session):
             sample = Sample(
                 nma_pk_waterlevels=row.GlobalID,
                 field_activity=field_activity,
-                field_event_contact=sampler,
+                field_event_participant=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(uuid.uuid4()),
@@ -409,7 +408,7 @@ def transfer_water_levels(session):
             else:
                 value = row.DepthToWater
 
-            level_status = (
+            value_reason = (
                 "Unknown"
                 if pd.isna(row.LevelStatus)
                 else lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
@@ -426,7 +425,7 @@ def transfer_water_levels(session):
                 value=value,
                 unit="ft",
                 measuring_point_height=measuring_point_height,
-                level_status=level_status,
+                value_reason=value_reason,
             )
             session.add(observation)
             session.flush()
