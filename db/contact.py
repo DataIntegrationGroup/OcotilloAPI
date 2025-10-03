@@ -18,7 +18,6 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
 from typing import List, TYPE_CHECKING
-from typing import List, TYPE_CHECKING
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
