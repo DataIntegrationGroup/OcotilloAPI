@@ -18,7 +18,7 @@ def get_db_samples(
         .joinedload(FieldActivity.field_event)
         .joinedload(FieldEvent.thing),
         joinedload(Sample.field_event_participant).joinedload(
-            FieldEventParticipant.contact
+            FieldEventParticipant.participant
         ),  # Eagerly load related Contact
     )
 
