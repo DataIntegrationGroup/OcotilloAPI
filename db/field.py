@@ -7,7 +7,7 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 from db.contact import Contact
 
 
-class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
+class FieldEventParticipants(Base, AutoBaseMixin, ReleaseMixin):
     """
     This association table is to create a many-to-many relationship between
     FieldEvent and Contact. These are participants in the field event.
@@ -32,10 +32,10 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     field_event: Mapped["FieldEvent"] = relationship(
-        "FieldEvent", back_populates="field_event_contact_associations"
+        "FieldEvent", back_populates="field_event_participants"
     )
     contact: Mapped["Contact"] = relationship(  # noqa: F821
-        "Contact", back_populates="field_event_contact_associations"
+        "Contact", back_populates="field_event_participants"
     )
 
     # map associated contacts to samples to restrict the people who could have
@@ -86,19 +86,17 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
     field_activities: Mapped[list["FieldActivity"]] = relationship(
         "FieldActivity", back_populates="field_event"
     )
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
-        relationship(
-            "FieldEventContactAssociation",
-            back_populates="field_event",
-            cascade="all, delete-orphan",
-            passive_deletes=True,
-        )
+    field_event_participants: Mapped[list["FieldEventParticipants"]] = relationship(
+        "FieldEventParticipants",
+        back_populates="field_event",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
     # Proxy to directly access the Contact objects participating in this event.
     contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
-        "field_event_contact_associations", "contact"
+        "field_event_participants", "contact"
     )
 
 

@@ -51,9 +51,10 @@ def water_well_thing(location):
     with session_ctx() as session:
         water_well = Thing(
             name="Test Well",
+            first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_type="Production",
+            well_purpose="Production",
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
@@ -142,6 +143,7 @@ def spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Test Spring",
+            first_visit_date="2023-03-03",
             thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
@@ -163,6 +165,7 @@ def second_spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Second Test Spring",
+            first_visit_date="2023-03-03",
             thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
@@ -495,7 +498,7 @@ def field_event(water_well_thing):
 @pytest.fixture(scope="session")
 def field_event_contact(field_event, contact):
     with session_ctx() as session:
-        field_event_contact = FieldEventContactAssociation(
+        field_event_contact = FieldEventParticipants(
             field_event_id=field_event.id,
             contact_id=contact.id,
             field_contact_role="Lead",
