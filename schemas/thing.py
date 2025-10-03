@@ -20,8 +20,6 @@ from pydantic import BaseModel, model_validator, PastDate
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
-from datetime import date
-
 
 # -------- CREATE ----------
 class CreateThingIdLink(BaseModel):
@@ -96,7 +94,7 @@ class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
     active_location: LocationResponse | None = None
-    first_visit_date: date | None = None
+    first_visit_date: PastDate | None = None
 
 
 class WellResponse(BaseThingResponse):
@@ -196,7 +194,7 @@ class UpdateThing(BaseUpdateModel):
     """
 
     name: str | None = None  # Optional name for the thing
-    first_visit_date: date | None = None  # Date of NMBGMR's first visit
+    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
 class UpdateWell(UpdateThing):
