@@ -31,9 +31,11 @@ from db.group import *
 from db.lexicon import *
 from db.location import *
 from db.observation import *
+from db.permission import *
 from db.publication import *
 from db.sample import *
 from db.sensor import *
+from db.status_history import *
 from db.thing import *
 
 from sqlalchemy import (

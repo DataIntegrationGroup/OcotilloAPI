@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, PastDate
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -46,6 +46,7 @@ class CreateBaseThing(BaseCreateModel):
     location_id: int | None = None  # Optional location ID for the thing
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
+    first_visit_date: PastDate  # Date of NMBGMR's first visit
 
 
 class CreateWell(CreateBaseThing):
@@ -53,7 +54,7 @@ class CreateWell(CreateBaseThing):
     Schema for creating a well.
     """
 
-    well_type: str | None = None
+    well_purpose: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
@@ -93,6 +94,7 @@ class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
     active_location: LocationResponse | None = None
+    first_visit_date: PastDate | None = None
 
 
 class WellResponse(BaseThingResponse):
@@ -104,7 +106,7 @@ class WellResponse(BaseThingResponse):
     # ose_pod_id: str | None = None
     # usgs_id: str | None = None
 
-    well_type: str | None = None  # e.g., "Production", "Observation", etc.
+    well_purpose: str | None = None  # e.g., "Production", "Observation", etc.
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
@@ -192,11 +194,12 @@ class UpdateThing(BaseUpdateModel):
     """
 
     name: str | None = None  # Optional name for the thing
+    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
 class UpdateWell(UpdateThing):
 
-    well_type: str | None = None
+    well_purpose: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None

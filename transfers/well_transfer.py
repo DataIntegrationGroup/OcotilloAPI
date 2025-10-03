@@ -119,7 +119,7 @@ def transfer_wells(session, limit=0):
         #     )
         #     ADDED.append(wt)
         #
-        # well.well_type = wt
+        # well.well_purpose = wt
 
         assoc = LocationThingAssociation()
 
