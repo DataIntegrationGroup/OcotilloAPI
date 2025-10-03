@@ -2,12 +2,17 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+from typing import TYPE_CHECKING
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-from db.contact import Contact
+
+if TYPE_CHECKING:
+    from db.contact import Contact
+    from db.sample import Sample
+    from db.thing import Thing
 
 
-class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
+class FieldEventParticipant(Base, AutoBaseMixin, ReleaseMixin):
     """
     This association table is to create a many-to-many relationship between
     FieldEvent and Contact. These are participants in the field event.
@@ -32,17 +37,17 @@ class FieldEventContactAssociation(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     field_event: Mapped["FieldEvent"] = relationship(
-        "FieldEvent", back_populates="field_event_contact_associations"
+        "FieldEvent", back_populates="field_event_participants"
     )
-    contact: Mapped["Contact"] = relationship(  # noqa: F821
-        "Contact", back_populates="field_event_contact_associations"
+    contact: Mapped["Contact"] = relationship(
+        "Contact", back_populates="field_event_participants"
     )
 
     # map associated contacts to samples to restrict the people who could have
     # taken a sample to those present at the field event
-    samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
+    samples: Mapped[list["Sample"]] = relationship(
         "Sample",
-        back_populates="field_event_contact",
+        back_populates="field_event_participant",
         passive_deletes=True,
     )
 
@@ -60,7 +65,7 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
 
     Its purpose is to store the "where and when" of the event.
     Information about who participated is managed in the
-    FieldEventContactAssociation table. Information about the "what" of the
+    FieldEventParticipant table. Information about the "what" of the
     event is managed in the FieldActivity and Sample tables.
     """
 
@@ -82,23 +87,21 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
         comment="Notes or comments about the field event.",
     )
     # --- Relationships ---
-    thing: Mapped["Thing"] = relationship(back_populates="field_events")  # noqa: F821
+    thing: Mapped["Thing"] = relationship(back_populates="field_events")
     field_activities: Mapped[list["FieldActivity"]] = relationship(
         "FieldActivity", back_populates="field_event"
     )
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (
-        relationship(
-            "FieldEventContactAssociation",
-            back_populates="field_event",
-            cascade="all, delete-orphan",
-            passive_deletes=True,
-        )
+    field_event_participants: Mapped[list["FieldEventParticipant"]] = relationship(
+        "FieldEventParticipant",
+        back_populates="field_event",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
     # Proxy to directly access the Contact objects participating in this event.
-    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
-        "field_event_contact_associations", "contact"
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(
+        "field_event_participants", "contact"
     )
 
 
@@ -138,7 +141,7 @@ class FieldActivity(Base, AutoBaseMixin, ReleaseMixin):
     field_event: Mapped["FieldEvent"] = relationship(
         "FieldEvent", back_populates="field_activities"
     )
-    samples: Mapped[list["Sample"]] = relationship(  # noqa: F821
+    samples: Mapped[list["Sample"]] = relationship(
         "Sample",
         back_populates="field_activity",
         cascade="all, delete-orphan",

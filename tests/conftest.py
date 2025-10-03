@@ -493,16 +493,16 @@ def field_event(water_well_thing):
 
 
 @pytest.fixture(scope="session")
-def field_event_contact(field_event, contact):
+def field_event_participant(field_event, contact):
     with session_ctx() as session:
-        field_event_contact = FieldEventContactAssociation(
+        field_event_participant = FieldEventParticipant(
             field_event_id=field_event.id,
             contact_id=contact.id,
             field_contact_role="Lead",
         )
-        session.add(field_event_contact)
+        session.add(field_event_participant)
         session.commit()
-        yield field_event_contact
+        yield field_event_participant
 
 
 @pytest.fixture(scope="session")
@@ -534,11 +534,11 @@ def water_chemistry_field_activity(field_event):
 
 
 @pytest.fixture(scope="session")
-def groundwater_level_sample(groundwater_level_field_activity, field_event_contact):
+def groundwater_level_sample(groundwater_level_field_activity, field_event_participant):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=groundwater_level_field_activity.id,
-            field_event_contact_id=field_event_contact.id,
+            field_event_participant_id=field_event_participant.id,
             sample_date="2025-01-01T12:00:00Z",
             sample_name="groundwater level sample name",
             sample_matrix="water",
@@ -555,11 +555,11 @@ def groundwater_level_sample(groundwater_level_field_activity, field_event_conta
 
 
 @pytest.fixture(scope="session")
-def water_chemistry_sample(water_chemistry_field_activity, field_event_contact):
+def water_chemistry_sample(water_chemistry_field_activity, field_event_participant):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=water_chemistry_field_activity.id,
-            field_event_contact_id=field_event_contact.id,
+            field_event_participant_id=field_event_participant.id,
             sample_date="2025-01-01T13:00:00Z",
             sample_name="water chemistry sample name",
             sample_matrix="water",
@@ -576,11 +576,11 @@ def water_chemistry_sample(water_chemistry_field_activity, field_event_contact):
 
 
 @pytest.fixture(scope="function")
-def sample_to_delete(water_chemistry_field_activity, field_event_contact):
+def sample_to_delete(water_chemistry_field_activity, field_event_participant):
     with session_ctx() as session:
         sample = Sample(
             field_activity_id=water_chemistry_field_activity.id,
-            field_event_contact_id=field_event_contact.id,
+            field_event_participant_id=field_event_participant.id,
             sample_date="2025-01-01T13:00:00Z",
             sample_name="sample to delete",
             sample_matrix="water",
@@ -610,7 +610,7 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            level_status="Water level not affected by status",
+            value_reason="Water level not affected by status",
         )
         session.add(observation)
         session.commit()
@@ -628,6 +628,7 @@ def water_chemistry_observation(sensor, water_chemistry_sample):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
+            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()
@@ -645,6 +646,7 @@ def observation_to_delete(water_chemistry_sample, sensor):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
+            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()

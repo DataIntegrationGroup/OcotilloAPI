@@ -30,12 +30,9 @@ from schemas.observation import (
     GroundwaterLevelObservationResponse,
     CreateWaterChemistryObservation,
     WaterChemistryObservationResponse,
-    # CreateGeothermalObservation,
-    # GeothermalObservationResponse,
     ObservationResponse,
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
-    # UpdateGeothermalObservation,
 )
 from services.crud_helper import model_deleter, model_adder
 from services.query_helper import simple_get_by_id
@@ -81,19 +78,6 @@ async def add_water_chemistry_observation(
     return model_adder(session, Observation, obs_data, user=user)
 
 
-# @router.post("/geothermal", status_code=HTTP_201_CREATED)
-# async def add_geothermal_observation(
-#     obs_data: CreateGeothermalObservation,
-#     session: session_dependency,
-#     user: admin_dependency,
-# ) -> GeothermalObservationResponse:
-#     """
-#     Add a new geothermal observation to the database.
-#     This endpoint is currently a placeholder and does not implement any functionality.
-#     """
-#     return model_adder(session, Observation, obs_data, user=user)
-
-
 # PATCH ========================================================================
 
 
@@ -123,20 +107,6 @@ async def update_water_chemistry_observation(
     Update an existing water chemistry observation in the database.
     """
     return observation_model_patcher(session, request, observation_id, obs_data, user)
-
-
-# @router.patch("/geothermal/{observation_id}", status_code=HTTP_200_OK)
-# async def update_geothermal_observation(
-#     observation_id: int,
-#     obs_data: UpdateGeothermalObservation,
-#     session: session_dependency,
-#     user: admin_dependency,
-#     request: Request,
-# ) -> GeothermalObservationResponse:
-#     """
-#     Update an existing geothermal observation in the database.
-#     """
-#     return observation_model_patcher(session, request, observation_id, obs_data, user)
 
 
 # ============= Get ==============================================
@@ -235,49 +205,6 @@ async def get_water_chemistry_observation_by_id(
         request=request,
         observation_id=observation_id,
     )
-
-
-# @router.get("/geothermal", summary="Get geothermal observations")
-# async def get_geothermal_observations(
-#     request: Request,
-#     session: session_dependency,
-#     user: viewer_dependency,
-#     thing_id: int | None = None,
-#     sensor_id: int | None = None,
-#     sample_id: int | None = None,
-#     start_time: datetime | None = None,
-#     end_time: datetime | None = None,
-#     sort: str | None = None,
-#     order: str | None = None,
-#     filter_: str = Query(alias="filter", default=None),
-# ) -> CustomPage[GeothermalObservationResponse]:
-#     """
-#     Retrieve all geothermal observations from the database.
-#     """
-#     return get_observations(
-#         request=request,
-#         session=session,
-#         thing_id=thing_id,
-#         sensor_id=sensor_id,
-#         sample_id=sample_id,
-#         start_time=start_time,
-#         end_time=end_time,
-#         sort=sort,
-#         order=order,
-#         filter_=filter_,
-#     )
-
-
-# @router.get("/geothermal/{observation_id}", summary="Get geothermal observation by ID")
-# async def get_geothermal_observation_by_id(
-#     session: session_dependency,
-#     request: Request,
-#     user: amp_viewer_dependency,
-#     observation_id: int,
-# ) -> GeothermalObservationResponse:
-#     return get_observation_of_an_activity_type_by_id(
-#         session=session, request=request, observation_id=observation_id
-#     )
 
 
 @router.get("", summary="Get all observations")

@@ -17,9 +17,15 @@ from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+
+
+if TYPE_CHECKING:
+    from db.field import FieldEventParticipant, FieldEvent
+    from db.thing import Thing
+    from db.author import Author, AuthorContactAssociation
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -31,7 +37,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
     )
 
     contact: Mapped[List["Contact"]] = relationship("Contact")
-    thing: Mapped[List["Thing"]] = relationship("Thing")  # noqa: F821
+    thing: Mapped[List["Thing"]] = relationship("Thing")
 
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
@@ -58,14 +64,12 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
         TSVectorType("name", "role", "organization", "nma_pk_owners")
     )
 
-    author_associations: Mapped[List["AuthorContactAssociation"]] = (  # noqa: F821
-        relationship(
-            "AuthorContactAssociation",
-            back_populates="contact",
-            cascade="all, delete-orphan",
-        )
+    author_associations: Mapped[List["AuthorContactAssociation"]] = relationship(
+        "AuthorContactAssociation",
+        back_populates="contact",
+        cascade="all, delete-orphan",
     )
-    authors: AssociationProxy[list["Author"]] = association_proxy(  # noqa: F821
+    authors: AssociationProxy[list["Author"]] = association_proxy(
         "author_associations", "author"
     )
     thing_associations: Mapped[List["ThingContactAssociation"]] = relationship(
@@ -74,23 +78,21 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
+    things: AssociationProxy[list["Thing"]] = association_proxy(
         "thing_associations", "thing"
     )
 
     # Proxy to directly access the FieldEvent objects in which this Contact participated.
-    # fmt: off
-    field_event_contact_associations: Mapped[list["FieldEventContactAssociation"]] = (  # noqa: F821
+    field_event_participants: Mapped[list["FieldEventParticipant"]] = (  # noqa: F821
         relationship(
-            "FieldEventContactAssociation",
+            "FieldEventParticipant",
             back_populates="contact",
             cascade="all, delete-orphan",
             passive_deletes=True,
         )
     )
-    # fmt: on
     field_events: AssociationProxy[list["FieldEvent"]] = (  # noqa: F821
-        association_proxy("field_event_contact_associations", "field_event")
+        association_proxy("field_event_participants", "field_event")
     )
 
 
