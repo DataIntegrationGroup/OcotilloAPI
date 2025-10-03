@@ -74,6 +74,8 @@ def erase(session: Session):
     with session.bind.connect() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        conn.commit()
 
     Base.metadata.drop_all(session.bind)
     logger.info("Recreating tables")

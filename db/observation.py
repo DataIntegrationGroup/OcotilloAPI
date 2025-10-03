@@ -60,7 +60,7 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     )
     unit: Mapped[str] = lexicon_term(nullable=False)
     value_reason: Mapped[str] = lexicon_term(
-        nullable=False,
+        nullable=True,
         comment="The reason describes everything that can effect the observation the moment a sample/observation is attempted (e.g. obstruction, dry well, equipment failure); a null value must have an associated reason in the same record. Factors preventing the obtainment of the observation from the beginning of the field event to attempted sampling/observation (e.g. flat tire, locked gate, destroyed well) are not recorded here but in the notes field of the FieldEvent table; in this situation no sample/observation should be recorded.",
     )
     notes: Mapped[str] = mapped_column(nullable=True)

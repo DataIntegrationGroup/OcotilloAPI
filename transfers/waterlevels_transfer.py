@@ -26,8 +26,8 @@ from db import (
     Observation,
     FieldEvent,
     FieldActivity,
-    FieldEventContactAssociation,
     Contact,
+    FieldEventParticipant,
 )
 from transfers.util import (
     filter_to_valid_point_ids,
@@ -212,7 +212,7 @@ def get_contacts_info(row, measured_by, measured_by_mapper):
 def transfer_water_levels(session):
     # keep a dictionary of created Contacts to avoid repeated SQL queries
     created_contacts = {}
-    with open("transfers/data/measured_by_mapper.json", "r") as f:
+    with open("../transfers/data/measured_by_mapper.json", "r") as f:
         measured_by_mapper = json.load(f)
 
     wd = read_csv("WaterLevels")
@@ -340,19 +340,20 @@ def transfer_water_levels(session):
             participants in the field event
             """
             for i, fec in enumerate(field_event_contacts):
-                field_event_contact = FieldEventContactAssociation(
-                    field_event=field_event, contact=fec
+                field_event_contact = FieldEventParticipant(
+                    field_event=field_event, participant=fec
                 )
                 if i == 0:
-                    field_event_contact.field_contact_role = "Lead"
+                    field_event_contact.participant_role = "Lead"
                     sampler = field_event_contact
                 else:
-                    field_event_contact.field_contact_role = "Participant"
+                    field_event_contact.participant_role = "Participant"
 
                 session.add(field_event_contact)
                 session.flush()
                 logger.info(
-                    f"{SPACE_4}Created field event contact: ID {field_event_contact.id} | Contact Name {field_event_contact.contact.name} | Field Contact Role {field_event_contact.field_contact_role}"
+                    f"{SPACE_4}Created field event contact: ID {field_event_contact.id} | Contact Nam"
+                    f"e {field_event_contact.participant.name} | Field Contact Role {field_event_contact.participant_role}"
                 )
 
             # --- Sample ---
@@ -367,7 +368,7 @@ def transfer_water_levels(session):
             sample = Sample(
                 nma_pk_waterlevels=row.GlobalID,
                 field_activity=field_activity,
-                field_event_contact=sampler,
+                field_event_participant=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(uuid.uuid4()),
@@ -382,12 +383,12 @@ def transfer_water_levels(session):
                 f"{SPACE_4}Created sample: ID {sample.id} | Date {sample.sample_date} | Matrix {sample.sample_matrix} | Method {sample.sample_method}"
             )
 
-            if not pd.isna(row.LevelStatus):
+            if pd.isna(row.LevelStatus):
+                level_status = None
+            else:
                 level_status = lexicon_mapper.map_value(
                     f"LU_LevelStatus:{row.LevelStatus}"
                 )
-            else:
-                level_status = None
 
             # TODO: use create schema to validate data
 
@@ -402,7 +403,7 @@ def transfer_water_levels(session):
                 value=row.DepthToWater,
                 unit="ft",
                 measuring_point_height=row.MPHeight,
-                level_status=level_status,
+                value_reason=level_status,
             )
             session.add(observation)
             session.flush()

@@ -46,7 +46,7 @@ class CreateBaseThing(BaseCreateModel):
     location_id: int | None = None  # Optional location ID for the thing
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
-    first_visit_date: PastDate  # Date of NMBGMR's first visit
+    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
 class CreateWell(CreateBaseThing):
