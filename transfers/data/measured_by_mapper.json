@@ -58,6 +58,7 @@
     "Taos SWCD": [null, "Taos SWCD", "Organization"],
     "TWDB": [null, "TWDB", "Organization"],
     "USFS": [null, "USFS", "Organization"],
+    "AG": [null, "USGS", "Organization"],
     "USGS": [null, "USGS", "Organization"],
     "USGS WRD": [null, "USGS WRD", "Organization"],
 

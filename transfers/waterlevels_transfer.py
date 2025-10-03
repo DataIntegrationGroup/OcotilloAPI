@@ -315,20 +315,6 @@ def transfer_water_levels(session):
                 f"{SPACE_2}Created field event: ID {field_event.id} | Date {field_event.event_date} | Thing ID {field_event.thing.id} | Thing Name {field_event.thing.name}"
             )
 
-            # --- FieldActivity ---
-            # TODO: use create schema to validate data
-            field_activity = FieldActivity(
-                field_event=field_event,
-                activity_type="groundwater level",
-                release_status=release_status,
-            )
-            session.add(field_activity)
-            session.flush()
-
-            logger.info(
-                f"{SPACE_4}Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}"
-            )
-
             """
             Developer's notes
 
@@ -351,6 +337,37 @@ def transfer_water_levels(session):
                 logger.info(
                     f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.field_contact_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
                 )
+
+            value_reason = (
+                "Unknown"
+                if pd.isna(row.LevelStatus)
+                else lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
+            )
+
+            if (
+                value_reason
+                == "Well was destroyed (no subsequent water levels should be recorded)"
+            ):
+                logger.warning(
+                    "Well is destroyed - no field activity/sample/observation will be made"
+                )
+                field_event.notes = value_reason
+                session.refresh()
+                continue
+
+            # --- FieldActivity ---
+            # TODO: use create schema to validate data
+            field_activity = FieldActivity(
+                field_event=field_event,
+                activity_type="groundwater level",
+                release_status=release_status,
+            )
+            session.add(field_activity)
+            session.flush()
+
+            logger.info(
+                f"{SPACE_4}Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}"
+            )
 
             # --- Sample ---
             sample_method = (
@@ -407,12 +424,6 @@ def transfer_water_levels(session):
                     value = None
             else:
                 value = row.DepthToWater
-
-            value_reason = (
-                "Unknown"
-                if pd.isna(row.LevelStatus)
-                else lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
-            )
 
             # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
             observation = Observation(
