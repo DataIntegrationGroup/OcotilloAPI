@@ -31,7 +31,7 @@ class FieldEventParticipant(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # TODO: get AMP feedback on the roles
-    field_contact_role: Mapped[str] = lexicon_term(
+    participant_role: Mapped[str] = lexicon_term(
         nullable=False, comment="Role of the contact in the field event"
     )
 
@@ -39,7 +39,7 @@ class FieldEventParticipant(Base, AutoBaseMixin, ReleaseMixin):
     field_event: Mapped["FieldEvent"] = relationship(
         "FieldEvent", back_populates="field_event_participants"
     )
-    contact: Mapped["Contact"] = relationship(
+    participant: Mapped["Contact"] = relationship(
         "Contact", back_populates="field_event_participants"
     )
 
@@ -100,8 +100,8 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Association Proxies ---
     # Proxy to directly access the Contact objects participating in this event.
-    contacts: AssociationProxy[list["Contact"]] = association_proxy(
-        "field_event_participants", "contact"
+    participants: AssociationProxy[list["Contact"]] = association_proxy(
+        "field_event_participants", "participant"
     )
 
 

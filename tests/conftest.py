@@ -501,7 +501,7 @@ def field_event_participant(field_event, contact):
         field_event_participant = FieldEventParticipant(
             field_event_id=field_event.id,
             contact_id=contact.id,
-            field_contact_role="Lead",
+            participant_role="Lead",
         )
         session.add(field_event_participant)
         session.commit()
