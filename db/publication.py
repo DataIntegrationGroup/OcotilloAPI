@@ -14,12 +14,17 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy_utils import TSVectorType
+from typing import TYPE_CHECKING
 
 from db import lexicon_term
 from db.base import AutoBaseMixin, Base, AuditMixin
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+
+
+if TYPE_CHECKING:
+    from db.contact import Contact
 
 
 class Publication(Base, AutoBaseMixin):
@@ -76,7 +81,7 @@ class Author(Base, AutoBaseMixin):
         back_populates="author",
         cascade="all, delete-orphan",
     )
-    contacts: AssociationProxy[list["Contact"]] = association_proxy(  # noqa: F821
+    contacts: AssociationProxy[list["Contact"]] = association_proxy(
         "author_associations", "contact"
     )
 

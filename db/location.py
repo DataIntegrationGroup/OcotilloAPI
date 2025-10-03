@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import datetime
-
+from typing import TYPE_CHECKING
 from geoalchemy2 import Geometry, WKBElement
 from geoalchemy2.shape import to_shape
 
@@ -33,6 +33,9 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
+
+if TYPE_CHECKING:
+    from db.thing import Thing
 
 
 class Location(Base, AutoBaseMixin, ReleaseMixin):
@@ -67,7 +70,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Proxy Definitions ---
-    things: AssociationProxy[list["Thing"]] = association_proxy(  # noqa: F821
+    things: AssociationProxy[list["Thing"]] = association_proxy(
         "thing_associations", "thing"
     )
 
@@ -97,9 +100,7 @@ class LocationThingAssociation(Base, AutoBaseMixin):
 
     # --- Relationship Definitions ---
     location: Mapped["Location"] = relationship(back_populates="thing_associations")
-    thing: Mapped["Thing"] = relationship(  # noqa: F821
-        back_populates="location_associations"
-    )
+    thing: Mapped["Thing"] = relationship(back_populates="location_associations")
 
 
 # ============= EOF =============================================

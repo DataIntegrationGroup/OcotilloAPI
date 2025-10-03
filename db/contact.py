@@ -43,7 +43,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
     )
     thing: Mapped["Thing"] = relationship(
         "Thing", back_populates="contact_associations"
-    )  # noqa: F821
+    )
 
 
 class Contact(Base, AutoBaseMixin, ReleaseMixin):
