@@ -80,7 +80,6 @@ def get_contacts_info(row, measured_by, measured_by_mapper):
 
     Known unmapped MeasuredBys as of 10/1/2025
 
-    Anthony Chavez
     BEI
     BF/RG
     Borchert
