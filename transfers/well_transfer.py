@@ -202,46 +202,52 @@ def cleanup_locations(session):
     if blob.exists():
         lut = json.loads(blob.download_as_string())
 
+    updates = []
     for i, location in enumerate(locations):
         if i and not i % 100:
             logger.info(f"Processing row {i} of {n}. dumping lut to {log_filename}")
             blob.upload_from_string(json.dumps(lut))
+            session.bulk_update_mappings(Location, updates)
+            session.commit()
+            updates = []
 
         y, x = location.latlon
         xykey = f"{y},{x}"
         if xykey in lut:
             state, county, quad_name = lut[xykey]
-            location.state = state
-            location.county = county
-            location.quad_name = quad_name
         else:
             state = location.state
             county = location.county
             quad_name = location.quad_name
             if not state:
                 state = get_state_from_point(x, y)
-                if state:
-                    location.state = state
 
             if not county:
                 county = get_county_from_point(x, y)
-                if county:
-                    location.county = county
 
             if not quad_name:
                 quad_name = get_quad_name_from_point(x, y)
-                if quad_name:
-                    location.quad_name = quad_name
 
             lut[xykey] = [state, county, quad_name]
-        session.commit()
+
+        updates.append(
+            {
+                "id": location.id,
+                "state": state,
+                "county": county,
+                "quad_name": quad_name,
+            }
+        )
 
         logger.info(
-            f"{i}/{n} lat: {y} lon: {x} state={location.state}, county={location.county}, quad"
-            f"={location.quad_name}"
+            f"{i}/{n} lat: {y} lon: {x} state={state}, county={county}, quad"
+            f"={quad_name}"
         )
 
     blob.upload_from_string(json.dumps(lut))
+    if updates:
+        session.bulk_update_mappings(Location, updates)
+        session.commit()
 
 
 # ============= EOF =============================================
