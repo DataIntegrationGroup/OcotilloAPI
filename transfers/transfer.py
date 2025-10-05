@@ -17,15 +17,8 @@ import os
 
 from dotenv import load_dotenv
 
-from transfers.asset_transfer import transfer_assets
-from transfers.thing_transfer import (
-    transfer_springs,
-    transfer_perennial_stream,
-    transfer_ephemeral_stream,
-    transfer_met,
-)
-
 load_dotenv()
+
 
 from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
@@ -43,6 +36,13 @@ from transfers.well_transfer import (
     cleanup_locations,
 )
 
+from transfers.asset_transfer import transfer_assets
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
 from transfers.util import timeit, timeit_direct
 from transfers.logger import logger, save_log_to_bucket
 
@@ -103,8 +103,6 @@ def transfer_all(sess, limit=100):
     this is a very time consuming operation and the results should 
     be saved to a file for later use.
     """
-    message("CLEANING UP LOCATIONS")
-    timeit_direct(cleanup_locations, sess)
 
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
@@ -143,6 +141,9 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
+
+    message("CLEANING UP LOCATIONS")
+    timeit_direct(cleanup_locations, sess)
 
 
 def main():
