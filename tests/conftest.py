@@ -613,7 +613,7 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            value_reason="Water level not affected by status",
+            groundwater_level_reason="Water level not affected",
         )
         session.add(observation)
         session.commit()
@@ -631,7 +631,6 @@ def water_chemistry_observation(sensor, water_chemistry_sample):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
-            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()
@@ -649,7 +648,6 @@ def observation_to_delete(water_chemistry_sample, sensor):
             release_status="draft",
             value=4.0,
             unit="dimensionless",
-            value_reason="Observed value not affected",
         )
         session.add(observation)
         session.commit()
