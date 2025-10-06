@@ -242,20 +242,25 @@ def transfer_water_levels(session):
                     f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.participant_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
                 )
 
-            value_reason = (
-                "Unknown"
-                if pd.isna(row.LevelStatus)
-                else lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
+            groundwater_level_reason = (
+                lexicon_mapper.map_value(f"LU_LevelStatus:{row.LevelStatus}")
+                if not pd.isna(row.LevelStatus)
+                else None
+            )
+            groundwater_level_reason = (
+                "Water level not affected"
+                if groundwater_level_reason == "Water level not affected by status"
+                else groundwater_level_reason
             )
 
             if (
-                value_reason
+                groundwater_level_reason
                 == "Well was destroyed (no subsequent water levels should be recorded)"
             ):
                 logger.warning(
                     "Well is destroyed - no field activity/sample/observation will be made"
                 )
-                field_event.notes = value_reason
+                field_event.notes = groundwater_level_reason
                 session.refresh()
                 continue
 
@@ -340,7 +345,7 @@ def transfer_water_levels(session):
                 value=value,
                 unit="ft",
                 measuring_point_height=measuring_point_height,
-                value_reason=value_reason,
+                groundwater_level_reason=groundwater_level_reason,
             )
             session.add(observation)
             session.flush()
