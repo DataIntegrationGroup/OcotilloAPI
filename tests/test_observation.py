@@ -433,7 +433,9 @@ def test_get_groundwater_level_observation_by_id_404_wrong_activity_type(
     assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
-def test_get_groundwater_observation_by_sample(groundwater_level_sample):
+def test_get_groundwater_observation_by_sample(
+    groundwater_level_observation, groundwater_level_sample
+):
     response = client.get(
         "/observation/groundwater-level",
         params={
@@ -447,7 +449,9 @@ def test_get_groundwater_observation_by_sample(groundwater_level_sample):
     assert len(items) > 0, "Expected at least one groundwater observation for the thing"
 
 
-def test_get_groundwater_observation_by_thing(water_well_thing):
+def test_get_groundwater_observation_by_thing(
+    groundwater_level_observation, water_well_thing
+):
     response = client.get(
         "/observation/groundwater-level",
         params={
@@ -472,7 +476,7 @@ def test_get_groundwater_observation_by_thing_nonexistent():
     ), "Expected no groundwater observations for a non-existent thing"
 
 
-def test_get_groundwater_observation_by_time_range():
+def test_get_groundwater_observation_by_time_range(groundwater_level_observation):
     response = client.get(
         "/observation/groundwater-level",
         params={
