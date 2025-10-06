@@ -16,7 +16,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db import Thing, Group
+from db import Thing, Group, GroupThingAssociation
 from db.engine import session_ctx
 from transfers.util import read_csv
 from transfers.logger import logger
@@ -44,7 +44,10 @@ def transfer_groups(
                     logger.info(
                         f"Adding {len(records)} things to group {group.name}, prefix {prefix}"
                     )
-                    group.things = records
+                    for record in records:
+                        gta = GroupThingAssociation(group=group, thing=record)
+                        session.add(gta)
+                        group.thing_associations.append(gta)
 
         session.add(group)
         session.commit()

@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 from sqlalchemy.orm import Session
 from core.initializers import init_lexicon
 from db import Base
@@ -29,8 +30,19 @@ from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_wel
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import init_sensor
 from transfers.waterlevels_transfer import transfer_water_levels
-from transfers.well_transfer import transfer_wells, transfer_wellscreens
+from transfers.well_transfer import (
+    transfer_wells,
+    transfer_wellscreens,
+    cleanup_locations,
+)
 
+from transfers.asset_transfer import transfer_assets
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
 from transfers.util import timeit, timeit_direct
 from transfers.logger import logger, save_log_to_bucket
 
@@ -62,6 +74,8 @@ def erase(session: Session):
     with session.bind.connect() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        conn.commit()
 
     Base.metadata.drop_all(session.bind)
     logger.info("Recreating tables")
@@ -84,17 +98,23 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
-    # message("TRANSFERRING SPRINGS")
-    # timeit_direct(transfer_springs, sess, limit=limit)
-    #
-    # message("TRANSFERRING PERENNIAL STREAMS")
-    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING EPHEMERAL STREAMS")
-    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING METEOROLOGICAL")
-    # timeit_direct(transfer_met, sess, limit)
+    """
+    Developer's note
+    this is a very time consuming operation and the results should 
+    be saved to a file for later use.
+    """
+
+    message("TRANSFERRING SPRINGS")
+    timeit_direct(transfer_springs, sess, limit=limit)
+
+    message("TRANSFERRING PERENNIAL STREAMS")
+    timeit_direct(transfer_perennial_stream, sess, limit=limit)
+
+    message("TRANSFERRING EPHEMERAL STREAMS")
+    timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+
+    message("TRANSFERRING METEOROLOGICAL")
+    timeit_direct(transfer_met, sess, limit)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -105,7 +125,7 @@ def transfer_all(sess, limit=100):
     When transfering water chemistry data use the qc_type field to indicate
     normal/blanks/duplicates instead of what comes from LU_SampleType. Use
     those values, however, to map to the standard qc_type fields if applicable
-    (i.e. not applicable when sample type is "Soil or rock sample" or 
+    (i.e. not applicable when sample type is "Soil or rock sample" or
     "Precipitation," but is applicable when sample type is "Equipment blank"
     or "Field duplicate")
     """
@@ -119,16 +139,16 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WATER LEVELS")
     timeit_direct(transfer_water_levels, sess)
 
-    # message("TRANSFERRING ASSETS")
-    # timeit_direct(transfer_assets, sess)
+    message("TRANSFERRING ASSETS")
+    timeit_direct(transfer_assets, sess)
 
-    # if init or cleanup_wells_flag:
-    #     cleanup_wells(sess)
+    message("CLEANING UP LOCATIONS")
+    timeit_direct(cleanup_locations, sess)
 
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 200))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

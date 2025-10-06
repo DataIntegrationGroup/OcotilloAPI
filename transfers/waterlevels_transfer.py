@@ -28,6 +28,7 @@ from db import (
     FieldActivity,
     FieldEventParticipant,
     Contact,
+    FieldEventParticipant,
 )
 from transfers.util import (
     filter_to_valid_point_ids,
@@ -36,6 +37,7 @@ from transfers.util import (
     convert_mt_to_utc,
     filter_by_valid_measuring_agency,
     lexicon_mapper,
+    get_transfers_data_path,
 )
 
 # constants
@@ -112,7 +114,9 @@ def transfer_water_levels(session):
     # keep a dictionary of created Contacts to avoid repeated SQL queries
     # keys are a tuple of (name, organization) since None is a common "name"
     created_contacts = {}
-    with open("transfers/data/measured_by_mapper.json", "r") as f:
+    path = get_transfers_data_path("measured_by_mapper.json")
+
+    with open(path, "r") as f:
         measured_by_mapper = json.load(f)
 
     wd = read_csv("WaterLevels")
@@ -291,6 +295,7 @@ def transfer_water_levels(session):
             sample = Sample(
                 nma_pk_waterlevels=row.GlobalID,
                 field_activity=field_activity,
+                field_event_participant=sampler,
                 field_event_participant=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
