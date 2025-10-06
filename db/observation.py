@@ -59,7 +59,6 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
-    observed_property: Mapped[str] = lexicon_term(nullable=False)
     value: Mapped[float] = mapped_column(
         nullable=True,
     )

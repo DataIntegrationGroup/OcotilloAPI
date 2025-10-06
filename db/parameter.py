@@ -26,7 +26,6 @@ class Parameter(Base, AutoBaseMixin, ReleaseMixin):
     # TODO: Parameter names are currently associated with the 'observed_property' category in the lexicon. Should we update the lexicon category name to 'parameter_name'?
     parameter_name: Mapped[str] = lexicon_term(
         nullable=False,
-        unique=True,
         comment="The official, full name of the parameter (e.g., 'Arsenic, Dissolved').",
     )
     matrix: Mapped[str] = lexicon_term(

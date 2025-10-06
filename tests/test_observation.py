@@ -46,7 +46,9 @@ def override_authentication_dependency_fixture():
 
 
 # ============= Post tests =================
-def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
+def test_add_water_chemistry_observation(
+    water_chemistry_sample, sensor, parameter_water_chemistry
+):
     payload = {
         "observation_datetime": "2025-01-01T00:00:00Z",
         "release_status": "draft",
@@ -54,7 +56,7 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
         "unit": "dimensionless",
         "sample_id": water_chemistry_sample.id,
         "sensor_id": sensor.id,
-        "observed_property": "pH",
+        "parameter_id": parameter_water_chemistry.id,
     }
     response = client.post("/observation/water-chemistry", json=payload)
     data = response.json()
@@ -68,21 +70,23 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
     assert data["unit"] == payload["unit"]
     assert data["sample_id"] == payload["sample_id"]
     assert data["sensor_id"] == payload["sensor_id"]
-    assert data["observed_property"] == payload["observed_property"]
+    assert data["parameter"]["id"] == parameter_water_chemistry.id
 
     cleanup_post_test(Observation, data["id"])
 
 
-def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
+def test_add_groundwater_level_observation(
+    groundwater_level_sample, sensor, parameter_groundwater
+):
     payload = {
         "observation_datetime": "2025-01-01T00:00:00Z",
         "release_status": "draft",
         "value": 101,
         "measuring_point_height": 53,
         "sample_id": groundwater_level_sample.id,
+        "parameter_id": parameter_groundwater.id,
         "sensor_id": sensor.id,
         "level_status": "Water level not affected by status",
-        "observed_property": "groundwater level",
         "unit": "ft",
     }
     response = client.post("/observation/groundwater-level", json=payload)
@@ -96,8 +100,8 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     assert data["value"] == payload["value"]
     assert data["measuring_point_height"] == payload["measuring_point_height"]
     assert data["sensor_id"] == payload["sensor_id"]
+    assert data["parameter"]["id"] == parameter_groundwater.id
     assert data["level_status"] == payload["level_status"]
-    assert data["observed_property"] == payload["observed_property"]
     assert (
         data["depth_to_water_bgs"]
         == payload["value"] - payload["measuring_point_height"]
@@ -138,6 +142,7 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
 # PATCH tests ==================================================================
 
 
+# TODO update patch test to test every single field
 def test_patch_groundwater_level_observation(groundwater_level_observation):
     payload = {"measuring_point_height": 3, "release_status": "private"}
     response = client.patch(
@@ -284,13 +289,13 @@ def test_get_all_observations(
         assert "sample_id" in item
         assert "sensor_id" in item
         assert "observation_datetime" in item
-        assert "observed_property" in item
+        assert "parameter" in item
         assert "value" in item
         assert "unit" in item
 
 
 def test_get_observation_by_id(
-    groundwater_level_observation, water_chemistry_observation
+    groundwater_level_observation, water_chemistry_observation, parameter_groundwater
 ):
     for obs in (
         groundwater_level_observation,
@@ -303,7 +308,7 @@ def test_get_observation_by_id(
         assert data["id"] == obs.id
         assert data["created_at"] == obs.created_at.isoformat().replace("+00:00", "Z")
         assert data["release_status"] == obs.release_status
-        if obs.observed_property == "groundwater level":
+        if obs.parameter.parameter_name == parameter_groundwater.parameter_name:
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
         else:
             assert data["depth_to_water_bgs"] is None
@@ -319,7 +324,9 @@ def test_get_observation_by_id_404_not_found(
     assert data["detail"] == f"Observation with ID {bad_id} not found."
 
 
-def test_get_groundwater_level_observations(groundwater_level_observation):
+def test_get_groundwater_level_observations(
+    groundwater_level_observation, parameter_groundwater
+):
     response = client.get("/observation/groundwater-level")
     assert response.status_code == 200
     data = response.json()
@@ -334,11 +341,7 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
         data["items"][0]["observation_datetime"]
         == groundwater_level_observation.observation_datetime
     )
-    colon_index = groundwater_level_observation.observed_property.find(":")
-    assert (
-        data["items"][0]["observed_property"]
-        == groundwater_level_observation.observed_property[colon_index + 1 :]
-    )
+    assert data["items"][0]["parameter"]["id"] == parameter_groundwater.id
     assert (
         data["items"][0]["release_status"]
         == groundwater_level_observation.release_status
@@ -362,7 +365,9 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
     )
 
 
-def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
+def test_get_groundwater_level_observation_by_id(
+    groundwater_level_observation, parameter_groundwater
+):
     response = client.get(
         f"/observation/groundwater-level/{groundwater_level_observation.id}"
     )
@@ -378,11 +383,7 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
         data["observation_datetime"]
         == groundwater_level_observation.observation_datetime
     )
-    colon_index = groundwater_level_observation.observed_property.find(":")
-    assert (
-        data["observed_property"]
-        == groundwater_level_observation.observed_property[colon_index + 1 :]
-    )
+    assert data["parameter"]["id"] == parameter_groundwater.id
     assert data["release_status"] == groundwater_level_observation.release_status
     assert data["level_status"] == groundwater_level_observation.level_status
     assert data["value"] == groundwater_level_observation.value
@@ -437,7 +438,6 @@ def test_get_groundwater_observation_by_sample(groundwater_level_sample):
         "/observation/groundwater-level",
         params={
             "sample_id": groundwater_level_sample.id,
-            "observed_property": "groundwater level",
         },
     )
     assert response.status_code == 200
@@ -452,7 +452,6 @@ def test_get_groundwater_observation_by_thing(water_well_thing):
         "/observation/groundwater-level",
         params={
             "thing_id": water_well_thing.id,
-            "observed_property": "groundwater level",
         },
     )
     assert response.status_code == 200
@@ -505,7 +504,9 @@ def test_get_groundwater_observation_by_time_range_nonexistent():
     assert len(items) == 0, "Expected no groundwater observations in the time range"
 
 
-def test_get_water_chemistry_observations(water_chemistry_observation):
+def test_get_water_chemistry_observations(
+    water_chemistry_observation, parameter_water_chemistry
+):
     response = client.get("/observation/water-chemistry")
     assert response.status_code == 200
     data = response.json()
@@ -523,16 +524,14 @@ def test_get_water_chemistry_observations(water_chemistry_observation):
         data["items"][0]["observation_datetime"]
         == water_chemistry_observation.observation_datetime
     )
-    colon_index = water_chemistry_observation.observed_property.find(":")
-    assert (
-        data["items"][0]["observed_property"]
-        == water_chemistry_observation.observed_property[colon_index + 1 :]
-    )
+    assert data["items"][0]["parameter"]["id"] == parameter_water_chemistry.id
     assert data["items"][0]["value"] == water_chemistry_observation.value
     assert data["items"][0]["unit"] == water_chemistry_observation.unit
 
 
-def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
+def test_get_water_chemistry_observation_by_id(
+    water_chemistry_observation, parameter_water_chemistry
+):
     response = client.get(
         f"/observation/water-chemistry/{water_chemistry_observation.id}"
     )
@@ -548,11 +547,8 @@ def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
     assert (
         data["observation_datetime"] == water_chemistry_observation.observation_datetime
     )
-    colon_index = water_chemistry_observation.observed_property.find(":")
-    assert (
-        data["observed_property"]
-        == water_chemistry_observation.observed_property[colon_index + 1 :]
-    )
+
+    assert data["parameter"]["id"] == parameter_water_chemistry.id
     assert data["value"] == water_chemistry_observation.value
     assert data["unit"] == water_chemistry_observation.unit
 
@@ -568,7 +564,7 @@ def test_get_water_chemistry_observation_by_id_404_not_found(
 
 
 def test_get_water_chemistry_observation_by_id_404_wrong_activity_type(
-    groundwater_level_observation,
+    groundwater_level_observation, parameter_groundwater
 ):
     response = client.get(
         f"/observation/water-chemistry/{groundwater_level_observation.id}"
@@ -576,7 +572,10 @@ def test_get_water_chemistry_observation_by_id_404_wrong_activity_type(
     assert response.status_code == 404
     data = response.json()
 
-    if groundwater_level_observation.observed_property == "groundwater level":
+    if (
+        groundwater_level_observation.parameter.parameter_name
+        == parameter_groundwater.parameter_name
+    ):
         actual_activity_type = "groundwater level"
     else:
         actual_activity_type = "geothermal"
