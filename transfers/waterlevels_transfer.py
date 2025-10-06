@@ -75,62 +75,6 @@ def get_dt_utc(row):
 
 
 def get_contacts_info(row, measured_by, measured_by_mapper):
-    """
-    Those that are not mapped have "NM_Aquifer Unmapped: "
-    prepended to their name.
-    Developer's notes
-
-    Known unmapped MeasuredBys as of 10/1/2025
-
-    Heaton
-    Horner-Crocker
-    HR
-    Hydrogeologic Serv
-    J.Evans
-    J.Frost
-    Jenkins
-    Johnson/Cruz
-    Johnson/Robbins
-    Kilmer/Jenkins
-    KP, MR
-    KP, MT
-    Lazarus
-    Mike Rodgers
-    Mourant
-    MWB Consultant
-    Myers report
-    Rankin
-    Sandia Drillers
-    SC, MR
-    SdC
-    SM&Assoc
-    SMA
-    Spiegel
-    Spiegel & Baldwin
-    SPRI
-    Steve
-    T.Decker
-    Topol
-    URS
-    UTM
-    VeneKlasen
-    Vista del Oro
-    ?
-    Consultant
-    Consulting Pro.
-    Gamma log unit
-    Pump company
-    PumpService
-    REPORTED
-    Theis report
-    Unknown
-    Unknown; reported
-    Water operator
-    WWTP
-    WWTP personnel
-    None/NULL
-    """
-
     measuring_agency = (
         "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
     )
