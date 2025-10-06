@@ -95,14 +95,9 @@ def get_contacts_info(row, measured_by, measured_by_mapper):
             os = [args[1]]
             rs = [args[2]]
     else:
-        if measured_by is None and measuring_agency is not None:
-            ns = [None]
-            os = [measuring_agency]
-            rs = ["Organization"]
-        else:
-            ns = [f"NM_Aquifer Unmapped: {measured_by}"]
-            os = [measuring_agency]
-            rs = ["Unknown"]
+        ns = [measured_by]
+        os = ["Unknown"]
+        rs = ["Unknown"]
         logger.warning(
             f"{SPACE_6}The following record has not been mapped to a Contact: MeasuredBy {row.MeasuredBy} | MeasuringAgency {row.MeasuringAgency} for WaterLevels record with GLobalID {row.GlobalID}"
         )
@@ -182,7 +177,7 @@ def transfer_water_levels(session):
                             session.flush()  # to get the contact.id
 
                             logger.info(
-                                f"{SPACE_6}Created contact: ID {contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
+                                f"{SPACE_2}Created contact: ID {contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
                             )
 
                             created_contacts[(name, organization)] = contact
@@ -230,9 +225,9 @@ def transfer_water_levels(session):
             person who took the sample. The subsequent contact will be
             participants in the field event
             """
-            for i, fec in enumerate(field_event_participants):
+            for i, participant in enumerate(field_event_participants):
                 field_event_participant = FieldEventParticipant(
-                    field_event=field_event, contact=fec
+                    field_event=field_event, participant=participant
                 )
                 if i == 0:
                     field_event_participant.participant_role = "Lead"
@@ -243,7 +238,7 @@ def transfer_water_levels(session):
                 session.add(field_event_participant)
                 session.flush()
                 logger.info(
-                    f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.participant_role} | Contact ID {field_event_participant.contact.id} | Contact Name {field_event_participant.contact.name} | Contact Org {field_event_participant.contact.organization}"
+                    f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.participant_role} | Contact ID {field_event_participant.participant.id} | Contact Name {field_event_participant.participant.name} | Contact Org {field_event_participant.participant.organization}"
                 )
 
             groundwater_level_reason = (
@@ -296,7 +291,6 @@ def transfer_water_levels(session):
                 nma_pk_waterlevels=row.GlobalID,
                 field_activity=field_activity,
                 field_event_participant=sampler,
-                field_event_participant=sampler,
                 sample_date=dt_utc,
                 sample_matrix="water",
                 sample_name=str(uuid.uuid4()),
@@ -321,11 +315,12 @@ def transfer_water_levels(session):
                     measuring_point_height = row.DepthToWater - row.DepthToWaterBGS
                 else:
                     logger.warning(
-                        f"{SPACE_6}Setting measuring_point_height to 0 because MPHeight is NULL and DepthToWater or DepthToWaterBGS is NULL"
+                        f"{SPACE_6}Setting measuring_point_height to None because MPHeight is NULL and DepthToWater or DepthToWaterBGS is NULL"
                     )
-                measuring_point_height = 0
+                    measuring_point_height = None
             else:
-                measuring_point_height = row.MPHeight
+                # some mp heights are recorded as negative numbers, but they should be positive
+                measuring_point_height = abs(row.MPHeight)
 
             if pd.isna(row.DepthToWater):
                 if not pd.isna(row.DepthToWaterBGS):
