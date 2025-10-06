@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter
-from sqlalchemy import select
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session
 from api.pagination import CustomPage
 from fastapi_pagination import paginate
@@ -39,14 +39,14 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = (
-        Contact.search_vector
-        | Email.search_vector
-        | Phone.search_vector
-        | Address.search_vector
+        func.coalesce(Contact.search_vector, text("''::tsvector"))
+        .op("||")(func.coalesce(Email.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(Phone.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(Address.search_vector, text("''::tsvector")))
     )
 
     query = search(
-        select(Contact).join(Email).join(Phone).join(Address),
+        select(Contact).outerjoin(Email).outerjoin(Phone).outerjoin(Address),
         q,
         vector=vector,
         limit=limit,
@@ -66,7 +66,6 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
         }
         for c in contacts
     ]
-
     return results
 
 
