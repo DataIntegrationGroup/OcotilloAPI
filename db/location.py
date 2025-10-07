@@ -99,7 +99,9 @@ class LocationThingAssociation(Base, AutoBaseMixin):
     )
 
     # --- Relationship Definitions ---
-    location: Mapped["Location"] = relationship(back_populates="thing_associations")
+    location: Mapped["Location"] = relationship(
+        back_populates="thing_associations", lazy="joined"
+    )
     thing: Mapped["Thing"] = relationship(back_populates="location_associations")
 
 

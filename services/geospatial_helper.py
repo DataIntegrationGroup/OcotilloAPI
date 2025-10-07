@@ -65,7 +65,8 @@ def get_thing_features(
         else:
             sql = sql.where(Group.id == group)
 
-    return session.execute(sql).all()
+    # unique needs to be invoked to prevent duplicates from eager loading
+    return session.execute(sql).unique().all()
 
 
 def create_shapefile(things: list, filename: str = "things.shp") -> None:

@@ -56,7 +56,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     # TODO: what is the purpose of the `description` field? Is it ever used?
     # description: Mapped[str] = mapped_column(String(500), nullable=True)
     thing_type: Mapped[str] = lexicon_term(
-        nullable=True,
+        nullable=False,
         comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
     )
     first_visit_date: Mapped[Date] = mapped_column(
@@ -126,6 +126,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="LocationThingAssociation.effective_start.desc()",
+        lazy="joined",
     )
 
     contact_associations = relationship(
@@ -198,6 +199,18 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             "name", "well_construction_notes", "well_purpose", "well_casing_material"
         )
     )
+
+    @property
+    def active_location(self):
+        """
+        Returns the currently active Location by sorting the effective_start
+        field. Thing eagerly loads location_association, which eagerly loads
+        location, which will hopefully prevent N+1 query problems.
+        """
+        active_location = sorted(
+            self.location_associations, key=lambda x: x.effective_start
+        )
+        return active_location[0].location if active_location else None
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):

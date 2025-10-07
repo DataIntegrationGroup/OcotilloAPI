@@ -195,6 +195,10 @@ def test_get_within_things():
         },
     )
     data = response.json()
+    print()
+    from pprint import pprint
+
+    pprint(data, indent=2)
     assert response.status_code == 200
     assert "items" in data
     assert len(data["items"]) == 1
