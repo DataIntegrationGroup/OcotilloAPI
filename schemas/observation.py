@@ -65,19 +65,15 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     release_status: str
     value: float | None
     unit: str | None
+    value_reason: str
 
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
     measuring_point_height: float
-    level_status: str
 
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
     pass
-
-
-# class CreateGeothermalObservation(CreateBaseObservation):
-#     observation_depth: float
 
 
 # -------- UPDATE ------------
@@ -91,19 +87,15 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     release_status: str | None = None
     value: float | None | None = None
     unit: str | None = None
+    value_reason: str | None = None
 
 
 class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
     measuring_point_height: float | None = None
-    level_status: str | None = None
 
 
 class UpdateWaterChemistryObservation(UpdateBaseObservation):
     pass
-
-
-# class UpdateGeothermalObservation(UpdateBaseObservation):
-#     observation_depth: float | None = None
 
 
 # -------- RESPONSE ----------
@@ -116,12 +108,12 @@ class BaseObservationResponse(BaseResponseModel):
     release_status: str
     value: float | None
     unit: str
+    value_reason: str
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water_bgs: float | None
     measuring_point_height: float | None
-    level_status: str | None
 
     @model_validator(mode="before")
     def calculate_depth_to_water_bgs(self: Self) -> Self:
@@ -136,10 +128,6 @@ class GroundwaterLevelObservationResponse(BaseObservationResponse):
 
 class WaterChemistryObservationResponse(BaseObservationResponse):
     pass
-
-
-# class GeothermalObservationResponse(BaseObservationResponse):
-#     observation_depth: float | None
 
 
 class ObservationResponse(

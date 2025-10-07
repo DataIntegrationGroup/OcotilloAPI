@@ -102,7 +102,7 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
             "Wells",
             thing,
             {
-                "well_type": thing.well_type,
+                "well_purpose": thing.well_purpose,
                 "well_depth": thing.well_depth,
                 "hole_depth": thing.hole_depth,
             },

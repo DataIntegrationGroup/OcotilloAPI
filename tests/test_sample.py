@@ -54,14 +54,14 @@ def test_validate_sample_top_and_bottom():
 
 #  ============= Post tests for samples =============================================
 def test_add_sample(
-    groundwater_level_field_activity, water_well_thing, contact, field_event_contact
+    groundwater_level_field_activity, water_well_thing, contact, field_event_participant
 ):
     """
     Test adding a sample.
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
-        "field_event_contact_id": field_event_contact.id,
+        "field_event_participant_id": field_event_participant.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "second groundwater level field activity name",
         "sample_matrix": "water",
@@ -102,14 +102,14 @@ def test_add_sample(
 def test_409_add_sample_invalid_sample_name(
     groundwater_level_field_activity,
     groundwater_level_sample,
-    field_event_contact,
+    field_event_participant,
 ):
     """
     Test that a 409 error is raised if a duplicate sample_name is in the payload
     """
     payload = {
         "field_activity_id": groundwater_level_field_activity.id,
-        "field_event_contact_id": field_event_contact.id,
+        "field_event_participant_id": field_event_participant.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": groundwater_level_sample.sample_name,
         "sample_matrix": "water",
@@ -139,14 +139,14 @@ def test_409_add_sample_invalid_sample_name(
 def test_409_add_sample_invalid_field_activity_id(
     groundwater_level_field_activity,
     groundwater_level_sample,
-    field_event_contact,
+    field_event_participant,
 ):
     """
     Test adding a sample with an invalid field_activity_id.
     """
     payload = {
         "field_activity_id": 999999,
-        "field_event_contact_id": field_event_contact.id,
+        "field_event_participant_id": field_event_participant.id,
         "sample_date": "2025-01-01T14:00:00Z",
         "sample_name": "yet another sample name",
         "sample_matrix": "water",
@@ -161,7 +161,6 @@ def test_409_add_sample_invalid_field_activity_id(
         json=payload,
     )
     data = response.json()
-    print(data)
     assert response.status_code == 409
     assert data["detail"][0]["loc"] == ["body", "field_activity_id"]
     assert (
@@ -196,7 +195,7 @@ def test_patch_sample(water_chemistry_sample, groundwater_level_field_activity):
     data = response.json()
 
     for key, value in payload.items():
-        if key in ["field_event_contact_id", "field_activity_id"]:
+        if key in ["field_event_participant_id", "field_activity_id"]:
             continue
         assert data[key] == value
 
