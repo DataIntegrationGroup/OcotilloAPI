@@ -57,6 +57,7 @@ def test_add_water_chemistry_observation(
         "sample_id": water_chemistry_sample.id,
         "sensor_id": sensor.id,
         "parameter_id": parameter_water_chemistry.id,
+        "value_reason": "Observed value not affected",
     }
     response = client.post("/observation/water-chemistry", json=payload)
     data = response.json()
@@ -71,6 +72,7 @@ def test_add_water_chemistry_observation(
     assert data["sample_id"] == payload["sample_id"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == parameter_water_chemistry.id
+    assert data["value_reason"] == payload["value_reason"]
 
     cleanup_post_test(Observation, data["id"])
 
@@ -86,7 +88,7 @@ def test_add_groundwater_level_observation(
         "sample_id": groundwater_level_sample.id,
         "parameter_id": parameter_groundwater.id,
         "sensor_id": sensor.id,
-        "level_status": "Water level not affected by status",
+        "value_reason": "Water level not affected by status",
         "unit": "ft",
     }
     response = client.post("/observation/groundwater-level", json=payload)
@@ -101,42 +103,13 @@ def test_add_groundwater_level_observation(
     assert data["measuring_point_height"] == payload["measuring_point_height"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == parameter_groundwater.id
-    assert data["level_status"] == payload["level_status"]
+    assert data["value_reason"] == payload["value_reason"]
     assert (
         data["depth_to_water_bgs"]
         == payload["value"] - payload["measuring_point_height"]
     )
 
     cleanup_post_test(Observation, data["id"])
-
-
-# def test_add_geothermal_observation(geothermal_sample, sensor):
-#     payload = {
-#         "observation_datetime": "2025-01-01T00:00:00Z",
-#         "release_status": "draft",
-#         "observation_depth": 100,
-#         "value": 25.5,
-#         "sample_id": geothermal_sample.id,
-#         "sensor_id": sensor.id,
-#         "observed_property": "temperature",
-#         "unit": "deg C",
-#     }
-#     response = client.post("/observation/geothermal", json=payload)
-#     data = response.json()
-#     assert response.status_code == 201
-
-#     assert "id" in data
-#     assert "created_at" in data
-#     assert data["observation_datetime"] == payload["observation_datetime"]
-#     assert data["release_status"] == payload["release_status"]
-#     assert data["observation_depth"] == payload["observation_depth"]
-#     assert data["value"] == payload["value"]
-#     assert data["sample_id"] == payload["sample_id"]
-#     assert data["sensor_id"] == payload["sensor_id"]
-#     assert data["observed_property"] == payload["observed_property"]
-#     assert data["unit"] == payload["unit"]
-
-#     cleanup_post_test(Observation, data["id"])
 
 
 # PATCH tests ==================================================================
@@ -229,48 +202,6 @@ def test_patch_water_chemistry_observation_404_wrong_activity_type(
     )
 
 
-# def test_patch_geothermal_observation(geothermal_observation):
-#     payload = {"observation_depth": 4, "release_status": "private"}
-#     response = client.patch(
-#         f"/observation/geothermal/{geothermal_observation.id}", json=payload
-#     )
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["observation_depth"] == payload["observation_depth"]
-#     assert data["release_status"] == payload["release_status"]
-
-#     cleanup_patch_test(Observation, payload, geothermal_observation)
-
-
-# def test_patch_geothermal_observation_404_not_found(geothermal_observation):
-#     bad_id = 999999
-#     payload = {"observation_depth": 8}
-#     response = client.patch(f"/observation/geothermal/{bad_id}", json=payload)
-#     assert response.status_code == 404
-#     data = response.json()
-#     assert data["detail"] == f"Observation with ID {bad_id} not found."
-
-
-# def test_patch_geothermal_observation_404_wrong_activity_type(
-#     groundwater_level_observation, water_chemistry_observation
-# ):
-#     for obs in groundwater_level_observation, water_chemistry_observation:
-#         payload = {"value": 8}
-#         response = client.patch(f"/observation/geothermal/{obs.id}", json=payload)
-#         assert response.status_code == 404
-#         data = response.json()
-
-#         if obs.observed_property == "groundwater level":
-#             activity_type = "groundwater level"
-#         else:
-#             activity_type = "water chemistry"
-
-#         assert (
-#             data["detail"][0]["msg"]
-#             == f"Observation with ID {obs.id} is not a geothermal observation. It is a {activity_type} observation."
-#         )
-
-
 # ============= Get tests =================
 
 
@@ -347,7 +278,7 @@ def test_get_groundwater_level_observations(
         == groundwater_level_observation.release_status
     )
     assert (
-        data["items"][0]["level_status"] == groundwater_level_observation.level_status
+        data["items"][0]["value_reason"] == groundwater_level_observation.value_reason
     )
     assert data["items"][0]["value"] == groundwater_level_observation.value
     assert data["items"][0]["unit"] == groundwater_level_observation.unit
@@ -361,7 +292,7 @@ def test_get_groundwater_level_observations(
         == groundwater_level_observation.measuring_point_height
     )
     assert (
-        data["items"][0]["level_status"] == groundwater_level_observation.level_status
+        data["items"][0]["value_reason"] == groundwater_level_observation.value_reason
     )
 
 
@@ -385,7 +316,7 @@ def test_get_groundwater_level_observation_by_id(
     )
     assert data["parameter"]["id"] == parameter_groundwater.id
     assert data["release_status"] == groundwater_level_observation.release_status
-    assert data["level_status"] == groundwater_level_observation.level_status
+    assert data["value_reason"] == groundwater_level_observation.value_reason
     assert data["value"] == groundwater_level_observation.value
     assert data["unit"] == groundwater_level_observation.unit
     assert (
@@ -397,7 +328,7 @@ def test_get_groundwater_level_observation_by_id(
         data["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
     )
-    assert data["level_status"] == groundwater_level_observation.level_status
+    assert data["value_reason"] == groundwater_level_observation.value_reason
 
 
 def test_get_groundwater_level_observation_by_id_404_not_found(
@@ -593,87 +524,6 @@ def test_get_water_chemistry_observation_by_id_404_wrong_activity_type(
         "observation_id": groundwater_level_observation.id
     }
     assert data["detail"][0]["loc"] == ["path", "observation_id"]
-
-
-# def test_get_geothermal_observations(geothermal_observation):
-#     response = client.get("/observation/geothermal")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["total"] == 1
-#     assert data["items"][0]["id"] == geothermal_observation.id
-#     assert data["items"][0][
-#         "created_at"
-#     ] == geothermal_observation.created_at.isoformat().replace("+00:00", "Z")
-#     assert data["items"][0]["release_status"] == geothermal_observation.release_status
-#     assert data["items"][0]["sample_id"] == geothermal_observation.sample_id
-#     assert data["items"][0]["sensor_id"] == geothermal_observation.sensor_id
-#     assert (
-#         data["items"][0]["observation_datetime"]
-#         == geothermal_observation.observation_datetime
-#     )
-#     colon_index = geothermal_observation.observed_property.find(":")
-#     assert (
-#         data["items"][0]["observed_property"]
-#         == geothermal_observation.observed_property[colon_index + 1 :]
-#     )
-#     assert data["items"][0]["value"] == geothermal_observation.value
-#     assert data["items"][0]["unit"] == geothermal_observation.unit
-#     assert (
-#         data["items"][0]["observation_depth"]
-#         == geothermal_observation.observation_depth
-#     )
-
-
-# def test_get_geothermal_observation_by_id(geothermal_observation):
-#     response = client.get(f"/observation/geothermal/{geothermal_observation.id}")
-#     assert response.status_code == 200
-#     data = response.json()
-#     assert data["id"] == geothermal_observation.id
-#     assert data["created_at"] == geothermal_observation.created_at.isoformat().replace(
-#         "+00:00", "Z"
-#     )
-#     assert data["release_status"] == geothermal_observation.release_status
-#     assert data["sample_id"] == geothermal_observation.sample_id
-#     assert data["sensor_id"] == geothermal_observation.sensor_id
-#     assert data["observation_datetime"] == geothermal_observation.observation_datetime
-#     colon_index = geothermal_observation.observed_property.find(":")
-#     assert (
-#         data["observed_property"]
-#         == geothermal_observation.observed_property[colon_index + 1 :]
-#     )
-#     assert data["value"] == geothermal_observation.value
-#     assert data["unit"] == geothermal_observation.unit
-#     assert data["observation_depth"] == geothermal_observation.observation_depth
-
-
-# def test_get_geothermal_observation_by_id_404_not_found(geothermal_observation):
-#     bad_id = 99999
-#     response = client.get(f"/observation/geothermal/{bad_id}")
-#     assert response.status_code == 404
-#     data = response.json()
-#     assert data["detail"] == f"Observation with ID {bad_id} not found."
-
-
-# def test_get_geothermal_observation_by_id_404_wrong_activity_type(
-#     water_chemistry_observation, groundwater_level_observation
-# ):
-#     for obs in water_chemistry_observation, groundwater_level_observation:
-#         response = client.get(f"/observation/geothermal/{obs.id}")
-#         assert response.status_code == 404
-#         data = response.json()
-
-#         if obs.observed_property == "groundwater level":
-#             actual_activity_type = "groundwater level"
-#         else:
-#             actual_activity_type = "water chemistry"
-
-#         assert (
-#             data["detail"][0]["msg"]
-#             == f"Observation with ID {obs.id} is not a geothermal observation. It is a {actual_activity_type} observation."
-#         )
-#         assert data["detail"][0]["type"] == "value_error"
-#         assert data["detail"][0]["input"] == {"observation_id": obs.id}
-#         assert data["detail"][0]["loc"] == ["path", "observation_id"]
 
 
 # JB's comment: I don't think that geographic filters are necessary for

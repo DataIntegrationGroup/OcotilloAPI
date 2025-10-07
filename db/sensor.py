@@ -50,7 +50,7 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     # One-To-Many: A piece of Equipment can generate many Observations.
-    observations: Mapped[List["Observation"]] = relationship(  # noqa: F821
+    observations: Mapped[List["Observation"]] = relationship(
         "Observation",
         back_populates="sensor",
     )

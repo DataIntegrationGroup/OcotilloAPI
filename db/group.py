@@ -13,15 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 
 from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
+
+if TYPE_CHECKING:
+    from db.group import GroupThingAssociation
+    from db.thing import Thing
 
 
 class Group(Base, AutoBaseMixin, ReleaseMixin):
@@ -37,8 +42,18 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
         Integer, ForeignKey("group.id", ondelete="CASCADE"), nullable=True
     )
 
-    # --- Relationship Definitions ---
-    things = relationship("Thing", secondary="group_thing_association")
+    # --- Relationships ---
+    # One-To-Many (Association Object): A Group has many members (Things).
+    # The GroupThingAssociation table manages this many-to-many relationship.
+    thing_associations: Mapped[List["GroupThingAssociation"]] = relationship(
+        "GroupThingAssociation", back_populates="group", cascade="all, delete-orphan"
+    )
+
+    # --- Association Proxies ---
+    # Many-To-Many Proxy: Provides direct access to the Thing objects in this group.
+    things: AssociationProxy[List["Thing"]] = association_proxy(
+        "thing_associations", "thing"
+    )
 
 
 class GroupThingAssociation(Base, AutoBaseMixin):
@@ -48,6 +63,13 @@ class GroupThingAssociation(Base, AutoBaseMixin):
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+
+    # --- Relationship Definitions ---
+    # Many-To-One: This association links to one Thing.
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="group_associations")
+
+    # Many-To-One: This association links to one Group.
+    group: Mapped["Group"] = relationship("Group", back_populates="thing_associations")
 
 
 # ============= EOF =============================================
