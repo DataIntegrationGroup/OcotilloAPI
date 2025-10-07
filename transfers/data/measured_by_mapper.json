@@ -38,10 +38,10 @@
     "Minton.": [null, "Minton Engineers", "Organization"],
     "MJ Darr.": [null, "MJDarrconsult, Inc", "Organization"],
     "MJ Darr consultants": [null, "MJDarrconsult, Inc", "Organization"],
-    "NESWCD": [null, "North East Soil and Water Conservation District", "Organization"],
+    "NESWCD": [null, "Northeastern Soil and Water Conservation District", "Organization"],
     "OSE, ST": [[null, "NMOSE", "Organization"], ["Stacy Timmons", "NMBGMR", "Hydrogeologist"]],
     "PVACD person": [null, "PVACD", "Organization"],
-    "Sand Drillers": [null, "Sandia Well Service, Inc", "Organization"],
+    "Sandia Drillers": [null, "Sandia Well Service, Inc", "Organization"],
     "SFC/Frost": ["Jack Frost", "NMOSE", "Hydrologist"],
     "SPCE HOA": [null, "San Pedro Creek Estates HOA", "Organization"],
     "Statewide Drilling": [null, "Statewide Drilling", "Organization"],
@@ -80,8 +80,6 @@
     "City of Santa  Fe": [null, "City of Santa Fe", "Organization"],
     "City of Santa Fe": [null, "City of Santa Fe", "Organization"],
     "CityofSantaFe": [null, "City of Santa Fe", "Organization"],
-
-    "Duke Engring": ["Duke Engring", "Unknown", "Unknown"],
 
     "John Shomaker": [null, "John Shomaker & Associates, Inc", "Organization"],
     "John Shomaker & Associates, Inc": [null, "John Shomaker & Associates, Inc", "Organization"],
@@ -124,6 +122,7 @@
 
     "URS": [null, "URS", "Organization"],
 
+    "Duke Engring": ["Duke Engring", "Unknown", "Unknown"],
     "Gamma log unit": ["Gamma log unit", "Unknown", "Unknown"],
     "Hydrogeologic serv": ["Hydrogeologic serv", "Unknown", "Unknown"],
     "MWB Consultants": ["MWB Consultants", "Unknown", "Unknown"],
