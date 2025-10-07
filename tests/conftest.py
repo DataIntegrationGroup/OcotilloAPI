@@ -3,6 +3,7 @@ import uuid
 
 from db import *
 from db.engine import session_ctx
+from tests import groundwater_level_parameter_id, pH_parameter_id
 
 
 @pytest.fixture()
@@ -637,15 +638,13 @@ def sample_to_delete(water_chemistry_field_activity, field_event_contact):
 
 
 @pytest.fixture()
-def groundwater_level_observation(
-    sensor, groundwater_level_sample, parameter_groundwater
-):
+def groundwater_level_observation(sensor, groundwater_level_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:04:00Z",
             sample_id=groundwater_level_sample.id,
             sensor_id=sensor.id,
-            parameter_id=parameter_groundwater.id,
+            parameter_id=groundwater_level_parameter_id,
             release_status="draft",
             value=10.0,
             unit="ft",
@@ -660,15 +659,13 @@ def groundwater_level_observation(
 
 
 @pytest.fixture()
-def water_chemistry_observation(
-    sensor, water_chemistry_sample, parameter_water_chemistry
-):
+def water_chemistry_observation(sensor, water_chemistry_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:03:00Z",
             sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            parameter_id=parameter_water_chemistry.id,
+            parameter_id=pH_parameter_id,
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -701,13 +698,13 @@ def geothermal_observation(sensor, geothermal_sample):
 
 
 @pytest.fixture(scope="function")
-def observation_to_delete(water_chemistry_sample, sensor, parameter_water_chemistry):
+def observation_to_delete(water_chemistry_sample, sensor):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2019-01-01T00:03:00Z",
             sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            parameter_id=parameter_water_chemistry.id,
+            parameter_id=pH_parameter_id,
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -719,46 +716,46 @@ def observation_to_delete(water_chemistry_sample, sensor, parameter_water_chemis
         session.commit()
 
 
-@pytest.fixture()
-def parameter_water_chemistry():
-    """
-    Fixture to create a Parameter for testing.
-    """
-    with session_ctx() as session:
-        parameter = Parameter(
-            parameter_name="pH",
-            parameter_type="Field Parameter",
-            matrix="groundwater",
-            cas_number="7440-38-2",
-            default_unit="dimensionless",
-            release_status="draft",
-        )
-        session.add(parameter)
-        session.commit()
-        yield parameter
-        session.delete(parameter)
-        session.commit()
+# @pytest.fixture()
+# def parameter_water_chemistry():
+#     """
+#     Fixture to create a Parameter for testing.
+#     """
+#     with session_ctx() as session:
+#         parameter = Parameter(
+#             parameter_name="pH",
+#             parameter_type="Field Parameter",
+#             matrix="groundwater",
+#             cas_number="7440-38-2",
+#             default_unit="dimensionless",
+#             release_status="draft",
+#         )
+#         session.add(parameter)
+#         session.commit()
+#         yield parameter
+#         session.delete(parameter)
+#         session.commit()
 
 
-@pytest.fixture()
-def parameter_groundwater():
-    """
-    Fixture to create a Parameter for testing.
-    """
-    with session_ctx() as session:
-        parameter = Parameter(
-            parameter_name="groundwater level",
-            parameter_type="Field Parameter",
-            matrix="groundwater",
-            cas_number=None,
-            default_unit="ft",
-            release_status="draft",
-        )
-        session.add(parameter)
-        session.commit()
-        yield parameter
-        session.delete(parameter)
-        session.commit()
+# @pytest.fixture()
+# def parameter_groundwater():
+#     """
+#     Fixture to create a Parameter for testing.
+#     """
+#     with session_ctx() as session:
+#         parameter = Parameter(
+#             parameter_name="groundwater level",
+#             parameter_type="Field Parameter",
+#             matrix="groundwater",
+#             cas_number=None,
+#             default_unit="ft",
+#             release_status="draft",
+#         )
+#         session.add(parameter)
+#         session.commit()
+#         yield parameter
+#         session.delete(parameter)
+#         session.commit()
 
 
 @pytest.fixture()

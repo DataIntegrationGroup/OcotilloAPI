@@ -15,8 +15,8 @@
 # ===============================================================================
 from fastapi.testclient import TestClient
 
-from core.initializers import init_lexicon
-from db import Base
+from core.initializers import init_lexicon, init_parameter
+from db import Base, Parameter
 from db.engine import engine, session_ctx
 from main import app
 
@@ -25,8 +25,22 @@ Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 
 init_lexicon()
+init_parameter()
 
 client = TestClient(app)
+
+# map (name, type) to id for easy lookup in tests
+parameter_map = {}
+with session_ctx() as session:
+    for param in session.query(Parameter).all():
+        if (
+            param.parameter_name in ["groundwater level", "pH"]
+            and param.parameter_type == "Field Parameter"
+        ):
+            parameter_map[(param.parameter_name, param.parameter_type)] = param.id
+
+groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
+pH_parameter_id = parameter_map[("pH", "Field Parameter")]
 
 
 def override_authentication(default=True):
