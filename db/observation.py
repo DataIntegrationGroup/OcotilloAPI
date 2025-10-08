@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from db.sample import Sample
     from db.sensor import Sensor
     from db.analysis_method import AnalysisMethod
+    from db.parameter import Parameter
 
 
 class Observation(Base, AutoBaseMixin, ReleaseMixin):
@@ -50,11 +51,14 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
         Integer, ForeignKey("analysis_method.id"), nullable=True
     )
 
+    parameter_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("parameter.id"), nullable=False
+    )
+
     # --- Columns ---
     observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
-    observed_property: Mapped[str] = lexicon_term(nullable=False)
     value: Mapped[float] = mapped_column(
         nullable=True,
     )
@@ -86,6 +90,11 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     # Many-To-One: An Observation can be generated using one AnalysisMethod.
     analysis_method: Mapped["AnalysisMethod"] = relationship(
         "AnalysisMethod", back_populates="observations"
+    )
+
+    # Many-To-One: An Observation measures one Parameter.
+    parameter: Mapped["Parameter"] = relationship(
+        "Parameter", back_populates="observations", lazy="joined"
     )
 
 

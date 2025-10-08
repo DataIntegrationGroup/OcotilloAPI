@@ -24,7 +24,7 @@ from fastapi.openapi.docs import (
 )
 from fastapi.openapi.utils import get_openapi
 
-from .initializers import init_db, init_lexicon
+from .initializers import init_db, init_lexicon, init_parameter
 from .settings import settings
 
 
@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.get_enum("MODE") == "development":
         init_db()
         init_lexicon()
+        init_parameter()
     yield
 
 

@@ -20,6 +20,7 @@ from sqlalchemy.exc import DatabaseError
 
 from db import Base
 from db.engine import engine, session_ctx
+from db.parameter import Parameter
 from services.lexicon_helper import add_lexicon_term, add_lexicon_category
 
 
@@ -48,6 +49,36 @@ def init_hypertables():
 
     # session.commit()
     # session.close()
+
+
+def init_parameter(path: str = None) -> None:
+    """
+    Populate the parameter table to allow their use in creating and editing
+    observations
+    """
+    if path is None:
+        path = Path(__file__).parent / "parameter.json"
+
+    with open(path) as f:
+        import json
+
+        default_parameter = json.load(f)
+
+    with session_ctx() as session:
+        for param in default_parameter:
+            try:
+                parameter_obj = Parameter(
+                    parameter_name=param["parameter_name"],
+                    matrix=param["matrix"],
+                    parameter_type=param["parameter_type"],
+                    cas_number=param["cas_number"],
+                    default_unit=param["default_unit"],
+                )
+                session.add(parameter_obj)
+                session.commit()
+            except DatabaseError as e:
+                print(f"Failed to add parameter {param['parameter_name']}: error: {e}")
+                session.rollback()
 
 
 def init_lexicon(path: str = None) -> None:
