@@ -239,18 +239,18 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     @property
-    def active_location(self):
+    def current_location(self):
         """
         Returns the currently active Location by sorting the effective_start
         field. Thing eagerly loads location_association, which eagerly loads
         location, which will hopefully prevent N+1 query problems.
         """
-        active_location = sorted(
+        current_location = sorted(
             self.location_associations, key=lambda x: x.effective_start, reverse=True
         )
         return (
-            active_location[0].location
-            if active_location and active_location[0].effective_end is None
+            current_location[0].location
+            if current_location and current_location[0].effective_end is None
             else None
         )
 

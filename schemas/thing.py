@@ -139,7 +139,7 @@ class CreateWellScreen(BaseCreateModel):
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    active_location: LocationResponse | None
+    current_location: LocationResponse | None
     first_visit_date: PastDate | None
 
 

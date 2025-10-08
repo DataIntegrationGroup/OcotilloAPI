@@ -122,7 +122,7 @@ def test_add_water_well(location, group):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_post_test(Thing, data["id"])
 
@@ -199,7 +199,7 @@ def test_add_spring(location, group):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_post_test(Thing, data["id"])
 
@@ -408,7 +408,7 @@ def test_get_water_wells(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["items"][0]["active_location"] == expected_location
+    assert data["items"][0]["current_location"] == expected_location
 
 
 def test_get_water_well_by_id(water_well_thing, location):
@@ -439,7 +439,7 @@ def test_get_water_well_by_id(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_water_well_by_id_404_not_found(water_well_thing):
@@ -485,7 +485,7 @@ def test_get_springs(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["items"][0]["active_location"] == expected_location
+    assert data["items"][0]["current_location"] == expected_location
 
 
 def test_get_spring_by_id(spring_thing, location):
@@ -505,7 +505,7 @@ def test_get_spring_by_id(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_spring_by_id_404_not_found(spring_thing):
@@ -710,7 +710,7 @@ def test_get_thing_by_id(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_thing_by_id_404_not_found(water_well_thing):
@@ -798,7 +798,7 @@ def test_patch_water_well(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_patch_test(Thing, payload, water_well_thing)
 
@@ -861,7 +861,7 @@ def test_patch_spring(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_patch_test(Thing, payload, spring_thing)
 
