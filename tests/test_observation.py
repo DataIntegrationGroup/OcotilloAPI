@@ -63,6 +63,7 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
         "sensor_id": sensor.id,
         "parameter_id": pH_parameter_id,
         "value_reason": "Observed value not affected",
+        "observed_property": "pH",
     }
     response = client.post("/observation/water-chemistry", json=payload)
     data = response.json()
@@ -78,6 +79,7 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == pH_parameter_id
     assert data["value_reason"] == payload["value_reason"]
+    assert data["observed_property"] == payload["observed_property"]
 
     cleanup_post_test(Observation, data["id"])
 
@@ -91,7 +93,8 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
         "sample_id": groundwater_level_sample.id,
         "parameter_id": groundwater_level_parameter_id,
         "sensor_id": sensor.id,
-        "value_reason": "Water level not affected by status",
+        "groundwater_level_reason": "Water level not affected",
+        "observed_property": "groundwater level",
         "unit": "ft",
     }
     response = client.post("/observation/groundwater-level", json=payload)
@@ -107,6 +110,8 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == groundwater_level_parameter_id
     assert data["value_reason"] == payload["value_reason"]
+    assert data["groundwater_level_reason"] == payload["groundwater_level_reason"]
+    assert data["observed_property"] == payload["observed_property"]
     assert (
         data["depth_to_water_bgs"]
         == payload["value"] - payload["measuring_point_height"]
@@ -279,7 +284,8 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
         == groundwater_level_observation.release_status
     )
     assert (
-        data["items"][0]["value_reason"] == groundwater_level_observation.value_reason
+        data["items"][0]["groundwater_level_reason"]
+        == groundwater_level_observation.groundwater_level_reason
     )
     assert data["items"][0]["value"] == groundwater_level_observation.value
     assert data["items"][0]["unit"] == groundwater_level_observation.unit
@@ -291,9 +297,6 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
     assert (
         data["items"][0]["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
-    )
-    assert (
-        data["items"][0]["value_reason"] == groundwater_level_observation.value_reason
     )
 
 
@@ -315,7 +318,10 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
     )
     assert data["parameter"]["id"] == groundwater_level_parameter_id
     assert data["release_status"] == groundwater_level_observation.release_status
-    assert data["value_reason"] == groundwater_level_observation.value_reason
+    assert (
+        data["groundwater_level_reason"]
+        == groundwater_level_observation.groundwater_level_reason
+    )
     assert data["value"] == groundwater_level_observation.value
     assert data["unit"] == groundwater_level_observation.unit
     assert (
@@ -327,7 +333,6 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
         data["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
     )
-    assert data["value_reason"] == groundwater_level_observation.value_reason
 
 
 def test_get_groundwater_level_observation_by_id_404_not_found(
