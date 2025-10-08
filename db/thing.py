@@ -125,10 +125,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     If there are many location associations related to a thing, eagerly loading
     the location associations may overburden the API and DB and introduce
     performance issues. If this becomes an issue, active/current locations can 
-    be fetched in queries when retrieving things. Be careful, though, as this
-    will need to be included everywhere where a thing record is needed, such as
-    for GET /thing, GET /thing/{thing_id}, and GET /contact. See below for an
-    example of a way to retrieve the active/current location in a query
+    be fetched in queries when retrieving things. Be thorough if following this
+    route as it will need to be included everywhere where a thing record is
+    needed, such as for GET /thing, GET /thing/{thing_id}, and GET /contact. See
+    below for an example of a way to retrieve the active/current location in a
+    query:
 
     from sqlalchemy.orm import aliased
     from sqlalchemy import select, func
