@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+"""
+SQLAlchemy model for the Sensor table.
+"""
 from datetime import datetime
 
 from sqlalchemy import String, Integer, DateTime
@@ -31,7 +34,11 @@ if TYPE_CHECKING:
 
 class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     """
-    Base class for all sensor types.
+    The `Sensor` table serves as the central asset inventory for all physical hardware used for data collection.
+    Its purpose is to track each unique piece of equipment as a distinct asset.
+
+    This table is distinct from the `AnalysisMethod` table, as it deals exclusively with tangible, physical objects.
+
     This class can be extended to create specific sensor types.
     """
 
