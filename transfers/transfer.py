@@ -21,7 +21,7 @@ load_dotenv()
 
 
 from sqlalchemy.orm import Session
-from core.initializers import init_lexicon
+from core.initializers import init_lexicon, init_parameter
 from db import Base
 from db.engine import session_ctx
 
@@ -48,9 +48,12 @@ from transfers.logger import logger, save_log_to_bucket
 
 
 def erase_and_initalize(session: Session) -> None:
-    logger.info("Erasing existing data and initializing lexicon and sensors")
+    logger.info(
+        "Erasing existing data and initializing lexicon, parameter, and sensors"
+    )
     erase(session)
     lexicon()
+    parameter()
     sensor(session)
 
 
@@ -64,6 +67,12 @@ def sensor(session: Session):
 def lexicon():
     logger.info("Initializing lexicon")
     init_lexicon()
+
+
+@timeit
+def parameter():
+    logger.info("Initializing parameter")
+    init_parameter()
 
 
 @timeit

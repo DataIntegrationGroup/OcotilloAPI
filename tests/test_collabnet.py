@@ -41,6 +41,9 @@ def well():
 
         yield wt
 
+        session.delete(wt)
+        session.commit()
+
 
 @pytest.mark.skip
 def test_add_collabnet_well(well):

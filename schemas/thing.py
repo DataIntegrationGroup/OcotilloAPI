@@ -20,6 +20,41 @@ from pydantic import BaseModel, model_validator, PastDate
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
+# -------- VALIDATE ----------
+
+
+class ValidateWell(BaseModel):
+    well_depth: float | None = None  # in feet
+    hole_depth: float | None = None  # in feet
+    well_casing_depth: float | None = None  # in feet
+
+    @model_validator(mode="after")
+    def check_depths(self):
+        if (
+            self.well_depth is not None
+            and self.hole_depth is not None
+            and self.well_depth > self.hole_depth
+        ):
+            raise ValueError("well depth must be less than than or equal to hole depth")
+        elif (
+            self.well_depth is not None
+            and self.well_casing_depth is not None
+            and self.well_casing_depth > self.well_depth
+        ):
+            raise ValueError(
+                "well casing depth must be greater than or equal to well depth"
+            )
+        elif (
+            self.hole_depth is not None
+            and self.well_casing_depth is not None
+            and self.well_casing_depth > self.hole_depth
+        ):
+            raise ValueError(
+                "well casing depth must be less than or equal to hole depth"
+            )
+
+        return self
+
 
 # -------- CREATE ----------
 class CreateThingIdLink(BaseModel):
@@ -43,13 +78,13 @@ class CreateBaseThing(BaseCreateModel):
     e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
     """
 
-    location_id: int | None = None  # Optional location ID for the thing
+    location_id: int | None
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
     first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
-class CreateWell(CreateBaseThing):
+class CreateWell(CreateBaseThing, ValidateWell):
     """
     Schema for creating a well.
     """
@@ -58,6 +93,9 @@ class CreateWell(CreateBaseThing):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
+    well_casing_diameter: float | None = None  # in inches
+    well_casing_depth: float | None = None  # in feet
+    well_casing_material: str | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -93,8 +131,8 @@ class CreateWellScreen(BaseCreateModel):
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    active_location: LocationResponse | None = None
-    first_visit_date: PastDate | None = None
+    active_location: LocationResponse | None
+    first_visit_date: PastDate | None
 
 
 class WellResponse(BaseThingResponse):
@@ -102,15 +140,13 @@ class WellResponse(BaseThingResponse):
     Response schema for well details.
     """
 
-    # api_id: str | None = None
-    # ose_pod_id: str | None = None
-    # usgs_id: str | None = None
-
     well_purpose: str | None = None  # e.g., "Production", "Observation", etc.
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
-    # Additional fields can be added as needed
+    well_casing_diameter: float | None = None  # in inches
+    well_casing_depth: float | None = None  # in feet
+    well_casing_material: str | None = None
 
 
 class SpringResponse(BaseThingResponse):
@@ -197,12 +233,15 @@ class UpdateThing(BaseUpdateModel):
     first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
 
 
-class UpdateWell(UpdateThing):
+class UpdateWell(UpdateThing, ValidateWell):
 
     well_purpose: str | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
+    well_casing_diameter: float | None = None  # in inches
+    well_casing_depth: float | None = None  # in feet
+    well_casing_material: str | None = None
 
 
 class UpdateSpring(UpdateThing):

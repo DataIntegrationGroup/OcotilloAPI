@@ -25,6 +25,7 @@ from typing import Annotated
 from typing_extensions import Self
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas.parameter import ParameterResponse
 
 
 # class GeothermalMixin:
@@ -36,7 +37,7 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 
 class ValidateObservation(BaseModel):
-    observed_property: str
+    parameter_id: int
     observation_datetime: AwareDatetime
 
     @field_validator("observation_datetime", check_fields=False)
@@ -60,7 +61,7 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int
     sensor_id: int
-    observed_property: str
+    parameter_id: int
     release_status: str
     value: float | None
     unit: str | None
@@ -82,7 +83,7 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_id: int | None = None
     sensor_id: int | None = None
-    observed_property: str | None = None
+    parameter_id: int | None = None
     release_status: str | None = None
     value: float | None | None = None
     unit: str | None = None
@@ -98,11 +99,12 @@ class UpdateWaterChemistryObservation(UpdateBaseObservation):
 
 
 # -------- RESPONSE ----------
+# TODO: Return full sample and sensor objects
 class BaseObservationResponse(BaseResponseModel):
     sample_id: int
     sensor_id: int
     observation_datetime: AwareDatetime
-    observed_property: str
+    parameter: ParameterResponse
     release_status: str
     value: float | None
     unit: str
