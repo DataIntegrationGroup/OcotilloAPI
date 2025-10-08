@@ -119,6 +119,44 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     # One-To-Many: A Thing can be at many locations over time.
     # If the Thing is deleted, its location history will be deleted.
+    """
+    Developer's notes
+
+    If there are many location associations related to a thing, eagerly loading
+    the location associations may overburden the API and DB and introduce
+    performance issues. If this becomes an issue, active/current locations can 
+    be fetched in queries when retrieving things. Be thorough if following this
+    route as it will need to be included everywhere where a thing record is
+    needed, such as for GET /thing, GET /thing/{thing_id}, and GET /contact. See
+    below for an example of a way to retrieve the active/current location in a
+    query:
+
+    from sqlalchemy.orm import aliased
+    from sqlalchemy import select, func
+
+    LTA = aliased(LocationThingAssociation)
+    latest_assoc = (
+        select(
+            LTA.thing_id,
+            func.max(LTA.effective_start).label("max_start")
+        )
+        .where(LTA.effective_end == None)
+        .group_by(LTA.thing_id)
+        .subquery()
+    )
+
+    lta_alias = aliased(LocationThingAssociation)
+    query = (
+        select(Thing, Location)
+        .join(lta_alias, Thing.id == lta_alias.thing_id)
+        .join(Location, lta_alias.location_id == Location.id)
+        .join(
+            latest_assoc,
+            (latest_assoc.c.thing_id == lta_alias.thing_id) &
+            (latest_assoc.c.max_start == lta_alias.effective_start)
+        )
+    )
+    """
     location_associations = relationship(
         "LocationThingAssociation",
         back_populates="thing",
@@ -201,16 +239,20 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     @property
-    def active_location(self):
+    def current_location(self):
         """
         Returns the currently active Location by sorting the effective_start
         field. Thing eagerly loads location_association, which eagerly loads
         location, which will hopefully prevent N+1 query problems.
         """
-        active_location = sorted(
-            self.location_associations, key=lambda x: x.effective_start
+        current_location = sorted(
+            self.location_associations, key=lambda x: x.effective_start, reverse=True
         )
-        return active_location[0].location if active_location else None
+        return (
+            current_location[0].location
+            if current_location and current_location[0].effective_end is None
+            else None
+        )
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
