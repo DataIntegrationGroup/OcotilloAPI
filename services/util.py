@@ -78,7 +78,10 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
     }
 
     resp = httpx.get(url, params=params, timeout=30)
-    data = resp.json()
+    try:
+        data = resp.json()
+    except json.decoder.JSONDecodeError:
+        return None
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
