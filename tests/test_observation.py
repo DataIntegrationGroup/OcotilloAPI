@@ -62,6 +62,7 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
         "sample_id": water_chemistry_sample.id,
         "sensor_id": sensor.id,
         "parameter_id": pH_parameter_id,
+        "value_reason": "Observed value not affected",
         "observed_property": "pH",
     }
     response = client.post("/observation/water-chemistry", json=payload)
@@ -77,7 +78,6 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
     assert data["sample_id"] == payload["sample_id"]
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == pH_parameter_id
-    assert data["observed_property"] == payload["observed_property"]
 
     cleanup_post_test(Observation, data["id"])
 
@@ -92,7 +92,6 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
         "parameter_id": groundwater_level_parameter_id,
         "sensor_id": sensor.id,
         "groundwater_level_reason": "Water level not affected",
-        "observed_property": "groundwater level",
         "unit": "ft",
     }
     response = client.post("/observation/groundwater-level", json=payload)
@@ -108,7 +107,6 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     assert data["sensor_id"] == payload["sensor_id"]
     assert data["parameter"]["id"] == groundwater_level_parameter_id
     assert data["groundwater_level_reason"] == payload["groundwater_level_reason"]
-    assert data["observed_property"] == payload["observed_property"]
     assert (
         data["depth_to_water_bgs"]
         == payload["value"] - payload["measuring_point_height"]
