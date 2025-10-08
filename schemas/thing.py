@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List
 
-from pydantic import BaseModel, model_validator, PastDate
+from pydantic import BaseModel, model_validator, PastDate, Field
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -90,11 +90,19 @@ class CreateWell(CreateBaseThing, ValidateWell):
     """
 
     well_purpose: str | None = None
-    well_depth: float | None = None  # in feet
-    hole_depth: float | None = None  # in feet
+    well_depth: float | None = Field(
+        default=None, gt=0, description="Well depth in feet"
+    )
+    hole_depth: float | None = Field(
+        default=None, gt=0, description="Hole depth in feet"
+    )
     well_construction_notes: str | None = None
-    well_casing_diameter: float | None = None  # in inches
-    well_casing_depth: float | None = None  # in feet
+    well_casing_diameter: float | None = Field(
+        default=None, gt=0, description="Well casing diameter in inches"
+    )
+    well_casing_depth: float | None = Field(
+        default=None, gt=0, description="Well casing depth in feet"
+    )
     well_casing_material: str | None = None
 
 
@@ -112,8 +120,8 @@ class CreateWellScreen(BaseCreateModel):
     """
 
     thing_id: int
-    screen_depth_bottom: float
-    screen_depth_top: float
+    screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
+    screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
     screen_type: str | None = None
     screen_description: str | None = None
 
@@ -141,12 +149,16 @@ class WellResponse(BaseThingResponse):
     """
 
     well_purpose: str | None = None  # e.g., "Production", "Observation", etc.
-    well_depth: float | None = None  # in feet
-    hole_depth: float | None = None  # in feet
-    well_construction_notes: str | None = None
+    well_depth: float | None = None
+    well_depth_unit: str = "ft"
+    hole_depth: float | None = None
+    hole_depth_unit: str = "ft"
     well_casing_diameter: float | None = None  # in inches
-    well_casing_depth: float | None = None  # in feet
+    well_casing_diameter_unit: str = "in"
+    well_casing_depth: float | None = None
+    well_casing_depth_unit: str = "ft"
     well_casing_material: str | None = None
+    well_construction_notes: str | None = None
 
 
 class SpringResponse(BaseThingResponse):
@@ -185,7 +197,9 @@ class WellScreenResponse(BaseResponseModel):
     thing_id: int
     thing: WellResponse
     screen_depth_bottom: float
+    screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
+    screen_depth_top_unit: str = "ft"
     screen_type: str | None = None
     screen_description: str | None = None
 

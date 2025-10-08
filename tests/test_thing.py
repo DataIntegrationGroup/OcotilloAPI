@@ -108,10 +108,14 @@ def test_add_water_well(location, group):
     assert data["thing_type"] == "water well"
     assert data["well_purpose"] == payload["well_purpose"]
     assert data["hole_depth"] == payload["hole_depth"]
+    assert data["hole_depth_unit"] == "ft"
     assert data["well_depth"] == payload["well_depth"]
+    assert data["well_depth_unit"] == "ft"
     assert data["well_construction_notes"] == payload["well_construction_notes"]
     assert data["well_casing_diameter"] == payload["well_casing_diameter"]
+    assert data["well_casing_diameter_unit"] == "in"
     assert data["well_casing_depth"] == payload["well_casing_depth"]
+    assert data["well_casing_depth_unit"] == "ft"
     assert data["well_casing_material"] == payload["well_casing_material"]
 
     expected_location = LocationResponse.model_validate(location).model_dump()
@@ -381,7 +385,9 @@ def test_get_water_wells(water_well_thing, location):
     assert data["items"][0]["release_status"] == water_well_thing.release_status
     assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
     assert data["items"][0]["well_depth"] == water_well_thing.well_depth
+    assert data["items"][0]["well_depth_unit"] == "ft"
     assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
+    assert data["items"][0]["hole_depth_unit"] == "ft"
     assert (
         data["items"][0]["well_construction_notes"]
         == water_well_thing.well_construction_notes
@@ -390,7 +396,9 @@ def test_get_water_wells(water_well_thing, location):
         data["items"][0]["well_casing_diameter"]
         == water_well_thing.well_casing_diameter
     )
+    assert data["items"][0]["well_casing_diameter_unit"] == "in"
     assert data["items"][0]["well_casing_depth"] == water_well_thing.well_casing_depth
+    assert data["items"][0]["well_casing_depth_unit"] == "ft"
     assert (
         data["items"][0]["well_casing_material"]
         == water_well_thing.well_casing_material
@@ -417,10 +425,14 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["release_status"] == water_well_thing.release_status
     assert data["well_purpose"] == water_well_thing.well_purpose
     assert data["well_depth"] == water_well_thing.well_depth
+    assert data["well_depth_unit"] == "ft"
     assert data["hole_depth"] == water_well_thing.hole_depth
+    assert data["hole_depth_unit"] == "ft"
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
     assert data["well_casing_diameter"] == water_well_thing.well_casing_diameter
+    assert data["well_casing_diameter_unit"] == "in"
     assert data["well_casing_depth"] == water_well_thing.well_casing_depth
+    assert data["well_casing_depth_unit"] == "ft"
     assert data["well_casing_material"] == water_well_thing.well_casing_material
 
     expected_location = LocationResponse.model_validate(location).model_dump()

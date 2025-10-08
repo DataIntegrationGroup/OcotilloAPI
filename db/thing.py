@@ -208,9 +208,13 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         location, which will hopefully prevent N+1 query problems.
         """
         active_location = sorted(
-            self.location_associations, key=lambda x: x.effective_start
+            self.location_associations, key=lambda x: x.effective_start, reverse=True
         )
-        return active_location[0].location if active_location else None
+        return (
+            active_location[0].location
+            if active_location and active_location[0].effective_end is None
+            else None
+        )
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
