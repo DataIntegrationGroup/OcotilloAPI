@@ -27,6 +27,7 @@ from core.dependencies import (
     amp_viewer_function,
 )
 from schemas.location import LocationResponse
+from schemas.thing import ValidateWell
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -49,6 +50,32 @@ def override_authentication_dependency_fixture():
     yield
 
     app.dependency_overrides = {}
+
+
+# VALIDATE tests ===============================================================
+
+
+def test_validate_well_depth_hole_depth():
+    with pytest.raises(
+        ValueError, match="well depth must be less than than or equal to hole depth"
+    ):
+        ValidateWell(well_depth=100.0, hole_depth=90.0)
+
+
+def test_validate_well_depth_casing_depth():
+    with pytest.raises(
+        ValueError,
+        match="well casing depth must be greater than or equal to well depth",
+    ):
+        ValidateWell(well_depth=100.0, well_casing_depth=110.0)
+
+
+def test_validate_hole_depth_casing_depth():
+    with pytest.raises(
+        ValueError,
+        match="well casing depth must be less than or equal to hole depth",
+    ):
+        ValidateWell(hole_depth=100.0, well_casing_depth=110.0)
 
 
 # POST tests ===================================================================

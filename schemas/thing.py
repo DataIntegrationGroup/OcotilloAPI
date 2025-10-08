@@ -30,8 +30,6 @@ class ValidateWell(BaseModel):
 
     @model_validator(mode="after")
     def check_depths(self):
-        # TODO: ask AMP if hole depth is needed if well depth is provided
-        # TODO: ask AMP if well depth is needed if well casing depth is provided
         if (
             self.well_depth is not None
             and self.hole_depth is not None
@@ -45,6 +43,14 @@ class ValidateWell(BaseModel):
         ):
             raise ValueError(
                 "well casing depth must be greater than or equal to well depth"
+            )
+        elif (
+            self.hole_depth is not None
+            and self.well_casing_depth is not None
+            and self.well_casing_depth > self.hole_depth
+        ):
+            raise ValueError(
+                "well casing depth must be less than or equal to hole depth"
             )
 
         return self
