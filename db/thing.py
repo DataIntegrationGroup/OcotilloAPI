@@ -48,6 +48,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     __versioned__ = {}
 
     # --- Columns ---
+    nma_pk_welldata: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+    )
+
     # TODO: should `name` be unique?
     name: Mapped[str] = mapped_column(
         nullable=False,
