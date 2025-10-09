@@ -60,7 +60,9 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
         assoc.location = location
         assoc.thing = spring
         session.add(assoc)
-    session.commit()
+        session.commit()
+        session.expire(location)
+        session.refresh(location)
 
 
 def transfer_springs(session, limit=None):

@@ -212,8 +212,9 @@ def make_location(row: pd.Series) -> Location:
             created_at = site_date
     elif row.DateCreated and not row.SiteDate:
         created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
+    elif not row.DateCreated and row.SiteDate:
+        created_at = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
     else:
-        # TODO: should this be set to SiteDate if DateCreated is None and SiteDate is populated?
         created_at = None
 
     # convert created_at from MST/MDT to UTC

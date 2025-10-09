@@ -29,6 +29,7 @@ from db import (
     FieldEventParticipant,
     Contact,
     FieldEventParticipant,
+    Parameter,
 )
 from transfers.util import (
     filter_to_valid_point_ids,
@@ -106,6 +107,13 @@ def get_contacts_info(row, measured_by, measured_by_mapper):
 
 
 def transfer_water_levels(session):
+    groundwater_parameter_id = (
+        session.query(Parameter)
+        .filter(Parameter.parameter_name == "groundwater level")
+        .one()
+        .id
+    )
+
     # keep a dictionary of created Contacts to avoid repeated SQL queries
     # keys are a tuple of (name, organization) since None is a common "name"
     created_contacts = {}
@@ -341,7 +349,7 @@ def transfer_water_levels(session):
                 sensor_id=None,
                 analysis_method_id=None,
                 observation_datetime=dt_utc,
-                observed_property="groundwater level",
+                parameter_id=groundwater_parameter_id,
                 value=value,
                 unit="ft",
                 measuring_point_height=measuring_point_height,
