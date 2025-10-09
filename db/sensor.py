@@ -51,7 +51,7 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     sensor_type: Mapped[str] = lexicon_term(
         nullable=False,
-        comment="A controlled vocabulary field to categorize the equipment (e.g., 'Pressure Transducer', 'Field Instrument', 'Data Logger').",
+        comment="A controlled vocabulary field to categorize the equipment (e.g., 'Pressure Transducer', 'Barometer', 'Data Logger', etc).",
     )
     model: Mapped[str] = mapped_column(
         String(50), nullable=True, comment="The specific model of the equipment."
