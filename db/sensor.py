@@ -49,7 +49,6 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     )
     # TODO: Is  a name field necessary? If it is, we should consider standardizing naming conventions.
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    # TODO: Add sensor_type category and valid values to lexicon.json
     sensor_type: Mapped[str] = lexicon_term(
         nullable=False,
         comment="A controlled vocabulary field to categorize the equipment (e.g., 'Pressure Transducer', 'Field Instrument', 'Data Logger').",
@@ -73,7 +72,6 @@ class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     owner_agency: Mapped[str] = lexicon_term(
         nullable=True, comment="The agency or organization that owns the equipment."
     )
-    # TODO: update lexicon category `status` to `well_status`. Add sensor_status category and valid values to lexicon.json
     sensor_status: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary field to indicate the current status of the equipment (e.g., 'In Service', 'In Repair', 'Retired', 'Lost', etc).",

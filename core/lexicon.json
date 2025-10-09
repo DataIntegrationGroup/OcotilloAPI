@@ -39,13 +39,14 @@
     {"name": "sample_method", "description": null},
     {"name": "sample_type", "description": null},
     {"name": "sensor_type", "description": null},
+    {"name": "sensor_status", "description": null},
     {"name": "spring_type", "description": null},
     {"name": "state", "description": null},
-    {"name": "status", "description": null},
     {"name": "thing_type", "description": null},
     {"name": "unit", "description": null},
     {"name": "vertical_datum", "description": null},
-    {"name": "well_purpose", "description": null}],
+    {"name": "well_purpose", "description": null},
+    {"name": "well_status", "description": null}],
   "terms": [
     {"categories": ["qc_type"], "term": "Normal", "definition": "The primary environmental sample collected from the well, spring, or soil boring."},
     {"categories": ["qc_type"], "term": "Duplicate", "definition": "A second, independent sample collected at the same location, at the same time, and in the same manner as the normal sample. This sample is sent to the primary laboratory."},
@@ -312,10 +313,10 @@
     {"categories": ["groundwater_level_reason"], "term": "Water level affected by stage in nearby surface-water site", "definition": "Water level affected by stage in nearby surface-water site"},
     {"categories": ["groundwater_level_reason"], "term": "Other conditions exist that would affect the level (remarks)", "definition": "Other conditions exist that would affect the level (remarks)"},
     {"categories": ["groundwater_level_reason"], "term": "Water level not affected", "definition": "Water level not affected"},
-    {"categories": ["status"], "term": "Abandoned", "definition": "Abandoned"},
-    {"categories": ["status"], "term": "Active, pumping well", "definition": "Active, pumping well"},
-    {"categories": ["status"], "term": "Destroyed, exists but not usable", "definition": "Destroyed, exists but not usable"},
-    {"categories": ["status"], "term": "Inactive, exists but not used", "definition": "Inactive, exists but not used"},
+    {"categories": ["well_status"], "term": "Abandoned", "definition": "Abandoned"},
+    {"categories": ["well_status"], "term": "Active, pumping well", "definition": "Active, pumping well"},
+    {"categories": ["well_status"], "term": "Destroyed, exists but not usable", "definition": "Destroyed, exists but not usable"},
+    {"categories": ["well_status"], "term": "Inactive, exists but not used", "definition": "Inactive, exists but not used"},
     {"categories": ["sample_method"], "term": "Airline measurement", "definition": "Airline measurement"},
     {"categories": ["sample_method"], "term": "Analog or graphic recorder", "definition": "Analog or graphic recorder"},
     {"categories": ["sample_method"], "term": "Calibrated airline measurement", "definition": "Calibrated airline measurement"},
@@ -512,6 +513,10 @@
     {"categories": ["sensor_type"], "term": "Precip Collector", "definition": "Precip Collector"},
     {"categories": ["sensor_type"], "term": "Camera", "definition": "Camera"},
     {"categories": ["sensor_type"], "term": "Soil Moisture Sensor", "definition": "Soil Moisture Sensor"},
-    {"categories": ["sensor_type"], "term": "Tipping Bucket", "definition": "Tipping Bucket"}
+    {"categories": ["sensor_type"], "term": "Tipping Bucket", "definition": "Tipping Bucket"},
+    {"categories": ["sensor_status"], "term": "In Service", "definition": "In Service"},
+    {"categories": ["sensor_status"], "term": "In Repair", "definition": "In Repair"},
+    {"categories": ["sensor_status"], "term": "Retired", "definition": "Retired"},
+    {"categories": ["sensor_status"], "term": "Lost", "definition": "Lost"}
   ]
 }
