@@ -54,7 +54,6 @@ def test_search_api2():
     response = client.get("/search", params={"q": "riochama"})
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["label"] == "riochama.png"
