@@ -156,6 +156,7 @@ def add_thing(
             session.add(assoc)
 
         if location_id is not None:
+            # TODO: how do we want to handle effective_start? is it the date it gets entered?
             assoc = LocationThingAssociation()
             audit_add(user, assoc)
             assoc.location_id = location_id

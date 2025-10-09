@@ -65,7 +65,7 @@ def test_validate_well_depth_hole_depth():
 def test_validate_well_depth_casing_depth():
     with pytest.raises(
         ValueError,
-        match="well casing depth must be greater than or equal to well depth",
+        match="well casing depth must be less than or equal to well depth",
     ):
         ValidateWell(well_depth=100.0, well_casing_depth=110.0)
 
@@ -88,7 +88,7 @@ def test_add_water_well(location, group):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -135,7 +135,7 @@ def test_add_water_well_409_bad_group_id(location):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -161,7 +161,7 @@ def test_add_water_well_409_bad_location_id(group):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",

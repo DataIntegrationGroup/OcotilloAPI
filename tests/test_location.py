@@ -53,6 +53,7 @@ def test_add_location():
         "coordinate_method": "GPS, uncorrected",
     }
     response = client.post("/location", json=payload)
+    print(response.text)
 
     assert response.status_code == 201
     data = response.json()
