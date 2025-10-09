@@ -38,6 +38,7 @@
     {"name": "sample_matrix", "description": null},
     {"name": "sample_method", "description": null},
     {"name": "sample_type", "description": null},
+    {"name": "sensor_type", "description": null},
     {"name": "spring_type", "description": null},
     {"name": "state", "description": null},
     {"name": "status", "description": null},
@@ -503,6 +504,14 @@
     {"categories": ["parameter_type"], "term": "Radionuclide", "definition": "Radionuclide"},
     {"categories": ["parameter_type"], "term": "Major Element", "definition": "Major Element"},
     {"categories": ["parameter_type"], "term": "Minor Element", "definition": "Minor Element"},
-    {"categories": ["parameter_type"], "term": "Physical property", "definition": "Physical property"}
+    {"categories": ["parameter_type"], "term": "Physical property", "definition": "Physical property"},
+    {"categories": ["sensor_type"], "term": "Pressure Transducer", "definition": "Pressure Transducer"},
+    {"categories": ["sensor_type"], "term": "Data Logger", "definition": "Data Logger"},
+    {"categories": ["sensor_type"], "term": "Barometer", "definition": "Barometer"},
+    {"categories": ["sensor_type"], "term": "Acoustic Sounder", "definition": "Acoustic Sounder"},
+    {"categories": ["sensor_type"], "term": "Precip Collector", "definition": "Precip Collector"},
+    {"categories": ["sensor_type"], "term": "Camera", "definition": "Camera"},
+    {"categories": ["sensor_type"], "term": "Soil Moisture Sensor", "definition": "Soil Moisture Sensor"},
+    {"categories": ["sensor_type"], "term": "Tipping Bucket", "definition": "Tipping Bucket"}
   ]
 }
