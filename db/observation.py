@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from db.sample import Sample
     from db.sensor import Sensor
     from db.analysis_method import AnalysisMethod
+    from db.parameter import Parameter
 
 
 class Observation(Base, AutoBaseMixin, ReleaseMixin):
@@ -50,19 +51,18 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
         Integer, ForeignKey("analysis_method.id"), nullable=True
     )
 
+    parameter_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("parameter.id"), nullable=False
+    )
+
     # --- Columns ---
     observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, doc="Timestamp of the observation"
     )
-    observed_property: Mapped[str] = lexicon_term(nullable=False)
     value: Mapped[float] = mapped_column(
         nullable=True,
     )
     unit: Mapped[str] = lexicon_term(nullable=False)
-    value_reason: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="The reason describes everything that can effect the observation the moment a sample/observation is attempted (e.g. obstruction, dry well, equipment failure); a null value must have an associated reason in the same record. Factors preventing the obtainment of the observation from the beginning of the field event to attempted sampling/observation (e.g. flat tire, locked gate, destroyed well) are not recorded here but in the notes field of the FieldEvent table; in this situation no sample/observation should be recorded.",
-    )
     notes: Mapped[str] = mapped_column(nullable=True)
 
     # groundwater
@@ -70,6 +70,10 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
         nullable=True,
         doc="Height of the measuring point above the ground surface in ft",
         info={"unit": "ft"},
+    )
+    groundwater_level_reason: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="The reason describes everything that can effect the observation the moment a sample/observation is attempted (e.g. obstruction, dry well, equipment failure); a null value must have an associated reason in the same record. Factors preventing the obtainment of the observation from the beginning of the field event to attempted sampling/observation (e.g. flat tire, locked gate, destroyed well) are not recorded here but in the notes field of the FieldEvent table; in this situation no sample/observation should be recorded.",
     )
 
     # --- Relationships ---
@@ -86,6 +90,11 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     # Many-To-One: An Observation can be generated using one AnalysisMethod.
     analysis_method: Mapped["AnalysisMethod"] = relationship(
         "AnalysisMethod", back_populates="observations"
+    )
+
+    # Many-To-One: An Observation measures one Parameter.
+    parameter: Mapped["Parameter"] = relationship(
+        "Parameter", back_populates="observations", lazy="joined"
     )
 
 

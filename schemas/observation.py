@@ -25,6 +25,7 @@ from typing import Annotated
 from typing_extensions import Self
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas.parameter import ParameterResponse
 
 
 # class GeothermalMixin:
@@ -36,7 +37,7 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 
 class ValidateObservation(BaseModel):
-    observed_property: str
+    parameter_id: int
     observation_datetime: AwareDatetime
 
     @field_validator("observation_datetime", check_fields=False)
@@ -60,15 +61,15 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()]
     sample_id: int
     sensor_id: int
-    observed_property: str
+    parameter_id: int
     release_status: str
     value: float | None
     unit: str | None
-    value_reason: str
 
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
     measuring_point_height: float
+    groundwater_level_reason: str
 
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
@@ -82,15 +83,15 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     observation_datetime: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_id: int | None = None
     sensor_id: int | None = None
-    observed_property: str | None = None
+    parameter_id: int | None = None
     release_status: str | None = None
     value: float | None | None = None
     unit: str | None = None
-    value_reason: str | None = None
 
 
 class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
     measuring_point_height: float | None = None
+    groundwater_level_reason: str | None = None
 
 
 class UpdateWaterChemistryObservation(UpdateBaseObservation):
@@ -98,20 +99,21 @@ class UpdateWaterChemistryObservation(UpdateBaseObservation):
 
 
 # -------- RESPONSE ----------
+# TODO: Return full sample and sensor objects
 class BaseObservationResponse(BaseResponseModel):
     sample_id: int
     sensor_id: int
     observation_datetime: AwareDatetime
-    observed_property: str
+    parameter: ParameterResponse
     release_status: str
     value: float | None
     unit: str
-    value_reason: str
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water_bgs: float | None
     measuring_point_height: float | None
+    groundwater_level_reason: str | None  # NULL from legacy data
 
     @model_validator(mode="before")
     def calculate_depth_to_water_bgs(self: Self) -> Self:
