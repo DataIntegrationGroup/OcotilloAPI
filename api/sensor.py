@@ -23,12 +23,12 @@ from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     admin_dependency,
-    # editor_dependency,
+    editor_dependency,
     viewer_dependency,
 )
 from db import Observation, Sensor, Deployment, Thing
-from schemas.sensor import SensorResponse, CreateSensor
-from services.crud_helper import model_deleter, model_adder
+from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
+from services.crud_helper import model_deleter, model_adder, model_patcher
 
 # from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
@@ -53,61 +53,62 @@ async def add_sensor(
 
 # TODO: datetime_installed and datetime_removed have been moved from the Sensor model to the Deployment model. Do we need to keep the validation for datetime_installed and datetime_removed?
 
-# @router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
-# async def update_sensor(
-#     sensor_id: int,
-#     sensor_data: UpdateSensor,
-#     session: session_dependency,
-#     user: editor_dependency,
-# ) -> SensorResponse:
-#     """
-#     Update a sensor in the system.
-#     """
-#     if (
-#         sensor_data.datetime_installed is not None
-#         and sensor_data.datetime_removed is None
-#     ):
-#         sensor = simple_get_by_id(session, Sensor, sensor_id)
-#         existing_datetime_removed = sensor.datetime_removed
-#         if (
-#             existing_datetime_removed is not None
-#             and sensor_data.datetime_installed >= existing_datetime_removed
-#         ):
-#             detail = {
-#                 "loc": ["body", "datetime_installed"],
-#                 "msg": f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
-#                 "type": "value_error",
-#                 "input": {
-#                     "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
-#                         "+00:00", "Z"
-#                     )
-#                 },
-#             }
-#             raise PydanticStyleException(
-#                 status_code=status.HTTP_409_CONFLICT, detail=[detail]
-#             )
-#     elif (
-#         sensor_data.datetime_installed is None
-#         and sensor_data.datetime_removed is not None
-#     ):
-#         sensor = simple_get_by_id(session, Sensor, sensor_id)
-#         existing_datetime_installed = sensor.datetime_installed
-#         if sensor_data.datetime_removed <= existing_datetime_installed:
-#             detail = {
-#                 "loc": ["body", "datetime_removed"],
-#                 "msg": f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
-#                 "type": "value_error",
-#                 "input": {
-#                     "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
-#                         "+00:00", "Z"
-#                     )
-#                 },
-#             }
-#             raise PydanticStyleException(
-#                 status_code=status.HTTP_409_CONFLICT, detail=[detail]
-#             )
-#
-#     return model_patcher(session, Sensor, sensor_id, sensor_data, user=user)
+
+@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
+async def update_sensor(
+    sensor_id: int,
+    sensor_data: UpdateSensor,
+    session: session_dependency,
+    user: editor_dependency,
+) -> SensorResponse:
+    """
+    Update a sensor in the system.
+    """
+    # if (
+    #     sensor_data.datetime_installed is not None
+    #     and sensor_data.datetime_removed is None
+    # ):
+    #     sensor = simple_get_by_id(session, Sensor, sensor_id)
+    #     existing_datetime_removed = sensor.datetime_removed
+    #     if (
+    #         existing_datetime_removed is not None
+    #         and sensor_data.datetime_installed >= existing_datetime_removed
+    #     ):
+    #         detail = {
+    #             "loc": ["body", "datetime_installed"],
+    #             "msg": f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
+    #             "type": "value_error",
+    #             "input": {
+    #                 "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
+    #                     "+00:00", "Z"
+    #                 )
+    #             },
+    #         }
+    #         raise PydanticStyleException(
+    #             status_code=status.HTTP_409_CONFLICT, detail=[detail]
+    #         )
+    # elif (
+    #     sensor_data.datetime_installed is None
+    #     and sensor_data.datetime_removed is not None
+    # ):
+    #     sensor = simple_get_by_id(session, Sensor, sensor_id)
+    #     existing_datetime_installed = sensor.datetime_installed
+    #     if sensor_data.datetime_removed <= existing_datetime_installed:
+    #         detail = {
+    #             "loc": ["body", "datetime_removed"],
+    #             "msg": f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
+    #             "type": "value_error",
+    #             "input": {
+    #                 "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
+    #                     "+00:00", "Z"
+    #                 )
+    #             },
+    #         }
+    #         raise PydanticStyleException(
+    #             status_code=status.HTTP_409_CONFLICT, detail=[detail]
+    #         )
+    #
+    return model_patcher(session, Sensor, sensor_id, sensor_data, user=user)
 
 
 # ====== DELETE ================================================================
