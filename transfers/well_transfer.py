@@ -18,6 +18,7 @@ import time
 from pydantic import ValidationError
 from sqlalchemy import select
 from datetime import datetime
+from pandas import isna
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
 from schemas.thing import CreateWellScreen, CreateWell
@@ -34,12 +35,47 @@ from transfers.util import (
     logger,
     replace_nans,
     filter_by_welldata_datasource,
+    lexicon_mapper,
 )
 
 ADDED = []
 
 
-def transfer_wells(session, limit=0):
+def _get_first_visit_date(row) -> datetime | None:
+    first_visit_date = None
+    if row.DateCreated and row.SiteDate:
+        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f").date()
+        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
+
+        if date_created < site_date:
+            first_visit_date = date_created
+        else:
+            first_visit_date = site_date
+    elif row.DateCreated and not row.SiteDate:
+        first_visit_date = datetime.strptime(
+            row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+    elif not row.DateCreated and row.SiteDate:
+        first_visit_date = datetime.strptime(
+            row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+
+    return first_visit_date
+
+
+def _extract_well_purposes(row) -> list[str]:
+    cu = row.CurrentUse
+    purposes = (
+        []
+        if isna(cu)
+        else [lexicon_mapper.map_value(f"LU_CurrentUse:{cui}") for cui in cu]
+    )
+
+    logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
+    return purposes
+
+
+def transfer_wells(session, limit=0) -> None:
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
@@ -76,45 +112,15 @@ def transfer_wells(session, limit=0):
 
         try:
             location = make_location(row)
+            session.add(location)
         except Exception as e:
+            session.rollback()
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
         try:
-            session.add(location)
-
-            # well_purpose = None if pd.isna(row.CurrentUse) else lexicon_mapper.map_value(f"LU_CurrentUse:{row.CurrentUse}")
-
-            # if pd.isna(row.CasingDescription):
-            #     well_casing_material = None
-            # elif "pvc" in row.CasingDescription.lower():
-            #     well_casing_material = "PVC"
-            # elif "steel" in row.CasingDescription.lower():
-            #     well_casing_material = "Steel"
-
-            if row.DateCreated and row.SiteDate:
-
-                date_created = datetime.strptime(
-                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-                site_date = datetime.strptime(
-                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-
-                if date_created < site_date:
-                    first_visit_date = date_created
-                else:
-                    first_visit_date = site_date
-            elif row.DateCreated and not row.SiteDate:
-                first_visit_date = datetime.strptime(
-                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-            elif not row.DateCreated and row.SiteDate:
-                first_visit_date = datetime.strptime(
-                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-            else:
-                first_visit_date = None
+            first_visit_date = _get_first_visit_date(row)
+            well_purposes = _extract_well_purposes(row)
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
@@ -153,7 +159,7 @@ def transfer_wells(session, limit=0):
             session.expire(location)
             session.refresh(location)
         except Exception as e:
-            logger.critical(f"Error committing well {row.PointID}: {e.errors()}")
+            logger.critical(f"Error committing well {row.PointID}: {e}")
             session.rollback()
             continue
 
