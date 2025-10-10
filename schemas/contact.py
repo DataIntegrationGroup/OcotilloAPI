@@ -66,6 +66,7 @@ class ValidatePhone(BaseModel):
         if phone_number_str is not None:
             region = "US"
             try:
+                phone_number_str = phone_number_str.strip()
                 # this is a major hack to deal with the phone numbers entered into
                 # NM_Aquifer without an area code
                 for p in (phone_number_str, f"505{phone_number_str}"):
