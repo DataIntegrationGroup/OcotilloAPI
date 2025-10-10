@@ -29,14 +29,6 @@ def transfer_water_levels_pressure(session):
         .id
     )
 
-    # keep a dictionary of created Contacts to avoid repeated SQL queries
-    # keys are a tuple of (name, organization) since None is a common "name"
-    created_contacts = {}
-    # path = get_transfers_data_path("measured_by_mapper.json")
-
-    # with open(path, "r") as f:
-    #     measured_by_mapper = json.load(f)
-
     wd = read_csv("WaterLevelsContinuous_Pressure")
 
     # group by pointid
@@ -52,24 +44,30 @@ def transfer_water_levels_pressure(session):
             )
             continue
 
-        n = len(group)
         observations = []
         for i, row in enumerate(group.itertuples()):
-
             if pd.isna(row.DateMeasured):
                 continue
+
+            # get the sensor that was installed at this time.
+            # sensor_id = _get_sensor_by_date(session, pointid, row.DateMeasured)
 
             observations.append(
                 {
                     "thing_id": thing.id,
+                    # "sensor_id": sensor_id,
                     "parameter_id": groundwater_parameter_id,
+                    "observation_datetime": row.DateMeasured,
                     "value": row.DepthToWaterBGS,
                     "release_status": "public" if row.QCed else "private",
-                    "observation_datetime": row.DateMeasured,
                 }
             )
         session.bulk_insert_mappings(TransducerObservation, observations)
         session.commit()
+
+
+def _get_sensor_by_date(session, pointid, date):
+    return 1
 
 
 # ============= EOF =============================================

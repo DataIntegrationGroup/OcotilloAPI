@@ -13,10 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from sqlalchemy import Integer, ForeignKey, Float, DateTime
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from db import Base, AutoBaseMixin, ReleaseMixin
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from db.thing import Thing
+    from db.parameter import Parameter
 
 
 class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
@@ -25,10 +32,15 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE")
     )
-    transducer_id = mapped_column(Integer, ForeignKey("sensor.id"))
-    value = mapped_column(Float, nullable=False)
-    observation_datetime = mapped_column(DateTime(timezone=True), nullable=False)
-    parameter_id = mapped_column(Integer, ForeignKey("parameter.id"))
+    # sensor_id: Mapped[int] = mapped_column(Integer, ForeignKey("sensor.id"))
+    parameter_id: Mapped[int] = mapped_column(Integer, ForeignKey("parameter.id"))
+
+    value: Mapped[float] = mapped_column(Float)
+    observation_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    thing: Mapped["Thing"] = relationship("Thing")
+    # sensor: Mapped["Sensor"] = relationship("Sensor")
+    parameter: Mapped["Parameter"] = relationship("Parameter")
 
 
 # ============= EOF =============================================
