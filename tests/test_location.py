@@ -138,9 +138,6 @@ def test_get_locations(location):
     response = client.get("/location")
     assert response.status_code == 200
     data = response.json()
-    from pprint import pprint
-
-    pprint(data, indent=2)
     assert data["total"] == 1
     assert data["items"][0]["id"] == location.id
     assert data["items"][0]["created_at"] == location.created_at.isoformat().replace(

@@ -20,16 +20,21 @@ from pydantic import BaseModel, field_validator
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
 
-"""
-TODO
 
-Create common validator classes to be shared amongst create and update schemas.
-Since many fields are optional in the update schemas set check_fields=False in the field_validator.
-"""
+# -------- VALIDATE --------
+
+
+class ValidateLocation(BaseModel):
+    point: str
+
+    @classmethod
+    @field_validator("point", mode="before")
+    def validate_point_is_wkt(cls, wkt):
+        return validate_wkt_geometry(wkt)
 
 
 # -------- CREATE ----------
-class CreateLocation(BaseCreateModel):
+class CreateLocation(BaseCreateModel, ValidateLocation):
     """
     Schema for creating a sample location.
     """
@@ -43,11 +48,6 @@ class CreateLocation(BaseCreateModel):
     elevation_method: str | None = None
     coordinate_accuracy: float | None = None
     coordinate_method: str | None = None
-
-    @classmethod
-    @field_validator("point")
-    def validate_point_is_wkt(cls, wkt):
-        return validate_wkt_geometry(wkt)
 
 
 class CreateGroupThing(BaseModel):
@@ -102,7 +102,7 @@ class GroupLocationResponse(BaseResponseModel):
 
 
 # -------- UPDATE ----------
-class UpdateLocation(BaseUpdateModel):
+class UpdateLocation(BaseUpdateModel, ValidateLocation):
     """
     Schema for updating a location.
     """

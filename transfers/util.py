@@ -16,6 +16,8 @@
 import csv
 import os
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
 import pytz
 import re
 import io
@@ -84,11 +86,16 @@ def extract_organization(alternate_id: str) -> str:
     return "Unknown"
 
 
-def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
-    path = "/workspace/transfers/data/valid_welldata_datasources.csv"
-    if not os.path.exists(path):
-        path = "transfers/data/valid_welldata_datasources.csv"
+def get_transfers_data_path(name):
+    root = Path("/workspace/transfers/data")
+    if not os.path.exists(root):
+        root = Path("./transfers/data/")
 
+    return root / name
+
+
+def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
+    path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
@@ -100,9 +107,7 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
-    path = "/workspace/transfers/data/valid_measuring_agency.csv"
-    if not os.path.exists(path):
-        path = "transfers/data/valid_measuring_agency.csv"
+    path = get_transfers_data_path("valid_measuring_agency.csv")
 
     with open(path, "r") as f:
         reader = csv.reader(f)
@@ -175,20 +180,19 @@ def make_location(row: pd.Series) -> Location:
 
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"
-    elif not (pd.isna(row.AltitudeMethod)):
+    elif pd.isna(row.AltitudeMethod):
+        elevation_method = None
+    else:
         elevation_method = lexicon_mapper.map_value(
             f"LU_AltitudeMethod:{row.AltitudeMethod}"
         )
 
+    if pd.isna(row.CoordinateMethod):
+        coordinate_method = None
     else:
-        elevation_method = None
-
-    if not (pd.isna(row.CoordinateMethod)):
         coordinate_method = lexicon_mapper.map_value(
             f"LU_CoordinateMethod:{row.CoordinateMethod}"
         )
-    else:
-        coordinate_method = None
 
     """
     Developer's notes
@@ -208,8 +212,9 @@ def make_location(row: pd.Series) -> Location:
             created_at = site_date
     elif row.DateCreated and not row.SiteDate:
         created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
+    elif not row.DateCreated and row.SiteDate:
+        created_at = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
     else:
-        # TODO: should this be set to SiteDate if DateCreated is None and SiteDate is populated?
         created_at = None
 
     # convert created_at from MST/MDT to UTC
@@ -301,7 +306,7 @@ def timeit_direct(func, *args, **kwargs):
     start = datetime.now()
     result = func(*args, **kwargs)
     end = datetime.now()
-    logger.info(f"{func.__name__} took {(end - start).total_seconds()} seconds")
+    logger.info(f"TIMING: {func.__name__} took {(end - start).total_seconds()} seconds")
     return result
 
 

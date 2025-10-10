@@ -81,8 +81,9 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
         select(Thing).where(Thing.thing_type == "spring"), q, vector=vector, limit=limit
     )
 
-    wells = session.scalars(water_well_query).all()
-    springs = session.scalars(spring_well_query).all()
+    # unique needs to be called because of eager loads
+    wells = session.scalars(water_well_query).unique().all()
+    springs = session.scalars(spring_well_query).unique().all()
 
     def _make_response(group: str, thing: Thing, properties: dict) -> dict:
 
