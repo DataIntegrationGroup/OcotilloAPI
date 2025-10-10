@@ -62,8 +62,6 @@ def test_add_water_chemistry_observation(water_chemistry_sample, sensor):
         "sample_id": water_chemistry_sample.id,
         "sensor_id": sensor.id,
         "parameter_id": pH_parameter_id,
-        "value_reason": "Observed value not affected",
-        "observed_property": "pH",
     }
     response = client.post("/observation/water-chemistry", json=payload)
     data = response.json()

@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 import time
 from pydantic import ValidationError
 from sqlalchemy import select
+from datetime import datetime
 
 from db import LocationThingAssociation, Thing, WellScreen, Location
 from schemas.thing import CreateWellScreen, CreateWell
-from services.thing_helper import add_thing
+from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
     get_county_from_point,
@@ -78,50 +80,69 @@ def transfer_wells(session, limit=0):
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
-        session.add(location)
-
-        # TODO: add guards for null values
-        # TODO: use schema to validate
-
-        data = CreateWell(
-            # "nma_pk_welldata": row.WellID,
-            name=row.PointID,
-            hole_depth=row.HoleDepth,
-            well_depth=row.WellDepth,
-            well_construction_notes=row.ConstructionNotes,
-            # "driller_name": row.DrillerName,
-            # "construction_method": row.ConstructionMethod,
-            # "casing_diameter": row.CasingDiameter,
-            # "casing_depth": row.CasingDepth,
-            # "casing_description": row.CasingDescription,
-            release_status="public" if row.PublicRelease else "private",
-            # "data_reliability": row.DataReliability,
-        )
         try:
-            well = add_thing(
-                session,
-                data,
-                thing_type="water well",
+            session.add(location)
+
+            # well_purpose = None if pd.isna(row.CurrentUse) else lexicon_mapper.map_value(f"LU_CurrentUse:{row.CurrentUse}")
+
+            # if pd.isna(row.CasingDescription):
+            #     well_casing_material = None
+            # elif "pvc" in row.CasingDescription.lower():
+            #     well_casing_material = "PVC"
+            # elif "steel" in row.CasingDescription.lower():
+            #     well_casing_material = "Steel"
+
+            if row.DateCreated and row.SiteDate:
+
+                date_created = datetime.strptime(
+                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+                ).date()
+                site_date = datetime.strptime(
+                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
+                ).date()
+
+                if date_created < site_date:
+                    first_visit_date = date_created
+                else:
+                    first_visit_date = site_date
+            elif row.DateCreated and not row.SiteDate:
+                first_visit_date = datetime.strptime(
+                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+                ).date()
+            elif not row.DateCreated and row.SiteDate:
+                first_visit_date = datetime.strptime(
+                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
+                ).date()
+            else:
+                first_visit_date = None
+
+            # manually add the well rather than add_well from services/thing_helper.py
+            # so that effective_start can be set on the location assocation
+            data = CreateWell(
+                location_id=location.id,
+                nma_pk_welldata=row.WellID,
+                name=row.PointID,
+                first_visit_date=first_visit_date,
+                # well_purpose=well_purpose,
+                hole_depth=row.HoleDepth,
+                well_depth=row.WellDepth,
+                well_construction_notes=row.ConstructionNotes,
+                well_casing_diameter=row.CasingDiameter,
+                well_casing_depth=row.CasingDepth,
+                release_status="public" if row.PublicRelease else "private",
             )
+
+            CreateWell.model_validate(data)
+            well_data = data.model_dump(exclude=["location_id", "group_id"])
+            well_data["thing_type"] = "water well"
+            well = Thing(**well_data)
+            session.add(well)
         except Exception as e:
             session.rollback()
-            logger.critical(f"Error creating well for {row.PointID}: {e}")
+            logger.critical(f"Error creating well for {row.PointID}: {e.errors()}")
             continue
-        # TODO: use current use LUT to get well type
 
-        # wt = row.Meaning
-        # if wt not in ADDED:
-        #     add_lexicon_term(
-        #         session,
-        #         wt,
-        #         "Current use of the well, aka well purpose",
-        #         [{"name": "current_use", "desciption": "Current use of the well"}],
-        #     )
-        #     ADDED.append(wt)
-        #
-        # well.well_purpose = wt
-
-        assoc = LocationThingAssociation()
+        assoc = LocationThingAssociation(effective_start=location.created_at)
 
         assoc.location = location
         assoc.thing = well
@@ -129,8 +150,10 @@ def transfer_wells(session, limit=0):
 
         try:
             session.commit()
+            session.expire(location)
+            session.refresh(location)
         except Exception as e:
-            logger.critical(f"Error committing well {row.PointID}: {e}")
+            logger.critical(f"Error committing well {row.PointID}: {e.errors()}")
             session.rollback()
             continue
 
@@ -159,7 +182,7 @@ def transfer_wellscreens(session, limit=None):
             session.commit()
 
         sql = select(Thing).where(Thing.name == row.PointID)
-        thing = session.execute(sql).scalar_one_or_none()
+        thing = session.execute(sql).unique().scalar_one_or_none()
         if not thing:
             logger.warning(
                 f"Thing with PointID {row.PointID} not found. Skipping well screen."
@@ -189,21 +212,63 @@ def transfer_wellscreens(session, limit=None):
     session.commit()
 
 
-def cleanup_wells(session):
+def cleanup_locations(session):
     locations = session.query(Location).all()
-    for location in locations:
+    n = len(locations)
+    lut = {}
+
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/location_cleanup.json"
+    blob = bucket.blob(log_filename)
+    if blob.exists():
+        lut = json.loads(blob.download_as_string())
+
+    updates = []
+    for i, location in enumerate(locations):
+        if i and not i % 100:
+            logger.info(f"Processing row {i} of {n}. dumping lut to {log_filename}")
+            blob.upload_from_string(json.dumps(lut))
+            session.bulk_update_mappings(Location, updates)
+            session.commit()
+            updates = []
 
         y, x = location.latlon
-        if not location.state:
-            location.state = get_state_from_point(x, y)
+        xykey = f"{y},{x}"
+        if xykey in lut:
+            state, county, quad_name = lut[xykey]
+        else:
+            state = location.state
+            county = location.county
+            quad_name = location.quad_name
+            if not state:
+                state = get_state_from_point(x, y)
 
-        if not location.county:
-            location.county = get_county_from_point(x, y)
+            if not county:
+                county = get_county_from_point(x, y)
 
-        if not location.quad_name:
-            location.quad_name = get_quad_name_from_point(x, y)
+            if not quad_name:
+                quad_name = get_quad_name_from_point(x, y)
 
-    session.commit()
+            lut[xykey] = [state, county, quad_name]
+
+        updates.append(
+            {
+                "id": location.id,
+                "state": state,
+                "county": county,
+                "quad_name": quad_name,
+            }
+        )
+
+        logger.info(
+            f"{i}/{n} lat: {y} lon: {x} state={state}, county={county}, quad"
+            f"={quad_name}"
+        )
+
+    blob.upload_from_string(json.dumps(lut))
+    if updates:
+        session.bulk_update_mappings(Location, updates)
+        session.commit()
 
 
 # ============= EOF =============================================
