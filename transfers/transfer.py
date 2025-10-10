@@ -157,7 +157,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 200))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 10000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

@@ -105,8 +105,10 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info("Valid WellData Datasources:")
-        logger.info("\n".join(f"  {vd}" for vd in valid_datasources))
+        f.seek(0)
+        invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
+        logger.info("Invalid WellData Datasources:")
+        logger.info("\n".join(f"  {vd}" for vd in invalid_datasources))
 
     return df[df["DataSource"].isin(valid_datasources)]
 
@@ -189,7 +191,7 @@ def make_location(row: pd.Series) -> Location:
         elevation_method = None
     else:
         elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod}"
+            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
     if pd.isna(row.CoordinateMethod):
@@ -327,6 +329,7 @@ class LexiconMapper:
         self._mappers = None
 
     def map_value(self, value):
+        value = value.strip()
         return self._make_lu_to_lexicon_mapper().get(value, value)
 
     def _make_lu_to_lexicon_mapper(self):

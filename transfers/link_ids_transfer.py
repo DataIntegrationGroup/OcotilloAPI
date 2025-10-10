@@ -49,7 +49,7 @@ def transfer_link_ids_welldata(session):
             continue
 
         for aid, klass, regex in (
-            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,2}-\d{5,6}"),
+            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,3}-\d{3,6}"),
             (
                 row.OSEWelltagID,
                 "OSEWellTagID",
@@ -62,7 +62,7 @@ def transfer_link_ids_welldata(session):
 
             # RULE: exclude any id that == 'X', '?'
             if aid.strip().lower() in ("x", "?", "exempt"):
-                logger.warning(
+                logger.critical(
                     f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
                 )
                 continue

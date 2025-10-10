@@ -71,7 +71,7 @@ def _extract_well_purposes(row) -> list[str]:
         else [lexicon_mapper.map_value(f"LU_CurrentUse:{cui}") for cui in cu]
     )
 
-    logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
+    # logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
     return purposes
 
 
@@ -109,6 +109,12 @@ def transfer_wells(session, limit=0) -> None:
                 f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
             )
             start_time = time.time()
+            try:
+                session.commit()
+            except Exception as e:
+                logger.critical(f"Error committing wells. {e}")
+                session.rollback()
+                continue
 
         try:
             location = make_location(row)
@@ -139,6 +145,14 @@ def transfer_wells(session, limit=0) -> None:
             )
 
             CreateWell.model_validate(data)
+        except ValidationError as e:
+            session.rollback()
+            logger.critical(
+                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
+            )
+            continue
+
+        try:
             well_data = data.model_dump(exclude=["location_id", "group_id"])
             well_data["thing_type"] = "water well"
             well = Thing(**well_data)
@@ -154,14 +168,13 @@ def transfer_wells(session, limit=0) -> None:
         assoc.thing = well
         session.add(assoc)
 
-        try:
-            session.commit()
-            session.expire(location)
-            session.refresh(location)
-        except Exception as e:
-            logger.critical(f"Error committing well {row.PointID}: {e}")
-            session.rollback()
-            continue
+    session.commit()
+    # try:
+    #     session.commit()
+    # except Exception as e:
+    #     logger.critical(f"Error committing well {row.PointID}: {e}")
+    #     session.rollback()
+    #     continue
 
 
 def transfer_wellscreens(session, limit=None):
@@ -210,8 +223,8 @@ def transfer_wellscreens(session, limit=None):
             well_screen = WellScreen(**well_screen_data)
             session.add(well_screen)
         except ValidationError as e:
-            logger.warning(
-                f"Validation error for row {i} with PointID {row.PointID}: {e}"
+            logger.critical(
+                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
             continue
 

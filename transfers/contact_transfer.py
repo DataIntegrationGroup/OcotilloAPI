@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import numpy as np
-import pandas as pd
+from pydantic import ValidationError
+
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 from transfers.logger import logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
@@ -71,9 +71,14 @@ def transfer_contacts(session):
             session.commit()
             session.flush()
             logger.info(f"added first contact for PointID {row.PointID}")
+        except ValidationError as e:
+            logger.critical(
+                f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
+            )
+            session.rollback()
         except Exception as e:
             logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
+                f"Skipping first contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
 
@@ -82,9 +87,14 @@ def transfer_contacts(session):
             session.commit()
             session.flush()
             logger.info(f"added second contact for PointID {row.PointID}")
+        except ValidationError as e:
+            logger.critical(
+                f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
+            )
+            session.rollback()
         except Exception as e:
             logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
+                f"Skipping second contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
 
