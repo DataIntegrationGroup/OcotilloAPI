@@ -201,11 +201,12 @@ def sensor():
     with session_ctx() as session:
         sensor = Sensor(
             name=f"Test Sensor {uuid.uuid4()}",
+            sensor_type="Pressure Transducer",
             model="Model X",
             serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
             notes="Test equipment",
             release_status="draft",
         )
@@ -221,11 +222,12 @@ def second_sensor():
     with session_ctx() as session:
         sensor = Sensor(
             name="Test Sensor 2",
+            sensor_type="Pressure Transducer",
             model="Model X",
             serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
             notes="Test equipment",
             release_status="draft",
         )
