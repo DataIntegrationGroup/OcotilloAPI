@@ -124,30 +124,33 @@ def test_patch_sensor_404_not_found(sensor):
     assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
 
 
-def test_patch_sensor_409_conflicting_datetime_installed(sensor):
-    payload = {"datetime_installed": "2025-01-01T00:00:00Z"}
-    response = client.patch(f"/sensor/{sensor.id}", json=payload)
-    assert response.status_code == 409
-    data = response.json()
-    assert data["detail"][0]["loc"] == ["body", "datetime_installed"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"new datetime installed must be before existing datetime removed of {sensor.datetime_removed}"
-    )
-    assert data["detail"][0]["type"] == "value_error"
+# TODO: datetime_installed and datetime_removed were removed from the Sensor model, so these tests may no longer be relevant.
 
+# def test_patch_sensor_409_conflicting_datetime_installed(sensor):
+#     payload = {"datetime_installed": "2025-01-01T00:00:00Z"}
+#     response = client.patch(f"/sensor/{sensor.id}", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["loc"] == ["body", "datetime_installed"]
+#     assert (
+#         data["detail"][0]["msg"]
+#         == f"new datetime installed must be before existing datetime removed of {sensor.datetime_removed}"
+#     )
+#     assert data["detail"][0]["type"] == "value_error"
 
-def test_patch_sensor_409_conflicting_datetime_removed(sensor):
-    payload = {"datetime_removed": "2020-01-01T00:00:00Z"}
-    response = client.patch(f"/sensor/{sensor.id}", json=payload)
-    assert response.status_code == 409
-    data = response.json()
-    assert data["detail"][0]["loc"] == ["body", "datetime_removed"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"new datetime removed must be after existing datetime installed of {sensor.datetime_installed}"
-    )
-    assert data["detail"][0]["type"] == "value_error"
+# TODO: datetime_installed and datetime_removed were removed from the Sensor model, so these tests may no longer be relevant.
+
+# def test_patch_sensor_409_conflicting_datetime_removed(sensor):
+#     payload = {"datetime_removed": "2020-01-01T00:00:00Z"}
+#     response = client.patch(f"/sensor/{sensor.id}", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["loc"] == ["body", "datetime_removed"]
+#     assert (
+#         data["detail"][0]["msg"]
+#         == f"new datetime removed must be after existing datetime installed of {sensor.datetime_installed}"
+#     )
+#     assert data["detail"][0]["type"] == "value_error"
 
 
 # ====== GET tests =============================================================
