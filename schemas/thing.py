@@ -162,7 +162,7 @@ class WellResponse(BaseThingResponse):
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
-        if len(well_purposes) > 0:
+        if well_purposes is not None:
             purposes = [well_purpose.purpose for well_purpose in well_purposes]
         else:
             purposes = []
@@ -170,7 +170,7 @@ class WellResponse(BaseThingResponse):
 
     @field_validator("well_casing_materials", mode="before")
     def populate_well_casing_materials_with_strings(cls, well_casing_materials):
-        if len(well_casing_materials) > 0:
+        if well_casing_materials is not None:
             materials = [
                 well_casing_material.material
                 for well_casing_material in well_casing_materials

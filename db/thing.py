@@ -318,7 +318,7 @@ class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
-    purpose: Mapped[str] = lexicon_term(nullable=False, unique=True)
+    purpose: Mapped[str] = lexicon_term(nullable=False)
 
     search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("purpose"))
 
@@ -334,7 +334,7 @@ class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    material: Mapped[str] = lexicon_term(nullable=False, unique=True)
+    material: Mapped[str] = lexicon_term(nullable=False)
 
     search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("material"))
 
