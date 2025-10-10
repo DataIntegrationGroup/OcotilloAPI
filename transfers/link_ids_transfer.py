@@ -57,7 +57,7 @@ def transfer_link_ids_welldata(session):
             ),  # TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
-                logger.warning(f"{klass} is null for {row.PointID}")
+                # logger.warning(f"{klass} is null for {row.PointID}")
                 continue
 
             # RULE: exclude any id that == 'X', '?'
@@ -176,8 +176,10 @@ def transfer_link_ids(session, site_type="GW"):
 
         # not clear what alternate_id2 is for, or what it maps to
         # add_link_alternate_site_id2(session, row, thing)
+        if i and not i % 25:
+            session.commit()
 
-        session.commit()
+    session.commit()
 
 
 # ============= EOF =============================================
