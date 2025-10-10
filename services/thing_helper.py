@@ -20,7 +20,15 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session, aliased
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
-from db import LocationThingAssociation, Thing, Base, Location, WellScreen
+from db import (
+    LocationThingAssociation,
+    Thing,
+    Base,
+    Location,
+    WellScreen,
+    WellPurpose,
+    WellCasingMaterial,
+)
 from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
@@ -136,6 +144,8 @@ def add_thing(
 
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
+    well_purposes = data.pop("well_purposes", None)
+    well_casing_materials = data.pop("well_casing_materials", None)
 
     try:
         thing = Thing(**data)
@@ -162,6 +172,22 @@ def add_thing(
             assoc.location_id = location_id
             assoc.thing_id = thing.id
             session.add(assoc)
+
+        if well_purposes:
+            for well_purpose in well_purposes:
+                wp = WellPurpose()
+                audit_add(user, wp)
+                wp.thing_id = thing.id
+                wp.purpose = well_purpose
+                session.add(wp)
+
+        if well_casing_materials:
+            for well_casing_material in well_casing_materials:
+                wcm = WellCasingMaterial()
+                audit_add(user, wcm)
+                wcm.thing_id = thing.id
+                wcm.material = well_casing_material
+                session.add(wcm)
 
         session.commit()
         session.refresh(thing)
@@ -212,6 +238,43 @@ def patch_thing(
     thing = simple_get_by_id(session, Thing, thing_id)
 
     verify_thing_type_correspondence(thing, request)
+
+    data = payload.model_dump(exclude_unset=True)
+
+    if "water-well" in request.url.path:
+        well_purposes = data.pop("well_purposes", None)
+        well_casing_materials = data.pop("well_casing_materials", None)
+
+        if well_purposes is not None:
+            # delete existing purposes
+            session.query(WellPurpose).filter(WellPurpose.thing_id == thing.id).delete()
+            # add new purposes
+            for well_purpose in well_purposes:
+                wp = WellPurpose()
+                audit_add(user, wp)
+                wp.thing_id = thing.id
+                wp.purpose = well_purpose
+                session.add(wp)
+                session.commit()
+
+        if well_casing_materials is not None:
+            # delete existing materials
+            session.query(WellCasingMaterial).filter(
+                WellCasingMaterial.thing_id == thing.id
+            ).delete()
+            # add new materials
+            for well_casing_material in well_casing_materials:
+                wcm = WellCasingMaterial()
+                audit_add(user, wcm)
+                wcm.thing_id = thing.id
+                wcm.material = well_casing_material
+                session.add(wcm)
+                session.commit()
+
+    # remove these fields from payload after they have been handled
+    for field in ["well_purposes", "well_casing_materials"]:
+        if hasattr(payload, field):
+            delattr(payload, field)
 
     thing = model_patcher(session, Thing, thing_id, payload, user)
     return thing

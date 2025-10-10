@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List
 
-from pydantic import BaseModel, model_validator, PastDate, Field
+from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -89,7 +89,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     Schema for creating a well.
     """
 
-    well_purpose: str | None = None
+    well_purposes: list[str] | None = None
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
     )
@@ -103,7 +103,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_casing_depth: float | None = Field(
         default=None, gt=0, description="Well casing depth in feet"
     )
-    well_casing_material: str | None = None
+    well_casing_materials: list[str] | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -148,7 +148,7 @@ class WellResponse(BaseThingResponse):
     Response schema for well details.
     """
 
-    well_purpose: str | None = None  # e.g., "Production", "Observation", etc.
+    well_purposes: list[str] = []
     well_depth: float | None = None
     well_depth_unit: str = "ft"
     hole_depth: float | None = None
@@ -157,8 +157,27 @@ class WellResponse(BaseThingResponse):
     well_casing_diameter_unit: str = "in"
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
-    well_casing_material: str | None = None
+    well_casing_materials: list[str] = []
     well_construction_notes: str | None = None
+
+    @field_validator("well_purposes", mode="before")
+    def populate_well_purposes_with_strings(cls, well_purposes):
+        if len(well_purposes) > 0:
+            purposes = [well_purpose.purpose for well_purpose in well_purposes]
+        else:
+            purposes = []
+        return purposes
+
+    @field_validator("well_casing_materials", mode="before")
+    def populate_well_casing_materials_with_strings(cls, well_casing_materials):
+        if len(well_casing_materials) > 0:
+            materials = [
+                well_casing_material.material
+                for well_casing_material in well_casing_materials
+            ]
+        else:
+            materials = []
+        return materials
 
 
 class SpringResponse(BaseThingResponse):
@@ -249,13 +268,13 @@ class UpdateThing(BaseUpdateModel):
 
 class UpdateWell(UpdateThing, ValidateWell):
 
-    well_purpose: str | None = None
+    well_purposes: list[str] | None = None
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
     well_casing_diameter: float | None = None  # in inches
     well_casing_depth: float | None = None  # in feet
-    well_casing_material: str | None = None
+    well_casing_materials: list[str] | None = None
 
 
 class UpdateSpring(UpdateThing):
