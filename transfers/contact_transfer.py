@@ -126,7 +126,7 @@ def _add_first_contact(session, row, thing):
         email = _make_email(
             "first",
             row.OwnerKey,
-            email=row.Email,
+            email=row.Email.strip(),
             email_type="Primary",
             release_status=release_status,
         )
@@ -243,6 +243,9 @@ def _make_name(first, last):
 
 def _make_email(first_second, ownerkey, **kw):
     try:
+        if "email" in kw:
+            kw["email"] = kw["email"].strip()
+
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
     except ValidationError as e:
@@ -253,6 +256,8 @@ def _make_email(first_second, ownerkey, **kw):
 
 def _make_phone(first_second, ownerkey, **kw):
     try:
+        if "phone_number" in kw:
+            kw["phone_number"] = kw["phone_number"].strip()
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump())
     except ValidationError as e:
