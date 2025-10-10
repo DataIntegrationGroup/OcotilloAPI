@@ -245,9 +245,9 @@ def _make_email(first_second, ownerkey, **kw):
     try:
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
-    except Exception as e:
-        logger.warning(
-            f"{first_second} '{ownerkey}' Skipping email. Validation error: {e}"
+    except ValidationError as e:
+        logger.critical(
+            f"{first_second} '{ownerkey}' Skipping email. Validation error: {e.errors()}"
         )
 
 
@@ -255,9 +255,9 @@ def _make_phone(first_second, ownerkey, **kw):
     try:
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump())
-    except Exception as e:
-        logger.warning(
-            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e}"
+    except ValidationError as e:
+        logger.critical(
+            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
         )
 
 
@@ -265,9 +265,9 @@ def _make_address(first_second, ownerkey, kind, **kw):
     try:
         address = CreateAddress(**kw)
         return Address(**address.model_dump())
-    except Exception as e:
+    except ValidationError as e:
         logger.warning(
-            f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e}"
+            f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e.errors()}"
         )
 
 

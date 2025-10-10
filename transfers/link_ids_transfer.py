@@ -36,9 +36,9 @@ def transfer_link_ids_welldata(session):
 
         # RULE: exclude rows where both ids are null
         if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            logger.warning(
-                f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
-            )
+            # logger.warning(
+            #     f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
+            # )
             continue
 
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
@@ -98,7 +98,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    logger.info(f"adding link id: {row.PointID}")
+    # logger.info(f"adding link id: {row.PointID}")
     session.add(link_id)
 
 
