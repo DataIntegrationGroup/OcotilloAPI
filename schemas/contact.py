@@ -69,7 +69,11 @@ class ValidatePhone(BaseModel):
                 phone_number_str = phone_number_str.strip()
                 # this is a major hack to deal with the phone numbers entered into
                 # NM_Aquifer without an area code
-                for p in (phone_number_str, f"505{phone_number_str}"):
+                for p in (
+                    phone_number_str,
+                    f"505{phone_number_str}",
+                    f"575{phone_number_str}",
+                ):
                     parsed_number = phonenumbers.parse(p, region)
                     if phonenumbers.is_valid_number(parsed_number):
                         formatted_number = phonenumbers.format_number(
