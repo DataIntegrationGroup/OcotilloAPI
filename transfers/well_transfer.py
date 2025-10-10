@@ -139,7 +139,7 @@ def transfer_wells(session, limit=0):
             session.add(well)
         except Exception as e:
             session.rollback()
-            logger.critical(f"Error creating well for {row.PointID}: {e.errors()}")
+            logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
         assoc = LocationThingAssociation(effective_start=location.created_at)
