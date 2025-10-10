@@ -89,7 +89,7 @@ def extract_organization(alternate_id: str) -> str:
 def get_transfers_data_path(name):
     root = Path("/workspace/transfers/data")
     if not os.path.exists(root):
-        root = Path("../transfers/data/")
+        root = Path("./transfers/data/")
 
     return root / name
 
@@ -212,8 +212,9 @@ def make_location(row: pd.Series) -> Location:
             created_at = site_date
     elif row.DateCreated and not row.SiteDate:
         created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
+    elif not row.DateCreated and row.SiteDate:
+        created_at = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
     else:
-        # TODO: should this be set to SiteDate if DateCreated is None and SiteDate is populated?
         created_at = None
 
     # convert created_at from MST/MDT to UTC

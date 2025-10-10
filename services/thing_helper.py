@@ -38,21 +38,6 @@ def wkb_to_geojson(wkb_element):
     return mapping(geom)
 
 
-def get_active_location(session: Session, thing: Thing) -> Location | None:
-    """
-    The following SQL query retrieves the active location associated with by
-    assuming that the latest effective_start is the active location.
-    """
-    sql = (
-        select(Location)
-        .join(LocationThingAssociation)
-        .where(LocationThingAssociation.thing_id == thing.id)
-        .order_by(LocationThingAssociation.effective_start.desc())
-    )
-    active_location = session.execute(sql).scalars().one_or_none()
-    return active_location
-
-
 def get_db_things(
     filter_,
     order,
@@ -63,47 +48,39 @@ def get_db_things(
     within: str = None,
 ) -> list:
 
-    latest_assoc = (
-        select(
-            LocationThingAssociation.thing_id,
-            func.max(LocationThingAssociation.effective_start).label("max_start"),
-        )
-        .group_by(LocationThingAssociation.thing_id)
-        .subquery()
-    )
-
     if query:
-        sql = select(Thing, Location).where(make_query(Thing, query))
+        sql = select(Thing).where(make_query(Thing, query))
     else:
-        sql = select(Thing, Location)
-
-    lta_alias = aliased(LocationThingAssociation)
-    sql = (
-        sql.join(lta_alias, Thing.id == lta_alias.thing_id)
-        .join(Location, lta_alias.location_id == Location.id)
-        .join(
-            latest_assoc,
-            (latest_assoc.c.thing_id == lta_alias.thing_id)
-            & (latest_assoc.c.max_start == lta_alias.effective_start),
-        )
-    )
+        sql = select(Thing)
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
 
     if within:
+        latest_assoc = (
+            select(
+                LocationThingAssociation.thing_id,
+                func.max(LocationThingAssociation.effective_start).label("max_start"),
+            )
+            .group_by(LocationThingAssociation.thing_id)
+            .subquery()
+        )
+
+        lta_alias = aliased(LocationThingAssociation)
+        sql = (
+            sql.join(lta_alias, Thing.id == lta_alias.thing_id)
+            .join(Location, lta_alias.location_id == Location.id)
+            .join(
+                latest_assoc,
+                (latest_assoc.c.thing_id == lta_alias.thing_id)
+                & (latest_assoc.c.max_start == lta_alias.effective_start),
+            )
+        )
         sql = make_within_wkt(sql, within)
 
     sql = order_sort_filter(sql, Thing, sort, order, filter_)
 
-    def transformer(records):
-        def make_new_record(thing, location):
-            thing.active_location = location
-            return thing
-
-        return [make_new_record(*record) for record in records]
-
-    return paginate(query=sql, conn=session, transformer=transformer)
+    return paginate(query=sql, conn=session)
 
 
 def get_thing_type_from_request(request: Request) -> str:
@@ -141,7 +118,6 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
 
     verify_thing_type_correspondence(thing, request)
 
-    thing.active_location = get_active_location(session, thing)
     return thing
 
 
@@ -180,6 +156,7 @@ def add_thing(
             session.add(assoc)
 
         if location_id is not None:
+            # TODO: how do we want to handle effective_start? is it the date it gets entered?
             assoc = LocationThingAssociation()
             audit_add(user, assoc)
             assoc.location_id = location_id
@@ -187,11 +164,11 @@ def add_thing(
             session.add(assoc)
 
         session.commit()
+        session.refresh(thing)
     except Exception as e:
         session.rollback()
         raise e
 
-    thing.active_location = get_active_location(session, thing)
     return thing
 
 
@@ -237,7 +214,6 @@ def patch_thing(
     verify_thing_type_correspondence(thing, request)
 
     thing = model_patcher(session, Thing, thing_id, payload, user)
-    thing.active_location = get_active_location(session, thing)
     return thing
 
 

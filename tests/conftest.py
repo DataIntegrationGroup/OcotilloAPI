@@ -55,10 +55,13 @@ def water_well_thing(location):
             first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_purpose="Production",
+            well_purpose="Domestic",
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
+            well_casing_diameter=5.0,
+            well_casing_depth=10.0,
+            well_casing_material="PVC",
         )
         session.add(water_well)
         session.commit()
@@ -70,6 +73,8 @@ def water_well_thing(location):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+        session.refresh(water_well)
+        session.refresh(assoc)
         yield water_well
         session.delete(water_well)
         session.delete(assoc)

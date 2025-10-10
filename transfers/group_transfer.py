@@ -39,7 +39,7 @@ def transfer_groups(
             if prefix:
                 # get all PointIDs that start with prefix
                 sql = select(Thing).where(Thing.name.like(f"{prefix}%"))
-                records = session.scalars(sql).all()
+                records = session.scalars(sql).unique().all()
                 if records:
                     logger.info(
                         f"Adding {len(records)} things to group {group.name}, prefix {prefix}"

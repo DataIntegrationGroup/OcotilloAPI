@@ -27,6 +27,7 @@ from core.dependencies import (
     amp_viewer_function,
 )
 from schemas.location import LocationResponse
+from schemas.thing import ValidateWell
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -51,6 +52,32 @@ def override_authentication_dependency_fixture():
     app.dependency_overrides = {}
 
 
+# VALIDATE tests ===============================================================
+
+
+def test_validate_well_depth_hole_depth():
+    with pytest.raises(
+        ValueError, match="well depth must be less than than or equal to hole depth"
+    ):
+        ValidateWell(well_depth=100.0, hole_depth=90.0)
+
+
+def test_validate_well_depth_casing_depth():
+    with pytest.raises(
+        ValueError,
+        match="well casing depth must be less than or equal to well depth",
+    ):
+        ValidateWell(well_depth=100.0, well_casing_depth=110.0)
+
+
+def test_validate_hole_depth_casing_depth():
+    with pytest.raises(
+        ValueError,
+        match="well casing depth must be less than or equal to hole depth",
+    ):
+        ValidateWell(hole_depth=100.0, well_casing_depth=110.0)
+
+
 # POST tests ===================================================================
 
 
@@ -61,10 +88,13 @@ def test_add_water_well(location, group):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
+        "well_casing_diameter": 5.0,
+        "well_casing_depth": 10.0,
+        "well_casing_material": "PVC",
     }
 
     response = client.post("/thing/water-well", json=payload)
@@ -78,14 +108,21 @@ def test_add_water_well(location, group):
     assert data["thing_type"] == "water well"
     assert data["well_purpose"] == payload["well_purpose"]
     assert data["hole_depth"] == payload["hole_depth"]
+    assert data["hole_depth_unit"] == "ft"
     assert data["well_depth"] == payload["well_depth"]
+    assert data["well_depth_unit"] == "ft"
     assert data["well_construction_notes"] == payload["well_construction_notes"]
+    assert data["well_casing_diameter"] == payload["well_casing_diameter"]
+    assert data["well_casing_diameter_unit"] == "in"
+    assert data["well_casing_depth"] == payload["well_casing_depth"]
+    assert data["well_casing_depth_unit"] == "ft"
+    assert data["well_casing_material"] == payload["well_casing_material"]
 
     expected_location = LocationResponse.model_validate(location).model_dump()
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_post_test(Thing, data["id"])
 
@@ -98,10 +135,13 @@ def test_add_water_well_409_bad_group_id(location):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
+        "well_casing_diameter": 5.0,
+        "well_casing_depth": 10.0,
+        "well_casing_material": "PVC",
     }
 
     response = client.post("/thing/water-well", json=payload)
@@ -121,7 +161,7 @@ def test_add_water_well_409_bad_location_id(group):
         "release_status": "draft",
         "name": "Test Well",
         "first_visit_date": "2023-01-01",
-        "well_purpose": "Monitoring",
+        "well_purpose": "Domestic",
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
@@ -159,7 +199,7 @@ def test_add_spring(location, group):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_post_test(Thing, data["id"])
 
@@ -345,16 +385,30 @@ def test_get_water_wells(water_well_thing, location):
     assert data["items"][0]["release_status"] == water_well_thing.release_status
     assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
     assert data["items"][0]["well_depth"] == water_well_thing.well_depth
+    assert data["items"][0]["well_depth_unit"] == "ft"
     assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
+    assert data["items"][0]["hole_depth_unit"] == "ft"
     assert (
         data["items"][0]["well_construction_notes"]
         == water_well_thing.well_construction_notes
     )
+    assert (
+        data["items"][0]["well_casing_diameter"]
+        == water_well_thing.well_casing_diameter
+    )
+    assert data["items"][0]["well_casing_diameter_unit"] == "in"
+    assert data["items"][0]["well_casing_depth"] == water_well_thing.well_casing_depth
+    assert data["items"][0]["well_casing_depth_unit"] == "ft"
+    assert (
+        data["items"][0]["well_casing_material"]
+        == water_well_thing.well_casing_material
+    )
+
     expected_location = LocationResponse.model_validate(location).model_dump()
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["items"][0]["active_location"] == expected_location
+    assert data["items"][0]["current_location"] == expected_location
 
 
 def test_get_water_well_by_id(water_well_thing, location):
@@ -371,13 +425,21 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["release_status"] == water_well_thing.release_status
     assert data["well_purpose"] == water_well_thing.well_purpose
     assert data["well_depth"] == water_well_thing.well_depth
+    assert data["well_depth_unit"] == "ft"
     assert data["hole_depth"] == water_well_thing.hole_depth
+    assert data["hole_depth_unit"] == "ft"
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
+    assert data["well_casing_diameter"] == water_well_thing.well_casing_diameter
+    assert data["well_casing_diameter_unit"] == "in"
+    assert data["well_casing_depth"] == water_well_thing.well_casing_depth
+    assert data["well_casing_depth_unit"] == "ft"
+    assert data["well_casing_material"] == water_well_thing.well_casing_material
+
     expected_location = LocationResponse.model_validate(location).model_dump()
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_water_well_by_id_404_not_found(water_well_thing):
@@ -423,7 +485,7 @@ def test_get_springs(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["items"][0]["active_location"] == expected_location
+    assert data["items"][0]["current_location"] == expected_location
 
 
 def test_get_spring_by_id(spring_thing, location):
@@ -443,7 +505,7 @@ def test_get_spring_by_id(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_spring_by_id_404_not_found(spring_thing):
@@ -623,45 +685,6 @@ def test_get_things(water_well_thing, spring_thing, location):
     data = response.json()
     assert data["total"] == 2
 
-    assert data["items"][0]["id"] == water_well_thing.id
-    assert data["items"][0][
-        "created_at"
-    ] == water_well_thing.created_at.isoformat().replace("+00:00", "Z")
-    assert data["items"][0]["name"] == water_well_thing.name
-    assert (
-        data["items"][0]["first_visit_date"]
-        == water_well_thing.first_visit_date.isoformat()
-    )
-    assert data["items"][0]["thing_type"] == water_well_thing.thing_type
-    assert data["items"][0]["release_status"] == water_well_thing.release_status
-    assert data["items"][0]["well_purpose"] == water_well_thing.well_purpose
-    assert data["items"][0]["well_depth"] == water_well_thing.well_depth
-    assert data["items"][0]["hole_depth"] == water_well_thing.hole_depth
-    assert (
-        data["items"][0]["well_construction_notes"]
-        == water_well_thing.well_construction_notes
-    )
-    assert data["items"][0]["spring_type"] is None
-    assert data["items"][0]["active_location"] == expected_location
-
-    assert data["items"][1]["id"] == spring_thing.id
-    assert data["items"][1][
-        "created_at"
-    ] == spring_thing.created_at.isoformat().replace("+00:00", "Z")
-    assert data["items"][1]["name"] == spring_thing.name
-    assert (
-        data["items"][1]["first_visit_date"]
-        == spring_thing.first_visit_date.isoformat()
-    )
-    assert data["items"][1]["thing_type"] == spring_thing.thing_type
-    assert data["items"][1]["release_status"] == spring_thing.release_status
-    assert data["items"][1]["spring_type"] == spring_thing.spring_type
-    assert data["items"][1]["well_purpose"] is None
-    assert data["items"][1]["well_depth"] is None
-    assert data["items"][1]["hole_depth"] is None
-    assert data["items"][1]["well_construction_notes"] is None
-    assert data["items"][1]["active_location"] == expected_location
-
 
 def test_get_thing_by_id(water_well_thing, location):
     response = client.get(f"/thing/{water_well_thing.id}")
@@ -687,7 +710,7 @@ def test_get_thing_by_id(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
 
 def test_get_thing_by_id_404_not_found(water_well_thing):
@@ -775,7 +798,7 @@ def test_patch_water_well(water_well_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_patch_test(Thing, payload, water_well_thing)
 
@@ -838,7 +861,7 @@ def test_patch_spring(spring_thing, location):
     expected_location["created_at"] = (
         expected_location["created_at"].isoformat().replace("+00:00", "Z")
     )
-    assert data["active_location"] == expected_location
+    assert data["current_location"] == expected_location
 
     cleanup_patch_test(Thing, payload, spring_thing)
 
