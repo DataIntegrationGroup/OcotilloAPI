@@ -16,20 +16,21 @@
 
 from fastapi import APIRouter, Query, Response
 from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from starlette import status
 
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     admin_dependency,
-    editor_dependency,
+    # editor_dependency,
     viewer_dependency,
 )
 from db import Observation, Sensor, Deployment, Thing
-from schemas.sensor import SensorResponse, CreateSensor, UpdateSensor
-from services.crud_helper import model_patcher, model_deleter, model_adder
-from services.exceptions_helper import PydanticStyleException
+from schemas.sensor import SensorResponse, CreateSensor
+from services.crud_helper import model_deleter, model_adder
+
+# from services.exceptions_helper import PydanticStyleException
 from services.query_helper import order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/sensor", tags=["sensor"])
@@ -50,61 +51,63 @@ async def add_sensor(
 # ====== PATCH =================================================================
 
 
-@router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
-async def update_sensor(
-    sensor_id: int,
-    sensor_data: UpdateSensor,
-    session: session_dependency,
-    user: editor_dependency,
-) -> SensorResponse:
-    """
-    Update a sensor in the system.
-    """
-    if (
-        sensor_data.datetime_installed is not None
-        and sensor_data.datetime_removed is None
-    ):
-        sensor = simple_get_by_id(session, Sensor, sensor_id)
-        existing_datetime_removed = sensor.datetime_removed
-        if (
-            existing_datetime_removed is not None
-            and sensor_data.datetime_installed >= existing_datetime_removed
-        ):
-            detail = {
-                "loc": ["body", "datetime_installed"],
-                "msg": f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
-                "type": "value_error",
-                "input": {
-                    "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
-                        "+00:00", "Z"
-                    )
-                },
-            }
-            raise PydanticStyleException(
-                status_code=status.HTTP_409_CONFLICT, detail=[detail]
-            )
-    elif (
-        sensor_data.datetime_installed is None
-        and sensor_data.datetime_removed is not None
-    ):
-        sensor = simple_get_by_id(session, Sensor, sensor_id)
-        existing_datetime_installed = sensor.datetime_installed
-        if sensor_data.datetime_removed <= existing_datetime_installed:
-            detail = {
-                "loc": ["body", "datetime_removed"],
-                "msg": f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
-                "type": "value_error",
-                "input": {
-                    "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
-                        "+00:00", "Z"
-                    )
-                },
-            }
-            raise PydanticStyleException(
-                status_code=status.HTTP_409_CONFLICT, detail=[detail]
-            )
+# TODO: datetime_installed and datetime_removed have been moved from the Sensor model to the Deployment model. Do we need to keep the validation for datetime_installed and datetime_removed?
 
-    return model_patcher(session, Sensor, sensor_id, sensor_data, user=user)
+# @router.patch("/{sensor_id}", status_code=status.HTTP_200_OK)
+# async def update_sensor(
+#     sensor_id: int,
+#     sensor_data: UpdateSensor,
+#     session: session_dependency,
+#     user: editor_dependency,
+# ) -> SensorResponse:
+#     """
+#     Update a sensor in the system.
+#     """
+#     if (
+#         sensor_data.datetime_installed is not None
+#         and sensor_data.datetime_removed is None
+#     ):
+#         sensor = simple_get_by_id(session, Sensor, sensor_id)
+#         existing_datetime_removed = sensor.datetime_removed
+#         if (
+#             existing_datetime_removed is not None
+#             and sensor_data.datetime_installed >= existing_datetime_removed
+#         ):
+#             detail = {
+#                 "loc": ["body", "datetime_installed"],
+#                 "msg": f"new datetime installed must be before existing datetime removed of {existing_datetime_removed.isoformat().replace('+00:00', 'Z')}",
+#                 "type": "value_error",
+#                 "input": {
+#                     "datetime_installed": sensor_data.datetime_installed.isoformat().replace(
+#                         "+00:00", "Z"
+#                     )
+#                 },
+#             }
+#             raise PydanticStyleException(
+#                 status_code=status.HTTP_409_CONFLICT, detail=[detail]
+#             )
+#     elif (
+#         sensor_data.datetime_installed is None
+#         and sensor_data.datetime_removed is not None
+#     ):
+#         sensor = simple_get_by_id(session, Sensor, sensor_id)
+#         existing_datetime_installed = sensor.datetime_installed
+#         if sensor_data.datetime_removed <= existing_datetime_installed:
+#             detail = {
+#                 "loc": ["body", "datetime_removed"],
+#                 "msg": f"new datetime removed must be after existing datetime installed of {existing_datetime_installed.isoformat().replace('+00:00', 'Z')}",
+#                 "type": "value_error",
+#                 "input": {
+#                     "datetime_removed": sensor_data.datetime_removed.isoformat().replace(
+#                         "+00:00", "Z"
+#                     )
+#                 },
+#             }
+#             raise PydanticStyleException(
+#                 status_code=status.HTTP_409_CONFLICT, detail=[detail]
+#             )
+#
+#     return model_patcher(session, Sensor, sensor_id, sensor_data, user=user)
 
 
 # ====== DELETE ================================================================
@@ -127,8 +130,8 @@ async def delete_sensor(
 async def get_sensors(
     session: session_dependency,
     user: viewer_dependency,
-    thing_id: int = None,  # Optional filter for thing_id
-    observed_property: str = None,  # Optional filter for observed_property
+    thing_id: int = None,  # Optional filter for thing_id. Filter by the Thing where equipment is deployed
+    parameter_id: int = None,  # Filter by the parameter the sensor/equipment measures
     sort: str | None = None,
     order: str | None = None,
     filter_: str = Query(alias="filter", default=None),
@@ -138,24 +141,15 @@ async def get_sensors(
     This endpoint is a placeholder and should be implemented with actual logic.
     """
     sql = select(Sensor)
-    if thing_id is not None or observed_property is not None:
-        conditions = []
-        joins = []
-        if observed_property is not None:
-            joins.append(Observation)
-            conditions.append(Observation.observed_property == observed_property)
+    # --- Logic to filter by Thing ---
+    # The path is now: Sensor <-> Deployment <-> Thing
+    if thing_id is not None:
+        sql = sql.join(Deployment).join(Thing).where(Thing.id == thing_id)
 
-        if thing_id is not None:
-            joins.append(Deployment)
-            joins.append(Thing)
-            conditions.append(Thing.id == thing_id)
-
-        if joins:
-            for j in joins:
-                sql = sql.join(j)
-
-        if conditions:
-            sql = sql.where(and_(*conditions))
+    # --- Logic to filter by Parameter ---
+    # The path is now: Sensor <-> Observation <-> Parameter
+    if parameter_id is not None:
+        sql = sql.join(Observation).where(Observation.parameter_id == parameter_id)
 
     sql = order_sort_filter(sql, Sensor, sort=sort, order=order, filter_=filter_)
     return paginate(conn=session, query=sql)
