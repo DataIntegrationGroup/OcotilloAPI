@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import numpy as np
-import pandas as pd
+from pydantic import ValidationError
+
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 from transfers.logger import logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
@@ -71,9 +71,14 @@ def transfer_contacts(session):
             session.commit()
             session.flush()
             logger.info(f"added first contact for PointID {row.PointID}")
+        except ValidationError as e:
+            logger.critical(
+                f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
+            )
+            session.rollback()
         except Exception as e:
             logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to validation error: {e}"
+                f"Skipping first contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
 
@@ -82,9 +87,14 @@ def transfer_contacts(session):
             session.commit()
             session.flush()
             logger.info(f"added second contact for PointID {row.PointID}")
+        except ValidationError as e:
+            logger.critical(
+                f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
+            )
+            session.rollback()
         except Exception as e:
             logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e}"
+                f"Skipping second contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
 
@@ -235,9 +245,9 @@ def _make_email(first_second, ownerkey, **kw):
     try:
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
-    except Exception as e:
-        logger.warning(
-            f"{first_second} '{ownerkey}' Skipping email. Validation error: {e}"
+    except ValidationError as e:
+        logger.critical(
+            f"{first_second} '{ownerkey}' Skipping email. Validation error: {e.errors()}"
         )
 
 
@@ -245,9 +255,9 @@ def _make_phone(first_second, ownerkey, **kw):
     try:
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump())
-    except Exception as e:
-        logger.warning(
-            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e}"
+    except ValidationError as e:
+        logger.critical(
+            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
         )
 
 
@@ -255,9 +265,9 @@ def _make_address(first_second, ownerkey, kind, **kw):
     try:
         address = CreateAddress(**kw)
         return Address(**address.model_dump())
-    except Exception as e:
+    except ValidationError as e:
         logger.warning(
-            f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e}"
+            f"{first_second} '{ownerkey}' Skipping {kind} address. Validation error: {e.errors()}"
         )
 
 

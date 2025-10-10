@@ -75,8 +75,8 @@ class ValidatePhone(BaseModel):
                             parsed_number, phonenumbers.PhoneNumberFormat.E164
                         )
                         return formatted_number
-                    else:
-                        raise ValueError(f"Invalid phone number. {phone_number_str}")
+                else:
+                    raise ValueError(f"Invalid phone number. {phone_number_str}")
             except NumberParseException as e:
                 raise ValueError(f"Invalid phone number. {phone_number_str}")
 

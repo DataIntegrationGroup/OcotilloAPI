@@ -36,9 +36,9 @@ def transfer_link_ids_welldata(session):
 
         # RULE: exclude rows where both ids are null
         if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            logger.warning(
-                f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
-            )
+            # logger.warning(
+            #     f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
+            # )
             continue
 
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
@@ -49,7 +49,7 @@ def transfer_link_ids_welldata(session):
             continue
 
         for aid, klass, regex in (
-            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,2}-\d{5,6}"),
+            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,3}-\d{3,6}"),
             (
                 row.OSEWelltagID,
                 "OSEWellTagID",
@@ -57,12 +57,12 @@ def transfer_link_ids_welldata(session):
             ),  # TODO: need to figure out regex for this field
         ):
             if pd.isna(aid):
-                logger.warning(f"{klass} is null for {row.PointID}")
+                # logger.warning(f"{klass} is null for {row.PointID}")
                 continue
 
             # RULE: exclude any id that == 'X', '?'
             if aid.strip().lower() in ("x", "?", "exempt"):
-                logger.warning(
+                logger.critical(
                     f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
                 )
                 continue
@@ -98,7 +98,7 @@ def add_link_alternate_site_id(session, row, thing):
 
     link_id.alternate_organization = extract_organization(str(row.AlternateSiteID))
 
-    logger.info(f"adding link id: {row.PointID}")
+    # logger.info(f"adding link id: {row.PointID}")
     session.add(link_id)
 
 
@@ -176,8 +176,10 @@ def transfer_link_ids(session, site_type="GW"):
 
         # not clear what alternate_id2 is for, or what it maps to
         # add_link_alternate_site_id2(session, row, thing)
+        if i and not i % 25:
+            session.commit()
 
-        session.commit()
+    session.commit()
 
 
 # ============= EOF =============================================

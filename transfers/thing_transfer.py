@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 import time
+
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation
@@ -48,21 +50,22 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
 
         try:
             location = make_location(row)
+            payload = make_payload(row)
+            thing_type = payload.pop("thing_type")
+            thing = add_thing(session, payload, thing_type=thing_type)
+            assoc = LocationThingAssociation()
+            assoc.location = location
+            assoc.thing = thing
+            session.add(assoc)
+        except ValidationError as e:
+            logger.critical(
+                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
+            )
         except Exception as e:
             logger.critical(f"Error creating location for {row.PointID}: {e}")
             continue
-        session.add(location)
-        payload = make_payload(row)
-        thing_type = payload.pop("thing_type")
-        spring = add_thing(session, payload, thing_type=thing_type)
-        assoc = LocationThingAssociation()
 
-        assoc.location = location
-        assoc.thing = spring
-        session.add(assoc)
-        session.commit()
-        session.expire(location)
-        session.refresh(location)
+    session.commit()
 
 
 def transfer_springs(session, limit=None):

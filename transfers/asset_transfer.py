@@ -44,7 +44,9 @@ def transfer_assets(session: Session) -> None:
 
     well_photos = read_csv("WellPhotos")
     # for name in ['AR0001']: # for testing
-    for thing in get_valid_things(session):
+    valid_things = get_valid_things(session)
+    n = len(valid_things)
+    for j, thing in enumerate(valid_things):
         photos = well_photos[well_photos["PointID"] == thing.name]
         if photos.empty:
             photos = well_photos[well_photos["PointID"] == thing.name.replace("-", "")]
@@ -68,7 +70,7 @@ def transfer_assets(session: Session) -> None:
             uri, blob_name = gcs_upload(ff, bucket)
             add_asset(session, ff, filename, thing.id, uri, blob_name)
             logger.info(
-                f"Added asset thing.id={thing.id} thing={thing.name} uri: {uri}"
+                f"Added asset {j}-{i}/{n} thing.id={thing.id} thing={thing.name} uri: {uri}"
             )
 
 
