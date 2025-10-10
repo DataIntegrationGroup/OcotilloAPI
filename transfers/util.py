@@ -87,9 +87,14 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def get_transfers_data_path(name):
-    root = Path("/workspace/transfers/data")
+    def data_path(r):
+        return Path(r) / "transfers" / "data"
+
+    root = data_path("/workspace")
     if not os.path.exists(root):
-        root = Path("./transfers/data/")
+        root = data_path("..")
+        if not os.path.exists(root):
+            root = data_path(".")
 
     return root / name
 
