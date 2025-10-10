@@ -17,6 +17,8 @@ import os
 
 from dotenv import load_dotenv
 
+from transfers.waterlevels_pressure_transfer import transfer_water_levels_pressure
+
 load_dotenv()
 
 
@@ -112,6 +114,8 @@ def transfer_all(sess, limit=100):
     this is a very time consuming operation and the results should 
     be saved to a file for later use.
     """
+    message("TRANSFERRING WATER LEVELS PRESSURE")
+    timeit_direct(transfer_water_levels_pressure, sess)
 
     message("TRANSFERRING SPRINGS")
     timeit_direct(transfer_springs, sess, limit=limit)
@@ -157,7 +161,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 10000))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

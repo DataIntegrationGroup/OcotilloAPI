@@ -49,9 +49,15 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
 
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    p = get_transfers_data_path(f"{name}.csv")
+    if os.path.exists(p):
+        return pd.read_csv(p, dtype=dtype)
+
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
+    with open(p, "wb") as f:
+        f.write(data)
 
     if dtype:
         return pd.read_csv(io.BytesIO(data), dtype=dtype)
