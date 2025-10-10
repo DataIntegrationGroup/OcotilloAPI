@@ -16,11 +16,13 @@
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Sensor
 from main import app
-from schemas.sensor import ValidateSensor
+
+# from schemas.sensor import ValidateSensor
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
 import pytest
-from pydantic import ValidationError
+
+# from pydantic import ValidationError
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -40,15 +42,16 @@ def override_dependencies_fixture():
 
 # ====== VALIDATION tests ======================================================
 
+# TODO: installation and removal dates were removed from the Sensor model, so these tests may no longer be relevant.
 
-def test_validate_datetime_installed_datetime_removed():
-    with pytest.raises(
-        ValidationError, match="datetime removed must be after datetime installed"
-    ):
-        ValidateSensor(
-            datetime_installed="2023-01-02T00:00:00Z",
-            datetime_removed="2023-01-01T00:00:00Z",
-        )
+# def test_validate_datetime_installed_datetime_removed():
+#     with pytest.raises(
+#         ValidationError, match="datetime removed must be after datetime installed"
+#     ):
+#         ValidateSensor(
+#             datetime_installed="2023-01-02T00:00:00Z",
+#             datetime_removed="2023-01-01T00:00:00Z",
+#         )
 
 
 # ====== POST tests ============================================================
@@ -57,11 +60,12 @@ def test_validate_datetime_installed_datetime_removed():
 def test_add_sensor():
     payload = {
         "name": "Test Sensor 2",
+        "sensor_type": "Pressure Transducer",
         "model": "Model X",
         "serial_no": "12345678",
-        "datetime_installed": "2024-01-01T00:00:00Z",
-        "datetime_removed": None,
-        "recording_interval": 60,
+        "pcn_number": "PCN-001",
+        "owner_agency": "NMBGMR",
+        "sensor_status": "In Service",
         "notes": "Test equipment",
         "release_status": "draft",
     }
@@ -72,11 +76,12 @@ def test_add_sensor():
     assert "created_at" in data
     assert data["release_status"] == payload["release_status"]
     assert data["name"] == payload["name"]
+    assert data["sensor_type"] == payload["sensor_type"]
     assert data["model"] == payload["model"]
     assert data["serial_no"] == payload["serial_no"]
-    assert data["datetime_installed"] == payload["datetime_installed"]
-    assert data["datetime_removed"] == payload["datetime_removed"]
-    assert data["recording_interval"] == payload["recording_interval"]
+    assert data["pcn_number"] == payload["pcn_number"]
+    assert data["owner_agency"] == payload["owner_agency"]
+    assert data["sensor_status"] == payload["sensor_status"]
     assert data["notes"] == payload["notes"]
 
     # cleanup after post test
@@ -89,7 +94,10 @@ def test_add_sensor():
 def test_patch_sensor(sensor):
     payload = {
         "name": "patched name",
+        "sensor_type": "Data Logger",
         "model": "patched model",
+        "owner_agency": "USGS",
+        "sensor_status": "In Repair",
         "release_status": "draft",
     }
     response = client.patch(f"/sensor/{sensor.id}", json=payload)
@@ -97,7 +105,10 @@ def test_patch_sensor(sensor):
     data = response.json()
     assert data["id"] == sensor.id
     assert data["name"] == payload["name"]
+    assert data["sensor_type"] == payload["sensor_type"]
     assert data["model"] == payload["model"]
+    assert data["owner_agency"] == payload["owner_agency"]
+    assert data["sensor_status"] == payload["sensor_status"]
     assert data["release_status"] == payload["release_status"]
 
     # cleanup after patch test
@@ -113,30 +124,33 @@ def test_patch_sensor_404_not_found(sensor):
     assert data["detail"] == f"Sensor with ID {bad_sensor_id} not found."
 
 
-def test_patch_sensor_409_conflicting_datetime_installed(sensor):
-    payload = {"datetime_installed": "2025-01-01T00:00:00Z"}
-    response = client.patch(f"/sensor/{sensor.id}", json=payload)
-    assert response.status_code == 409
-    data = response.json()
-    assert data["detail"][0]["loc"] == ["body", "datetime_installed"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"new datetime installed must be before existing datetime removed of {sensor.datetime_removed}"
-    )
-    assert data["detail"][0]["type"] == "value_error"
+# TODO: datetime_installed and datetime_removed were removed from the Sensor model, so these tests may no longer be relevant.
 
+# def test_patch_sensor_409_conflicting_datetime_installed(sensor):
+#     payload = {"datetime_installed": "2025-01-01T00:00:00Z"}
+#     response = client.patch(f"/sensor/{sensor.id}", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["loc"] == ["body", "datetime_installed"]
+#     assert (
+#         data["detail"][0]["msg"]
+#         == f"new datetime installed must be before existing datetime removed of {sensor.datetime_removed}"
+#     )
+#     assert data["detail"][0]["type"] == "value_error"
 
-def test_patch_sensor_409_conflicting_datetime_removed(sensor):
-    payload = {"datetime_removed": "2020-01-01T00:00:00Z"}
-    response = client.patch(f"/sensor/{sensor.id}", json=payload)
-    assert response.status_code == 409
-    data = response.json()
-    assert data["detail"][0]["loc"] == ["body", "datetime_removed"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"new datetime removed must be after existing datetime installed of {sensor.datetime_installed}"
-    )
-    assert data["detail"][0]["type"] == "value_error"
+# TODO: datetime_installed and datetime_removed were removed from the Sensor model, so these tests may no longer be relevant.
+
+# def test_patch_sensor_409_conflicting_datetime_removed(sensor):
+#     payload = {"datetime_removed": "2020-01-01T00:00:00Z"}
+#     response = client.patch(f"/sensor/{sensor.id}", json=payload)
+#     assert response.status_code == 409
+#     data = response.json()
+#     assert data["detail"][0]["loc"] == ["body", "datetime_removed"]
+#     assert (
+#         data["detail"][0]["msg"]
+#         == f"new datetime removed must be after existing datetime installed of {sensor.datetime_installed}"
+#     )
+#     assert data["detail"][0]["type"] == "value_error"
 
 
 # ====== GET tests =============================================================
@@ -153,11 +167,12 @@ def test_get_sensors(sensor):
     )
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["sensor_type"] == sensor.sensor_type
     assert data["items"][0]["model"] == sensor.model
     assert data["items"][0]["serial_no"] == sensor.serial_no
-    assert data["items"][0]["datetime_installed"] == sensor.datetime_installed
-    assert data["items"][0]["datetime_removed"] == sensor.datetime_removed
-    assert data["items"][0]["recording_interval"] == sensor.recording_interval
+    assert data["items"][0]["pcn_number"] == sensor.pcn_number
+    assert data["items"][0]["owner_agency"] == sensor.owner_agency
+    assert data["items"][0]["sensor_status"] == sensor.sensor_status
     assert data["items"][0]["notes"] == sensor.notes
 
 
@@ -176,11 +191,12 @@ def test_get_sensors_by_thing_id(
     )
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["sensor_type"] == sensor.sensor_type
     assert data["items"][0]["model"] == sensor.model
     assert data["items"][0]["serial_no"] == sensor.serial_no
-    assert data["items"][0]["datetime_installed"] == sensor.datetime_installed
-    assert data["items"][0]["datetime_removed"] == sensor.datetime_removed
-    assert data["items"][0]["recording_interval"] == sensor.recording_interval
+    assert data["items"][0]["pcn_number"] == sensor.pcn_number
+    assert data["items"][0]["owner_agency"] == sensor.owner_agency
+    assert data["items"][0]["sensor_status"] == sensor.sensor_status
     assert data["items"][0]["notes"] == sensor.notes
 
 
@@ -192,11 +208,12 @@ def test_get_sensor_by_id(sensor):
     assert data["created_at"] == sensor.created_at.isoformat().replace("+00:00", "Z")
     assert data["release_status"] == sensor.release_status
     assert data["name"] == sensor.name
+    assert data["sensor_type"] == sensor.sensor_type
     assert data["model"] == sensor.model
     assert data["serial_no"] == sensor.serial_no
-    assert data["datetime_installed"] == sensor.datetime_installed
-    assert data["datetime_removed"] == sensor.datetime_removed
-    assert data["recording_interval"] == sensor.recording_interval
+    assert data["pcn_number"] == sensor.pcn_number
+    assert data["owner_agency"] == sensor.owner_agency
+    assert data["sensor_status"] == sensor.sensor_status
     assert data["notes"] == sensor.notes
 
 
