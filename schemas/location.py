@@ -17,6 +17,7 @@ from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
+from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
 
@@ -44,9 +45,9 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     point: str  # point is required and should be in WKT format
     elevation: float
     elevation_accuracy: float | None = None
-    elevation_method: str | None = None
+    elevation_method: ElevationMethod | None = None
     coordinate_accuracy: float | None = None
-    coordinate_method: str | None = None
+    coordinate_method: CoordinateMethod | None = None
 
 
 class CreateGroupThing(BaseModel):
@@ -110,9 +111,9 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     point: str | None = None
     elevation: float | None = None
     elevation_accuracy: float | None = None
-    elevation_method: str | None = None
+    elevation_method: ElevationMethod | None = None
     coordinate_accuracy: float | None = None
-    coordinate_method: str | None = None
+    coordinate_method: CoordinateMethod | None = None
 
 
 # ============= EOF =============================================

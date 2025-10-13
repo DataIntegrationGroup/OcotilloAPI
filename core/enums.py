@@ -13,23 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from enum import Enum
-
-from db import LexiconCategory, LexiconTerm, LexiconTermCategoryAssociation
-from db.engine import session_ctx
-
-
-def build_enum_from_lexicon_category(category: str) -> Enum:
-    with session_ctx() as session:
-        sql = (
-            session.query(LexiconTerm)
-            .join(LexiconTermCategoryAssociation)
-            .join(LexiconCategory)
-            .where(LexiconCategory.name == category)
-        )
-        terms = session.execute(sql).scalars().all()
-        return Enum(category, {c.term: c.term for c in terms})
-
+from services.lexicon_helper import build_enum_from_lexicon_category
 
 ActivityType = build_enum_from_lexicon_category("activity_type")
 AddressType = build_enum_from_lexicon_category("address_type")
@@ -59,7 +43,7 @@ Organization = build_enum_from_lexicon_category("organization")
 ParameterType = build_enum_from_lexicon_category("parameter_type")
 PhoneType = build_enum_from_lexicon_category("phone_type")
 PublicationType = build_enum_from_lexicon_category("publication_type")
-QcType = build_enum_from_lexicon_category("qc_type")
+SampleQcType = build_enum_from_lexicon_category("qc_type")
 QualityFlag = build_enum_from_lexicon_category("quality_flag")
 Relation = build_enum_from_lexicon_category("relation")
 ReleaseStatus = build_enum_from_lexicon_category("release_status")
@@ -73,6 +57,7 @@ ThingType = build_enum_from_lexicon_category("thing_type")
 Unit = build_enum_from_lexicon_category("unit")
 Vertical_datum = build_enum_from_lexicon_category("vertical_datum")
 
+QcStatus = build_enum_from_lexicon_category("qc_status")
 
 ScreenType = build_enum_from_lexicon_category("screen_type")
 WellCasingMaterial = build_enum_from_lexicon_category("casing_material")

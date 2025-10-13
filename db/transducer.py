@@ -42,15 +42,15 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
 
     qc_status: Mapped[str] = lexicon_term()
 
-    start_time: Mapped[datetime] = mapped_column(
+    start_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
-    end_time: Mapped[datetime] = mapped_column(
+    end_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
 
-    comment: Mapped[Optional[str]] = mapped_column(Text)
-    reviewer: Mapped[Optional[str]] = mapped_column(Text)
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    reviewer: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Bidirectional relationships
     deployment: Mapped["Deployment"] = relationship("Deployment", lazy="joined")
@@ -66,18 +66,25 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("end_time > start_time", name="check_qc_block_time_order"),
-        Index("ix_qc_block_deployment_time", "deployment_id", "start_time", "end_time"),
+        CheckConstraint(
+            "end_datetime > start_datetime", name="check_qc_block_time_order"
+        ),
+        Index(
+            "ix_qc_block_deployment_time",
+            "deployment_id",
+            "start_datetime",
+            "end_datetime",
+        ),
     )
 
     # -----------------------------------------------------------------
     # Utility methods
     # -----------------------------------------------------------------
     def duration(self) -> timedelta:
-        return self.end_time - self.start_time
+        return self.end_datetime - self.start_datetime
 
     def overlaps(self, start: datetime, end: datetime) -> bool:
-        return not (self.end_time <= start or self.start_time >= end)
+        return not (self.end_datetime <= start or self.start_datetime >= end)
 
 
 class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
@@ -87,9 +94,9 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
 
     __tablename__ = "transducer_observation"
 
-    parameter_id: Mapped[int] = mapped_column(
-        ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    # parameter_id: Mapped[int] = mapped_column(
+    #     ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
+    # )
     observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
