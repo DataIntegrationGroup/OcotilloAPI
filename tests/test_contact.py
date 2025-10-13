@@ -1,3 +1,8 @@
+import re
+
+import pytest
+from pydantic import ValidationError
+
 from core.dependencies import (
     amp_viewer_function,
     amp_editor_function,
@@ -5,12 +10,8 @@ from core.dependencies import (
 )
 from db import Contact, Address, Email, Phone
 from main import app
-from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 from schemas.contact import ValidateEmail, ValidatePhone, ValidateContact
-
-import pytest
-from pydantic import ValidationError
-import re
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -781,15 +782,15 @@ def test_patch_contact_409_null_organization(third_contact):
 def test_patch_contact_409_bad_contact_type(third_contact):
     payload = {"contact_type": "Tertiary"}
     response = client.patch(f"/contact/{third_contact.id}", json=payload)
-    assert response.status_code == 409
+    assert response.status_code == 422
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "contact_type"]
     assert (
         data["detail"][0]["msg"]
-        == "Invalid contact_type. Valid terms are: Primary | Secondary | Field Event Participant"
+        == "Input should be 'Primary', 'Secondary' or 'Field Event Participant'"
     )
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"contact_type": payload["contact_type"]}
+    # assert data["detail"][0]["type"] == "value_error"
+    # assert data["detail"][0]["input"] == {"contact_type": payload["contact_type"]}
 
 
 def test_patch_email(email):

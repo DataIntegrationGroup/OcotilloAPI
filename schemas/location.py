@@ -43,7 +43,6 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     elevation: float
-    release_status: str | None = "draft"
     elevation_accuracy: float | None = None
     elevation_method: str | None = None
     coordinate_accuracy: float | None = None
@@ -71,7 +70,6 @@ class LocationResponse(BaseResponseModel):
     elevation: float | None
     horizontal_datum: str = "WGS84"
     vertical_daum: str = "NAVD88"
-    release_status: str | None
     elevation_accuracy: float | None
     elevation_method: str | None
     coordinate_accuracy: float | None
@@ -111,7 +109,6 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     notes: str | None = None
     point: str | None = None
     elevation: float | None = None
-    release_status: str | None = None
     elevation_accuracy: float | None = None
     elevation_method: str | None = None
     coordinate_accuracy: float | None = None

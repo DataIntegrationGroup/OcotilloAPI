@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from core.enums import QCStatus
+from core.enums import QcType
 from schemas import BaseResponseModel
 
 
 class TransducerObservationResponse(BaseResponseModel):
-    qc_status: QCStatus
+    qc_status: QcType
 
 
 # ============= EOF =============================================

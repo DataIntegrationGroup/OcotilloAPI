@@ -20,6 +20,7 @@ from email_validator import validate_email, EmailNotValidError
 from phonenumbers import NumberParseException
 from pydantic import field_validator, BaseModel, model_validator
 
+from core.enums import Role, ContactType, PhoneType, EmailType, AddressType
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 from schemas.thing import ThingResponse
 
@@ -90,7 +91,7 @@ class CreateEmail(BaseCreateModel, ValidateEmail):
 
     contact_id: int | None = None  # set to None for when made via POST /contact
     email: str
-    email_type: str = "Primary"  # Default to 'Primary'
+    email_type: EmailType = "Primary"  # Default to 'Primary'
 
 
 class CreatePhone(BaseCreateModel, ValidatePhone):
@@ -100,7 +101,7 @@ class CreatePhone(BaseCreateModel, ValidatePhone):
 
     contact_id: int | None = None  # set to None for when made via POST /contact
     phone_number: str
-    phone_type: str = "Primary"  # Default to 'Primary'
+    phone_type: PhoneType = "Primary"  # Default to 'Primary'
 
 
 class CreateAddress(BaseCreateModel):
@@ -117,7 +118,7 @@ class CreateAddress(BaseCreateModel):
     state: str = "NM"  # Default to New Mexico
     postal_code: str
     country: str = "United States"  # Default to United States
-    address_type: str = "Primary"
+    address_type: AddressType = "Primary"
 
 
 # class CreateThingAssociation(BaseModel):
@@ -137,8 +138,8 @@ class CreateContact(BaseCreateModel, ValidateContact):
     thing_id: int
     name: str | None = None
     organization: str | None = None
-    role: str
-    contact_type: str = "Primary"
+    role: Role
+    contact_type: ContactType = "Primary"
     # description: str | None = None
     # email: str | None = None
     # phone: str | None = None
@@ -161,7 +162,7 @@ class PhoneResponse(BaseItemResponse):
     """
 
     phone_number: str
-    phone_type: str  # e.g., 'mobile', 'landline', etc.
+    phone_type: PhoneType  # e.g., 'mobile', 'landline', etc.
 
 
 class EmailResponse(BaseItemResponse):
@@ -170,7 +171,7 @@ class EmailResponse(BaseItemResponse):
     """
 
     email: str
-    email_type: str  # e.g., 'personal', 'work', etc.
+    email_type: EmailType  # e.g., 'personal', 'work', etc.
 
 
 class AddressResponse(BaseItemResponse):
@@ -184,7 +185,7 @@ class AddressResponse(BaseItemResponse):
     state: str
     postal_code: str
     country: str
-    address_type: str
+    address_type: AddressType
 
 
 class ContactResponse(BaseResponseModel):
@@ -194,8 +195,8 @@ class ContactResponse(BaseResponseModel):
 
     name: str | None
     organization: str | None
-    role: str
-    contact_type: str
+    role: Role
+    contact_type: ContactType
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
@@ -219,8 +220,8 @@ class UpdateContact(BaseUpdateModel, ValidateContact):
     """
 
     name: str | None = None
-    role: str | None = None
-    contact_type: str | None = None
+    role: Role | None = None
+    contact_type: ContactType | None = None
     thing_id: int | None = None
     organization: str | None = None
     # email: str | None = None
@@ -235,7 +236,7 @@ class UpdateEmail(BaseUpdateModel, ValidateEmail):
 
     contact_id: int | None = None
     email: str | None = None
-    email_type: str | None = None
+    email_type: EmailType | None = None
 
 
 class UpdatePhone(BaseUpdateModel, ValidatePhone):
@@ -245,7 +246,7 @@ class UpdatePhone(BaseUpdateModel, ValidatePhone):
 
     contact_id: int | None = None
     phone_number: str | None = None
-    phone_type: str | None = None
+    phone_type: PhoneType | None = None
 
 
 class UpdateAddress(BaseUpdateModel):
@@ -260,7 +261,7 @@ class UpdateAddress(BaseUpdateModel):
     state: str | None = None
     postal_code: str | None = None
     country: str | None = None
-    address_type: str | None = None
+    address_type: AddressType | None = None
 
 
 # class UpdateThingContactAssociation(BaseUpdateModel):

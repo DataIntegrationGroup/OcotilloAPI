@@ -15,17 +15,19 @@
 # ===============================================================================
 from pydantic import BaseModel, ConfigDict, AwareDatetime
 
+from core.enums import ReleaseStatus
+
 
 class ResourceNotFoundResponse(BaseModel):
     detail: str
 
 
 class BaseCreateModel(BaseModel):
-    release_status: str
+    release_status: ReleaseStatus = "draft"
 
 
 class BaseUpdateModel(BaseCreateModel):
-    release_status: str | None = None
+    release_status: ReleaseStatus | None = None
 
 
 class BaseResponseModel(BaseModel):

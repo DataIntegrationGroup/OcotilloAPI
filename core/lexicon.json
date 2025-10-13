@@ -430,7 +430,7 @@
     {"categories": ["role"], "term": "Publications Manager", "definition": "Publications Manager"},
     {"categories": ["role"], "term": "Software Developer", "definition": "Software Developer"},
     {"categories": ["email_type", "phone_type", "address_type", "contact_type"], "term": "Primary", "definition": "primary"},
-    {"categories": ["contact_type"], "term": "Secondary", "definition": "secondary"},
+    {"categories": ["contact_type", "address_type"], "term": "Secondary", "definition": "secondary"},
     {"categories": ["contact_type"], "term": "Field Event Participant", "definition": "A contact who has participated in a field event"},
     {"categories": ["email_type", "phone_type", "address_type"], "term": "Work", "definition": "work"},
     {"categories": ["email_type", "address_type"], "term": "Personal", "definition": "personal"},
