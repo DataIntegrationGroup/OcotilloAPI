@@ -34,6 +34,7 @@ from schemas.observation import (
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
 )
+from schemas.transducer import TransducerObservationResponse
 from services.crud_helper import model_deleter, model_adder
 from services.query_helper import simple_get_by_id
 from services.observation_helper import (
@@ -110,6 +111,24 @@ async def update_water_chemistry_observation(
 
 
 # ============= Get ==============================================
+
+
+@router.get(
+    "/transducer-groundwater-level",
+    summary="Get transducer groundwater level observations",
+)
+async def get_transducer_groundwater_level_observations(
+    request: Request,
+    session: session_dependency,
+    user: amp_viewer_dependency,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    sample_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+) -> CustomPage[TransducerObservationResponse]:
+    pass
+    # return get_transducer_observations()
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")

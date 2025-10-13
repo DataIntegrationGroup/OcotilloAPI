@@ -14,33 +14,94 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+from datetime import timedelta
+from typing import TYPE_CHECKING, Optional, List
 
-from sqlalchemy import Integer, ForeignKey, Float, DateTime
+from sqlalchemy import ForeignKey, Float, DateTime, Text, CheckConstraint, Index
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from db import Base, AutoBaseMixin, ReleaseMixin
-from typing import TYPE_CHECKING
+from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
-    from db.thing import Thing
     from db.parameter import Parameter
+    from db.deployment import Deployment
+
+
+class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents a contiguous block of transducer observations that share a QC status.
+    """
+
+    deployment_id: Mapped[int] = mapped_column(
+        ForeignKey("deployment.id", ondelete="CASCADE"), nullable=False
+    )
+
+    parameter_id: Mapped[int] = mapped_column(
+        ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    qc_status: Mapped[str] = lexicon_term()
+
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+    comment: Mapped[Optional[str]] = mapped_column(Text)
+    reviewer: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Bidirectional relationships
+    deployment: Mapped["Deployment"] = relationship("Deployment", lazy="joined")
+
+    parameter: Mapped["Parameter"] = relationship("Parameter")
+
+    # Direct relationship to observations
+    observations: Mapped[List["TransducerObservation"]] = relationship(
+        "TransducerObservation",
+        back_populates="qc_block",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint("end_time > start_time", name="check_qc_block_time_order"),
+        Index("ix_qc_block_deployment_time", "deployment_id", "start_time", "end_time"),
+    )
+
+    # -----------------------------------------------------------------
+    # Utility methods
+    # -----------------------------------------------------------------
+    def duration(self) -> timedelta:
+        return self.end_time - self.start_time
+
+    def overlaps(self, start: datetime, end: datetime) -> bool:
+        return not (self.end_time <= start or self.start_time >= end)
 
 
 class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
-    __tablename__ = "transducer_observations"
+    """
+    Represents a single observation, linked directly to its QC block.
+    """
 
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    __tablename__ = "transducer_observation"
+
+    parameter_id: Mapped[int] = mapped_column(
+        ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    # sensor_id: Mapped[int] = mapped_column(Integer, ForeignKey("sensor.id"))
-    parameter_id: Mapped[int] = mapped_column(Integer, ForeignKey("parameter.id"))
+    observation_datetime: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    value: Mapped[float] = mapped_column(Float, nullable=False)
 
-    value: Mapped[float] = mapped_column(Float)
-    observation_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    qc_block_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True
+    )
 
-    thing: Mapped["Thing"] = relationship("Thing")
-    # sensor: Mapped["Sensor"] = relationship("Sensor")
-    parameter: Mapped["Parameter"] = relationship("Parameter")
+    qc_block: Mapped[Optional["TransducerObservationBlock"]] = relationship(
+        "TransducerObservationBlock", back_populates="observations"
+    )
 
 
 # ============= EOF =============================================
