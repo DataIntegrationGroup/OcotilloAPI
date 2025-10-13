@@ -72,4 +72,8 @@ Status = build_enum_from_lexicon_category("status")
 ThingType = build_enum_from_lexicon_category("thing_type")
 Unit = build_enum_from_lexicon_category("unit")
 Vertical_datum = build_enum_from_lexicon_category("vertical_datum")
+
+
+ScreenType = build_enum_from_lexicon_category("screen_type")
+WellCasingMaterial = build_enum_from_lexicon_category("casing_material")
 # ============= EOF =============================================

@@ -15,9 +15,6 @@
 # ===============================================================================
 import pytest
 
-from db import Thing, WellScreen, ThingIdLink
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
-from main import app
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -26,8 +23,11 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from db import Thing, WellScreen, ThingIdLink
+from main import app
 from schemas.location import LocationResponse
 from schemas.thing import ValidateWell
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -303,7 +303,7 @@ def test_well_add_well_screen_409_wrong_thing_type(spring_thing):
     assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
 
 
-def test_add_well_screen_409_bad_screen_type(water_well_thing):
+def test_add_well_screen_422_bad_screen_type(water_well_thing):
     payload = {
         "thing_id": water_well_thing.id,
         "screen_depth_top": 10.0,
@@ -313,15 +313,12 @@ def test_add_well_screen_409_bad_screen_type(water_well_thing):
     }
     response = client.post("/thing/well-screen", json=payload)
 
-    assert response.status_code == 409
+    assert response.status_code == 422
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "screen_type"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"{payload['screen_type']} is an invalid screen type. Valid types are: PVC | Steel | Concrete."
-    )
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"screen_type": payload["screen_type"]}
+    assert data["detail"][0]["msg"] == "Input should be 'PVC', 'Steel' or 'Concrete'"
+    assert data["detail"][0]["type"] == "enum"
+    assert data["detail"][0]["input"] == payload["screen_type"]
 
 
 def test_add_thing_link(spring_thing):

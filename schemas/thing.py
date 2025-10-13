@@ -17,8 +17,10 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field
 
+from core.enums import WellPurpose, SpringType, ScreenType, WellCasingMaterial
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
+
 
 # -------- VALIDATE ----------
 
@@ -89,7 +91,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     Schema for creating a well.
     """
 
-    well_purpose: str | None = None
+    well_purpose: WellPurpose | None = None
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
     )
@@ -103,7 +105,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_casing_depth: float | None = Field(
         default=None, gt=0, description="Well casing depth in feet"
     )
-    well_casing_material: str | None = None
+    well_casing_material: WellCasingMaterial | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -111,7 +113,7 @@ class CreateSpring(CreateBaseThing):
     Schema for creating a spring.
     """
 
-    spring_type: str | None = None
+    spring_type: SpringType | None = None
 
 
 class CreateWellScreen(BaseCreateModel):
@@ -122,7 +124,7 @@ class CreateWellScreen(BaseCreateModel):
     thing_id: int
     screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
     screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
-    screen_type: str | None = None
+    screen_type: ScreenType | None = None
     screen_description: str | None = None
 
     # validate that screen depth bottom is greater than top
@@ -249,17 +251,14 @@ class UpdateThing(BaseUpdateModel):
 
 class UpdateWell(UpdateThing, ValidateWell):
 
-    well_purpose: str | None = None
-    well_depth: float | None = None  # in feet
-    hole_depth: float | None = None  # in feet
+    well_purpose: WellPurpose | None = None
     well_construction_notes: str | None = None
     well_casing_diameter: float | None = None  # in inches
-    well_casing_depth: float | None = None  # in feet
-    well_casing_material: str | None = None
+    well_casing_material: WellCasingMaterial | None = None
 
 
 class UpdateSpring(UpdateThing):
-    spring_type: str | None = None
+    spring_type: SpringType | None = None
 
 
 class UpdateThingIdLink(BaseUpdateModel):
@@ -272,7 +271,7 @@ class UpdateWellScreen(BaseUpdateModel):
     screen_depth_bottom: float | None = None
     screen_depth_top: float | None = None
     screen_description: str | None = None
-    screen_type: str | None = None
+    screen_type: ScreenType | None = None
 
 
 # ============= EOF =============================================

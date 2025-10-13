@@ -42,9 +42,18 @@
     {"name": "status", "description": null},
     {"name": "thing_type", "description": null},
     {"name": "unit", "description": null},
-    {"name": "vertical_datum", "description": null}
-  ],
+    {"name": "vertical_datum", "description": null},
+    {"name": "well_casing_material", "description": null},
+    {"name":  "screen_type", "description":  null}
+],
   "terms": [
+    {"categories": ["screen_type", "well_casing_material"], "term": "PVC", "definition": "PVC"},
+    {"categories": ["screen_type", "well_casing_material"], "term": "Steel", "definition": "Steel"},
+    {"categories": ["screen_type", "well_casing_material"], "term": "Concrete", "definition": "Concrete"},
+
+
+
+
     {"categories": ["qc_type"], "term": "Normal", "definition": "The primary environmental sample collected from the well, spring, or soil boring."},
     {"categories": ["qc_type"], "term": "Duplicate", "definition": "A second, independent sample collected at the same location, at the same time, and in the same manner as the normal sample. This sample is sent to the primary laboratory."},
     {"categories": ["qc_type"], "term": "Split", "definition": "A subsample of a primary environmental sample that is sent to a separate, independent laboratory for analysis."},
