@@ -239,9 +239,10 @@ def patch_thing(
 
     verify_thing_type_correspondence(thing, request)
 
-    data = payload.model_dump(exclude_unset=True)
-
     if "water-well" in request.url.path:
+        data = payload.model_dump(
+            exclude_unset=True, include=["well_purposes", "well_casing_materials"]
+        )
         well_purposes = data.pop("well_purposes", None)
         well_casing_materials = data.pop("well_casing_materials", None)
 
