@@ -55,19 +55,11 @@ def override_authentication_dependency_fixture():
 # VALIDATE tests ===============================================================
 
 
-def test_validate_well_depth_hole_depth():
+def test_validate_hole_depth_well_depth():
     with pytest.raises(
         ValueError, match="well depth must be less than than or equal to hole depth"
     ):
         ValidateWell(well_depth=100.0, hole_depth=90.0)
-
-
-def test_validate_well_depth_casing_depth():
-    with pytest.raises(
-        ValueError,
-        match="well casing depth must be less than or equal to well depth",
-    ):
-        ValidateWell(well_depth=100.0, well_casing_depth=110.0)
 
 
 def test_validate_hole_depth_casing_depth():

@@ -31,19 +31,11 @@ class ValidateWell(BaseModel):
     @model_validator(mode="after")
     def check_depths(self):
         if (
-            self.well_depth is not None
-            and self.hole_depth is not None
+            self.hole_depth is not None
+            and self.well_depth is not None
             and self.well_depth > self.hole_depth
         ):
             raise ValueError("well depth must be less than than or equal to hole depth")
-        elif (
-            self.well_depth is not None
-            and self.well_casing_depth is not None
-            and self.well_casing_depth > self.well_depth
-        ):
-            raise ValueError(
-                "well casing depth must be less than or equal to well depth"
-            )
         elif (
             self.hole_depth is not None
             and self.well_casing_depth is not None
