@@ -17,7 +17,7 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field
 
-from core.enums import WellPurpose, SpringType, ScreenType, WellCasingMaterial
+from core.enums import WellPurpose, SpringType, ScreenType, CasingMaterial
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
@@ -105,7 +105,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_casing_depth: float | None = Field(
         default=None, gt=0, description="Well casing depth in feet"
     )
-    well_casing_material: WellCasingMaterial | None = None
+    well_casing_material: CasingMaterial | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -254,7 +254,7 @@ class UpdateWell(UpdateThing, ValidateWell):
     well_purpose: WellPurpose | None = None
     well_construction_notes: str | None = None
     well_casing_diameter: float | None = None  # in inches
-    well_casing_material: WellCasingMaterial | None = None
+    well_casing_material: CasingMaterial | None = None
 
 
 class UpdateSpring(UpdateThing):

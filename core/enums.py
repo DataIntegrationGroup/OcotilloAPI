@@ -60,5 +60,4 @@ Vertical_datum = build_enum_from_lexicon_category("vertical_datum")
 QcStatus = build_enum_from_lexicon_category("qc_status")
 
 ScreenType = build_enum_from_lexicon_category("screen_type")
-WellCasingMaterial = build_enum_from_lexicon_category("casing_material")
 # ============= EOF =============================================
