@@ -102,7 +102,7 @@ class UpdateWaterChemistryObservation(UpdateBaseObservation):
 # TODO: Return full sample and sensor objects
 class BaseObservationResponse(BaseResponseModel):
     sample_id: int
-    sensor_id: int
+    sensor_id: int | None
     observation_datetime: AwareDatetime
     parameter: ParameterResponse
     release_status: str
