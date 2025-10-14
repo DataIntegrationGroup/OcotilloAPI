@@ -152,6 +152,9 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WATER LEVELS")
     timeit_direct(transfer_water_levels, sess)
 
+    message("TRANSFERRING WATER LEVELS PRESSURE")
+    timeit_direct(transfer_water_levels_pressure, sess)
+
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
 

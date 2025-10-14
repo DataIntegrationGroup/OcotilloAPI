@@ -24,17 +24,12 @@ from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.parameter import Parameter
-    from db.deployment import Deployment
 
 
 class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     """
     Represents a contiguous block of transducer observations that share a QC status.
     """
-
-    deployment_id: Mapped[int] = mapped_column(
-        ForeignKey("deployment.id", ondelete="CASCADE"), nullable=False
-    )
 
     parameter_id: Mapped[int] = mapped_column(
         ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
@@ -53,7 +48,6 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     reviewer: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Bidirectional relationships
-    deployment: Mapped["Deployment"] = relationship("Deployment", lazy="joined")
 
     parameter: Mapped["Parameter"] = relationship("Parameter")
 
@@ -70,8 +64,7 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
             "end_datetime > start_datetime", name="check_qc_block_time_order"
         ),
         Index(
-            "ix_qc_block_deployment_time",
-            "deployment_id",
+            "ix_qc_block_time",
             "start_datetime",
             "end_datetime",
         ),
@@ -94,9 +87,14 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
 
     __tablename__ = "transducer_observation"
 
-    # parameter_id: Mapped[int] = mapped_column(
-    #     ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
-    # )
+    parameter_id: Mapped[int] = mapped_column(
+        ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    deployment_id: Mapped[int] = mapped_column(
+        ForeignKey("deployment.id", ondelete="CASCADE"), nullable=False
+    )
+
     observation_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )

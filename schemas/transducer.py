@@ -13,12 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from core.enums import QcStatus
+from datetime import datetime
+
 from schemas import BaseResponseModel
 
 
 class TransducerObservationResponse(BaseResponseModel):
-    qc_status: QcStatus
+    qc_status: str
+
+
+class CreateTransducerObservation(BaseResponseModel):
+    # qc_status: QcStatus
+    # parameter_id: int
+    # deployment_id: int
+
+    value: float
+    observation_datetime: datetime
 
 
 # ============= EOF =============================================
