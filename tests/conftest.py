@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 from db import *
 from db.engine import session_ctx

@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel, ConfigDict, AwareDatetime
+
+from pydantic import BaseModel, ConfigDict, AwareDatetime, model_serializer
 
 from core.enums import ReleaseStatus
 
@@ -33,12 +34,20 @@ class BaseUpdateModel(BaseCreateModel):
 class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: AwareDatetime
-    release_status: str
+    release_status: ReleaseStatus
 
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
     )
+
+    @model_serializer
+    def serialize(self):
+        data = self.__dict__.copy()
+        # If release_status is an enum, convert to string
+        if hasattr(data.get("release_status"), "value"):
+            data["release_status"] = data["release_status"].value
+        return data
 
 
 # TODO: write function to convert any datetime field to UTC for use throughout
