@@ -19,7 +19,6 @@ from datetime import datetime
 
 from services.gcs_helper import get_storage_bucket
 
-
 # class StreamToLogger:
 #     def __init__(self, logger_, level):
 #         self.logger = logger_
@@ -41,7 +40,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)-8s] %(message)s",
     handlers=[
-        logging.StreamHandler(),
+        logging.StreamHandler(sys.stdout),
         logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
     ],
 )

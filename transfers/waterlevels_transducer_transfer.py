@@ -22,15 +22,23 @@ from transfers.logger import logger
 from transfers.util import read_csv
 
 
+def transfer_water_levels_acoustic(session):
+    wd = read_csv("WaterLevelsContinuous_Acoustic")
+    _transfer_water_levels_continuous(session, wd, "PublicRelease")
+
+
 def transfer_water_levels_pressure(session):
+    wd = read_csv("WaterLevelsContinuous_Pressure")
+    _transfer_water_levels_continuous(session, wd, "QCed")
+
+
+def _transfer_water_levels_continuous(session, wd, partition_field):
     groundwater_parameter_id = (
         session.query(Parameter)
         .filter(Parameter.parameter_name == "groundwater level")
         .one()
         .id
     )
-
-    wd = read_csv("WaterLevelsContinuous_Pressure")
 
     # group by pointid
     gwd = wd.groupby(["PointID"])
@@ -43,20 +51,15 @@ def transfer_water_levels_pressure(session):
             session.query(Deployment).join(Thing).where(Thing.name == pointid).all()
         )
 
-        if deployments is None:
-            logger.critical(
-                f"Thing with PointID={pointid} has no deployment. Skipping water levels"
-            )
-            continue
-
         # remove rows with no date measured
         group = group[group.DateMeasured.notna()]
 
         # sort rows by date measured
         group = group.sort_values(by="DateMeasured")
+        field = getattr(group, partition_field)
 
-        qced = group[group.QCed]
-        notqced = group[~group.QCed]
+        qced = group[field == 1]
+        notqced = group[~field == 1]
 
         qced_block = TransducerObservationBlock(
             parameter_id=groundwater_parameter_id, qc_status="verified"
@@ -69,13 +72,17 @@ def transfer_water_levels_pressure(session):
             (qced_block, qced, "public"),
             (notqced_block, notqced, "private"),
         ):
-            if rows.empty:
+            block.start_datetime = rows.DateMeasured.min()
+            block.end_datetime = rows.DateMeasured.max()
+
+            if not deployments:
+                logger.critical(
+                    f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
+                )
                 continue
 
-            min_date = rows.DateMeasured.min()
-            max_date = rows.DateMeasured.max()
-            block.start_datetime = min_date
-            block.end_datetime = max_date
+            if rows.empty:
+                continue
 
             observations = []
             for row in rows.itertuples():

@@ -17,8 +17,6 @@ import os
 
 from dotenv import load_dotenv
 
-from transfers.waterlevels_pressure_transfer import transfer_water_levels_pressure
-
 load_dotenv()
 
 
@@ -27,6 +25,10 @@ from core.initializers import init_lexicon, init_parameter
 from db import Base
 from db.engine import session_ctx
 
+from transfers.waterlevels_transducer_transfer import (
+    transfer_water_levels_acoustic,
+    transfer_water_levels_pressure,
+)
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
@@ -109,11 +111,10 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
-    """
-    Developer's note
-    this is a very time consuming operation and the results should 
-    be saved to a file for later use.
-    """
+    # need to transfer deployments before transducer water levels
+    message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    timeit_direct(transfer_water_levels_acoustic, sess)
+
     message("TRANSFERRING WATER LEVELS PRESSURE")
     timeit_direct(transfer_water_levels_pressure, sess)
 
@@ -151,9 +152,6 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING WATER LEVELS")
     timeit_direct(transfer_water_levels, sess)
-
-    message("TRANSFERRING WATER LEVELS PRESSURE")
-    timeit_direct(transfer_water_levels_pressure, sess)
 
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
