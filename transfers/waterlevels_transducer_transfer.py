@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from cfgv import ValidationError
+from pydantic import ValidationError
 
 from db import Parameter, Thing, Deployment
 from db.transducer import TransducerObservation, TransducerObservationBlock
