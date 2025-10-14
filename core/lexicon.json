@@ -30,6 +30,7 @@
     {"name": "phone_type", "description": null},
     {"name": "publication_type", "description": null},
     {"name": "qc_type", "description": null},
+    {"name": "qc_status", "description": null},
     {"name": "quality_flag", "description": null},
     {"name": "relation", "description": null},
     {"name": "release_status", "description": null},
@@ -37,23 +38,18 @@
     {"name": "sample_matrix", "description": null},
     {"name": "sample_method", "description": null},
     {"name": "sample_type", "description": null},
+    {"name": "screen_type", "description":  null},
     {"name": "spring_type", "description": null},
     {"name": "state", "description": null},
     {"name": "status", "description": null},
     {"name": "thing_type", "description": null},
     {"name": "unit", "description": null},
-    {"name": "vertical_datum", "description": null},
-    {"name": "well_casing_material", "description": null},
-    {"name":  "screen_type", "description":  null}
+    {"name": "vertical_datum", "description": null}
 ],
   "terms": [
-    {"categories": ["screen_type", "well_casing_material"], "term": "PVC", "definition": "PVC"},
-    {"categories": ["screen_type", "well_casing_material"], "term": "Steel", "definition": "Steel"},
-    {"categories": ["screen_type", "well_casing_material"], "term": "Concrete", "definition": "Concrete"},
 
-
-
-
+    {"categories": ["qc_status"], "term": "verified", "definition": "verified"},
+    {"categories": ["qc_status"], "term": "unverified", "definition": "unverified"},
     {"categories": ["qc_type"], "term": "Normal", "definition": "The primary environmental sample collected from the well, spring, or soil boring."},
     {"categories": ["qc_type"], "term": "Duplicate", "definition": "A second, independent sample collected at the same location, at the same time, and in the same manner as the normal sample. This sample is sent to the primary laboratory."},
     {"categories": ["qc_type"], "term": "Split", "definition": "A subsample of a primary environmental sample that is sent to a separate, independent laboratory for analysis."},
@@ -452,9 +448,9 @@
     {"categories": ["spring_type"], "term": "Perennial", "definition": "perennial spring"},
     {"categories": ["spring_type"], "term": "Thermal", "definition": "thermal spring"},
     {"categories": ["spring_type"], "term": "Mineral", "definition": "mineral spring"},
-    {"categories": ["casing_material"], "term": "PVC", "definition": "Polyvinyl Chloride"},
-    {"categories": ["casing_material"], "term": "Steel", "definition": "Steel"},
-    {"categories": ["casing_material"], "term": "Concrete", "definition": "Concrete"},
+    {"categories": ["casing_material", "screen_type"], "term": "PVC", "definition": "Polyvinyl Chloride"},
+    {"categories": ["casing_material","screen_type"], "term": "Steel", "definition": "Steel"},
+    {"categories": ["casing_material","screen_type"], "term": "Concrete", "definition": "Concrete"},
     {"categories": ["quality_flag"], "term": "Good", "definition": "The measurement was collected and analyzed according to standard procedures and passed all QA/QC checks."},
     {"categories": ["quality_flag"], "term": "Questionable", "definition": "The measurement is suspect due to a known issue during collection or analysis, but it may still be usable."},
     {"categories": ["quality_flag"], "term": "Estimated", "definition": "The value is not a direct measurement but an estimate derived from other data or models."},

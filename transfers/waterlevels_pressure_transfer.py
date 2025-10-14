@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from cfgv import ValidationError
+
 from db import Parameter, Thing, Deployment
 from db.transducer import TransducerObservation, TransducerObservationBlock
+from schemas.transducer import CreateTransducerObservation
 from transfers.logger import logger
 from transfers.util import read_csv
 
@@ -56,7 +59,7 @@ def transfer_water_levels_pressure(session):
         notqced = group[~group.QCed]
 
         qced_block = TransducerObservationBlock(
-            parameter_id=groundwater_parameter_id, qc_status="provisional"
+            parameter_id=groundwater_parameter_id, qc_status="verified"
         )
         notqced_block = TransducerObservationBlock(
             parameter_id=groundwater_parameter_id, qc_status="unverified"
@@ -66,15 +69,13 @@ def transfer_water_levels_pressure(session):
             (qced_block, qced, "public"),
             (notqced_block, notqced, "private"),
         ):
-            if not rows.empty:
-                min_date = rows.DateMeasured.min()
-                max_date = rows.DateMeasured.max()
-                block.start_datetime = min_date
-                block.end_datetime = max_date
-                # session.add(block)
-                # session.flush()
-            else:
+            if rows.empty:
                 continue
+
+            min_date = rows.DateMeasured.min()
+            max_date = rows.DateMeasured.max()
+            block.start_datetime = min_date
+            block.end_datetime = max_date
 
             observations = []
             for row in rows.itertuples():
@@ -89,27 +90,29 @@ def transfer_water_levels_pressure(session):
                     ),
                     None,
                 )
+
                 if deployment is None:
                     logger.critical(
                         f"No deployment found for PointID={pointid} at {row.DateMeasured}"
                     )
                     continue
 
-                observations.append(
-                    {
-                        "parameter_id": groundwater_parameter_id,
-                        "deployment_id": deployment.id,
-                        "observation_datetime": row.DateMeasured,
-                        "value": row.DepthToWaterBGS,
-                        "release_status": release_status,
-                    }
-                )
+                try:
+                    payload = dict(
+                        parameter_id=groundwater_parameter_id,
+                        deployment_id=deployment.id,
+                        observation_datetime=row.DateMeasured,
+                        value=row.DepthToWaterBGS,
+                        release_status=release_status,
+                    )
+                    obspayload = CreateTransducerObservation.model_validate(
+                        payload
+                    ).model_dump()
+                    observations.append(TransducerObservation(**obspayload))
+                except ValidationError as e:
+                    logger.critical(f"Observation validation error: {e.errors()}")
 
-            # session.bulk_insert_mappings(TransducerObservation, observations)
-
-            block.observations = [
-                TransducerObservation(**payload) for payload in observations
-            ]
+            block.observations = observations
             session.add(block)
             session.commit()
 

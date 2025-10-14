@@ -15,18 +15,17 @@
 # ===============================================================================
 from datetime import datetime
 
-from schemas import BaseResponseModel
+from schemas import BaseResponseModel, BaseCreateModel
 
 
 class TransducerObservationResponse(BaseResponseModel):
     qc_status: str
 
 
-class CreateTransducerObservation(BaseResponseModel):
-    # qc_status: QcStatus
-    # parameter_id: int
-    # deployment_id: int
+class CreateTransducerObservation(BaseCreateModel):
 
+    parameter_id: int
+    deployment_id: int
     value: float
     observation_datetime: datetime
 
