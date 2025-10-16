@@ -70,13 +70,11 @@ jobs:
       with:
         repository: DataIntegrationGroup/OcotilloBDD
         path: bdd
-    - name: added bdd dependency
-      run: uv pip install behave requests
 
     - name: Copy BDD features into backend test directory
       run: |
         mkdir -p tests/features
-        cp -r bdd/features/api/* tests/features/
+        cp -r bdd/features/backend/* tests/features/
 
     - name: Run BDD tests
       env:
