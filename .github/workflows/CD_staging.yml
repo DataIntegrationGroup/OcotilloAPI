@@ -100,6 +100,5 @@ jobs:
             repository: DataIntegrationGroup/OcotilloBDD
             workflow: bdd.yml
             ref: main
-            inputs:
-              environment: staging
-              target: backend
+            environment: staging
+            target: backend
