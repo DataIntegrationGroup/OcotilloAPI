@@ -38,6 +38,11 @@ from services.query_helper import make_query, order_sort_filter, simple_get_by_i
 from shapely import wkb
 from shapely.geometry import mapping
 
+WELL_CHILD_MODEL_MAP = {
+    "well_purposes": (WellPurpose, "purpose"),
+    "well_casing_materials": (WellCasingMaterial, "material"),
+}
+
 
 def wkb_to_geojson(wkb_element):
     if wkb_element is None:
@@ -140,12 +145,11 @@ def add_thing(
         thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        well_child_table_list = list(WELL_CHILD_MODEL_MAP.keys())
+        data = data.model_dump(exclude=well_child_table_list)
 
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
-    well_purposes = data.pop("well_purposes", None)
-    well_casing_materials = data.pop("well_casing_materials", None)
 
     try:
         thing = Thing(**data)
@@ -172,22 +176,6 @@ def add_thing(
             assoc.location_id = location_id
             assoc.thing_id = thing.id
             session.add(assoc)
-
-        if well_purposes:
-            for well_purpose in well_purposes:
-                wp = WellPurpose()
-                audit_add(user, wp)
-                wp.thing_id = thing.id
-                wp.purpose = well_purpose
-                session.add(wp)
-
-        if well_casing_materials:
-            for well_casing_material in well_casing_materials:
-                wcm = WellCasingMaterial()
-                audit_add(user, wcm)
-                wcm.thing_id = thing.id
-                wcm.material = well_casing_material
-                session.add(wcm)
 
         session.commit()
         session.refresh(thing)
@@ -239,46 +227,38 @@ def patch_thing(
 
     verify_thing_type_correspondence(thing, request)
 
-    if "water-well" in request.url.path:
-        data = payload.model_dump(
-            exclude_unset=True, include=["well_purposes", "well_casing_materials"]
-        )
-        well_purposes = data.pop("well_purposes", None)
-        well_casing_materials = data.pop("well_casing_materials", None)
-
-        if well_purposes is not None:
-            # delete existing purposes
-            session.query(WellPurpose).filter(WellPurpose.thing_id == thing.id).delete()
-            # add new purposes
-            for well_purpose in well_purposes:
-                wp = WellPurpose()
-                audit_add(user, wp)
-                wp.thing_id = thing.id
-                wp.purpose = well_purpose
-                session.add(wp)
-                session.commit()
-
-        if well_casing_materials is not None:
-            # delete existing materials
-            session.query(WellCasingMaterial).filter(
-                WellCasingMaterial.thing_id == thing.id
-            ).delete()
-            # add new materials
-            for well_casing_material in well_casing_materials:
-                wcm = WellCasingMaterial()
-                audit_add(user, wcm)
-                wcm.thing_id = thing.id
-                wcm.material = well_casing_material
-                session.add(wcm)
-                session.commit()
-
-    # remove these fields from payload after they have been handled
-    for field in ["well_purposes", "well_casing_materials"]:
-        if hasattr(payload, field):
-            delattr(payload, field)
-
     thing = model_patcher(session, Thing, thing_id, payload, user)
     return thing
+
+
+def modify_well_child_tables(
+    session: Session, thing: Thing, payload: BaseModel, user: dict
+) -> None:
+    """
+    This function is to add and update well child tables when a Thing is created
+    or updated. It deletes existing child table records for the Thing if they
+    exist and then adds the new data.
+    """
+    try:
+        for child_table in WELL_CHILD_MODEL_MAP.keys():
+            db_table, field_name = WELL_CHILD_MODEL_MAP[child_table]
+            child_table_data = payload.model_dump(exclude_unset=True).pop(
+                child_table, None
+            )
+            if child_table_data:
+                session.query(db_table).filter(db_table.thing_id == thing.id).delete()
+                for ctd in child_table_data:
+                    inserts = {"thing_id": thing.id, field_name: ctd}
+                    record = db_table(**inserts)
+                    audit_add(user, record)
+                    session.add(record)
+        session.commit()
+
+        # Thing needs to be refreshed to find associated child table data
+        session.refresh(thing)
+    except Exception as e:
+        session.rollback()
+        raise e
 
 
 # ============= EOF =============================================
