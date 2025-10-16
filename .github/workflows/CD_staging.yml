@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
     staging-deploy:
@@ -92,13 +91,3 @@ jobs:
           run: |
             git tag -a "staging-deploy-$(date -u +%Y-%m-%d)T$(date -u +%H-%M-%S%z)" -m "staging gcloud deployment: $(date -u +%Y-%m-%d)T$(date -u +%H:%M:%S%z)"
             git push origin --tags
-
-        - name: Trigger BDD Tests
-          uses: peter-evans/workflow-dispatch@v3
-          with:
-            token: ${{ secrets.GITHUB_TOKEN }}
-            repository: DataIntegrationGroup/OcotilloBDD
-            workflow: bdd.yml
-            ref: main
-            environment: staging
-            target: backend
