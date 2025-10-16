@@ -76,7 +76,7 @@ jobs:
     - name: Copy BDD features into backend test directory
       run: |
         mkdir -p tests/features
-        cp -r bdd/features/backend/* tests/features/
+        cp -r bdd/features/api/* tests/features/
 
     - name: Run BDD tests
       env:
