@@ -38,7 +38,7 @@ from services.query_helper import make_query, order_sort_filter, simple_get_by_i
 from shapely import wkb
 from shapely.geometry import mapping
 
-WELL_CHILD_MODEL_MAP = {
+WELL_DESCRIPTOR_MODEL_MAP = {
     "well_purposes": (WellPurpose, "purpose"),
     "well_casing_materials": (WellCasingMaterial, "material"),
 }
@@ -145,8 +145,8 @@ def add_thing(
         thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
-        well_child_table_list = list(WELL_CHILD_MODEL_MAP.keys())
-        data = data.model_dump(exclude=well_child_table_list)
+        well_descriptor_table_list = list(WELL_DESCRIPTOR_MODEL_MAP.keys())
+        data = data.model_dump(exclude=well_descriptor_table_list)
 
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
@@ -231,23 +231,23 @@ def patch_thing(
     return thing
 
 
-def modify_well_child_tables(
+def modify_well_descriptor_tables(
     session: Session, thing: Thing, payload: BaseModel, user: dict
 ) -> None:
     """
-    This function is to add and update well child tables when a Thing is created
-    or updated. It deletes existing child table records for the Thing if they
+    This function is to add and update well descriptor tables when a Thing is created
+    or updated. It deletes existing descriptor table records for the Thing if they
     exist and then adds the new data.
     """
     try:
-        for child_table in WELL_CHILD_MODEL_MAP.keys():
-            db_table, field_name = WELL_CHILD_MODEL_MAP[child_table]
-            child_table_data = payload.model_dump(exclude_unset=True).pop(
-                child_table, None
+        for descriptor_table in WELL_DESCRIPTOR_MODEL_MAP.keys():
+            db_table, field_name = WELL_DESCRIPTOR_MODEL_MAP[descriptor_table]
+            descriptor_table_data = payload.model_dump(exclude_unset=True).pop(
+                descriptor_table, None
             )
-            if child_table_data:
+            if descriptor_table_data:
                 session.query(db_table).filter(db_table.thing_id == thing.id).delete()
-                for ctd in child_table_data:
+                for ctd in descriptor_table_data:
                     inserts = {"thing_id": thing.id, field_name: ctd}
                     record = db_table(**inserts)
                     audit_add(user, record)

@@ -61,8 +61,8 @@ from services.thing_helper import (
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
-    modify_well_child_tables,
-    WELL_CHILD_MODEL_MAP,
+    modify_well_descriptor_tables,
+    WELL_DESCRIPTOR_MODEL_MAP,
 )
 from services.lexicon_helper import get_terms_by_category
 
@@ -381,7 +381,7 @@ async def create_well(
     """
     try:
         thing = add_thing(session=session, data=thing_data, request=request, user=user)
-        modify_well_child_tables(session, thing, thing_data, user)
+        modify_well_descriptor_tables(session, thing, thing_data, user)
         return thing
     except ProgrammingError as e:
         database_error_handler(thing_data, e)
@@ -446,16 +446,16 @@ async def update_water_well(
     """
     Update an existing well by ID.
     """
-    well_child_data = thing_data.model_copy(deep=True)
+    well_descriptor_data = thing_data.model_copy(deep=True)
 
     # remove these fields from payload otherwise patch_thing will try to process
     # and raise an error because they are not found in the Thing model
-    for field in WELL_CHILD_MODEL_MAP.keys():
+    for field in WELL_DESCRIPTOR_MODEL_MAP.keys():
         if hasattr(thing_data, field):
             delattr(thing_data, field)
 
     thing = patch_thing(session, request, thing_id, thing_data, user=user)
-    modify_well_child_tables(session, thing, well_child_data, user)
+    modify_well_descriptor_tables(session, thing, well_descriptor_data, user)
 
     return thing
 
