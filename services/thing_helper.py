@@ -20,7 +20,15 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session, aliased
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
-from db import LocationThingAssociation, Thing, Base, Location, WellScreen
+from db import (
+    LocationThingAssociation,
+    Thing,
+    Base,
+    Location,
+    WellScreen,
+    WellPurpose,
+    WellCasingMaterial,
+)
 from db.group import GroupThingAssociation
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
@@ -29,6 +37,11 @@ from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from shapely import wkb
 from shapely.geometry import mapping
+
+WELL_DESCRIPTOR_MODEL_MAP = {
+    "well_purposes": (WellPurpose, "purpose"),
+    "well_casing_materials": (WellCasingMaterial, "material"),
+}
 
 
 def wkb_to_geojson(wkb_element):
@@ -132,7 +145,8 @@ def add_thing(
         thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        well_descriptor_table_list = list(WELL_DESCRIPTOR_MODEL_MAP.keys())
+        data = data.model_dump(exclude=well_descriptor_table_list)
 
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
@@ -215,6 +229,36 @@ def patch_thing(
 
     thing = model_patcher(session, Thing, thing_id, payload, user)
     return thing
+
+
+def modify_well_descriptor_tables(
+    session: Session, thing: Thing, payload: BaseModel, user: dict
+) -> None:
+    """
+    This function is to add and update well descriptor tables when a Thing is created
+    or updated. It deletes existing descriptor table records for the Thing if they
+    exist and then adds the new data.
+    """
+    try:
+        for descriptor_table in WELL_DESCRIPTOR_MODEL_MAP.keys():
+            db_table, field_name = WELL_DESCRIPTOR_MODEL_MAP[descriptor_table]
+            descriptor_table_data = payload.model_dump(exclude_unset=True).pop(
+                descriptor_table, None
+            )
+            if descriptor_table_data:
+                session.query(db_table).filter(db_table.thing_id == thing.id).delete()
+                for ctd in descriptor_table_data:
+                    inserts = {"thing_id": thing.id, field_name: ctd}
+                    record = db_table(**inserts)
+                    audit_add(user, record)
+                    session.add(record)
+        session.commit()
+
+        # Thing needs to be refreshed to find associated child table data
+        session.refresh(thing)
+    except Exception as e:
+        session.rollback()
+        raise e
 
 
 # ============= EOF =============================================

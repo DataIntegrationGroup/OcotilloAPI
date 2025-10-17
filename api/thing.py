@@ -32,8 +32,7 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db.thing import Thing, WellScreen
-from db.thing import ThingIdLink
+from db.thing import Thing, ThingIdLink, WellScreen
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -62,6 +61,8 @@ from services.thing_helper import (
     add_well_screen,
     get_db_things,
     get_thing_of_a_thing_type_by_id,
+    modify_well_descriptor_tables,
+    WELL_DESCRIPTOR_MODEL_MAP,
 )
 from services.lexicon_helper import get_terms_by_category
 
@@ -379,7 +380,9 @@ async def create_well(
     Create a new water well in the database.
     """
     try:
-        return add_thing(session=session, data=thing_data, request=request, user=user)
+        thing = add_thing(session=session, data=thing_data, request=request, user=user)
+        modify_well_descriptor_tables(session, thing, thing_data, user)
+        return thing
     except ProgrammingError as e:
         database_error_handler(thing_data, e)
 
@@ -443,7 +446,18 @@ async def update_water_well(
     """
     Update an existing well by ID.
     """
-    return patch_thing(session, request, thing_id, thing_data, user=user)
+    well_descriptor_data = thing_data.model_copy(deep=True)
+
+    # remove these fields from payload otherwise patch_thing will try to process
+    # and raise an error because they are not found in the Thing model
+    for field in WELL_DESCRIPTOR_MODEL_MAP.keys():
+        if hasattr(thing_data, field):
+            delattr(thing_data, field)
+
+    thing = patch_thing(session, request, thing_id, thing_data, user=user)
+    modify_well_descriptor_tables(session, thing, well_descriptor_data, user)
+
+    return thing
 
 
 @router.patch(

@@ -98,10 +98,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         info={"unit": "feet below ground surface"},
         comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
     )
-    well_casing_material: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="Material of the well casing (e.g., 'PVC', 'Steel', 'Concrete', 'Wood').",
-    )
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
@@ -211,6 +207,22 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         passive_deletes=True,
     )
 
+    well_purposes: Mapped[List["WellPurpose"]] = relationship(
+        "WellPurpose",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
+    well_casing_materials: Mapped[List["WellCasingMaterial"]] = relationship(
+        "WellCasingMaterial",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -237,11 +249,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     # Full-text search vector
-    search_vector = Column(
-        TSVectorType(
-            "name", "well_construction_notes", "well_purpose", "well_casing_material"
-        )
-    )
+    search_vector = Column(TSVectorType("name", "well_construction_notes"))
 
     @property
     def current_location(self):
@@ -300,6 +308,39 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     # Many-To-One: A WellScreen belongs to one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="screens")
+
+
+class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents a controlled vocabulary term for well purposes.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    purpose: Mapped[str] = lexicon_term(nullable=False)
+
+    search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("purpose"))
+
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="well_purposes")
+
+
+class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents a controlled vocabulary term for well casing materials.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    material: Mapped[str] = lexicon_term(nullable=False)
+
+    search_vector: Mapped[TSVectorType] = mapped_column(TSVectorType("material"))
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="well_casing_materials"
+    )
 
 
 # TODO: this could be the model used to handle AMP monitoring
