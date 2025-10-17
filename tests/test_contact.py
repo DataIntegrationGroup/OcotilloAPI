@@ -236,7 +236,7 @@ def test_add_address_409_contact_not_found(contact):
         "state": "NM",
         "postal_code": "87502",
         "country": "United States",
-        "address_type": "Secondary",
+        "address_type": "Physical",
         "release_status": "draft",
     }
     response = client.post("/contact/address", json=payload)

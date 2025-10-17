@@ -26,6 +26,7 @@ gcs_credentials.json
 transfers/data/assets*
 transfers/transfer*.log
 transfer*.log
+*.feature
 
 # deployment files
 app.yaml

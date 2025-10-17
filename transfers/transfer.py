@@ -32,7 +32,7 @@ from transfers.waterlevels_transducer_transfer import (
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
-from transfers.sensor_transfer import init_sensor
+from transfers.sensor_transfer import transfer_sensors
 from transfers.waterlevels_transfer import transfer_water_levels
 from transfers.well_transfer import (
     transfer_wells,
@@ -58,13 +58,6 @@ def erase_and_initalize(session: Session) -> None:
     erase(session)
     lexicon()
     parameter()
-    sensor(session)
-
-
-@timeit
-def sensor(session: Session):
-    logger.info("Initializing sensors")
-    init_sensor(session)
 
 
 @timeit
@@ -129,6 +122,9 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING METEOROLOGICAL")
     timeit_direct(transfer_met, sess, limit)
+
+    message("TRANSFERRING SENSORS")
+    timeit_direct(transfer_sensors, sess)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)

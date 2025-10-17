@@ -13,15 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+"""
+SQLAlchemy model for the Sensor table.
+"""
 
-from sqlalchemy import String, Integer, DateTime
+from typing import List, TYPE_CHECKING
+
+from sqlalchemy import String, Text
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin
-
-from typing import List, TYPE_CHECKING
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.deployment import Deployment
@@ -31,22 +33,54 @@ if TYPE_CHECKING:
 
 class Sensor(Base, AutoBaseMixin, ReleaseMixin):
     """
-    Base class for all sensor types.
+    The `Sensor` table serves as the central asset inventory for all physical hardware used for data collection.
+    Its purpose is to track each unique piece of equipment as a distinct asset.
+
+    This table is distinct from the `AnalysisMethod` table, as it deals exclusively with tangible, physical objects.
+
     This class can be extended to create specific sensor types.
     """
 
-    # Define common attributes for sensors here
+    # --- Columns ---
+    nma_pk_equipment: Mapped[str] = mapped_column(
+        String(36),
+        nullable=True,
+        comment="Preserves the primary key (GlobalID) of the Equipment table from NMAquifer.",
+    )
+    # TODO: Is  a name field necessary? If it is, we should consider standardizing naming conventions.
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model: Mapped[str] = mapped_column(String(50), nullable=True)
-    serial_no: Mapped[str] = mapped_column(String(50), nullable=True)
-    datetime_installed: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+    sensor_type: Mapped[str] = lexicon_term(
+        nullable=False,
+        comment="A controlled vocabulary field to categorize the equipment (e.g., 'Pressure Transducer', 'Barometer', 'Data Logger', etc).",
     )
-    datetime_removed: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
+    model: Mapped[str] = mapped_column(
+        String(50), nullable=True, comment="The specific model of the equipment."
     )
-    recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
-    notes: Mapped[str] = mapped_column(String(50), nullable=True)
+    serial_no: Mapped[str] = mapped_column(
+        String(50),
+        nullable=True,
+        unique=True,
+        comment="The serial number of the equipment.",
+    )
+    # TODO: What data type should `pcn_number` be? Should it be a string or integer?
+    pcn_number: Mapped[str] = mapped_column(
+        String(50),
+        nullable=True,
+        unique=True,
+        comment="The Property Control Number (PCN) assigned to equipment for inventory tracking. This is only available for equipment owned by the NMBGMR.",
+    )
+    owner_agency: Mapped[str] = lexicon_term(
+        nullable=True, comment="The agency or organization that owns the equipment."
+    )
+    sensor_status: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="A controlled vocabulary field to indicate the current status of the equipment (e.g., 'In Service', 'In Repair', 'Retired', 'Lost', etc).",
+    )
+    notes: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+        comment="A field for general notes or comments about the equipment.",
+    )
 
     # --- Relationships ---
     # One-To-Many: A piece of Equipment can generate many Observations.

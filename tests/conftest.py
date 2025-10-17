@@ -56,13 +56,11 @@ def water_well_thing(location):
             first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_purpose="Domestic",
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
             well_casing_diameter=5.0,
             well_casing_depth=10.0,
-            well_casing_material="PVC",
         )
         session.add(water_well)
         session.commit()
@@ -79,6 +77,66 @@ def water_well_thing(location):
         yield water_well
         session.delete(water_well)
         session.delete(assoc)
+        session.commit()
+
+
+@pytest.fixture()
+def pvc_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="PVC",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def steel_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="Steel",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture()
+def irrigation_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Irrigation",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
+        session.commit()
+
+
+@pytest.fixture()
+def domestic_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Domestic",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
         session.commit()
 
 
@@ -207,11 +265,12 @@ def sensor():
     with session_ctx() as session:
         sensor = Sensor(
             name=f"Test Sensor {uuid.uuid4()}",
+            sensor_type="Pressure Transducer",
             model="Model X",
             serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
             notes="Test equipment",
             release_status="draft",
         )
@@ -227,11 +286,12 @@ def second_sensor():
     with session_ctx() as session:
         sensor = Sensor(
             name="Test Sensor 2",
+            sensor_type="Pressure Transducer",
             model="Model X",
             serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
             notes="Test equipment",
             release_status="draft",
         )

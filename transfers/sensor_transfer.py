@@ -15,7 +15,106 @@
 # ===============================================================================
 from datetime import datetime
 
-from db import Sensor
+import pandas as pd
+
+from db import Sensor, Deployment, Thing
+from transfers.util import read_csv, logger
+
+EQUIPMENT_TO_SENSOR_TYPE_MAP = {
+    "Pressure transducer": "Pressure Transducer",
+    "Acoustic sounder": "Acoustic Sounder",
+    "Barometer": "Barometer",
+}
+
+
+def transfer_sensors(session):
+    equipment = read_csv("Equipment")
+    equipment.columns = equipment.columns.str.replace(" ", "_")
+    grouped_equipment = equipment.groupby(["PointID"])
+
+    for index, group in grouped_equipment:
+        pointid = index[0]
+        thing = session.query(Thing).filter(Thing.name == pointid).first()
+        if thing is None:
+            logger.warning(
+                f"Skipping sensor transfer for Thing with PointID {pointid} since it is not in the DB"
+            )
+            continue
+        ordered_group = group.sort_values(by=["DateInstalled"])
+
+        if pointid == "SO-0168":
+            print(ordered_group)
+
+        try:
+            for row in ordered_group.itertuples():
+                if row.EquipmentType not in EQUIPMENT_TO_SENSOR_TYPE_MAP:
+                    logger.critical(
+                        f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
+                    )
+                    continue
+
+                sensor = (
+                    session.query(Sensor)
+                    .filter(Sensor.serial_no == row.SerialNo)
+                    .one_or_none()
+                )
+                if sensor:
+                    logger.info(
+                        f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
+                    )
+                else:
+                    sensor = Sensor(
+                        nma_pk_equipment=row.GlobalID,
+                        name=row.ID,
+                        sensor_type=EQUIPMENT_TO_SENSOR_TYPE_MAP[row.EquipmentType],
+                        model=row.Model,
+                        serial_no=row.SerialNo,
+                        owner_agency="NMBGMR",
+                        notes=row.Equipment_Notes,
+                    )
+                    session.add(sensor)
+                    logger.info(
+                        f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
+                    )
+
+                installation_date = datetime.strptime(
+                    row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
+                ).date()
+                removal_date = (
+                    datetime.strptime(row.DateRemoved, "%Y-%m-%d %H:%M:%S.%f").date()
+                    if not pd.isna(row.DateRemoved)
+                    else None
+                )
+                deployment = Deployment(
+                    thing=thing,
+                    sensor=sensor,
+                    installation_date=installation_date,
+                    removal_date=removal_date,
+                    recording_interval=int(row.RecordingInterval),
+                    recording_interval_units="hour",
+                    hanging_cable_length=row.HangingCableLength,
+                    hanging_point_height=row.HangingPointHgt,
+                    hanging_point_description=row.HangingPointDescription,
+                )
+                session.add(deployment)
+                logger.info(
+                    f"Added deployment for sensor with serial number {sensor.serial_no}, deployed to {thing.name}: | Installation Date: {installation_date} | Removal Date: {removal_date}"
+                )
+
+                """
+                Developer's notes
+
+                Since it's unclear beforehand if a sensor has been removed just update
+                the sensor_status based off of each deployments installation/removal
+                dates
+                """
+                if installation_date:
+                    sensor.sensor_status = "In Service"
+                if removal_date:
+                    sensor.sensor_status = "Retired"
+            session.commit()
+        except Exception as e:
+            logger.critical(f"Could not add sensor and deployment: {e}")
 
 
 # ============= EOF =============================================
@@ -27,3 +126,7 @@ def init_sensor(session):
     sensor.datetime_installed = datetime.now()
     session.add(sensor)
     session.commit()
+
+
+if __name__ == "__main__":
+    transfer_sensors("abc")

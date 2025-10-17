@@ -15,12 +15,20 @@
 # ===============================================================================
 import json
 import time
+from datetime import datetime
+
+from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy import select
-from datetime import datetime
-from pandas import isna
 
-from db import LocationThingAssociation, Thing, WellScreen, Location
+from db import (
+    LocationThingAssociation,
+    Thing,
+    WellScreen,
+    Location,
+    WellPurpose,
+    WellCasingMaterial,
+)
 from schemas.thing import CreateWellScreen, CreateWell
 from services.gcs_helper import get_storage_bucket
 from services.util import (
@@ -75,6 +83,19 @@ def _extract_well_purposes(row) -> list[str]:
     return purposes
 
 
+def _extract_casing_materials(row) -> list[str]:
+    materials = []
+    if "pvc" in row.CasingDescription.lower():
+        materials.append("PVC")
+
+    if "steel" in row.CasingDescription.lower():
+        materials.append("Steel")
+
+    if "concrete" in row.CasingDescription.lower():
+        materials.append("Concrete")
+    return materials
+
+
 def transfer_wells(session, limit=0) -> None:
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
@@ -126,7 +147,10 @@ def transfer_wells(session, limit=0) -> None:
 
         try:
             first_visit_date = _get_first_visit_date(row)
-            well_purposes = _extract_well_purposes(row)
+            well_purposes = [] if isna(row.CurrentUse) else _extract_well_purposes(row)
+            well_casing_materials = (
+                [] if isna(row.CasingDescription) else _extract_casing_materials(row)
+            )
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
@@ -135,7 +159,6 @@ def transfer_wells(session, limit=0) -> None:
                 nma_pk_welldata=row.WellID,
                 name=row.PointID,
                 first_visit_date=first_visit_date,
-                # well_purpose=well_purpose,
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
                 well_construction_notes=row.ConstructionNotes,
@@ -153,10 +176,27 @@ def transfer_wells(session, limit=0) -> None:
             continue
 
         try:
-            well_data = data.model_dump(exclude=["location_id", "group_id"])
+            well_data = data.model_dump(
+                exclude=[
+                    "location_id",
+                    "group_id",
+                    "well_purposes",
+                    "well_casing_materials",
+                ]
+            )
             well_data["thing_type"] = "water well"
             well = Thing(**well_data)
             session.add(well)
+
+            if well_purposes:
+                for wp in well_purposes:
+                    wp_obj = WellPurpose(thing=well, purpose=wp)
+                    session.add(wp_obj)
+
+            if well_casing_materials:
+                for wcm in well_casing_materials:
+                    wcm_obj = WellCasingMaterial(thing=well, material=wcm)
+                    session.add(wcm_obj)
         except Exception as e:
             session.rollback()
             logger.critical(f"Error creating well for {row.PointID}: {e}")

@@ -14,12 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter
-from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
-from api.pagination import CustomPage
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
+from sqlalchemy import select, func, text
+from sqlalchemy.orm import Session
 
+from api.pagination import CustomPage
 from core.dependencies import session_dependency, viewer_dependency
 from db import (
     Contact,
@@ -27,11 +27,12 @@ from db import (
     Phone,
     Address,
     Thing,
+    WellCasingMaterial,
+    WellPurpose,
     Asset,
     AssetThingAssociation,
     search,
 )
-
 
 disable_installed_extensions_check()
 router = APIRouter(prefix="/search", tags=["search"])
@@ -70,15 +71,28 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
-    vector = Thing.search_vector
+    well_vector = (
+        func.coalesce(Thing.search_vector, text("''::tsvector"))
+        .op("||")(func.coalesce(WellCasingMaterial.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(WellPurpose.search_vector, text("''::tsvector")))
+    )
+
     water_well_query = search(
-        select(Thing).where(Thing.thing_type == "water well"),
+        select(Thing)
+        .outerjoin(WellCasingMaterial)
+        .outerjoin(WellPurpose)
+        .where(Thing.thing_type == "water well"),
         q,
-        vector=vector,
+        vector=well_vector,
         limit=limit,
     )
+
+    spring_vector = Thing.search_vector
     spring_well_query = search(
-        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector, limit=limit
+        select(Thing).where(Thing.thing_type == "spring"),
+        q,
+        vector=spring_vector,
+        limit=limit,
     )
 
     # unique needs to be called because of eager loads
