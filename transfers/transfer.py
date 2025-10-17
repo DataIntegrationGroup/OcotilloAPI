@@ -100,6 +100,9 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
+    message("TRANSFERRING SENSORS")
+    timeit_direct(transfer_sensors, sess)
+
     """
     Developer's note
     this is a very time consuming operation and the results should 
@@ -117,9 +120,6 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING METEOROLOGICAL")
     timeit_direct(transfer_met, sess, limit)
-
-    message("TRANSFERRING SENSORS")
-    timeit_direct(transfer_sensors, sess)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -153,7 +153,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 10000))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 
