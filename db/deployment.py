@@ -37,7 +37,11 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     removal_date: Mapped[Date] = mapped_column(Date, nullable=True)
     recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     recording_interval_units: Mapped[str] = lexicon_term(nullable=True)
-    hanging_cable_length: Mapped[float] = mapped_column(Numeric, nullable=True)
+    hanging_cable_length: Mapped[float] = mapped_column(
+        Numeric,
+        nullable=True,
+        comment="Length of cable from sensor to hanging point, in ft",
+    )
     hanging_point_height: Mapped[float] = mapped_column(Numeric, nullable=True)
     hanging_point_description: Mapped[str] = mapped_column(Text, nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
