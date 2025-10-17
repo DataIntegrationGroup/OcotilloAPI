@@ -18,7 +18,13 @@ from db import Sensor
 from main import app
 
 # from schemas.sensor import ValidateSensor
-from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
+from tests import (
+    client,
+    cleanup_post_test,
+    cleanup_patch_test,
+    override_authentication,
+    groundwater_level_parameter_id,
+)
 
 import pytest
 
@@ -182,6 +188,26 @@ def test_get_sensors_by_thing_id(
     water_well_thing,
 ):
     response = client.get(f"/sensor?thing_id={water_well_thing.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == sensor.id
+    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
+        "+00:00", "Z"
+    )
+    assert data["items"][0]["release_status"] == sensor.release_status
+    assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["sensor_type"] == sensor.sensor_type
+    assert data["items"][0]["model"] == sensor.model
+    assert data["items"][0]["serial_no"] == sensor.serial_no
+    assert data["items"][0]["pcn_number"] == sensor.pcn_number
+    assert data["items"][0]["owner_agency"] == sensor.owner_agency
+    assert data["items"][0]["sensor_status"] == sensor.sensor_status
+    assert data["items"][0]["notes"] == sensor.notes
+
+
+def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
+    response = client.get(f"/sensor?parameter_id={groundwater_level_parameter_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
