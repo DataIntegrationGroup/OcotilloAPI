@@ -14,21 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 # import os
+import os
 from typing import Optional, List, Union, cast, Callable
 
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, OAuth2AuthorizationCodeBearer
-from jwt.algorithms import RSAAlgorithm
-from starlette import status
-from starlette.requests import Request
-from starlette.responses import Response
-import os
-
+import httpx
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, OAuth2AuthorizationCodeBearer
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from jose.exceptions import JWTError
-import httpx
+from jwt.algorithms import RSAAlgorithm
+from starlette.requests import Request
+from starlette.responses import Response
 
 AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
 ALGORITHMS = ["RS256"]
@@ -85,6 +82,9 @@ def authenticated(
         This function should check if the user is authenticated and has the required permissions.
         If `optional` is True, it should allow unauthenticated access.
         """
+        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
+            return True
+
         if optional and not token:
             return True
 

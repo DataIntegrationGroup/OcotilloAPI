@@ -74,7 +74,6 @@ def step_impl(context: Context):
 
 @then("the response should include latitude, longitude, and elevation")
 def step_imp(context: Context):
-    assert context.result is not None, "Well not found"
     assert context.result["location"]["type"] == "Point"
 
 
