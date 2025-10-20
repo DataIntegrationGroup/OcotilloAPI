@@ -27,6 +27,8 @@ from jwt.algorithms import RSAAlgorithm
 from starlette.requests import Request
 from starlette.responses import Response
 
+from core.settings import settings
+
 AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
 ALGORITHMS = ["RS256"]
 jwks = {}
@@ -82,7 +84,13 @@ def authenticated(
         This function should check if the user is authenticated and has the required permissions.
         If `optional` is True, it should allow unauthenticated access.
         """
-        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
+
+        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 1)):
+            if settings.mode == "production":
+                raise HTTPException(
+                    status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                    detail="Authentication is disabled in production mode. Set AUTHENTIK_DISABLE_AUTHENTICATION=0 to enable authentication.",
+                )
             return True
 
         if optional and not token:
