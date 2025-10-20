@@ -15,14 +15,13 @@
 # ===============================================================================
 from fastapi.testclient import TestClient
 
-from core.initializers import init_lexicon, init_parameter
+from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db import Base, Parameter
-from db.engine import engine, session_ctx
+from db.engine import session_ctx
 from main import app
 
-
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
+with session_ctx() as session:
+    erase_and_rebuild_db(session)
 
 init_lexicon()
 init_parameter()

@@ -21,8 +21,7 @@ load_dotenv()
 
 
 from sqlalchemy.orm import Session
-from core.initializers import init_lexicon, init_parameter
-from db import Base
+from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db.engine import session_ctx
 
 from transfers.group_transfer import transfer_groups
@@ -70,18 +69,8 @@ def parameter():
 
 @timeit
 def erase(session: Session):
-    logger.info("Erasing existing data")
-    from sqlalchemy import text
-
-    with session.bind.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
-
-    Base.metadata.drop_all(session.bind)
-    logger.info("Recreating tables")
-    Base.metadata.create_all(session.bind)
+    logger.info("Erase and rebuilding database")
+    erase_and_rebuild_db(session)
 
 
 def message(msg, pad=10, new_line_at_top=True):
