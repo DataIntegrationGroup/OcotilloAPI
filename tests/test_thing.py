@@ -718,6 +718,47 @@ def test_get_thing_by_id_404_not_found(water_well_thing):
     assert data["detail"] == f"Thing with ID {bad_id} not found."
 
 
+def test_get_thing_deployments_by_id(
+    water_well_thing, sensor_to_water_well_thing_deployment, sensor
+):
+    response = client.get(f"/thing/{water_well_thing.id}/deployment")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == sensor_to_water_well_thing_deployment.id
+    assert data["items"][0]["thing_id"] == water_well_thing.id
+    assert data["items"][0]["sensor"]["id"] == sensor.id
+    assert (
+        data["items"][0]["installation_date"]
+        == sensor_to_water_well_thing_deployment.installation_date
+    )
+    assert (
+        data["items"][0]["removal_date"]
+        == sensor_to_water_well_thing_deployment.removal_date
+    )
+    assert (
+        data["items"][0]["recording_interval"]
+        == sensor_to_water_well_thing_deployment.recording_interval
+    )
+    assert (
+        data["items"][0]["recording_interval_units"]
+        == sensor_to_water_well_thing_deployment.recording_interval_units
+    )
+    assert (
+        data["items"][0]["hanging_cable_length"]
+        == sensor_to_water_well_thing_deployment.hanging_cable_length
+    )
+    assert (
+        data["items"][0]["hanging_point_height"]
+        == sensor_to_water_well_thing_deployment.hanging_point_height
+    )
+    assert (
+        data["items"][0]["hanging_point_description"]
+        == sensor_to_water_well_thing_deployment.hanging_point_description
+    )
+    assert data["items"][0]["notes"] == sensor_to_water_well_thing_deployment.notes
+
+
 # # weaver tests
 # def test_weaver_get_wells_geojson():
 #     response = client.get("/geospatial", params={"type": "well"})
