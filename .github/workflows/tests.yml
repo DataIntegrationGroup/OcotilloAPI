@@ -80,7 +80,7 @@ jobs:
       env:
         BASE_URL: ${{ secrets.BACKEND_URL }}
       run: |
-        uv run behave tests/features --tags=@backend --no-capture
+        uv run behave tests/features --tags=@backend,@approved --no-capture
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v4
