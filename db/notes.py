@@ -7,8 +7,8 @@ a note_type.
 The Notes table should be used when a record might need more than one note,
 when the notes need to be categorized, or when you need the ability to
 search across all notes in the system. This is different from a dedicated
-notes field on a specific table, which should be used to store a single,
-intrinsic attribute of the record itself.
+notes field on a specific table, which should be used to store a simple,
+single-purpose attribute of the record itself.
 """
 
 from typing import TYPE_CHECKING
