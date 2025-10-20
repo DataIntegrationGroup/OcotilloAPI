@@ -1113,9 +1113,9 @@ urllib3==2.5.0 \
     #   nmsamplelocations
     #   requests
     #   sentry-sdk
-uvicorn==0.37.0 \
-    --hash=sha256:4115c8add6d3fd536c8ee77f0e14a7fd2ebba939fed9b02583a97f80648f9e13 \
-    --hash=sha256:913b2b88672343739927ce381ff9e2ad62541f9f8289664fa1d1d3803fa2ce6c
+uvicorn==0.38.0 \
+    --hash=sha256:48c0afd214ceb59340075b4a052ea1ee91c16fbc2a9b1469cca0e54566977b02 \
+    --hash=sha256:fd97093bdd120a2609fc0d3afe931d4d4ad688b6e75f0f929fde1bc36fe0e91d
     # via nmsamplelocations
 virtualenv==20.32.0 \
     --hash=sha256:2c310aecb62e5aa1b06103ed7c2977b81e042695de2697d01017ff0f1034af56 \
