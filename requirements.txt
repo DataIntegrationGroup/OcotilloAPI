@@ -324,9 +324,9 @@ fastapi==0.116.1 \
     #   fastapi-pagination
     #   nmsamplelocations
     #   sentry-sdk
-fastapi-pagination==0.14.0 \
-    --hash=sha256:72ed471c79c3aa07940b287b9cf022503ec2e69e1f2ca5a7a5fcd8152cc43392 \
-    --hash=sha256:e576800270f2714c781241b66c11f5da24f6671670edc122f5be7e4c2bd7f353
+fastapi-pagination==0.14.3 \
+    --hash=sha256:be8e81e21235c0758cbdd2f0e597c65bcb82a85062e2b99a9474418d23006791 \
+    --hash=sha256:e87350b64010fd3b2df840218b1f65a21eec6078238cd3a1794c2468a03ea45f
     # via nmsamplelocations
 filelock==3.18.0 \
     --hash=sha256:adbc88eabb99d2fec8c9c1b229b171f18afa655400173ddc653d5d01501fb9f2 \
