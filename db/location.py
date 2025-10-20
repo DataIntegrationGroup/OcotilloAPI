@@ -31,14 +31,14 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, NotesMixin
 from db.lexicon import lexicon_term
 
 if TYPE_CHECKING:
     from db.thing import Thing
 
 
-class Location(Base, AutoBaseMixin, ReleaseMixin):
+class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True)
@@ -56,6 +56,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     county: Mapped[str] = mapped_column(String(100), nullable=True)
     state: Mapped[str] = mapped_column(String(100), nullable=True)
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    # TODO: remove this 'notes' field in favor of using the polymorphic Notes table. Did not remove it yet to avoid breaking existing data model.
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
