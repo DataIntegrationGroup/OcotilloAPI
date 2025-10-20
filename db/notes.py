@@ -35,14 +35,12 @@ class Notes(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="The ID of the parent record this note is about (e.g., a `thing_id`, `location_id`, etc).",
     )
-    # TODO: create new lexicon category and lexicon terms for notable_type
     notable_type: Mapped[str] = lexicon_term(
         nullable=False,
         comment="The type of the note associated with this record.",
     )
 
     # --- Columns ---
-    # TODO: create new lexicon category and lexicon terms for note_type
     note_type: Mapped[str] = lexicon_term(
         nullable=False,
         comment="A controlled vocabulary field that defines the specific category of the note (e.g. 'Access Instructions`, ",
