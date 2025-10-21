@@ -20,7 +20,7 @@ from db import Parameter, Thing, Deployment
 from db.transducer import TransducerObservation, TransducerObservationBlock
 from schemas.transducer import CreateTransducerObservation
 from transfers.logger import logger
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 def transfer_water_levels_acoustic(session):
@@ -40,6 +40,7 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
         .one()
         .id
     )
+    wd = filter_to_valid_point_ids(session, wd)
 
     # group by pointid
     gwd = wd.groupby(["PointID"])
@@ -92,10 +93,10 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                     (
                         d
                         for d in deployments
-                        if Timestamp(d.installation_date) < row.DateMeasured
+                        if Timestamp(d.installation_date) <= row.DateMeasured
                         and (
                             d.removal_date is None
-                            or Timestamp(d.removal_date) > row.DateMeasured
+                            or Timestamp(d.removal_date) >= row.DateMeasured
                         )
                     ),
                     None,
