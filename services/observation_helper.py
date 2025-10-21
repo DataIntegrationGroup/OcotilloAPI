@@ -49,6 +49,7 @@ def get_activity_type_from_request(request: Request) -> str:
 def get_transducer_observations(
     session: Session,
     thing_id: int | None = None,
+    parameter_id: int | None = None,
     sensor_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
@@ -83,6 +84,9 @@ def get_transducer_observations(
 
     if not order:
         sql = sql.order_by(TransducerObservation.observation_datetime.desc())
+
+    if parameter_id:
+        sql = sql.where(TransducerObservation.parameter_id == parameter_id)
 
     def transformer(result):
         return [

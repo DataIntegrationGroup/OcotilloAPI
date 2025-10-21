@@ -124,11 +124,13 @@ async def get_transducer_groundwater_level_observations(
     session: session_dependency,
     user: amp_viewer_dependency,
     thing_id: int | None = None,
-    sensor_id: int | None = None,
+    parameter_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> CustomPage[TransducerObservationWithBlockResponse]:
-    return get_transducer_observations(session, thing_id, start_time, end_time)
+    return get_transducer_observations(
+        session, thing_id, parameter_id, start_time, end_time
+    )
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")
