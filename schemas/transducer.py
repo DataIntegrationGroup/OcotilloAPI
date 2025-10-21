@@ -15,12 +15,30 @@
 # ===============================================================================
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from core.enums import ReviewStatus
 from schemas import BaseResponseModel, BaseCreateModel
 
 
-class TransducerObservationResponse(BaseResponseModel):
+class TransducerObservationBlockResponse(BaseResponseModel):
     review_status: ReviewStatus
+    start_datetime: datetime
+    end_datetime: datetime
+    parameter_id: int
+    # parameter: ParameterResponse
+
+
+class TransducerObservationResponse(BaseResponseModel):
+    value: float
+    observation_datetime: datetime
+    parameter_id: int
+    deployment_id: int
+
+
+class TransducerObservationWithBlockResponse(BaseModel):
+    observation: TransducerObservationResponse
+    block: TransducerObservationBlockResponse
 
 
 class CreateTransducerObservation(BaseCreateModel):

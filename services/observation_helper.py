@@ -23,6 +23,11 @@ from schemas.observation import (
     WaterChemistryObservationResponse,
     GroundwaterLevelObservationResponse,
 )
+from schemas.transducer import (
+    TransducerObservationWithBlockResponse,
+    TransducerObservationResponse,
+    TransducerObservationBlockResponse,
+)
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id, order_sort_filter
 
@@ -55,10 +60,12 @@ def get_transducer_observations(
     sql = sql.join(
         TransducerObservationBlock,
         and_(
-            Observation.parameter_id == TransducerObservationBlock.parameter_id,
-            Observation.observation_datetime
+            TransducerObservation.parameter_id
+            == TransducerObservationBlock.parameter_id,
+            TransducerObservation.observation_datetime
             >= TransducerObservationBlock.start_datetime,
-            Observation.observation_datetime <= TransducerObservationBlock.end_datetime,
+            TransducerObservation.observation_datetime
+            <= TransducerObservationBlock.end_datetime,
         ),
     )
 
@@ -68,15 +75,25 @@ def get_transducer_observations(
         sql = sql.where(Thing.id == thing_id)
 
     if start_time:
-        sql = sql.where(Observation.observation_datetime >= start_time)
+        sql = sql.where(TransducerObservation.observation_datetime >= start_time)
     if end_time:
-        sql = sql.where(Observation.observation_datetime <= end_time)
-    sql = order_sort_filter(sql, Observation, sort, order, filter_)
+        sql = sql.where(TransducerObservation.observation_datetime <= end_time)
+
+    # sql = order_sort_filter(sql, TransducerObservation, sort, order, filter_)
 
     if not order:
-        sql = sql.order_by(Observation.observation_datetime.desc())
+        sql = sql.order_by(TransducerObservation.observation_datetime.desc())
 
-    return paginate(query=sql, conn=session)
+    def transformer(result):
+        return [
+            TransducerObservationWithBlockResponse(
+                observation=TransducerObservationResponse.model_validate(observation),
+                block=TransducerObservationBlockResponse.model_validate(block),
+            ).model_dump()
+            for observation, block in result
+        ]
+
+    return paginate(query=sql, conn=session, transformer=transformer)
 
 
 def get_observations(

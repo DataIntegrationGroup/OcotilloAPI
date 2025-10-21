@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Observation
+import pytest
+
 from core.dependencies import (
     amp_admin_function,
     admin_function,
@@ -21,6 +22,7 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
+from db import Observation
 from main import app
 from tests import (
     client,
@@ -30,7 +32,6 @@ from tests import (
     groundwater_level_parameter_id,
     pH_parameter_id,
 )
-import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -204,6 +205,14 @@ def test_patch_water_chemistry_observation_404_wrong_activity_type(
 
 
 # ============= Get tests =================
+
+
+def test_get_transducer_observations():
+    response = client.get("/observation/transducer-groundwater-level")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 0
+    assert data["items"] == []
 
 
 def test_get_all_observations(

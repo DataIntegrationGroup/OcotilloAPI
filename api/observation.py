@@ -35,7 +35,7 @@ from schemas.observation import (
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
 )
-from schemas.transducer import TransducerObservationResponse
+from schemas.transducer import TransducerObservationWithBlockResponse
 from services.crud_helper import model_deleter, model_adder
 from services.observation_helper import (
     get_observations,
@@ -127,7 +127,7 @@ async def get_transducer_groundwater_level_observations(
     sensor_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-) -> CustomPage[TransducerObservationResponse]:
+) -> CustomPage[TransducerObservationWithBlockResponse]:
     return get_transducer_observations(session, thing_id, start_time, end_time)
 
 
