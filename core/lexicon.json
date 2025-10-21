@@ -32,6 +32,7 @@
     {"name": "quality_flag", "description": null},
     {"name": "relation", "description": null},
     {"name": "release_status", "description": null},
+    {"name": "review_status", "description": null},
     {"name": "role", "description": null},
     {"name": "sample_matrix", "description": null},
     {"name": "sample_method", "description": null},
@@ -49,6 +50,8 @@
     {"name": "well_status", "description": null}
   ],
   "terms": [
+    {"categories": ["review_status"], "term": "approved", "definition": "approved"},
+    {"categories": ["review_status"], "term": "not reviewed", "definition": "raw"},
     {"categories": ["qc_type"], "term": "Normal", "definition": "The primary environmental sample collected from the well, spring, or soil boring."},
     {"categories": ["qc_type"], "term": "Duplicate", "definition": "A second, independent sample collected at the same location, at the same time, and in the same manner as the normal sample. This sample is sent to the primary laboratory."},
     {"categories": ["qc_type"], "term": "Split", "definition": "A subsample of a primary environmental sample that is sent to a separate, independent laboratory for analysis."},

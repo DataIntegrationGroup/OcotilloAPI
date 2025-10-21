@@ -18,7 +18,7 @@ from datetime import datetime
 import pandas as pd
 
 from db import Sensor, Deployment, Thing
-from transfers.util import read_csv, logger
+from transfers.util import read_csv, logger, filter_to_valid_point_ids, replace_nans
 
 EQUIPMENT_TO_SENSOR_TYPE_MAP = {
     "Pressure transducer": "Pressure Transducer",
@@ -30,6 +30,10 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 def transfer_sensors(session):
     equipment = read_csv("Equipment")
     equipment.columns = equipment.columns.str.replace(" ", "_")
+    equipment = equipment[equipment.SerialNo.notna()]
+    equipment = filter_to_valid_point_ids(session, equipment)
+    equipment = replace_nans(equipment)
+
     grouped_equipment = equipment.groupby(["PointID"])
 
     for index, group in grouped_equipment:

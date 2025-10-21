@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+
 from fastapi import APIRouter, Query, Request
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
@@ -36,12 +37,13 @@ from schemas.observation import (
 )
 from schemas.transducer import TransducerObservationResponse
 from services.crud_helper import model_deleter, model_adder
-from services.query_helper import simple_get_by_id
 from services.observation_helper import (
     get_observations,
     observation_model_patcher,
     get_observation_of_an_activity_type_by_id,
+    get_transducer_observations,
 )
+from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -123,12 +125,10 @@ async def get_transducer_groundwater_level_observations(
     user: amp_viewer_dependency,
     thing_id: int | None = None,
     sensor_id: int | None = None,
-    sample_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> CustomPage[TransducerObservationResponse]:
-    pass
-    # return get_transducer_observations()
+    return get_transducer_observations(session, thing_id, start_time, end_time)
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")

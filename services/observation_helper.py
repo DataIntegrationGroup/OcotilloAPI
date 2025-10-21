@@ -1,14 +1,23 @@
+from datetime import datetime
+from typing import List
+
+from fastapi import Request, Query
+from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy import select
-from typing import List
-from fastapi import Request, Query
-from datetime import datetime
 
-from core.dependencies import session_dependency
-from db import Observation, Sample, FieldActivity, FieldEvent, Thing
+from db import (
+    Observation,
+    Sample,
+    FieldActivity,
+    FieldEvent,
+    Thing,
+    TransducerObservation,
+    Deployment,
+    TransducerObservationBlock,
+)
 from schemas.observation import (
     ObservationResponse,
     WaterChemistryObservationResponse,
@@ -32,9 +41,47 @@ def get_activity_type_from_request(request: Request) -> str:
     return activity_type
 
 
+def get_transducer_observations(
+    session: Session,
+    thing_id: int | None = None,
+    sensor_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    filter_: str = Query(alias="filter", default=None),
+):
+    sql = select(TransducerObservation, TransducerObservationBlock)
+    sql = sql.join(
+        TransducerObservationBlock,
+        and_(
+            Observation.parameter_id == TransducerObservationBlock.parameter_id,
+            Observation.observation_datetime
+            >= TransducerObservationBlock.start_datetime,
+            Observation.observation_datetime <= TransducerObservationBlock.end_datetime,
+        ),
+    )
+
+    if thing_id is not None:
+        sql = sql.join(Deployment)
+        sql = sql.join(Thing)
+        sql = sql.where(Thing.id == thing_id)
+
+    if start_time:
+        sql = sql.where(Observation.observation_datetime >= start_time)
+    if end_time:
+        sql = sql.where(Observation.observation_datetime <= end_time)
+    sql = order_sort_filter(sql, Observation, sort, order, filter_)
+
+    if not order:
+        sql = sql.order_by(Observation.observation_datetime.desc())
+
+    return paginate(query=sql, conn=session)
+
+
 def get_observations(
     request: Request,
-    session: session_dependency,
+    session: Session,
     thing_id: int | None = None,
     sensor_id: int | None = None,
     sample_id: int | None = None,

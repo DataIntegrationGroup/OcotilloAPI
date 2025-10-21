@@ -15,15 +15,24 @@
 # ===============================================================================
 from datetime import datetime
 from datetime import timedelta
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Float, DateTime, Text, CheckConstraint, Index
+from sqlalchemy import (
+    ForeignKey,
+    Float,
+    DateTime,
+    Text,
+    CheckConstraint,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.parameter import Parameter
+    from db.contact import Contact
 
 
 class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
@@ -35,7 +44,7 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
         ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    qc_status: Mapped[str] = lexicon_term()
+    review_status: Mapped[str] = lexicon_term()
 
     start_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
@@ -45,26 +54,28 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     comment: Mapped[str] = mapped_column(Text, nullable=True)
-    reviewer: Mapped[str] = mapped_column(Text, nullable=True)
-
-    # Bidirectional relationships
-
-    parameter: Mapped["Parameter"] = relationship("Parameter")
-
-    # Direct relationship to observations
-    observations: Mapped[List["TransducerObservation"]] = relationship(
-        "TransducerObservation",
-        back_populates="qc_block",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+    reviewer_id: Mapped[str] = mapped_column(
+        ForeignKey("contact.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Foreign key to the Contact table",
     )
 
+    parameter: Mapped["Parameter"] = relationship("Parameter")
+    reviewer: Mapped["Contact"] = relationship("Contact")
+
     __table_args__ = (
+        UniqueConstraint(
+            "review_status",
+            "parameter_id",
+            "start_datetime",
+            "end_datetime",
+            name="uq_transducer_block_status_parameter_time",
+        ),
         CheckConstraint(
-            "end_datetime > start_datetime", name="check_qc_block_time_order"
+            "end_datetime > start_datetime", name="check_transuder_block_time_order"
         ),
         Index(
-            "ix_qc_block_time",
+            "ix_transducer_block_time",
             "start_datetime",
             "end_datetime",
         ),
@@ -100,13 +111,13 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
 
-    qc_block_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True
-    )
-
-    qc_block: Mapped[Optional["TransducerObservationBlock"]] = relationship(
-        "TransducerObservationBlock", back_populates="observations"
-    )
+    # qc_block_id: Mapped[Optional[int]] = mapped_column(
+    #     ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True
+    # )
+    #
+    # qc_block: Mapped[Optional["TransducerObservationBlock"]] = relationship(
+    #     "TransducerObservationBlock", back_populates="observations"
+    # )
 
 
 # ============= EOF =============================================

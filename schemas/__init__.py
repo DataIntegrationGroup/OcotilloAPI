@@ -14,7 +14,13 @@
 # limitations under the License.
 # ===============================================================================
 
-from pydantic import BaseModel, ConfigDict, AwareDatetime, model_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    AwareDatetime,
+    model_serializer,
+    field_validator,
+)
 
 from core.enums import ReleaseStatus
 
@@ -25,6 +31,16 @@ class ResourceNotFoundResponse(BaseModel):
 
 class BaseCreateModel(BaseModel):
     release_status: ReleaseStatus = "draft"
+
+    @field_validator("release_status", mode="before")
+    @classmethod
+    def coerce_release_status(cls, v):
+        if isinstance(v, str):
+            try:
+                return ReleaseStatus(v)
+            except ValueError:
+                raise ValueError(f"Invalid release_status: {v}")
+        return v
 
 
 class BaseUpdateModel(BaseCreateModel):

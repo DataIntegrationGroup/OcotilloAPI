@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from pandas import to_datetime, Timestamp
 from pydantic import ValidationError
 
 from db import Parameter, Thing, Deployment
@@ -53,6 +54,7 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
 
         # remove rows with no date measured
         group = group[group.DateMeasured.notna()]
+        group["DateMeasured"] = to_datetime(group["DateMeasured"], errors="coerce")
 
         # sort rows by date measured
         group = group.sort_values(by="DateMeasured")
@@ -62,10 +64,10 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
         notqced = group[~field == 1]
 
         qced_block = TransducerObservationBlock(
-            parameter_id=groundwater_parameter_id, qc_status="verified"
+            parameter_id=groundwater_parameter_id, review_status="approved"
         )
         notqced_block = TransducerObservationBlock(
-            parameter_id=groundwater_parameter_id, qc_status="unverified"
+            parameter_id=groundwater_parameter_id, review_status="not reviewed"
         )
 
         for block, rows, release_status in (
@@ -90,9 +92,10 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                     (
                         d
                         for d in deployments
-                        if d.installation_date < row.DateMeasured
+                        if Timestamp(d.installation_date) < row.DateMeasured
                         and (
-                            d.removal_date is None or d.removal_date > row.DateMeasured
+                            d.removal_date is None
+                            or Timestamp(d.removal_date) > row.DateMeasured
                         )
                     ),
                     None,
@@ -119,8 +122,12 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                 except ValidationError as e:
                     logger.critical(f"Observation validation error: {e.errors()}")
 
-            block.observations = observations
+            session.bulk_save_objects(observations)
+            # block.observations = observations
             session.add(block)
+            logger.info(
+                f"Added {len(observations)} water levels {release_status} block"
+            )
             session.commit()
 
 

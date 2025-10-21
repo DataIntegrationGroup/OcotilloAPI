@@ -26,7 +26,6 @@ from db import Base
 from db.engine import session_ctx
 
 from transfers.waterlevels_transducer_transfer import (
-    transfer_water_levels_acoustic,
     transfer_water_levels_pressure,
 )
 from transfers.group_transfer import transfer_groups
@@ -104,9 +103,12 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
+    message("TRANSFERRING SENSORS")
+    timeit_direct(transfer_sensors, sess)
+
     # need to transfer deployments before transducer water levels
-    message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    timeit_direct(transfer_water_levels_acoustic, sess)
+    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    # timeit_direct(transfer_water_levels_acoustic, sess)
 
     message("TRANSFERRING WATER LEVELS PRESSURE")
     timeit_direct(transfer_water_levels_pressure, sess)
@@ -122,9 +124,6 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING METEOROLOGICAL")
     timeit_direct(transfer_met, sess, limit)
-
-    message("TRANSFERRING SENSORS")
-    timeit_direct(transfer_sensors, sess)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -158,7 +157,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 100))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

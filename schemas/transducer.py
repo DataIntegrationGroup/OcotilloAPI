@@ -15,11 +15,12 @@
 # ===============================================================================
 from datetime import datetime
 
+from core.enums import ReviewStatus
 from schemas import BaseResponseModel, BaseCreateModel
 
 
 class TransducerObservationResponse(BaseResponseModel):
-    qc_status: str
+    review_status: ReviewStatus
 
 
 class CreateTransducerObservation(BaseCreateModel):

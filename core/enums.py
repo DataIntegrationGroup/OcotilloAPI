@@ -47,6 +47,7 @@ SampleQcType = build_enum_from_lexicon_category("qc_type")
 QualityFlag = build_enum_from_lexicon_category("quality_flag")
 Relation = build_enum_from_lexicon_category("relation")
 ReleaseStatus = build_enum_from_lexicon_category("release_status")
+ReviewStatus = build_enum_from_lexicon_category("review_status")
 Role = build_enum_from_lexicon_category("role")
 SampleMatrix = build_enum_from_lexicon_category("sample_matrix")
 SampleMethod = build_enum_from_lexicon_category("sample_method")
@@ -56,8 +57,5 @@ Status = build_enum_from_lexicon_category("status")
 ThingType = build_enum_from_lexicon_category("thing_type")
 Unit = build_enum_from_lexicon_category("unit")
 Vertical_datum = build_enum_from_lexicon_category("vertical_datum")
-
-QcStatus = build_enum_from_lexicon_category("qc_status")
-
 ScreenType = build_enum_from_lexicon_category("screen_type")
 # ============= EOF =============================================
