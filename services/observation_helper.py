@@ -23,11 +23,6 @@ from schemas.observation import (
     WaterChemistryObservationResponse,
     GroundwaterLevelObservationResponse,
 )
-from schemas.transducer import (
-    TransducerObservationWithBlockResponse,
-    TransducerObservationResponse,
-    TransducerObservationBlockResponse,
-)
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id, order_sort_filter
 
@@ -89,6 +84,12 @@ def get_transducer_observations(
         sql = sql.where(TransducerObservation.parameter_id == parameter_id)
 
     def transformer(result):
+        from schemas.transducer import (
+            TransducerObservationWithBlockResponse,
+            TransducerObservationResponse,
+            TransducerObservationBlockResponse,
+        )
+
         return [
             TransducerObservationWithBlockResponse(
                 observation=TransducerObservationResponse.model_validate(observation),

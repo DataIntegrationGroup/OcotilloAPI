@@ -29,7 +29,6 @@ from db import (
     WellPurpose,
     WellCasingMaterial,
 )
-from schemas.thing import CreateWellScreen, CreateWell
 from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
@@ -154,6 +153,8 @@ def transfer_wells(session, limit=0) -> None:
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
+            from schemas.thing import CreateWell
+
             data = CreateWell(
                 location_id=location.id,
                 nma_pk_welldata=row.WellID,
@@ -218,6 +219,8 @@ def transfer_wells(session, limit=0) -> None:
 
 
 def transfer_wellscreens(session, limit=None):
+    from schemas.thing import CreateWellScreen
+
     wdf = read_csv("WellScreens")
     wdf = replace_nans(wdf)
 

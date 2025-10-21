@@ -18,7 +18,6 @@ from pydantic import ValidationError
 
 from db import Parameter, Thing, Deployment
 from db.transducer import TransducerObservation, TransducerObservationBlock
-from schemas.transducer import CreateTransducerObservation
 from transfers.logger import logger
 from transfers.util import read_csv, filter_to_valid_point_ids
 
@@ -34,6 +33,8 @@ def transfer_water_levels_pressure(session):
 
 
 def _transfer_water_levels_continuous(session, wd, partition_field):
+    from schemas.transducer import CreateTransducerObservation
+
     groundwater_parameter_id = (
         session.query(Parameter)
         .filter(Parameter.parameter_name == "groundwater level")
