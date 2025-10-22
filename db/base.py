@@ -54,7 +54,6 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
-from sqlalchemy.inspection import inspect
 import re
 
 from typing import TYPE_CHECKING
@@ -232,14 +231,14 @@ class NotesMixin:
         PERFORMANCE NOTE: Use with `selectinload` in queries to prevent the
         N+1 query problem when accessing notes for multiple parent objects.
         """
-        # Dynamically get the primary key column name of the inheriting class
-        pk_name = inspect(cls).primary_key[0].name
+        # All parent tables use 'id' as their primary key.
+        pk_name = "id"
 
         return relationship(
             "Notes",
-            primaryjoin=f"and_({cls.__name__}.{pk_name}==Notes.notable_id, "
+            primaryjoin=f"and_({cls.__name__}.{pk_name}==foreign(Notes.notable_id), "
             f"Notes.notable_type=='{cls.__name__}')",
-            lazy="selectin",  # A good default for eager loading on demand
+            lazy="selectin",
             viewonly=True,
         )
 
@@ -247,29 +246,14 @@ class NotesMixin:
         """
         A convenient factory method to create a new Note associated with this object.
         This provides a clean, object-oriented API for writing.
-
-        NOTE: This method creates and returns a new Note object but does *not* add
-        it to the database session. The caller is responsible for session management.
-
-        Args:
-            content: The text content of the note.
-            note_type: The categorized type of the note (from a controlled vocabulary).
-            created_by: The user or process creating the note.
-
-        Returns:
-            A new, unsaved Notes object linked to this parent.
         """
         # This import is inside the method to avoid circular import issues at runtime.
         from db.notes import Notes
 
-        # Dynamically get the primary key value of this specific instance
-        pk_name = inspect(self.__class__).primary_key[0].name
-        pk_value = getattr(self, pk_name)
-
         return Notes(
             content=content,
             note_type=note_type,
-            notable_id=pk_value,
+            notable_id=self.id,
             notable_type=self.__class__.__name__,
         )
 
