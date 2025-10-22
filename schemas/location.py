@@ -18,6 +18,8 @@ from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas.notes import NoteResponse
+from typing import List
 from services.validation.geospatial import validate_wkt_geometry
 
 
@@ -40,6 +42,8 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     """
 
     # name: str | None = None
+    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
+    #  I didn't want to remove yet in case it breaks something with the transfer.
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     elevation: float
@@ -66,6 +70,9 @@ class LocationResponse(BaseResponseModel):
     """
 
     # name: str | None
+    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
+    #  I didn't want to remove yet in case it breaks something with the transfer.
+    notes: str | None = None
     notes: str | None
     point: str
     elevation: float | None
@@ -79,6 +86,9 @@ class LocationResponse(BaseResponseModel):
     state: str | None
     county: str | None
     quad_name: str | None
+
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
@@ -104,10 +114,12 @@ class GroupLocationResponse(BaseResponseModel):
 # -------- UPDATE ----------
 class UpdateLocation(BaseUpdateModel, ValidateLocation):
     """
-    Schema for updating a location.
+    Schema for updating a location. Notes are managed via the polymorphic Notes table.
     """
 
     # name: str | None = None
+    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
+    #  I didn't want to remove yet in case it breaks something with the transfer.
     notes: str | None = None
     point: str | None = None
     elevation: float | None = None

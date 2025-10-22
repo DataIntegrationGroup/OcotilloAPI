@@ -19,6 +19,7 @@ from pydantic import BaseModel, model_validator, PastDate, Field
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
+from schemas.notes import NoteResponse
 
 # -------- VALIDATE ----------
 
@@ -141,6 +142,9 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationResponse | None
     first_visit_date: PastDate | None
+
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
 
 
 class WellResponse(BaseThingResponse):
