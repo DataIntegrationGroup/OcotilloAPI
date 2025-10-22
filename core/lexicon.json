@@ -23,7 +23,7 @@
     {"name": "limit_type", "description": null},
     {"name": "measurement_method", "description": null},
     {"name": "monitoring_status", "description": null},
-    {"name": "noteable_type", "description": null},
+    {"name": "note_type", "description": null},
     {"name": "parameter_name", "description": null},
     {"name": "organization", "description": null},
     {"name": "parameter_type", "description": null},
@@ -527,10 +527,10 @@
     {"categories": ["sensor_status"], "term": "In Repair", "definition": "In Repair"},
     {"categories": ["sensor_status"], "term": "Retired", "definition": "Retired"},
     {"categories": ["sensor_status"], "term": "Lost", "definition": "Lost"},
-    {"categories": ["noteable_type"], "term": "Access", "definition": "Access instructions, gate codes, permission requirements, etc."},
-    {"categories": ["noteable_type"], "term": "Construction", "definition": "Construction details, well development, drilling notes, etc. Could create separate `types` for each of these if needed."},
-    {"categories": ["noteable_type"], "term": "Maintenance", "definition": "Maintenance observations and issues."},
-    {"categories": ["noteable_type"], "term": "Historical", "definition": "Historical information or context about the well or location."},
-    {"categories": ["noteable_type"], "term": "Other", "definition": "Other types of notes that do not fit into the predefined categories."}
+    {"categories": ["note_type"], "term": "Access", "definition": "Access instructions, gate codes, permission requirements, etc."},
+    {"categories": ["note_type"], "term": "Construction", "definition": "Construction details, well development, drilling notes, etc. Could create separate `types` for each of these if needed."},
+    {"categories": ["note_type"], "term": "Maintenance", "definition": "Maintenance observations and issues."},
+    {"categories": ["note_type"], "term": "Historical", "definition": "Historical information or context about the well or location."},
+    {"categories": ["note_type"], "term": "Other", "definition": "Other types of notes that do not fit into the predefined categories."}
   ]
 }
