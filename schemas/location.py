@@ -87,9 +87,6 @@ class LocationResponse(BaseResponseModel):
     county: str | None
     quad_name: str | None
 
-    # The new relationship to the polymorphic Notes table
-    notes: List[NoteResponse] = []
-
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
         if isinstance(value, WKBElement):
