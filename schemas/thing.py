@@ -142,7 +142,6 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationResponse | None
     first_visit_date: PastDate | None
-
     # The new relationship to the polymorphic Notes table
     notes: List[NoteResponse] = []
 

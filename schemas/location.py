@@ -42,9 +42,9 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     """
 
     # name: str | None = None
-    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
-    #  I didn't want to remove yet in case it breaks something with the transfer.
-    notes: str | None = None
+    # TODO: AI suggested managing notes via a separate /locations/{id}/notes endpoint.
+    #  I don't know if we want to do that, but am leaving this comment for future reference.
+    # notes: str | None = None
     point: str  # point is required and should be in WKT format
     elevation: float
     release_status: str | None = "draft"
@@ -70,10 +70,9 @@ class LocationResponse(BaseResponseModel):
     """
 
     # name: str | None
-    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
-    #  I didn't want to remove yet in case it breaks something with the transfer.
-    notes: str | None = None
-    notes: str | None
+    # The 'notes' field is now a List of NoteResponse objects,
+    # matching the polymorphic relationship in the database model.
+    notes: List[NoteResponse] = []
     point: str
     elevation: float | None
     horizontal_datum: str = "WGS84"
@@ -86,9 +85,6 @@ class LocationResponse(BaseResponseModel):
     state: str | None
     county: str | None
     quad_name: str | None
-
-    # The new relationship to the polymorphic Notes table
-    notes: List[NoteResponse] = []
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
@@ -118,9 +114,9 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     """
 
     # name: str | None = None
-    # TODO: remove `notes` field once polymorphic Notes are successfully implemented.
-    #  I didn't want to remove yet in case it breaks something with the transfer.
-    notes: str | None = None
+    # TODO: AI suggested managing notes via a separate API endpoint, /notes/{note_id}.
+    #  I don't know if we want to do that, but am leaving this comment for future reference.
+    # notes: str | None = None
     point: str | None = None
     elevation: float | None = None
     release_status: str | None = None

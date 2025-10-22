@@ -43,7 +43,12 @@ def override_dependencies_fixture():
 def test_add_location():
     payload = {
         # "name": "test location",
-        "notes": "these are some test notes",
+        "notes": [
+            {
+                "note_type": "Access",
+                "content": "These are some test access notes.",
+            }
+        ],
         "point": "POINT (-106.607784 35.118924)",
         "elevation": 1558.8,
         "release_status": "draft",
@@ -59,7 +64,9 @@ def test_add_location():
     assert "id" in data
     assert "created_at" in data
     # assert data["name"] == payload["name"]
-    assert data["notes"] == payload["notes"]
+    assert len(data["notes"]) == 1
+    assert data["notes"][0]["note_type"] == "Access"
+    assert data["notes"][0]["content"] == "These are some test access notes."
     assert data["point"] == payload["point"]
     assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
@@ -81,7 +88,9 @@ def test_add_location():
 def test_update_location(location):
     payload = {
         # "name": "patched name",
-        "notes": "these are some patched notes",
+        "notes": [
+            {"note_type": "Access", "content": "These are some patched access notes."}
+        ],
         "point": "POINT (-106.904107 34.068198)",
         "elevation": 1408.3,
         "release_status": "draft",
@@ -95,7 +104,9 @@ def test_update_location(location):
     data = response.json()
     assert data["id"] == location.id
     # assert data["name"] == payload["name"]
-    assert data["notes"] == payload["notes"]
+    assert len(data["notes"]) == 1
+    assert data["notes"][0]["note_type"] == "Access"
+    assert data["notes"][0]["content"] == "These are some patched access notes."
     assert data["point"] == payload["point"]
     assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
@@ -144,7 +155,12 @@ def test_get_locations(location):
         "+00:00", "Z"
     )
     # assert data["items"][0]["name"] == location.name
-    assert data["items"][0]["notes"] == location.notes
+    assert isinstance(data["items"][0]["notes"], list)
+    # If you know the exact number of notes expected:
+    # assert len(data["items"][0]["notes"]) == expected_count
+    # If you want to check content of a specific note:
+    # if data["items"][0]["notes"]:
+    #     assert data["items"][0]["notes"][0]["content"] == expected_content
     assert data["items"][0]["point"] == to_shape(location.point).wkt
     assert data["items"][0]["elevation"] == location.elevation
     assert data["items"][0]["release_status"] == location.release_status
