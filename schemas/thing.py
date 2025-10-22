@@ -139,6 +139,9 @@ class BaseThingResponse(BaseResponseModel):
     # The new relationship to the polymorphic Notes table
     notes: List[NoteResponse] = []
 
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
+
 
 class WellResponse(BaseThingResponse):
     """
