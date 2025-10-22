@@ -13,8 +13,8 @@ single-purpose attribute of the record itself.
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, Text, and_, Index
-from sqlalchemy.orm import relationship, Mapped, mapped_column, foreign
+from sqlalchemy import Integer, Text, Index
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
@@ -51,14 +51,12 @@ class Notes(Base, AutoBaseMixin, ReleaseMixin):
     # These are viewonly relationships used by the 'target' property below.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin=and_(foreign(notable_id) == Thing.id, notable_type == "Thing"),
+        primaryjoin="and_(foreign(Notes.notable_id) == Thing.id, Notes.notable_type == 'Thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin=and_(
-            foreign(notable_id) == Location.id, notable_type == "Location"
-        ),
+        primaryjoin="and_(foreign(Notes.notable_id) == Location.id, Notes.notable_type == 'Location')",
         viewonly=True,
     )
 
