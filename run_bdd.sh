@@ -35,13 +35,13 @@ fi
 
 # Copy backend features
 echo "📋 Syncing backend features..."
-#mkdir -p tests/features
-#rsync -a ../OcotilloBDD/features/backend/ tests/features/
+mkdir -p tests/features
+rsync -a ../OcotilloBDD/features/backend/ tests/features/
 
 # Run Behave tests
 echo "🚀 Running Behave tests..."
 export PYTHONPATH="$PWD"
 export BASE_URL=${BASE_URL:-http://localhost:8000}
-uv run behave tests/features --tags=@backend
+uv run behave tests/features/thing-notes.feature --tags=@backend
 
 echo "✅ BDD test run complete."

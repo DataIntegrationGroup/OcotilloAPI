@@ -26,57 +26,104 @@ from core.dependencies import (
     amp_viewer_function,
     viewer_function,
 )
-from core.initializers import init_lexicon, init_parameter, register_routes
-from db import Base
-from db.engine import engine
+from core.initializers import register_routes
+from db import Location, Thing, LocationThingAssociation
+from db.engine import session_ctx
+
+# Base.metadata.drop_all(engine)
+# Base.metadata.create_all(engine)
+#
+# init_lexicon()
+# init_parameter()
+
+register_routes(app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins, adjust as needed for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+add_pagination(app)
 
 
-@given("the testing API is running")
+def override_authentication(default=True):
+    """
+    Override the authentication dependency for testing purposes.
+    This allows all users to be considered authenticated.
+    """
+
+    def closure():
+        # print("Overriding authentication")
+        return default
+
+    return closure
+
+
+app.dependency_overrides[amp_admin_function] = override_authentication(
+    default={"name": "foobar", "sub": "1234567890"}
+)
+app.dependency_overrides[admin_function] = override_authentication(
+    default={"name": "foobar", "sub": "1234567890"}
+)
+app.dependency_overrides[amp_editor_function] = override_authentication(
+    default={"name": "foobar", "sub": "1234567890"}
+)
+app.dependency_overrides[amp_viewer_function] = override_authentication()
+app.dependency_overrides[viewer_function] = override_authentication()
+
+
+# need to figure out better way of doing this
+
+with session_ctx() as session:
+    loc = Location(
+        # name="first location",
+        notes="these are some test notes",
+        point="POINT(-107.949533 33.809665)",
+        elevation=2464.9,
+        release_status="draft",
+        elevation_accuracy=100,
+        elevation_method="Survey-grade GPS",
+        coordinate_accuracy=50,
+        coordinate_method="GPS, uncorrected",
+        # state="New Mexico",
+        # county="Catron",
+        # quad_name="Luera Mountains West",
+    )
+    session.add(loc)
+    session.commit()
+    session.refresh(loc)
+
+    water_well = Thing(
+        name="WL-0001",
+        first_visit_date="2023-03-03",
+        thing_type="water well",
+        release_status="draft",
+        well_depth=10,
+        hole_depth=10,
+        well_construction_notes="Test well construction notes",
+        well_casing_diameter=5.0,
+        well_casing_depth=10.0,
+    )
+    session.add(water_well)
+    session.commit()
+    session.refresh(water_well)
+
+    assoc = LocationThingAssociation()
+    assoc.location_id = loc.id
+    assoc.thing_id = water_well.id
+    assoc.effective_start = "2025-02-01T00:00:00Z"
+    session.add(assoc)
+    session.commit()
+
+
+@given("a functioning api")
 def step_given_api_is_running(context):
     """
     Ensures the API app is initialized and client is ready.
     Behave will keep 'context' across steps, allowing us to reuse response data.
     """
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-
-    init_lexicon()
-    init_parameter()
-
-    register_routes(app)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Allows all origins, adjust as needed for security
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    add_pagination(app)
-
-    def override_authentication(default=True):
-        """
-        Override the authentication dependency for testing purposes.
-        This allows all users to be considered authenticated.
-        """
-
-        def closure():
-            # print("Overriding authentication")
-            return default
-
-        return closure
-
-    app.dependency_overrides[amp_admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_editor_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_viewer_function] = override_authentication()
-    app.dependency_overrides[viewer_function] = override_authentication()
 
     client = TestClient(app)
     context.client = client
