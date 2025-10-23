@@ -1,0 +1,72 @@
+# ===============================================================================
+# Copyright 2025 ross
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+from behave import when, then
+
+
+@when("the user retrieves the well 1")
+def step_impl(context):
+    context.response = context.client.get("thing/water-well/1")
+
+
+@when("the user retrieves the well 9999")
+def step_impl(context):
+    context.response = context.client.get("thing/water-well/9999")
+
+
+@then("the system should return a 200 status code")
+def step_impl(context):
+    assert context.response.status_code == 200
+
+
+@then("the system should return a 404 status code")
+def step_impl(context):
+    print(context.response.status_code, context.response.text)
+    assert context.response.status_code == 404
+
+
+@then("the system should return a response in JSON format")
+def step_impl(context):
+    assert context.response.headers["Content-Type"] == "application/json"
+
+
+@then("the response should contain a current_location field")
+def step_impl(context):
+    assert "current_location" in context.response.json()
+
+
+@then("the response should include notes")
+def step_impl(context):
+    assert "notes" in context.response.json()
+    context.notes = context.response.json()["notes"]
+
+
+@then("the response should include an error message indicating the well was not found")
+def step_impl(context):
+    assert {"detail": "Thing with ID 9999 not found."} == context.response.json()
+
+
+@then("the response should include well_construction_notes")
+def step_impl(context):
+    assert "well_construction_notes" in context.response.json()
+    context.notes = context.response.json()["well_construction_notes"]
+
+
+@then("the notes should be a non-empty string")
+def step_impl(context):
+    assert bool(context.notes) == True
+
+
+# ============= EOF =============================================

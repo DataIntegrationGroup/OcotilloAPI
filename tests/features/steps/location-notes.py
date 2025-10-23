@@ -16,29 +16,21 @@
 from behave import when, then
 
 
-@when('the user retrieves the well "WL-0001"')
+@when("the user retrieves the location with ID 1")
 def step_impl(context):
-    context.response = context.client.get("thing?name=WL-0001")
+    context.response = context.client.get("location/1")
 
 
-@then("the system should return a 200 status code")
+@then("the response should include a location")
 def step_impl(context):
-    assert context.response.status_code == 200
+    assert context.response.json()["current_location"]
 
 
-@then("the system should return a response in JSON format")
+@then("the location should include notes")
 def step_impl(context):
-    assert context.response.headers["Content-Type"] == "application/json"
-
-
-@then("the response should include notes")
-def step_impl(context):
-    assert "notes" in context.response.json()["items"][0]
-
-
-@then("the notes should be a non-empty string")
-def step_impl(context):
-    assert bool(context.response.json()["items"][0]) == True
+    print(context.response.json())
+    context.notes = context.response.json()["current_location"]["notes"]
+    assert context.notes
 
 
 # ============= EOF =============================================

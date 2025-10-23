@@ -26,15 +26,15 @@ from core.dependencies import (
     amp_viewer_function,
     viewer_function,
 )
-from core.initializers import register_routes
-from db import Location, Thing, LocationThingAssociation
-from db.engine import session_ctx
+from core.initializers import register_routes, init_lexicon, init_parameter
+from db import Location, Thing, LocationThingAssociation, Base
+from db.engine import session_ctx, engine
 
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
-#
-# init_lexicon()
-# init_parameter()
+Base.metadata.drop_all(engine)
+Base.metadata.create_all(engine)
+
+init_lexicon()
+init_parameter()
 
 register_routes(app)
 app.add_middleware(

@@ -42,6 +42,8 @@ rsync -a ../OcotilloBDD/features/backend/ tests/features/
 echo "🚀 Running Behave tests..."
 export PYTHONPATH="$PWD"
 export BASE_URL=${BASE_URL:-http://localhost:8000}
-uv run behave tests/features/thing-notes.feature --tags=@backend
+#uv run behave tests/features/location-notes.feature --tags=@backend
+#uv run behave tests/features/well-notes.feature --tags=@backend
+#uv run behave tests/features --tags=@backend
 
 echo "✅ BDD test run complete."

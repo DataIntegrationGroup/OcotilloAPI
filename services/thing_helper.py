@@ -59,6 +59,7 @@ def get_db_things(
     sort,
     thing_type: str = None,
     within: str = None,
+    name: str = None,
 ) -> list:
 
     if query:
@@ -68,6 +69,9 @@ def get_db_things(
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
+
+    if name:
+        sql = sql.where(Thing.name == name)
 
     if within:
         latest_assoc = (
