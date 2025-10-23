@@ -27,109 +27,139 @@ from core.dependencies import (
     viewer_function,
 )
 from core.initializers import register_routes, init_lexicon, init_parameter
-from db import Location, Thing, LocationThingAssociation, Base, Sensor
+from db import (
+    Location,
+    Thing,
+    LocationThingAssociation,
+    Base,
+    Sensor,
+    LexiconTerm,
+    Group,
+    GroupThingAssociation,
+)
 from db.engine import session_ctx, engine
 
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
+with session_ctx() as session:
+    if session.query(LexiconTerm).count() == 0:
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
 
-init_lexicon()
-init_parameter()
-
-register_routes(app)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_pagination(app)
+        init_lexicon()
+        init_parameter()
 
 
-def override_authentication(default=True):
-    """
-    Override the authentication dependency for testing purposes.
-    This allows all users to be considered authenticated.
-    """
-
-    def closure():
-        # print("Overriding authentication")
-        return default
-
-    return closure
-
-
-app.dependency_overrides[amp_admin_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[admin_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[amp_editor_function] = override_authentication(
-    default={"name": "foobar", "sub": "1234567890"}
-)
-app.dependency_overrides[amp_viewer_function] = override_authentication()
-app.dependency_overrides[viewer_function] = override_authentication()
+def add_location(lid):
+    loc = session.get(Location, lid)
+    if not loc:
+        loc = Location(
+            # name="first location",
+            notes="these are some test notes",
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
+            release_status="draft",
+            elevation_accuracy=100,
+            elevation_method="Survey-grade GPS",
+            coordinate_accuracy=50,
+            coordinate_method="GPS, uncorrected",
+        )
+        session.add(loc)
+        session.commit()
+    return loc
 
 
-# need to figure out better way of doing this
+def add_well(location, wid):
+    well = session.get(Thing, wid)
+    if not well:
+        well = Thing(
+            name=f"WL-{wid:04d}",
+            first_visit_date="2023-03-03",
+            thing_type="water well",
+            release_status="draft",
+            well_depth=10,
+            hole_depth=10,
+            well_construction_notes="Test well construction notes",
+            well_casing_diameter=5.0,
+            well_casing_depth=10.0,
+        )
+        session.add(well)
+        session.commit()
+
+        assoc = LocationThingAssociation(location=location, thing=well)
+        assoc.effective_start = "2025-02-01T00:00:00Z"
+        session.add(assoc)
+        session.commit()
+    return well
+
 
 with session_ctx() as session:
-    loc = Location(
-        # name="first location",
-        notes="these are some test notes",
-        point="POINT(-107.949533 33.809665)",
-        elevation=2464.9,
-        release_status="draft",
-        elevation_accuracy=100,
-        elevation_method="Survey-grade GPS",
-        coordinate_accuracy=50,
-        coordinate_method="GPS, uncorrected",
-        # state="New Mexico",
-        # county="Catron",
-        # quad_name="Luera Mountains West",
-    )
-    session.add(loc)
-    session.commit()
-    session.refresh(loc)
+    loc = add_location(1)
+    loc2 = add_location(2)
+    loc3 = add_location(3)
 
-    water_well = Thing(
-        name="WL-0001",
-        first_visit_date="2023-03-03",
-        thing_type="water well",
-        release_status="draft",
-        well_depth=10,
-        hole_depth=10,
-        well_construction_notes="Test well construction notes",
-        well_casing_diameter=5.0,
-        well_casing_depth=10.0,
-    )
-    session.add(water_well)
-    session.commit()
-    session.refresh(water_well)
+    water_well = add_well(loc, 1)
+    water_well2 = add_well(loc2, 2)
+    water_well3 = add_well(loc3, 3)
 
-    assoc = LocationThingAssociation()
-    assoc.location_id = loc.id
-    assoc.thing_id = water_well.id
-    assoc.effective_start = "2025-02-01T00:00:00Z"
-    session.add(assoc)
-    session.commit()
+    sensor = session.get(Sensor, 1)
+    if not sensor:
+        sensor = Sensor(
+            name="Test Sensor",
+            sensor_type="Pressure Transducer",
+            model="Model X",
+            serial_no="123456",
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
+            notes="Test equipment",
+            release_status="draft",
+        )
+        session.add(sensor)
+        session.commit()
 
-    sensor = Sensor(
-        name="Test Sensor",
-        sensor_type="Pressure Transducer",
-        model="Model X",
-        serial_no="123456",
-        pcn_number="PCN123456",
-        owner_agency="NMBGMR",
-        sensor_status="In Service",
-        notes="Test equipment",
-        release_status="draft",
+    group = session.get(Group, 1)
+    if not group:
+        group = Group(name="Collabnet")
+        for w in (water_well, water_well2):
+            assoc = GroupThingAssociation(group=group, thing=w)
+            session.add(assoc)
+
+        session.add(group)
+        session.commit()
+
+    register_routes(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allows all origins, adjust as needed for security
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-    session.add(sensor)
-    session.commit()
+
+    add_pagination(app)
+
+    def override_authentication(default=True):
+        """
+        Override the authentication dependency for testing purposes.
+        This allows all users to be considered authenticated.
+        """
+
+        def closure():
+            # print("Overriding authentication")
+            return default
+
+        return closure
+
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_viewer_function] = override_authentication()
+    app.dependency_overrides[viewer_function] = override_authentication()
 
 
 @given("a functioning api")
