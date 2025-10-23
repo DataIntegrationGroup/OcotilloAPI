@@ -14,29 +14,24 @@
 # limitations under the License.
 # ===============================================================================
 from behave import when, then
+from behave.runner import Context
 
 
-@when("the user retrieves the location with ID 1")
-def step_impl(context):
-    context.response = context.client.get("location/1")
+@when("the user requests the sensor with ID 1")
+def step_impl(context: Context):
+    context.response = context.client.get("sensor/1")
 
 
-@then("the response should include a current location")
-def step_impl(context):
-    assert context.response.json()["current_location"]
+@when("the user requests the sensor with ID 9999")
+def step_impl(context: Context):
+    context.response = context.client.get("sensor/9999")
 
 
-@then("the current location should include notes")
-def step_impl(context):
-    context.notes = context.response.json()["current_location"]["notes"]
-    assert context.notes
-
-
-# @then("the location should include notes")
-# def step_impl(context):
-#     print(context.response.json())
-#     context.notes = context.response.json()["current_location"]["notes"]
-#     assert context.notes
+@then(
+    "the response should include an error message indicating the sensor was not found"
+)
+def step_impl(context: Context):
+    assert {"detail": "Sensor with ID 9999 not found."} == context.response.json()
 
 
 # ============= EOF =============================================

@@ -27,7 +27,7 @@ from core.dependencies import (
     viewer_function,
 )
 from core.initializers import register_routes, init_lexicon, init_parameter
-from db import Location, Thing, LocationThingAssociation, Base
+from db import Location, Thing, LocationThingAssociation, Base, Sensor
 from db.engine import session_ctx, engine
 
 Base.metadata.drop_all(engine)
@@ -115,6 +115,20 @@ with session_ctx() as session:
     assoc.thing_id = water_well.id
     assoc.effective_start = "2025-02-01T00:00:00Z"
     session.add(assoc)
+    session.commit()
+
+    sensor = Sensor(
+        name="Test Sensor",
+        sensor_type="Pressure Transducer",
+        model="Model X",
+        serial_no="123456",
+        pcn_number="PCN123456",
+        owner_agency="NMBGMR",
+        sensor_status="In Service",
+        notes="Test equipment",
+        release_status="draft",
+    )
+    session.add(sensor)
     session.commit()
 
 
