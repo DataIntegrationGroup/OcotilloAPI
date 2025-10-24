@@ -105,10 +105,13 @@ else:
     #     name = os.environ.get("DB_NAME", "development.db")
     #     url = f"sqlite:///{name}"
     # elif driver == "postgres":
+    import getpass
+
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
-    user = os.environ.get("POSTGRES_USER", "postgres")
+    # Default to current OS user if POSTGRES_USER not set or empty
+    user = os.environ.get("POSTGRES_USER", "").strip() or getpass.getuser()
     name = os.environ.get("POSTGRES_DB", "postgres")
 
     auth = f"{user}:{password}@" if user and password else ""
