@@ -343,7 +343,9 @@ def test_get_lexicon_term_by_id(lexicon_term):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_term.id
-    assert data["created_at"] == lexicon_term.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == lexicon_term.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["term"] == lexicon_term.term
     assert data["definition"] == lexicon_term.definition
     assert len(data["categories"]) == 1
@@ -397,7 +399,9 @@ def test_get_lexicon_category_by_id(lexicon_category):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_category.id
-    assert data["created_at"] == lexicon_category.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == lexicon_category.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["name"] == lexicon_category.name
     assert data["description"] == lexicon_category.description
 
@@ -416,9 +420,9 @@ def test_get_lexicon_triples(lexicon_triple):
     data = response.json()
     assert data["total"] > 0
     assert data["items"][0]["id"] == lexicon_triple.id
-    assert data["items"][0][
-        "created_at"
-    ] == lexicon_triple.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == lexicon_triple.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["subject"] == lexicon_triple.subject
     assert data["items"][0]["predicate"] == lexicon_triple.predicate
     assert data["items"][0]["object_"] == lexicon_triple.object_
@@ -429,7 +433,9 @@ def test_get_lexicon_triple_by_id(lexicon_triple):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_triple.id
-    assert data["created_at"] == lexicon_triple.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == lexicon_triple.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["subject"] == lexicon_triple.subject
     assert data["predicate"] == lexicon_triple.predicate
     assert data["object_"] == lexicon_triple.object_

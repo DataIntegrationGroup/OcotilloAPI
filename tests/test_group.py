@@ -88,7 +88,9 @@ def test_get_groups(group):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == group.id
-    assert data["items"][0]["created_at"] == group.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == group.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == group.release_status
     assert data["items"][0]["name"] == group.name
     assert data["items"][0]["project_area"] == to_shape(group.project_area).wkt
@@ -101,7 +103,9 @@ def test_get_group_by_id(group):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == group.id
-    assert data["created_at"] == group.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == group.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["name"] == group.name
     assert data["project_area"] == to_shape(group.project_area).wkt
     assert data["description"] == group.description

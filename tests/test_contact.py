@@ -366,7 +366,9 @@ def test_get_contacts(contact, email, address, phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == contact.id
-    assert data["items"][0]["created_at"] == contact.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == contact.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["name"] == contact.name
     assert data["items"][0]["role"] == contact.role
     assert data["items"][0]["contact_type"] == contact.contact_type
@@ -375,9 +377,9 @@ def test_get_contacts(contact, email, address, phone):
 
     assert len(data["items"][0]["emails"]) == 1
     assert data["items"][0]["emails"][0]["id"] == email.id
-    assert data["items"][0]["emails"][0][
-        "created_at"
-    ] == email.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["emails"][0]["created_at"] == email.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["emails"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["emails"][0]["email"] == email.email
     assert data["items"][0]["emails"][0]["email_type"] == email.email_type
@@ -385,9 +387,9 @@ def test_get_contacts(contact, email, address, phone):
 
     assert len(data["items"][0]["phones"]) == 1
     assert data["items"][0]["phones"][0]["id"] == phone.id
-    assert data["items"][0]["phones"][0][
-        "created_at"
-    ] == phone.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["phones"][0]["created_at"] == phone.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["phones"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phones"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phones"][0]["phone_type"] == phone.phone_type
@@ -423,7 +425,9 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == contact.id
-    assert data["created_at"] == contact.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == contact.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["name"] == contact.name
     assert data["role"] == contact.role
     assert data["contact_type"] == contact.contact_type
@@ -432,7 +436,9 @@ def test_get_contact_by_id(contact, email, address, phone):
 
     assert len(data["emails"]) == 1
     assert data["emails"][0]["id"] == email.id
-    assert data["emails"][0]["created_at"] == email.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["emails"][0]["created_at"] == email.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["emails"][0]["contact_id"] == email.contact_id
     assert data["emails"][0]["email"] == email.email
     assert data["emails"][0]["email_type"] == email.email_type
@@ -440,7 +446,9 @@ def test_get_contact_by_id(contact, email, address, phone):
 
     assert len(data["phones"]) == 1
     assert data["phones"][0]["id"] == phone.id
-    assert data["phones"][0]["created_at"] == phone.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["phones"][0]["created_at"] == phone.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["phones"][0]["contact_id"] == phone.contact_id
     assert data["phones"][0]["phone_number"] == phone.phone_number
     assert data["phones"][0]["phone_type"] == phone.phone_type
@@ -448,7 +456,9 @@ def test_get_contact_by_id(contact, email, address, phone):
 
     assert len(data["addresses"]) == 1
     assert data["addresses"][0]["id"] == address.id
-    assert data["addresses"][0]["created_at"] == address.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["addresses"][0]["created_at"] == address.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["addresses"][0]["contact_id"] == address.contact_id
     assert data["addresses"][0]["address_line_1"] == address.address_line_1
     assert data["addresses"][0]["address_line_2"] == address.address_line_2
@@ -474,7 +484,9 @@ def test_get_contact_emails(contact, email):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == email.id
-    assert data["items"][0]["created_at"] == email.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == email.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["email"] == email.email
     assert data["items"][0]["email_type"] == email.email_type
@@ -495,7 +507,9 @@ def test_get_contact_phones(contact, phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == phone.id
-    assert data["items"][0]["created_at"] == phone.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == phone.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phone_type"] == phone.phone_type
@@ -516,7 +530,9 @@ def test_get_contact_addresses(contact, address):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == address.id
-    assert data["items"][0]["created_at"] == address.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == address.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["address_line_2"] == address.address_line_2
@@ -542,7 +558,9 @@ def test_get_emails(email):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == email.id
-    assert data["items"][0]["created_at"] == email.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == email.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == email.contact_id
     assert data["items"][0]["email"] == email.email
     assert data["items"][0]["email_type"] == email.email_type
@@ -554,7 +572,9 @@ def test_get_email_by_id(email):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == email.id
-    assert data["created_at"] == email.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == email.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["contact_id"] == email.contact_id
     assert data["email"] == email.email
     assert data["email_type"] == email.email_type
@@ -575,7 +595,9 @@ def test_get_phones(phone):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == phone.id
-    assert data["items"][0]["created_at"] == phone.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == phone.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == phone.contact_id
     assert data["items"][0]["phone_number"] == phone.phone_number
     assert data["items"][0]["phone_type"] == phone.phone_type
@@ -587,7 +609,9 @@ def test_get_phone_by_id(phone):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == phone.id
-    assert data["created_at"] == phone.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == phone.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["contact_id"] == phone.contact_id
     assert data["phone_number"] == phone.phone_number
     assert data["phone_type"] == phone.phone_type
@@ -608,7 +632,9 @@ def test_get_addresses(address):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == address.id
-    assert data["items"][0]["created_at"] == address.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == address.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["contact_id"] == address.contact_id
     assert data["items"][0]["address_line_1"] == address.address_line_1
     assert data["items"][0]["address_line_2"] == address.address_line_2
@@ -625,7 +651,9 @@ def test_get_address_by_id(address):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == address.id
-    assert data["created_at"] == address.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == address.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["contact_id"] == address.contact_id
     assert data["address_line_1"] == address.address_line_1
     assert data["address_line_2"] == address.address_line_2

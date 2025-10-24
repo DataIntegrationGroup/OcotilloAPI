@@ -47,7 +47,7 @@ class UTCAwareDatetime(AwareDatetime):
             if value.tzinfo != timezone.utc:
                 value = value.astimezone(timezone.utc)
             # Format with Z suffix
-            return value.strftime('%Y-%m-%dT%H:%M:%SZ')
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Use generate_schema instead of calling handler directly
         python_schema = handler.generate_schema(datetime)

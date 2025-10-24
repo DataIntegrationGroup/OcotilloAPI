@@ -361,9 +361,9 @@ def test_get_water_wells(water_well_thing, location):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == water_well_thing.id
-    assert data["items"][0][
-        "created_at"
-    ] == water_well_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == water_well_thing.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["name"] == water_well_thing.name
     assert (
         data["items"][0]["first_visit_date"]
@@ -403,7 +403,9 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == water_well_thing.id
-    assert data["created_at"] == water_well_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == water_well_thing.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["name"] == water_well_thing.name
     assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()
     assert data["thing_type"] == water_well_thing.thing_type
@@ -455,9 +457,9 @@ def test_get_springs(spring_thing, location):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == spring_thing.id
-    assert data["items"][0][
-        "created_at"
-    ] == spring_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == spring_thing.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["name"] == spring_thing.name
     assert (
         data["items"][0]["first_visit_date"]
@@ -476,7 +478,9 @@ def test_get_spring_by_id(spring_thing, location):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == spring_thing.id
-    assert data["created_at"] == spring_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == spring_thing.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["name"] == spring_thing.name
     assert data["first_visit_date"] == spring_thing.first_visit_date.isoformat()
     assert data["thing_type"] == spring_thing.thing_type
@@ -521,7 +525,9 @@ def test_get_well_screens(well_screen):
     assert data["items"][0]["screen_type"] == well_screen.screen_type
     assert data["items"][0]["screen_description"] == well_screen.screen_description
     assert data["items"][0]["release_status"] == well_screen.release_status
-    assert data["items"][0]["created_at"] == well_screen.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == well_screen.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def test_get_well_screen_by_id(well_screen):
@@ -535,7 +541,9 @@ def test_get_well_screen_by_id(well_screen):
     assert data["screen_type"] == well_screen.screen_type
     assert data["screen_description"] == well_screen.screen_description
     assert data["release_status"] == well_screen.release_status
-    assert data["created_at"] == well_screen.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == well_screen.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def test_get_well_screen_by_id_404_not_found(well_screen):
@@ -588,9 +596,9 @@ def test_get_thing_id_links(thing_id_link):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == thing_id_link.id
-    assert data["items"][0][
-        "created_at"
-    ] == thing_id_link.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == thing_id_link.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == thing_id_link.release_status
     assert data["items"][0]["thing_id"] == thing_id_link.thing_id
     assert data["items"][0]["relation"] == thing_id_link.relation
@@ -606,7 +614,9 @@ def test_get_thing_id_link_by_id(thing_id_link):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == thing_id_link.id
-    assert data["created_at"] == thing_id_link.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == thing_id_link.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["release_status"] == thing_id_link.release_status
     assert data["thing_id"] == thing_id_link.thing_id
     assert data["relation"] == thing_id_link.relation
@@ -663,7 +673,9 @@ def test_get_thing_by_id(water_well_thing, location):
     data = response.json()
 
     assert data["id"] == water_well_thing.id
-    assert data["created_at"] == water_well_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == water_well_thing.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["release_status"] == water_well_thing.release_status
     assert data["name"] == water_well_thing.name
     assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()

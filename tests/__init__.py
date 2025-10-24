@@ -18,13 +18,15 @@ import os
 # Load .env file BEFORE importing anything else
 # Use override=True to override conflicting shell environment variables
 from dotenv import load_dotenv
+
 load_dotenv(override=True)
 
 # Set timezone to UTC for consistent datetime handling in tests
-os.environ['TZ'] = 'UTC'
+os.environ["TZ"] = "UTC"
 
 # Also set time.tzset() to apply the timezone change
 import time
+
 time.tzset()
 
 from fastapi.testclient import TestClient
