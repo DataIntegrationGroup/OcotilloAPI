@@ -14,8 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from db.base import AutoBaseMixin, Base, lexicon_term
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Boolean
-from sqlalchemy.orm import relationship, backref, mapped_column
+from sqlalchemy import Integer, Float
+from sqlalchemy.orm import mapped_column
 
 
 class GeochronologyAge(Base, AutoBaseMixin):
