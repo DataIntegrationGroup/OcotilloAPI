@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, AwareDatetime
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import core_schema
 
 
 class ResourceNotFoundResponse(BaseModel):
@@ -28,9 +31,45 @@ class BaseUpdateModel(BaseCreateModel):
     release_status: str | None = None
 
 
+# Custom type for UTC datetime serialization
+class UTCAwareDatetime(AwareDatetime):
+    """Custom datetime type that always serializes to UTC with 'Z' suffix."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type, handler
+    ) -> core_schema.CoreSchema:
+        def serialize_dt(value: datetime) -> str:
+            """Serialize datetime to UTC format with Z suffix."""
+            if value is None:
+                return None
+            # Convert to UTC if not already
+            if value.tzinfo != timezone.utc:
+                value = value.astimezone(timezone.utc)
+            # Format with Z suffix
+            return value.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        # Use generate_schema instead of calling handler directly
+        python_schema = handler.generate_schema(datetime)
+        return core_schema.no_info_after_validator_function(
+            lambda x: x,
+            python_schema,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                serialize_dt,
+                return_schema=core_schema.str_schema(),
+            ),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: core_schema.CoreSchema, handler
+    ) -> JsonSchemaValue:
+        return handler(core_schema)
+
+
 class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
-    created_at: AwareDatetime
+    created_at: UTCAwareDatetime
     release_status: str
 
     model_config = ConfigDict(
