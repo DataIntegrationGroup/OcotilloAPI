@@ -24,7 +24,12 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.thing import ThingResponse
 from schemas.field import FieldEventResponse, FieldActivityResponse
 from schemas.contact import ContactResponse
@@ -124,7 +129,7 @@ class SampleResponse(BaseResponseModel):
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
     contact: ContactResponse
-    sample_date: Annotated[AwareDatetime, PastDatetime()]
+    sample_date: UTCAwareDatetime
     sample_name: str
     sample_matrix: str
     sample_method: str

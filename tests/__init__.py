@@ -13,7 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import os
+
+# Load .env file BEFORE importing anything else
+# Use override=True to override conflicting shell environment variables
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+# Set timezone to UTC for consistent datetime handling in tests
+os.environ["TZ"] = "UTC"
+
+# Also set time.tzset() to apply the timezone change
+import time
+
+time.tzset()
+
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from core.initializers import init_lexicon, init_parameter
 from db import Base, Parameter
@@ -21,7 +38,15 @@ from db.engine import engine, session_ctx
 from main import app
 
 
-Base.metadata.drop_all(engine)
+# Force clean database state by dropping and recreating schema
+# This ensures test isolation similar to Docker environment
+with engine.connect() as conn:
+    # Drop all tables with CASCADE to handle foreign key dependencies
+    conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+    conn.execute(text("CREATE SCHEMA public"))
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+    conn.commit()
+
 Base.metadata.create_all(engine)
 
 init_lexicon()

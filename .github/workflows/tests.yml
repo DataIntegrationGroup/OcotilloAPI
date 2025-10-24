@@ -59,6 +59,7 @@ jobs:
         MODE: development
         POSTGRES_HOST: localhost
         POSTGRES_PORT: 5432
+        POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
 #        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
