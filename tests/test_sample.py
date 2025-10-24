@@ -330,7 +330,10 @@ def test_get_sample_by_id(
     assert data["id"] == water_chemistry_sample.id
     # Convert created_at to UTC and format with Z suffix
     from datetime import timezone
-    expected_created_at = water_chemistry_sample.created_at.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    expected_created_at = water_chemistry_sample.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["created_at"] == expected_created_at
     assert data["thing"]["id"] == water_well_thing.id
     assert data["field_event"]["id"] == field_event.id

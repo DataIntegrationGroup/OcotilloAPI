@@ -148,7 +148,9 @@ def test_get_assets(asset, asset_with_associated_thing):
     data = response.json()
     assert data["total"] == 2
     assert data["items"][0]["id"] == asset.id
-    assert data["items"][0]["created_at"] == asset.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["created_at"] == asset.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == asset.release_status
     assert data["items"][0]["name"] == asset.name
     assert data["items"][0]["label"] == asset.label
@@ -162,7 +164,9 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][1]["id"] == asset_with_associated_thing.id
     assert data["items"][1][
         "created_at"
-    ] == asset_with_associated_thing.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ] == asset_with_associated_thing.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert (
         data["items"][1]["release_status"] == asset_with_associated_thing.release_status
     )
@@ -198,7 +202,9 @@ def test_get_asset_by_id(asset):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == asset.id
-    assert data["created_at"] == asset.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == asset.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["release_status"] == asset.release_status
     assert data["name"] == asset.name
     assert data["label"] == asset.label

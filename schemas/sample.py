@@ -24,7 +24,12 @@ from pydantic import (
 from typing import Annotated
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, UTCAwareDatetime
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.thing import ThingResponse
 from schemas.field import FieldEventResponse, FieldActivityResponse
 from schemas.contact import ContactResponse
