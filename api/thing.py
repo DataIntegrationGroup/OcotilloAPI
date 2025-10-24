@@ -33,6 +33,7 @@ from core.dependencies import (
     viewer_dependency,
 )
 from db.thing import Thing, ThingIdLink, WellScreen
+from db.deployment import Deployment
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -48,6 +49,7 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
+from schemas.deployment import DeploymentResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import get_terms_by_category
@@ -345,6 +347,20 @@ async def get_thing_id_links(
     """
     thing = simple_get_by_id(session, Thing, thing_id)
     sql = select(ThingIdLink).where(ThingIdLink.thing_id == thing.id)
+    return paginate(query=sql, conn=session)
+
+
+@router.get("/{thing_id}/deployment", summary="Get deployments by thing ID")
+async def get_thing_deployments(
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+) -> CustomPage[DeploymentResponse]:
+    """
+    Retrieve all deployments for a specific thing by its ID.
+    """
+    thing = simple_get_by_id(session, Thing, thing_id)
+    sql = select(Deployment).where(Deployment.thing_id == thing.id)
     return paginate(query=sql, conn=session)
 
 
