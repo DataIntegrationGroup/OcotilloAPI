@@ -27,6 +27,7 @@ from tests import (
 )
 
 import pytest
+from datetime import timezone
 
 # from pydantic import ValidationError
 
@@ -168,9 +169,7 @@ def test_get_sensors(sensor):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -192,9 +191,7 @@ def test_get_sensors_by_thing_id(
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -212,9 +209,7 @@ def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -231,7 +226,7 @@ def test_get_sensor_by_id(sensor):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == sensor.id
-    assert data["created_at"] == sensor.created_at.isoformat().replace("+00:00", "Z")
+    assert data["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["release_status"] == sensor.release_status
     assert data["name"] == sensor.name
     assert data["sensor_type"] == sensor.sensor_type
