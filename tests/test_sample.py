@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import pytest
+from datetime import timezone
 from pydantic import ValidationError
 
 from main import app
@@ -329,8 +330,6 @@ def test_get_sample_by_id(
     data = response.json()
     assert data["id"] == water_chemistry_sample.id
     # Convert created_at to UTC and format with Z suffix
-    from datetime import timezone
-
     expected_created_at = water_chemistry_sample.created_at.astimezone(
         timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")

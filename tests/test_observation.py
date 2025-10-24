@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pytest
+from datetime import timezone
+
 from db import Observation
 from core.dependencies import (
     amp_admin_function,
@@ -30,7 +33,6 @@ from tests import (
     groundwater_level_parameter_id,
     pH_parameter_id,
 )
-import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -239,8 +241,6 @@ def test_get_observation_by_id(
 
         assert data["id"] == obs.id
         # Convert created_at to UTC and format with Z suffix
-        from datetime import timezone
-
         expected_created_at = obs.created_at.astimezone(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
@@ -269,8 +269,6 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
     assert data["total"] == 1
     assert data["items"][0]["id"] == groundwater_level_observation.id
     # Convert created_at to UTC and format with Z suffix
-    from datetime import timezone
-
     expected_created_at = groundwater_level_observation.created_at.astimezone(
         timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -311,8 +309,6 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
     data = response.json()
     assert data["id"] == groundwater_level_observation.id
     # Convert created_at to UTC and format with Z suffix
-    from datetime import timezone
-
     expected_created_at = groundwater_level_observation.created_at.astimezone(
         timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -457,8 +453,6 @@ def test_get_water_chemistry_observations(water_chemistry_observation):
     assert data["total"] == 1
     assert data["items"][0]["id"] == water_chemistry_observation.id
     # Convert created_at to UTC and format with Z suffix
-    from datetime import timezone
-
     expected_created_at = water_chemistry_observation.created_at.astimezone(
         timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -485,8 +479,6 @@ def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
     data = response.json()
     assert data["id"] == water_chemistry_observation.id
     # Convert created_at to UTC and format with Z suffix
-    from datetime import timezone
-
     expected_created_at = water_chemistry_observation.created_at.astimezone(
         timezone.utc
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
