@@ -15,9 +15,11 @@
 # ===============================================================================
 
 import asyncio
-from dotenv import load_dotenv
+import getpass
 import os
 from contextlib import contextmanager
+
+from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine,
 )
@@ -105,8 +107,6 @@ else:
     #     name = os.environ.get("DB_NAME", "development.db")
     #     url = f"sqlite:///{name}"
     # elif driver == "postgres":
-    import getpass
-
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")
