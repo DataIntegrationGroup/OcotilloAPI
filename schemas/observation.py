@@ -25,7 +25,12 @@ from pydantic import (
 )
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.parameter import ParameterResponse
 
 
@@ -102,7 +107,7 @@ class UpdateWaterChemistryObservation(UpdateBaseObservation):
 class BaseObservationResponse(BaseResponseModel):
     sample_id: int
     sensor_id: int | None
-    observation_datetime: AwareDatetime
+    observation_datetime: UTCAwareDatetime
     parameter: ParameterResponse
     value: float | None
     unit: str

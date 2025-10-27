@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from core.initializers import init_lexicon, init_parameter
 from db import Base
@@ -74,8 +75,6 @@ def parameter():
 @timeit
 def erase(session: Session):
     logger.info("Erasing existing data")
-    from sqlalchemy import text
-
     with session.bind.connect() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
