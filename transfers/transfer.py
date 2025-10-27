@@ -19,7 +19,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 from sqlalchemy.orm import Session
 from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db.engine import session_ctx

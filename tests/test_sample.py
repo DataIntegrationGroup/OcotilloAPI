@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import timezone
+
 import pytest
 from pydantic import ValidationError
 
-from main import app
 from core.dependencies import admin_function, editor_function, viewer_function
 from db.sample import Sample
+from main import app
 from schemas.sample import ValidateSample
 from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
@@ -328,9 +330,11 @@ def test_get_sample_by_id(
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == water_chemistry_sample.id
-    assert data["created_at"] == water_chemistry_sample.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    # Convert created_at to UTC and format with Z suffix
+    expected_created_at = water_chemistry_sample.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["created_at"] == expected_created_at
     assert data["thing"]["id"] == water_well_thing.id
     assert data["field_event"]["id"] == field_event.id
     assert data["field_activity"]["id"] == water_chemistry_field_activity.id

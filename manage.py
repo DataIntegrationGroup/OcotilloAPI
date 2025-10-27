@@ -19,7 +19,6 @@ load_dotenv()
 
 import click
 from core.initializers import init_lexicon
-from db.engine import session_ctx
 
 
 # from migration.migration2 import migrate_wells, migrate_water_levels
