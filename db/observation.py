@@ -37,6 +37,8 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
 
     # NM_Aquifer fields for audits
     nma_pk_waterlevels: Mapped[str] = mapped_column(nullable=True)
+    nma_pk_majorchemistry: Mapped[str] = mapped_column(nullable=True)
+    nma_pk_minorandtracechemistry: Mapped[str] = mapped_column(nullable=True)
 
     # --- Foreign Keys ---
     sample_id: Mapped[int] = mapped_column(
