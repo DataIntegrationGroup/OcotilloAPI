@@ -16,7 +16,6 @@
 from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
-from pydantic import UUID4
 
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -83,7 +82,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     Schema for creating a well.
     """
 
-    nma_pk_welldata: UUID4 | None = None
     well_purposes: list[str] | None = None
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
