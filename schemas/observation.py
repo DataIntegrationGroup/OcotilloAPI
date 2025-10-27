@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import timezone
+from typing import Annotated
+
 from pydantic import (
     BaseModel,
     AwareDatetime,
@@ -21,7 +23,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing import Annotated
 from typing_extensions import Self
 
 from schemas import (

@@ -32,8 +32,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db.thing import Thing, ThingIdLink, WellScreen
 from db.deployment import Deployment
+from db.thing import Thing, ThingIdLink, WellScreen
+from schemas.deployment import DeploymentResponse
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -49,9 +50,9 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
-from schemas.deployment import DeploymentResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
+from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -66,7 +67,6 @@ from services.thing_helper import (
     modify_well_descriptor_tables,
     WELL_DESCRIPTOR_MODEL_MAP,
 )
-from services.lexicon_helper import get_terms_by_category
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 

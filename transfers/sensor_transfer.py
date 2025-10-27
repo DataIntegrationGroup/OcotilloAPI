@@ -14,10 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+
 import pandas as pd
 
 from db import Sensor, Deployment, Thing
-from transfers.util import read_csv, logger
+from transfers.util import read_csv, logger, filter_to_valid_point_ids, replace_nans
 
 EQUIPMENT_TO_SENSOR_TYPE_MAP = {
     "Pressure transducer": "Pressure Transducer",
@@ -29,8 +30,11 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 def transfer_sensors(session):
     equipment = read_csv("Equipment")
     equipment.columns = equipment.columns.str.replace(" ", "_")
-    grouped_equipment = equipment.groupby(["PointID"])
+    equipment = equipment[equipment.SerialNo.notna()]
+    equipment = filter_to_valid_point_ids(session, equipment)
+    equipment = replace_nans(equipment)
 
+    grouped_equipment = equipment.groupby(["PointID"])
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -40,9 +44,6 @@ def transfer_sensors(session):
             )
             continue
         ordered_group = group.sort_values(by=["DateInstalled"])
-
-        if pointid == "SO-0168":
-            print(ordered_group)
 
         try:
             for row in ordered_group.itertuples():

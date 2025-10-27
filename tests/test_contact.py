@@ -1,3 +1,9 @@
+import re
+from datetime import timezone
+
+import pytest
+from pydantic import ValidationError
+
 from core.dependencies import (
     amp_viewer_function,
     amp_editor_function,
@@ -5,13 +11,8 @@ from core.dependencies import (
 )
 from db import Contact, Address, Email, Phone
 from main import app
-from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 from schemas.contact import ValidateEmail, ValidatePhone, ValidateContact
-
-import pytest
-from datetime import timezone
-from pydantic import ValidationError
-import re
+from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
 
 
 @pytest.fixture(scope="module", autouse=True)

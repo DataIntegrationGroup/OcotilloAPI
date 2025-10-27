@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pytest
 from datetime import timezone
 
-from db import Observation
+import pytest
+
 from core.dependencies import (
     amp_admin_function,
     admin_function,
@@ -24,6 +24,7 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
+from db import Observation
 from main import app
 from tests import (
     client,

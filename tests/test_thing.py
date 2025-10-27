@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pytest
 from datetime import timezone
 
-from db import Thing, WellScreen, ThingIdLink
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
-from main import app
+import pytest
+
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -27,8 +25,11 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from db import Thing, WellScreen, ThingIdLink
+from main import app
 from schemas.location import LocationResponse
 from schemas.thing import ValidateWell
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 
 @pytest.fixture(scope="module", autouse=True)

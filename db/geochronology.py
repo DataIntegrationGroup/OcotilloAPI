@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.base import AutoBaseMixin, Base, lexicon_term
 from sqlalchemy import Integer, Float
 from sqlalchemy.orm import mapped_column
+
+from db.base import AutoBaseMixin, Base, lexicon_term
 
 
 class GeochronologyAge(Base, AutoBaseMixin):

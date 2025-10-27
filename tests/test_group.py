@@ -1,10 +1,11 @@
-from geoalchemy2.shape import to_shape
-from pydantic import ValidationError
-import pytest
 from datetime import timezone
 
-from db import Group
+import pytest
+from geoalchemy2.shape import to_shape
+from pydantic import ValidationError
+
 from core.dependencies import admin_function, viewer_function, editor_function
+from db import Group
 from main import app
 from schemas.group import ValidateGroup
 from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test

@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from geoalchemy2.shape import to_shape
-import pytest
 from datetime import timezone
+
+import pytest
+from geoalchemy2.shape import to_shape
 
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Location

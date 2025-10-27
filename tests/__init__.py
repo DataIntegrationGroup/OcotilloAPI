@@ -30,24 +30,14 @@ import time
 time.tzset()
 
 from fastapi.testclient import TestClient
-from sqlalchemy import text
 
-from core.initializers import init_lexicon, init_parameter
+from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db import Base, Parameter
-from db.engine import engine, session_ctx
+from db.engine import session_ctx
 from main import app
 
-
-# Force clean database state by dropping and recreating schema
-# This ensures test isolation similar to Docker environment
-with engine.connect() as conn:
-    # Drop all tables with CASCADE to handle foreign key dependencies
-    conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
-    conn.execute(text("CREATE SCHEMA public"))
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    conn.commit()
-
-Base.metadata.create_all(engine)
+with session_ctx() as session:
+    erase_and_rebuild_db(session)
 
 init_lexicon()
 init_parameter()

@@ -13,18 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import LexiconTerm, LexiconCategory, LexiconTriple
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
+from datetime import timezone
+
+import pytest
 
 from core.dependencies import (
     viewer_function,
     lexicon_admin_function,
     lexicon_editor_function,
 )
+from db import LexiconTerm, LexiconCategory, LexiconTriple
 from main import app
-
-import pytest
-from datetime import timezone
+from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
 
 
 @pytest.fixture(scope="module", autouse=True)

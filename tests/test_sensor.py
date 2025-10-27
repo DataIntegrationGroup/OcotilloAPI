@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import timezone
+
+import pytest
+
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Sensor
 from main import app
@@ -26,8 +30,6 @@ from tests import (
     groundwater_level_parameter_id,
 )
 
-import pytest
-from datetime import timezone
 
 # from pydantic import ValidationError
 
