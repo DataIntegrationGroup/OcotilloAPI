@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import List, TYPE_CHECKING
+
 from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
-from typing import List, TYPE_CHECKING
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-
 
 if TYPE_CHECKING:
     from db.field import FieldEventParticipant, FieldEvent
@@ -118,7 +118,8 @@ class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    nma_phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
     phone_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(

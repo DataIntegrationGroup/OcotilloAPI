@@ -35,7 +35,6 @@ def transfer_sensors(session):
     equipment = replace_nans(equipment)
 
     grouped_equipment = equipment.groupby(["PointID"])
-
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -45,9 +44,6 @@ def transfer_sensors(session):
             )
             continue
         ordered_group = group.sort_values(by=["DateInstalled"])
-
-        if pointid == "SO-0168":
-            print(ordered_group)
 
         try:
             for row in ordered_group.itertuples():

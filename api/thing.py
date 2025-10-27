@@ -32,8 +32,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db.thing import Thing, ThingIdLink, WellScreen
 from db.deployment import Deployment
+from db.thing import Thing, ThingIdLink, WellScreen
+from schemas.deployment import DeploymentResponse
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -49,7 +50,6 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
-from schemas.deployment import DeploymentResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import get_terms_by_category

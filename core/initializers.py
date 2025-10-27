@@ -17,6 +17,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
 
 from db import Base
 from db.engine import engine, session_ctx
@@ -87,6 +88,19 @@ def init_parameter(path: str = None) -> None:
             except DatabaseError as e:
                 print(f"Failed to add parameter {param['parameter_name']}: error: {e}")
                 session.rollback()
+
+
+def erase_and_rebuild_db(session: Session):
+    from sqlalchemy import text
+
+    with session.bind.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        conn.commit()
+
+    Base.metadata.drop_all(session.bind)
+    Base.metadata.create_all(session.bind)
 
 
 def init_lexicon(path: str = None) -> None:

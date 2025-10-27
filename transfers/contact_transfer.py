@@ -261,12 +261,21 @@ def _make_phone(first_second, ownerkey, **kw):
     try:
         if "phone_number" in kw:
             kw["phone_number"] = kw["phone_number"].strip()
+
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump())
     except ValidationError as e:
-        logger.critical(
-            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
-        )
+        try:
+            if "phone_number" in kw:
+                pn = kw.pop("phone_number")
+                kw["nma_phone_number"] = pn.strip()
+            phone = CreatePhone(**kw)
+            return Phone(**phone.model_dump())
+        except ValidationError:
+
+            logger.critical(
+                f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
+            )
 
 
 def _make_address(first_second, ownerkey, kind, **kw):
