@@ -14,19 +14,17 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+import io
 import os
+import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import pytz
-import re
-import io
-from shapely import Point
-
-
-from sqlalchemy.orm import Session
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytz
+from shapely import Point
+from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
@@ -49,9 +47,15 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
 
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
+    if os.path.exists(p):
+        return pd.read_csv(p, dtype=dtype)
+
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
+    with open(p, "wb") as f:
+        f.write(data)
 
     if dtype:
         return pd.read_csv(io.BytesIO(data), dtype=dtype)

@@ -29,7 +29,6 @@ from db import (
     WellPurpose,
     WellCasingMaterial,
 )
-from schemas.thing import CreateWellScreen, CreateWell
 from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
@@ -97,6 +96,12 @@ def _extract_casing_materials(row) -> list[str]:
 
 
 def transfer_wells(session, limit=0) -> None:
+    from schemas.thing import CreateWell
+    from core.enums import (
+        WellPurpose as WellPurposeEnum,
+        CasingMaterial as WellCasingMaterialEnum,
+    )
+
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
@@ -137,11 +142,15 @@ def transfer_wells(session, limit=0) -> None:
                 session.rollback()
                 continue
 
+        location = None
         try:
             location = make_location(row)
             session.add(location)
         except Exception as e:
-            session.rollback()
+            if location is not None:
+                session.expunge(location)
+            # these rollbacks are cause an issue because they are discarding good data
+            # session.rollback()
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -154,6 +163,7 @@ def transfer_wells(session, limit=0) -> None:
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
+
             data = CreateWell(
                 location_id=location.id,
                 name=row.PointID,
@@ -168,12 +178,13 @@ def transfer_wells(session, limit=0) -> None:
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            session.rollback()
+            # session.rollback()
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
             continue
 
+        well = None
         try:
             well_data = data.model_dump(
                 exclude=[
@@ -190,15 +201,27 @@ def transfer_wells(session, limit=0) -> None:
 
             if well_purposes:
                 for wp in well_purposes:
-                    wp_obj = WellPurpose(thing=well, purpose=wp)
-                    session.add(wp_obj)
+                    # TODO: add validation logic here
+                    if wp in WellPurposeEnum:
+                        wp_obj = WellPurpose(thing=well, purpose=wp)
+                        session.add(wp_obj)
+                    else:
+                        logger.critical(f"{well.name}. Invalid well purpose: {wp}")
 
             if well_casing_materials:
                 for wcm in well_casing_materials:
-                    wcm_obj = WellCasingMaterial(thing=well, material=wcm)
-                    session.add(wcm_obj)
+                    # TODO: add validation logic here
+                    if wcm in WellCasingMaterialEnum:
+                        wcm_obj = WellCasingMaterial(thing=well, material=wcm)
+                        session.add(wcm_obj)
+                    else:
+                        logger.critical(
+                            f"{well.name}. Invalid well casing material: {wcm}"
+                        )
         except Exception as e:
-            session.rollback()
+            if well is not None:
+                session.expunge(well)
+            # session.rollback()
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
@@ -218,6 +241,8 @@ def transfer_wells(session, limit=0) -> None:
 
 
 def transfer_wellscreens(session, limit=None):
+    from schemas.thing import CreateWellScreen
+
     wdf = read_csv("WellScreens")
     wdf = replace_nans(wdf)
 

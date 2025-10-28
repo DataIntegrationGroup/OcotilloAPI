@@ -220,6 +220,23 @@ wheels = [
 ]
 
 [[package]]
+name = "behave"
+version = "1.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "cucumber-expressions" },
+    { name = "cucumber-tag-expressions" },
+    { name = "parse" },
+    { name = "parse-type" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/51/f37442fe648b3e35ecf69bee803fa6db3f74c5b46d6c882d0bc5654185a2/behave-1.3.3.tar.gz", hash = "sha256:2b8f4b64ed2ea756a5a2a73e23defc1c4631e9e724c499e46661778453ebaf51", size = 892639, upload-time = "2025-09-04T12:12:02.531Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/71/06f74ffed6d74525c5cd6677c97bd2df0b7649e47a249cf6a0c2038083b2/behave-1.3.3-py2.py3-none-any.whl", hash = "sha256:89bdb62af8fb9f147ce245736a5de69f025e5edfb66f1fbe16c5007493f842c0", size = 223594, upload-time = "2025-09-04T12:12:00.3Z" },
+]
+
+[[package]]
 name = "cachetools"
 version = "5.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -423,6 +440,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/82/27/092d311af22095d288f4db89fcaebadfb2f28944f3d790a4cf51fe5ddaeb/cryptography-45.0.6-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:5b64e668fc3528e77efa51ca70fadcd6610e8ab231e3e06ae2bab3b31c2b8ed9", size = 4554815, upload-time = "2025-08-05T23:59:00.283Z" },
     { url = "https://files.pythonhosted.org/packages/7e/01/aa2f4940262d588a8fdf4edabe4cda45854d00ebc6eaac12568b3a491a16/cryptography-45.0.6-cp37-abi3-win32.whl", hash = "sha256:780c40fb751c7d2b0c6786ceee6b6f871e86e8718a8ff4bc35073ac353c7cd02", size = 2912147, upload-time = "2025-08-05T23:59:01.716Z" },
     { url = "https://files.pythonhosted.org/packages/0a/bc/16e0276078c2de3ceef6b5a34b965f4436215efac45313df90d55f0ba2d2/cryptography-45.0.6-cp37-abi3-win_amd64.whl", hash = "sha256:20d15aed3ee522faac1a39fbfdfee25d17b1284bafd808e1640a74846d7c4d1b", size = 3390459, upload-time = "2025-08-05T23:59:03.358Z" },
+]
+
+[[package]]
+name = "cucumber-expressions"
+version = "18.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/7d/f4e231167b23b3d7348aa1c90117ce8854fae186d6984ad66d705df24061/cucumber_expressions-18.0.1.tar.gz", hash = "sha256:86ce41bf28ee520408416f38022e5a083d815edf04a0bd1dae46d474ca597c60", size = 22232, upload-time = "2024-10-28T11:38:48.672Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/e0/31ce90dad5234c3d52432bfce7562aa11cda4848aea90936a4be6c67d7ab/cucumber_expressions-18.0.1-py3-none-any.whl", hash = "sha256:86230d503cdda7ef35a1f2072a882d7d57c740aa4c163c82b07f039b6bc60c42", size = 20211, upload-time = "2024-10-28T11:38:47.101Z" },
+]
+
+[[package]]
+name = "cucumber-tag-expressions"
+version = "8.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/77/b8868653e9c7d432433d4d4d5e99d5923b309b89c8b08bc7f0cb5657ba0b/cucumber_tag_expressions-8.0.0.tar.gz", hash = "sha256:4af80282ff0349918c332428176089094019af6e2a381a2fd8f1c62a7a6bb7e8", size = 8427, upload-time = "2025-10-14T17:01:27.232Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/51/51ae3ab3b8553ec61f6558e9a0a9e8c500a9db844f9cf00a732b19c9a6ea/cucumber_tag_expressions-8.0.0-py3-none-any.whl", hash = "sha256:bfe552226f62a4462ee91c9643582f524af84ac84952643fb09057580cbb110a", size = 9726, upload-time = "2025-10-14T17:01:26.098Z" },
 ]
 
 [[package]]
@@ -979,8 +1014,11 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "behave" },
+    { name = "pyhamcrest" },
     { name = "pytest" },
     { name = "python-dotenv" },
+    { name = "requests" },
 ]
 
 [package.metadata]
@@ -1082,8 +1120,11 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "behave", specifier = ">=1.3.3" },
+    { name = "pyhamcrest", specifier = ">=2.0.3" },
     { name = "pytest", specifier = ">=8.4.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "requests", specifier = ">=2.32.5" },
 ]
 
 [[package]]
@@ -1194,6 +1235,28 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ec/df/c1c51c5cec087b8f4d04669308b700e9648745a77cdd0c8c5e16520703ca/pandas_stubs-2.3.0.250703.tar.gz", hash = "sha256:fb6a8478327b16ed65c46b1541de74f5c5947f3601850caf3e885e0140584717", size = 103910, upload-time = "2025-07-02T17:49:11.667Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/75/cb/09d5f9bf7c8659af134ae0ffc1a349038a5d0ff93e45aedc225bde2872a3/pandas_stubs-2.3.0.250703-py3-none-any.whl", hash = "sha256:a9265fc69909f0f7a9cabc5f596d86c9d531499fed86b7838fd3278285d76b81", size = 154719, upload-time = "2025-07-02T17:49:10.697Z" },
+]
+
+[[package]]
+name = "parse"
+version = "1.20.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/78/d9b09ba24bb36ef8b83b71be547e118d46214735b6dfb39e4bfde0e9b9dd/parse-1.20.2.tar.gz", hash = "sha256:b41d604d16503c79d81af5165155c0b20f6c8d6c559efa66b4b695c3e5a0a0ce", size = 29391, upload-time = "2024-06-11T04:41:57.34Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/31/ba45bf0b2aa7898d81cbbfac0e88c267befb59ad91a19e36e1bc5578ddb1/parse-1.20.2-py2.py3-none-any.whl", hash = "sha256:967095588cb802add9177d0c0b6133b5ba33b1ea9007ca800e526f42a85af558", size = 20126, upload-time = "2024-06-11T04:41:55.057Z" },
+]
+
+[[package]]
+name = "parse-type"
+version = "0.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "parse" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/ea/42ba6ce0abba04ab6e0b997dcb9b528a4661b62af1fe1b0d498120d5ea78/parse_type-0.6.6.tar.gz", hash = "sha256:513a3784104839770d690e04339a8b4d33439fcd5dd99f2e4580f9fc1097bfb2", size = 98012, upload-time = "2025-08-11T22:53:48.066Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/8d/eef3d8cdccc32abdd91b1286884c99b8c3a6d3b135affcc2a7a0f383bb32/parse_type-0.6.6-py2.py3-none-any.whl", hash = "sha256:3ca79bbe71e170dfccc8ec6c341edfd1c2a0fc1e5cfd18330f93af938de2348c", size = 27085, upload-time = "2025-08-11T22:53:46.396Z" },
 ]
 
 [[package]]
@@ -1473,6 +1536,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
+]
+
+[[package]]
+name = "pyhamcrest"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/3f/f286caba4e64391a8dc9200e6de6ce0d07471e3f718248c3276843b7793b/pyhamcrest-2.1.0.tar.gz", hash = "sha256:c6acbec0923d0cb7e72c22af1926f3e7c97b8e8d69fc7498eabacaf7c975bd9c", size = 60538, upload-time = "2023-10-22T15:47:28.255Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/71/1b25d3797a24add00f6f8c1bb0ac03a38616e2ec6606f598c1d50b0b0ffb/pyhamcrest-2.1.0-py3-none-any.whl", hash = "sha256:f6913d2f392e30e0375b3ecbd7aee79e5d1faa25d345c8f4ff597665dcac2587", size = 54555, upload-time = "2023-10-22T15:47:25.08Z" },
 ]
 
 [[package]]

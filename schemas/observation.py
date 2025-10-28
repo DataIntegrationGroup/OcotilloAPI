@@ -68,7 +68,6 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     sample_id: int
     sensor_id: int
     parameter_id: int
-    release_status: str
     value: float | None
     unit: str | None
 
@@ -90,7 +89,6 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     sample_id: int | None = None
     sensor_id: int | None = None
     parameter_id: int | None = None
-    release_status: str | None = None
     value: float | None | None = None
     unit: str | None = None
 
@@ -111,7 +109,6 @@ class BaseObservationResponse(BaseResponseModel):
     sensor_id: int | None
     observation_datetime: UTCAwareDatetime
     parameter: ParameterResponse
-    release_status: str
     value: float | None
     unit: str
 

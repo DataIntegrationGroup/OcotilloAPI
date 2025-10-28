@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import logging
+import sys
 from datetime import datetime
 
 from services.gcs_helper import get_storage_bucket
@@ -39,7 +40,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)-8s] %(message)s",
     handlers=[
-        logging.StreamHandler(),
+        logging.StreamHandler(sys.stdout),
         logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
     ],
 )

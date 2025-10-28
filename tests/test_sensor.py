@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+
 from datetime import timezone
 
 import pytest
@@ -28,6 +29,7 @@ from tests import (
     cleanup_patch_test,
     override_authentication,
     groundwater_level_parameter_id,
+    DT_FMT,
 )
 
 
@@ -173,7 +175,7 @@ def test_get_sensors(sensor):
     assert data["items"][0]["id"] == sensor.id
     assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -197,7 +199,7 @@ def test_get_sensors_by_thing_id(
     assert data["items"][0]["id"] == sensor.id
     assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -217,7 +219,7 @@ def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
     assert data["items"][0]["id"] == sensor.id
     assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -235,7 +237,7 @@ def test_get_sensor_by_id(sensor):
     data = response.json()
     assert data["id"] == sensor.id
     assert data["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        DT_FMT
     )
     assert data["release_status"] == sensor.release_status
     assert data["name"] == sensor.name

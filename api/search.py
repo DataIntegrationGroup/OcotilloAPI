@@ -14,12 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter
-from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
-from api.pagination import CustomPage
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
+from sqlalchemy import select, func, text
+from sqlalchemy.orm import Session
 
+from api.pagination import CustomPage
 from core.dependencies import session_dependency, viewer_dependency
 from db import (
     Contact,
@@ -33,7 +33,6 @@ from db import (
     AssetThingAssociation,
     search,
 )
-
 
 disable_installed_extensions_check()
 router = APIRouter(prefix="/search", tags=["search"])

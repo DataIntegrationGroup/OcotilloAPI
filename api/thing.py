@@ -150,12 +150,15 @@ async def get_water_wells(
     order: str = None,
     filter_: str = Query(alias="filter", default=None),
     query: str = None,
+    name: str = None,
 ) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
+    return get_db_things(
+        filter_, order, query, session, sort, name=name, thing_type=thing_type
+    )
 
 
 @router.get(

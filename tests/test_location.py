@@ -21,7 +21,13 @@ from geoalchemy2.shape import to_shape
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Location
 from main import app
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
+from tests import (
+    client,
+    override_authentication,
+    cleanup_post_test,
+    cleanup_patch_test,
+    DT_FMT,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -144,7 +150,7 @@ def test_get_locations(location):
     assert data["items"][0]["id"] == location.id
     assert data["items"][0]["created_at"] == location.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     # assert data["items"][0]["name"] == location.name
     assert data["items"][0]["notes"] == location.notes
     assert data["items"][0]["point"] == to_shape(location.point).wkt
@@ -165,7 +171,7 @@ def test_get_location_by_id(location):
     data = response.json()
     assert data["id"] == location.id
     assert data["created_at"] == location.created_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        DT_FMT
     )
     # assert data["name"] == location.name
     assert data["point"] == to_shape(location.point).wkt

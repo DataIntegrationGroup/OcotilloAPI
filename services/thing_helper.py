@@ -16,6 +16,8 @@
 from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
+from shapely import wkb
+from shapely.geometry import mapping
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session, aliased
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
@@ -35,8 +37,6 @@ from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
-from shapely import wkb
-from shapely.geometry import mapping
 
 WELL_DESCRIPTOR_MODEL_MAP = {
     "well_purposes": (WellPurpose, "purpose"),
@@ -59,6 +59,7 @@ def get_db_things(
     sort,
     thing_type: str = None,
     within: str = None,
+    name: str = None,
 ) -> list:
 
     if query:
@@ -68,6 +69,9 @@ def get_db_things(
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
+
+    if name:
+        sql = sql.where(Thing.name == name)
 
     if within:
         latest_assoc = (

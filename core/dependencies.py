@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from core.permissions import authenticated
 from db.engine import get_db_session
 
-session_dependency = Annotated[Session, Depends(get_db_session)]
+session_dependency: type[Session] = Annotated[Session, Depends(get_db_session)]
 
 """
 Developer Notes
@@ -61,16 +61,18 @@ no_permission_function = authenticated(permissions=["NoPermission"])
 
 
 # Permissions Dependencies -----------------------------------------------------
-admin_dependency = Annotated[dict, Depends(admin_function)]
-editor_dependency = Annotated[dict, Depends(editor_function)]
-viewer_dependency = Annotated[dict, Depends(viewer_function)]
+admin_dependency: type[dict] = Annotated[dict, Depends(admin_function)]
+editor_dependency: type[dict] = Annotated[dict, Depends(editor_function)]
+viewer_dependency: type[dict] = Annotated[dict, Depends(viewer_function)]
 
-lexicon_admin_dependency = Annotated[dict, Depends(lexicon_admin_function)]
-lexicon_editor_dependency = Annotated[dict, Depends(lexicon_editor_function)]
+lexicon_admin_dependency: type[dict] = Annotated[dict, Depends(lexicon_admin_function)]
+lexicon_editor_dependency: type[dict] = Annotated[
+    dict, Depends(lexicon_editor_function)
+]
 
-amp_admin_dependency = Annotated[dict, Depends(amp_admin_function)]
-amp_editor_dependency = Annotated[dict, Depends(amp_editor_function)]
-amp_viewer_dependency = Annotated[dict, Depends(amp_viewer_function)]
+amp_admin_dependency: type[dict] = Annotated[dict, Depends(amp_admin_function)]
+amp_editor_dependency: type[dict] = Annotated[dict, Depends(amp_editor_function)]
+amp_viewer_dependency: type[dict] = Annotated[dict, Depends(amp_viewer_function)]
 
-no_permission_dependency = Annotated[dict, Depends(no_permission_function)]
+no_permission_dependency: type[dict] = Annotated[dict, Depends(no_permission_function)]
 # ============= EOF =============================================

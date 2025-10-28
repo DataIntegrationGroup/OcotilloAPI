@@ -15,8 +15,6 @@
 # ===============================================================================
 from datetime import datetime
 
-import pandas as pd
-
 from db import Sensor, Deployment, Thing
 from transfers.util import read_csv, logger, filter_to_valid_point_ids, replace_nans
 
@@ -77,20 +75,33 @@ def transfer_sensors(session):
                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
                     )
 
-                installation_date = datetime.strptime(
-                    row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-                removal_date = (
-                    datetime.strptime(row.DateRemoved, "%Y-%m-%d %H:%M:%S.%f").date()
-                    if not pd.isna(row.DateRemoved)
-                    else None
-                )
+                installation_date = None
+                if row.DateInstalled:
+                    installation_date = datetime.strptime(
+                        row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
+                    ).date()
+
+                removal_date = None
+                if row.DateRemoved:
+                    removal_date = datetime.strptime(
+                        row.DateRemoved, "%Y-%m-%d %H:%M:%S.%f"
+                    ).date()
+
+                try:
+                    recording_interval = int(row.RecordingInterval)
+                except (ValueError, TypeError):
+                    logger.critical(
+                        f"name={sensor.name}, serial_no={sensor.serial_no} RecordingInterval is not an "
+                        f"integer. Setting to None"
+                    )
+                    recording_interval = None
+
                 deployment = Deployment(
                     thing=thing,
                     sensor=sensor,
                     installation_date=installation_date,
                     removal_date=removal_date,
-                    recording_interval=int(row.RecordingInterval),
+                    recording_interval=recording_interval,
                     recording_interval_units="hour",
                     hanging_cable_length=row.HangingCableLength,
                     hanging_point_height=row.HangingPointHgt,

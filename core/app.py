@@ -23,8 +23,9 @@ from fastapi.openapi.docs import (
     get_swagger_ui_oauth2_redirect_html,
 )
 from fastapi.openapi.utils import get_openapi
+from fastapi_pagination import add_pagination
 
-from .initializers import init_db, init_lexicon, init_parameter
+from .initializers import init_db, init_lexicon, init_parameter, register_routes
 from .settings import settings
 
 
@@ -37,6 +38,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         init_db()
         init_lexicon()
         init_parameter()
+
+    register_routes(app)
+    add_pagination(app)
     yield
 
 

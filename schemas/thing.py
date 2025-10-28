@@ -17,6 +17,7 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
+from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
@@ -82,7 +83,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     Schema for creating a well.
     """
 
-    well_purposes: list[str] | None = None
+    well_purposes: list[WellPurpose] | None = None
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
     )
@@ -96,7 +97,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_casing_depth: float | None = Field(
         default=None, gt=0, description="Well casing depth in feet"
     )
-    well_casing_materials: list[str] | None = None
+    well_casing_materials: list[CasingMaterial] | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -104,7 +105,7 @@ class CreateSpring(CreateBaseThing):
     Schema for creating a spring.
     """
 
-    spring_type: str | None = None
+    spring_type: SpringType | None = None
 
 
 class CreateWellScreen(BaseCreateModel):
@@ -115,7 +116,7 @@ class CreateWellScreen(BaseCreateModel):
     thing_id: int
     screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
     screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
-    screen_type: str | None = None
+    screen_type: ScreenType | None = None
     screen_description: str | None = None
 
     # validate that screen depth bottom is greater than top
@@ -141,7 +142,7 @@ class WellResponse(BaseThingResponse):
     Response schema for well details.
     """
 
-    well_purposes: list[str] = []
+    well_purposes: list[WellPurpose] = []
     well_depth: float | None = None
     well_depth_unit: str = "ft"
     hole_depth: float | None = None
@@ -150,7 +151,7 @@ class WellResponse(BaseThingResponse):
     well_casing_diameter_unit: str = "in"
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
-    well_casing_materials: list[str] = []
+    well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
 
     @field_validator("well_purposes", mode="before")

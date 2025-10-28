@@ -16,7 +16,6 @@
 from pydantic import ValidationError
 
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
-from schemas.contact import CreateContact, CreateAddress, CreatePhone, CreateEmail
 from transfers.logger import logger
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
@@ -242,6 +241,8 @@ def _make_name(first, last):
 
 
 def _make_email(first_second, ownerkey, **kw):
+    from schemas.contact import CreateEmail
+
     try:
         if "email" in kw:
             kw["email"] = kw["email"].strip()
@@ -255,6 +256,8 @@ def _make_email(first_second, ownerkey, **kw):
 
 
 def _make_phone(first_second, ownerkey, **kw):
+    from schemas.contact import CreatePhone
+
     try:
         if "phone_number" in kw:
             kw["phone_number"] = kw["phone_number"].strip()
@@ -276,6 +279,8 @@ def _make_phone(first_second, ownerkey, **kw):
 
 
 def _make_address(first_second, ownerkey, kind, **kw):
+    from schemas.contact import CreateAddress
+
     try:
         address = CreateAddress(**kw)
         return Address(**address.model_dump())
@@ -287,6 +292,8 @@ def _make_address(first_second, ownerkey, kind, **kw):
 
 #
 def _make_contact_and_assoc(session, data, thing):
+    from schemas.contact import CreateContact
+
     contact = CreateContact(**data)
     contact_data = contact.model_dump()
     contact_data.pop("thing_id")

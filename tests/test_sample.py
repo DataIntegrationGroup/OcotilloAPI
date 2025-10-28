@@ -22,7 +22,13 @@ from core.dependencies import admin_function, editor_function, viewer_function
 from db.sample import Sample
 from main import app
 from schemas.sample import ValidateSample
-from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
+from tests import (
+    client,
+    cleanup_post_test,
+    cleanup_patch_test,
+    override_authentication,
+    DT_FMT,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -209,7 +215,7 @@ def test_patch_sample_404_not_found(water_chemistry_sample):
     """
     Test updating a sample that does not exist
     """
-    sample_method_patch = "continuous"
+    sample_method_patch = "Transducer"
     response = client.patch(
         "/sample/999",
         json={
@@ -333,7 +339,7 @@ def test_get_sample_by_id(
     # Convert created_at to UTC and format with Z suffix
     expected_created_at = water_chemistry_sample.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["created_at"] == expected_created_at
     assert data["thing"]["id"] == water_well_thing.id
     assert data["field_event"]["id"] == field_event.id
