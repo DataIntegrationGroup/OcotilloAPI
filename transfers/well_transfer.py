@@ -136,11 +136,15 @@ def transfer_wells(session, limit=0) -> None:
                 session.rollback()
                 continue
 
+        location = None
         try:
             location = make_location(row)
             session.add(location)
         except Exception as e:
-            session.rollback()
+            if location is not None:
+                session.expunge(location)
+            # these rollbacks are cause an issue because they are discarding good data
+            # session.rollback()
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -169,12 +173,13 @@ def transfer_wells(session, limit=0) -> None:
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            session.rollback()
+            # session.rollback()
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
             continue
 
+        well = None
         try:
             well_data = data.model_dump(
                 exclude=[
@@ -199,7 +204,9 @@ def transfer_wells(session, limit=0) -> None:
                     wcm_obj = WellCasingMaterial(thing=well, material=wcm)
                     session.add(wcm_obj)
         except Exception as e:
-            session.rollback()
+            if well is not None:
+                session.expunge(well)
+            # session.rollback()
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
