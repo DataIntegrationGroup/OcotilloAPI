@@ -63,7 +63,7 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
         field = getattr(group, partition_field)
 
         qced = group[field == 1]
-        notqced = group[~field == 1]
+        notqced = group[~(field == 1)]
 
         qced_block = TransducerObservationBlock(
             parameter_id=groundwater_parameter_id, review_status="approved"
