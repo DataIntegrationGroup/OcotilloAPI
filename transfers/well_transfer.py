@@ -15,10 +15,11 @@
 # ===============================================================================
 import json
 import time
+from datetime import datetime
+
+from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy import select
-from datetime import datetime
-from pandas import isna
 
 from db import (
     LocationThingAssociation,
@@ -155,7 +156,6 @@ def transfer_wells(session, limit=0) -> None:
             # so that effective_start can be set on the location assocation
             data = CreateWell(
                 location_id=location.id,
-                nma_pk_welldata=row.WellID,
                 name=row.PointID,
                 first_visit_date=first_visit_date,
                 hole_depth=row.HoleDepth,
@@ -184,6 +184,7 @@ def transfer_wells(session, limit=0) -> None:
                 ]
             )
             well_data["thing_type"] = "water well"
+            well_data["nma_pk_welldata"] = row.WellID
             well = Thing(**well_data)
             session.add(well)
 

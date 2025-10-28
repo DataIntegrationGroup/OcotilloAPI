@@ -13,11 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.engine import database_sessionmaker
-from db.lexicon import Lexicon
-
 # from schemas.create.chemistry import CreateWaterChemistryAnalysis
-from services.validation import get_category
 
 
 # async def validate_analyte(analysis_data: CreateWaterChemistryAnalysis):

@@ -14,11 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 import logging
-import sys
 from datetime import datetime
 
 from services.gcs_helper import get_storage_bucket
-
 
 # class StreamToLogger:
 #     def __init__(self, logger_, level):

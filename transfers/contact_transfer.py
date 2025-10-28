@@ -25,6 +25,8 @@ from transfers.util import (
 from transfers.logger import logger
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 from schemas.contact import CreateContact, CreateAddress, CreatePhone, CreateEmail
+from transfers.logger import logger
+from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
 def extract_owner_role(comment):
@@ -281,12 +283,21 @@ def _make_phone(first_second, ownerkey, **kw):
     try:
         if "phone_number" in kw:
             kw["phone_number"] = kw["phone_number"].strip()
+
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump())
     except ValidationError as e:
-        logger.critical(
-            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
-        )
+        try:
+            if "phone_number" in kw:
+                pn = kw.pop("phone_number")
+                kw["nma_phone_number"] = pn.strip()
+            phone = CreatePhone(**kw)
+            return Phone(**phone.model_dump())
+        except ValidationError:
+
+            logger.critical(
+                f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
+            )
 
 
 def _make_address(first_second, ownerkey, kind, **kw):

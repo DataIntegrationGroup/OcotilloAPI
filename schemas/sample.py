@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import timezone
+from typing import Annotated
+
 from pydantic import (
     BaseModel,
     field_validator,
@@ -21,13 +23,17 @@ from pydantic import (
     AwareDatetime,
     PastDatetime,
 )
-from typing import Annotated
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.thing import ThingResponse
-from schemas.field import FieldEventResponse, FieldActivityResponse
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.contact import ContactResponse
+from schemas.field import FieldEventResponse, FieldActivityResponse
+from schemas.thing import ThingResponse
 
 
 # -------- VALIDATE ----------
@@ -124,7 +130,7 @@ class SampleResponse(BaseResponseModel):
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
     contact: ContactResponse
-    sample_date: Annotated[AwareDatetime, PastDatetime()]
+    sample_date: UTCAwareDatetime
     sample_name: str
     sample_matrix: str
     sample_method: str

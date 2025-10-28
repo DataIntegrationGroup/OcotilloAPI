@@ -13,14 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import timezone
+
+import pytest
+
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Sensor
 from main import app
 
 # from schemas.sensor import ValidateSensor
-from tests import client, cleanup_post_test, cleanup_patch_test, override_authentication
+from tests import (
+    client,
+    cleanup_post_test,
+    cleanup_patch_test,
+    override_authentication,
+    groundwater_level_parameter_id,
+)
 
-import pytest
 
 # from pydantic import ValidationError
 
@@ -162,9 +171,9 @@ def test_get_sensors(sensor):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -186,9 +195,29 @@ def test_get_sensors_by_thing_id(
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert data["items"][0]["release_status"] == sensor.release_status
+    assert data["items"][0]["name"] == sensor.name
+    assert data["items"][0]["sensor_type"] == sensor.sensor_type
+    assert data["items"][0]["model"] == sensor.model
+    assert data["items"][0]["serial_no"] == sensor.serial_no
+    assert data["items"][0]["pcn_number"] == sensor.pcn_number
+    assert data["items"][0]["owner_agency"] == sensor.owner_agency
+    assert data["items"][0]["sensor_status"] == sensor.sensor_status
+    assert data["items"][0]["notes"] == sensor.notes
+
+
+def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
+    response = client.get(f"/sensor?parameter_id={groundwater_level_parameter_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == sensor.id
+    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
+        timezone.utc
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     assert data["items"][0]["release_status"] == sensor.release_status
     assert data["items"][0]["name"] == sensor.name
     assert data["items"][0]["sensor_type"] == sensor.sensor_type
@@ -205,7 +234,9 @@ def test_get_sensor_by_id(sensor):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == sensor.id
-    assert data["created_at"] == sensor.created_at.isoformat().replace("+00:00", "Z")
+    assert data["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     assert data["release_status"] == sensor.release_status
     assert data["name"] == sensor.name
     assert data["sensor_type"] == sensor.sensor_type
