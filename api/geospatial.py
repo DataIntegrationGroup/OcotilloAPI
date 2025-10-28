@@ -28,8 +28,6 @@ from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
 from services.query_helper import simple_get_by_id
 
-# from starlette.responses import FileResponse
-
 router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 
@@ -56,7 +54,6 @@ async def get_geospatial(
     """
 
     if format_ == "geojson":
-        # return get_feature_collection(session, thing_type, group)
         content = get_feature_collection(session, thing_type, group)
         return JSONResponse(content=content, media_type="application/geo+json")
     else:
