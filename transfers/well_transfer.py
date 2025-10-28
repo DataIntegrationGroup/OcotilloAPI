@@ -21,6 +21,10 @@ from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy import select
 
+from core.enums import (
+    WellPurpose as WellPurposeEnum,
+    CasingMaterial as WellCasingMaterialEnum,
+)
 from db import (
     LocationThingAssociation,
     Thing,
@@ -96,6 +100,8 @@ def _extract_casing_materials(row) -> list[str]:
 
 
 def transfer_wells(session, limit=0) -> None:
+    from schemas.thing import CreateWell
+
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
@@ -157,7 +163,6 @@ def transfer_wells(session, limit=0) -> None:
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
-            from schemas.thing import CreateWell
 
             data = CreateWell(
                 location_id=location.id,
@@ -196,13 +201,23 @@ def transfer_wells(session, limit=0) -> None:
 
             if well_purposes:
                 for wp in well_purposes:
-                    wp_obj = WellPurpose(thing=well, purpose=wp)
-                    session.add(wp_obj)
+                    # TODO: add validation logic here
+                    if wp in WellPurposeEnum:
+                        wp_obj = WellPurpose(thing=well, purpose=wp)
+                        session.add(wp_obj)
+                    else:
+                        logger.critical(f"{well.name}. Invalid well purpose: {wp}")
 
             if well_casing_materials:
                 for wcm in well_casing_materials:
-                    wcm_obj = WellCasingMaterial(thing=well, material=wcm)
-                    session.add(wcm_obj)
+                    # TODO: add validation logic here
+                    if wcm in WellCasingMaterialEnum:
+                        wcm_obj = WellCasingMaterial(thing=well, material=wcm)
+                        session.add(wcm_obj)
+                    else:
+                        logger.critical(
+                            f"{well.name}. Invalid well casing material: {wcm}"
+                        )
         except Exception as e:
             if well is not None:
                 session.expunge(well)
