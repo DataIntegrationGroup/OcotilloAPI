@@ -21,10 +21,6 @@ from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from core.enums import (
-    WellPurpose as WellPurposeEnum,
-    CasingMaterial as WellCasingMaterialEnum,
-)
 from db import (
     LocationThingAssociation,
     Thing,
@@ -101,6 +97,10 @@ def _extract_casing_materials(row) -> list[str]:
 
 def transfer_wells(session, limit=0) -> None:
     from schemas.thing import CreateWell
+    from core.enums import (
+        WellPurpose as WellPurposeEnum,
+        CasingMaterial as WellCasingMaterialEnum,
+    )
 
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
