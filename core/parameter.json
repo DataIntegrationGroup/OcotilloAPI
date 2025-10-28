@@ -7,14 +7,21 @@
         "default_unit": "ft"
     },
     {
-        "parameter_name": "pH",
+        "parameter_name": "pH", **
         "matrix": "groundwater",
         "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "dimensionless"
     },
     {
-        "parameter_name": "Alkalinity, total",
+        "parameter_name": "Alkalinity, total",  **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Alkalinity as OH-",
         "matrix": "groundwater",
         "parameter_type": "Field Parameter",
         "cas_number": null,
@@ -49,10 +56,745 @@
         "default_unit": "mg/L"
     },
     {
-        "parameter_name": "Conductivity",
+        "parameter_name": "Conductivity",   **
         "matrix": "groundwater",
-        "parameter_type": "Physical Property",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "\u03bcS/cm"
+    },
+    {
+        "parameter_name": "Bicarbonate",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "71-52-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Hardness",   **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L as CaCO3"
+    },
+    {
+        "parameter_name": "Ion Balance",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "% diff"
+    },
+    {
+        "parameter_name": "Potassium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-09-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Potassium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-09-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Magnesium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-95-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Magnesium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-95-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sodium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-23-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sodium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-23-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sodium and Potassium combined",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sulfate",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14808-79-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Total Anions",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "epm"
+    },
+    {
+        "parameter_name": "Total Cations",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "epm"
+    },
+    {
+        "parameter_name": "Total Dissolved Solids",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Tritium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "10028-17-8",
+        "default_unit": "TU"
+    },
+    {
+        "parameter_name": "Age of water using dissolved gasses",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Silver",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-22-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Silver, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-22-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Aluminum",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7429-90-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Aluminum, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7429-90-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Arsenic",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-38-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Arsenic, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-38-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Boron",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-42-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Boron, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-42-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Barium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-39-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Barium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-39-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Beryllium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-41-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Beryllium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-41-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Bromide",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "24959-67-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "13C:12C ratio",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
+    },
+    {
+        "parameter_name": "14C content",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pmc"
+    },
+    {
+        "parameter_name": "Uncorrected 14C age",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Corrected 14C age",  **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Cadmium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-43-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Cadmium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-43-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chlorofluorocarbon-11 avg age",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Chlorofluorocarbon-113 avg age",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Chlorofluorocarbon-113/12 avg ratio age",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Chlorofluorocarbon-12 avg age",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "year"
+    },
+    {
+        "parameter_name": "Cobalt",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-48-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Cobalt, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-43-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chromium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-47-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chromium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-47-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Copper",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-50-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Copper, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-50-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "delta O18 sulfate",  **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
+    },
+    {
+        "parameter_name": "Sulfate 34 isotope ratio",   **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
+    },
+    {
+        "parameter_name": "Fluoride",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "16984-48-8",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Iron",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-89-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Iron, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-89-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Deuterium:Hydrogen ratio",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
+    },
+    {
+        "parameter_name": "Mercury",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-97-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Mercury, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-97-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Lithium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-93-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Lithium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-93-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Manganese",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-96-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Manganese, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-96-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Molybdenum",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-98-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Molybdenum, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-98-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Nickel",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-02-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Nickel, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-02-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Nitrite",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14797-65-0",
+        "default_unit": "mg/L"  **
+    },
+    {
+        "parameter_name": "Nitrite",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14797-65-0",
+        "default_unit": "mg/L as N" **
+    },
+    {
+        "parameter_name": "Nitrate",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14797-55-8",
+        "default_unit": "mg/L"  **
+    },
+    {
+        "parameter_name": "Nitrate",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14797-55-8",
+        "default_unit": "mg/L as N" **
+    },
+    {
+        "parameter_name": "18O:16O ratio",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
+    },
+    {
+        "parameter_name": "Lead",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-92-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Lead, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7439-92-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Phosphate",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14265-44-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Antimony",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-36-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Antimony, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-36-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Selenium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7782-49-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Selenium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7782-49-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Sulfur hexafluoride",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "2551-62-4",
+        "default_unit": "year"  **
+    },
+    {
+        "parameter_name": "Silicon",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-21-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Silicon, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-21-3",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Silica",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7631-86-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Tin",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-31-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Tin, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-31-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Strontium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-24-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Strontium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-24-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Thorium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-29-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Thorium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-29-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Titanium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-32-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Titanium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-32-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Thallium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-28-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Thallium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-28-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Uranium, total, by ICP-MS",  **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-61-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Uranium, total, unfiltered", **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-61-1",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Vanadium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-62-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Vanadium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-62-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Zinc",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-66-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Zinc, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-66-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Arsenite",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "15502-74-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Arsenate",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "15584-04-0",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Cyanide",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "57-12-5",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Estimated recharge temperature",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "deg C"
+    },
+    {
+        "parameter_name": "Hydrogen sulfide",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7783-06-4",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Ammonia",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7664-41-7",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Ammonium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "14798-03-9",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Total nitrogen",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Total Kjeldahl nitrogen",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null, **
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Dissolved organic carbon",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Total organic carbon",   **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null, **
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "delta C13 of dissolved inorganic carbon",    **
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "pm"
     }
 ]
