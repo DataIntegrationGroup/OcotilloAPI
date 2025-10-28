@@ -12,5 +12,47 @@
         "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "dimensionless"
+    },
+    {
+        "parameter_name": "Alkalinity, total",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": null,
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Calcium",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-70-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Calcium, total, unfiltered",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "7440-70-2",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Carbonate",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "3812-32-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Chloride",
+        "matrix": "groundwater",
+        "parameter_type": "Field Parameter",
+        "cas_number": "16887-00-6",
+        "default_unit": "mg/L"
+    },
+    {
+        "parameter_name": "Conductivity",
+        "matrix": "groundwater",
+        "parameter_type": "Physical Property",
+        "cas_number": null,
+        "default_unit": "mg/L"
     }
 ]
