@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import timezone
+from typing import Annotated
+
 from pydantic import (
     BaseModel,
     AwareDatetime,
@@ -21,10 +23,14 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing import Annotated
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.parameter import ParameterResponse
 
 
@@ -103,7 +109,7 @@ class UpdateWaterChemistryObservation(UpdateBaseObservation):
 class BaseObservationResponse(BaseResponseModel):
     sample_id: int
     sensor_id: int | None
-    observation_datetime: AwareDatetime
+    observation_datetime: UTCAwareDatetime
     parameter: ParameterResponse
     release_status: str
     value: float | None

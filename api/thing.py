@@ -32,7 +32,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
+from db.deployment import Deployment
 from db.thing import Thing, ThingIdLink, WellScreen
+from schemas.deployment import DeploymentResponse
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -50,6 +52,7 @@ from schemas.thing import (
 )
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
+from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -64,7 +67,6 @@ from services.thing_helper import (
     modify_well_descriptor_tables,
     WELL_DESCRIPTOR_MODEL_MAP,
 )
-from services.lexicon_helper import get_terms_by_category
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
@@ -342,6 +344,20 @@ async def get_thing_id_links(
     """
     thing = simple_get_by_id(session, Thing, thing_id)
     sql = select(ThingIdLink).where(ThingIdLink.thing_id == thing.id)
+    return paginate(query=sql, conn=session)
+
+
+@router.get("/{thing_id}/deployment", summary="Get deployments by thing ID")
+async def get_thing_deployments(
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+) -> CustomPage[DeploymentResponse]:
+    """
+    Retrieve all deployments for a specific thing by its ID.
+    """
+    thing = simple_get_by_id(session, Thing, thing_id)
+    sql = select(Deployment).where(Deployment.thing_id == thing.id)
     return paginate(query=sql, conn=session)
 
 

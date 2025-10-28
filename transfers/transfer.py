@@ -19,10 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 from sqlalchemy.orm import Session
-from core.initializers import init_lexicon, init_parameter
-from db import Base
+from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db.engine import session_ctx
 
 from transfers.group_transfer import transfer_groups
@@ -70,18 +68,8 @@ def parameter():
 
 @timeit
 def erase(session: Session):
-    logger.info("Erasing existing data")
-    from sqlalchemy import text
-
-    with session.bind.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
-
-    Base.metadata.drop_all(session.bind)
-    logger.info("Recreating tables")
-    Base.metadata.create_all(session.bind)
+    logger.info("Erase and rebuilding database")
+    erase_and_rebuild_db(session)
 
 
 def message(msg, pad=10, new_line_at_top=True):
@@ -100,6 +88,9 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_wells, sess, limit=limit)
     timeit_direct(transfer_wellscreens, sess)
 
+    message("TRANSFERRING SENSORS")
+    timeit_direct(transfer_sensors, sess)
+
     """
     Developer's note
     this is a very time consuming operation and the results should 
@@ -117,9 +108,6 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING METEOROLOGICAL")
     timeit_direct(transfer_met, sess, limit)
-
-    message("TRANSFERRING SENSORS")
-    timeit_direct(transfer_sensors, sess)
 
     message("TRANSFERRING CONTACTS")
     timeit_direct(transfer_contacts, sess)
@@ -153,7 +141,7 @@ def transfer_all(sess, limit=100):
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 10000))
+    limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
     with session_ctx() as sess:
         transfer_all(sess, limit=limit)
 

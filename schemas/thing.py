@@ -20,6 +20,7 @@ from pydantic import BaseModel, model_validator, PastDate, Field, field_validato
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
+
 # -------- VALIDATE ----------
 
 

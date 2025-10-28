@@ -67,15 +67,26 @@ class ValidatePhone(BaseModel):
             region = "US"
             try:
                 phone_number_str = phone_number_str.strip()
+                parsed_number = phonenumbers.parse(phone_number_str, region)
+                if phonenumbers.is_valid_number(parsed_number):
+                    formatted_number = phonenumbers.format_number(
+                        parsed_number, phonenumbers.PhoneNumberFormat.E164
+                    )
+                    return formatted_number
+
                 # this is a major hack to deal with the phone numbers entered into
                 # NM_Aquifer without an area code
-                for p in (phone_number_str, f"505{phone_number_str}"):
-                    parsed_number = phonenumbers.parse(p, region)
-                    if phonenumbers.is_valid_number(parsed_number):
-                        formatted_number = phonenumbers.format_number(
-                            parsed_number, phonenumbers.PhoneNumberFormat.E164
-                        )
-                        return formatted_number
+                # for p in (
+                #     phone_number_str,
+                #     f"505{phone_number_str}",
+                #     f"575{phone_number_str}",
+                # ):
+                #     parsed_number = phonenumbers.parse(p, region)
+                #     if phonenumbers.is_valid_number(parsed_number):
+                #         formatted_number = phonenumbers.format_number(
+                #             parsed_number, phonenumbers.PhoneNumberFormat.E164
+                #         )
+                #         return formatted_number
                 else:
                     raise ValueError(f"Invalid phone number. {phone_number_str}")
             except NumberParseException as e:
@@ -89,7 +100,6 @@ class CreateEmail(BaseCreateModel, ValidateEmail):
     """
 
     contact_id: int | None = None  # set to None for when made via POST /contact
-    email: str
     email_type: str = "Primary"  # Default to 'Primary'
 
 
@@ -99,8 +109,8 @@ class CreatePhone(BaseCreateModel, ValidatePhone):
     """
 
     contact_id: int | None = None  # set to None for when made via POST /contact
-    phone_number: str
     phone_type: str = "Primary"  # Default to 'Primary'
+    nma_phone_number: str | None = None
 
 
 class CreateAddress(BaseCreateModel):
@@ -160,8 +170,9 @@ class PhoneResponse(BaseItemResponse):
     Response schema for phone details.
     """
 
-    phone_number: str
+    phone_number: str | None = None
     phone_type: str  # e.g., 'mobile', 'landline', etc.
+    nma_phone_number: str | None = None
 
 
 class EmailResponse(BaseItemResponse):
