@@ -93,8 +93,9 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WELLS")
     results = timeit_direct(transfer_wells, sess, limit=limit)
     metrics.well_transfer_metrics(sess, *results)
-    timeit_direct(transfer_wellscreens, sess)
     return
+
+    timeit_direct(transfer_wellscreens, sess)
 
     message("TRANSFERRING SENSORS")
     timeit_direct(transfer_sensors, sess)

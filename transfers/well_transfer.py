@@ -118,6 +118,7 @@ def transfer_wells(session, limit=0) -> None:
 
     step = 25
     start_time = time.time()
+    errors = []
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
@@ -151,6 +152,7 @@ def transfer_wells(session, limit=0) -> None:
                 session.expunge(location)
             # these rollbacks are cause an issue because they are discarding good data
             # session.rollback()
+            errors.append({"pointid": row.PointID, "error": str(e)})
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -178,7 +180,7 @@ def transfer_wells(session, limit=0) -> None:
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            # session.rollback()
+            errors.append({"pointid": row.PointID, "error": e.errors()})
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
@@ -221,7 +223,8 @@ def transfer_wells(session, limit=0) -> None:
         except Exception as e:
             if well is not None:
                 session.expunge(well)
-            # session.rollback()
+
+            errors.append({"pointid": row.PointID, "error": str(e)})
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
@@ -232,7 +235,7 @@ def transfer_wells(session, limit=0) -> None:
         session.add(assoc)
 
     session.commit()
-    return input_df, cleaned_df
+    return input_df, cleaned_df, errors
     # try:
     #     session.commit()
     # except Exception as e:

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import csv
 import os
 from datetime import datetime
 from pathlib import Path
@@ -33,9 +34,11 @@ class Metrics:
             os.mkdir(root)
 
         self.path = root / f"metrics_{datetime.now()}.csv"
-        self._write_metrics("model,transfered,input_count,cleaned_count")
 
-    def well_transfer_metrics(self, sess, input_df, cleaned_df):
+        self._writer = csv.writer(self.path.open("a"), delimiter="|")
+        self._write_metrics(["model", "transfered", "input_count", "cleaned_count"])
+
+    def well_transfer_metrics(self, sess, input_df, cleaned_df, errors):
         # get the nunmber of wells in the database
         sql = (
             select(func.count())
@@ -43,12 +46,22 @@ class Metrics:
             .where(Thing.thing_type == "water well")
         )
         count = sess.execute(sql).scalar_one()
-        metrics = f"Water well,{count},{len(input_df)},{len(cleaned_df)}"
+        metrics = ["Water well", count, len(input_df), len(cleaned_df)]
         self._write_metrics(metrics)
+        self._write_errors(errors)
+
+    def _write_errors(self, errors):
+        self._writer.writerow(["PointID", "Error"])
+        for e in errors:
+            error = e["error"]
+            if not isinstance(error, (list, tuple)):
+                error = [error]
+
+            for ee in error:
+                self._writer.writerow([e["pointid"], ee])
 
     def _write_metrics(self, metrics):
-        with open(self.path, "a") as f:
-            f.write(f"{metrics}\n")
+        self._writer.writerow(metrics)
 
 
 # ============= EOF =============================================
