@@ -15,9 +15,8 @@
 # ===============================================================================
 from typing import List, TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-from sqlalchemy.ext.declarative import UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
 
