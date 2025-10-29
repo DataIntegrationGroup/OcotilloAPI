@@ -20,14 +20,13 @@ from pydantic import (
     ConfigDict,
     AwareDatetime,
     field_validator,
-    model_serializer,
 )
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
 from core.enums import ReleaseStatus
 
-DT_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
+DT_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class ResourceNotFoundResponse(BaseModel):
@@ -68,7 +67,7 @@ class UTCAwareDatetime(AwareDatetime):
             if value.tzinfo != timezone.utc:
                 value = value.astimezone(timezone.utc)
             # Format with Z suffix
-            return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            return value.strftime(DT_FMT)
 
         # Use generate_schema instead of calling handler directly
         python_schema = handler.generate_schema(datetime)
@@ -97,14 +96,6 @@ class BaseResponseModel(BaseModel):
         from_attributes=True,
         populate_by_name=True,
     )
-
-    @model_serializer
-    def serialize(self):
-        data = self.__dict__.copy()
-        # If release_status is an enum, convert to string
-        if hasattr(data.get("release_status"), "value"):
-            data["release_status"] = data["release_status"].value
-        return data
 
 
 # TODO: write function to convert any datetime field to UTC for use throughout
