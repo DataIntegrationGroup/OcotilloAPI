@@ -24,6 +24,7 @@ migrate.sh
 launcher.sh
 gcs_credentials.json
 transfers/data/assets*
+transfers/data/nma_csv_cache/*
 transfers/transfer*.log
 transfer*.log
 tests/features/*.feature
