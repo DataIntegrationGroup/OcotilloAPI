@@ -27,6 +27,7 @@ transfers/data/assets*
 transfers/transfer*.log
 transfer*.log
 tests/features/*.feature
-
+transfers/metrics/*
+transfers/logs/*
 # deployment files
 app.yaml

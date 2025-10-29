@@ -14,8 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 import logging
+import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from services.gcs_helper import get_storage_bucket
 
@@ -31,9 +33,12 @@ from services.gcs_helper import get_storage_bucket
 #
 #     def flush(self):
 #         pass
+root = Path("logs")
+print(f"root={root}", os.getcwd())
+if not os.getcwd().endswith("transfers"):
+    root = Path("transfers") / root
 
-
-log_filename = f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
 
 logging.basicConfig(

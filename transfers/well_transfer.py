@@ -102,10 +102,10 @@ def transfer_wells(session, limit=0) -> None:
         CasingMaterial as WellCasingMaterialEnum,
     )
 
-    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+    input_df = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
-    wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
+    wdf = input_df.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
@@ -113,7 +113,7 @@ def transfer_wells(session, limit=0) -> None:
 
     # todo: filter Locations by DataSource
     wdf = filter_by_welldata_datasource(wdf)
-
+    cleaned_df = wdf
     n = len(wdf)
 
     step = 25
@@ -232,6 +232,7 @@ def transfer_wells(session, limit=0) -> None:
         session.add(assoc)
 
     session.commit()
+    return input_df, cleaned_df
     # try:
     #     session.commit()
     # except Exception as e:

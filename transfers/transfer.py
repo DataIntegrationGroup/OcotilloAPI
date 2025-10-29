@@ -17,6 +17,8 @@ import os
 
 from dotenv import load_dotenv
 
+from transfers.metrics import Metrics
+
 load_dotenv()
 
 from sqlalchemy.orm import Session
@@ -87,9 +89,12 @@ def transfer_all(sess, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
     erase_and_initalize(sess)
 
+    metrics = Metrics()
     message("TRANSFERRING WELLS")
-    timeit_direct(transfer_wells, sess, limit=limit)
+    results = timeit_direct(transfer_wells, sess, limit=limit)
+    metrics.well_transfer_metrics(sess, *results)
     timeit_direct(transfer_wellscreens, sess)
+    return
 
     message("TRANSFERRING SENSORS")
     timeit_direct(transfer_sensors, sess)

@@ -75,11 +75,16 @@ def transfer_sensors(session):
                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
                     )
 
-                installation_date = None
                 if row.DateInstalled:
                     installation_date = datetime.strptime(
                         row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
                     ).date()
+                else:
+                    logger.critical(
+                        f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
+                        f"SerialNo: {row.SerialNo} PointID: {pointid}"
+                    )
+                    continue
 
                 removal_date = None
                 if row.DateRemoved:
@@ -96,6 +101,7 @@ def transfer_sensors(session):
                     )
                     recording_interval = None
 
+                # TODO: add validation
                 deployment = Deployment(
                     thing=thing,
                     sensor=sensor,
