@@ -74,8 +74,6 @@ with session_ctx() as session:
 groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
 pH_parameter_id = parameter_map[("pH", "Field Parameter")]
 
-DT_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
-
 
 def override_authentication(default=True):
     """

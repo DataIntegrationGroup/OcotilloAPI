@@ -27,6 +27,8 @@ from pydantic_core import core_schema
 
 from core.enums import ReleaseStatus
 
+DT_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
 
 class ResourceNotFoundResponse(BaseModel):
     detail: str

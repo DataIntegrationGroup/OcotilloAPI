@@ -23,13 +23,13 @@ from db import Sensor
 from main import app
 
 # from schemas.sensor import ValidateSensor
+from schemas import DT_FMT
 from tests import (
     client,
     cleanup_post_test,
     cleanup_patch_test,
     override_authentication,
     groundwater_level_parameter_id,
-    DT_FMT,
 )
 
 
