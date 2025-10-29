@@ -27,6 +27,7 @@ transfers/data/assets*
 transfers/transfer*.log
 transfer*.log
 tests/features/*.feature
+tests/data/nma_csv_cache/*.csv
 
 # deployment files
 app.yaml
