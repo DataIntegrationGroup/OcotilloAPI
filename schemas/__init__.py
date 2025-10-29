@@ -15,9 +15,17 @@
 # ===============================================================================
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, AwareDatetime
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    AwareDatetime,
+    field_validator,
+    model_serializer,
+)
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
+
+from core.enums import ReleaseStatus
 
 
 class ResourceNotFoundResponse(BaseModel):
@@ -25,11 +33,21 @@ class ResourceNotFoundResponse(BaseModel):
 
 
 class BaseCreateModel(BaseModel):
-    release_status: str
+    release_status: ReleaseStatus = "draft"
+
+    @field_validator("release_status", mode="before")
+    @classmethod
+    def coerce_release_status(cls, v):
+        if isinstance(v, str):
+            try:
+                return ReleaseStatus(v)
+            except ValueError:
+                raise ValueError(f"Invalid release_status: {v}")
+        return v
 
 
 class BaseUpdateModel(BaseCreateModel):
-    release_status: str | None = None
+    release_status: ReleaseStatus | None = None
 
 
 # Custom type for UTC datetime serialization
@@ -48,7 +66,7 @@ class UTCAwareDatetime(AwareDatetime):
             if value.tzinfo != timezone.utc:
                 value = value.astimezone(timezone.utc)
             # Format with Z suffix
-            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         # Use generate_schema instead of calling handler directly
         python_schema = handler.generate_schema(datetime)
@@ -71,12 +89,20 @@ class UTCAwareDatetime(AwareDatetime):
 class BaseResponseModel(BaseModel):
     id: int  # every ORM model should have an id field
     created_at: UTCAwareDatetime
-    release_status: str
+    release_status: ReleaseStatus
 
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
     )
+
+    @model_serializer
+    def serialize(self):
+        data = self.__dict__.copy()
+        # If release_status is an enum, convert to string
+        if hasattr(data.get("release_status"), "value"):
+            data["release_status"] = data["release_status"].value
+        return data
 
 
 # TODO: write function to convert any datetime field to UTC for use throughout

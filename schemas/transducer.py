@@ -13,35 +13,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+
 from pydantic import BaseModel
 
-
-# -------- CREATE ----------
-class CreateSeries(BaseModel):
-    """
-    Schema for creating a new series.
-    This schema can be extended with additional fields as needed.
-    """
-
-    name: str
-    description: str | None = None
-    thing_id: int
-    sensor_id: int
-    observed_property: str
-    unit: str
-    release_status: str | None = (
-        "draft"  # Default to 'draft', can be 'published' or 'archived'
-    )
+from core.enums import ReviewStatus
+from schemas import BaseResponseModel, BaseCreateModel
 
 
-# -------- RESPONSE --------
-class SeriesResponse(BaseModel):
-    id: int
-    name: str
-    observed_property: str
-    thing_id: int
+class TransducerObservationBlockResponse(BaseResponseModel):
+    review_status: ReviewStatus
+    start_datetime: datetime
+    end_datetime: datetime
+    parameter_id: int
+    # parameter: ParameterResponse
 
 
-# -------- UPDATE ----------
+class TransducerObservationResponse(BaseResponseModel):
+    value: float
+    observation_datetime: datetime
+    parameter_id: int
+    deployment_id: int
+
+
+class TransducerObservationWithBlockResponse(BaseModel):
+    observation: TransducerObservationResponse
+    block: TransducerObservationBlockResponse
+
+
+class CreateTransducerObservation(BaseCreateModel):
+
+    parameter_id: int
+    deployment_id: int
+    value: float
+    observation_datetime: datetime
+
 
 # ============= EOF =============================================

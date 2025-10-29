@@ -20,8 +20,7 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from geoalchemy2.shape import to_shape
 from shapely.io import to_geojson
-
-# from starlette.responses import FileResponse
+from starlette.responses import JSONResponse
 
 from core.dependencies import session_dependency, viewer_dependency
 from db import Group
@@ -55,7 +54,8 @@ async def get_geospatial(
     """
 
     if format_ == "geojson":
-        return get_feature_collection(session, thing_type, group)
+        content = get_feature_collection(session, thing_type, group)
+        return JSONResponse(content=content, media_type="application/geo+json")
     else:
         return get_location_shapefile(session, thing_type, group)
 

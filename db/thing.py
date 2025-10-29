@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import List, TYPE_CHECKING
+
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -27,8 +29,6 @@ from db.base import (
     StatusHistoryMixin,
     PermissionMixin,
 )
-
-from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from db.location import Location

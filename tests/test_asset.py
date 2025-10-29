@@ -22,7 +22,13 @@ from api.asset import get_storage_bucket
 from core.app import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
+from tests import (
+    client,
+    cleanup_post_test,
+    override_authentication,
+    cleanup_patch_test,
+    DT_FMT,
+)
 
 
 # CLASSES, FIXTURES, AND FUNCTIONS =============================================
@@ -152,7 +158,7 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][0]["id"] == asset.id
     assert data["items"][0]["created_at"] == asset.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == asset.release_status
     assert data["items"][0]["name"] == asset.name
     assert data["items"][0]["label"] == asset.label
@@ -167,7 +173,7 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][1][
         "created_at"
     ] == asset_with_associated_thing.created_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        DT_FMT
     )
     assert (
         data["items"][1]["release_status"] == asset_with_associated_thing.release_status
@@ -205,7 +211,7 @@ def test_get_asset_by_id(asset):
     data = response.json()
     assert data["id"] == asset.id
     assert data["created_at"] == asset.created_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        DT_FMT
     )
     assert data["release_status"] == asset.release_status
     assert data["name"] == asset.name

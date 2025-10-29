@@ -29,7 +29,13 @@ from db import Thing, WellScreen, ThingIdLink
 from main import app
 from schemas.location import LocationResponse
 from schemas.thing import ValidateWell
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
+from tests import (
+    client,
+    override_authentication,
+    cleanup_post_test,
+    cleanup_patch_test,
+    DT_FMT,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -112,7 +118,9 @@ def test_add_water_well(location, group):
     assert data["well_casing_depth_unit"] == "ft"
     assert data["well_casing_materials"] == payload["well_casing_materials"]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -186,7 +194,9 @@ def test_add_spring(location, group):
     assert data["release_status"] == payload["release_status"]
     assert data["spring_type"] == payload["spring_type"]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -292,7 +302,7 @@ def test_well_add_well_screen_409_wrong_thing_type(spring_thing):
     assert data["detail"][0]["input"] == {"thing_id": spring_thing.id}
 
 
-def test_add_well_screen_409_bad_screen_type(water_well_thing):
+def test_add_well_screen_422_bad_screen_type(water_well_thing):
     payload = {
         "thing_id": water_well_thing.id,
         "screen_depth_top": 10.0,
@@ -302,15 +312,12 @@ def test_add_well_screen_409_bad_screen_type(water_well_thing):
     }
     response = client.post("/thing/well-screen", json=payload)
 
-    assert response.status_code == 409
+    assert response.status_code == 422
     data = response.json()
     assert data["detail"][0]["loc"] == ["body", "screen_type"]
-    assert (
-        data["detail"][0]["msg"]
-        == f"{payload['screen_type']} is an invalid screen type. Valid types are: PVC | Steel | Concrete."
-    )
-    assert data["detail"][0]["type"] == "value_error"
-    assert data["detail"][0]["input"] == {"screen_type": payload["screen_type"]}
+    assert data["detail"][0]["msg"] == "Input should be 'PVC', 'Steel' or 'Concrete'"
+    assert data["detail"][0]["type"] == "enum"
+    assert data["detail"][0]["input"] == payload["screen_type"]
 
 
 def test_add_thing_link(spring_thing):
@@ -364,7 +371,7 @@ def test_get_water_wells(water_well_thing, location):
     assert data["items"][0]["id"] == water_well_thing.id
     assert data["items"][0]["created_at"] == water_well_thing.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["name"] == water_well_thing.name
     assert (
         data["items"][0]["first_visit_date"]
@@ -394,7 +401,9 @@ def test_get_water_wells(water_well_thing, location):
         wcm for wcm in water_well_thing.well_casing_materials
     ]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["items"][0]["current_location"] == expected_location
 
@@ -406,7 +415,7 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["id"] == water_well_thing.id
     assert data["created_at"] == water_well_thing.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["name"] == water_well_thing.name
     assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()
     assert data["thing_type"] == water_well_thing.thing_type
@@ -425,7 +434,9 @@ def test_get_water_well_by_id(water_well_thing, location):
         wcm for wcm in water_well_thing.well_casing_materials
     ]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -460,7 +471,7 @@ def test_get_springs(spring_thing, location):
     assert data["items"][0]["id"] == spring_thing.id
     assert data["items"][0]["created_at"] == spring_thing.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["name"] == spring_thing.name
     assert (
         data["items"][0]["first_visit_date"]
@@ -469,7 +480,9 @@ def test_get_springs(spring_thing, location):
     assert data["items"][0]["thing_type"] == spring_thing.thing_type
     assert data["items"][0]["release_status"] == spring_thing.release_status
     assert data["items"][0]["spring_type"] == spring_thing.spring_type
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["items"][0]["current_location"] == expected_location
 
@@ -481,13 +494,15 @@ def test_get_spring_by_id(spring_thing, location):
     assert data["id"] == spring_thing.id
     assert data["created_at"] == spring_thing.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["name"] == spring_thing.name
     assert data["first_visit_date"] == spring_thing.first_visit_date.isoformat()
     assert data["thing_type"] == spring_thing.thing_type
     assert data["release_status"] == spring_thing.release_status
     assert data["spring_type"] == spring_thing.spring_type
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -528,7 +543,7 @@ def test_get_well_screens(well_screen):
     assert data["items"][0]["release_status"] == well_screen.release_status
     assert data["items"][0]["created_at"] == well_screen.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
 
 
 def test_get_well_screen_by_id(well_screen):
@@ -544,7 +559,7 @@ def test_get_well_screen_by_id(well_screen):
     assert data["release_status"] == well_screen.release_status
     assert data["created_at"] == well_screen.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
 
 
 def test_get_well_screen_by_id_404_not_found(well_screen):
@@ -599,7 +614,7 @@ def test_get_thing_id_links(thing_id_link):
     assert data["items"][0]["id"] == thing_id_link.id
     assert data["items"][0]["created_at"] == thing_id_link.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == thing_id_link.release_status
     assert data["items"][0]["thing_id"] == thing_id_link.thing_id
     assert data["items"][0]["relation"] == thing_id_link.relation
@@ -617,7 +632,7 @@ def test_get_thing_id_link_by_id(thing_id_link):
     assert data["id"] == thing_id_link.id
     assert data["created_at"] == thing_id_link.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["release_status"] == thing_id_link.release_status
     assert data["thing_id"] == thing_id_link.thing_id
     assert data["relation"] == thing_id_link.relation
@@ -676,7 +691,7 @@ def test_get_thing_by_id(water_well_thing, location):
     assert data["id"] == water_well_thing.id
     assert data["created_at"] == water_well_thing.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["release_status"] == water_well_thing.release_status
     assert data["name"] == water_well_thing.name
     assert data["first_visit_date"] == water_well_thing.first_visit_date.isoformat()
@@ -691,7 +706,9 @@ def test_get_thing_by_id(water_well_thing, location):
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
     assert data["spring_type"] is None
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -818,7 +835,9 @@ def test_patch_water_well(water_well_thing, location):
     assert data["hole_depth"] == payload["hole_depth"]
     assert data["well_construction_notes"] == payload["well_construction_notes"]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 
@@ -878,7 +897,9 @@ def test_patch_spring(spring_thing, location):
     assert data["release_status"] == payload["release_status"]
     assert data["spring_type"] == payload["spring_type"]
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
+    expected_location = LocationResponse.model_validate(location).model_dump(
+        mode="json"
+    )
     # created_at is already serialized to UTC format by UTCAwareDatetime
     assert data["current_location"] == expected_location
 

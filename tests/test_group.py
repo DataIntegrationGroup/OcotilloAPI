@@ -8,7 +8,13 @@ from core.dependencies import admin_function, viewer_function, editor_function
 from db import Group
 from main import app
 from schemas.group import ValidateGroup
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
+from tests import (
+    client,
+    override_authentication,
+    cleanup_post_test,
+    cleanup_patch_test,
+    DT_FMT,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -91,7 +97,7 @@ def test_get_groups(group):
     assert data["items"][0]["id"] == group.id
     assert data["items"][0]["created_at"] == group.created_at.astimezone(
         timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == group.release_status
     assert data["items"][0]["name"] == group.name
     assert data["items"][0]["project_area"] == to_shape(group.project_area).wkt
@@ -105,7 +111,7 @@ def test_get_group_by_id(group):
     data = response.json()
     assert data["id"] == group.id
     assert data["created_at"] == group.created_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        DT_FMT
     )
     assert data["name"] == group.name
     assert data["project_area"] == to_shape(group.project_area).wkt
