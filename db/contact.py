@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List, TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, String
+from sqlalchemy import Integer, ForeignKey, String, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy_utils import TSVectorType
@@ -111,6 +111,10 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     # Full-Text Search Vector
     search_vector: Mapped[TSVectorType] = mapped_column(
         TSVectorType("name", "role", "organization", "nma_pk_owners")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("name", "organization", name="uq_contact_name_organization"),
     )
 
 
