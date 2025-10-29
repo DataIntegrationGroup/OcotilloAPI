@@ -13,21 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
-
 # Load .env file BEFORE importing anything else
 # Use override=True to override conflicting shell environment variables
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-# Set timezone to UTC for consistent datetime handling in tests
-os.environ["TZ"] = "UTC"
+# this should not be needed since all Pydantic serializes all datetimes as UTC
+# furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility
+# # Set timezone to UTC for consistent datetime handling in tests
+# os.environ["TZ"] = "UTC"
 
-# Also set time.tzset() to apply the timezone change
-import time
+# # Also set time.tzset() to apply the timezone change
+# import time
 
-time.tzset()
+# time.tzset()
 
 from transfers.transfer import erase_and_initalize
 from fastapi.testclient import TestClient

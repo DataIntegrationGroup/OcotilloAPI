@@ -85,7 +85,7 @@ def authenticated(
         If `optional` is True, it should allow unauthenticated access.
         """
 
-        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 1)):
+        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
             if settings.mode == "production":
                 raise HTTPException(
                     status_code=status.HTTP_424_FAILED_DEPENDENCY,

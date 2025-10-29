@@ -26,7 +26,10 @@ gcs_credentials.json
 transfers/data/assets*
 transfers/transfer*.log
 transfer*.log
+transfers/data/nma_csv_cache/*
+!transfers/data/nma_csv_cache/.gitkeep
 tests/features/*.feature
+
 
 # deployment files
 app.yaml
