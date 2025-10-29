@@ -7,13 +7,13 @@ from pydantic import ValidationError
 from core.dependencies import admin_function, viewer_function, editor_function
 from db import Group
 from main import app
+from schemas import DT_FMT
 from schemas.group import ValidateGroup
 from tests import (
     client,
     override_authentication,
     cleanup_post_test,
     cleanup_patch_test,
-    DT_FMT,
 )
 
 

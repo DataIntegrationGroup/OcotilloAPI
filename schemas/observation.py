@@ -32,7 +32,7 @@ from schemas import (
     UTCAwareDatetime,
 )
 from schemas.parameter import ParameterResponse
-
+from core.enums import Unit
 
 # class GeothermalMixin:
 #     depth: float
@@ -69,7 +69,7 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
     sensor_id: int
     parameter_id: int
     value: float | None
-    unit: str | None
+    unit: Unit | None
 
 
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
@@ -90,7 +90,7 @@ class UpdateBaseObservation(BaseUpdateModel, ValidateObservation):
     sensor_id: int | None = None
     parameter_id: int | None = None
     value: float | None | None = None
-    unit: str | None = None
+    unit: Unit | None = None
 
 
 class UpdateGroundwaterLevelObservation(UpdateBaseObservation):
@@ -110,7 +110,7 @@ class BaseObservationResponse(BaseResponseModel):
     observation_datetime: UTCAwareDatetime
     parameter: ParameterResponse
     value: float | None
-    unit: str
+    unit: Unit
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):

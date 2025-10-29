@@ -29,12 +29,12 @@ from db import Thing, WellScreen, ThingIdLink
 from main import app
 from schemas.location import LocationResponse
 from schemas.thing import ValidateWell
+from schemas import DT_FMT
 from tests import (
     client,
     override_authentication,
     cleanup_post_test,
     cleanup_patch_test,
-    DT_FMT,
 )
 
 

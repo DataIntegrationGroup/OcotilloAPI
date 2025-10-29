@@ -133,9 +133,9 @@ class SampleResponse(BaseResponseModel):
     contact: ContactResponse
     sample_date: UTCAwareDatetime
     sample_name: str
-    sample_matrix: str
-    sample_method: str
-    qc_type: str
+    sample_matrix: SampleMatrix
+    sample_method: SampleMethod
+    qc_type: SampleQcType
     notes: str | None
     depth_top: float | None
     depth_bottom: float | None

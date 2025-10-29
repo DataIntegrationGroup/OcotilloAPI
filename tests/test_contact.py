@@ -11,13 +11,13 @@ from core.dependencies import (
 )
 from db import Contact, Address, Email, Phone
 from main import app
+from schemas import DT_FMT
 from schemas.contact import ValidateEmail, ValidatePhone, ValidateContact
 from tests import (
     client,
     cleanup_post_test,
     cleanup_patch_test,
     override_authentication,
-    DT_FMT,
 )
 
 

@@ -24,12 +24,12 @@ from core.dependencies import (
 )
 from db import LexiconTerm, LexiconCategory, LexiconTriple
 from main import app
+from schemas import DT_FMT
 from tests import (
     client,
     override_authentication,
     cleanup_post_test,
     cleanup_patch_test,
-    DT_FMT,
 )
 
 

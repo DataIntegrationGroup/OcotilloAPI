@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from pydantic import BaseModel
+from core.enums import PublicationType
 
 
 # -------- CREATE ----------
@@ -28,7 +29,7 @@ class CreatePublication(BaseModel):
     doi: str | None = None
     url: str | None = None
 
-    publication_type: str
+    publication_type: PublicationType
 
 
 # -------- RESPONSE ----------
@@ -54,7 +55,7 @@ class PublicationResponse(BaseModel):
     year: int
     doi: str | None = None
     url: str | None = None
-    publication_type: str
+    publication_type: PublicationType
 
 
 # -------- UPDATE ----------
