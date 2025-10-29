@@ -29,6 +29,9 @@ class Metrics:
         if not os.getcwd().endswith("transfers"):
             root = Path("transfers") / root
 
+        if not os.path.exists(root):
+            os.mkdir(root)
+
         self.path = root / f"metrics_{datetime.now()}.csv"
         self._write_metrics("model,transfered,input_count,cleaned_count")
 

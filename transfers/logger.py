@@ -34,9 +34,11 @@ from services.gcs_helper import get_storage_bucket
 #     def flush(self):
 #         pass
 root = Path("logs")
-print(f"root={root}", os.getcwd())
 if not os.getcwd().endswith("transfers"):
     root = Path("transfers") / root
+
+if not os.path.exists(root):
+    os.mkdir(root)
 
 log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
 
