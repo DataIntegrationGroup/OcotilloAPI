@@ -53,10 +53,7 @@ def transfer_contacts(session):
 
     co_to_org_mapper_path = get_transfers_data_path("owners_organization_mapper.json")
     with open(co_to_org_mapper_path, "r") as f:
-        co_to_org_mapper = {}
-        co_to_org_json = json.load(f)
-        for mapping in co_to_org_json:
-            co_to_org_mapper[mapping["source"]] = mapping["target"]
+        co_to_org_mapper = json.load(f)
 
     odf = read_csv("OwnersData")
     odf = odf.drop(["OBJECTID", "GlobalID"], axis=1)
@@ -121,10 +118,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
 
     name = _make_name(row.FirstName, row.LastName)
 
-    if row.Company and row.Company in co_to_org_mapper:
-        organization = co_to_org_mapper[row.Company]
-    else:
-        organization = row.Company
+    organization = co_to_org_mapper.get(row.Company, row.Company)
 
     contact_data = {
         "thing_id": thing.id,
@@ -210,10 +204,7 @@ def _add_second_contact(session, row, thing, co_to_org_mapper):
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
 
-    if row.Company and row.Company in co_to_org_mapper:
-        organization = co_to_org_mapper[row.Company]
-    else:
-        organization = row.Company
+    organization = co_to_org_mapper.get(row.Company, row.Company)
 
     contact_data = {
         "thing_id": thing.id,

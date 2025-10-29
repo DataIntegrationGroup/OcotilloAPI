@@ -171,20 +171,6 @@ def transfer_water_levels(session):
                 for name, organization, role in zip(*contact_info):
                     if (name, organization) in created_contacts:
                         contact = created_contacts[(name, organization)]
-                    elif (
-                        session.query(Contact)
-                        .filter_by(name=name, organization=organization)
-                        .first()
-                    ):
-                        # don't create a new contact if it already exists in the database
-                        contact = (
-                            session.query(Contact)
-                            .filter_by(name=name, organization=organization)
-                            .first()
-                        )
-                        logger.info(
-                            f"{SPACE_2}Using existing contact: | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
-                        )
                     else:
                         try:
                             # create new contact if not already created
