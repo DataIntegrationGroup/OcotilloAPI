@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 import time
 import uuid
 from datetime import datetime
-import json
 
 import pandas as pd
 
@@ -26,7 +26,6 @@ from db import (
     Observation,
     FieldEvent,
     FieldActivity,
-    FieldEventParticipant,
     Contact,
     FieldEventParticipant,
     Parameter,
@@ -122,12 +121,18 @@ def transfer_water_levels(session):
     with open(path, "r") as f:
         measured_by_mapper = json.load(f)
 
-    wd = read_csv("WaterLevels")
-    wd = filter_to_valid_point_ids(session, wd)
-    wd = filter_by_valid_measuring_agency(wd)
-    gwd = wd.groupby(["PointID"])
+    input_df = read_csv("WaterLevels")
+    cleaned_df = filter_to_valid_point_ids(session, input_df)
+    cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
+
+    gwd = cleaned_df.groupby(["PointID"])
 
     start_time = time.time()
+    errors = []
+
+    # TODO: this needs to be cleaned up
+    # the for loop is too long and hard to read
+    # adding contacts should be done in a separate function
     for index, group in gwd:
         pointid = index[0]
         logger.info(f"Processing PointID: {pointid}")
@@ -357,6 +362,8 @@ def transfer_water_levels(session):
                 f"{SPACE_4}Created observation: ID {observation.id} | DT {observation.observation_datetime} | Value {observation.value} | MPHeight {observation.measuring_point_height} | nma_pk_waterlevels {observation.nma_pk_waterlevels}"
             )
         session.commit()
+
+    return input_df, cleaned_df, errors
 
 
 # ============= EOF =============================================

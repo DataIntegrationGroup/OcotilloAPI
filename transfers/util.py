@@ -163,6 +163,11 @@ def convert_mt_to_utc(dt_record: datetime):
     return dt_record
 
 
+def chunk_by_size(df, chunk_size):
+    for i in range(0, len(df), chunk_size):
+        yield df.iloc[i : i + chunk_size]
+
+
 def make_location(row: pd.Series) -> Location:
     point = Point(row.Easting, row.Northing)
 

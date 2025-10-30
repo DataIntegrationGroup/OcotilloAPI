@@ -15,11 +15,10 @@
 # ===============================================================================
 import datetime
 from typing import TYPE_CHECKING
-from geoalchemy2 import Geometry, WKBElement
-from geoalchemy2.shape import to_shape
-
 from uuid import UUID
 
+from geoalchemy2 import Geometry, WKBElement, WKTElement
+from geoalchemy2.shape import to_shape
 from sqlalchemy import (
     String,
     ForeignKey,
@@ -27,8 +26,8 @@ from sqlalchemy import (
     func,
     Text,
 )
-from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
@@ -76,7 +75,12 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
 
     @property
     def latlon(self):
-        p = to_shape(self.point)
+        point = self.point
+
+        if isinstance(point, str):
+            point = WKTElement(point)
+
+        p = to_shape(point)
         return p.y, p.x
 
 

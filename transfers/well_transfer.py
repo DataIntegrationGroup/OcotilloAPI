@@ -21,6 +21,10 @@ from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy import select
 
+from core.enums import (
+    WellPurpose as WellPurposeEnum,
+    CasingMaterial as WellCasingMaterialEnum,
+)
 from db import (
     LocationThingAssociation,
     Thing,
@@ -29,6 +33,7 @@ from db import (
     WellPurpose,
     WellCasingMaterial,
 )
+from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
@@ -96,16 +101,11 @@ def _extract_casing_materials(row) -> list[str]:
 
 
 def transfer_wells(session, limit=0) -> None:
-    from schemas.thing import CreateWell
-    from core.enums import (
-        WellPurpose as WellPurposeEnum,
-        CasingMaterial as WellCasingMaterialEnum,
-    )
 
-    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+    input_df = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
-    wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
+    wdf = input_df.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
@@ -113,11 +113,12 @@ def transfer_wells(session, limit=0) -> None:
 
     # todo: filter Locations by DataSource
     wdf = filter_by_welldata_datasource(wdf)
-
+    cleaned_df = wdf
     n = len(wdf)
 
     step = 25
     start_time = time.time()
+    errors = []
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
@@ -151,6 +152,7 @@ def transfer_wells(session, limit=0) -> None:
                 session.expunge(location)
             # these rollbacks are cause an issue because they are discarding good data
             # session.rollback()
+            errors.append({"pointid": row.PointID, "error": str(e)})
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -178,7 +180,7 @@ def transfer_wells(session, limit=0) -> None:
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            # session.rollback()
+            errors.append({"pointid": row.PointID, "error": e.errors()})
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
@@ -221,7 +223,8 @@ def transfer_wells(session, limit=0) -> None:
         except Exception as e:
             if well is not None:
                 session.expunge(well)
-            # session.rollback()
+
+            errors.append({"pointid": row.PointID, "error": str(e)})
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
@@ -232,6 +235,7 @@ def transfer_wells(session, limit=0) -> None:
         session.add(assoc)
 
     session.commit()
+    return input_df, cleaned_df, errors
     # try:
     #     session.commit()
     # except Exception as e:
@@ -241,18 +245,17 @@ def transfer_wells(session, limit=0) -> None:
 
 
 def transfer_wellscreens(session, limit=None):
-    from schemas.thing import CreateWellScreen
 
-    wdf = read_csv("WellScreens")
-    wdf = replace_nans(wdf)
+    input_df = read_csv("WellScreens")
+    wdf = replace_nans(input_df)
 
-    wdf = filter_to_valid_point_ids(session, wdf)
+    cleaned_df = filter_to_valid_point_ids(session, wdf)
 
-    n = len(wdf)
+    n = len(cleaned_df)
 
     start_time = time.time()
-
-    for i, row in enumerate(wdf.itertuples()):
+    errors = []
+    for i, row in enumerate(cleaned_df.itertuples()):
         if limit and i >= limit:
             logger.warning("Reached limit of", limit, "rows. Stopping migration.")
             break
@@ -291,9 +294,11 @@ def transfer_wellscreens(session, limit=None):
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
+            errors.append({"pointid": row.PointID, "error": e.errors()})
             continue
 
     session.commit()
+    return input_df, cleaned_df, errors
 
 
 def cleanup_locations(session):

@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 from enum import Enum
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.engine import session_ctx
 from db.lexicon import (
     LexiconCategory,
     LexiconTerm,
@@ -116,21 +117,18 @@ def get_terms_by_category(category: str) -> list:
         list: A list of terms.
     """
 
-    with session_ctx() as session:
+    # use the lexicon.json to read the terms
+    path = Path(__file__).parent.parent / "core" / "lexicon.json"
+    with open(path, "r") as rfile:
+        terms = json.load(rfile)["terms"]
+        terms = [t for t in terms if category in t["categories"]]
 
-        sql = select(LexiconTerm)
-        sql = sql.join(LexiconTermCategoryAssociation)
-        sql = sql.join(LexiconCategory)
-        sql = sql.filter(LexiconCategory.name == category)
-
-        categories = [lex.term for lex in session.scalars(sql).all()]
-
-    return categories
+    return terms
 
 
 def build_enum_from_lexicon_category(category: str) -> Enum:
     terms = get_terms_by_category(category)
-    return Enum(category, {c: c for c in terms})
+    return Enum(category, {c["term"]: c["term"] for c in terms})
 
 
 # ============= EOF =============================================

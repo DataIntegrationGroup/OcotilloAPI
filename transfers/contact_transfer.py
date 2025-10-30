@@ -13,18 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import ValidationError
 import json
 
-from transfers.util import (
-    read_csv,
-    filter_to_valid_point_ids,
-    replace_nans,
-    get_transfers_data_path,
-)
-from transfers.logger import logger
+from pydantic import ValidationError
+
 from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 from transfers.logger import logger
+from transfers.util import (
+    get_transfers_data_path,
+)
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
@@ -55,8 +52,8 @@ def transfer_contacts(session):
     with open(co_to_org_mapper_path, "r") as f:
         co_to_org_mapper = json.load(f)
 
-    odf = read_csv("OwnersData")
-    odf = odf.drop(["OBJECTID", "GlobalID"], axis=1)
+    input_df = read_csv("OwnersData")
+    odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
     ldf = read_csv("OwnerLink")
     ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
     locdf = read_csv("Location")
@@ -67,6 +64,8 @@ def transfer_contacts(session):
     odf = replace_nans(odf)
 
     odf = filter_to_valid_point_ids(session, odf)
+    cleaned_df = odf
+    errors = []
     for i, row in odf.iterrows():
         thing = session.query(Thing).where(Thing.name == row.PointID).first()
         logger.info(f"Processing PointID: {i} {row.PointID}")
@@ -87,12 +86,13 @@ def transfer_contacts(session):
                 f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
             )
             session.rollback()
+            errors.append({"pointid": row.PointID, "error": e.errors()})
         except Exception as e:
             logger.critical(
                 f"Skipping first contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
-
+            errors.append({"pointid": row.PointID, "error": e})
         try:
             _add_second_contact(session, row, thing, co_to_org_mapper)
             session.commit()
@@ -103,11 +103,15 @@ def transfer_contacts(session):
                 f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
             )
             session.rollback()
+            errors.append({"pointid": row.PointID, "error": e.errors()})
         except Exception as e:
             logger.critical(
                 f"Skipping second contact for PointID {row.PointID} due to error: {e}"
             )
             session.rollback()
+            errors.append({"pointid": row.PointID, "error": e})
+
+    return input_df, cleaned_df, errors
 
 
 def _add_first_contact(session, row, thing, co_to_org_mapper):

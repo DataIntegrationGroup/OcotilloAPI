@@ -26,13 +26,13 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 
 
 def transfer_sensors(session):
-    equipment = read_csv("Equipment")
-    equipment.columns = equipment.columns.str.replace(" ", "_")
-    equipment = equipment[equipment.SerialNo.notna()]
-    equipment = filter_to_valid_point_ids(session, equipment)
-    equipment = replace_nans(equipment)
-
-    grouped_equipment = equipment.groupby(["PointID"])
+    input_df = read_csv("Equipment")
+    input_df.columns = input_df.columns.str.replace(" ", "_")
+    input_df = input_df[input_df.SerialNo.notna()]
+    cleaned_df = filter_to_valid_point_ids(session, input_df)
+    cleaned_df = replace_nans(cleaned_df)
+    errors = []
+    grouped_equipment = cleaned_df.groupby(["PointID"])
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -45,10 +45,13 @@ def transfer_sensors(session):
 
         try:
             for row in ordered_group.itertuples():
-                if row.EquipmentType not in EQUIPMENT_TO_SENSOR_TYPE_MAP:
+                try:
+                    sensor_type = EQUIPMENT_TO_SENSOR_TYPE_MAP[row.EquipmentType]
+                except KeyError as e:
                     logger.critical(
                         f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
                     )
+                    errors.append({"pointid": pointid, "error": e})
                     continue
 
                 sensor = (
@@ -61,10 +64,12 @@ def transfer_sensors(session):
                         f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
                     )
                 else:
+
+                    # TODO: Add validation
                     sensor = Sensor(
                         nma_pk_equipment=row.GlobalID,
                         name=row.ID,
-                        sensor_type=EQUIPMENT_TO_SENSOR_TYPE_MAP[row.EquipmentType],
+                        sensor_type=sensor_type,
                         model=row.Model,
                         serial_no=row.SerialNo,
                         owner_agency="NMBGMR",
@@ -75,11 +80,23 @@ def transfer_sensors(session):
                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
                     )
 
-                installation_date = None
                 if row.DateInstalled:
                     installation_date = datetime.strptime(
                         row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
                     ).date()
+                else:
+                    logger.critical(
+                        f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
+                        f"SerialNo: {row.SerialNo} PointID: {pointid}"
+                    )
+                    errors.append(
+                        {
+                            "pointid": pointid,
+                            "error": f"{row.ID}, {row.SerialNo}. Installation Date cannot "
+                            f"be None",
+                        }
+                    )
+                    continue
 
                 removal_date = None
                 if row.DateRemoved:
@@ -95,7 +112,15 @@ def transfer_sensors(session):
                         f"integer. Setting to None"
                     )
                     recording_interval = None
+                    errors.append(
+                        {
+                            "pointid": pointid,
+                            "error": f"{row.ID}, {row.SerialNo}. RecordingInterval is "
+                            f"not an integer",
+                        }
+                    )
 
+                # TODO: add validation
                 deployment = Deployment(
                     thing=thing,
                     sensor=sensor,
@@ -126,6 +151,9 @@ def transfer_sensors(session):
             session.commit()
         except Exception as e:
             logger.critical(f"Could not add sensor and deployment: {e}")
+            errors.append({"pointid": pointid, "error": e})
+
+    return input_df, cleaned_df, errors
 
 
 # ============= EOF =============================================
