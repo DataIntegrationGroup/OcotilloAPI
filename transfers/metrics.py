@@ -81,7 +81,6 @@ class Metrics:
         self._write_errors(errors)
 
     def _write_errors(self, errors: list) -> None:
-        return
         self._writer.writerow(["PointID", "Error"])
         for e in errors:
             error = e["error"]
