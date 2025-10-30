@@ -90,6 +90,8 @@ pre-commit install
 cp .env.example .env
 ```
 
+In development set `MODE=development` to allow lexicon enums to be populated.
+
 #### 5. Database and server
 
 

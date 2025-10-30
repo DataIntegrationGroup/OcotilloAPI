@@ -27,6 +27,7 @@ from core.dependencies import (
 )
 from db import Observation
 from main import app
+from schemas import DT_FMT
 from tests import (
     client,
     cleanup_post_test,
@@ -34,7 +35,6 @@ from tests import (
     cleanup_patch_test,
     groundwater_level_parameter_id,
     pH_parameter_id,
-    DT_FMT,
 )
 
 

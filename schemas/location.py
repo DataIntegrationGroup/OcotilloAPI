@@ -70,11 +70,11 @@ class LocationResponse(BaseResponseModel):
     point: str
     elevation: float | None
     horizontal_datum: str = "WGS84"
-    vertical_daum: str = "NAVD88"
+    vertical_datum: str = "NAVD88"
     elevation_accuracy: float | None
-    elevation_method: str | None
+    elevation_method: ElevationMethod | None
     coordinate_accuracy: float | None
-    coordinate_method: str | None
+    coordinate_method: CoordinateMethod | None
     state: str | None
     county: str | None
     quad_name: str | None
