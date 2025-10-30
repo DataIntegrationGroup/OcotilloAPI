@@ -123,9 +123,9 @@ def transfer_water_levels(session):
 
     input_df = read_csv("WaterLevels")
     cleaned_df = filter_to_valid_point_ids(session, input_df)
-    wd = filter_by_valid_measuring_agency(cleaned_df)
+    cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
 
-    gwd = wd.groupby(["PointID"])
+    gwd = cleaned_df.groupby(["PointID"])
 
     start_time = time.time()
     errors = []

@@ -81,7 +81,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
             point = WKTElement(point)
 
         p = to_shape(point)
-        print(type(self.point), p)
         return p.y, p.x
 
 
