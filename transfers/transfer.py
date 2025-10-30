@@ -108,7 +108,13 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING CONTACTS")
     results = timeit_direct(transfer_contacts, sess)
     metrics.contact_metrics(sess, *results)
-    return
+
+    message("TRANSFERRING WATER LEVELS")
+    results = timeit_direct(transfer_water_levels, sess)
+    metrics.water_level_metrics(sess, *results)
+
+    message("CLEANING UP LOCATIONS")
+    timeit_direct(cleanup_locations, sess)
 
     """
     Developer's notes
@@ -127,14 +133,10 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING GROUPS")
     timeit_direct(transfer_groups, sess)
 
-    message("TRANSFERRING WATER LEVELS")
-    timeit_direct(transfer_water_levels, sess)
+    return
 
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
-
-    message("CLEANING UP LOCATIONS")
-    timeit_direct(cleanup_locations, sess)
 
     # need to transfer deployments before transducer water levels
     # message("TRANSFERRING WATER LEVELS PRESSURE")

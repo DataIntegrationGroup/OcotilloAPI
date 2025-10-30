@@ -22,7 +22,7 @@ from pandas import DataFrame
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-from db import Thing, WellScreen, Sensor, Contact
+from db import Thing, WellScreen, Sensor, Contact, Observation, Parameter
 
 
 class Metrics:
@@ -57,6 +57,19 @@ class Metrics:
 
         # since each contact in nma contacts a primary and a secondary contact multiply the count by 2
         metrics = [Contact.__name__, count, len(input_df) * 2, len(cleaned_df) * 2]
+        self._writer.writerow(metrics)
+        self._write_errors(errors)
+
+    def water_level_metrics(self, sess, input_df, cleaned_df, errors) -> None:
+        sql = (
+            select(func.count())
+            .select_from(Observation)
+            .join(Parameter)
+            .where(Parameter.parameter_name == "groundwater level")
+        )
+        count = sess.execute(sql).scalar_one()
+
+        metrics = ["Manual Water Levels", count, len(input_df), len(cleaned_df)]
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
