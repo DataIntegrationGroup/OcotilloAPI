@@ -39,6 +39,8 @@ def get_db_contacts(
         joinedload(Contact.thing_associations).joinedload(
             ThingContactAssociation.thing
         ),
+        joinedload(Contact.nma_phone),
+        joinedload(Contact.nma_cell_phone),
     )
 
     if thing_id:

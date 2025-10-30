@@ -333,6 +333,8 @@ def contact(water_well_thing):
             role="Owner",
             contact_type="Primary",
             organization="NMBGMR",
+            # nma_primary_phone_number="9999999",
+            # nma_secondary_phone_number="8888888",
         )
         session.add(contact)
         session.commit()
@@ -348,6 +350,36 @@ def contact(water_well_thing):
         yield contact
         session.delete(contact)
         session.delete(association)
+        session.commit()
+
+
+@pytest.fixture()
+def nma_phone(contact):
+    with session_ctx() as session:
+        nma_phone = NMAPhone(
+            phone_number="9999999",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
+def nma_cell_phone(contact):
+    with session_ctx() as session:
+        nma_cell_phone = NMACellPhone(
+            phone_number="8888888",
+            contact_id=contact.id,
+        )
+        session.add(nma_cell_phone)
+        session.commit()
+        session.refresh(nma_cell_phone)
+        yield nma_cell_phone
+        session.delete(nma_cell_phone)
         session.commit()
 
 

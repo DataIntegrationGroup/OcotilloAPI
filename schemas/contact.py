@@ -113,7 +113,6 @@ class CreatePhone(BaseCreateModel, ValidatePhone):
     contact_id: int | None = None  # set to None for when made via POST /contact
     phone_number: str
     phone_type: PhoneType = "Primary"  # Default to 'Primary'
-    nma_phone_number: str | None = None
 
 
 class CreateAddress(BaseCreateModel):
@@ -175,7 +174,6 @@ class PhoneResponse(BaseItemResponse):
 
     phone_number: str | None = None
     phone_type: str  # e.g., 'mobile', 'landline', etc.
-    nma_phone_number: str | None = None
 
 
 class EmailResponse(BaseItemResponse):
@@ -210,10 +208,24 @@ class ContactResponse(BaseResponseModel):
     organization: str | None
     role: Role
     contact_type: ContactType
+    nma_phone: str | None
+    nma_cell_phone: str | None
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
     things: List[ThingResponse] = []  # List of related things
+
+    @field_validator("nma_phone", mode="before")
+    def make_nma_phone_str(cls, v) -> str | None:
+        if v is not None:
+            return v.phone_number
+        return None
+
+    @field_validator("nma_cell_phone", mode="before")
+    def make_nma_cell_phone_str(cls, v) -> str | None:
+        if v is not None:
+            return v.phone_number
+        return None
 
 
 # class ThingContactAssociationResponse(BaseUpdateModel):
