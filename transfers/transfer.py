@@ -25,9 +25,6 @@ from sqlalchemy.orm import Session
 from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
 from db.engine import session_ctx
 
-from transfers.waterlevels_transducer_transfer import (
-    transfer_water_levels_pressure,
-)
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
@@ -40,12 +37,6 @@ from transfers.well_transfer import (
 )
 
 from transfers.asset_transfer import transfer_assets
-from transfers.thing_transfer import (
-    transfer_springs,
-    transfer_perennial_stream,
-    transfer_ephemeral_stream,
-    transfer_met,
-)
 from transfers.util import timeit, timeit_direct
 from transfers.logger import logger, save_log_to_bucket
 
@@ -92,35 +83,32 @@ def transfer_all(sess, limit=100):
     metrics = Metrics()
     message("TRANSFERRING WELLS")
     results = timeit_direct(transfer_wells, sess, limit=limit)
-    metrics.well_transfer_metrics(sess, *results)
-    return
+    metrics.well_metrics(sess, *results)
 
-    timeit_direct(transfer_wellscreens, sess)
+    results = timeit_direct(transfer_wellscreens, sess)
+    metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")
-    timeit_direct(transfer_sensors, sess)
+    results = timeit_direct(transfer_sensors, sess)
+    metrics.sensor_metrics(sess, *results)
 
-    # need to transfer deployments before transducer water levels
-    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    # timeit_direct(transfer_water_levels_acoustic, sess)
-
-    message("TRANSFERRING WATER LEVELS PRESSURE")
-    timeit_direct(transfer_water_levels_pressure, sess)
-
-    message("TRANSFERRING SPRINGS")
-    timeit_direct(transfer_springs, sess, limit=limit)
-
-    message("TRANSFERRING PERENNIAL STREAMS")
-    timeit_direct(transfer_perennial_stream, sess, limit=limit)
-
-    message("TRANSFERRING EPHEMERAL STREAMS")
-    timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-
-    message("TRANSFERRING METEOROLOGICAL")
-    timeit_direct(transfer_met, sess, limit)
+    # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
+    # message("TRANSFERRING SPRINGS")
+    # timeit_direct(transfer_springs, sess, limit=limit)
+    #
+    # message("TRANSFERRING PERENNIAL STREAMS")
+    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING EPHEMERAL STREAMS")
+    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING METEOROLOGICAL")
+    # timeit_direct(transfer_met, sess, limit)
 
     message("TRANSFERRING CONTACTS")
-    timeit_direct(transfer_contacts, sess)
+    results = timeit_direct(transfer_contacts, sess)
+    metrics.contact_metrics(sess, *results)
+    return
 
     """
     Developer's notes
@@ -147,6 +135,13 @@ def transfer_all(sess, limit=100):
 
     message("CLEANING UP LOCATIONS")
     timeit_direct(cleanup_locations, sess)
+
+    # need to transfer deployments before transducer water levels
+    # message("TRANSFERRING WATER LEVELS PRESSURE")
+    # timeit_direct(transfer_water_levels_pressure, sess)
+
+    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    # timeit_direct(transfer_water_levels_acoustic, sess)
 
 
 def main():

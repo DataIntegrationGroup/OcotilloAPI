@@ -247,16 +247,16 @@ def transfer_wells(session, limit=0) -> None:
 def transfer_wellscreens(session, limit=None):
     from schemas.thing import CreateWellScreen
 
-    wdf = read_csv("WellScreens")
-    wdf = replace_nans(wdf)
+    input_df = read_csv("WellScreens")
+    wdf = replace_nans(input_df)
 
-    wdf = filter_to_valid_point_ids(session, wdf)
+    cleaned_df = filter_to_valid_point_ids(session, wdf)
 
-    n = len(wdf)
+    n = len(cleaned_df)
 
     start_time = time.time()
-
-    for i, row in enumerate(wdf.itertuples()):
+    errors = []
+    for i, row in enumerate(cleaned_df.itertuples()):
         if limit and i >= limit:
             logger.warning("Reached limit of", limit, "rows. Stopping migration.")
             break
@@ -295,9 +295,11 @@ def transfer_wellscreens(session, limit=None):
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
+            errors.append({"pointid": row.PointID, "error": e.errors()})
             continue
 
     session.commit()
+    return input_df, cleaned_df, errors
 
 
 def cleanup_locations(session):

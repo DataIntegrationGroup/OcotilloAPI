@@ -18,9 +18,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from pandas import DataFrame
 from sqlalchemy import select, func
+from sqlalchemy.orm import Session
 
-from db import Thing
+from db import Thing, WellScreen, Sensor, Contact
 
 
 class Metrics:
@@ -36,21 +38,36 @@ class Metrics:
         self.path = root / f"metrics_{datetime.now()}.csv"
 
         self._writer = csv.writer(self.path.open("a"), delimiter="|")
-        self._write_metrics(["model", "transfered", "input_count", "cleaned_count"])
+        self._writer.writerow(["model", "transferred", "input_count", "cleaned_count"])
 
-    def well_transfer_metrics(self, sess, input_df, cleaned_df, errors):
-        # get the nunmber of wells in the database
-        sql = (
-            select(func.count())
-            .select_from(Thing)
-            .where(Thing.thing_type == "water well")
+    def well_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(Thing, where=Thing.thing_type == "water well", *args, **kw)
+
+    def sensor_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(Sensor, *args, **kw)
+
+    def well_screen_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(WellScreen, *args, **kw)
+
+    def contact_metrics(self, sess, input_df, cleaned_df, errors) -> None:
+        count = self._get_count(
+            sess,
+            Contact,
         )
-        count = sess.execute(sql).scalar_one()
-        metrics = ["Water well", count, len(input_df), len(cleaned_df)]
-        self._write_metrics(metrics)
+
+        # since each contact in nma contacts a primary and a secondary contact multiply the count by 2
+        metrics = [Contact.__name__, count, len(input_df) * 2, len(cleaned_df) * 2]
+        self._writer.writerow(metrics)
         self._write_errors(errors)
 
-    def _write_errors(self, errors):
+    def _handle_metrics(
+        self, model, sess, input_df, cleaned_df, errors, where=None
+    ) -> None:
+        count = self._get_count(sess, model, where=where)
+        self._write_metrics(model.__name__, count, input_df, cleaned_df)
+        self._write_errors(errors)
+
+    def _write_errors(self, errors: list) -> None:
         self._writer.writerow(["PointID", "Error"])
         for e in errors:
             error = e["error"]
@@ -59,9 +76,21 @@ class Metrics:
 
             for ee in error:
                 self._writer.writerow([e["pointid"], ee])
+        self._writer.writerow([])
 
-    def _write_metrics(self, metrics):
+    def _write_metrics(
+        self, name: str, count: int, input_df: DataFrame, cleaned_df: DataFrame
+    ) -> None:
+        metrics = [name, count, len(input_df), len(cleaned_df)]
+
         self._writer.writerow(metrics)
+
+    def _get_count(self, sess: Session, model, where=None) -> int:
+        sql = select(func.count()).select_from(model)
+        if where:
+            sql = sql.where(where)
+        count = sess.execute(sql).scalar_one()
+        return count
 
 
 # ============= EOF =============================================
