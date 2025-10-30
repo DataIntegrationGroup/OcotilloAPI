@@ -24,6 +24,7 @@ from transfers.util import (
     extract_organization,
     read_csv,
     replace_nans,
+    chunk_by_size,
 )
 
 
@@ -32,58 +33,61 @@ def transfer_link_ids_welldata(session):
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
-    for i, row in enumerate(ldf.itertuples()):
-
-        # RULE: exclude rows where both ids are null
-        if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            # logger.warning(
-            #     f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
-            # )
-            continue
-
-        thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        if thing is None:
-            logger.warning(
-                f"Thing not found for row {i} PointID {row.PointID}. Skipping link ids."
-            )
-            continue
-
-        for aid, klass, regex in (
-            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,3}-\d{3,6}"),
-            (
-                row.OSEWelltagID,
-                "OSEWellTagID",
-                r"",
-            ),  # TODO: need to figure out regex for this field
-        ):
-            if pd.isna(aid):
-                # logger.warning(f"{klass} is null for {row.PointID}")
+    for chunk in chunk_by_size(ldf, 25):
+        locations = (
+            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
+        )
+        for row in chunk.itertuples():
+            # RULE: exclude rows where both ids are null
+            if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
+                # logger.warning(
+                #     f"Both OSEWellID and OSEWelltagID are null for {row.PointID}"
+                # )
                 continue
 
-            # RULE: exclude any id that == 'X', '?'
-            if aid.strip().lower() in ("x", "?", "exempt"):
-                logger.critical(
-                    f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
+            thing = next((l for l in locations if l.name == row.PointID), None)
+            if thing is None:
+                logger.warning(
+                    f"Thing not found forPointID {row.PointID}. Skipping link ids."
                 )
                 continue
 
-            if regex and not re.match(regex, aid):
-                logger.critical(
-                    f"{klass} id does not match regex {regex}, id={aid} for {row.PointID}"
-                )
-                continue
+            for aid, klass, regex in (
+                (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,3}-\d{3,6}"),
+                (
+                    row.OSEWelltagID,
+                    "OSEWellTagID",
+                    r"",
+                ),  # TODO: need to figure out regex for this field
+            ):
+                if pd.isna(aid):
+                    # logger.warning(f"{klass} is null for {row.PointID}")
+                    continue
 
-            # TODO: add guards for null values
-            link_id = ThingIdLink()
-            link_id.thing = thing
-            link_id.relation = klass
-            link_id.alternate_id = aid
-            link_id.alternate_organization = "NMOSE"
+                # RULE: exclude any id that == 'X', '?'
+                if aid.strip().lower() in ("x", "?", "exempt"):
+                    logger.critical(
+                        f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
+                    )
+                    continue
 
-            # does link_id need a class  e.g.
-            # link_id.alternate_id_class = klass
+                if regex and not re.match(regex, aid):
+                    logger.critical(
+                        f"{klass} id does not match regex {regex}, id={aid} for {row.PointID}"
+                    )
+                    continue
 
-            session.add(link_id)
+                # TODO: add guards for null values
+                link_id = ThingIdLink()
+                link_id.thing = thing
+                link_id.relation = klass
+                link_id.alternate_id = aid
+                link_id.alternate_organization = "NMOSE"
+
+                # does link_id need a class  e.g.
+                # link_id.alternate_id_class = klass
+
+                session.add(link_id)
         session.commit()
 
 
@@ -158,28 +162,46 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
-
-    for i, row in enumerate(ldf.itertuples()):
-        thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        if thing is None:
-            logger.warning(
-                f"Thing with PointID {row.PointID} not found. Skipping link id."
-            )
-            continue
-        logger.info(
-            f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
-            f"AlternateSiteID2={row.AlternateSiteID2}"
+    for chunk in chunk_by_size(ldf, 25):
+        locations = (
+            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
         )
-        add_link_alternate_site_id(session, row, thing)
-        # add_link_site_id(session, row, thing)
-        # add_link_plss(session, row, thing)
+        for row in chunk.itertuples():
+            thing = next((l for l in locations if l.name == row.PointID), None)
+            if thing is None:
+                logger.warning(
+                    f"Thing with PointID {row.PointID} not found. Skipping link id."
+                )
+                continue
+            logger.info(
+                f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
+                f"AlternateSiteID2={row.AlternateSiteID2}"
+            )
+            add_link_alternate_site_id(session, row, thing)
+        session.commit()
 
-        # not clear what alternate_id2 is for, or what it maps to
-        # add_link_alternate_site_id2(session, row, thing)
-        if i and not i % 25:
-            session.commit()
-
-    session.commit()
+    # for i, row in enumerate(ldf.itertuples()):
+    #     thing = session.query(Thing).where(Thing.name == row.PointID).first()
+    #     if thing is None:
+    #         logger.warning(
+    #             f"Thing with PointID {row.PointID} not found. Skipping link id."
+    #         )
+    #         continue
+    #     logger.info(
+    #         f"Processing PointID: {row.PointID}, Thing ID: {thing.id}, AlternateSiteID={row.AlternateSiteID}, "
+    #         f"AlternateSiteID2={row.AlternateSiteID2}"
+    #     )
+    #     add_link_alternate_site_id(session, row, thing)
+    #     # add_link_site_id(session, row, thing)
+    #     # add_link_plss(session, row, thing)
+    #
+    #     # not clear what alternate_id2 is for, or what it maps to
+    #     # add_link_alternate_site_id2(session, row, thing)
+    #     if i and not i % 25:
+    #         session.commit()
+    #         session.flush()
+    #
+    # session.commit()
 
 
 # ============= EOF =============================================

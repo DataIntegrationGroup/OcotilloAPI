@@ -56,7 +56,7 @@ class Metrics:
         )
 
         # since each contact in nma contacts a primary and a secondary contact multiply the count by 2
-        metrics = [Contact.__name__, count, len(input_df) * 2, len(cleaned_df) * 2]
+        metrics = [Contact.__name__, len(input_df) * 2, len(cleaned_df) * 2, count]
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
@@ -69,7 +69,7 @@ class Metrics:
         )
         count = sess.execute(sql).scalar_one()
 
-        metrics = ["Manual Water Levels", count, len(input_df), len(cleaned_df)]
+        metrics = ["Manual Water Levels", len(input_df), len(cleaned_df), count]
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
@@ -82,7 +82,6 @@ class Metrics:
 
     def _write_errors(self, errors: list) -> None:
         return
-
         self._writer.writerow(["PointID", "Error"])
         for e in errors:
             error = e["error"]
@@ -96,7 +95,7 @@ class Metrics:
     def _write_metrics(
         self, name: str, count: int, input_df: DataFrame, cleaned_df: DataFrame
     ) -> None:
-        metrics = [name, count, len(input_df), len(cleaned_df)]
+        metrics = [name, len(input_df), len(cleaned_df), count]
 
         self._writer.writerow(metrics)
 
