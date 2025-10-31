@@ -137,7 +137,7 @@ class IncompleteNMAPhone(Base, AutoBaseMixin):
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
 
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
 
     contact: Mapped["Contact"] = relationship(
         "Contact", back_populates="incomplete_nma_phones", passive_deletes=True
@@ -148,7 +148,7 @@ class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     phone_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(
