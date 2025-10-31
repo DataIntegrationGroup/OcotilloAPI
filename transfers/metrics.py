@@ -35,7 +35,7 @@ class Metrics:
         if not os.path.exists(root):
             os.mkdir(root)
 
-        self.path = root / f"metrics_{datetime.now()}.csv"
+        self.path = root / f"metrics_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
 
         self._writer = csv.writer(self.path.open("a"), delimiter="|")
         self._writer.writerow(["model", "transferred", "input_count", "cleaned_count"])
