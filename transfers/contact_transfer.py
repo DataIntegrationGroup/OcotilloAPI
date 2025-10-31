@@ -305,9 +305,7 @@ def _make_phone(first_second, ownerkey, **kw):
         try:
             if "phone_number" in kw:
                 incomplete_phone = IncompleteNMAPhone(phone_number=kw["phone_number"])
-                logger.info(
-                    f"Salvaged incomplete phone number for OwnerKey {ownerkey}: {kw['phone_number']}"
-                )
+                logger.info(f"Salvaged incomplete phone number for OwnerKey {ownerkey}")
                 return incomplete_phone, False
         except ValidationError:
 
