@@ -23,6 +23,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - MODE=${MODE}
+      - AUTHENTIK_DISABLE_AUTHENTICATION=${AUTHENTIK_DISABLE_AUTHENTICATION}
     ports:
       - 8000:8000
     depends_on:
