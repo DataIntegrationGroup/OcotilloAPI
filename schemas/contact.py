@@ -208,14 +208,14 @@ class ContactResponse(BaseResponseModel):
     organization: str | None
     role: Role
     contact_type: ContactType
-    nma_phones: List[str] = []
+    incomplete_nma_phones: List[str] = []
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
     things: List[ThingResponse] = []  # List of related things
 
-    @field_validator("nma_phones", mode="before")
-    def make_nma_phone_str(cls, v: list) -> list:
+    @field_validator("incomplete_nma_phones", mode="before")
+    def make_incomplete_nma_phone_str(cls, v: list) -> list:
         if len(v) == 0:
             return []
         else:

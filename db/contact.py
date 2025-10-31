@@ -69,8 +69,8 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
         "Address", back_populates="contact", cascade="all, delete, delete-orphan"
     )
     # One-To-One: A Contact can have one NMA Phone record.
-    nma_phones: Mapped[List["NMAPhone"]] = relationship(
-        "NMAPhone", back_populates="contact", cascade="all, delete-orphan"
+    incomplete_nma_phones: Mapped[List["IncompleteNMAPhone"]] = relationship(
+        "IncompleteNMAPhone", back_populates="contact", cascade="all, delete-orphan"
     )
 
     # One-To-Many: A Contact can grant many Permissions.
@@ -123,7 +123,12 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     )
 
 
-class NMAPhone(Base, AutoBaseMixin):
+class IncompleteNMAPhone(Base, AutoBaseMixin):
+    """
+    This table stores data from NM_Aquifer that is not complete and cannot be transferred to the Phone model due to validation issues.
+    This is often due to missing area codes, but could be other issues as well.
+    """
+
     contact_id: Mapped[int] = mapped_column(
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
@@ -131,7 +136,7 @@ class NMAPhone(Base, AutoBaseMixin):
     phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
 
     contact: Mapped["Contact"] = relationship(
-        "Contact", back_populates="nma_phones", passive_deletes=True
+        "Contact", back_populates="incomplete_nma_phones", passive_deletes=True
     )
 
 

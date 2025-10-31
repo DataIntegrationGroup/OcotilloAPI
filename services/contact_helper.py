@@ -39,7 +39,7 @@ def get_db_contacts(
         joinedload(Contact.thing_associations).joinedload(
             ThingContactAssociation.thing
         ),
-        joinedload(Contact.nma_phones),
+        joinedload(Contact.incomplete_nma_phones),
     )
 
     if thing_id:
