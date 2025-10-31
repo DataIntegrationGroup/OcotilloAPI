@@ -208,24 +208,18 @@ class ContactResponse(BaseResponseModel):
     organization: str | None
     role: Role
     contact_type: ContactType
-    nma_phone: str | None
-    nma_cell_phone: str | None
+    nma_phones: List[str] = []
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
     things: List[ThingResponse] = []  # List of related things
 
-    @field_validator("nma_phone", mode="before")
-    def make_nma_phone_str(cls, v) -> str | None:
-        if v is not None:
-            return v.phone_number
-        return None
-
-    @field_validator("nma_cell_phone", mode="before")
-    def make_nma_cell_phone_str(cls, v) -> str | None:
-        if v is not None:
-            return v.phone_number
-        return None
+    @field_validator("nma_phones", mode="before")
+    def make_nma_phone_str(cls, v: list) -> list:
+        if len(v) == 0:
+            return []
+        else:
+            return [p.phone_number for p in v]
 
 
 # class ThingContactAssociationResponse(BaseUpdateModel):

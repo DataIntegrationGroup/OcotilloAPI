@@ -69,12 +69,10 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
         "Address", back_populates="contact", cascade="all, delete, delete-orphan"
     )
     # One-To-One: A Contact can have one NMA Phone record.
-    nma_phone: Mapped["NMAPhone"] = relationship(
+    nma_phones: Mapped[List["NMAPhone"]] = relationship(
         "NMAPhone", back_populates="contact", cascade="all, delete-orphan"
     )
-    nma_cell_phone: Mapped["NMACellPhone"] = relationship(
-        "NMACellPhone", back_populates="contact", cascade="all, delete-orphan"
-    )
+
     # One-To-Many: A Contact can grant many Permissions.
     permissions: Mapped[List["Permission"]] = relationship(
         "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
@@ -133,19 +131,7 @@ class NMAPhone(Base, AutoBaseMixin):
     phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
 
     contact: Mapped["Contact"] = relationship(
-        "Contact", back_populates="nma_phone", passive_deletes=True
-    )
-
-
-class NMACellPhone(Base, AutoBaseMixin):
-    contact_id: Mapped[int] = mapped_column(
-        ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
-    )
-
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
-
-    contact: Mapped["Contact"] = relationship(
-        "Contact", back_populates="nma_cell_phone", passive_deletes=True
+        "Contact", back_populates="nma_phones", passive_deletes=True
     )
 
 
