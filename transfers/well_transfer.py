@@ -102,12 +102,14 @@ def _extract_casing_materials(row) -> list[str]:
 
 def transfer_wells(session, limit=0) -> None:
 
-    input_df = read_csv("WellData", dtype={"OSEWelltagID": str})
+    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
-    wdf = input_df.join(ldf.set_index("LocationId"), on="LocationId")
+    wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+
+    input_df = wdf
 
     wdf = replace_nans(wdf)
 

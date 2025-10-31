@@ -112,9 +112,20 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         f.seek(0)
         invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
         logger.info("Invalid WellData Datasources:")
-        logger.info("\n".join(f"  {vd}" for vd in invalid_datasources))
+        for vd in invalid_datasources:
+            logger.info(f"  {vd}")
 
-    return df[df["DataSource"].isin(valid_datasources)]
+    counts = df.groupby("DataSource").size().reset_index(name="WellCount")
+    counts = counts.sort_values("WellCount", ascending=False)
+    for count in counts.itertuples():
+        logger.info(f"{count.DataSource}: {count.WellCount}")
+
+    pldf = read_csv("ProjectLocations")
+    collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
+    return df[
+        df["DataSource"].isin(valid_datasources)
+        | df["PointID"].isin(collabnet["PointID"])
+    ]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
