@@ -102,6 +102,16 @@ def transfer_contacts(session):
             session.rollback()
             errors.append({"pointid": row.PointID, "error": e})
         try:
+            if (
+                row.SecondFirstName is None
+                and row.SecondLastName is None
+                and row.SecondCtctEmail is None
+                and row.SecondCtctPhone is None
+            ):
+                logger.warning(
+                    f"No second contact info for PointID {row.PointID}, skipping."
+                )
+                continue
             _add_second_contact(session, row, thing, co_to_org_mapper)
             session.commit()
             session.flush()
