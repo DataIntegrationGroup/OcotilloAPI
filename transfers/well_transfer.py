@@ -48,6 +48,7 @@ from transfers.util import (
     replace_nans,
     filter_by_welldata_datasource,
     lexicon_mapper,
+    filter_non_transferred_wells,
 )
 
 ADDED = []
@@ -115,6 +116,7 @@ def transfer_wells(session, limit=0) -> None:
 
     # todo: filter Locations by DataSource
     wdf = filter_by_welldata_datasource(wdf)
+    wdf = filter_non_transferred_wells(session, wdf)
     cleaned_df = wdf
     n = len(wdf)
 

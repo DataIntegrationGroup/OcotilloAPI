@@ -147,7 +147,9 @@ def transfer_all(sess, limit=100):
 
 def transfer_debugging(sess, limit=100):
     message("STARTING TRANSFER DEBUG", new_line_at_top=False)
-    erase_and_initalize(sess)
+
+    if int(os.environ.get("ERASE_AND_REBUILD", 0)):
+        erase_and_initalize(sess)
 
     metrics = Metrics()
     message("TRANSFERRING WELLS")
@@ -175,21 +177,21 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    # message("TRANSFERRING CONTACTS")
-    # results = timeit_direct(transfer_contacts, sess)
-    # metrics.contact_metrics(sess, *results)
+    message("TRANSFERRING CONTACTS")
+    results = timeit_direct(transfer_contacts, sess)
+    metrics.contact_metrics(sess, *results)
 
-    # message("TRANSFERRING WATER LEVELS")
-    # results = timeit_direct(transfer_water_levels, sess)
-    # metrics.water_level_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS")
+    results = timeit_direct(transfer_water_levels, sess)
+    metrics.water_level_metrics(sess, *results)
 
     # message("TRANSFERRING WATER LEVELS PRESSURE")
     # results = timeit_direct(transfer_water_levels_pressure, sess)
     # metrics.pressure_metrics(sess, *results)
 
-    message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    results = timeit_direct(transfer_water_levels_acoustic, sess)
-    metrics.acoustic_metrics(sess, *results)
+    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    # results = timeit_direct(transfer_water_levels_acoustic, sess)
+    # metrics.acoustic_metrics(sess, *results)
 
     """
     Developer's notes

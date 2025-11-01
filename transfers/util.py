@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import pytz
 from shapely import Point
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
@@ -101,6 +102,12 @@ def get_transfers_data_path(name):
             root = data_path(".")
 
     return root / name
+
+
+def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFrame:
+    sql = select(Thing.name).where(Thing.thing_type == "water well")
+    existing_ids = sess.execute(sql).scalars().all()
+    return df[~(df["PointID"].isin(existing_ids))]
 
 
 def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
