@@ -26,23 +26,26 @@ from core.dependencies import (
     amp_viewer_function,
     viewer_function,
 )
-from core.initializers import register_routes, init_lexicon, init_parameter
+from core.initializers import (
+    register_routes,
+    init_lexicon,
+    init_parameter,
+    erase_and_rebuild_db,
+)
 from db import (
     Location,
     Thing,
     LocationThingAssociation,
-    Base,
     Sensor,
     LexiconTerm,
     Group,
     GroupThingAssociation,
 )
-from db.engine import session_ctx, engine
+from db.engine import session_ctx
 
 with session_ctx() as session:
     if session.query(LexiconTerm).count() == 0:
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
+        erase_and_rebuild_db(session)
 
         init_lexicon()
         init_parameter()
