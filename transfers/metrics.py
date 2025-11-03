@@ -116,7 +116,8 @@ class Metrics:
         self._write_errors(errors)
 
     def _make_metrics(self, name, input_n, cleaned_n, count):
-        return [name, input_n, cleaned_n, count, (cleaned_n - count) / cleaned_n * 100]
+        percent_issue = (cleaned_n - count) / cleaned_n * 100 if cleaned_n == 0 else 0
+        return [name, input_n, cleaned_n, count, percent_issue]
 
     def _handle_metrics(
         self, model, sess, input_df, cleaned_df, errors, where=None, name=None
