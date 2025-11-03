@@ -39,7 +39,7 @@ dependencies = [
     "google-cloud-storage==3.4.1",
     "google-crc32c==1.7.1",
     "google-resumable-media==2.7.2",
-    "googleapis-common-protos==1.70.0",
+    "googleapis-common-protos==1.71.0",
     "greenlet==3.2.4",
     "gunicorn==23.0.0",
     "h11==0.16.0",
