@@ -110,7 +110,7 @@ def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFram
     return df[~(df["PointID"].isin(existing_ids))]
 
 
-def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
+def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
     path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)

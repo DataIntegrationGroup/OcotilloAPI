@@ -17,9 +17,10 @@ import json
 import time
 from datetime import datetime
 
+import pandas as pd
 from pandas import isna
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.enums import (
     WellPurpose as WellPurposeEnum,
@@ -46,9 +47,10 @@ from transfers.util import (
     read_csv,
     logger,
     replace_nans,
-    filter_by_welldata_datasource,
+    filter_by_welldata_datasource_and_project,
     lexicon_mapper,
     filter_non_transferred_wells,
+    chunk_by_size,
 )
 
 ADDED = []
@@ -101,7 +103,11 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
-def transfer_wells(session, limit=0) -> None:
+def get_wells_to_transfer(
+    sess: Session, flags: dict = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if flags is None:
+        flags = {}
 
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
@@ -111,13 +117,27 @@ def transfer_wells(session, limit=0) -> None:
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
     input_df = wdf
-
     wdf = replace_nans(wdf)
+    if flags.get("TRANSFER_ALL_WELLS", True):
+        # todo: filter Locations by DataSource
+        cleaned_df = filter_by_welldata_datasource_and_project(wdf)
+    else:
+        # get a subset of wells that have not been transferred yet
+        # todo: this needs to be defined.
+        #       for now, we are just filtering out wells that have not been transferred yet
+        #       In the future we will be using criteria to determine which wells to transfer
+        #       for example, wells in the "Water Level Network" project
+        cleaned_df = wdf
 
-    # todo: filter Locations by DataSource
-    wdf = filter_by_welldata_datasource(wdf)
-    wdf = filter_non_transferred_wells(session, wdf)
-    cleaned_df = wdf
+    cleaned_df = filter_non_transferred_wells(sess, cleaned_df)
+
+    return input_df, cleaned_df
+
+
+def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None:
+    input_df, cleaned_df = get_wells_to_transfer(session, flags)
+
+    wdf = cleaned_df
     n = len(wdf)
 
     step = 25
@@ -129,6 +149,7 @@ def transfer_wells(session, limit=0) -> None:
             logger.critical(
                 f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
             )
+            errors.append({"pointid": pointid, "error": "duplicate records"})
             continue
 
         if limit and i >= limit:
@@ -255,53 +276,45 @@ def transfer_wellscreens(session, limit=None):
 
     cleaned_df = filter_to_valid_point_ids(session, wdf)
 
-    n = len(cleaned_df)
-
-    start_time = time.time()
     errors = []
-    for i, row in enumerate(cleaned_df.itertuples()):
-        if limit and i >= limit:
-            logger.warning("Reached limit of", limit, "rows. Stopping migration.")
-            break
+    for ci, chunk in enumerate(chunk_by_size(cleaned_df, 1000)):
+        things = (
+            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
+        )
 
-        # this is for testing only. not sure in practice we have to commit every 100 rows
-        # should we commit every row? or every 1000? or every 10?
-        if i and not i % 100:
-            logger.info(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
-            )
-            session.commit()
+        logger.info(f"Processing chunk {ci}, {len(chunk)} rows, {len(things)} things")
+        for i, row in enumerate(chunk.itertuples()):
+            thing = next((thing for thing in things if thing.name == row.PointID), None)
+            if not thing:
+                logger.warning(
+                    f"Thing with PointID {row.PointID} not found. Skipping well screen."
+                )
+                continue
 
-        sql = select(Thing).where(Thing.name == row.PointID)
-        thing = session.execute(sql).unique().scalar_one_or_none()
-        if not thing:
-            logger.warning(
-                f"Thing with PointID {row.PointID} not found. Skipping well screen."
-            )
-            continue
+            well_screen_data = {
+                "thing_id": thing.id,
+                "screen_depth_top": row.ScreenTop,
+                "screen_depth_bottom": row.ScreenBottom,
+                # "screen_type": row.ScreenType,
+                "screen_description": row.ScreenDescription,
+                "release_status": "draft",
+                "nma_pk_wellscreens": row.GlobalID,
+            }
+            try:
+                # TODO: add validation logic here to ensure no overlapping screens for the same well
+                CreateWellScreen.model_validate(well_screen_data)
+            except ValidationError as e:
+                logger.critical(
+                    f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
+                )
+                errors.append({"pointid": row.PointID, "error": e.errors()})
+                continue
 
-        well_screen_data = {
-            "thing_id": thing.id,
-            "screen_depth_top": row.ScreenTop,
-            "screen_depth_bottom": row.ScreenBottom,
-            # "screen_type": row.ScreenType,
-            "screen_description": row.ScreenDescription,
-            "release_status": "draft",
-            "nma_pk_wellscreens": row.GlobalID,
-        }
-        try:
-            # TODO: add validation logic here to ensure no overlapping screens for the same well
-            CreateWellScreen.model_validate(well_screen_data)
             well_screen = WellScreen(**well_screen_data)
             session.add(well_screen)
-        except ValidationError as e:
-            logger.critical(
-                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
-            )
-            errors.append({"pointid": row.PointID, "error": e.errors()})
-            continue
 
-    session.commit()
+        session.commit()
+
     return input_df, cleaned_df, errors
 
 

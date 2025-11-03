@@ -84,7 +84,13 @@ def transfer_all(sess, limit=100):
 
     metrics = Metrics()
     message("TRANSFERRING WELLS")
-    results = timeit_direct(transfer_wells, sess, limit=limit)
+
+    flags = {
+        "TRANSFER_ALL_WELLS": True,
+        "TRANSFER_ALL_WELLSCREENS": True,
+    }
+
+    results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
     metrics.well_metrics(sess, *results)
 
     message("TRANSFERRING WELL SCREENS")
@@ -153,16 +159,19 @@ def transfer_debugging(sess, limit=100):
 
     metrics = Metrics()
     message("TRANSFERRING WELLS")
-    results = timeit_direct(transfer_wells, sess, limit=limit)
+
+    flags = {"TRANSFER_ALL_WELLS": True}
+
+    results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
     metrics.well_metrics(sess, *results)
 
-    # message("TRANSFERRING WELL SCREENS")
-    # results = timeit_direct(transfer_wellscreens, sess)
-    # metrics.well_screen_metrics(sess, *results)
+    message("TRANSFERRING WELL SCREENS")
+    results = timeit_direct(transfer_wellscreens, sess)
+    metrics.well_screen_metrics(sess, *results)
 
-    message("TRANSFERRING SENSORS")
-    results = timeit_direct(transfer_sensors, sess)
-    metrics.sensor_metrics(sess, *results)
+    # message("TRANSFERRING SENSORS")
+    # results = timeit_direct(transfer_sensors, sess)
+    # metrics.sensor_metrics(sess, *results)
 
     # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
     # message("TRANSFERRING SPRINGS")
@@ -177,13 +186,13 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    message("TRANSFERRING CONTACTS")
-    results = timeit_direct(transfer_contacts, sess)
-    metrics.contact_metrics(sess, *results)
-
-    message("TRANSFERRING WATER LEVELS")
-    results = timeit_direct(transfer_water_levels, sess)
-    metrics.water_level_metrics(sess, *results)
+    # message("TRANSFERRING CONTACTS")
+    # results = timeit_direct(transfer_contacts, sess)
+    # metrics.contact_metrics(sess, *results)
+    #
+    # message("TRANSFERRING WATER LEVELS")
+    # results = timeit_direct(transfer_water_levels, sess)
+    # metrics.water_level_metrics(sess, *results)
 
     # message("TRANSFERRING WATER LEVELS PRESSURE")
     # results = timeit_direct(transfer_water_levels_pressure, sess)
