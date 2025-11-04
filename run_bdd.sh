@@ -15,7 +15,13 @@ if [ ! -d ".venv" ]; then
   echo "🧱 Creating virtual environment..."
   python3 -m venv venv
 fi
-source .venv/bin/activate
+
+# bin for Unix, Scripts for Windows
+if [ -d ".venv/bin" ]; then
+  source .venv/bin/activate
+else
+  source .venv/Scripts/activate
+fi
 
 # Install dependencies
 echo "📦 Installing Python dependencies..."
