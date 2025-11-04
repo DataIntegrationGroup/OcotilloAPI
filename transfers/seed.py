@@ -1,29 +1,231 @@
-from db.thing import Thing
+"""
+Populates the database with interconnected fake data for frontend CI testing.
+
+Run with:
+    docker compose exec -T app python -m transfers.seed
+"""
+
+import random
+from datetime import datetime, timedelta
+from faker import Faker
 from db.engine import session_ctx
+from sqlalchemy import select
+
+# Core models
+from db.contact import Contact, ThingContactAssociation
+from db.location import Location, LocationThingAssociation
+from db.thing import Thing
+from db.sensor import Sensor
+from db.deployment import Deployment
+from db.sample import Sample
+from db.observation import Observation
+from db.parameter import Parameter
+from db.analysis_method import AnalysisMethod
+from db.regulatory_limit import RegulatoryLimit
+from db.transducer import TransducerObservation
+from db.status_history import StatusHistory
+
+fake = Faker()
+Faker.seed(42)
+random.seed(42)
 
 
-def seed():
-    """Create a single contact, location, and water well."""
-    with session_ctx() as session:
-        # Create a water well
-        water_well = Thing(
-            name="TEST-0001",
-            thing_type="water well",
-            release_status="draft",
-            first_visit_date="2023-03-03",
-            well_depth=100.0,
-            hole_depth=100.0,
-            well_construction_notes="Seed well construction notes",
-            well_casing_diameter=5.0,
-            well_casing_depth=10.0,
+def seed_all(n=5):
+    """Seed roughly `n` of each main entity and connect them."""
+    with session_ctx() as s:
+        contacts = []
+        locations = []
+        things = []
+        sensors = []
+        parameters = []
+        methods = []
+        samples = []
+        observations = []
+
+        # 1. Contacts
+        for _ in range(n):
+            c = Contact(
+                name=fake.name(),
+                organization=fake.company(),
+                role=random.choice(["Hydrologist", "Technician", "Geologist"]),
+                contact_type="Primary",
+            )
+            s.add(c)
+            contacts.append(c)
+
+        # 2. Locations
+        for _ in range(n):
+            loc = Location(
+                elevation=round(fake.random_number(digits=3), 2),
+                county=fake.city(),
+                latitude=round(fake.latitude(), 6),
+                longitude=round(fake.longitude(), 6),
+                release_status="public",
+            )
+            s.add(loc)
+            locations.append(loc)
+
+        # 3. Retrieve existing Parameters & Methods
+        #
+        # If the environment variable MODE=development is set
+        # then it will initialize both the parameter and lexicon tables.
+        # See core/app.py for details
+        parameters = s.scalars(select(Parameter)).all()
+        if not parameters:
+            raise RuntimeError("No parameters found — ensure init_parameter() ran.")
+
+        method_codes = ["ASTM-D1293", "EPA-150.1", "SM-4500-O"]
+        for m in method_codes:
+            am = AnalysisMethod(
+                analysis_method_code=m,
+                analysis_method_name=f"Method {m}",
+                analysis_method_type="Lab",
+                source_organization="NMED",
+            )
+            s.add(am)
+            methods.append(am)
+
+        s.flush()
+
+        # 4. Things (Water Wells) & ThingContactAssociation & LocationThingAssociation
+        for i in range(n):
+            t = Thing(
+                name=f"WELL-{i + 1:04d}",
+                thing_type="water well",
+                first_visit_date=fake.date_between("-2y", "today"),
+                well_depth=random.uniform(50, 500),
+                hole_depth=random.uniform(50, 500),
+                well_construction_notes=fake.sentence(),
+                well_casing_diameter=random.uniform(4, 8),
+                well_casing_depth=random.uniform(10, 50),
+                release_status="public",
+            )
+
+            # link to random location
+            loc = random.choice(locations)
+            if hasattr(t, "locations"):
+                t.locations.append(loc)
+            s.add(t)
+            things.append(t)
+
+        s.flush()
+
+        for t in things:
+            assigned_contacts = random.sample(contacts, k=min(2, len(contacts)))
+            for c in assigned_contacts:
+                assoc = ThingContactAssociation(
+                    thing_id=t.id,
+                    contact_id=c.id,
+                )
+                s.add(assoc)
+
+        for loc in locations:
+            assigned_things = random.sample(things, k=min(2, len(things)))
+            for t in assigned_things:
+                assoc = LocationThingAssociation(
+                    location_id=loc.id,
+                    thing_id=t.id,
+                    effective_start=datetime.utcnow(),
+                    effective_end=None,
+                )
+                s.add(assoc)
+
+        # 5. Sensors & Deployments
+        for i in range(n):
+            sn = Sensor(
+                name=f"Sensor-{i + 1}",
+                sensor_type=random.choice(
+                    ["Pressure Transducer", "Barometer", "Acoustic Sounder"]
+                ),
+                serial_no=fake.unique.bothify(text="SN-####"),
+            )
+            sensors.append(sn)
+            s.add(sn)
+
+        s.flush()
+        deployments = []
+        for t in things:
+            sn = random.choice(sensors)
+            d = Deployment(
+                thing=t,
+                sensor=sn,
+                installation_date=datetime.utcnow()
+                - timedelta(days=random.randint(30, 180)),
+                removal_date=None,
+            )
+            deployments.append(d)
+            s.add(d)
+
+        # 6. Samples & Observations
+        for i in range(n):
+            samp = Sample(
+                sample_name=f"SMPL-{fake.random_int(1000, 9999)}",
+                sample_matrix="water",
+                sample_method=fake.choice(
+                    ["Electric tape measurement (E-probe)", "Steel-tape measurement"]
+                ),
+                sample_date=fake.date_time_this_year(),
+            )
+            t = random.choice(things)
+            samp.thing_id = t.id
+            samples.append(samp)
+            s.add(samp)
+
+        s.flush()
+        for i in range(n * 2):
+            obs = Observation(
+                sample=random.choice(samples),
+                sensor=random.choice(sensors),
+                parameter=random.choice(parameters),
+                analysis_method=random.choice(methods),
+                observation_datetime=fake.date_time_this_month(),
+                value=round(random.uniform(0, 500), 2),
+                unit="mg/L",
+            )
+            observations.append(obs)
+            s.add(obs)
+
+        # 7. Regulatory Limits
+        for prm in parameters:
+            rl = RegulatoryLimit(
+                parameter=prm,
+                limit_value=random.uniform(50, 1000),
+                limit_unit="mg/L",
+            )
+            s.add(rl)
+
+        # 8. Status History (for Things)
+        for t in things:
+            st = StatusHistory(
+                status_type="Use Status",
+                status_value=random.choice(["Active", "Inactive", "Decommissioned"]),
+                start_date=datetime.utcnow() - timedelta(days=random.randint(100, 500)),
+                statusable_id=t.id,
+                statusable_type="Thing",
+                reason="Initial test seed status",
+            )
+            s.add(st)
+
+        # 9. Transducer Observations
+        for d in deployments:
+            for _ in range(3):
+                tobs = TransducerObservation(
+                    parameter=random.choice(parameters),
+                    deployment_id=d.id,
+                    observation_datetime=datetime.utcnow()
+                    - timedelta(hours=random.randint(1, 500)),
+                    value=round(random.uniform(10, 100), 2),
+                )
+                s.add(tobs)
+
+        s.commit()
+
+        print(
+            f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
+            f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+            f"{len(observations)} observations."
         )
-        session.add(water_well)
-        session.commit()
-        session.refresh(water_well)
-        print(f"Created water well: {water_well.id} - {water_well.name}")
 
 
 if __name__ == "__main__":
-    seed()
-
-# ============= EOF =============================================
+    seed_all(5)
