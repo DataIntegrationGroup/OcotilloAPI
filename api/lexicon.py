@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from sqlalchemy.exc import ProgrammingError
@@ -93,12 +93,18 @@ def database_error_handler(
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
 
 
+def disabled_endpoint():
+    raise HTTPException(status_code=404, detail="Endpoint disabled")
+
+
 # POST =========================================================================
 
 
 @router.post(
     "/category",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_category(
     category_data: CreateLexiconCategory,
@@ -115,6 +121,8 @@ async def add_category(
     "/term",
     summary="Add term",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_term(
     term_data: CreateLexiconTerm,
@@ -134,6 +142,8 @@ async def add_term(
     "/triple",
     summary="Add triple",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_triple(
     triple_data: CreateLexiconTriple,
@@ -150,7 +160,12 @@ async def add_triple(
 # PATCH ========================================================================
 
 
-@router.patch("/term/{term_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/term/{term_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_term(
     term_id: int,
     term_data: UpdateLexiconTerm,
@@ -161,7 +176,12 @@ async def update_lexicon_term(
     return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
 
 
-@router.patch("/category/{category_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/category/{category_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_category(
     category_id: int,
     category_data: UpdateLexiconCategory,
@@ -173,7 +193,12 @@ async def update_lexicon_category(
     )
 
 
-@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/triple/{triple_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_triple(
     triple_id: int,
     triple_data: UpdateLexiconTriple,
@@ -282,6 +307,8 @@ async def get_lexicon_triple(
     "/term/{term_id}",
     summary="Delete a lexicon term by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_term(
     session: session_dependency, user: lexicon_admin_dependency, term_id: int
@@ -293,6 +320,8 @@ async def delete_lexicon_term(
     "/category/{category_id}",
     summary="Delete a lexicon category by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_category(
     session: session_dependency, user: lexicon_admin_dependency, category_id: int
@@ -304,6 +333,8 @@ async def delete_lexicon_category(
     "/triple/{triple_id}",
     summary="Delete a lexicon triple by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_triple(
     session: session_dependency, user: lexicon_admin_dependency, triple_id: int
