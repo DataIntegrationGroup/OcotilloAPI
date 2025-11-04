@@ -37,18 +37,17 @@ from db import (
     Thing,
     LocationThingAssociation,
     Sensor,
-    LexiconTerm,
     Group,
     GroupThingAssociation,
 )
 from db.engine import session_ctx
 
 with session_ctx() as session:
-    if session.query(LexiconTerm).count() == 0:
-        erase_and_rebuild_db(session)
+    # if session.query(LexiconTerm).count() == 0:
+    erase_and_rebuild_db(session)
 
-        init_lexicon()
-        init_parameter()
+    init_lexicon()
+    init_parameter()
 
 
 def add_location(lid):
