@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 # Core models
 from db.contact import Contact, ThingContactAssociation
-from db.location import Location
+from db.location import Location, LocationThingAssociation
 from db.thing import Thing
 from db.sensor import Sensor
 from db.deployment import Deployment
@@ -48,7 +48,7 @@ def seed_all(n=5):
                 name=fake.name(),
                 organization=fake.company(),
                 role=random.choice(["Hydrologist", "Technician", "Geologist"]),
-                contact_type="Person",
+                contact_type="Primary",
             )
             s.add(c)
             contacts.append(c)
@@ -56,7 +56,8 @@ def seed_all(n=5):
         # 2. Locations
         for _ in range(n):
             loc = Location(
-                name=fake.city(),
+                elevation=round(fake.random_number(digits=3), 2),
+                county=fake.city(),
                 latitude=round(fake.latitude(), 6),
                 longitude=round(fake.longitude(), 6),
                 release_status="public",
@@ -73,26 +74,23 @@ def seed_all(n=5):
         if not parameters:
             raise RuntimeError("No parameters found — ensure init_parameter() ran.")
 
-        methods = s.scalars(select(AnalysisMethod)).all()
-        if not methods:
-            # Fallback — some environments might not have predefined methods
-            print("⚠️ No analysis methods found, creating placeholder entries.")
-            for m in ["ASTM-D1293", "EPA-150.1", "SM-4500-O"]:
-                am = AnalysisMethod(
-                    analysis_method_code=m,
-                    analysis_method_name=f"Method {m}",
-                    analysis_method_type="Lab",
-                    source_organization="NMED",
-                )
-                s.add(am)
-            s.flush()
-            methods = s.scalars(select(AnalysisMethod)).all()
+        method_codes = ["ASTM-D1293", "EPA-150.1", "SM-4500-O"]
+        for m in method_codes:
+            am = AnalysisMethod(
+                analysis_method_code=m,
+                analysis_method_name=f"Method {m}",
+                analysis_method_type="Lab",
+                source_organization="NMED",
+            )
+            s.add(am)
+            methods.append(am)
+
         s.flush()
 
-        # 4. Things (Water Wells) & ThingContactAssociation
+        # 4. Things (Water Wells) & ThingContactAssociation & LocationThingAssociation
         for i in range(n):
             t = Thing(
-                name=f"WELL-{i+1:04d}",
+                name=f"WELL-{i + 1:04d}",
                 thing_type="water well",
                 first_visit_date=fake.date_between("-2y", "today"),
                 well_depth=random.uniform(50, 500),
@@ -121,11 +119,24 @@ def seed_all(n=5):
                 )
                 s.add(assoc)
 
+        for loc in locations:
+            assigned_things = random.sample(things, k=min(2, len(things)))
+            for t in assigned_things:
+                assoc = LocationThingAssociation(
+                    location_id=loc.id,
+                    thing_id=t.id,
+                    effective_start=datetime.utcnow(),
+                    effective_end=None,
+                )
+                s.add(assoc)
+
         # 5. Sensors & Deployments
         for i in range(n):
             sn = Sensor(
-                name=f"Sensor-{i+1}",
-                sensor_type=random.choice(["Pressure", "Temperature"]),
+                name=f"Sensor-{i + 1}",
+                sensor_type=random.choice(
+                    ["Pressure Transducer", "Barometer", "Acoustic Sounder"]
+                ),
                 serial_no=fake.unique.bothify(text="SN-####"),
             )
             sensors.append(sn)
@@ -148,9 +159,11 @@ def seed_all(n=5):
         # 6. Samples & Observations
         for i in range(n):
             samp = Sample(
-                sample_name=f"SMPL-{fake.random_int(1000,9999)}",
+                sample_name=f"SMPL-{fake.random_int(1000, 9999)}",
                 sample_matrix="water",
-                sample_method="Grab",
+                sample_method=fake.choice(
+                    ["Electric tape measurement (E-probe)", "Steel-tape measurement"]
+                ),
                 sample_date=fake.date_time_this_year(),
             )
             t = random.choice(things)
