@@ -16,7 +16,7 @@
 from pandas import to_datetime, Timestamp
 from pydantic import ValidationError
 
-from db import Parameter, Thing, Deployment
+from db import Parameter, Thing, Deployment, Sensor
 from db.transducer import TransducerObservation, TransducerObservationBlock
 from transfers.logger import logger
 from transfers.util import read_csv, filter_to_valid_point_ids
@@ -24,15 +24,17 @@ from transfers.util import read_csv, filter_to_valid_point_ids
 
 def transfer_water_levels_acoustic(session):
     wd = read_csv("WaterLevelsContinuous_Acoustic")
-    _transfer_water_levels_continuous(session, wd, "PublicRelease")
+    return _transfer_water_levels_continuous(
+        session, wd, "PublicRelease", "Acoustic Sounder"
+    )
 
 
 def transfer_water_levels_pressure(session):
     wd = read_csv("WaterLevelsContinuous_Pressure")
-    _transfer_water_levels_continuous(session, wd, "QCed")
+    return _transfer_water_levels_continuous(session, wd, "QCed", "Pressure Transducer")
 
 
-def _transfer_water_levels_continuous(session, wd, partition_field):
+def _transfer_water_levels_continuous(session, input_df, partition_field, sensor_type):
     from schemas.transducer import CreateTransducerObservation
 
     groundwater_parameter_id = (
@@ -41,17 +43,22 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
         .one()
         .id
     )
-    wd = filter_to_valid_point_ids(session, wd)
+    cleaned_df = filter_to_valid_point_ids(session, input_df)
 
     # group by pointid
-    gwd = wd.groupby(["PointID"])
-
+    gwd = cleaned_df.groupby(["PointID"])
+    errors = []
     for index, group in gwd:
         pointid = index[0]
         logger.info(f"Processing PointID: {pointid}")
 
         deployments = (
-            session.query(Deployment).join(Thing).where(Thing.name == pointid).all()
+            session.query(Deployment)
+            .join(Thing)
+            .join(Sensor)
+            .where(Sensor.sensor_type == sensor_type)
+            .where(Thing.name == pointid)
+            .all()
         )
 
         # remove rows with no date measured
@@ -83,9 +90,11 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                 logger.critical(
                     f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
                 )
+                errors.append({"pointid": pointid, "error": "no deployments"})
                 continue
 
             if rows.empty:
+                logger.info(f"no {release_status} records for pointid {pointid}")
                 continue
 
             observations = []
@@ -104,6 +113,12 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                 )
 
                 if deployment is None:
+                    errors.append(
+                        {
+                            "pointid": pointid,
+                            "error": f"no deployment at {row.DateMeasured}",
+                        }
+                    )
                     logger.critical(
                         f"No deployment found for PointID={pointid} at {row.DateMeasured}"
                     )
@@ -123,14 +138,24 @@ def _transfer_water_levels_continuous(session, wd, partition_field):
                     observations.append(TransducerObservation(**obspayload))
                 except ValidationError as e:
                     logger.critical(f"Observation validation error: {e.errors()}")
+                    errors.append({"pointid": pointid, "error": e.errors()})
 
             session.bulk_save_objects(observations)
-            # block.observations = observations
             session.add(block)
             logger.info(
                 f"Added {len(observations)} water levels {release_status} block"
             )
-            session.commit()
+            try:
+                session.commit()
+            except Exception as e:
+                errors.append({"pointid": pointid, "error": e})
+                logger.critical(
+                    f"Error committing water levels {release_status} block: {e}"
+                )
+                session.rollback()
+                continue
+
+    return input_df, cleaned_df, errors
 
 
 # ============= EOF =============================================

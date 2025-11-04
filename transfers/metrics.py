@@ -22,10 +22,21 @@ from pandas import DataFrame
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-from db import Thing, WellScreen, Sensor, Contact, Observation, Parameter
+from db import (
+    Thing,
+    WellScreen,
+    Sensor,
+    Contact,
+    Observation,
+    Parameter,
+    Deployment,
+    TransducerObservation,
+)
 
 
 class Metrics:
+    include_errors = False
+
     def __init__(self):
         # create a new path for the metrics
         root = Path("metrics")
@@ -36,12 +47,16 @@ class Metrics:
             os.mkdir(root)
 
         self.path = root / f"metrics_{datetime.now().strftime('%Y-%m-%dT%H_%M_%S')}.csv"
-
-        self._writer = csv.writer(self.path.open("a"), delimiter="|")
-        self._writer.writerow(["model", "transferred", "input_count", "cleaned_count"])
+        delimiter = "|" if self.include_errors else ","
+        self._writer = csv.writer(self.path.open("a"), delimiter=delimiter)
+        self._writer.writerow(
+            ["model", "input_count", "cleaned_count", "transferred", "issue_percentage"]
+        )
 
     def well_metrics(self, *args, **kw) -> None:
-        self._handle_metrics(Thing, where=Thing.thing_type == "water well", *args, **kw)
+        self._handle_metrics(
+            Thing, where=Thing.thing_type == "water well", name="Well", *args, **kw
+        )
 
     def sensor_metrics(self, *args, **kw) -> None:
         self._handle_metrics(Sensor, *args, **kw)
@@ -56,7 +71,9 @@ class Metrics:
         )
 
         # since each contact in nma contacts a primary and a secondary contact multiply the count by 2
-        metrics = [Contact.__name__, len(input_df) * 2, len(cleaned_df) * 2, count]
+        metrics = self._make_metrics(
+            Contact.__name__, len(input_df) * 2, len(cleaned_df) * 2, count
+        )
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
@@ -69,33 +86,65 @@ class Metrics:
         )
         count = sess.execute(sql).scalar_one()
 
-        metrics = ["Manual Water Levels", len(input_df), len(cleaned_df), count]
+        metrics = self._make_metrics(
+            "Manual Water Levels", len(input_df), len(cleaned_df), count
+        )
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
+    def acoustic_metrics(self, *args, **kw) -> None:
+        self._transducer_metrics("Acoustic Sounder", *args, **kw)
+
+    def pressure_metrics(self, *args, **kw) -> None:
+        self._transducer_metrics("Pressure Transducer", *args, **kw)
+
+    def _transducer_metrics(
+        self, sensor_type, sess, input_df, cleaned_df, errors
+    ) -> None:
+        sql = (
+            select(func.count())
+            .select_from(TransducerObservation)
+            .join(Deployment)
+            .join(Sensor)
+            .join(Parameter)
+            .where(Sensor.sensor_type == sensor_type)
+            .where(Parameter.parameter_name == "groundwater level")
+        )
+        count = sess.execute(sql).scalar_one()
+        metrics = self._make_metrics(sensor_type, len(input_df), len(cleaned_df), count)
+        self._writer.writerow(metrics)
+        self._write_errors(errors)
+
+    def _make_metrics(self, name, input_n, cleaned_n, count):
+        percent_issue = (cleaned_n - count) / cleaned_n * 100 if cleaned_n != 0 else 0
+        return [name, input_n, cleaned_n, count, percent_issue]
+
     def _handle_metrics(
-        self, model, sess, input_df, cleaned_df, errors, where=None
+        self, model, sess, input_df, cleaned_df, errors, where=None, name=None
     ) -> None:
         count = self._get_count(sess, model, where=where)
-        self._write_metrics(model.__name__, count, input_df, cleaned_df)
+
+        if name is None:
+            name = model.__name__
+        self._write_metrics(name, count, input_df, cleaned_df)
         self._write_errors(errors)
 
     def _write_errors(self, errors: list) -> None:
-        self._writer.writerow(["PointID", "Error"])
-        for e in errors:
-            error = e["error"]
-            if not isinstance(error, (list, tuple)):
-                error = [error]
+        if self.include_errors:
+            self._writer.writerow(["PointID", "Error"])
+            for e in errors:
+                error = e["error"]
+                if not isinstance(error, (list, tuple)):
+                    error = [error]
 
-            for ee in error:
-                self._writer.writerow([e["pointid"], ee])
-        self._writer.writerow([])
+                for ee in error:
+                    self._writer.writerow([e["pointid"], ee])
+            self._writer.writerow([])
 
     def _write_metrics(
         self, name: str, count: int, input_df: DataFrame, cleaned_df: DataFrame
     ) -> None:
-        metrics = [name, len(input_df), len(cleaned_df), count]
-
+        metrics = self._make_metrics(name, len(input_df), len(cleaned_df), count)
         self._writer.writerow(metrics)
 
     def _get_count(self, sess: Session, model, where=None) -> int:

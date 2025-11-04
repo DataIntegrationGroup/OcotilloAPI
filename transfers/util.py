@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import pytz
 from shapely import Point
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
@@ -103,7 +104,13 @@ def get_transfers_data_path(name):
     return root / name
 
 
-def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
+def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFrame:
+    sql = select(Thing.name).where(Thing.thing_type == "water well")
+    existing_ids = sess.execute(sql).scalars().all()
+    return df[~(df["PointID"].isin(existing_ids))]
+
+
+def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
     path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)
@@ -112,9 +119,20 @@ def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
         f.seek(0)
         invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
         logger.info("Invalid WellData Datasources:")
-        logger.info("\n".join(f"  {vd}" for vd in invalid_datasources))
+        for vd in invalid_datasources:
+            logger.info(f"  {vd}")
 
-    return df[df["DataSource"].isin(valid_datasources)]
+    counts = df.groupby("DataSource").size().reset_index(name="WellCount")
+    counts = counts.sort_values("WellCount", ascending=False)
+    for count in counts.itertuples():
+        logger.info(f"{count.DataSource}: {count.WellCount}")
+
+    pldf = read_csv("ProjectLocations")
+    collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
+    return df[
+        df["DataSource"].isin(valid_datasources)
+        | df["PointID"].isin(collabnet["PointID"])
+    ]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:

@@ -33,8 +33,8 @@ def transfer_link_ids_welldata(session):
 
     ldf = filter_to_valid_point_ids(session, ldf)
 
-    for chunk in chunk_by_size(ldf, 25):
-        locations = (
+    for chunk in chunk_by_size(ldf, 100):
+        things = (
             session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
         )
         for row in chunk.itertuples():
@@ -45,7 +45,7 @@ def transfer_link_ids_welldata(session):
                 # )
                 continue
 
-            thing = next((l for l in locations if l.name == row.PointID), None)
+            thing = next((l for l in things if l.name == row.PointID), None)
             if thing is None:
                 logger.warning(
                     f"Thing not found forPointID {row.PointID}. Skipping link ids."
@@ -162,7 +162,7 @@ def transfer_link_ids(session, site_type="GW"):
     ldf = replace_nans(ldf)
 
     ldf = filter_to_valid_point_ids(session, ldf)
-    for chunk in chunk_by_size(ldf, 25):
+    for chunk in chunk_by_size(ldf, 100):
         locations = (
             session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
         )
