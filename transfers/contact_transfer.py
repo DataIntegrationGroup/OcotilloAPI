@@ -183,7 +183,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
                 contact.incomplete_nma_phones.append(phone)
 
     if row.CellPhone:
-        phone, completeness = _make_phone(
+        phone, complete = _make_phone(
             "first",
             row.OwnerKey,
             phone_number=row.CellPhone,
