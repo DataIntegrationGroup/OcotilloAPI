@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from faker import Faker
 from db.engine import session_ctx
 from sqlalchemy import select
+from geoalchemy2.elements import WKTElement
 
 # Core models
 from db.contact import Contact, ThingContactAssociation
@@ -55,11 +56,16 @@ def seed_all(n: int = 5):
 
         # 2. Locations
         for _ in range(n):
+            lat = round(fake.latitude(), 6)
+            lon = round(fake.longitude(), 6)
+
             loc = Location(
+                point=WKTElement(f"POINT({lon} {lat})", srid=4326),
                 elevation=round(fake.random_number(digits=3), 2),
                 county=fake.city(),
-                latitude=round(fake.latitude(), 6),
-                longitude=round(fake.longitude(), 6),
+                notes=fake.sentence(),
+                elevation_accuracy=random.uniform(0.1, 5.0),
+                coordinate_accuracy=random.uniform(0.1, 10.0),
                 release_status="public",
             )
             s.add(loc)
@@ -222,8 +228,8 @@ def seed_all(n: int = 5):
 
         print(
             f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
-            f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
-            f"{len(observations)} observations."
+            + f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+            + f"{len(observations)} observations."
         )
 
 
