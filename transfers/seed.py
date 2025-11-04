@@ -184,7 +184,6 @@ def seed_all(n: int = 5):
 
         for i in range(n):
             sn = Sensor(
-                field_activity_id=random.choice(field_activities).id,
                 name=f"Sensor-{i + 1}",
                 sensor_type=random.choice(sensor_type_terms).term,
                 serial_no=fake.unique.bothify(text="SN-####"),
@@ -209,6 +208,7 @@ def seed_all(n: int = 5):
         # 6. Samples & Observations
         for i in range(n):
             samp = Sample(
+                field_activity_id=random.choice(field_activities).id,
                 sample_name=f"SMPL-{fake.random_int(1000, 9999)}",
                 sample_matrix="water",
                 sample_method=random.choice(sample_method_terms).term,
