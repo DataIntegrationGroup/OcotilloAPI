@@ -42,7 +42,13 @@ fi
 # Copy backend features
 echo "📋 Syncing backend features..."
 mkdir -p tests/features
-rsync -a ../OcotilloBDD/features/backend/ tests/features/
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "win64" || "$OSTYPE" == "cygwin" ]]; then
+  # Windows
+  cp -r ../OcotilloBDD/features/backend/. tests/features/
+else
+  # Unix/Linux/Mac
+  rsync -a ../OcotilloBDD/features/backend/ tests/features/
+fi
 
 # Run Behave tests
 echo "🚀 Running Behave tests..."
