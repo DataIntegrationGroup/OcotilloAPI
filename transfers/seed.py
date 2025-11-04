@@ -62,6 +62,7 @@ def seed_all(n: int = 5):
         # 0. Lexicons
         organization_terms = get_terms_by_category(s, "organization")
         analysis_method_type_terms = get_terms_by_category(s, "analysis_method_type")
+        sample_method_terms = get_terms_by_category(s, "sample_method")
 
         # 1. Contacts
         for _ in range(n):
@@ -146,7 +147,7 @@ def seed_all(n: int = 5):
                 assoc = LocationThingAssociation(
                     location_id=loc.id,
                     thing_id=t.id,
-                    effective_start=datetime.utcnow(),
+                    effective_start=datetime.now(datetime.UTC),
                     effective_end=None,
                 )
                 s.add(assoc)
@@ -170,7 +171,7 @@ def seed_all(n: int = 5):
             d = Deployment(
                 thing=t,
                 sensor=sn,
-                installation_date=datetime.utcnow()
+                installation_date=datetime.now(datetime.UTC)
                 - timedelta(days=random.randint(30, 180)),
                 removal_date=None,
             )
@@ -182,9 +183,7 @@ def seed_all(n: int = 5):
             samp = Sample(
                 sample_name=f"SMPL-{fake.random_int(1000, 9999)}",
                 sample_matrix="water",
-                sample_method=fake.choice(
-                    ["Electric tape measurement (E-probe)", "Steel-tape measurement"]
-                ),
+                sample_method=random.choice(sample_method_terms).term,
                 sample_date=fake.date_time_this_year(),
             )
             t = random.choice(things)
@@ -220,7 +219,8 @@ def seed_all(n: int = 5):
             st = StatusHistory(
                 status_type="Use Status",
                 status_value=random.choice(["Active", "Inactive", "Decommissioned"]),
-                start_date=datetime.utcnow() - timedelta(days=random.randint(100, 500)),
+                start_date=datetime.now(datetime.UTC)
+                - timedelta(days=random.randint(100, 500)),
                 statusable_id=t.id,
                 statusable_type="Thing",
                 reason="Initial test seed status",
@@ -233,7 +233,7 @@ def seed_all(n: int = 5):
                 tobs = TransducerObservation(
                     parameter=random.choice(parameters),
                     deployment_id=d.id,
-                    observation_datetime=datetime.utcnow()
+                    observation_datetime=datetime.now(datetime.UTC)
                     - timedelta(hours=random.randint(1, 500)),
                     value=round(random.uniform(10, 100), 2),
                 )
