@@ -7,9 +7,10 @@ def step_impl(context):
     context.response = context.client.get(f"/thing/water-well/{well_id}")
 
 
-@then("the system should return a 200 status code")
-def step_impl(context):
-    assert context.response.status_code == 200
+# can only be defined once, but recorded here for reference
+# @then("the system should return a 200 status code")
+# def step_impl(context):
+#     assert context.response.status_code == 200
 
 
 @then("the response should be in JSON format")
@@ -181,10 +182,13 @@ def step_impl(context):
     )
 
 
+# TODO: elevation should be returned in ft, not meters, conversion should occur in schema
+# TODO: add elevation_unit: str = "ft" to LocationResponse schema
 @then("the response should include the elevation in feet with vertical datum NAVD88")
 def step_impl(context):
     data = context.response.json()
     assert data["current_location"]["elevation"] == 2464.9
+    assert data["current_location"]["elevation_unit"] == "ft"
     assert data["current_location"]["vertical_datum"] == "NAVD88"
 
 
