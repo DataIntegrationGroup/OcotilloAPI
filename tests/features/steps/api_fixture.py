@@ -36,6 +36,7 @@ from db import (
     LexiconTerm,
     Group,
     GroupThingAssociation,
+    WellPurpose,
 )
 from db.engine import session_ctx, engine
 
@@ -88,6 +89,12 @@ def add_well(location, wid):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+
+        for wp in ["Irrigation", "Domestic"]:
+            well_purpose = WellPurpose(thing=well, purpose=wp)
+            session.add(well_purpose)
+            session.commit()
+
     return well
 
 

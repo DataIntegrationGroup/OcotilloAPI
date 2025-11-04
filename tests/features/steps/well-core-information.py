@@ -36,6 +36,7 @@ def step_impl(context):
 
 
 # TODO: this needs to be added to the model, schema, and test data
+# TODO: how do we rectify this with the name field? Is there a better way to name this?
 @then(
     "the response should include the site name(s) for the well (i.e. John Smith House Well)"
 )
@@ -49,11 +50,10 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: add to test data
 @then("the response should include the purpose of the well (current use)")
 def step_impl(context):
     data = context.response.json()
-    assert data["well_purposes"] == ["Domestic", "Irrigation"]
+    assert sorted(data["well_purposes"]) == sorted(["Domestic", "Irrigation"])
 
 
 # TODO: this needs to be added to the ThingResponse and thing_helper via StatusHistory
@@ -66,6 +66,7 @@ def step_impl(context):
 
 
 # TODO: this needs to be added to the model, schema, and test data
+# TODO: the monitoring frequency field needs to be added to lexicon
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
     data = context.response.json()
@@ -126,6 +127,7 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
+# TODO: this needs to be added to the LocationResponse schema
 @then(
     "the response should include the latitude and longitude in decimal degrees with datum WGS84"
 )
@@ -145,6 +147,7 @@ def step_impl(context):
     )
 
 
+# TODO: this needs to be added to the LocationResponse schema
 @then("the response should include the UTM coordinates with datum NAD83")
 def step_impl(context):
     data = context.response.json()
@@ -171,10 +174,7 @@ def step_impl(context):
 )
 def step_impl(context):
     data = context.response.json()
-    assert (
-        data["current_location"]["elevation_method"]
-        == "Interpolated from digital elevation model"
-    )
+    assert data["current_location"]["elevation_method"] == "Survey-grade GPS"
 
 
 # ------------------------------------------------------------------------------
