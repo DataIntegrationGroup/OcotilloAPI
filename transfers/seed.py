@@ -18,6 +18,7 @@ from db.location import Location, LocationThingAssociation
 from db.thing import Thing
 from db.sensor import Sensor
 from db.deployment import Deployment
+from db.field import FieldEvent, FieldActivity
 from db.sample import Sample
 from db.observation import Observation
 from db.parameter import Parameter
@@ -56,6 +57,8 @@ def seed_all(n: int = 5):
         sensors: list[Sensor] = []
         parameters: list[Parameter] = []
         methods: list[AnalysisMethod] = []
+        field_events: list[FieldEvent] = []
+        field_activities: list[FieldActivity] = []
         samples: list[Sample] = []
         observations: list[Observation] = []
 
@@ -63,6 +66,8 @@ def seed_all(n: int = 5):
         organization_terms = get_terms_by_category(s, "organization")
         analysis_method_type_terms = get_terms_by_category(s, "analysis_method_type")
         sample_method_terms = get_terms_by_category(s, "sample_method")
+        activity_type_terms = get_terms_by_category(s, "activity_type")
+        sensor_type_terms = get_terms_by_category(s, "sensor_type")
 
         # 1. Contacts
         for _ in range(n):
@@ -152,13 +157,36 @@ def seed_all(n: int = 5):
                 )
                 s.add(assoc)
 
-        # 5. Sensors & Deployments
+        # 5. FieldEvent, FieldActivity, Sensors & Deployments
+        for t in things:
+            fe = FieldEvent(
+                thing_id=t.id,
+                event_date=datetime.now(timezone.utc),
+                notes=f"Auto-generated field event for {t.name}",
+                release_status="public",
+            )
+            s.add(fe)
+            field_events.append(fe)
+
+        s.flush()
+
+        for fe in field_events:
+            fa = FieldActivity(
+                field_event_id=fe.id,
+                activity_type=random.choice(activity_type_terms).term,
+                notes=f"Auto-generated activity for event {fe.id}",
+                release_status="public",
+            )
+            s.add(fa)
+            field_activities.append(fa)
+
+        s.flush()
+
         for i in range(n):
             sn = Sensor(
+                field_activity_id=random.choice(field_activities).id,
                 name=f"Sensor-{i + 1}",
-                sensor_type=random.choice(
-                    ["Pressure Transducer", "Barometer", "Acoustic Sounder"]
-                ),
+                sensor_type=random.choice(sensor_type_terms).term,
                 serial_no=fake.unique.bothify(text="SN-####"),
             )
             sensors.append(sn)
