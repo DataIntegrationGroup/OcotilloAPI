@@ -6,7 +6,7 @@ Run with:
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from faker import Faker
 from db.engine import session_ctx
 from sqlalchemy import select
@@ -147,7 +147,7 @@ def seed_all(n: int = 5):
                 assoc = LocationThingAssociation(
                     location_id=loc.id,
                     thing_id=t.id,
-                    effective_start=datetime.now(datetime.UTC),
+                    effective_start=datetime.now(timezone.utc),
                     effective_end=None,
                 )
                 s.add(assoc)
@@ -171,7 +171,7 @@ def seed_all(n: int = 5):
             d = Deployment(
                 thing=t,
                 sensor=sn,
-                installation_date=datetime.now(datetime.UTC)
+                installation_date=datetime.now(timezone.utc)
                 - timedelta(days=random.randint(30, 180)),
                 removal_date=None,
             )
@@ -219,7 +219,7 @@ def seed_all(n: int = 5):
             st = StatusHistory(
                 status_type="Use Status",
                 status_value=random.choice(["Active", "Inactive", "Decommissioned"]),
-                start_date=datetime.now(datetime.UTC)
+                start_date=datetime.now(timezone.utc)
                 - timedelta(days=random.randint(100, 500)),
                 statusable_id=t.id,
                 statusable_type="Thing",
@@ -233,7 +233,7 @@ def seed_all(n: int = 5):
                 tobs = TransducerObservation(
                     parameter=random.choice(parameters),
                     deployment_id=d.id,
-                    observation_datetime=datetime.now(datetime.UTC)
+                    observation_datetime=datetime.now(timezone.utc)
                     - timedelta(hours=random.randint(1, 500)),
                     value=round(random.uniform(10, 100), 2),
                 )
