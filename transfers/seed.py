@@ -12,9 +12,9 @@ from db.engine import session_ctx
 from sqlalchemy import select
 
 # Core models
-from db.contact import Contact
+from db.contact import Contact, ThingContactAssociation
 from db.location import Location
-from db.thing import Thing, ThingContactAssociation
+from db.thing import Thing
 from db.sensor import Sensor
 from db.deployment import Deployment
 from db.sample import Sample
@@ -118,7 +118,6 @@ def seed_all(n=5):
                 assoc = ThingContactAssociation(
                     thing_id=t.id,
                     contact_id=c.id,
-                    role=random.choice(["Owner", "Operator", "Field Tech"]),
                 )
                 s.add(assoc)
 
