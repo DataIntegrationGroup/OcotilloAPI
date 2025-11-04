@@ -21,6 +21,7 @@ from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
 from transfers.logger import logger
 from transfers.util import (
     get_transfers_data_path,
+    chunk_by_size,
 )
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
@@ -66,50 +67,56 @@ def transfer_contacts(session):
     odf = filter_to_valid_point_ids(session, odf)
     cleaned_df = odf
     errors = []
-    for i, row in odf.iterrows():
-        thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        logger.info(f"Processing PointID: {i} {row.PointID}")
-        if thing is None:
-            logger.critical(
-                f"Thing with PointID {row.PointID} not found. Skipping owner."
-            )
-            continue
+    # for i, row in odf.iterrows():
+    for chunk in chunk_by_size(odf, 500):
+        things = (
+            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
+        )
+        for i, row in chunk.iterrows():
+            thing = next((thing for thing in things if thing.name == row.PointID), None)
+            logger.info(f"Processing PointID: {i} {row.PointID}")
+            if thing is None:
+                logger.critical(
+                    f"Thing with PointID {row.PointID} not found. Skipping owner."
+                )
+                continue
 
-        # TODO: use contact_helper.add_contact
-        try:
-            _add_first_contact(session, row, thing, co_to_org_mapper)
-            session.commit()
-            session.flush()
-            logger.info(f"added first contact for PointID {row.PointID}")
-        except ValidationError as e:
-            logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
-            )
-            session.rollback()
-            errors.append({"pointid": row.PointID, "error": e.errors()})
-        except Exception as e:
-            logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to error: {e}"
-            )
-            session.rollback()
-            errors.append({"pointid": row.PointID, "error": e})
-        try:
-            _add_second_contact(session, row, thing, co_to_org_mapper)
-            session.commit()
-            session.flush()
-            logger.info(f"added second contact for PointID {row.PointID}")
-        except ValidationError as e:
-            logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
-            )
-            session.rollback()
-            errors.append({"pointid": row.PointID, "error": e.errors()})
-        except Exception as e:
-            logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to error: {e}"
-            )
-            session.rollback()
-            errors.append({"pointid": row.PointID, "error": e})
+            # TODO: use contact_helper.add_contact
+            try:
+                _add_first_contact(session, row, thing, co_to_org_mapper)
+                session.commit()
+                # session.flush()
+                logger.info(f"added first contact for PointID {row.PointID}")
+            except ValidationError as e:
+                logger.critical(
+                    f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
+                )
+                session.rollback()
+                errors.append({"pointid": row.PointID, "error": e.errors()})
+            except Exception as e:
+                logger.critical(
+                    f"Skipping first contact for PointID {row.PointID} due to error: {e}"
+                )
+                session.rollback()
+                errors.append({"pointid": row.PointID, "error": e})
+
+            try:
+                _add_second_contact(session, row, thing, co_to_org_mapper)
+                session.commit()
+                # session.flush()
+                logger.info(f"added second contact for PointID {row.PointID}")
+            except ValidationError as e:
+                logger.critical(
+                    f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
+                )
+                session.rollback()
+                errors.append({"pointid": row.PointID, "error": e.errors()})
+            except Exception as e:
+                logger.critical(
+                    f"Skipping second contact for PointID {row.PointID} due to error: {e}"
+                )
+                session.rollback()
+                errors.append({"pointid": row.PointID, "error": e})
 
     return input_df, cleaned_df, errors
 

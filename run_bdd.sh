@@ -15,7 +15,13 @@ if [ ! -d ".venv" ]; then
   echo "🧱 Creating virtual environment..."
   python3 -m venv venv
 fi
-source .venv/bin/activate
+
+# bin for Unix, Scripts for Windows
+if [ -d ".venv/bin" ]; then
+  source .venv/bin/activate
+else
+  source .venv/Scripts/activate
+fi
 
 # Install dependencies
 echo "📦 Installing Python dependencies..."
@@ -30,13 +36,19 @@ if [ ! -d "../OcotilloBDD" ]; then
   git clone https://github.com/DataIntegrationGroup/OcotilloBDD.git ../OcotilloBDD
 else
   echo "🔄 Updating existing BDD repository..."
-  cd ../OcotilloBDD && git pull && cd - >/dev/null
+  cd ../OcotilloBDD && git checkout main && git pull && cd - >/dev/null
 fi
 
 # Copy backend features
 echo "📋 Syncing backend features..."
 mkdir -p tests/features
-rsync -a ../OcotilloBDD/features/backend/ tests/features/
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "win64" || "$OSTYPE" == "cygwin" ]]; then
+  # Windows
+  cp -r ../OcotilloBDD/features/backend/. tests/features/
+else
+  # Unix/Linux/Mac
+  rsync -a ../OcotilloBDD/features/backend/ tests/features/
+fi
 
 # Run Behave tests
 echo "🚀 Running Behave tests..."

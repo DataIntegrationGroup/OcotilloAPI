@@ -15,6 +15,8 @@
 # ===============================================================================
 from datetime import datetime
 
+from sqlalchemy import select
+
 from db import Sensor, Deployment, Thing
 from transfers.util import read_csv, logger, filter_to_valid_point_ids, replace_nans
 
@@ -119,6 +121,20 @@ def transfer_sensors(session):
                             f"not an integer",
                         }
                     )
+                sql = (
+                    select(Deployment)
+                    .join(Thing)
+                    .join(Sensor)
+                    .where(Thing.name == pointid)
+                    .where(Sensor.serial_no == sensor.serial_no)
+                    .where(Deployment.installation_date == installation_date)
+                    .where(Deployment.removal_date == removal_date)
+                )
+
+                existing_deployment = session.execute(sql).scalars().one_or_none()
+                if existing_deployment:
+                    logger.info("existing deployment")
+                    continue
 
                 # TODO: add validation
                 deployment = Deployment(
