@@ -9,11 +9,12 @@ import random
 from datetime import datetime, timedelta
 from faker import Faker
 from db.engine import session_ctx
+from sqlalchemy import select
 
 # Core models
 from db.contact import Contact
 from db.location import Location
-from db.thing import Thing
+from db.thing import Thing, ThingContactAssociation
 from db.sensor import Sensor
 from db.deployment import Deployment
 from db.sample import Sample
@@ -63,31 +64,32 @@ def seed_all(n=5):
             s.add(loc)
             locations.append(loc)
 
-        # 3. Parameters & Methods
-        param_names = ["pH", "Temperature", "Conductivity", "TDS", "DO"]
-        for p in param_names:
-            prm = Parameter(
-                parameter_name=p,
-                matrix="Water",
-                default_unit="pH units" if p == "pH" else "mg/L",
-            )
-            s.add(prm)
-            parameters.append(prm)
+        # 3. Retrieve existing Parameters & Methods
+        #
+        # If the environment variable MODE=development is set
+        # then it will initialize both the parameter and lexicon tables.
+        # See core/app.py for details
+        parameters = s.scalars(select(Parameter)).all()
+        if not parameters:
+            raise RuntimeError("No parameters found — ensure init_parameter() ran.")
 
-        method_codes = ["ASTM-D1293", "EPA-150.1", "SM-4500-O"]
-        for m in method_codes:
-            am = AnalysisMethod(
-                analysis_method_code=m,
-                analysis_method_name=f"Method {m}",
-                analysis_method_type="Lab",
-                source_organization="NMED",
-            )
-            s.add(am)
-            methods.append(am)
-
+        methods = s.scalars(select(AnalysisMethod)).all()
+        if not methods:
+            # Fallback — some environments might not have predefined methods
+            print("⚠️ No analysis methods found, creating placeholder entries.")
+            for m in ["ASTM-D1293", "EPA-150.1", "SM-4500-O"]:
+                am = AnalysisMethod(
+                    analysis_method_code=m,
+                    analysis_method_name=f"Method {m}",
+                    analysis_method_type="Lab",
+                    source_organization="NMED",
+                )
+                s.add(am)
+            s.flush()
+            methods = s.scalars(select(AnalysisMethod)).all()
         s.flush()
 
-        # 4. Things (Water Wells)
+        # 4. Things (Water Wells) & ThingContactAssociation
         for i in range(n):
             t = Thing(
                 name=f"WELL-{i+1:04d}",
@@ -98,14 +100,27 @@ def seed_all(n=5):
                 well_construction_notes=fake.sentence(),
                 well_casing_diameter=random.uniform(4, 8),
                 well_casing_depth=random.uniform(10, 50),
+                release_status="public",
             )
+
             # link to random location
             loc = random.choice(locations)
-            # mimic LocationThingAssociation (proxy)
-            t.location_associations = []  # placeholder if ORM auto-handles
-            t.locations.append(loc)
-            things.append(t)
+            if hasattr(t, "locations"):
+                t.locations.append(loc)
             s.add(t)
+            things.append(t)
+
+        s.flush()
+
+        for t in things:
+            assigned_contacts = random.sample(contacts, k=min(2, len(contacts)))
+            for c in assigned_contacts:
+                assoc = ThingContactAssociation(
+                    thing_id=t.id,
+                    contact_id=c.id,
+                    role=random.choice(["Owner", "Operator", "Field Tech"]),
+                )
+                s.add(assoc)
 
         # 5. Sensors & Deployments
         for i in range(n):
