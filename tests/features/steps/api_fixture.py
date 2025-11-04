@@ -70,6 +70,27 @@ def add_location(lid):
     return loc
 
 
+def add_spring(location, sid):
+    spring = well = Thing(
+        name=f"SP-{sid:04d}",
+        first_visit_date="2023-03-03",
+        thing_type="spring",
+        release_status="draft",
+        # well_depth=10,
+        # hole_depth=10,
+        # well_construction_notes="Test well construction notes",
+        # well_casing_diameter=5.0,
+        # well_casing_depth=10.0,
+    )
+    session.add(spring)
+    session.commit()
+
+    assoc = LocationThingAssociation(location=location, thing=well)
+    assoc.effective_start = "2025-02-01T00:00:00Z"
+    session.add(assoc)
+    session.commit()
+
+
 def add_well(location, wid):
     well = session.get(Thing, wid)
     if not well:
@@ -98,10 +119,12 @@ with session_ctx() as session:
     loc = add_location(1)
     loc2 = add_location(2)
     loc3 = add_location(3)
+    loc4 = add_location(4)
 
     water_well = add_well(loc, 1)
     water_well2 = add_well(loc2, 2)
     water_well3 = add_well(loc3, 3)
+    spring = add_spring(loc4, 4)
 
     sensor = session.get(Sensor, 1)
     if not sensor:
