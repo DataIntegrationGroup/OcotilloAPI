@@ -232,28 +232,6 @@ def seed_all(n: int = 5):
             )
             observations.append(obs)
             s.add(obs)
-
-        # 7. Regulatory Limits
-        for prm in parameters:
-            rl = RegulatoryLimit(
-                parameter=prm,
-                limit_value=random.uniform(50, 1000),
-                limit_unit="mg/L",
-            )
-            s.add(rl)
-
-        # 8. Status History (for Things)
-        for t in things:
-            st = StatusHistory(
-                status_type="Use Status",
-                status_value=random.choice(["Active", "Inactive", "Decommissioned"]),
-                start_date=datetime.now(timezone.utc)
-                - timedelta(days=random.randint(100, 500)),
-                statusable_id=t.id,
-                statusable_type="Thing",
-                reason="Initial test seed status",
-            )
-            s.add(st)
         s.commit()
 
         print(
