@@ -46,7 +46,7 @@ class Metrics:
         if not os.path.exists(root):
             os.mkdir(root)
 
-        self.path = root / f"metrics_{datetime.now()}.csv"
+        self.path = root / f"metrics_{datetime.now().strftime('%Y-%m-%dT%H_%M_%S')}.csv"
         delimiter = "|" if self.include_errors else ","
         self._writer = csv.writer(self.path.open("a"), delimiter=delimiter)
         self._writer.writerow(
@@ -116,7 +116,7 @@ class Metrics:
         self._write_errors(errors)
 
     def _make_metrics(self, name, input_n, cleaned_n, count):
-        percent_issue = (cleaned_n - count) / cleaned_n * 100 if cleaned_n == 0 else 0
+        percent_issue = (cleaned_n - count) / cleaned_n * 100 if cleaned_n != 0 else 0
         return [name, input_n, cleaned_n, count, percent_issue]
 
     def _handle_metrics(

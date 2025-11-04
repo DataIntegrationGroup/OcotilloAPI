@@ -352,6 +352,36 @@ def contact(water_well_thing):
 
 
 @pytest.fixture()
+def incomplete_nma_phone_1(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="9999999",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
+def incomplete_nma_phone_2(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="8888888",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
 def address(contact):
     with session_ctx() as session:
         address = Address(

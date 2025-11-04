@@ -17,7 +17,7 @@ from typing import List, TYPE_CHECKING
 
 from sqlalchemy import Integer, ForeignKey, String, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr
 from sqlalchemy_utils import TSVectorType
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -68,6 +68,11 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     addresses: Mapped[List["Address"]] = relationship(
         "Address", back_populates="contact", cascade="all, delete, delete-orphan"
     )
+    # One-To-One: A Contact can have one NMA Phone record.
+    incomplete_nma_phones: Mapped[List["IncompleteNMAPhone"]] = relationship(
+        "IncompleteNMAPhone", back_populates="contact", cascade="all, delete-orphan"
+    )
+
     # One-To-Many: A Contact can grant many Permissions.
     permissions: Mapped[List["Permission"]] = relationship(
         "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
@@ -118,12 +123,32 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     )
 
 
+class IncompleteNMAPhone(Base, AutoBaseMixin):
+    """
+    This table stores data from NM_Aquifer that is not complete and cannot be transferred to the Phone model due to validation issues.
+    This is often due to missing area codes, but could be other issues as well.
+    """
+
+    @declared_attr
+    def __tablename__(self):
+        return "incomplete_nma_phone"
+
+    contact_id: Mapped[int] = mapped_column(
+        ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
+    )
+
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    contact: Mapped["Contact"] = relationship(
+        "Contact", back_populates="incomplete_nma_phones", passive_deletes=True
+    )
+
+
 class Phone(Base, AutoBaseMixin, ReleaseMixin):
     contact_id: Mapped[int] = mapped_column(
         ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
-    nma_phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     phone_type: Mapped[str] = lexicon_term(nullable=False)
 
     contact: Mapped["Contact"] = relationship(
