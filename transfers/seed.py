@@ -254,19 +254,6 @@ def seed_all(n: int = 5):
                 reason="Initial test seed status",
             )
             s.add(st)
-
-        # 9. Transducer Observations
-        for d in deployments:
-            for _ in range(3):
-                tobs = TransducerObservation(
-                    parameter=random.choice(parameters),
-                    deployment_id=d.id,
-                    observation_datetime=datetime.now(timezone.utc)
-                    - timedelta(hours=random.randint(1, 500)),
-                    value=round(random.uniform(10, 100), 2),
-                )
-                s.add(tobs)
-
         s.commit()
 
         print(
