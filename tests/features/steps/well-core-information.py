@@ -69,6 +69,8 @@ def step_impl(context):
 
 # TODO: this needs to be added to the model, schema, and test data
 # TODO: the monitoring frequency field needs to be added to lexicon
+# the monitoring status field from NM_Aquifer contains a multitude of information, like having three codes (6AC), so the transfer and model/schemas will need to take this into account
+# could create descriptor table like WellPurpose and CasingMaterial
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
     data = context.response.json()
@@ -76,6 +78,8 @@ def step_impl(context):
 
 
 # TODO: this needs to be added to the model, schema, and test data
+# the monitoring status field from NM_Aquifer contains a multitude of information, like having three codes (6AC), so the transfer and model/schemas will need to take this into account
+# could create descriptor table like WellPurpose and CasingMaterial
 @then(
     "the response should include whether the well is currently being monitored with status text if applicable (from previous status field)"
 )
