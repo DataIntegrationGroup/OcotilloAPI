@@ -28,6 +28,7 @@ def step_impl(context):
     assert data["name"] == "WL-0001"
 
 
+# TODO: a new endpoint named /thing/{thing_id}/group needs to be added to the API
 # TODO: this needs to be added to the ThingResponse
 @then("the response should include the project(s) or group(s) associated with the well")
 def step_impl(context):
@@ -103,12 +104,14 @@ def step_impl(context):
 def step_impl(context):
     data = context.response.json()
     assert data["hole_depth"] == 10
+    assert data["hole_depth_unit"] == "ft"
 
 
 @then("the response should include the well depth in feet")
 def step_impl(context):
     data = context.response.json()
     assert data["well_depth"] == 10
+    assert data["well_depth_unit"] == "ft"
 
 
 # TODO: this needs to be added to the model, schema, and test data
@@ -198,13 +201,18 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: This needs to be added to the model, schema, and test data
+# TODO: This needs to be added to the test data
+# TODO: id link schema needs to use lexicon enums for relation and alternate_organization
 @then(
     "the response should include any alternate IDs for the well like the USGS site number or the OSE well ID and OSE well tag ID"
 )
 def step_impl(context):
-    data = context.response.json()
-    assert "alternate_ids" in data
-    assert "usgs_site_number" in data["alternate_ids"]
-    assert "ose_well_id" in data["alternate_ids"]
-    assert "ose_well_tag_id" in data["alternate_ids"]
+    response = context.client.get("/thing/1/id-link")
+    data = response.json()
+    for item in data["items"]:
+        if item["alternate_organization"] == "USGS":
+            assert item["relation"] == "same as"
+            assert item["alternate_id"] == "12345678"
+        elif item["alternate_organization"] == "NMOSE":
+            assert item["relation"] == "same as"
+            assert item["alternate_id"] == "OSE-0001"
