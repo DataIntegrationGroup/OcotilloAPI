@@ -25,10 +25,26 @@ from db.analysis_method import AnalysisMethod
 from db.regulatory_limit import RegulatoryLimit
 from db.transducer import TransducerObservation
 from db.status_history import StatusHistory
+from db.lexicon import (
+    LexiconTerm,
+    LexiconCategory,
+    LexiconTermCategoryAssociation,
+)
 
 fake = Faker()
 Faker.seed(42)
 random.seed(42)
+
+
+def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
+    return list(
+        s.scalars(
+            select(LexiconTerm)
+            .join(LexiconTermCategoryAssociation)
+            .join(LexiconCategory)
+            .where(LexiconCategory.name == category_name)
+        )
+    )
 
 
 def seed_all(n: int = 5):
@@ -43,11 +59,14 @@ def seed_all(n: int = 5):
         samples: list[Sample] = []
         observations: list[Observation] = []
 
+        # 0. Lexicons
+        organization_terms = get_terms_by_category(s, "organization")
+
         # 1. Contacts
         for _ in range(n):
             c = Contact(
                 name=fake.name(),
-                organization=fake.company(),
+                organization=random.choice(organization_terms).term,
                 role=random.choice(["Hydrologist", "Technician", "Geologist"]),
                 contact_type="Primary",
             )
