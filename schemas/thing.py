@@ -92,7 +92,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     )
     well_construction_notes: str | None = None
     well_casing_diameter: float | None = Field(
-        default=None, gt=0, description="Well casing diameter in inches"
+        default=None, gt=0, description="Well casing diameter in feet"
     )
     well_casing_depth: float | None = Field(
         default=None, gt=0, description="Well casing depth in feet"
@@ -148,7 +148,7 @@ class WellResponse(BaseThingResponse):
     hole_depth: float | None = None
     hole_depth_unit: str = "ft"
     well_casing_diameter: float | None = None  # in inches
-    well_casing_diameter_unit: str = "in"
+    well_casing_diameter_unit: str = "ft"
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
@@ -266,7 +266,7 @@ class UpdateWell(UpdateThing, ValidateWell):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_construction_notes: str | None = None
-    well_casing_diameter: float | None = None  # in inches
+    well_casing_diameter: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
     well_casing_materials: list[str] | None = None
 

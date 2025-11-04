@@ -89,8 +89,8 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     well_casing_diameter: Mapped[float] = mapped_column(
         Float,
         nullable=True,
-        info={"unit": "inches"},
-        comment="Diameter of the well casing in inches.",
+        info={"unit": "feet"},
+        comment="Diameter of the well casing in feet.",
     )
     well_casing_depth: Mapped[float] = mapped_column(
         Float,

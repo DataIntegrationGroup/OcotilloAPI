@@ -59,7 +59,7 @@ def water_well_thing(location):
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
-            well_casing_diameter=5.0,
+            well_casing_diameter=1.0,
             well_casing_depth=10.0,
         )
         session.add(water_well)

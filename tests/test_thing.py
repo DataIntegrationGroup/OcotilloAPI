@@ -91,7 +91,7 @@ def test_add_water_well(location, group):
         "well_depth": 100.0,
         "hole_depth": 110,
         "well_construction_notes": "this is a test of notes",
-        "well_casing_diameter": 5.0,
+        "well_casing_diameter": 1.0,
         "well_casing_depth": 10.0,
         "well_casing_materials": ["PVC"],
         "well_purposes": ["Domestic"],
@@ -113,7 +113,7 @@ def test_add_water_well(location, group):
     assert data["well_depth_unit"] == "ft"
     assert data["well_construction_notes"] == payload["well_construction_notes"]
     assert data["well_casing_diameter"] == payload["well_casing_diameter"]
-    assert data["well_casing_diameter_unit"] == "in"
+    assert data["well_casing_diameter_unit"] == "ft"
     assert data["well_casing_depth"] == payload["well_casing_depth"]
     assert data["well_casing_depth_unit"] == "ft"
     assert data["well_casing_materials"] == payload["well_casing_materials"]
@@ -394,7 +394,7 @@ def test_get_water_wells(water_well_thing, location):
         data["items"][0]["well_casing_diameter"]
         == water_well_thing.well_casing_diameter
     )
-    assert data["items"][0]["well_casing_diameter_unit"] == "in"
+    assert data["items"][0]["well_casing_diameter_unit"] == "ft"
     assert data["items"][0]["well_casing_depth"] == water_well_thing.well_casing_depth
     assert data["items"][0]["well_casing_depth_unit"] == "ft"
     assert data["items"][0]["well_casing_materials"] == [
@@ -427,7 +427,7 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["hole_depth_unit"] == "ft"
     assert data["well_construction_notes"] == water_well_thing.well_construction_notes
     assert data["well_casing_diameter"] == water_well_thing.well_casing_diameter
-    assert data["well_casing_diameter_unit"] == "in"
+    assert data["well_casing_diameter_unit"] == "ft"
     assert data["well_casing_depth"] == water_well_thing.well_casing_depth
     assert data["well_casing_depth_unit"] == "ft"
     assert data["well_casing_materials"] == [
