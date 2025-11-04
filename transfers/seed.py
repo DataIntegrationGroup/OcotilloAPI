@@ -124,7 +124,8 @@ def seed_all(n=5):
             d = Deployment(
                 thing=t,
                 sensor=sn,
-                installation_date=datetime.utcnow() - timedelta(days=random.randint(30, 180)),
+                installation_date=datetime.utcnow()
+                - timedelta(days=random.randint(30, 180)),
                 removal_date=None,
             )
             deployments.append(d)
@@ -184,16 +185,19 @@ def seed_all(n=5):
                 tobs = TransducerObservation(
                     parameter=random.choice(parameters),
                     deployment_id=d.id,
-                    observation_datetime=datetime.utcnow() - timedelta(hours=random.randint(1, 500)),
+                    observation_datetime=datetime.utcnow()
+                    - timedelta(hours=random.randint(1, 500)),
                     value=round(random.uniform(10, 100), 2),
                 )
                 s.add(tobs)
 
         s.commit()
 
-        print(f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
-              f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
-              f"{len(observations)} observations.")
+        print(
+            f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
+            f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+            f"{len(observations)} observations."
+        )
 
 
 if __name__ == "__main__":
