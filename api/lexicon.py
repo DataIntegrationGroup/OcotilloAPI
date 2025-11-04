@@ -94,7 +94,7 @@ def database_error_handler(
 
 
 def disabled_endpoint():
-    raise HTTPException(status_code=404, detail="Endpoint disabled")
+    raise HTTPException(status_code=410, detail="Endpoint disabled")
 
 
 # POST =========================================================================
