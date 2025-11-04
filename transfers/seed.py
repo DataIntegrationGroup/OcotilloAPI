@@ -126,11 +126,6 @@ def seed_all(n: int = 5):
                 well_casing_depth=random.uniform(10, 50),
                 release_status="public",
             )
-
-            # link to random location
-            loc = random.choice(locations)
-            if hasattr(t, "locations"):
-                t.locations.append(loc)
             s.add(t)
             things.append(t)
 
