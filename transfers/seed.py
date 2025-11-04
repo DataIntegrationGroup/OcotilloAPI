@@ -61,6 +61,7 @@ def seed_all(n: int = 5):
 
         # 0. Lexicons
         organization_terms = get_terms_by_category(s, "organization")
+        analysis_method_type_terms = get_terms_by_category(s, "analysis_method_type")
 
         # 1. Contacts
         for _ in range(n):
@@ -104,8 +105,8 @@ def seed_all(n: int = 5):
             am = AnalysisMethod(
                 analysis_method_code=m,
                 analysis_method_name=f"Method {m}",
-                analysis_method_type="Lab",
-                source_organization="NMED",
+                analysis_method_type=random.choice(analysis_method_type_terms).term,
+                source_organization=random.choice(organization_terms).term,
             )
             s.add(am)
             methods.append(am)
