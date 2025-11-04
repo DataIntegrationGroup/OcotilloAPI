@@ -122,6 +122,22 @@ def step_impl(context):
 # Measuring Point Information
 # ------------------------------------------------------------------------------
 
+
+# TODO: this needs to be added to the model, schema, and test data
+@then("the response should include the description of the measuring point")
+def step_impl(context):
+    data = context.response.json()
+    assert data["measuring_point_description"] == "Top of Casing"
+
+
+# TODO: this needs to be added to the model, schema, and test data
+@then("the response should include the measuring point height in feet")
+def step_impl(context):
+    data = context.response.json()
+    assert data["measuring_point_height"] == 4
+    assert data["measuring_point_height_unit"] == "ft"
+
+
 # ------------------------------------------------------------------------------
 # Location Information
 # ------------------------------------------------------------------------------
