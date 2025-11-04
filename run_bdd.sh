@@ -36,7 +36,7 @@ if [ ! -d "../OcotilloBDD" ]; then
   git clone https://github.com/DataIntegrationGroup/OcotilloBDD.git ../OcotilloBDD
 else
   echo "🔄 Updating existing BDD repository..."
-  cd ../OcotilloBDD && git pull && cd - >/dev/null
+  cd ../OcotilloBDD && git checkout main && git pull && cd - >/dev/null
 fi
 
 # Copy backend features
