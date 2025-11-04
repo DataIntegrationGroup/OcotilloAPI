@@ -299,6 +299,7 @@ async def get_things(
     user: viewer_dependency,
     session: session_dependency,
     # thing_id: int = None,
+    thing_type: str = None,
     within: str = None,
     query: str = None,
     sort: str = None,
@@ -319,6 +320,7 @@ async def get_things(
         session,
         sort,
         within=within,
+        thing_type=thing_type,
     )
 
 
