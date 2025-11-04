@@ -30,17 +30,17 @@ Faker.seed(42)
 random.seed(42)
 
 
-def seed_all(n=5):
+def seed_all(n: int = 5):
     """Seed roughly `n` of each main entity and connect them."""
     with session_ctx() as s:
-        contacts = []
-        locations = []
-        things = []
-        sensors = []
-        parameters = []
-        methods = []
-        samples = []
-        observations = []
+        contacts: list[Contact] = []
+        locations: list[Location] = []
+        things: list[Thing] = []
+        sensors: list[Sensor] = []
+        parameters: list[Parameter] = []
+        methods: list[AnalysisMethod] = []
+        samples: list[Sample] = []
+        observations: list[Observation] = []
 
         # 1. Contacts
         for _ in range(n):
@@ -70,7 +70,7 @@ def seed_all(n=5):
         # If the environment variable MODE=development is set
         # then it will initialize both the parameter and lexicon tables.
         # See core/app.py for details
-        parameters = s.scalars(select(Parameter)).all()
+        parameters = list(s.scalars(select(Parameter)).all())
         if not parameters:
             raise RuntimeError("No parameters found — ensure init_parameter() ran.")
 
@@ -143,7 +143,7 @@ def seed_all(n=5):
             s.add(sn)
 
         s.flush()
-        deployments = []
+        deployments: list[Deployment] = []
         for t in things:
             sn = random.choice(sensors)
             d = Deployment(
