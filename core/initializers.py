@@ -15,6 +15,7 @@
 # ===============================================================================
 from pathlib import Path
 
+from fastapi_pagination import add_pagination
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
@@ -172,3 +173,4 @@ def register_routes(app):
     app.include_router(sensor_router)
     app.include_router(search_router)
     app.include_router(thing_router)
+    add_pagination(app)
