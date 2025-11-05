@@ -6,47 +6,80 @@ Run with:
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from faker import Faker
 from db.engine import session_ctx
 from sqlalchemy import select
+from geoalchemy2.elements import WKTElement
 
 # Core models
 from db.contact import Contact, ThingContactAssociation
 from db.location import Location, LocationThingAssociation
-from db.thing import Thing
+from db.thing import Thing, ThingIdLink
 from db.sensor import Sensor
 from db.deployment import Deployment
+from db.field import FieldEvent, FieldActivity
 from db.sample import Sample
 from db.observation import Observation
 from db.parameter import Parameter
 from db.analysis_method import AnalysisMethod
-from db.regulatory_limit import RegulatoryLimit
-from db.transducer import TransducerObservation
-from db.status_history import StatusHistory
+from db.lexicon import (
+    LexiconTerm,
+    LexiconCategory,
+    LexiconTermCategoryAssociation,
+)
 
 fake = Faker()
 Faker.seed(42)
 random.seed(42)
 
 
-def seed_all(n=5):
+def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
+    return list(
+        s.scalars(
+            select(LexiconTerm)
+            .join(LexiconTermCategoryAssociation)
+            .join(LexiconCategory)
+            .where(LexiconCategory.name == category_name)
+        )
+    )
+
+
+def seed_all(n: int = 5):
     """Seed roughly `n` of each main entity and connect them."""
+    new_mexico_bounds = [
+        (36.9, -106.6),  # Taos area
+        (35.1, -106.6),  # Albuquerque
+        (32.3, -106.8),  # Las Cruces
+        (34.4, -103.2),  # Clovis
+        (36.7, -108.2),  # Farmington
+    ]
+
     with session_ctx() as s:
-        contacts = []
-        locations = []
-        things = []
-        sensors = []
-        parameters = []
-        methods = []
-        samples = []
-        observations = []
+        contacts: list[Contact] = []
+        locations: list[Location] = []
+        things: list[Thing] = []
+        sensors: list[Sensor] = []
+        parameters: list[Parameter] = []
+        methods: list[AnalysisMethod] = []
+        field_events: list[FieldEvent] = []
+        field_activities: list[FieldActivity] = []
+        samples: list[Sample] = []
+        observations: list[Observation] = []
+
+        # 0. Lexicons
+        organization_terms = get_terms_by_category(s, "organization")
+        relation_terms = get_terms_by_category(s, "relation")
+        analysis_method_type_terms = get_terms_by_category(s, "analysis_method_type")
+        sample_method_terms = get_terms_by_category(s, "sample_method")
+        activity_type_terms = get_terms_by_category(s, "activity_type")
+        sensor_type_terms = get_terms_by_category(s, "sensor_type")
 
         # 1. Contacts
         for _ in range(n):
             c = Contact(
                 name=fake.name(),
-                organization=fake.company(),
+                organization=random.choice(organization_terms).term,
                 role=random.choice(["Hydrologist", "Technician", "Geologist"]),
                 contact_type="Primary",
             )
@@ -55,11 +88,17 @@ def seed_all(n=5):
 
         # 2. Locations
         for _ in range(n):
+            # Generate coordinates roughly within New Mexico’s bounding box
+            base_lat, base_lon = random.choice(new_mexico_bounds)
+            lat = round(base_lat + random.uniform(-0.3, 0.3), 6)
+            lon = round(base_lon + random.uniform(-0.3, 0.3), 6)
+
             loc = Location(
+                point=WKTElement(f"POINT({lon} {lat})", srid=4326),
                 elevation=round(fake.random_number(digits=3), 2),
-                county=fake.city(),
-                latitude=round(fake.latitude(), 6),
-                longitude=round(fake.longitude(), 6),
+                notes=fake.sentence(),
+                elevation_accuracy=random.uniform(0.1, 5.0),
+                coordinate_accuracy=random.uniform(0.1, 10.0),
                 release_status="public",
             )
             s.add(loc)
@@ -70,7 +109,7 @@ def seed_all(n=5):
         # If the environment variable MODE=development is set
         # then it will initialize both the parameter and lexicon tables.
         # See core/app.py for details
-        parameters = s.scalars(select(Parameter)).all()
+        parameters = list(s.scalars(select(Parameter)).all())
         if not parameters:
             raise RuntimeError("No parameters found — ensure init_parameter() ran.")
 
@@ -79,8 +118,8 @@ def seed_all(n=5):
             am = AnalysisMethod(
                 analysis_method_code=m,
                 analysis_method_name=f"Method {m}",
-                analysis_method_type="Lab",
-                source_organization="NMED",
+                analysis_method_type=random.choice(analysis_method_type_terms).term,
+                source_organization=random.choice(organization_terms).term,
             )
             s.add(am)
             methods.append(am)
@@ -100,11 +139,6 @@ def seed_all(n=5):
                 well_casing_depth=random.uniform(10, 50),
                 release_status="public",
             )
-
-            # link to random location
-            loc = random.choice(locations)
-            if hasattr(t, "locations"):
-                t.locations.append(loc)
             s.add(t)
             things.append(t)
 
@@ -125,31 +159,65 @@ def seed_all(n=5):
                 assoc = LocationThingAssociation(
                     location_id=loc.id,
                     thing_id=t.id,
-                    effective_start=datetime.utcnow(),
+                    effective_start=datetime.now(timezone.utc),
                     effective_end=None,
                 )
                 s.add(assoc)
 
-        # 5. Sensors & Deployments
+        for t in things:
+            for _ in range(random.randint(1, 3)):
+                chosen_org = random.choice(organization_terms)
+                link = ThingIdLink(
+                    thing_id=t.id,
+                    relation=random.choice(relation_terms).term,
+                    alternate_id=chosen_org.id,
+                    alternate_organization=chosen_org.term,
+                    release_status="public",
+                )
+                s.add(link)
+
+        # 5. FieldEvent, FieldActivity, Sensors & Deployments
+        for t in things:
+            fe = FieldEvent(
+                thing_id=t.id,
+                event_date=datetime.now(timezone.utc),
+                notes=f"Auto-generated field event for {t.name}",
+                release_status="public",
+            )
+            s.add(fe)
+            field_events.append(fe)
+
+        s.flush()
+
+        for fe in field_events:
+            fa = FieldActivity(
+                field_event_id=fe.id,
+                activity_type=random.choice(activity_type_terms).term,
+                notes=f"Auto-generated activity for event {fe.id}",
+                release_status="public",
+            )
+            s.add(fa)
+            field_activities.append(fa)
+
+        s.flush()
+
         for i in range(n):
             sn = Sensor(
                 name=f"Sensor-{i + 1}",
-                sensor_type=random.choice(
-                    ["Pressure Transducer", "Barometer", "Acoustic Sounder"]
-                ),
+                sensor_type=random.choice(sensor_type_terms).term,
                 serial_no=fake.unique.bothify(text="SN-####"),
             )
             sensors.append(sn)
             s.add(sn)
 
         s.flush()
-        deployments = []
+        deployments: list[Deployment] = []
         for t in things:
             sn = random.choice(sensors)
             d = Deployment(
                 thing=t,
                 sensor=sn,
-                installation_date=datetime.utcnow()
+                installation_date=datetime.now(timezone.utc)
                 - timedelta(days=random.randint(30, 180)),
                 removal_date=None,
             )
@@ -159,11 +227,10 @@ def seed_all(n=5):
         # 6. Samples & Observations
         for i in range(n):
             samp = Sample(
+                field_activity_id=random.choice(field_activities).id,
                 sample_name=f"SMPL-{fake.random_int(1000, 9999)}",
                 sample_matrix="water",
-                sample_method=fake.choice(
-                    ["Electric tape measurement (E-probe)", "Steel-tape measurement"]
-                ),
+                sample_method=random.choice(sample_method_terms).term,
                 sample_date=fake.date_time_this_year(),
             )
             t = random.choice(things)
@@ -184,46 +251,12 @@ def seed_all(n=5):
             )
             observations.append(obs)
             s.add(obs)
-
-        # 7. Regulatory Limits
-        for prm in parameters:
-            rl = RegulatoryLimit(
-                parameter=prm,
-                limit_value=random.uniform(50, 1000),
-                limit_unit="mg/L",
-            )
-            s.add(rl)
-
-        # 8. Status History (for Things)
-        for t in things:
-            st = StatusHistory(
-                status_type="Use Status",
-                status_value=random.choice(["Active", "Inactive", "Decommissioned"]),
-                start_date=datetime.utcnow() - timedelta(days=random.randint(100, 500)),
-                statusable_id=t.id,
-                statusable_type="Thing",
-                reason="Initial test seed status",
-            )
-            s.add(st)
-
-        # 9. Transducer Observations
-        for d in deployments:
-            for _ in range(3):
-                tobs = TransducerObservation(
-                    parameter=random.choice(parameters),
-                    deployment_id=d.id,
-                    observation_datetime=datetime.utcnow()
-                    - timedelta(hours=random.randint(1, 500)),
-                    value=round(random.uniform(10, 100), 2),
-                )
-                s.add(tobs)
-
         s.commit()
 
         print(
             f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
-            f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
-            f"{len(observations)} observations."
+            + f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+            + f"{len(observations)} observations."
         )
 
 
