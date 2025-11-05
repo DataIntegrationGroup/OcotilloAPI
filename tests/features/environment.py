@@ -33,6 +33,19 @@ from db import (
 from db.engine import session_ctx
 
 
+def add_context_object_container(name):
+    def wrapper(func):
+        def closure(context, *args, **kwargs):
+            if name not in context.objects:
+                context.objects[name] = []
+            return func(context, *args, **kwargs)
+
+        return closure
+
+    return wrapper
+
+
+@add_context_object_container("locations")
 def add_location(context, session, lid):
     loc = session.get(Location, lid)
 
@@ -50,15 +63,18 @@ def add_location(context, session, lid):
         )
         session.add(loc)
         session.commit()
-    context.objects.append(loc)
+        session.refresh(loc)
+
+    context.objects["locations"].append(loc)
     return loc
 
 
-def add_well(context, session, location, wid):
-    well = session.get(Thing, wid)
-    if not well:
+@add_context_object_container("wells")
+def add_well(context, session, location, thing_id):
+    well = session.get(Thing, thing_id)
+    if well is None:
         well = Thing(
-            name=f"WL-{wid:04d}",
+            name=f"WL-{thing_id:04d}",
             first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
@@ -76,38 +92,43 @@ def add_well(context, session, location, wid):
         session.add(assoc)
         session.commit()
 
-        context.objects.append(assoc)
-        context.objects.append(well)
+        session.refresh(well)
+
+    context.objects["wells"].append(well)
     return well
 
 
-def add_spring(context, session, location, sid):
-    spring = well = Thing(
-        name=f"SP-{sid:04d}",
-        first_visit_date="2023-03-03",
-        thing_type="spring",
-        release_status="draft",
-        # well_depth=10,
-        # hole_depth=10,
-        # well_construction_notes="Test well construction notes",
-        # well_casing_diameter=5.0,
-        # well_casing_depth=10.0,
-    )
-    session.add(spring)
-    session.commit()
+@add_context_object_container("springs")
+def add_spring(context, session, location, thing_id):
+    spring = session.get(Thing, thing_id)
+    if spring is None:
+        spring = Thing(
+            name=f"SP-{thing_id:04d}",
+            first_visit_date="2023-03-03",
+            thing_type="spring",
+            release_status="draft",
+            # well_depth=10,
+            # hole_depth=10,
+            # well_construction_notes="Test well construction notes",
+            # well_casing_diameter=5.0,
+            # well_casing_depth=10.0,
+        )
+        session.add(spring)
+        session.commit()
 
-    assoc = LocationThingAssociation(location=location, thing=well)
-    assoc.effective_start = "2025-02-01T00:00:00Z"
-    session.add(assoc)
-    session.commit()
+        assoc = LocationThingAssociation(location=location, thing=spring)
+        assoc.effective_start = "2025-02-01T00:00:00Z"
+        session.add(assoc)
+        session.commit()
 
-    context.objects.append(assoc)
-    context.objects.append(spring)
+    session.refresh(spring)
+    context.objects["springs"].append(spring)
 
 
+@add_context_object_container("sensors")
 def add_sensor(context, session, sid):
     sensor = session.get(Sensor, sid)
-    if not sensor:
+    if sensor is None:
         sensor = Sensor(
             name="Test Sensor",
             sensor_type="Pressure Transducer",
@@ -121,11 +142,13 @@ def add_sensor(context, session, sid):
         )
         session.add(sensor)
         session.commit()
+        session.refresh(sensor)
 
-    context.objects.append(sensor)
+    context.objects["sensors"].append(sensor)
     return sensor
 
 
+@add_context_object_container("groups")
 def add_group(context, session, wells, gid):
     group = session.get(Group, gid)
     if not group:
@@ -136,9 +159,12 @@ def add_group(context, session, wells, gid):
 
         session.add(group)
         session.commit()
-    context.objects.append(group)
+        session.refresh(group)
+
+    context.objects["groups"].append(group)
 
 
+@add_context_object_container("deployments")
 def add_deployment(context, session, sid):
     deployment = session.get(Deployment, sid)
     if deployment is None:
@@ -150,13 +176,13 @@ def add_deployment(context, session, sid):
         session.add(deployment)
         session.commit()
         session.refresh(deployment)
-        context.objects.append(deployment)
 
+    context.objects["deployments"].append(deployment)
     return deployment
 
 
+@add_context_object_container("blocks")
 def add_block(context, session, parameter):
-
     block = (
         session.query(TransducerObservationBlock)
         .filter(TransducerObservationBlock.parameter_id == parameter.id)
@@ -175,14 +201,17 @@ def add_block(context, session, parameter):
         session.commit()
         session.refresh(block)
         add_obs = True
-    context.objects.append(block)
+
+    context.objects["blocks"].append(block)
     return add_obs
 
 
 def before_all(context):
-    context.objects = []
+    context.objects = {}
+
+    force = False
     with session_ctx() as session:
-        if session.query(LexiconTerm).count() == 0:
+        if force or session.query(LexiconTerm).count() == 0:
             erase_and_rebuild_db(session)
             init_lexicon()
             init_parameter()
@@ -192,7 +221,7 @@ def before_all(context):
         loc3 = add_location(context, session, 3)
         loc4 = add_location(context, session, 4)
 
-        well = add_well(context, session, loc, 1)
+        add_well(context, session, loc, 1)
         add_well(context, session, loc2, 2)
         add_well(context, session, loc3, 3)
         add_spring(context, session, loc4, 4)
@@ -215,11 +244,6 @@ def before_all(context):
 
 def after_all(context):
     pass
-    # is this really necessary?
-    # with session_ctx() as session:
-    #     for obj in context.objects:
-    #         session.delete(obj)
-    #     session.commit()
 
 
 # ============= EOF =============================================
