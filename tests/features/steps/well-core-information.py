@@ -14,6 +14,15 @@ def step_impl(context):
     assert context.water_well_response["Content-Type"] == "application/json"
 
 
+@then(
+    "null values in the response should be represented as JSON null (not placeholder strings)"
+)
+def step_impl(context):
+    for key, value in context.water_well_data.items():
+        if value is None:
+            assert value is None  # JSON null is represented as None in Python
+
+
 # ------------------------------------------------------------------------------
 # Well names and projects
 # ------------------------------------------------------------------------------
@@ -31,16 +40,6 @@ def step_impl(context):
 def step_impl(context):
     assert "groups" in context.water_well_data
     assert context.water_well_data["groups"] == ["Collabnet"]
-
-
-# TODO: this needs to be added to the model, schema, and test data
-# TODO: how do we rectify this with the name field? Is there a better way to name this?
-@then(
-    "the response should include the site name(s) for the well (i.e. John Smith House Well)"
-)
-def step_impl(context):
-    assert "site_name" in context.water_well_data
-    assert context.water_well_data["site_name"] == "John Smith House Well"
 
 
 # ------------------------------------------------------------------------------
@@ -151,24 +150,70 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: this needs to be added to the LocationResponse schema
-@then(
-    "the response should include the latitude and longitude in decimal degrees with datum WGS84"
-)
+@then("the response should include location information in GeoJSON format")
 def step_impl(context):
     assert "current_location" in context.water_well_data
+    assert "type" in context.water_well_data["current_location"]
     assert "geometry" in context.water_well_data["current_location"]
+    assert "properties" in context.water_well_data["current_location"]
+
+    assert context.water_well_data["current_location"]["type"] == "Feature"
+
+
+# TODO: the LocationResponse schema needs to be updated
+@then(
+    'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation] in decimal degrees with datum WGS84'
+)
+def step_impl(context):
     assert context.water_well_data["current_location"]["geometry"] == {
         "type": "Point",
-        "coordinates": [33.809665, -107.949533],
+        "coordinates": [33.809665, -107.949533, 2464.9],
     }
 
 
-# TODO: this needs to be added to the LocationResponse schema
-@then("the response should include the UTM coordinates with datum NAD83")
+# TODO: elevation should be returned in ft, not meters, conversion should occur in schema
+# TODO: add elevation_unit: str = "ft" to LocationResponse schema
+@then(
+    "the response should include the elevation in feet with vertical datum NAVD88 in the properties"
+)
 def step_impl(context):
-    assert "current_location" in context.water_well_data
-    assert "properties" in context.water_well_data["current_location"]
+    assert "elevation" in context.water_well_data["current_location"]["properties"]
+    assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
+    assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
+
+    assert (
+        context.water_well_data["current_location"]["properties"]["elevation"]
+        == 2464.9 * 3.28084
+    )
+    assert (
+        context.water_well_data["current_location"]["properties"]["elevation_unit"]
+        == "ft"
+    )
+    assert (
+        context.water_well_data["current_location"]["properties"]["vertical_datum"]
+        == "NAVD88"
+    )
+
+
+@then(
+    "the response should include the elevation method (i.e. interpolated from digital elevation model) in the properties"
+)
+def step_impl(context):
+    assert (
+        "elevation_method" in context.water_well_data["current_location"]["properties"]
+    )
+    assert (
+        context.water_well_data["current_location"]["properties"]["elevation_method"]
+        == "Survey-grade GPS"
+    )
+
+
+# TODO: this needs to be added to the LocationResponse schema
+@then(
+    "the response should include the UTM coordinates with datum NAD83 in the properties"
+)
+def step_impl(context):
+
     assert (
         "utm_coordinates" in context.water_well_data["current_location"]["properties"]
     )
@@ -182,40 +227,6 @@ def step_impl(context):
     }
 
 
-# TODO: elevation should be returned in ft, not meters, conversion should occur in schema
-# TODO: add elevation_unit: str = "ft" to LocationResponse schema
-@then("the response should include the elevation in feet with vertical datum NAVD88")
-def step_impl(context):
-    assert "current_location" in context.water_well_data
-    assert "properties" in context.water_well_data["current_location"]
-    assert "elevation" in context.water_well_data["current_location"]["properties"]
-    assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
-    assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
-
-    assert (
-        context.water_well_data["current_location"]["properties"]["elevation"] == 2464.9
-    )
-    assert (
-        context.water_well_data["current_location"]["properties"]["elevation_unit"]
-        == "ft"
-    )
-    assert (
-        context.water_well_data["current_location"]["properties"]["vertical_datum"]
-        == "NAVD88"
-    )
-
-
-@then(
-    "the response should include the elevation method (i.e. interpolated from digital elevation model)"
-)
-def step_impl(context):
-    assert "elevation_method" in context.water_well_data["current_location"]
-    assert (
-        context.water_well_data["current_location"]["elevation_method"]
-        == "Survey-grade GPS"
-    )
-
-
 # ------------------------------------------------------------------------------
 # Alternate Identifiers
 # ------------------------------------------------------------------------------
@@ -224,7 +235,7 @@ def step_impl(context):
 # TODO: This needs to be added to the test data
 # TODO: id link schema needs to use lexicon enums for relation and alternate_organization
 @then(
-    "the response should include any alternate IDs for the well like the USGS site number or the OSE well ID and OSE well tag ID"
+    "the response should include any alternate IDs for the well like the NMBGMR site_name (i.e. John Smith Well), USGS site number, or the OSE well ID and OSE well tag ID"
 )
 def step_impl(context):
     response = context.client.get("/thing/1/id-link")
@@ -236,3 +247,6 @@ def step_impl(context):
         elif item["alternate_organization"] == "NMOSE":
             assert item["relation"] == "same as"
             assert item["alternate_id"] == "OSE-0001"
+        elif item["alternate_organization"] == "NMBGMR":
+            assert item["relation"] == "same as"
+            assert item["alternate_id"] == "John Smith Well"
