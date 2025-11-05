@@ -15,7 +15,7 @@ from geoalchemy2.elements import WKTElement
 # Core models
 from db.contact import Contact, ThingContactAssociation
 from db.location import Location, LocationThingAssociation
-from db.thing import Thing
+from db.thing import Thing, ThingIdLink
 from db.sensor import Sensor
 from db.deployment import Deployment
 from db.field import FieldEvent, FieldActivity
@@ -64,6 +64,7 @@ def seed_all(n: int = 5):
 
         # 0. Lexicons
         organization_terms = get_terms_by_category(s, "organization")
+        relation_terms = get_terms_by_category(s, "relation")
         analysis_method_type_terms = get_terms_by_category(s, "analysis_method_type")
         sample_method_terms = get_terms_by_category(s, "sample_method")
         activity_type_terms = get_terms_by_category(s, "activity_type")
@@ -156,6 +157,18 @@ def seed_all(n: int = 5):
                     effective_end=None,
                 )
                 s.add(assoc)
+
+        for t in things:
+            for _ in range(random.randint(1, 3)):
+                chosen_org = random.choice(organization_terms)
+                link = ThingIdLink(
+                    thing_id=t.id,
+                    relation=random.choice(relation_terms).term,
+                    alternate_id=chosen_org.id,
+                    alternate_organization=chosen_org.term,
+                    release_status="public",
+                )
+                s.add(link)
 
         # 5. FieldEvent, FieldActivity, Sensors & Deployments
         for t in things:
