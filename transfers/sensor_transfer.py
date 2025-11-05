@@ -53,7 +53,13 @@ def transfer_sensors(session):
                     logger.critical(
                         f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
                     )
-                    errors.append({"pointid": pointid, "error": e})
+                    errors.append(
+                        {
+                            "pointid": pointid,
+                            "error": f"key error adding sensor_type:{row.EquipmentType} "
+                            f"error: {e}",
+                        }
+                    )
                     continue
 
                 sensor = (
@@ -167,7 +173,7 @@ def transfer_sensors(session):
             session.commit()
         except Exception as e:
             logger.critical(f"Could not add sensor and deployment: {e}")
-            errors.append({"pointid": pointid, "error": e})
+            errors.append({"pointid": pointid, "error": f"row={row}. error={e}"})
 
     return input_df, cleaned_df, errors
 
