@@ -156,46 +156,53 @@ def step_impl(context):
     "the response should include the latitude and longitude in decimal degrees with datum WGS84"
 )
 def step_impl(context):
-    data = context.response.json()
-    assert (
-        data["current_location"]["geographic_coordinate_system"]["latitude"]
-        == 33.809665
-    )
-    assert (
-        data["current_location"]["geographic_coordinate_system"]["longitude"]
-        == -107.949533
-    )
-    assert (
-        data["current_location"]["geographic_coordinate_system"]["horizontal_datum"]
-        == "WGS84"
-    )
+    assert "current_location" in context.water_well_data
+    assert "geometry" in context.water_well_data["current_location"]
+    assert context.water_well_data["current_location"]["geometry"] == {
+        "type": "Point",
+        "coordinates": [33.809665, -107.949533],
+    }
 
 
 # TODO: this needs to be added to the LocationResponse schema
 @then("the response should include the UTM coordinates with datum NAD83")
 def step_impl(context):
-    data = context.response.json()
-    assert data["current_location"]["projected_coordinate_system"]["easting"] == 623000
+    assert "current_location" in context.water_well_data
+    assert "properties" in context.water_well_data["current_location"]
     assert (
-        data["current_location"]["projected_coordinate_system"]["northing"] == 3745000
+        "utm_coordinates" in context.water_well_data["current_location"]["properties"]
     )
-    assert data["current_location"]["projected_coordinate_system"]["utm_zone"] == 13
-    assert (
-        data["current_location"]["projected_coordinate_system"]["horizontal_datum"]
-        == "NAD83"
-    )
+    assert context.water_well_data["current_location"]["properties"][
+        "utm_coordinates"
+    ] == {
+        "easting": 623000,
+        "northing": 3745000,
+        "utm_zone": 13,
+        "horizontal_datum": "NAD83",
+    }
 
 
 # TODO: elevation should be returned in ft, not meters, conversion should occur in schema
 # TODO: add elevation_unit: str = "ft" to LocationResponse schema
 @then("the response should include the elevation in feet with vertical datum NAVD88")
 def step_impl(context):
-    assert "elevation" in context.water_well_data["current_location"]
-    assert "elevation_unit" in context.water_well_data["current_location"]
-    assert "vertical_datum" in context.water_well_data["current_location"]
-    assert context.water_well_data["current_location"]["elevation"] == 2464.9
-    assert context.water_well_data["current_location"]["elevation_unit"] == "ft"
-    assert context.water_well_data["current_location"]["vertical_datum"] == "NAVD88"
+    assert "current_location" in context.water_well_data
+    assert "properties" in context.water_well_data["current_location"]
+    assert "elevation" in context.water_well_data["current_location"]["properties"]
+    assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
+    assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
+
+    assert (
+        context.water_well_data["current_location"]["properties"]["elevation"] == 2464.9
+    )
+    assert (
+        context.water_well_data["current_location"]["properties"]["elevation_unit"]
+        == "ft"
+    )
+    assert (
+        context.water_well_data["current_location"]["properties"]["vertical_datum"]
+        == "NAVD88"
+    )
 
 
 @then(
