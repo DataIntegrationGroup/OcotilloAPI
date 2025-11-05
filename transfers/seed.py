@@ -23,9 +23,6 @@ from db.sample import Sample
 from db.observation import Observation
 from db.parameter import Parameter
 from db.analysis_method import AnalysisMethod
-from db.regulatory_limit import RegulatoryLimit
-from db.transducer import TransducerObservation
-from db.status_history import StatusHistory
 from db.lexicon import (
     LexiconTerm,
     LexiconCategory,
@@ -50,6 +47,14 @@ def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
 
 def seed_all(n: int = 5):
     """Seed roughly `n` of each main entity and connect them."""
+    new_mexico_bounds = [
+        (36.9, -106.6),  # Taos area
+        (35.1, -106.6),  # Albuquerque
+        (32.3, -106.8),  # Las Cruces
+        (34.4, -103.2),  # Clovis
+        (36.7, -108.2),  # Farmington
+    ]
+
     with session_ctx() as s:
         contacts: list[Contact] = []
         locations: list[Location] = []
@@ -83,13 +88,14 @@ def seed_all(n: int = 5):
 
         # 2. Locations
         for _ in range(n):
-            lat = round(fake.latitude(), 6)
-            lon = round(fake.longitude(), 6)
+            # Generate coordinates roughly within New Mexico’s bounding box
+            base_lat, base_lon = random.choice(new_mexico_bounds)
+            lat = round(base_lat + random.uniform(-0.3, 0.3), 6)
+            lon = round(base_lon + random.uniform(-0.3, 0.3), 6)
 
             loc = Location(
                 point=WKTElement(f"POINT({lon} {lat})", srid=4326),
                 elevation=round(fake.random_number(digits=3), 2),
-                county=fake.city(),
                 notes=fake.sentence(),
                 elevation_accuracy=random.uniform(0.1, 5.0),
                 coordinate_accuracy=random.uniform(0.1, 10.0),
