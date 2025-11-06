@@ -40,7 +40,7 @@ if not os.getcwd().endswith("transfers"):
 if not os.path.exists(root):
     os.mkdir(root)
 
-log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
 
 
 logging.basicConfig(

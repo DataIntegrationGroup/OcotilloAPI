@@ -66,9 +66,11 @@ def get_transducer_observations(
     )
 
     if thing_id is not None:
-        sql = sql.join(Deployment)
-        sql = sql.join(Thing)
-        sql = sql.where(Thing.id == thing_id)
+
+        thing = simple_get_by_id(session, Thing, thing_id)
+        if thing:
+            sql = sql.join(Deployment)
+            sql = sql.where(Deployment.thing == thing)
 
     if start_time:
         sql = sql.where(TransducerObservation.observation_datetime >= start_time)

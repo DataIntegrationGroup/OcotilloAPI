@@ -17,7 +17,15 @@ import json
 
 from pydantic import ValidationError
 
-from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
+from db import (
+    Thing,
+    Contact,
+    ThingContactAssociation,
+    Email,
+    Phone,
+    Address,
+    IncompleteNMAPhone,
+)
 from transfers.logger import logger
 from transfers.util import (
     get_transfers_data_path,
@@ -101,6 +109,16 @@ def transfer_contacts(session):
                 errors.append({"pointid": row.PointID, "error": e})
 
             try:
+                if (
+                    row.SecondFirstName is None
+                    and row.SecondLastName is None
+                    and row.SecondCtctEmail is None
+                    and row.SecondCtctPhone is None
+                ):
+                    logger.warning(
+                        f"No second contact info for PointID {row.PointID}, skipping."
+                    )
+                    continue
                 _add_second_contact(session, row, thing, co_to_org_mapper)
                 session.commit()
                 # session.flush()
@@ -158,7 +176,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
             contact.emails.append(email)
 
     if row.Phone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "first",
             row.OwnerKey,
             phone_number=row.Phone,
@@ -166,10 +184,13 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
 
     if row.CellPhone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "first",
             row.OwnerKey,
             phone_number=row.CellPhone,
@@ -177,7 +198,10 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
 
     if row.MailingAddress:
         address = _make_address(
@@ -244,7 +268,7 @@ def _add_second_contact(session, row, thing, co_to_org_mapper):
             contact.emails.append(email)
 
     if row.SecondCtctPhone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "second",
             row.OwnerKey,
             phone_number=row.SecondCtctPhone,
@@ -252,7 +276,10 @@ def _add_second_contact(session, row, thing, co_to_org_mapper):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
 
 
 # helpers
@@ -290,14 +317,13 @@ def _make_phone(first_second, ownerkey, **kw):
             kw["phone_number"] = kw["phone_number"].strip()
 
         phone = CreatePhone(**kw)
-        return Phone(**phone.model_dump())
+        return Phone(**phone.model_dump()), True
     except ValidationError as e:
         try:
             if "phone_number" in kw:
-                pn = kw.pop("phone_number")
-                kw["nma_phone_number"] = pn.strip()
-            phone = CreatePhone(**kw)
-            return Phone(**phone.model_dump())
+                incomplete_phone = IncompleteNMAPhone(phone_number=kw["phone_number"])
+                logger.info(f"Salvaged incomplete phone number for OwnerKey {ownerkey}")
+                return incomplete_phone, False
         except ValidationError:
 
             logger.critical(

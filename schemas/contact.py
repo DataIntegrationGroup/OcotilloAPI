@@ -113,7 +113,6 @@ class CreatePhone(BaseCreateModel, ValidatePhone):
     contact_id: int | None = None  # set to None for when made via POST /contact
     phone_number: str
     phone_type: PhoneType = "Primary"  # Default to 'Primary'
-    nma_phone_number: str | None = None
 
 
 class CreateAddress(BaseCreateModel):
@@ -175,7 +174,6 @@ class PhoneResponse(BaseItemResponse):
 
     phone_number: str | None = None
     phone_type: str  # e.g., 'mobile', 'landline', etc.
-    nma_phone_number: str | None = None
 
 
 class EmailResponse(BaseItemResponse):
@@ -210,10 +208,18 @@ class ContactResponse(BaseResponseModel):
     organization: str | None
     role: Role
     contact_type: ContactType
+    incomplete_nma_phones: List[str] = []
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
     things: List[ThingResponse] = []  # List of related things
+
+    @field_validator("incomplete_nma_phones", mode="before")
+    def make_incomplete_nma_phone_str(cls, v: list) -> list:
+        if len(v) == 0:
+            return []
+        else:
+            return [p.phone_number for p in v]
 
 
 # class ThingContactAssociationResponse(BaseUpdateModel):

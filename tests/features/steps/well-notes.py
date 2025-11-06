@@ -26,25 +26,6 @@ def step_impl(context):
     context.response = context.client.get("thing/water-well/9999")
 
 
-# TODO: this is a commonly used step, should it be moved to a common steps file?
-@then("the system should return a 200 status code")
-def step_impl(context):
-    assert context.response.status_code == 200
-
-
-# TODO: this is a commonly used step, should it be moved to a common steps file?
-@then("the system should return a 404 status code")
-def step_impl(context):
-    print(context.response.status_code, context.response.text)
-    assert context.response.status_code == 404
-
-
-# TODO: this is a commonly used step, should it be moved to a common steps file?
-@then("the system should return a response in JSON format")
-def step_impl(context):
-    assert context.response.headers["Content-Type"] == "application/json"
-
-
 @then("the response should contain a current_location field")
 def step_impl(context):
     assert "current_location" in context.response.json()
