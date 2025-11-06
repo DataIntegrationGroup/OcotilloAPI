@@ -30,6 +30,7 @@ from db import (
     Deployment,
     TransducerObservationBlock,
     StatusHistory,
+    ThingIdLink,
 )
 from db.engine import session_ctx
 
@@ -218,6 +219,24 @@ def add_status_history(
     return status_history
 
 
+@add_context_object_container("id_links")
+def add_id_link(
+    context, session, thing, relation, alternate_id, alternate_organization
+):
+    id_link = ThingIdLink(
+        thing_id=thing.id,
+        relation=relation,
+        alternate_id=alternate_id,
+        alternate_organization=alternate_organization,
+    )
+    session.add(id_link)
+    session.commit()
+    session.refresh(id_link)
+
+    context.objects["id_links"].append(id_link)
+    return id_link
+
+
 def before_all(context):
     context.objects = {}
 
@@ -286,6 +305,33 @@ def before_all(context):
             reason="Roving bovine destroyed well",
             statusable_id=well_1.id,
             statusable_type="Thing",
+        )
+
+        id_link_1 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="12345678",
+            alternate_organization="USGS",
+        )
+
+        id_link_2 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="OSE-0001",
+            alternate_organization="NMOSE",
+        )
+
+        id_link_3 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="Roving Bovine Ranch Well #1",
+            alternate_organization="NMBGMR",
         )
 
         # parameter ID can be hardcoded because init_parameter always creates the same one

@@ -304,11 +304,11 @@ def step_impl(context):
     assert len(context.water_well_data["alternate_ids"]) == 3
     for item in context.water_well_data["alternate_ids"]:
         if item["alternate_organization"] == "USGS":
-            assert item["relation"] == "same as"
-            assert item["alternate_id"] == "12345678"
+            assert item["relation"] == context.objects["id_links"][0].relation
+            assert item["alternate_id"] == context.objects["id_links"][0].alternate_id
         elif item["alternate_organization"] == "NMOSE":
-            assert item["relation"] == "same as"
-            assert item["alternate_id"] == "OSE-0001"
+            assert item["relation"] == context.objects["id_links"][1].relation
+            assert item["alternate_id"] == context.objects["id_links"][1].alternate_id
         elif item["alternate_organization"] == "NMBGMR":
-            assert item["relation"] == "same as"
-            assert item["alternate_id"] == "John Smith Well"
+            assert item["relation"] == context.objects["id_links"][2].relation
+            assert item["alternate_id"] == context.objects["id_links"][2].alternate_id
