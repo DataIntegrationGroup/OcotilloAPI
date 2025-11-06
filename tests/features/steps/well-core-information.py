@@ -5,8 +5,8 @@ from behave import when, then
 @when("the user retrieves the well by ID via path parameter")
 def step_impl(context):
     well_id = 1
-    context.water_well_response = context.client.get(f"/thing/water-well/{well_id}")
-    context.water_well_data = context.water_well_response.json()
+    context.response = context.water_well_response
+    context.water_well_data = context.response.json()
 
 
 @then("the response should be in JSON format")
