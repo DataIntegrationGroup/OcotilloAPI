@@ -165,13 +165,13 @@ def transfer_debugging(sess, limit=100):
     results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
     metrics.well_metrics(sess, *results)
 
-    message("TRANSFERRING WELL SCREENS")
-    results = timeit_direct(transfer_wellscreens, sess)
-    metrics.well_screen_metrics(sess, *results)
+    # message("TRANSFERRING WELL SCREENS")
+    # results = timeit_direct(transfer_wellscreens, sess)
+    # metrics.well_screen_metrics(sess, *results)
 
-    # message("TRANSFERRING SENSORS")
-    # results = timeit_direct(transfer_sensors, sess)
-    # metrics.sensor_metrics(sess, *results)
+    message("TRANSFERRING SENSORS")
+    results = timeit_direct(transfer_sensors, sess)
+    metrics.sensor_metrics(sess, *results)
 
     # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
     # message("TRANSFERRING SPRINGS")
@@ -186,9 +186,9 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    message("TRANSFERRING CONTACTS")
-    results = timeit_direct(transfer_contacts, sess)
-    metrics.contact_metrics(sess, *results)
+    # message("TRANSFERRING CONTACTS")
+    # results = timeit_direct(transfer_contacts, sess)
+    # metrics.contact_metrics(sess, *results)
     #
     # message("TRANSFERRING WATER LEVELS")
     # results = timeit_direct(transfer_water_levels, sess)
@@ -212,9 +212,9 @@ def transfer_debugging(sess, limit=100):
     "Precipitation," but is applicable when sample type is "Equipment blank"
     or "Field duplicate")
     """
-    message("TRANSFERRING LINK IDS")
-    timeit_direct(transfer_link_ids, sess)
-    timeit_direct(transfer_link_ids_welldata, sess)
+    # message("TRANSFERRING LINK IDS")
+    # timeit_direct(transfer_link_ids, sess)
+    # timeit_direct(transfer_link_ids_welldata, sess)
 
     # message("TRANSFERRING GROUPS")
     # timeit_direct(transfer_groups, sess)
