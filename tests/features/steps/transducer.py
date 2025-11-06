@@ -87,7 +87,10 @@ def step_impl(context):
 
 @then('the status should be one of "Draft", "Corrected"')
 def step_impl(context):
-    assert context.status in ("Draft", "Corrected"), f'Unexpected status: {context.status} not in "Draft", "Corrected"'
+    assert context.status in (
+        "Draft",
+        "Corrected",
+    ), f'Unexpected status: {context.status} not in "Draft", "Corrected"'
 
 
 # ============= EOF =============================================
