@@ -29,6 +29,7 @@ from db import (
     Parameter,
     Deployment,
     TransducerObservationBlock,
+    StatusHistory,
 )
 from db.engine import session_ctx
 
@@ -187,6 +188,36 @@ def add_block(context, session, parameter):
     return block
 
 
+@add_context_object_container("status_histories")
+def add_status_history(
+    context,
+    session,
+    status_type,
+    status_value,
+    start_date,
+    end_date,
+    reason,
+    statusable_id,
+    statusable_type,
+):
+    status_history = StatusHistory(
+        status_type=status_type,
+        status_value=status_value,
+        start_date=start_date,
+        end_date=end_date,
+        reason=reason,
+        statusable_id=statusable_id,
+        statusable_type=statusable_type,
+    )
+
+    session.add(status_history)
+    session.commit()
+    session.refresh(status_history)
+
+    context.objects["status_histories"].append(status_history)
+    return status_history
+
+
 def before_all(context):
     context.objects = {}
 
@@ -208,6 +239,54 @@ def before_all(context):
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session, well_1.id)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
+
+        well_status_1 = add_status_history(
+            context,
+            session,
+            status_type="well_status",
+            status_value="Active, pumping well",
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2021, 1, 1),
+            reason="Initial status",
+            statusable_id=well_1.id,
+            statusable_type="Thing",
+        )
+
+        well_status_2 = add_status_history(
+            context,
+            session,
+            status_type="well_status",
+            status_value="Destroyed, exists but not usable",
+            start_date=datetime(2021, 1, 1),
+            end_date=None,
+            reason="Roving bovine",
+            statusable_id=well_1.id,
+            statusable_type="Thing",
+        )
+
+        monitoring_status_1 = add_status_history(
+            context,
+            session,
+            status_type="monitoring_status",
+            status_value="currently monitored",
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2021, 1, 1),
+            reason="Initial monitoring status",
+            statusable_id=well_1.id,
+            statusable_type="Thing",
+        )
+
+        monitoring_status_2 = add_status_history(
+            context,
+            session,
+            status_type="monitoring_status",
+            status_value="not monitored",
+            start_date=datetime(2021, 1, 1),
+            end_date=None,
+            reason="Roving bovine destroyed well",
+            statusable_id=well_1.id,
+            statusable_type="Thing",
+        )
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

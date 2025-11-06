@@ -1,3 +1,5 @@
+from constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from services.util import transform_srid
 from behave import when, then
 
 
@@ -11,7 +13,7 @@ def step_impl(context):
 
 @then("the response should be in JSON format")
 def step_impl(context):
-    assert context.water_well_response["Content-Type"] == "application/json"
+    assert context.response["Content-Type"] == "application/json"
 
 
 @then(
@@ -31,14 +33,15 @@ def step_impl(context):
 @then("the response should include the well name (point ID) (i.e. NM-1234)")
 def step_impl(context):
     assert "name" in context.water_well_data
-    assert context.water_well_data["name"] == "WL-0001"
+
+    assert context.water_well_data["name"] == context.objects["wells"][0].name
 
 
-# TODO: a new endpoint named /thing/{thing_id}/group needs to be added to the API
-# TODO: this needs to be added to the ThingResponse
+# TODO: model schema, and test data need to be udpated
 @then("the response should include the project(s) or group(s) associated with the well")
 def step_impl(context):
     assert "groups" in context.water_well_data
+
     assert context.water_well_data["groups"] == ["Collabnet"]
 
 
@@ -52,14 +55,28 @@ def step_impl(context):
     assert "Domestic" in context.water_well_data["well_purposes"]
     assert "Irrigation" in context.water_well_data["well_purposes"]
 
+    assert (
+        context.water_well_data["well_purposes"][0]
+        == context.objects.wells[0].well_purposes[0].purpose
+    )
+    assert (
+        context.water_well_data["well_purposes"][1]
+        == context.objects.wells[0].well_purposes[1].purpose
+    )
+
 
 # TODO: this needs to be added to the ThingResponse and thing_helper via StatusHistory
 @then(
-    "the response should include the well status of the well as the status of the hole in the ground"
+    "the response should include the well hole status of the well as the status of the hole in the ground (from previous Status field)"
 )
 def step_impl(context):
     assert "well_status" in context.water_well_data
-    assert context.water_well_data["well_status"] == "Active"
+
+    status_history = context.objects["wells"][0].status_history
+    well_status = [sh for sh in status_history if sh.status_type == "well_status"]
+    well_status_sorted = sorted(well_status, key=lambda sh: sh.start_date, reverse=True)
+
+    assert context.water_well_data["well_status"] == well_status_sorted[0].status_value
 
 
 # TODO: this needs to be added to the model, schema, and test data
@@ -69,6 +86,7 @@ def step_impl(context):
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
     assert "monitoring_frequency" in context.water_well_data
+
     assert context.water_well_data["monitoring_frequency"] == "Monthly"
 
 
@@ -76,13 +94,23 @@ def step_impl(context):
 # the monitoring status field from NM_Aquifer contains a multitude of information, like having three codes (6AC), so the transfer and model/schemas will need to take this into account
 # could create descriptor table like WellPurpose and CasingMaterial
 @then(
-    "the response should include whether the well is currently being monitored with status text if applicable (from previous status field)"
+    "the response should include whether the well is currently being monitored with status text if applicable (from previous MonitoringStatus field)"
 )
 def step_impl(context):
-    assert "is_being_monitored" in context.water_well_data
     assert "monitoring_status" in context.water_well_data
-    assert context.water_well_data["is_being_monitored"] == True
-    assert context.water_well_data["monitoring_status"] == "Active"
+
+    status_history = context.objects["wells"][0].status_history
+    monitoring_status = [
+        sh for sh in status_history if sh.status_type == "monitoring_status"
+    ]
+    monitoring_status_sorted = sorted(
+        monitoring_status, key=lambda sh: sh.start_date, reverse=True
+    )
+
+    assert (
+        context.water_well_data["monitoring_status"]
+        == monitoring_status_sorted[0].status_value
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -93,7 +121,11 @@ def step_impl(context):
 @then("the response should include the release status of the well record")
 def step_impl(context):
     assert "release_status" in context.water_well_data
-    assert context.water_well_data["release_status"] == "draft"
+
+    assert (
+        context.water_well_data["release_status"]
+        == context.objects["wells"][0].release_status
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -105,7 +137,10 @@ def step_impl(context):
 def step_impl(context):
     assert "hole_depth" in context.water_well_data
     assert "hole_depth_unit" in context.water_well_data
-    assert context.water_well_data["hole_depth"] == 10
+
+    assert (
+        context.water_well_data["hole_depth"] == context.objects["wells"][0].hole_depth
+    )
     assert context.water_well_data["hole_depth_unit"] == "ft"
 
 
@@ -113,7 +148,10 @@ def step_impl(context):
 def step_impl(context):
     assert "well_depth" in context.water_well_data
     assert "well_depth_unit" in context.water_well_data
-    assert context.water_well_data["well_depth"] == 10
+
+    assert (
+        context.water_well_data["well_depth"] == context.objects["wells"][0].well_depth
+    )
     assert context.water_well_data["well_depth_unit"] == "ft"
 
 
@@ -121,7 +159,11 @@ def step_impl(context):
 @then("the response should include the source of the well depth information")
 def step_impl(context):
     assert "well_depth_source" in context.water_well_data
-    assert context.water_well_data["well_depth_source"] == "Measured"
+
+    assert (
+        context.water_well_data["well_depth_source"]
+        == context.objects["wells"][0].well_depth_source
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -133,7 +175,11 @@ def step_impl(context):
 @then("the response should include the description of the measuring point")
 def step_impl(context):
     assert "measuring_point_description" in context.water_well_data
-    assert context.water_well_data["measuring_point_description"] == "Top of Casing"
+
+    assert (
+        context.water_well_data["measuring_point_description"]
+        == context.objects["wells"][0].measuring_point_description
+    )
 
 
 # TODO: this needs to be added to the model, schema, and test data
@@ -141,7 +187,11 @@ def step_impl(context):
 def step_impl(context):
     assert "measuring_point_height" in context.water_well_data
     assert "measuring_point_height_unit" in context.water_well_data
-    assert context.water_well_data["measuring_point_height"] == 4
+
+    assert (
+        context.water_well_data["measuring_point_height"]
+        == context.objects["wells"][0].measuring_point_height
+    )
     assert context.water_well_data["measuring_point_height_unit"] == "ft"
 
 
@@ -165,9 +215,13 @@ def step_impl(context):
     'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation] in decimal degrees with datum WGS84'
 )
 def step_impl(context):
+    latitude = context.objects["locations"][0].point.y
+    longitude = context.objects["locations"][0].point.x
+    elevation_m = context.objects["locations"][0].elevation
+
     assert context.water_well_data["current_location"]["geometry"] == {
         "type": "Point",
-        "coordinates": [33.809665, -107.949533, 2464.9],
+        "coordinates": [longitude, latitude, elevation_m],
     }
 
 
@@ -181,9 +235,11 @@ def step_impl(context):
     assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
     assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
 
+    elevation_ft = context.objects["locations"][0].elevation * 3.28084
+
     assert (
         context.water_well_data["current_location"]["properties"]["elevation"]
-        == 2464.9 * 3.28084
+        == elevation_ft
     )
     assert (
         context.water_well_data["current_location"]["properties"]["elevation_unit"]
@@ -204,7 +260,7 @@ def step_impl(context):
     )
     assert (
         context.water_well_data["current_location"]["properties"]["elevation_method"]
-        == "Survey-grade GPS"
+        == context.objects["locations"][0].elevation_method
     )
 
 
@@ -217,11 +273,16 @@ def step_impl(context):
     assert (
         "utm_coordinates" in context.water_well_data["current_location"]["properties"]
     )
+
+    point_utm_zone_13 = transform_srid(
+        context.objects["locations"][0].point, SRID_WGS84, SRID_UTM_ZONE_13N
+    )
+
     assert context.water_well_data["current_location"]["properties"][
         "utm_coordinates"
     ] == {
-        "easting": 623000,
-        "northing": 3745000,
+        "easting": point_utm_zone_13.x,
+        "northing": point_utm_zone_13.y,
         "utm_zone": 13,
         "horizontal_datum": "NAD83",
     }
@@ -238,9 +299,10 @@ def step_impl(context):
     "the response should include any alternate IDs for the well like the NMBGMR site_name (i.e. John Smith Well), USGS site number, or the OSE well ID and OSE well tag ID"
 )
 def step_impl(context):
-    response = context.client.get("/thing/1/id-link")
-    data = response.json()
-    for item in data["items"]:
+    assert "alternate_ids" in context.water_well_data
+
+    assert len(context.water_well_data["alternate_ids"]) == 3
+    for item in context.water_well_data["alternate_ids"]:
         if item["alternate_organization"] == "USGS":
             assert item["relation"] == "same as"
             assert item["alternate_id"] == "12345678"
