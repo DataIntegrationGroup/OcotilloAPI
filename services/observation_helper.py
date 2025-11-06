@@ -4,7 +4,7 @@ from typing import List
 from fastapi import Request, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import select, and_
+from sqlalchemy import select, desc
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_404_NOT_FOUND
 
@@ -52,38 +52,38 @@ def get_transducer_observations(
     order: str | None = None,
     filter_: str = Query(alias="filter", default=None),
 ):
-    sql = select(TransducerObservation, TransducerObservationBlock)
-    sql = sql.join(
-        TransducerObservationBlock,
-        and_(
-            TransducerObservation.parameter_id
-            == TransducerObservationBlock.parameter_id,
-            TransducerObservation.observation_datetime
-            >= TransducerObservationBlock.start_datetime,
-            TransducerObservation.observation_datetime
-            <= TransducerObservationBlock.end_datetime,
-        ),
+    # Subquery to get latest block for each observation
+    block_subq = (
+        select(TransducerObservationBlock.id)
+        .where(
+            TransducerObservationBlock.parameter_id
+            == TransducerObservation.parameter_id,
+            TransducerObservationBlock.start_datetime
+            <= TransducerObservation.observation_datetime,
+            TransducerObservationBlock.end_datetime
+            >= TransducerObservation.observation_datetime,
+        )
+        .order_by(desc(TransducerObservationBlock.start_datetime))
+        .limit(1)
+        .correlate(TransducerObservation)
+        .scalar_subquery()
     )
 
-    if thing_id is not None:
-
-        thing = simple_get_by_id(session, Thing, thing_id)
-        if thing:
-            sql = sql.join(Deployment)
-            sql = sql.where(Deployment.thing == thing)
+    query = (
+        select(TransducerObservation, TransducerObservationBlock)
+        .join(Deployment, TransducerObservation.deployment_id == Deployment.id)
+        .join(TransducerObservationBlock, TransducerObservationBlock.id == block_subq)
+    )
 
     if start_time:
-        sql = sql.where(TransducerObservation.observation_datetime >= start_time)
+        query = query.where(TransducerObservation.observation_datetime >= start_time)
     if end_time:
-        sql = sql.where(TransducerObservation.observation_datetime <= end_time)
-
-    # sql = order_sort_filter(sql, TransducerObservation, sort, order, filter_)
-
-    if not order:
-        sql = sql.order_by(TransducerObservation.observation_datetime.desc())
+        query = query.where(TransducerObservation.observation_datetime <= end_time)
 
     if parameter_id:
-        sql = sql.where(TransducerObservation.parameter_id == parameter_id)
+        query = query.where(TransducerObservation.parameter_id == parameter_id)
+    if thing_id:
+        query = query.where(Deployment.thing_id == thing_id)
 
     def transformer(result):
         from schemas.transducer import (
@@ -100,7 +100,9 @@ def get_transducer_observations(
             for observation, block in result
         ]
 
-    return paginate(query=sql, conn=session, transformer=transformer)
+    query = query.order_by(TransducerObservation.observation_datetime.desc())
+
+    return paginate(query=query, conn=session, transformer=transformer)
 
 
 def get_observations(
