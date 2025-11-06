@@ -4,8 +4,8 @@ from behave import when, then
 # TODO: move to commonly used step definitions
 @when("the user retrieves the well by ID via path parameter")
 def step_impl(context):
-    well_id = 1
-    context.response = context.water_well_response
+    well_id = context.objects["wells"][0].id
+    context.response = context.client.get(f"/thing/water-well/{well_id}")
     context.water_well_data = context.response.json()
 
 
