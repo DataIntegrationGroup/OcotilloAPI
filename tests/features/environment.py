@@ -209,7 +209,7 @@ def add_block(context, session, parameter):
 def before_all(context):
     context.objects = {}
 
-    force = False
+    force = True
     with session_ctx() as session:
         if force or session.query(LexiconTerm).count() == 0:
             erase_and_rebuild_db(session)
