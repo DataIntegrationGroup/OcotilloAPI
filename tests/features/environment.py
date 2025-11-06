@@ -15,7 +15,6 @@
 # =============== ================================================================
 import random
 from datetime import datetime, timedelta
-from sqlalchemy import text
 
 from core.initializers import erase_and_rebuild_db, init_lexicon, init_parameter
 from db import (
@@ -186,17 +185,6 @@ def add_block(context, session, parameter):
 
     context.objects["blocks"].append(block)
     return block
-
-
-def table_exists(session, table_name):
-    # Works for PostgreSQL
-    result = session.execute(
-        text(
-            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :table_name)"
-        ),
-        {"table_name": table_name},
-    )
-    return result.scalar()
 
 
 def before_all(context):
