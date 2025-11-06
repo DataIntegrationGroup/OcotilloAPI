@@ -24,13 +24,12 @@ from db.engine import session_ctx
 def step_impl(context):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.thing_type == "water well")
-        well = session.execute(sql).scalars().first()
-        context.well = well
+        wells = session.execute(sql).scalars().all()
+        assert len(wells)> 0, "No wells found in db"
 
         sql = select(TransducerObservation)
         transducer_observations = session.execute(sql).scalars().all()
-        context.transducer_observations = transducer_observations
-        assert len(transducer_observations) > 0, "No transducer observations found"
+        assert len(transducer_observations) > 0, "No transducer observations found db"
 
 
 @when("the user requests transducer data for a non-existing well")
@@ -51,14 +50,15 @@ def step_impl(context):
 @then("each page should be an array of transducer data")
 def step_impl(context):
     data = context.response.json()
-    context.data = data["items"]
-    assert len(context.data) > 0, "Expected at least one transducer data entry"
+    assert len(data['items']) > 0, "Expected at least one transducer data entry"
 
 
 @then("each transducer data entry should include a timestamp, value, status")
 def step_impl(context):
-    item = context.data[0]["observation"]
-    block = context.data[0]["block"]
+    data = context.response.json()
+    items = data[0]
+    item = items["observation"]
+    block = items["block"]
 
     assert "observation_datetime" in item, f"Expected a timestamp in the data {item}"
     assert "value" in item, f"Expected a value in the data {item}"
