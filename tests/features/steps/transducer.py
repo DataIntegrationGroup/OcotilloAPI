@@ -25,7 +25,7 @@ def step_impl(context):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.thing_type == "water well")
         wells = session.execute(sql).scalars().all()
-        assert len(wells)> 0, "No wells found in db"
+        assert len(wells) > 0, "No wells found in db"
 
         sql = select(TransducerObservation)
         transducer_observations = session.execute(sql).scalars().all()
@@ -50,7 +50,7 @@ def step_impl(context):
 @then("each page should be an array of transducer data")
 def step_impl(context):
     data = context.response.json()
-    assert len(data['items']) > 0, "Expected at least one transducer data entry"
+    assert len(data["items"]) > 0, "Expected at least one transducer data entry"
 
 
 @then("each transducer data entry should include a timestamp, value, status")
