@@ -52,6 +52,9 @@ def get_transducer_observations(
     order: str | None = None,
     filter_: str = Query(alias="filter", default=None),
 ):
+    if thing_id:
+        simple_get_by_id(session, Thing, thing_id)
+
     # Subquery to get latest block for each observation
     block_subq = (
         select(TransducerObservationBlock.id)

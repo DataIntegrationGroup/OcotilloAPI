@@ -52,7 +52,7 @@ def step_impl(context):
 def step_impl(context):
     data = context.response.json()
     context.data = data["items"]
-    assert len(context.data) > 0
+    assert len(context.data) > 0, context.data
 
 
 @then("each transducer data entry should include a timestamp, value, status")

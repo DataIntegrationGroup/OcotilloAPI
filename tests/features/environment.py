@@ -187,9 +187,21 @@ def add_block(context, session, parameter):
     return block
 
 
+@add_context_object_container("transducer_observations")
+def add_transducer_observation(context, session, block, deployment_id, value):
+    obs = TransducerObservation(
+        parameter_id=block.parameter_id,
+        deployment_id=deployment_id,
+        observation_datetime=datetime.now(),
+        value=value,
+    )
+    session.add(obs)
+    context.objects["transducer_observations"].append(obs)
+    return obs
+
+
 def before_all(context):
     context.objects = {}
-
     force = False
     with session_ctx() as session:
         if session.query(LexiconTerm).count() == 0 or force:
@@ -211,16 +223,12 @@ def before_all(context):
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
-        add_obs = add_block(context, session, parameter)
-        if add_obs:
-            for i in range(1, 10):
-                obs = TransducerObservation(
-                    parameter_id=parameter.id,
-                    deployment_id=deployment.id,
-                    observation_datetime=datetime.now(),
-                    value=random.random(),
-                )
-                session.add(obs)
+        block = add_block(context, session, parameter)
+        for i in range(1, 10):
+            add_transducer_observation(
+                context, session, block, deployment.id, random.random()
+            )
+
         session.commit()
 
 
