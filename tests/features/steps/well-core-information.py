@@ -42,7 +42,18 @@ def step_impl(context):
 def step_impl(context):
     assert "groups" in context.water_well_data
 
-    assert context.water_well_data["groups"] == ["Collabnet"]
+    assert (
+        context.water_well_data["groups"][0]["description"]
+        == context.objects["groups"][0].description
+    )
+    assert (
+        context.water_well_data["groups"][0]["name"]
+        == context.objects["groups"][0].name
+    )
+    assert (
+        context.water_well_data["groups"][0]["project_area"]
+        == context.objects["groups"][0].project_area
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -85,7 +96,8 @@ def step_impl(context):
 # could create descriptor table like WellPurpose and CasingMaterial
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
-    assert "monitoring_frequency" in context.water_well_data
+    for group in context.water_well_data["groups"]:
+        assert "monitoring_frequency" in group
 
     assert context.water_well_data["monitoring_frequency"] == "Monthly"
 

@@ -144,7 +144,9 @@ def add_sensor(context, session, sid):
 
 @add_context_object_container("groups")
 def add_group(context, session, wells, gid):
-    group = Group(name="Collabnet")
+    group = Group(
+        name="Collabnet", description="Healy Collaborative Network", project_area=None
+    )
     for w in wells:
         assoc = GroupThingAssociation(group=group, thing=w)
         session.add(assoc)
