@@ -24,7 +24,7 @@ from db.engine import session_ctx
 def step_impl(context):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.thing_type == "water well")
-        wells = session.execute(sql).scalars().all()
+        wells = session.execute(sql).unique().scalars().all()
         assert len(wells) > 0, "No wells found in db"
 
         sql = select(TransducerObservation)
@@ -43,7 +43,7 @@ def step_impl(context):
 def step_impl(context):
     context.response = context.client.get(
         "/observation/transducer-groundwater-level",
-        params={"thing_id": context.well.id},
+        params={"thing_id": context.objects["wells"][0].id},
     )
 
 
@@ -56,7 +56,7 @@ def step_impl(context):
 @then("each transducer data entry should include a timestamp, value, status")
 def step_impl(context):
     data = context.response.json()
-    items = data[0]
+    items = data["items"][0]
     item = items["observation"]
     block = items["block"]
 

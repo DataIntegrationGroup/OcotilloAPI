@@ -24,12 +24,12 @@ from db import (
     Group,
     GroupThingAssociation,
     Sensor,
-    LexiconTerm,
     TransducerObservation,
     Parameter,
     Deployment,
     TransducerObservationBlock,
 )
+
 from db.engine import session_ctx
 
 
@@ -202,9 +202,9 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 
 def before_all(context):
     context.objects = {}
-    force = False
+    rebuild = False
     with session_ctx() as session:
-        if session.query(LexiconTerm).count() == 0 or force:
+        if rebuild:
             erase_and_rebuild_db(session)
             init_lexicon()
             init_parameter()
