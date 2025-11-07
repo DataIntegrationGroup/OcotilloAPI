@@ -19,7 +19,7 @@ from behave import when, then
 
 @when('the user requests things with type "water well"')
 def step_impl(context):
-    context.response = context.client.get("/thing", params={"thing_type": "water well"})
+    context.response = context.client.get("/thing/water-well")
 
 
 @then("the response should include at least one thing")
@@ -37,7 +37,7 @@ def step_impl(context):
 
 @when('the user requests things with type "spring"')
 def step_impl(context):
-    context.response = context.client.get("/thing", params={"thing_type": "spring"})
+    context.response = context.client.get("/thing/spring")
 
 
 @then('the response should only include things of type "spring"')

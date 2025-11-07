@@ -367,7 +367,9 @@ def test_add_phone_409_contact_not_found(contact):
 # GET tests ======================================================
 
 
-def test_get_contacts(contact, email, address, phone):
+def test_get_contacts(
+    contact, email, address, phone, incomplete_nma_phone_1, incomplete_nma_phone_2
+):
     response = client.get("/contact")
     assert response.status_code == 200
     data = response.json()
@@ -381,6 +383,11 @@ def test_get_contacts(contact, email, address, phone):
     assert data["items"][0]["contact_type"] == contact.contact_type
     assert data["items"][0]["release_status"] == contact.release_status
     assert data["items"][0]["organization"] == contact.organization
+
+    assert len(data["items"][0]["incomplete_nma_phones"]) == 2
+    assert sorted(data["items"][0]["incomplete_nma_phones"]) == sorted(
+        [incomplete_nma_phone_1.phone_number, incomplete_nma_phone_2.phone_number]
+    )
 
     assert len(data["items"][0]["emails"]) == 1
     assert data["items"][0]["emails"][0]["id"] == email.id
@@ -427,7 +434,9 @@ def test_get_contacts_by_thing_id(contact, second_contact, water_well_thing):
     assert data["items"][0]["id"] == contact.id
 
 
-def test_get_contact_by_id(contact, email, address, phone):
+def test_get_contact_by_id(
+    contact, email, address, phone, incomplete_nma_phone_1, incomplete_nma_phone_2
+):
     response = client.get(f"/contact/{contact.id}")
     assert response.status_code == 200
     data = response.json()
@@ -440,6 +449,11 @@ def test_get_contact_by_id(contact, email, address, phone):
     assert data["contact_type"] == contact.contact_type
     assert data["release_status"] == contact.release_status
     assert data["organization"] == contact.organization
+
+    assert len(data["incomplete_nma_phones"]) == 2
+    assert sorted(data["incomplete_nma_phones"]) == sorted(
+        [incomplete_nma_phone_1.phone_number, incomplete_nma_phone_2.phone_number]
+    )
 
     assert len(data["emails"]) == 1
     assert data["emails"][0]["id"] == email.id
