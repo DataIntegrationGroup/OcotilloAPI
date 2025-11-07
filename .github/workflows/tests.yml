@@ -81,7 +81,7 @@ jobs:
       env:
         BASE_URL: http://localhost:8000
       run: |
-        uv run behave tests/features --tags=@backend,@production --no-capture
+        uv run behave tests/features --tags="@backend and @production" --no-capture
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v4
