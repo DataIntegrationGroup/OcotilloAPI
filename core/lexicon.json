@@ -49,7 +49,8 @@
     {"name": "unit", "description": null},
     {"name": "vertical_datum", "description": null},
     {"name": "well_purpose", "description": null},
-    {"name": "well_status", "description": null}
+    {"name": "status_type", "description": null},
+    {"name": "status_value", "description": null}
   ],
   "terms": [
     {"categories": ["review_status"], "term": "approved", "definition": "approved"},
@@ -323,10 +324,13 @@
     {"categories": ["groundwater_level_reason"], "term": "Water level affected by stage in nearby surface-water site", "definition": "Water level affected by stage in nearby surface-water site"},
     {"categories": ["groundwater_level_reason"], "term": "Other conditions exist that would affect the level (remarks)", "definition": "Other conditions exist that would affect the level (remarks)"},
     {"categories": ["groundwater_level_reason"], "term": "Water level not affected", "definition": "Water level not affected"},
-    {"categories": ["well_status"], "term": "Abandoned", "definition": "Abandoned"},
-    {"categories": ["well_status"], "term": "Active, pumping well", "definition": "Active, pumping well"},
-    {"categories": ["well_status"], "term": "Destroyed, exists but not usable", "definition": "Destroyed, exists but not usable"},
-    {"categories": ["well_status"], "term": "Inactive, exists but not used", "definition": "Inactive, exists but not used"},
+    {"categories": ["status_type"], "term": "Well status", "definition": "Defines the well's operational condition as reported by the owner"},
+    {"categories": ["status_type"], "term": "Monitoring status", "definition": "Defines the well's current monitoring status by NMBGMR."},
+    {"categories": ["status_type"], "term": "Access status", "definition": "Defines the well's access status for field personnel."},
+    {"categories": ["status_value"], "term": "Abandoned", "definition": "The well has been properly decommissioned."},
+    {"categories": ["status_value"], "term": "Active, pumping well", "definition": "This well is in use."},
+    {"categories": ["status_value"], "term": "Destroyed, exists but not usable", "definition": "The well structure is physically present but is damaged, collapsed, or otherwise compromised to the point that it is non-functional."},
+    {"categories": ["status_value"], "term": "Inactive, exists but not used", "definition": "The well is not currently in use but is believed to be in a usable condition; it has not been permanently decommissioned/abandoned."},
     {"categories": ["sample_method"], "term": "Airline measurement", "definition": "Airline measurement"},
     {"categories": ["sample_method"], "term": "Analog or graphic recorder", "definition": "Analog or graphic recorder"},
     {"categories": ["sample_method"], "term": "Calibrated airline measurement", "definition": "Calibrated airline measurement"},
