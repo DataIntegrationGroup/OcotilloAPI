@@ -209,14 +209,19 @@ def step_impl(context):
 
 # ------------------------------------------------------------------------------
 # Location Information
+# GeoJSON spec format RFC 7946 (Aug 2016) requires coordinates to be decimal degrees in WGS84
 # ------------------------------------------------------------------------------
 
 
-@then("the response should include location information in GeoJSON format")
+@then(
+    "the response should include location information in GeoJSON spec format RFC 7946"
+)
 def step_impl(context):
     assert "current_location" in context.water_well_data
     assert "type" in context.water_well_data["current_location"]
     assert "geometry" in context.water_well_data["current_location"]
+    assert "type" in context.water_well_data["current_location"]["geometry"]
+    assert "coordinates" in context.water_well_data["current_location"]["geometry"]
     assert "properties" in context.water_well_data["current_location"]
 
     assert context.water_well_data["current_location"]["type"] == "Feature"
@@ -224,7 +229,7 @@ def step_impl(context):
 
 # TODO: the LocationResponse schema needs to be updated
 @then(
-    'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation] in decimal degrees with datum WGS84'
+    'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation]'
 )
 def step_impl(context):
     latitude = context.objects["locations"][0].point.y
