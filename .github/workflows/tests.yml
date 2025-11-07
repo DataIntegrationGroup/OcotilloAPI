@@ -79,6 +79,11 @@ jobs:
 
     - name: Run BDD tests
       env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        DB_DRIVER: postgres
         BASE_URL: http://localhost:8000
       run: |
         uv run behave tests/features --tags="@backend and @production" --no-capture
