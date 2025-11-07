@@ -31,10 +31,14 @@ if TYPE_CHECKING:
 
 class Group(Base, AutoBaseMixin, ReleaseMixin):
     # --- Column Definitions ---
-    description: Mapped[str] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
     project_area: Mapped[Optional[WKBElement]] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
+    )
+    group_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    monitoring_frequency: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
     )
 
     # Foreign Keys
