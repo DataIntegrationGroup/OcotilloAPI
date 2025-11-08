@@ -84,12 +84,12 @@ def step_impl(context):
     assert isinstance(context.value, (int, float))
 
 
-@then('the status should be one of "Draft", "Corrected"')
+@then('the status should be one of "approved", "not reviewed"')
 def step_impl(context):
     assert context.status in (
-        "Draft",
-        "Corrected",
-    ), f'Unexpected status: {context.status} not in "Draft", "Corrected"'
+        "approved",
+        "not reviewed",
+    ), f'Unexpected status: {context.status} not in "approved", "not reviewed"'
 
 
 # ============= EOF =============================================
