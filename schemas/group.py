@@ -18,6 +18,7 @@ from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator, model_validator
 from typing_extensions import Self
 
+from core.enums import GroupType, MonitoringFrequency
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
 
@@ -53,8 +54,10 @@ class GroupResponse(BaseResponseModel):
     """
 
     name: str
-    project_area: str | None
     description: str | None
+    project_area: str | None
+    group_type: GroupType | None
+    monitoring_frequency: MonitoringFrequency | None
     parent_group_id: int | None
 
     @model_validator(mode="before")

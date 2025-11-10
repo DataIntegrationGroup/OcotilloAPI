@@ -20,6 +20,7 @@ from pydantic import BaseModel, model_validator, PastDate, Field, field_validato
 from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
+from schemas.group import GroupResponse
 
 
 # -------- VALIDATE ----------
@@ -135,6 +136,7 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationResponse | None
     first_visit_date: PastDate | None
+    groups: list[GroupResponse] = []
 
 
 class WellResponse(BaseThingResponse):
