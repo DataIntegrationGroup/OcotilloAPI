@@ -36,11 +36,6 @@ jobs:
     - name: Check out source repository
       uses: actions/checkout@v4
 
-#    - name: Install SpatiaLite
-#      run: |
-#          sudo apt-get update
-#          sudo apt-get install -y libsqlite3-mod-spatialite libspatialite-dev
-
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
@@ -62,7 +57,6 @@ jobs:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
-#        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
 
       run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
 
@@ -88,7 +82,6 @@ jobs:
       run: |
 #        use this when we have consensus on tag nomenclature
 #        uv run behave tests/features --tags="@backend and @production" --no-capture
-#
          uv run behave tests/features/transducer-data-response.feature \
              tests/features/thing-type-path-parameters.feature \
              tests/features/thing-query-parameters.feature
