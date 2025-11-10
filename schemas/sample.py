@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import timezone
+from typing import Annotated
+
 from pydantic import (
     BaseModel,
     field_validator,
@@ -21,13 +23,18 @@ from pydantic import (
     AwareDatetime,
     PastDatetime,
 )
-from typing import Annotated
 from typing_extensions import Self
 
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.thing import ThingResponse
-from schemas.field import FieldEventResponse, FieldActivityResponse
+from core.enums import SampleMatrix, SampleMethod, SampleQcType
+from schemas import (
+    BaseCreateModel,
+    BaseUpdateModel,
+    BaseResponseModel,
+    UTCAwareDatetime,
+)
 from schemas.contact import ContactResponse
+from schemas.field import FieldEventResponse, FieldActivityResponse
+from schemas.thing import ThingResponse
 
 
 # -------- VALIDATE ----------
@@ -87,9 +94,9 @@ class CreateSample(BaseCreateModel, ValidateSample):
     field_event_participant_id: int
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sample_name: str
-    sample_matrix: str
-    sample_method: str
-    qc_type: str
+    sample_matrix: SampleMatrix
+    sample_method: SampleMethod
+    qc_type: SampleQcType
     notes: str | None = None
     depth_top: float | None = None
     depth_bottom: float | None = None
@@ -101,9 +108,9 @@ class UpdateSample(BaseUpdateModel, ValidateSample):
     field_event_participant_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()] | None = None
     sample_name: str | None = None
-    sample_matrix: str | None = None
-    sample_method: str | None = None
-    qc_type: str | None = None
+    sample_matrix: SampleMatrix | None = None
+    sample_method: SampleMethod | None = None
+    qc_type: SampleQcType | None = None
     notes: str | None = None
     depth_top: float | None = None
     depth_bottom: float | None = None
@@ -124,11 +131,11 @@ class SampleResponse(BaseResponseModel):
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
     contact: ContactResponse
-    sample_date: Annotated[AwareDatetime, PastDatetime()]
+    sample_date: UTCAwareDatetime
     sample_name: str
-    sample_matrix: str
-    sample_method: str
-    qc_type: str
+    sample_matrix: SampleMatrix
+    sample_method: SampleMethod
+    qc_type: SampleQcType
     notes: str | None
     depth_top: float | None
     depth_bottom: float | None

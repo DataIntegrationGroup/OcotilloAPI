@@ -13,16 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.engine import get_db_session
+import json
+from enum import Enum
+from pathlib import Path
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from db.lexicon import (
     LexiconCategory,
     LexiconTerm,
     LexiconTermCategoryAssociation,
     LexiconTriple,
 )
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-
 from services.audit_helper import audit_add
 
 
@@ -114,16 +117,18 @@ def get_terms_by_category(category: str) -> list:
         list: A list of terms.
     """
 
-    with next(get_db_session()) as session:
+    # use the lexicon.json to read the terms
+    path = Path(__file__).parent.parent / "core" / "lexicon.json"
+    with open(path, "r") as rfile:
+        terms = json.load(rfile)["terms"]
+        terms = [t for t in terms if category in t["categories"]]
 
-        sql = select(LexiconTerm)
-        sql = sql.join(LexiconTermCategoryAssociation)
-        sql = sql.join(LexiconCategory)
-        sql = sql.filter(LexiconCategory.name == category)
+    return terms
 
-        categories = [lex.term for lex in session.scalars(sql).all()]
 
-    return categories
+def build_enum_from_lexicon_category(category: str) -> Enum:
+    terms = get_terms_by_category(category)
+    return Enum(category, {c["term"]: c["term"] for c in terms})
 
 
 # ============= EOF =============================================

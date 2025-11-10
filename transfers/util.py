@@ -14,19 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+import io
 import os
+import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import pytz
-import re
-import io
-from shapely import Point
-
-
-from sqlalchemy.orm import Session
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytz
+from shapely import Point
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location
@@ -49,9 +48,15 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
 
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
+    if os.path.exists(p):
+        return pd.read_csv(p, dtype=dtype)
+
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
+    with open(p, "wb") as f:
+        f.write(data)
 
     if dtype:
         return pd.read_csv(io.BytesIO(data), dtype=dtype)
@@ -87,23 +92,47 @@ def extract_organization(alternate_id: str) -> str:
 
 
 def get_transfers_data_path(name):
-    root = Path("/workspace/transfers/data")
+    def data_path(r):
+        return Path(r) / "transfers" / "data"
+
+    root = data_path("/workspace")
     if not os.path.exists(root):
-        root = Path("./transfers/data/")
+        root = data_path("..")
+        if not os.path.exists(root):
+            root = data_path(".")
 
     return root / name
 
 
-def filter_by_welldata_datasource(df: pd.DataFrame) -> pd.DataFrame:
+def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFrame:
+    sql = select(Thing.name).where(Thing.thing_type == "water well")
+    existing_ids = sess.execute(sql).scalars().all()
+    return df[~(df["PointID"].isin(existing_ids))]
+
+
+def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
     path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        logger.info("Valid WellData Datasources:")
-        logger.info("\n".join(f"  {vd}" for vd in valid_datasources))
+        f.seek(0)
+        invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
+        logger.info("Invalid WellData Datasources:")
+        for vd in invalid_datasources:
+            logger.info(f"  {vd}")
 
-    return df[df["DataSource"].isin(valid_datasources)]
+    counts = df.groupby("DataSource").size().reset_index(name="WellCount")
+    counts = counts.sort_values("WellCount", ascending=False)
+    for count in counts.itertuples():
+        logger.info(f"{count.DataSource}: {count.WellCount}")
+
+    pldf = read_csv("ProjectLocations")
+    collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
+    return df[
+        df["DataSource"].isin(valid_datasources)
+        | df["PointID"].isin(collabnet["PointID"])
+    ]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
@@ -152,6 +181,11 @@ def convert_mt_to_utc(dt_record: datetime):
     return dt_record
 
 
+def chunk_by_size(df, chunk_size):
+    for i in range(0, len(df), chunk_size):
+        yield df.iloc[i : i + chunk_size]
+
+
 def make_location(row: pd.Series) -> Location:
     point = Point(row.Easting, row.Northing)
 
@@ -184,7 +218,7 @@ def make_location(row: pd.Series) -> Location:
         elevation_method = None
     else:
         elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod}"
+            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
     if pd.isna(row.CoordinateMethod):
@@ -322,6 +356,7 @@ class LexiconMapper:
         self._mappers = None
 
     def map_value(self, value):
+        value = value.strip()
         return self._make_lu_to_lexicon_mapper().get(value, value)
 
     def _make_lu_to_lexicon_mapper(self):

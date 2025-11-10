@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
 import time
 import uuid
 from datetime import datetime
-import json
 
 import pandas as pd
 
@@ -26,7 +26,6 @@ from db import (
     Observation,
     FieldEvent,
     FieldActivity,
-    FieldEventParticipant,
     Contact,
     FieldEventParticipant,
     Parameter,
@@ -78,9 +77,9 @@ def get_dt_utc(row):
 
 
 def get_contacts_info(row, measured_by, measured_by_mapper):
-    measuring_agency = (
-        "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
-    )
+    # measuring_agency = (
+    #     "Unknown" if pd.isna(row.MeasuringAgency) else row.MeasuringAgency
+    # )
 
     # ns --> names
     # os --> organizations
@@ -122,12 +121,18 @@ def transfer_water_levels(session):
     with open(path, "r") as f:
         measured_by_mapper = json.load(f)
 
-    wd = read_csv("WaterLevels")
-    wd = filter_to_valid_point_ids(session, wd)
-    wd = filter_by_valid_measuring_agency(wd)
-    gwd = wd.groupby(["PointID"])
+    input_df = read_csv("WaterLevels")
+    cleaned_df = filter_to_valid_point_ids(session, input_df)
+    cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
+
+    gwd = cleaned_df.groupby(["PointID"])
 
     start_time = time.time()
+    errors = []
+
+    # TODO: this needs to be cleaned up
+    # the for loop is too long and hard to read
+    # adding contacts should be done in a separate function
     for index, group in gwd:
         pointid = index[0]
         logger.info(f"Processing PointID: {pointid}")
@@ -182,10 +187,10 @@ def transfer_water_levels(session):
                                 nma_pk_waterlevels=row.GlobalID,
                             )
                             session.add(contact)
-                            session.flush()  # to get the contact.id
+                            # session.flush()  # to get the contact.id
 
                             logger.info(
-                                f"{SPACE_2}Created contact: ID {contact.id} | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
+                                f"{SPACE_2}Created contact: | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
                             )
 
                             created_contacts[(name, organization)] = contact
@@ -193,6 +198,8 @@ def transfer_water_levels(session):
                             logger.critical(
                                 f"Contact cannot be created: Name {name} | Role {role} | Organization {organization} because of the following: {str(e)}"
                             )
+                            continue
+
                     field_event_participants.append(contact)
             else:
                 contact = thing.contacts[0]
@@ -220,7 +227,6 @@ def transfer_water_levels(session):
             )
 
             session.add(field_event)
-            session.flush()
 
             logger.info(
                 f"{SPACE_2}Created field event: ID {field_event.id} | Date {field_event.event_date} | Thing ID {field_event.thing.id} | Thing Name {field_event.thing.name}"
@@ -244,7 +250,6 @@ def transfer_water_levels(session):
                     field_event_participant.participant_role = "Participant"
 
                 session.add(field_event_participant)
-                session.flush()
                 logger.info(
                     f"{SPACE_4}Created field event contact: ID {field_event_participant.id} | Role {field_event_participant.participant_role} | Contact ID {field_event_participant.participant.id} | Contact Name {field_event_participant.participant.name} | Contact Org {field_event_participant.participant.organization}"
                 )
@@ -268,7 +273,6 @@ def transfer_water_levels(session):
                     "Well is destroyed - no field activity/sample/observation will be made"
                 )
                 field_event.notes = groundwater_level_reason
-                session.refresh()
                 continue
 
             # --- FieldActivity ---
@@ -279,7 +283,6 @@ def transfer_water_levels(session):
                 release_status=release_status,
             )
             session.add(field_activity)
-            session.flush()
 
             logger.info(
                 f"{SPACE_4}Created field activity: ID {field_activity.id} | Type {field_activity.activity_type}"
@@ -308,7 +311,6 @@ def transfer_water_levels(session):
                 depth_bottom=None,
             )
             session.add(sample)
-            session.flush()
             logger.info(
                 f"{SPACE_4}Created sample: ID {sample.id} | Date {sample.sample_date} | Matrix {sample.sample_matrix} | Method {sample.sample_method}"
             )
@@ -356,11 +358,12 @@ def transfer_water_levels(session):
                 groundwater_level_reason=groundwater_level_reason,
             )
             session.add(observation)
-            session.flush()
             logger.info(
                 f"{SPACE_4}Created observation: ID {observation.id} | DT {observation.observation_datetime} | Value {observation.value} | MPHeight {observation.measuring_point_height} | nma_pk_waterlevels {observation.nma_pk_waterlevels}"
             )
         session.commit()
+
+    return input_df, cleaned_df, errors
 
 
 # ============= EOF =============================================

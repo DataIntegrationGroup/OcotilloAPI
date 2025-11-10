@@ -14,11 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 import logging
+import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from services.gcs_helper import get_storage_bucket
-
 
 # class StreamToLogger:
 #     def __init__(self, logger_, level):
@@ -32,16 +33,21 @@ from services.gcs_helper import get_storage_bucket
 #
 #     def flush(self):
 #         pass
+root = Path("logs")
+if not os.getcwd().endswith("transfers"):
+    root = Path("transfers") / root
 
+if not os.path.exists(root):
+    os.mkdir(root)
 
-log_filename = f"transfer_{datetime.now():%Y-%m-%dT%Hh%Mm%Ss}.log"
+log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
 
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)-8s] %(message)s",
     handlers=[
-        logging.StreamHandler(),
+        logging.StreamHandler(sys.stdout),
         logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
     ],
 )

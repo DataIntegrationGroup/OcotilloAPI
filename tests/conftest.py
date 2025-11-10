@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 from db import *
 from db.engine import session_ctx
@@ -55,13 +56,11 @@ def water_well_thing(location):
             first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_purpose="Domestic",
             well_depth=10,
             hole_depth=10,
             well_construction_notes="Test well construction notes",
             well_casing_diameter=5.0,
             well_casing_depth=10.0,
-            well_casing_material="PVC",
         )
         session.add(water_well)
         session.commit()
@@ -78,6 +77,66 @@ def water_well_thing(location):
         yield water_well
         session.delete(water_well)
         session.delete(assoc)
+        session.commit()
+
+
+@pytest.fixture()
+def pvc_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="PVC",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def steel_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="Steel",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture()
+def irrigation_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Irrigation",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
+        session.commit()
+
+
+@pytest.fixture()
+def domestic_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Domestic",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
         session.commit()
 
 
@@ -289,6 +348,36 @@ def contact(water_well_thing):
         yield contact
         session.delete(contact)
         session.delete(association)
+        session.commit()
+
+
+@pytest.fixture()
+def incomplete_nma_phone_1(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="9999999",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
+def incomplete_nma_phone_2(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="8888888",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
         session.commit()
 
 

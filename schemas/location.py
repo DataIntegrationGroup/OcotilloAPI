@@ -17,6 +17,7 @@ from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
+from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse
 from typing import List
@@ -47,11 +48,10 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     # notes: str | None = None
     point: str  # point is required and should be in WKT format
     elevation: float
-    release_status: str | None = "draft"
     elevation_accuracy: float | None = None
-    elevation_method: str | None = None
+    elevation_method: ElevationMethod | None = None
     coordinate_accuracy: float | None = None
-    coordinate_method: str | None = None
+    coordinate_method: CoordinateMethod | None = None
 
 
 class CreateGroupThing(BaseModel):
@@ -76,12 +76,11 @@ class LocationResponse(BaseResponseModel):
     point: str
     elevation: float | None
     horizontal_datum: str = "WGS84"
-    vertical_daum: str = "NAVD88"
-    release_status: str | None
+    vertical_datum: str = "NAVD88"
     elevation_accuracy: float | None
-    elevation_method: str | None
+    elevation_method: ElevationMethod | None
     coordinate_accuracy: float | None
-    coordinate_method: str | None
+    coordinate_method: CoordinateMethod | None
     state: str | None
     county: str | None
     quad_name: str | None
@@ -119,11 +118,10 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     # notes: str | None = None
     point: str | None = None
     elevation: float | None = None
-    release_status: str | None = None
     elevation_accuracy: float | None = None
-    elevation_method: str | None = None
+    elevation_method: ElevationMethod | None = None
     coordinate_accuracy: float | None = None
-    coordinate_method: str | None = None
+    coordinate_method: CoordinateMethod | None = None
 
 
 # ============= EOF =============================================

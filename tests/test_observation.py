@@ -13,7 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import Observation
+
+from datetime import timezone
+
+import pytest
+
 from core.dependencies import (
     amp_admin_function,
     admin_function,
@@ -21,7 +25,9 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
+from db import Observation
 from main import app
+from schemas import DT_FMT
 from tests import (
     client,
     cleanup_post_test,
@@ -30,7 +36,6 @@ from tests import (
     groundwater_level_parameter_id,
     pH_parameter_id,
 )
-import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -206,6 +211,14 @@ def test_patch_water_chemistry_observation_404_wrong_activity_type(
 # ============= Get tests =================
 
 
+def test_get_transducer_observations():
+    response = client.get("/observation/transducer-groundwater-level")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 0
+    assert data["items"] == []
+
+
 def test_get_all_observations(
     groundwater_level_observation, water_chemistry_observation
 ):
@@ -238,7 +251,9 @@ def test_get_observation_by_id(
         data = response.json()
 
         assert data["id"] == obs.id
-        assert data["created_at"] == obs.created_at.isoformat().replace("+00:00", "Z")
+        # Convert created_at to UTC and format with Z suffix
+        expected_created_at = obs.created_at.astimezone(timezone.utc).strftime(DT_FMT)
+        assert data["created_at"] == expected_created_at
         assert data["release_status"] == obs.release_status
         if obs.parameter.id == groundwater_level_parameter_id:
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
@@ -262,9 +277,11 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == groundwater_level_observation.id
-    assert data["items"][0][
-        "created_at"
-    ] == groundwater_level_observation.created_at.isoformat().replace("+00:00", "Z")
+    # Convert created_at to UTC and format with Z suffix
+    expected_created_at = groundwater_level_observation.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
+    assert data["items"][0]["created_at"] == expected_created_at
     assert data["items"][0]["sample_id"] == groundwater_level_observation.sample_id
     assert data["items"][0]["sensor_id"] == groundwater_level_observation.sensor_id
     assert (
@@ -300,9 +317,11 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == groundwater_level_observation.id
-    assert data[
-        "created_at"
-    ] == groundwater_level_observation.created_at.isoformat().replace("+00:00", "Z")
+    # Convert created_at to UTC and format with Z suffix
+    expected_created_at = groundwater_level_observation.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
+    assert data["created_at"] == expected_created_at
     assert data["sample_id"] == groundwater_level_observation.sample_id
     assert data["sensor_id"] == groundwater_level_observation.sensor_id
     assert (
@@ -442,9 +461,11 @@ def test_get_water_chemistry_observations(water_chemistry_observation):
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["id"] == water_chemistry_observation.id
-    assert data["items"][0][
-        "created_at"
-    ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    # Convert created_at to UTC and format with Z suffix
+    expected_created_at = water_chemistry_observation.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
+    assert data["items"][0]["created_at"] == expected_created_at
     assert (
         data["items"][0]["release_status"] == water_chemistry_observation.release_status
     )
@@ -466,9 +487,11 @@ def test_get_water_chemistry_observation_by_id(water_chemistry_observation):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == water_chemistry_observation.id
-    assert data[
-        "created_at"
-    ] == water_chemistry_observation.created_at.isoformat().replace("+00:00", "Z")
+    # Convert created_at to UTC and format with Z suffix
+    expected_created_at = water_chemistry_observation.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
+    assert data["created_at"] == expected_created_at
     assert data["release_status"] == water_chemistry_observation.release_status
     assert data["sample_id"] == water_chemistry_observation.sample_id
     assert data["sensor_id"] == water_chemistry_observation.sensor_id

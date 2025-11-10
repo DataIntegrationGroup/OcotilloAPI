@@ -24,7 +24,7 @@ from fastapi.openapi.docs import (
 )
 from fastapi.openapi.utils import get_openapi
 
-from .initializers import init_db, init_lexicon, init_parameter
+from .initializers import init_db, init_lexicon, init_parameter, register_routes
 from .settings import settings
 
 
@@ -37,6 +37,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         init_db()
         init_lexicon()
         init_parameter()
+
+    register_routes(app)
     yield
 
 

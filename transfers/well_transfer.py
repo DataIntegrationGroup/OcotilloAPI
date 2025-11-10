@@ -15,12 +15,26 @@
 # ===============================================================================
 import json
 import time
-from pydantic import ValidationError
-from sqlalchemy import select
 from datetime import datetime
 
-from db import LocationThingAssociation, Thing, WellScreen, Location
-from schemas.thing import CreateWellScreen, CreateWell
+import pandas as pd
+from pandas import isna
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
+
+from core.enums import (
+    WellPurpose as WellPurposeEnum,
+    CasingMaterial as WellCasingMaterialEnum,
+)
+from db import (
+    LocationThingAssociation,
+    Thing,
+    WellScreen,
+    Location,
+    WellPurpose,
+    WellCasingMaterial,
+)
+from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
@@ -33,13 +47,68 @@ from transfers.util import (
     read_csv,
     logger,
     replace_nans,
-    filter_by_welldata_datasource,
+    filter_by_welldata_datasource_and_project,
+    lexicon_mapper,
+    filter_non_transferred_wells,
+    chunk_by_size,
 )
 
 ADDED = []
 
 
-def transfer_wells(session, limit=0):
+def _get_first_visit_date(row) -> datetime | None:
+    first_visit_date = None
+    if row.DateCreated and row.SiteDate:
+        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f").date()
+        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
+
+        if date_created < site_date:
+            first_visit_date = date_created
+        else:
+            first_visit_date = site_date
+    elif row.DateCreated and not row.SiteDate:
+        first_visit_date = datetime.strptime(
+            row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+    elif not row.DateCreated and row.SiteDate:
+        first_visit_date = datetime.strptime(
+            row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+
+    return first_visit_date
+
+
+def _extract_well_purposes(row) -> list[str]:
+    cu = row.CurrentUse
+    purposes = (
+        []
+        if isna(cu)
+        else [lexicon_mapper.map_value(f"LU_CurrentUse:{cui}") for cui in cu]
+    )
+
+    # logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
+    return purposes
+
+
+def _extract_casing_materials(row) -> list[str]:
+    materials = []
+    if "pvc" in row.CasingDescription.lower():
+        materials.append("PVC")
+
+    if "steel" in row.CasingDescription.lower():
+        materials.append("Steel")
+
+    if "concrete" in row.CasingDescription.lower():
+        materials.append("Concrete")
+    return materials
+
+
+def get_wells_to_transfer(
+    sess: Session, flags: dict = None
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if flags is None:
+        flags = {}
+
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
@@ -47,21 +116,40 @@ def transfer_wells(session, limit=0):
     wdf = wdf[wdf["SiteType"] == "GW"]
     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
 
+    input_df = wdf
     wdf = replace_nans(wdf)
+    if flags.get("TRANSFER_ALL_WELLS", True):
+        # todo: filter Locations by DataSource
+        cleaned_df = filter_by_welldata_datasource_and_project(wdf)
+    else:
+        # get a subset of wells that have not been transferred yet
+        # todo: this needs to be defined.
+        #       for now, we are just filtering out wells that have not been transferred yet
+        #       In the future we will be using criteria to determine which wells to transfer
+        #       for example, wells in the "Water Level Network" project
+        cleaned_df = wdf
 
-    # todo: filter Locations by DataSource
-    wdf = filter_by_welldata_datasource(wdf)
+    cleaned_df = filter_non_transferred_wells(sess, cleaned_df)
 
+    return input_df, cleaned_df
+
+
+def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None:
+    input_df, cleaned_df = get_wells_to_transfer(session, flags)
+
+    wdf = cleaned_df
     n = len(wdf)
 
     step = 25
     start_time = time.time()
+    errors = []
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
             logger.critical(
                 f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
             )
+            errors.append({"pointid": pointid, "error": "duplicate records"})
             continue
 
         if limit and i >= limit:
@@ -73,57 +161,40 @@ def transfer_wells(session, limit=0):
                 f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
             )
             start_time = time.time()
+            try:
+                session.commit()
+            except Exception as e:
+                logger.critical(f"Error committing wells. {e}")
+                session.rollback()
+                continue
 
+        location = None
         try:
             location = make_location(row)
+            session.add(location)
         except Exception as e:
+            if location is not None:
+                session.expunge(location)
+            # these rollbacks are cause an issue because they are discarding good data
+            # session.rollback()
+            errors.append({"pointid": row.PointID, "error": str(e)})
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
         try:
-            session.add(location)
-
-            # well_purpose = None if pd.isna(row.CurrentUse) else lexicon_mapper.map_value(f"LU_CurrentUse:{row.CurrentUse}")
-
-            # if pd.isna(row.CasingDescription):
-            #     well_casing_material = None
-            # elif "pvc" in row.CasingDescription.lower():
-            #     well_casing_material = "PVC"
-            # elif "steel" in row.CasingDescription.lower():
-            #     well_casing_material = "Steel"
-
-            if row.DateCreated and row.SiteDate:
-
-                date_created = datetime.strptime(
-                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-                site_date = datetime.strptime(
-                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-
-                if date_created < site_date:
-                    first_visit_date = date_created
-                else:
-                    first_visit_date = site_date
-            elif row.DateCreated and not row.SiteDate:
-                first_visit_date = datetime.strptime(
-                    row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-            elif not row.DateCreated and row.SiteDate:
-                first_visit_date = datetime.strptime(
-                    row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-                ).date()
-            else:
-                first_visit_date = None
+            first_visit_date = _get_first_visit_date(row)
+            well_purposes = [] if isna(row.CurrentUse) else _extract_well_purposes(row)
+            well_casing_materials = (
+                [] if isna(row.CasingDescription) else _extract_casing_materials(row)
+            )
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
+
             data = CreateWell(
                 location_id=location.id,
-                nma_pk_welldata=row.WellID,
                 name=row.PointID,
                 first_visit_date=first_visit_date,
-                # well_purpose=well_purpose,
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
                 well_construction_notes=row.ConstructionNotes,
@@ -133,13 +204,53 @@ def transfer_wells(session, limit=0):
             )
 
             CreateWell.model_validate(data)
-            well_data = data.model_dump(exclude=["location_id", "group_id"])
+        except ValidationError as e:
+            errors.append({"pointid": row.PointID, "error": e.errors()})
+            logger.critical(
+                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
+            )
+            continue
+
+        well = None
+        try:
+            well_data = data.model_dump(
+                exclude=[
+                    "location_id",
+                    "group_id",
+                    "well_purposes",
+                    "well_casing_materials",
+                ]
+            )
             well_data["thing_type"] = "water well"
+            well_data["nma_pk_welldata"] = row.WellID
             well = Thing(**well_data)
             session.add(well)
+
+            if well_purposes:
+                for wp in well_purposes:
+                    # TODO: add validation logic here
+                    if wp in WellPurposeEnum:
+                        wp_obj = WellPurpose(thing=well, purpose=wp)
+                        session.add(wp_obj)
+                    else:
+                        logger.critical(f"{well.name}. Invalid well purpose: {wp}")
+
+            if well_casing_materials:
+                for wcm in well_casing_materials:
+                    # TODO: add validation logic here
+                    if wcm in WellCasingMaterialEnum:
+                        wcm_obj = WellCasingMaterial(thing=well, material=wcm)
+                        session.add(wcm_obj)
+                    else:
+                        logger.critical(
+                            f"{well.name}. Invalid well casing material: {wcm}"
+                        )
         except Exception as e:
-            session.rollback()
-            logger.critical(f"Error creating well for {row.PointID}: {e.errors()}")
+            if well is not None:
+                session.expunge(well)
+
+            errors.append({"pointid": row.PointID, "error": str(e)})
+            logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
         assoc = LocationThingAssociation(effective_start=location.created_at)
@@ -148,68 +259,63 @@ def transfer_wells(session, limit=0):
         assoc.thing = well
         session.add(assoc)
 
-        try:
-            session.commit()
-            session.expire(location)
-            session.refresh(location)
-        except Exception as e:
-            logger.critical(f"Error committing well {row.PointID}: {e.errors()}")
-            session.rollback()
-            continue
+    session.commit()
+    return input_df, cleaned_df, errors
+    # try:
+    #     session.commit()
+    # except Exception as e:
+    #     logger.critical(f"Error committing well {row.PointID}: {e}")
+    #     session.rollback()
+    #     continue
 
 
 def transfer_wellscreens(session, limit=None):
-    wdf = read_csv("WellScreens")
-    wdf = replace_nans(wdf)
 
-    wdf = filter_to_valid_point_ids(session, wdf)
+    input_df = read_csv("WellScreens")
+    wdf = replace_nans(input_df)
 
-    n = len(wdf)
+    cleaned_df = filter_to_valid_point_ids(session, wdf)
 
-    start_time = time.time()
+    errors = []
+    for ci, chunk in enumerate(chunk_by_size(cleaned_df, 1000)):
+        things = (
+            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
+        )
 
-    for i, row in enumerate(wdf.itertuples()):
-        if limit and i >= limit:
-            logger.warning("Reached limit of", limit, "rows. Stopping migration.")
-            break
+        logger.info(f"Processing chunk {ci}, {len(chunk)} rows, {len(things)} things")
+        for i, row in enumerate(chunk.itertuples()):
+            thing = next((thing for thing in things if thing.name == row.PointID), None)
+            if not thing:
+                logger.warning(
+                    f"Thing with PointID {row.PointID} not found. Skipping well screen."
+                )
+                continue
 
-        # this is for testing only. not sure in practice we have to commit every 100 rows
-        # should we commit every row? or every 1000? or every 10?
-        if i and not i % 100:
-            logger.info(
-                f"Processing row {i} of {n}. {row.PointID},  avg rows per second: {i / (time.time() - start_time):.2f}"
-            )
-            session.commit()
+            well_screen_data = {
+                "thing_id": thing.id,
+                "screen_depth_top": row.ScreenTop,
+                "screen_depth_bottom": row.ScreenBottom,
+                # "screen_type": row.ScreenType,
+                "screen_description": row.ScreenDescription,
+                "release_status": "draft",
+                "nma_pk_wellscreens": row.GlobalID,
+            }
+            try:
+                # TODO: add validation logic here to ensure no overlapping screens for the same well
+                CreateWellScreen.model_validate(well_screen_data)
+            except ValidationError as e:
+                logger.critical(
+                    f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
+                )
+                errors.append({"pointid": row.PointID, "error": e.errors()})
+                continue
 
-        sql = select(Thing).where(Thing.name == row.PointID)
-        thing = session.execute(sql).unique().scalar_one_or_none()
-        if not thing:
-            logger.warning(
-                f"Thing with PointID {row.PointID} not found. Skipping well screen."
-            )
-            continue
-
-        well_screen_data = {
-            "thing_id": thing.id,
-            "screen_depth_top": row.ScreenTop,
-            "screen_depth_bottom": row.ScreenBottom,
-            # "screen_type": row.ScreenType,
-            "screen_description": row.ScreenDescription,
-            "release_status": "draft",
-            "nma_pk_wellscreens": row.GlobalID,
-        }
-        try:
-            # TODO: add validation logic here to ensure no overlapping screens for the same well
-            CreateWellScreen.model_validate(well_screen_data)
             well_screen = WellScreen(**well_screen_data)
             session.add(well_screen)
-        except ValidationError as e:
-            logger.warning(
-                f"Validation error for row {i} with PointID {row.PointID}: {e}"
-            )
-            continue
 
-    session.commit()
+        session.commit()
+
+    return input_df, cleaned_df, errors
 
 
 def cleanup_locations(session):

@@ -13,19 +13,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+# Load .env file BEFORE importing anything else
+# Use override=True to override conflicting shell environment variables
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+# this should not be needed since all Pydantic serializes all datetimes as UTC
+# furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility
+# # Set timezone to UTC for consistent datetime handling in tests
+# os.environ["TZ"] = "UTC"
+
+# # Also set time.tzset() to apply the timezone change
+# import time
+
+# time.tzset()
+
+from transfers.transfer import erase_and_initalize
 from fastapi.testclient import TestClient
+from fastapi_pagination import add_pagination
+from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import init_lexicon, init_parameter
+from core.initializers import init_lexicon, init_parameter, register_routes
 from db import Base, Parameter
-from db.engine import engine, session_ctx
-from main import app
+from db.engine import session_ctx
+from core.app import app
 
 
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
+# Base.metadata.drop_all(engine)
+# Base.metadata.create_all(engine)
+with session_ctx() as session:
+    erase_and_initalize(session)
 
 init_lexicon()
 init_parameter()
+
+register_routes(app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins, adjust as needed for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+add_pagination(app)
 
 client = TestClient(app)
 
