@@ -37,7 +37,6 @@ def step_impl(context):
     assert context.water_well_data["name"] == context.objects["wells"][0].name
 
 
-# TODO: model schema, and test data need to be udpated
 @then("the response should include the project(s) or group(s) associated with the well")
 def step_impl(context):
     assert "groups" in context.water_well_data
@@ -82,7 +81,6 @@ def step_impl(context):
     )
 
 
-# TODO: this needs to be added to the ThingResponse and thing_helper via StatusHistory
 @then(
     "the response should include the well hole status of the well as the status of the hole in the ground (from previous Status field)"
 )
@@ -100,16 +98,14 @@ def step_impl(context):
     assert context.water_well_data["well_status"] == well_status_sorted[0].status_value
 
 
-# TODO: this needs to be added to the model, schema, and test data
-# TODO: the monitoring frequency field needs to be added to lexicon
-# the monitoring status field from NM_Aquifer contains a multitude of information, like having three codes (6AC), so the transfer and model/schemas will need to take this into account
-# could create descriptor table like WellPurpose and CasingMaterial
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
     for group in context.water_well_data["groups"]:
         assert "monitoring_frequency" in group
-
-    assert context.water_well_data["monitoring_frequency"] == "Monthly"
+        assert (
+            group["monitoring_frequency"]
+            == context.objects["groups"][0].monitoring_frequency
+        )
 
 
 # TODO: this needs to be added to the model, schema, and test data
