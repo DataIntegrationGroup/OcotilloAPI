@@ -108,9 +108,6 @@ def step_impl(context):
         )
 
 
-# TODO: this needs to be added to the model, schema, and test data
-# the monitoring status field from NM_Aquifer contains a multitude of information, like having three codes (6AC), so the transfer and model/schemas will need to take this into account
-# could create descriptor table like WellPurpose and CasingMaterial
 @then(
     "the response should include whether the well is currently being monitored with status text if applicable (from previous MonitoringStatus field)"
 )
