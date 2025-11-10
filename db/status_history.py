@@ -19,12 +19,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
 class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
-    status_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    status_value: Mapped[str] = mapped_column(String(50), nullable=False)
+    status_type: Mapped[str] = lexicon_term(nullable=False)
+    status_value: Mapped[str] = lexicon_term(nullable=False)
     start_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
