@@ -278,7 +278,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     def well_status(self) -> str | None:
         """
         Returns the well status from the most recent status history entry
-        where status_type is "well_status".
+        where status_type is "Well Status".
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
@@ -286,6 +286,27 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             status
             for status in self.status_history
             if status.status_type == "Well Status" and status.end_date is None
+        ]
+        if status_entries:
+            # Sort by start_date descending to get the most recent status out of the filtered entries
+            most_recent_status = sorted(
+                status_entries, key=lambda x: x.start_date, reverse=True
+            )[0]
+            return most_recent_status.status_value
+        return None
+
+    @property
+    def monitoring_status(self) -> str | None:
+        """
+        Returns the monitoring status from the most recent status history entry
+        where status_type is "Monitoring Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        status_entries = [
+            status
+            for status in self.status_history
+            if status.status_type == "Monitoring Status" and status.end_date is None
         ]
         if status_entries:
             # Sort by start_date descending to get the most recent status out of the filtered entries

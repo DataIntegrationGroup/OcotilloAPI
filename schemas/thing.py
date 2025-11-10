@@ -137,6 +137,7 @@ class BaseThingResponse(BaseResponseModel):
     current_location: LocationResponse | None
     first_visit_date: PastDate | None
     groups: list[GroupResponse] = []
+    monitoring_status: str | None
 
 
 class WellResponse(BaseThingResponse):

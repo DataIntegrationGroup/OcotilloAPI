@@ -119,7 +119,9 @@ def step_impl(context):
 
     status_history = context.objects["wells"][0].status_history
     monitoring_status = [
-        sh for sh in status_history if sh.status_type == "monitoring_status"
+        sh
+        for sh in status_history
+        if sh.status_type == "Monitoring Status" and sh.end_date is None
     ]
     monitoring_status_sorted = sorted(
         monitoring_status, key=lambda sh: sh.start_date, reverse=True
