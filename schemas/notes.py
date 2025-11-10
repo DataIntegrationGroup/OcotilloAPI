@@ -2,7 +2,6 @@
 Pydantic models for the Notes table.
 """
 
-from pydantic import BaseModel
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 # -------- BASE SCHEMA: ----------
@@ -33,7 +32,6 @@ class NoteResponse(BaseResponseModel, BaseNote):
     Response schema for Note details.
     """
 
-    note_id: int
     notable_id: int
     notable_type: str
 
