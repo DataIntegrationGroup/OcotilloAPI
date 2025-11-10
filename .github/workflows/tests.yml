@@ -17,7 +17,7 @@ jobs:
     services:
       postgis:
         image: postgis/postgis:latest
-#        image: postgis/postgis:17-3.5
+        # image: postgis/postgis:17-3.5
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
@@ -77,11 +77,11 @@ jobs:
         DB_DRIVER: postgres
         BASE_URL: http://localhost:8000
       run: |
-#        use this when we have consensus on tag nomenclature
-#        uv run behave tests/features --tags="@backend and @production" --no-capture
-         uv run behave tests/features/transducer-data-response.feature \
+        uv run behave tests/features/transducer-data-response.feature \
              tests/features/thing-type-path-parameters.feature \
              tests/features/thing-query-parameters.feature
+#        use this when we have consensus on tag nomenclature
+#        uv run behave tests/features --tags="@backend and @production" --no-capture
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v4
