@@ -207,7 +207,7 @@ def add_block(context, session, parameter):
     return block
 
 
-@add_context_object_container("status_histories")
+@add_context_object_container("status_history")
 def add_status_history(
     context,
     session,
@@ -233,7 +233,7 @@ def add_status_history(
     session.commit()
     session.refresh(status_history)
 
-    context.objects["status_histories"].append(status_history)
+    context.objects["status_history"].append(status_history)
     return status_history
 
 
@@ -280,48 +280,48 @@ def before_all(context):
         well_status_1 = add_status_history(
             context,
             session,
-            status_type="well_status",
+            status_type="Well Status",
             status_value="Active, pumping well",
             start_date=datetime(2020, 1, 1),
             end_date=datetime(2021, 1, 1),
             reason="Initial status",
-            statusable_id=well_1.id,
+            statusable_id=context.objects["wells"][0].id,
             statusable_type="Thing",
         )
 
         well_status_2 = add_status_history(
             context,
             session,
-            status_type="well_status",
+            status_type="Well Status",
             status_value="Destroyed, exists but not usable",
             start_date=datetime(2021, 1, 1),
             end_date=None,
             reason="Roving bovine",
-            statusable_id=well_1.id,
+            statusable_id=context.objects["wells"][0].id,
             statusable_type="Thing",
         )
 
         monitoring_status_1 = add_status_history(
             context,
             session,
-            status_type="monitoring_status",
-            status_value="currently monitored",
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
             start_date=datetime(2020, 1, 1),
             end_date=datetime(2021, 1, 1),
             reason="Initial monitoring status",
-            statusable_id=well_1.id,
+            statusable_id=context.objects["wells"][0].id,
             statusable_type="Thing",
         )
 
         monitoring_status_2 = add_status_history(
             context,
             session,
-            status_type="monitoring_status",
-            status_value="not monitored",
+            status_type="Monitoring Status",
+            status_value="Not currently monitored",
             start_date=datetime(2021, 1, 1),
             end_date=None,
             reason="Roving bovine destroyed well",
-            statusable_id=well_1.id,
+            statusable_id=context.objects["wells"][0].id,
             statusable_type="Thing",
         )
 
@@ -370,6 +370,9 @@ def before_all(context):
                 )
                 session.add(obs)
         session.commit()
+
+        # the well needs to be refreshed to get all the new relationships
+        session.refresh(well_1)
 
 
 def after_all(context):

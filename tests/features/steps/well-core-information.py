@@ -90,7 +90,11 @@ def step_impl(context):
     assert "well_status" in context.water_well_data
 
     status_history = context.objects["wells"][0].status_history
-    well_status = [sh for sh in status_history if sh.status_type == "well_status"]
+    well_status = [
+        sh
+        for sh in status_history
+        if sh.status_type == "Well Status" and sh.end_date is None
+    ]
     well_status_sorted = sorted(well_status, key=lambda sh: sh.start_date, reverse=True)
 
     assert context.water_well_data["well_status"] == well_status_sorted[0].status_value
