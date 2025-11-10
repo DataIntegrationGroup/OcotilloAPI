@@ -54,6 +54,10 @@ def step_impl(context):
         context.water_well_data["groups"][0]["project_area"]
         == context.objects["groups"][0].project_area
     )
+    assert (
+        context.water_well_data["groups"][0]["group_type"]
+        == context.objects["groups"][0].group_type
+    )
 
 
 # ------------------------------------------------------------------------------

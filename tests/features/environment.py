@@ -122,7 +122,7 @@ def add_spring(context, session, location, name_num):
 
 
 @add_context_object_container("sensors")
-def add_sensor(context, session, sid):
+def add_sensor(context, session):
     sensor = Sensor(
         name="Test Sensor",
         sensor_type="Pressure Transducer",
@@ -143,12 +143,16 @@ def add_sensor(context, session, sid):
 
 
 @add_context_object_container("groups")
-def add_group(context, session, wells, gid):
+def add_group(context, session, things):
     group = Group(
-        name="Collabnet", description="Healy Collaborative Network", project_area=None
+        name="Collabnet",
+        description="Healy Collaborative Network",
+        project_area=None,
+        group_type="Monitoring Plan",
+        monitoring_frequency="Quarterly",
     )
-    for w in wells:
-        assoc = GroupThingAssociation(group=group, thing=w)
+    for thing in things:
+        assoc = GroupThingAssociation(group=group, thing=thing)
         session.add(assoc)
 
     session.add(group)
@@ -258,7 +262,7 @@ def before_all(context):
         well_2 = add_well(context, session, loc_2, name_num=2)
         well_3 = add_well(context, session, loc_3, name_num=3)
         spring_4 = add_spring(context, session, loc_4, name_num=4)
-        sensor_1 = add_sensor(context, session, well_1.id)
+        sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
         well_status_1 = add_status_history(
@@ -335,6 +339,8 @@ def before_all(context):
             alternate_id="Roving Bovine Ranch Well #1",
             alternate_organization="NMBGMR",
         )
+
+        group = add_group(context, session, [well_1, well_2])
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
