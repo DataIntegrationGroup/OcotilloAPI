@@ -155,6 +155,7 @@ class WellResponse(BaseThingResponse):
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
+    well_status: str | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
