@@ -140,7 +140,8 @@ def test_patch_location_404_not_found(location):
     bad_location_id = 99999
     location_notes_patch = "patched notes"
     response = client.patch(
-        f"/location/{bad_location_id}", json={"notes": location_notes_patch}
+        f"/location/{bad_location_id}",
+        json={"notes": [{"content": location_notes_patch, "note_type": "Other"}]},
     )
     data = response.json()
     assert response.status_code == 404

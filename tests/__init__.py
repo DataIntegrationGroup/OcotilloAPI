@@ -34,19 +34,14 @@ from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import init_lexicon, init_parameter, register_routes
+from core.initializers import register_routes
 from db import Base, Parameter
 from db.engine import session_ctx
 from core.app import app
 
-
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
 with session_ctx() as session:
     erase_and_initalize(session)
 
-init_lexicon()
-init_parameter()
 
 register_routes(app)
 app.add_middleware(

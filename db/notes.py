@@ -35,10 +35,11 @@ class Notes(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="The ID of the parent record this note is about (e.g., a `thing_id`, `location_id`, etc).",
     )
-    notable_type: Mapped[str] = lexicon_term(
-        nullable=False,
-        comment="The type of the note associated with this record.",
-    )
+    notable_type: Mapped[str] = mapped_column()
+    # notable_type: Mapped[str] = lexicon_term(
+    #     nullable=False,
+    #     comment="The type of the note associated with this record.",
+    # )
 
     # --- Columns ---
     note_type: Mapped[str] = lexicon_term(

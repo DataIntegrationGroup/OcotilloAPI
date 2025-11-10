@@ -13,14 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import List
+
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
 from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.notes import NoteResponse
-from typing import List
+from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.validation.geospatial import validate_wkt_geometry
 
 
@@ -46,6 +47,7 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     # TODO: AI suggested managing notes via a separate /locations/{id}/notes endpoint.
     #  I don't know if we want to do that, but am leaving this comment for future reference.
     # notes: str | None = None
+    notes: List[CreateNote] = []
     point: str  # point is required and should be in WKT format
     elevation: float
     elevation_accuracy: float | None = None
@@ -115,7 +117,7 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     # name: str | None = None
     # TODO: AI suggested managing notes via a separate API endpoint, /notes/{note_id}.
     #  I don't know if we want to do that, but am leaving this comment for future reference.
-    # notes: str | None = None
+    notes: List[UpdateNote] = []
     point: str | None = None
     elevation: float | None = None
     elevation_accuracy: float | None = None

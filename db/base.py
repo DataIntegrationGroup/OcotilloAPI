@@ -36,6 +36,9 @@ It includes:
 7.  An `AuditMixin` to add standard audit columns to tables.
 """
 
+import re
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -52,11 +55,8 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
-from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
-import re
-
-from typing import TYPE_CHECKING
+from sqlalchemy_searchable import make_searchable
 
 if TYPE_CHECKING:
     from db.notes import Notes
@@ -242,7 +242,13 @@ class NotesMixin:
             viewonly=True,
         )
 
-    def add_note(self, content: str, note_type: str, created_by: str) -> "Notes":
+    def add_note(
+        self,
+        content: str,
+        note_type: str,
+        release_status: str = "draft",
+        created_by: str = None,
+    ) -> "Notes":
         """
         A convenient factory method to create a new Note associated with this object.
         This provides a clean, object-oriented API for writing.
@@ -255,6 +261,7 @@ class NotesMixin:
             note_type=note_type,
             notable_id=self.id,
             notable_type=self.__class__.__name__,
+            release_status=release_status,
         )
 
 
