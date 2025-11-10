@@ -50,8 +50,9 @@ def model_adder(session, table, model, user=None, **kwargs):
         for n in notes:
             note = obj.add_note(**n)
             session.add(note)
-            obj.notes.append(note)
 
+    session.commit()
+    session.refresh(obj)
     return obj
 
 
@@ -80,7 +81,6 @@ def model_patcher(
 
             for note in value:
                 note = item.add_note(**note)
-                item.notes.append(note)
                 session.add(note)
         else:
             setattr(item, key, value)
