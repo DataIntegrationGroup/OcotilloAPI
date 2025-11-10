@@ -31,6 +31,7 @@ from db import (
     TransducerObservationBlock,
     StatusHistory,
     ThingIdLink,
+    WellPurpose,
 )
 from db.engine import session_ctx
 
@@ -93,6 +94,17 @@ def add_well(context, session, location, name_num):
 
     context.objects["wells"].append(well)
     return well
+
+
+@add_context_object_container("well_purposes")
+def add_well_purpose(context, session, well, purpose_term):
+    purpose = WellPurpose(thing=well, purpose=purpose_term)
+    session.add(purpose)
+    session.commit()
+    session.refresh(purpose)
+
+    context.objects["well_purposes"].append(purpose)
+    return purpose
 
 
 @add_context_object_container("springs")
@@ -341,6 +353,9 @@ def before_all(context):
         )
 
         group = add_group(context, session, [well_1, well_2])
+
+        for purpose in ["Domestic", "Irrigation"]:
+            add_well_purpose(context, session, well_1, purpose)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

@@ -67,16 +67,18 @@ def step_impl(context):
 
 @then("the response should include the purpose of the well (current use)")
 def step_impl(context):
+    assert "well_purposes" in context.water_well_data
+
     assert "Domestic" in context.water_well_data["well_purposes"]
     assert "Irrigation" in context.water_well_data["well_purposes"]
 
     assert (
         context.water_well_data["well_purposes"][0]
-        == context.objects.wells[0].well_purposes[0].purpose
+        == context.objects["wells"][0].well_purposes[0].purpose
     )
     assert (
         context.water_well_data["well_purposes"][1]
-        == context.objects.wells[0].well_purposes[1].purpose
+        == context.objects["wells"][0].well_purposes[1].purpose
     )
 
 
