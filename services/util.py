@@ -26,6 +26,10 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
+def convert_m_to_ft(meters: float) -> float:
+    return meters * 3.28084
+
+
 def get_tiger_data(
     lon: float, lat: float, layer: int, outfields: str = "*"
 ) -> dict | None:
