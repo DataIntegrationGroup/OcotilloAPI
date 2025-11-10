@@ -330,6 +330,8 @@
     {"categories": ["status_value"], "term": "Active, pumping well", "definition": "This well is in use."},
     {"categories": ["status_value"], "term": "Destroyed, exists but not usable", "definition": "The well structure is physically present but is damaged, collapsed, or otherwise compromised to the point that it is non-functional."},
     {"categories": ["status_value"], "term": "Inactive, exists but not used", "definition": "The well is not currently in use but is believed to be in a usable condition; it has not been permanently decommissioned/abandoned."},
+    {"categories": ["status_value"], "term": "Currently monitored", "definition": "The well is currently being monitored by AMMP."},
+    {"categories": ["status_value"], "term": "Not currently monitored", "definition": "The well is not currently being monitored by AMMP."},
     {"categories": ["sample_method"], "term": "Airline measurement", "definition": "Airline measurement"},
     {"categories": ["sample_method"], "term": "Analog or graphic recorder", "definition": "Analog or graphic recorder"},
     {"categories": ["sample_method"], "term": "Calibrated airline measurement", "definition": "Calibrated airline measurement"},
