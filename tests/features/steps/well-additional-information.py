@@ -1,5 +1,7 @@
 from behave import when, then
 
+from services.util import retrieve_polymorphic_table_record
+
 
 @when("the user retrieves the well by ID via path parameter")
 def step_impl_retrieve_well_by_id(context):
@@ -23,17 +25,13 @@ def step_impl_retrieve_well_by_id(context):
 def step_impl(context):
     assert "permissions" in context.data
 
-    permissions = context.well.permissions
-    water_level_measurement_permissions = [
-        p for p in permissions if p.permission_type == "water level measurement"
-    ]
-    sorted_water_level_measurement_permissions = sorted(
-        water_level_measurement_permissions, key=lambda p: p.start_date, reverse=True
+    permission_record = retrieve_polymorphic_table_record(
+        context.well, "permissions", "allow_water_level_measurements", latest=True
     )
 
     assert (
         context.data["permissions"]["allow_water_level_measurements"]
-        == sorted_water_level_measurement_permissions[0].permission_allowed
+        == permission_record.permission_allowed
     )
 
 
@@ -41,17 +39,13 @@ def step_impl(context):
 def step_impl(context):
     assert "permissions" in context.data
 
-    permissions = context.well.permissions
-    water_level_measurement_permissions = [
-        p for p in permissions if p.permission_type == "water chemistry sample"
-    ]
-    sorted_water_level_measurement_permissions = sorted(
-        water_level_measurement_permissions, key=lambda p: p.start_date, reverse=True
+    permission_record = retrieve_polymorphic_table_record(
+        context.well, "permissions", "allow_water_chemistry_sample", latest=True
     )
 
     assert (
         context.data["permissions"]["allow_sampling"]
-        == sorted_water_level_measurement_permissions[0].permission_allowed
+        == permission_record.permission_allowed
     )
 
 
@@ -62,17 +56,13 @@ def step_impl(context):
 def step_impl(context):
     assert "permissions" in context.data
 
-    permissions = context.well.permissions
-    water_level_measurement_permissions = [
-        p for p in permissions if p.permission_type == "data logger installation"
-    ]
-    sorted_water_level_measurement_permissions = sorted(
-        water_level_measurement_permissions, key=lambda p: p.start_date, reverse=True
+    permission_record = retrieve_polymorphic_table_record(
+        context.well, "permissions", "allow_data_logger_installation", latest=True
     )
 
     assert (
         context.data["permissions"]["allow_data_logger_installation"]
-        == sorted_water_level_measurement_permissions[0].permission_allowed
+        == permission_record.permission_allowed
     )
 
 
