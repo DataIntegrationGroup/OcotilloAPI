@@ -116,15 +116,16 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     return data["value"]
 
 
-def retrieve_polymorphic_table_record(
+def retrieve_latest_polymorphic_table_record(
     target_record: Base,
     polymorphic_relationship: str,
     polymorphic_type: str,
-    latest=True,
 ) -> Base:
     """
-    Retrieve a record from a polymorphic table. This function assumes that the
-    parent class has the correct mixin to support retrieval via an attribute.
+    Retrieve the latest record from a polymorphic table. This function assumes that the
+    parent class has the correct mixin to support retrieval via an attribute. This
+    requires end_date to be None
+
     Parameters:
     ----------
     target_record : Base
@@ -143,10 +144,12 @@ def retrieve_polymorphic_table_record(
 
     polymorphic_records = getattr(target_record, polymorphic_relationship)
     type_polymorphic_records = [
-        r for r in polymorphic_records if getattr(r, type_field) == polymorphic_type
+        r
+        for r in polymorphic_records
+        if getattr(r, type_field) == polymorphic_type and r.end_date is None
     ]
     sorted_type_polymorphic_records = sorted(
-        type_polymorphic_records, key=lambda r: r.start_date, reverse=latest
+        type_polymorphic_records, key=lambda r: r.start_date, reverse=True
     )
     return sorted_type_polymorphic_records[0]
 
