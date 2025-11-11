@@ -248,8 +248,6 @@ def step_impl(context):
     }
 
 
-# TODO: elevation should be returned in ft, not meters, conversion should occur in schema
-# TODO: add elevation_unit: str = "ft" to LocationResponse schema
 @then(
     "the response should include the elevation in feet with vertical datum NAVD88 in the properties"
 )
@@ -297,9 +295,9 @@ def step_impl(context):
         "utm_coordinates" in context.water_well_data["current_location"]["properties"]
     )
 
-    point_utm_zone_13 = transform_srid(
-        context.objects["locations"][0].point, SRID_WGS84, SRID_UTM_ZONE_13N
-    )
+    point_wkb = context.objects["locations"][0].point
+    point_wkt = to_shape(point_wkb)
+    point_utm_zone_13 = transform_srid(point_wkt, SRID_WGS84, SRID_UTM_ZONE_13N)
 
     assert context.water_well_data["current_location"]["properties"][
         "utm_coordinates"

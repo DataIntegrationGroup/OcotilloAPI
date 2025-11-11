@@ -82,8 +82,8 @@ class GeoJSONGeometry(BaseModel):
 class GeoJSONUTMCoordinates(BaseModel):
     easting: float
     northing: float
-    utm_zone: int
-    horizontal_datum: str
+    utm_zone: int = 13
+    horizontal_datum: str = "NAD83"
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -93,8 +93,8 @@ class GeoJSONUTMCoordinates(BaseModel):
 
 class GeoJSONProperties(BaseModel):
     elevation: float
-    elevation_unit: str
-    vertical_datum: str
+    elevation_unit: str = "ft"
+    vertical_datum: str = "NAVD88"
     elevation_method: ElevationMethod | None
     utm_coordinates: GeoJSONUTMCoordinates = Field(
         default_factory=GeoJSONUTMCoordinates
@@ -137,9 +137,7 @@ class LocationGeoJSONResponse(BaseModel):
 
         # populate properties
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
-        data_dict["properties"]["elevation_unit"] = "ft"
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
-        data_dict["properties"]["vertical_datum"] = "NAVD88"
 
         # populate UTM coordinates
         point_utm_zone_13n = transform_srid(
@@ -147,8 +145,6 @@ class LocationGeoJSONResponse(BaseModel):
         )
         data_dict["properties"]["utm_coordinates"]["easting"] = point_utm_zone_13n.x
         data_dict["properties"]["utm_coordinates"]["northing"] = point_utm_zone_13n.y
-        data_dict["properties"]["utm_coordinates"]["utm_zone"] = 13
-        data_dict["properties"]["utm_coordinates"]["horizontal_datum"] = "NAD83"
 
         return data_dict
 
