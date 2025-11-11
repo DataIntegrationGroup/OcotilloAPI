@@ -56,6 +56,12 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
         comment="The date this measuring point configuration was superseded. A `NULL` value indicates this is the current, active, and authoritative record for the `Thing`.",
     )
 
+    reason: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Describes the reason for the new or updated measuring point (e.g., 'A new wellhead was installed').",
+    )
+
     # --- Relationships ---
     # Many-To-One: A description history record belongs to one Thing. Many history records may belong to a single Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="mp_history")
