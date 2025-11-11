@@ -104,6 +104,9 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     well_completion_date: Mapped[str] = mapped_column(
         Date, nullable=True, comment="the date the well was completed if known"
     )
+    well_driller_name: Mapped[str] = mapped_column(
+        String(200), nullable=True, comment="Name of the well driller."
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(

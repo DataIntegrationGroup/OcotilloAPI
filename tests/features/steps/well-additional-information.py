@@ -98,8 +98,8 @@ def step_impl(context):
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the driller name")
 def step_impl(context):
-    assert "driller_name" in context.data
-    assert context.data["driller_name"] == context.well.driller_name
+    assert "well_driller_name" in context.data
+    assert context.data["well_driller_name"] == context.well.well_driller_name
 
 
 # TODO: needs to be added to model, schemas, test data
