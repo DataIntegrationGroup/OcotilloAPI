@@ -17,7 +17,7 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
+from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType, Organization
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationGeoJSONResponse
 from schemas.group import GroupResponse
@@ -135,7 +135,7 @@ class ThingIdLinkResponse(BaseResponseModel):
     thing_id: int
     relation: str
     alternate_id: str
-    alternate_organization: str
+    alternate_organization: Organization
 
 
 class BaseThingResponse(BaseResponseModel):

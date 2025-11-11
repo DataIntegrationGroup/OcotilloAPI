@@ -190,7 +190,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: this needs to be added to the model, schema, and test data
 @then("the response should include the description of the measuring point")
 def step_impl(context):
     assert "measuring_point_description" in context.water_well_data
@@ -201,7 +200,6 @@ def step_impl(context):
     )
 
 
-# TODO: this needs to be added to the model, schema, and test data
 @then("the response should include the measuring point height in feet")
 def step_impl(context):
     assert "measuring_point_height" in context.water_well_data
@@ -313,8 +311,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: This needs to be added to the test data
-# TODO: id link schema needs to use lexicon enums for relation and alternate_organization
 @then(
     "the response should include any alternate IDs for the well like the NMBGMR site_name (i.e. John Smith Well), USGS site number, or the OSE well ID and OSE well tag ID"
 )
