@@ -1,6 +1,8 @@
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from services.util import transform_srid
+from services.util import transform_srid, convert_m_to_ft
+
 from behave import when, then
+from geoalchemy2.shape import to_shape
 
 
 # TODO: move to commonly used step definitions
@@ -216,8 +218,6 @@ def step_impl(context):
 # Location Information
 # GeoJSON spec format RFC 7946 (Aug 2016) requires coordinates to be decimal degrees in WGS84
 # ------------------------------------------------------------------------------
-
-
 @then(
     "the response should include location information in GeoJSON spec format RFC 7946"
 )
@@ -232,13 +232,14 @@ def step_impl(context):
     assert context.water_well_data["current_location"]["type"] == "Feature"
 
 
-# TODO: the LocationResponse schema needs to be updated
 @then(
     'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation]'
 )
 def step_impl(context):
-    latitude = context.objects["locations"][0].point.y
-    longitude = context.objects["locations"][0].point.x
+    point_wkb = context.objects["locations"][0].point
+    point_wkt = to_shape(point_wkb)
+    latitude = point_wkt.y
+    longitude = point_wkt.x
     elevation_m = context.objects["locations"][0].elevation
 
     assert context.water_well_data["current_location"]["geometry"] == {
@@ -257,7 +258,7 @@ def step_impl(context):
     assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
     assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
 
-    elevation_ft = context.objects["locations"][0].elevation * 3.28084
+    elevation_ft = convert_m_to_ft(context.objects["locations"][0].elevation)
 
     assert (
         context.water_well_data["current_location"]["properties"]["elevation"]

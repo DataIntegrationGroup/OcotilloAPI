@@ -15,11 +15,14 @@
 # ===============================================================================
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
+from typing import Any
 
+from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from services.validation.geospatial import validate_wkt_geometry
+from services.util import convert_m_to_ft, transform_srid
 
 
 # -------- VALIDATE --------
@@ -60,6 +63,96 @@ class CreateGroupThing(BaseModel):
 
 
 # -------- RESPONSE ----------
+
+
+class GeoJSONGeometry(BaseModel):
+    type: str = "Point"
+    coordinates: list = Field(
+        max_length=3,
+        min_length=3,
+        description="Coordinates in [longitude, latitude, elevation] format",
+    )
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
+
+class GeoJSONUTMCoordinates(BaseModel):
+    easting: float
+    northing: float
+    utm_zone: int
+    horizontal_datum: str
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
+
+class GeoJSONProperties(BaseModel):
+    elevation: float
+    elevation_unit: str
+    vertical_datum: str
+    elevation_method: ElevationMethod | None
+    utm_coordinates: GeoJSONUTMCoordinates = Field(
+        default_factory=GeoJSONUTMCoordinates
+    )
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
+
+class LocationGeoJSONResponse(BaseModel):
+    type: str = "Feature"
+    geometry: GeoJSONGeometry
+    properties: GeoJSONProperties
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_fields(cls, data: Any) -> Any:
+        # convert row to dictionary
+        if not isinstance(data, dict):
+            data_dict = {c.name: getattr(data, c.name) for c in data.__table__.columns}
+
+        # add empty fields as necessary
+        data_dict["geometry"] = {}
+        data_dict["properties"] = {}
+        data_dict["properties"]["utm_coordinates"] = {}
+
+        # populate coordinates
+        point_wkb = data_dict.get("point")
+        point_wgs84_wkt = to_shape(point_wkb)
+        elevation_m = data_dict.get("elevation")
+        coordinates = [point_wgs84_wkt.x, point_wgs84_wkt.y, elevation_m]
+        data_dict["geometry"]["coordinates"] = coordinates
+
+        # populate properties
+        data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
+        data_dict["properties"]["elevation_unit"] = "ft"
+        data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
+        data_dict["properties"]["vertical_datum"] = "NAVD88"
+
+        # populate UTM coordinates
+        point_utm_zone_13n = transform_srid(
+            point_wgs84_wkt, SRID_WGS84, SRID_UTM_ZONE_13N
+        )
+        data_dict["properties"]["utm_coordinates"]["easting"] = point_utm_zone_13n.x
+        data_dict["properties"]["utm_coordinates"]["northing"] = point_utm_zone_13n.y
+        data_dict["properties"]["utm_coordinates"]["utm_zone"] = 13
+        data_dict["properties"]["utm_coordinates"]["horizontal_datum"] = "NAD83"
+
+        return data_dict
+
+
 class LocationResponse(BaseResponseModel):
     """
     Response schema for sample location details.

@@ -19,7 +19,7 @@ from pydantic import BaseModel, model_validator, PastDate, Field, field_validato
 
 from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.location import LocationResponse
+from schemas.location import LocationGeoJSONResponse
 from schemas.group import GroupResponse
 
 
@@ -134,7 +134,7 @@ class CreateWellScreen(BaseCreateModel):
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    current_location: LocationResponse | None
+    current_location: LocationGeoJSONResponse | None
     first_visit_date: PastDate | None
     groups: list[GroupResponse] = []
     monitoring_status: str | None
@@ -157,6 +157,9 @@ class WellResponse(BaseThingResponse):
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
     well_status: str | None
+    measuring_point_height: float
+    measuring_point_height_unit: str = "ft"
+    measuring_point_description: str | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -196,14 +199,6 @@ class ThingIdLinkResponse(BaseResponseModel):
     relation: str
     alternate_id: str
     alternate_organization: str
-
-
-class LocationWellResponse(LocationResponse):
-    """
-    Response schema for sample location with well details.
-    """
-
-    well: List[WellResponse] = []  # List of wells associated with the sample location
 
 
 class WellScreenResponse(BaseResponseModel):

@@ -101,6 +101,11 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
+    measuring_point_height: Mapped[float] = mapped_column(
+        Float, nullable=True, info={"unit": "feet above ground surface"}
+    )
+    measuring_point_description: Mapped[str] = mapped_column(String, nullable=True)
+
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
         nullable=True,

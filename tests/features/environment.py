@@ -81,6 +81,8 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
+        measuring_point_height=3.0,
+        measuring_point_description="Test measuring point description",
     )
     session.add(well)
     session.commit()
