@@ -24,7 +24,9 @@ AnalysisMethodType: type[Enum] = build_enum_from_lexicon_category(
 )
 CasingMaterial: type[Enum] = build_enum_from_lexicon_category("casing_material")
 CollectionMethod: type[Enum] = build_enum_from_lexicon_category("collection_method")
-ConstructionMethod: type[Enum] = build_enum_from_lexicon_category("construction_method")
+WellConstructionMethod: type[Enum] = build_enum_from_lexicon_category(
+    "well_construction_method"
+)
 ContactType: type[Enum] = build_enum_from_lexicon_category("contact_type")
 CoordinateMethod: type[Enum] = build_enum_from_lexicon_category("coordinate_method")
 WellPurpose: type[Enum] = build_enum_from_lexicon_category("well_purpose")

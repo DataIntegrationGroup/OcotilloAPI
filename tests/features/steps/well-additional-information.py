@@ -106,8 +106,11 @@ def step_impl(context):
 # TODO: needs to be an enum and added to lexicon
 @then("the response should include the construction method")
 def step_impl(context):
-    assert "construction_method" in context.data
-    assert context.data["construction_method"] == context.well.construction_method
+    assert "well_construction_method" in context.data
+    assert (
+        context.data["well_construction_method"]
+        == context.well.well_construction_method
+    )
 
 
 # TODO: needs to be added to model, schemas, test data

@@ -17,7 +17,13 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
+from core.enums import (
+    WellPurpose,
+    CasingMaterial,
+    SpringType,
+    ScreenType,
+    WellConstructionMethod,
+)
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
 
@@ -155,6 +161,7 @@ class WellResponse(BaseThingResponse):
     well_construction_notes: str | None = None
     well_completion_date: PastDate | None
     well_driller_name: str | None
+    well_construction_method: WellConstructionMethod | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
