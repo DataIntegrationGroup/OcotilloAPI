@@ -141,7 +141,7 @@ class ThingIdLinkResponse(BaseResponseModel):
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    current_location: LocationGeoJSONResponse | None
+    current_location: LocationGeoJSONResponse
     first_visit_date: PastDate | None
     groups: list[GroupResponse] = []
     monitoring_status: str | None
