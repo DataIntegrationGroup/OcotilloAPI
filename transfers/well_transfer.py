@@ -15,7 +15,7 @@
 # ===============================================================================
 import json
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pandas as pd
 from pandas import isna
@@ -33,6 +33,7 @@ from db import (
     Location,
     WellPurpose,
     WellCasingMaterial,
+    StatusHistory,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -229,6 +230,10 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_data["nma_pk_welldata"] = row.WellID
             well = Thing(**well_data)
             session.add(well)
+            logger.info(f"Created well for {row.PointID}")
+
+            # flush well to access its ID for status_history
+            session.flush()
 
             if well_purposes:
                 for wp in well_purposes:
@@ -263,14 +268,52 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         assoc.thing = well
         session.add(assoc)
 
+        """
+        Developer's notes
+
+        For all status_history records the start_date will be now since that
+        isn't recorded in NM_Aquifer
+        """
+        statusable_id = well.id
+        statusable_type = "Thing"
+        if row.MonitoringStatus:
+            if (
+                "X" in row.MonitoringStatus
+                or "I" in row.MonitoringStatus
+                or "C" in row.MonitoringStatus
+            ):
+                status_value = "Not currently monitored"
+            else:
+                status_value = "Currently monitored"
+
+            status_history = StatusHistory(
+                status_type="Monitoring Status",
+                status_value=status_value,
+                reason=row.MonitorStatusReason,
+                start_date=datetime.now(tz=UTC),
+                statusable_id=statusable_id,
+                statusable_type=statusable_type,
+            )
+            session.add(status_history)
+            logger.info(
+                f"  Added monitoring status for well {well.name}: {status_value}"
+            )
+
+        if row.Status:
+            status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
+            status_history = StatusHistory(
+                status_type="Well Status",
+                status_value=status_value,
+                reason=row.StatusUserNotes,
+                start_date=datetime.now(tz=UTC),
+                statusable_id=statusable_id,
+                statusable_type=statusable_type,
+            )
+            session.add(status_history)
+            logger.info(f"  Added well status for well {well.name}: {status_value}")
+
     session.commit()
     return input_df, cleaned_df, errors
-    # try:
-    #     session.commit()
-    # except Exception as e:
-    #     logger.critical(f"Error committing well {row.PointID}: {e}")
-    #     session.rollback()
-    #     continue
 
 
 def transfer_wellscreens(session, limit=None):
