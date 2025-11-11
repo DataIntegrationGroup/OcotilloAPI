@@ -30,9 +30,10 @@ class ValidateWell(BaseModel):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
+    measuring_point_height: float | None = None  # in feet
 
     @model_validator(mode="after")
-    def check_depths(self):
+    def validate_values(self):
         if (
             self.hole_depth is not None
             and self.well_depth is not None
@@ -99,6 +100,10 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
+    measuring_point_height: float = Field(
+        ge=0, description="Measuring point height in feet"
+    )
+    measuring_point_description: str
 
 
 class CreateSpring(CreateBaseThing):

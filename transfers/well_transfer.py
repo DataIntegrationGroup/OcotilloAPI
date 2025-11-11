@@ -198,9 +198,13 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
                 well_construction_notes=row.ConstructionNotes,
-                well_casing_diameter=row.CasingDiameter,
+                well_casing_diameter=(
+                    row.CasingDiameter * 12 if row.CasingDiameter else None
+                ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
             )
 
             CreateWell.model_validate(data)
