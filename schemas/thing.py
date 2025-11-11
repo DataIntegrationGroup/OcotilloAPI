@@ -24,6 +24,7 @@ from core.enums import (
     ScreenType,
     WellConstructionMethod,
     WellPumpType,
+    Unit,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -164,6 +165,8 @@ class WellResponse(BaseThingResponse):
     well_driller_name: str | None
     well_construction_method: WellConstructionMethod | None
     well_pump_type: WellPumpType | None
+    well_pump_depth: float | None
+    well_pump_depth_unit: Unit = "ft"
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

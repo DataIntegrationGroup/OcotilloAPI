@@ -154,15 +154,12 @@ def step_impl(context):
     )
 
 
-# TODO: needs to be added to model, schemas, test data
-# TODO: needs to be added to lexicon and an enum should be created
 @then("the response should include the well pump type (previously well_type field)")
 def step_impl(context):
     assert "well_pump_type" in context.data
     assert context.data["well_pump_type"] == context.well.well_pump_type
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the well pump depth in feet (new field)")
 def step_impl(context):
     assert "well_pump_depth" in context.data

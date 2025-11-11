@@ -109,6 +109,12 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
     well_construction_method = lexicon_term(nullable=True)
     well_pump_type: Mapped[str] = lexicon_term(nullable=True)
+    well_pump_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
