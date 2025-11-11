@@ -95,15 +95,12 @@ def step_impl(context):
     assert context.data["completion_info_source"] == context.well.completion_info_source
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the driller name")
 def step_impl(context):
     assert "well_driller_name" in context.data
     assert context.data["well_driller_name"] == context.well.well_driller_name
 
 
-# TODO: needs to be added to model, schemas, test data
-# TODO: needs to be an enum and added to lexicon
 @then("the response should include the construction method")
 def step_impl(context):
     assert "well_construction_method" in context.data
@@ -131,11 +128,11 @@ def step_impl(context):
 # TODO: the transfer script needs to convert ft to in
 @then("the response should include the casing diameter in inches")
 def step_impl(context):
-    assert "casing_diameter" in context.data
-    assert "casing_diameter_unit" in context.data
+    assert "well_casing_diameter" in context.data
+    assert "well_casing_diameter_unit" in context.data
 
-    assert context.data["casing_diameter"] == context.well.casing_diameter
-    assert context.data["casing_diameter_unit"] == "in"
+    assert context.data["well_casing_diameter"] == context.well.well_casing_diameter
+    assert context.data["well_casing_diameter_unit"] == "in"
 
 
 @then("the response should include the casing depth in feet below ground surface")
