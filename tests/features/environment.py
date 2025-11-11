@@ -78,6 +78,7 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
+        well_completion_date="2013-05-15",
     )
     session.add(well)
     session.commit()

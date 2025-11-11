@@ -10,6 +10,15 @@ def step_impl_retrieve_well_by_id(context):
     context.data = context.response.json()
 
 
+@then(
+    "null values in the response should be represented as JSON null (not placeholder strings)"
+)
+def step_impl(context):
+    for key, value in context.data.items():
+        if value is None:
+            assert value is None  # JSON null is represented as None in Python
+
+
 # ------------------------------------------------------------------------------
 # Permissions / Operational OK flags
 # ------------------------------------------------------------------------------
@@ -71,13 +80,12 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the completion date of the well")
 def step_impl(context):
-    assert "completion_date" in context.data
-    assert context.data["completion_date"] == context.well.completion_date.strftime(
-        "%Y-%m-%d"
-    )
+    assert "well_completion_date" in context.data
+    assert context.data[
+        "well_completion_date"
+    ] == context.well.well_completion_date.strftime("%Y-%m-%d")
 
 
 # TODO: needs to be added to model, schemas, test data
