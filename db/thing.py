@@ -233,6 +233,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="joined",
     )
 
     # --- Association Proxies ---

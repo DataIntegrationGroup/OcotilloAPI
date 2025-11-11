@@ -131,6 +131,13 @@ class CreateWellScreen(BaseCreateModel):
 
 
 # ------ RESPONSE ----------
+class ThingIdLinkResponse(BaseResponseModel):
+    thing_id: int
+    relation: str
+    alternate_id: str
+    alternate_organization: str
+
+
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
@@ -138,6 +145,7 @@ class BaseThingResponse(BaseResponseModel):
     first_visit_date: PastDate | None
     groups: list[GroupResponse] = []
     monitoring_status: str | None
+    links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
 
 
 class WellResponse(BaseThingResponse):
@@ -191,14 +199,6 @@ class SpringResponse(BaseThingResponse):
 
 class ThingResponse(WellResponse, SpringResponse):
     pass
-
-
-class ThingIdLinkResponse(BaseResponseModel):
-    thing_id: int
-    thing: ThingResponse
-    relation: str
-    alternate_id: str
-    alternate_organization: str
 
 
 class WellScreenResponse(BaseResponseModel):
