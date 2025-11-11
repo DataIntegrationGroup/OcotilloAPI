@@ -81,6 +81,7 @@ def add_well(context, session, location, name_num):
         well_completion_date="2013-05-15",
         well_driller_name="Jonsi",
         well_construction_method="Driven",
+        well_pump_type="Submersible",
     )
     session.add(well)
     session.commit()

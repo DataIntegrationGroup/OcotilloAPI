@@ -47,7 +47,8 @@
     {"name": "unit", "description": null},
     {"name": "vertical_datum", "description": null},
     {"name": "well_purpose", "description": null},
-    {"name": "well_status", "description": null}
+    {"name": "well_status", "description": null},
+    {"name": "well_pump_type", "description": null}
   ],
   "terms": [
     {"categories": ["review_status"], "term": "approved", "definition": "approved"},
@@ -673,6 +674,11 @@
     {"categories": ["sensor_status"], "term": "In Service", "definition": "In Service"},
     {"categories": ["sensor_status"], "term": "In Repair", "definition": "In Repair"},
     {"categories": ["sensor_status"], "term": "Retired", "definition": "Retired"},
-    {"categories": ["sensor_status"], "term": "Lost", "definition": "Lost"}
+    {"categories": ["sensor_status"], "term": "Lost", "definition": "Lost"},
+    {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
+    {"categories": ["well_pump_type"], "term": "Jet Pump", "definition": "Jet Pump"},
+    {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
+    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"},
+    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"}
   ]
 }

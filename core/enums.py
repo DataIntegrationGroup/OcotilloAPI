@@ -69,4 +69,5 @@ Unit: type[Enum] = build_enum_from_lexicon_category("unit")
 Vertical_datum: type[Enum] = build_enum_from_lexicon_category("vertical_datum")
 ScreenType: type[Enum] = build_enum_from_lexicon_category("screen_type")
 SensorType: type[Enum] = build_enum_from_lexicon_category("sensor_type")
+WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
 # ============= EOF =============================================

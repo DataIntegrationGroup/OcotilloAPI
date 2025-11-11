@@ -23,6 +23,7 @@ from core.enums import (
     SpringType,
     ScreenType,
     WellConstructionMethod,
+    WellPumpType,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
@@ -162,6 +163,7 @@ class WellResponse(BaseThingResponse):
     well_completion_date: PastDate | None
     well_driller_name: str | None
     well_construction_method: WellConstructionMethod | None
+    well_pump_type: WellPumpType | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

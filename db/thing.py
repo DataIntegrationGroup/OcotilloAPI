@@ -108,6 +108,7 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         String(200), nullable=True, comment="Name of the well driller."
     )
     well_construction_method = lexicon_term(nullable=True)
+    well_pump_type: Mapped[str] = lexicon_term(nullable=True)
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(

@@ -125,7 +125,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: the transfer script needs to convert ft to in
 @then("the response should include the casing diameter in inches")
 def step_impl(context):
     assert "well_casing_diameter" in context.data
