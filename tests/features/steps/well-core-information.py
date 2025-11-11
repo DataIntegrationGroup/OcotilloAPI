@@ -285,7 +285,6 @@ def step_impl(context):
     )
 
 
-# TODO: this needs to be added to the LocationResponse schema
 @then(
     "the response should include the UTM coordinates with datum NAD83 in the properties"
 )
