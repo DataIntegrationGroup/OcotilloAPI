@@ -20,6 +20,7 @@ from db import Thing, Group, GroupThingAssociation
 from db.engine import session_ctx
 from transfers.util import read_csv
 from transfers.logger import logger
+from tests import retrieve_latest_polymorphic_table_record
 
 
 def transfer_groups(
@@ -44,7 +45,34 @@ def transfer_groups(
                     logger.info(
                         f"Adding {len(records)} things to group {group.name}, prefix {prefix}"
                     )
+                    group_is_monitoring_plan = False
                     for record in records:
+                        # set the group_type to Monitoring Plan if at least one well is currently monitored
+                        if not group_is_monitoring_plan:
+                            if record.status_history:
+                                monitoring_status = [
+                                    sh
+                                    for sh in record.status_history
+                                    if sh.status_type == "Monitoring Status"
+                                ]
+                                if monitoring_status:
+                                    monitoring_status = (
+                                        retrieve_latest_polymorphic_table_record(
+                                            record,
+                                            "status_history",
+                                            "Monitoring Status",
+                                        )
+                                    )
+                                    if (
+                                        monitoring_status.status_value
+                                        == "Currently monitored"
+                                    ):
+                                        group_is_monitoring_plan = True
+                                        group.group_type = "Monitoring Plan"
+                                        logger.info(
+                                            f"  Setting group {group.name} type to Monitoring Plan based on thing {record.name}"
+                                        )
+
                         gta = GroupThingAssociation(group=group, thing=record)
                         session.add(gta)
                         group.thing_associations.append(gta)
