@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from typing import List, TYPE_CHECKING
-
+from datetime import date
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -241,6 +241,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         lazy="joined",
     )
 
+    monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
+        "MonitoringFrequencyHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -432,6 +440,23 @@ class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
 
     thing: Mapped["Thing"] = relationship(
         "Thing", back_populates="well_casing_materials"
+    )
+
+
+class MonitoringFrequencyHistory(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents the monitoring frequency history for a Thing.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    monitoring_frequency: Mapped[str] = lexicon_term(nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=True)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="monitoring_frequencies"
     )
 
 

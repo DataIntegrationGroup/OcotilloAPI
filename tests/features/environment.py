@@ -33,6 +33,7 @@ from db import (
     ThingIdLink,
     WellPurpose,
     MeasuringPointHistory,
+    MonitoringFrequencyHistory,
 )
 from db.engine import session_ctx
 
@@ -124,6 +125,24 @@ def add_measuring_point_history(context, session, well):
 
     context.objects["measuring_point_histories"].append(mph)
     return mph
+
+
+@add_context_object_container("monitoring_frequency_histories")
+def add_monitoring_frequency_history(
+    context, session, well, monitoring_frequency, start_date, end_date
+):
+    mfh = MonitoringFrequencyHistory(
+        thing=well,
+        monitoring_frequency=monitoring_frequency,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    session.add(mfh)
+    session.commit()
+    session.refresh(mfh)
+
+    context.objects["monitoring_frequency_histories"].append(mfh)
+    return mfh
 
 
 @add_context_object_container("springs")
@@ -346,6 +365,24 @@ def before_all(context):
 
         measuring_point_history_1 = add_measuring_point_history(
             context, session, well=well_1
+        )
+
+        monitoring_frequency_history_1 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Monthly",
+            start_date="2020-01-01",
+            end_date="2021-01-01",
+        )
+
+        monitoring_frequency_history_2 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Annual",
+            start_date="2020-01-01",
+            end_date=None,
         )
 
         id_link_1 = add_id_link(
