@@ -127,7 +127,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     measuring_point_height: float = Field(
         ge=0, description="Measuring point height in feet"
     )
-    measuring_point_description: str
+    measuring_point_description: str | None
 
 
 class CreateSpring(CreateBaseThing):

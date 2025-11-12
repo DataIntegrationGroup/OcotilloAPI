@@ -35,6 +35,7 @@ from db import (
     WellCasingMaterial,
     StatusHistory,
     MonitoringFrequencyHistory,
+    MeasuringPointHistory,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -225,6 +226,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "group_id",
                     "well_purposes",
                     "well_casing_materials",
+                    "measuring_point_height",
+                    "measuring_point_description",
                 ]
             )
             well_data["thing_type"] = "water well"
@@ -235,6 +238,21 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
             # flush well to access its ID for status_history
             session.flush()
+
+            """
+            Developer's note
+
+            It's not clear when the measuring point from NM_Aquifer was 
+            determined, so I'm setting start_date to the day of the transfer
+            """
+            measuring_point_history = MeasuringPointHistory(
+                thing_id=well.id,
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
+                start_date=datetime.now(tz=UTC),
+                end_date=None,
+            )
+            session.add(measuring_point_history)
 
             if well_purposes:
                 for wp in well_purposes:
