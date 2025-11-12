@@ -30,6 +30,7 @@ from db.base import (
 )
 from db.status_history import StatusHistoryMixin
 from db.measuring_point_history import MeasuringPointHistory
+from services.util import retrieve_latest_polymorphic_table_record
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -301,18 +302,10 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        status_entries = [
-            status
-            for status in self.status_history
-            if status.status_type == "Well Status" and status.end_date is None
-        ]
-        if status_entries:
-            # Sort by start_date descending to get the most recent status out of the filtered entries
-            most_recent_status = sorted(
-                status_entries, key=lambda x: x.start_date, reverse=True
-            )[0]
-            return most_recent_status.status_value
-        return None
+        latest_status = retrieve_latest_polymorphic_table_record(
+            self, "status_history", "Well Status"
+        )
+        return latest_status.status_value if latest_status else None
 
     @property
     def monitoring_status(self) -> str | None:
@@ -322,18 +315,10 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        status_entries = [
-            status
-            for status in self.status_history
-            if status.status_type == "Monitoring Status" and status.end_date is None
-        ]
-        if status_entries:
-            # Sort by start_date descending to get the most recent status out of the filtered entries
-            most_recent_status = sorted(
-                status_entries, key=lambda x: x.start_date, reverse=True
-            )[0]
-            return most_recent_status.status_value
-        return None
+        latest_status = retrieve_latest_polymorphic_table_record(
+            self, "status_history", "Monitoring Status"
+        )
+        return latest_status.status_value if latest_status else None
 
     @property
     def measuring_point_height(self) -> int | None:
