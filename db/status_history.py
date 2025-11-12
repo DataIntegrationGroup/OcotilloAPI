@@ -29,5 +29,5 @@ class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
     reason: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Polymorphic relationship columns
-    statusable_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    statusable_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_table: Mapped[str] = mapped_column(String(50), nullable=False)

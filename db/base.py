@@ -184,8 +184,8 @@ class StatusHistoryMixin:
         # One-to-Many polymorphic relationship
         return relationship(
             "StatusHistory",
-            primaryjoin=f"and_({self.__name__}.id==foreign(StatusHistory.statusable_id), "
-            f"StatusHistory.statusable_type=='{self.__name__}')",
+            primaryjoin=f"and_({self.__name__}.id==foreign(StatusHistory.target_id), "
+            f"StatusHistory.target_table=='{self.__name__}')",
             cascade="all, delete-orphan",
             lazy="selectin",
         )

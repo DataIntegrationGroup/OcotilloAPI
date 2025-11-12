@@ -218,8 +218,8 @@ def add_status_history(
     start_date,
     end_date,
     reason,
-    statusable_id,
-    statusable_type,
+    target_id,
+    target_table,
 ):
     status_history = StatusHistory(
         status_type=status_type,
@@ -227,8 +227,8 @@ def add_status_history(
         start_date=start_date,
         end_date=end_date,
         reason=reason,
-        statusable_id=statusable_id,
-        statusable_type=statusable_type,
+        target_id=target_id,
+        target_table=target_table,
     )
 
     session.add(status_history)
@@ -287,8 +287,8 @@ def before_all(context):
             start_date=datetime(2020, 1, 1),
             end_date=datetime(2021, 1, 1),
             reason="Initial status",
-            statusable_id=context.objects["wells"][0].id,
-            statusable_type="Thing",
+            target_id=context.objects["wells"][0].id,
+            target_table="Thing",
         )
 
         well_status_2 = add_status_history(
@@ -299,8 +299,8 @@ def before_all(context):
             start_date=datetime(2021, 1, 1),
             end_date=None,
             reason="Roving bovine",
-            statusable_id=context.objects["wells"][0].id,
-            statusable_type="Thing",
+            target_id=context.objects["wells"][0].id,
+            target_table="Thing",
         )
 
         monitoring_status_1 = add_status_history(
@@ -311,8 +311,8 @@ def before_all(context):
             start_date=datetime(2020, 1, 1),
             end_date=datetime(2021, 1, 1),
             reason="Initial monitoring status",
-            statusable_id=context.objects["wells"][0].id,
-            statusable_type="Thing",
+            target_id=context.objects["wells"][0].id,
+            target_table="Thing",
         )
 
         monitoring_status_2 = add_status_history(
@@ -323,8 +323,8 @@ def before_all(context):
             start_date=datetime(2021, 1, 1),
             end_date=None,
             reason="Roving bovine destroyed well",
-            statusable_id=context.objects["wells"][0].id,
-            statusable_type="Thing",
+            target_id=context.objects["wells"][0].id,
+            target_table="Thing",
         )
 
         id_link_1 = add_id_link(
