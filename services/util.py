@@ -7,6 +7,7 @@ import httpx
 from constants import SRID_WGS84
 
 TRANSFORMERS = {}
+METERS_TO_FEET = 3.28084
 
 
 def transform_srid(geometry, source_srid, target_srid):
@@ -26,8 +27,18 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
-def convert_m_to_ft(meters: float) -> float:
-    return meters * 3.28084
+def convert_m_to_ft(meters: float | None) -> float | None:
+    """Convert a length from meters to feet."""
+    if meters is None:
+        return None
+    return round(meters * METERS_TO_FEET, 6)
+
+
+def convert_ft_to_m(feet: float | None) -> float | None:
+    """Convert a length from feet to meters."""
+    if feet is None:
+        return None
+    return round(feet / METERS_TO_FEET, 6)
 
 
 def get_tiger_data(
