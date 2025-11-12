@@ -32,6 +32,7 @@ from db import (
     StatusHistory,
     ThingIdLink,
     WellPurpose,
+    MeasuringPointHistory,
 )
 from db.engine import session_ctx
 
@@ -81,8 +82,6 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
-        measuring_point_height=3.0,
-        measuring_point_description="Test measuring point description",
     )
     session.add(well)
     session.commit()
@@ -107,6 +106,24 @@ def add_well_purpose(context, session, well, purpose_term):
 
     context.objects["well_purposes"].append(purpose)
     return purpose
+
+
+@add_context_object_container("measuring_point_histories")
+def add_measuring_point_history(context, session, well):
+    mph = MeasuringPointHistory(
+        thing=well,
+        measuring_point_height=2,
+        measuring_point_description="test description",
+        start_date="2024-01-01",
+        end_date=None,
+        reason="Initial measuring point record",
+    )
+    session.add(mph)
+    session.commit()
+    session.refresh(mph)
+
+    context.objects["measuring_point_histories"].append(mph)
+    return mph
 
 
 @add_context_object_container("springs")
@@ -325,6 +342,10 @@ def before_all(context):
             reason="Roving bovine destroyed well",
             target_id=context.objects["wells"][0].id,
             target_table="thing",
+        )
+
+        measuring_point_history_1 = add_measuring_point_history(
+            context, session, well=well_1
         )
 
         id_link_1 = add_id_link(
