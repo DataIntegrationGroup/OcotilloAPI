@@ -678,7 +678,6 @@
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
     {"categories": ["well_pump_type"], "term": "Jet Pump", "definition": "Jet Pump"},
     {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
-    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"},
     {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"}
   ]
 }
