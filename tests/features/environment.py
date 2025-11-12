@@ -199,7 +199,6 @@ def add_group(context, session, things):
         description="Healy Collaborative Network",
         project_area=None,
         group_type="Monitoring Plan",
-        monitoring_frequency="Quarterly",
     )
     for thing in things:
         assoc = GroupThingAssociation(group=group, thing=thing)

@@ -17,7 +17,14 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType, Organization
+from core.enums import (
+    WellPurpose,
+    CasingMaterial,
+    SpringType,
+    ScreenType,
+    Organization,
+    MonitoringFrequency,
+)
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationGeoJSONResponse
 from schemas.group import GroupResponse
@@ -139,7 +146,7 @@ class ThingIdLinkResponse(BaseResponseModel):
 
 
 class MonitoringFrequencyResponse(BaseModel):
-    monitoring_frequency: str
+    monitoring_frequency: MonitoringFrequency
     start_date: PastDate
     end_date: PastDate | None
 
