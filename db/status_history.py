@@ -15,10 +15,11 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    and_,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, declared_attr, relationship, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term, pascal_to_snake
 
 
 class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
@@ -31,3 +32,23 @@ class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
     # Polymorphic relationship columns
     target_id: Mapped[int] = mapped_column(Integer, nullable=False)
     target_table: Mapped[str] = mapped_column(String(50), nullable=False)
+
+
+class StatusHistoryMixin:
+    """
+    Mixin for models that can have a status history (e.g., Thing, Location).
+    It automatically creates a polymorphic One-to-Many relationship to the
+    StatusHistory table.
+    """
+
+    @declared_attr
+    def status_history(cls):
+        return relationship(
+            "StatusHistory",
+            primaryjoin=and_(
+                cls.id == foreign(StatusHistory.target_id),
+                StatusHistory.target_table == pascal_to_snake(cls.__name__),
+            ),
+            cascade="all, delete-orphan",
+            lazy="selectin",
+        )

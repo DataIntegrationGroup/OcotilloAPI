@@ -26,9 +26,9 @@ from db.base import (
     AutoBaseMixin,
     Base,
     ReleaseMixin,
-    StatusHistoryMixin,
     PermissionMixin,
 )
+from db.status_history import StatusHistoryMixin
 
 if TYPE_CHECKING:
     from db.location import Location

@@ -288,7 +288,7 @@ def before_all(context):
             end_date=datetime(2021, 1, 1),
             reason="Initial status",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         well_status_2 = add_status_history(
@@ -300,7 +300,7 @@ def before_all(context):
             end_date=None,
             reason="Roving bovine",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         monitoring_status_1 = add_status_history(
@@ -312,7 +312,7 @@ def before_all(context):
             end_date=datetime(2021, 1, 1),
             reason="Initial monitoring status",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         monitoring_status_2 = add_status_history(
@@ -324,7 +324,7 @@ def before_all(context):
             end_date=None,
             reason="Roving bovine destroyed well",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         id_link_1 = add_id_link(
