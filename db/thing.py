@@ -327,6 +327,38 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             return most_recent_status.status_value
         return None
 
+    @property
+    def measuring_point_height(self) -> int | None:
+        """
+        Returns the most recent measuring point height from the measuring point history
+        table. This assumes that every well has a measuring point
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_height
+        else:
+            return None
+
+    @property
+    def measuring_point_description(self) -> str | None:
+        """
+        Returns the most recent measuring point description from the measuring point history
+        table. This assumes that every well has a measuring point.
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_description
+        else:
+            return None
+
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     """
