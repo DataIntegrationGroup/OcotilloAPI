@@ -40,7 +40,7 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
         nullable=False,
         comment="The official, surveyed height of the measuring point relative to ground surface (in feet).",
     )
-    mp_description: Mapped[str] = mapped_column(
+    measuring_point_description: Mapped[str] = mapped_column(
         Text,
         nullable=True,
         comment="A clear description of the measuring point (e.g., 'North side of casing, top of PVC', 'Top of new steel collar').",
@@ -64,4 +64,4 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     # Many-To-One: A description history record belongs to one Thing. Many history records may belong to a single Thing.
-    thing: Mapped["Thing"] = relationship("Thing", back_populates="mp_history")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="measuring_points")
