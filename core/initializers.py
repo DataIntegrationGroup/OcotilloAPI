@@ -94,11 +94,10 @@ def init_parameter(path: str = None) -> None:
 def erase_and_rebuild_db(session: Session):
     from sqlalchemy import text
 
-    with session.bind.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
+    session.execute(text("DROP SCHEMA public CASCADE"))
+    session.execute(text("CREATE SCHEMA public"))
+    session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+    session.commit()
 
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
