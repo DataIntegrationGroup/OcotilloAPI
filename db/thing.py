@@ -29,6 +29,7 @@ from db.base import (
     StatusHistoryMixin,
     PermissionMixin,
 )
+from db.measuring_point_history import MeasuringPointHistory
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -225,6 +226,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     links: Mapped[List["ThingIdLink"]] = relationship(
         "ThingIdLink",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing (well) can have multiple measuring points over time.
+    measuring_points: Mapped[List["MeasuringPointHistory"]] = relationship(
+        "MeasuringPointHistory",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
