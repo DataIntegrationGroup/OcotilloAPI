@@ -568,6 +568,7 @@
     {"categories": ["organization"], "term": "Winter Brothers", "definition": "Winter Brothers"},
     {"categories": ["organization"], "term": "Yates Petroleum Corporation", "definition": "Yates Petroleum Corporation"},
     {"categories": ["organization"], "term": "Zamora Accounting Services", "definition": "Zamora Accounting Services"},
+    {"categories": ["organization"], "term": "PLSS", "definition": "Public Land Survey System"},
     {"categories": ["collection_method"], "term": "manual", "definition": "manual sampling"},
     {"categories": ["collection_method"], "term": "continuous", "definition": "continuous sampling"},
     {"categories": ["role"], "term": "Owner", "definition": "Owner"},

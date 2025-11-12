@@ -9,12 +9,11 @@ itself. Instead, other tables (like Thing and Location) use the `StatusHistoryMi
 mixin to establish a One-to-Many relationship TO this table.
 """
 
-import datetime
+from datetime import date
 
 from sqlalchemy import (
     Integer,
     String,
-    DateTime,
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,14 +24,10 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
     status_type: Mapped[str] = lexicon_term(nullable=False)
     status_value: Mapped[str] = lexicon_term(nullable=False)
-    start_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    end_date: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    start_date: Mapped[date] = mapped_column(nullable=False)
+    end_date: Mapped[date] = mapped_column(nullable=True)
     reason: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Polymorphic relationship columns
-    statusable_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    statusable_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    target_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_table: Mapped[str] = mapped_column(String(50), nullable=False)
