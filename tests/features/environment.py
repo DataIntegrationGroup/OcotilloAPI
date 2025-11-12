@@ -16,7 +16,7 @@
 import random
 from datetime import datetime, timedelta
 
-from core.initializers import erase_and_rebuild_db, init_lexicon, init_parameter
+from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
     Thing,
@@ -194,8 +194,6 @@ def before_all(context):
     with session_ctx() as session:
         if session.query(LexiconTerm).count() == 0 or force:
             erase_and_rebuild_db(session)
-            init_lexicon()
-            init_parameter()
 
         loc_1 = add_location(context, session)
         loc_2 = add_location(context, session)

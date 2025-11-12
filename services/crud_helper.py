@@ -51,15 +51,8 @@ def model_adder(session, table, model, user=None, **kwargs):
             note = obj.add_note(**n)
             session.add(note)
 
-    session.commit()
-    session.refresh(obj)
-
-    if notes:
-        for n in notes:
-            note = obj.add_note(**n)
-            session.add(note)
-            obj.notes.append(note)
-
+        session.commit()
+        session.refresh(obj)
     return obj
 
 

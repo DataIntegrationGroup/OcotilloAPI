@@ -102,6 +102,9 @@ def erase_and_rebuild_db(session: Session):
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
 
+    init_lexicon()
+    init_parameter()
+
 
 def init_lexicon(path: str = None) -> None:
     if path is None:
