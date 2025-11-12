@@ -34,6 +34,7 @@ from db import (
     WellPurpose,
     WellCasingMaterial,
     StatusHistory,
+    MonitoringFrequencyHistory,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -277,8 +278,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
         # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
         # TODO: have AMMP review and verify the various MonitoringStatus codes
-        statusable_id = well.id
-        statusable_type = "Thing"
+        target_id = well.id
+        target_table = "thing"
         if row.MonitoringStatus:
             if (
                 "X" in row.MonitoringStatus
@@ -294,13 +295,97 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 status_value=status_value,
                 reason=row.MonitorStatusReason,
                 start_date=datetime.now(tz=UTC),
-                statusable_id=statusable_id,
-                statusable_type=statusable_type,
+                target_id=target_id,
+                target_table=target_table,
             )
             session.add(status_history)
             logger.info(
                 f"  Added monitoring status for well {well.name}: {status_value}"
             )
+
+            if "6" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Biannual",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding biannual monitoring frequency for well {well.name}"
+                )
+
+            if "A" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Annual",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding annual monitoring frequency for well {well.name}"
+                )
+
+            if "B" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Bimonthly",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding annual monitoring frequency for well {well.name}"
+                )
+
+            if "L" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Decadal",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding decadal monitoring frequency for well {well.name}"
+                )
+
+            if "M" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Monthly",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding monthly monitoring frequency for well {well.name}"
+                )
+
+            if "R" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Bimonthly reported",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding bimonthly reported monitoring frequency for well {well.name}"
+                )
+
+            if "N" in row.MonitoringStatus:
+                monitoring_frequency_history = MonitoringFrequencyHistory(
+                    thing_id=well.id,
+                    monitoring_frequency="Biannual",
+                    start_date=datetime.now(tz=UTC),
+                    end_date=None,
+                )
+                session.add(monitoring_frequency_history)
+                logger.info(
+                    f"  Adding biannual monitoring frequency for well {well.name}"
+                )
 
         if row.Status:
             status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
@@ -309,8 +394,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 status_value=status_value,
                 reason=row.StatusUserNotes,
                 start_date=datetime.now(tz=UTC),
-                statusable_id=statusable_id,
-                statusable_type=statusable_type,
+                target_id=target_id,
+                target_table=target_table,
             )
             session.add(status_history)
             logger.info(f"  Added well status for well {well.name}: {status_value}")
