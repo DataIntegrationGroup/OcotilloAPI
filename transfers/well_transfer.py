@@ -274,6 +274,9 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         For all status_history records the start_date will be now since that
         isn't recorded in NM_Aquifer
         """
+        # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
+        # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
+        # TODO: have AMMP review and verify the various MonitoringStatus codes
         statusable_id = well.id
         statusable_type = "Thing"
         if row.MonitoringStatus:
