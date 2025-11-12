@@ -1,5 +1,9 @@
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from services.util import transform_srid, convert_m_to_ft
+from services.util import (
+    transform_srid,
+    convert_m_to_ft,
+    retrieve_latest_polymorphic_table_record,
+)
 
 from behave import when, then
 from geoalchemy2.shape import to_shape
@@ -89,15 +93,10 @@ def step_impl(context):
 def step_impl(context):
     assert "well_status" in context.water_well_data
 
-    status_history = context.objects["wells"][0].status_history
-    well_status = [
-        sh
-        for sh in status_history
-        if sh.status_type == "Well Status" and sh.end_date is None
-    ]
-    well_status_sorted = sorted(well_status, key=lambda sh: sh.start_date, reverse=True)
-
-    assert context.water_well_data["well_status"] == well_status_sorted[0].status_value
+    well_status_record = retrieve_latest_polymorphic_table_record(
+        context.objects["wells"][0], "status_history", "Well Status"
+    )
+    assert context.water_well_data["well_status"] == well_status_record.status_value
 
 
 @then("the response should include the monitoring frequency (new field)")
@@ -118,19 +117,12 @@ def step_impl(context):
 def step_impl(context):
     assert "monitoring_status" in context.water_well_data
 
-    status_history = context.objects["wells"][0].status_history
-    monitoring_status = [
-        sh
-        for sh in status_history
-        if sh.status_type == "Monitoring Status" and sh.end_date is None
-    ]
-    monitoring_status_sorted = sorted(
-        monitoring_status, key=lambda sh: sh.start_date, reverse=True
+    monitoring_status_record = retrieve_latest_polymorphic_table_record(
+        context.objects["wells"][0], "status_history", "Monitoring Status"
     )
-
     assert (
         context.water_well_data["monitoring_status"]
-        == monitoring_status_sorted[0].status_value
+        == monitoring_status_record.status_value
     )
 
 
