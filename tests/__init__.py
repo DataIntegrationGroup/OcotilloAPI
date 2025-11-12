@@ -117,7 +117,7 @@ def retrieve_latest_polymorphic_table_record(
     target_record: Base,
     polymorphic_relationship: str,
     polymorphic_type: str,
-) -> Base:
+) -> Base | None:
     """
     Retrieve the latest record from a polymorphic table. This function assumes that the
     parent class has the correct mixin to support retrieval via an attribute. This
@@ -153,7 +153,10 @@ def retrieve_latest_polymorphic_table_record(
     sorted_type_polymorphic_records = sorted(
         type_polymorphic_records, key=lambda r: r.start_date, reverse=True
     )
-    return sorted_type_polymorphic_records[0]
+    if sorted_type_polymorphic_records:
+        return sorted_type_polymorphic_records[0]
+    else:
+        return None
 
 
 # ============= EOF =============================================

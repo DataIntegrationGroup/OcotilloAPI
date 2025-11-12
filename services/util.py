@@ -3,8 +3,10 @@ import json
 from shapely.ops import transform
 import pyproj
 import httpx
+from sqlalchemy.orm import DeclarativeBase
 
 from constants import SRID_WGS84
+
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
@@ -128,6 +130,52 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
         return None
 
     return data["value"]
+
+
+def retrieve_latest_polymorphic_table_record(
+    target_record: DeclarativeBase,
+    polymorphic_relationship: str,
+    polymorphic_type: str,
+) -> DeclarativeBase | None:
+    """
+    Retrieve the latest record from a polymorphic table. This function assumes that the
+    parent class has the correct mixin to support retrieval via an attribute. This
+    requires end_date to be None
+
+    Parameters:
+    ----------
+    target_record : DeclarativeBase
+        The parent record from which to retrieve the polymorphic child record.
+    polymorphic_relationship : str
+        The name of the relationship attribute on the parent record that corresponds to the polymorphic table.
+    polymorphic_type : str
+        The specific type of the polymorphic record to retrieve (e.g., 'Use Status' or 'Monitoring Status' for StatusHistory).
+    latest : bool, optional
+        If True, retrieves the latest record based on start_date. Defaults to True.
+
+    Returns
+    -------
+    DeclarativeBase | None
+        The latest record from the specified polymorphic table with the defined type if it exists.
+    """
+    if polymorphic_relationship == "permissions":
+        type_field = "permission_type"
+    elif polymorphic_relationship == "status_history":
+        type_field = "status_type"
+
+    polymorphic_records = getattr(target_record, polymorphic_relationship)
+    type_polymorphic_records = [
+        r
+        for r in polymorphic_records
+        if getattr(r, type_field) == polymorphic_type and r.end_date is None
+    ]
+    sorted_type_polymorphic_records = sorted(
+        type_polymorphic_records, key=lambda r: r.start_date, reverse=True
+    )
+    if sorted_type_polymorphic_records:
+        return sorted_type_polymorphic_records[0]
+    else:
+        return None
 
 
 if __name__ == "__main__":
