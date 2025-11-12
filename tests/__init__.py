@@ -29,18 +29,22 @@ load_dotenv(override=True)
 
 # time.tzset()
 
-from transfers.transfer import erase_and_initalize
 from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import register_routes
+from core.initializers import (
+    init_lexicon,
+    init_parameter,
+    register_routes,
+    erase_and_rebuild_db,
+)
 from db import Base, Parameter
 from db.engine import session_ctx
 from core.app import app
 
 with session_ctx() as session:
-    erase_and_initalize(session)
+    erase_and_rebuild_db(session)
 
 
 register_routes(app)
