@@ -34,40 +34,37 @@ class ValidateWell(BaseModel):
 
     @model_validator(mode="after")
     def validate_values(self):
-        if (
-            self.hole_depth is not None
-            and self.well_depth is not None
-            and self.well_depth > self.hole_depth
-        ):
-            raise ValueError("well depth must be less than than or equal to hole depth")
-        elif (
-            self.hole_depth is not None
-            and self.well_casing_depth is not None
-            and self.well_casing_depth > self.hole_depth
-        ):
-            raise ValueError(
-                "well casing depth must be less than or equal to hole depth"
-            )
-        elif (
-            self.measuring_point_height is not None
-            and self.hole_depth is not None
-            and self.measuring_point_height >= self.hole_depth
-        ):
-            raise ValueError("measuring point height must be less than hole depth")
-        elif (
-            self.measuring_point_height is not None
-            and self.well_casing_depth is not None
-            and self.measuring_point_height >= self.well_casing_depth
-        ):
-            raise ValueError(
-                "measuring point height must be less than well casing depth"
-            )
-        elif (
-            self.measuring_point_height is not None
-            and self.well_depth is not None
-            and self.measuring_point_height >= self.well_depth
-        ):
-            raise ValueError("measuring point height must be less than well depth")
+        if self.hole_depth is not None:
+            if self.well_depth is not None and self.well_depth > self.hole_depth:
+                raise ValueError(
+                    "well depth must be less than than or equal to hole depth"
+                )
+            elif (
+                self.well_casing_depth is not None
+                and self.well_casing_depth > self.hole_depth
+            ):
+                raise ValueError(
+                    "well casing depth must be less than or equal to hole depth"
+                )
+
+        if self.measuring_point_height is not None:
+            if (
+                self.hole_depth is not None
+                and self.measuring_point_height >= self.hole_depth
+            ):
+                raise ValueError("measuring point height must be less than hole depth")
+            elif (
+                self.well_casing_depth is not None
+                and self.measuring_point_height >= self.well_casing_depth
+            ):
+                raise ValueError(
+                    "measuring point height must be less than well casing depth"
+                )
+            elif (
+                self.well_depth is not None
+                and self.measuring_point_height >= self.well_depth
+            ):
+                raise ValueError("measuring point height must be less than well depth")
 
         return self
 
