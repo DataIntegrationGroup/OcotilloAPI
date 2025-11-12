@@ -32,6 +32,8 @@ from db import (
     StatusHistory,
     ThingIdLink,
     WellPurpose,
+    MeasuringPointHistory,
+    MonitoringFrequencyHistory,
 )
 from db.engine import session_ctx
 
@@ -81,8 +83,6 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
-        measuring_point_height=3.0,
-        measuring_point_description="Test measuring point description",
     )
     session.add(well)
     session.commit()
@@ -107,6 +107,42 @@ def add_well_purpose(context, session, well, purpose_term):
 
     context.objects["well_purposes"].append(purpose)
     return purpose
+
+
+@add_context_object_container("measuring_point_histories")
+def add_measuring_point_history(context, session, well):
+    mph = MeasuringPointHistory(
+        thing=well,
+        measuring_point_height=2,
+        measuring_point_description="test description",
+        start_date="2024-01-01",
+        end_date=None,
+        reason="Initial measuring point record",
+    )
+    session.add(mph)
+    session.commit()
+    session.refresh(mph)
+
+    context.objects["measuring_point_histories"].append(mph)
+    return mph
+
+
+@add_context_object_container("monitoring_frequency_histories")
+def add_monitoring_frequency_history(
+    context, session, well, monitoring_frequency, start_date, end_date
+):
+    mfh = MonitoringFrequencyHistory(
+        thing=well,
+        monitoring_frequency=monitoring_frequency,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    session.add(mfh)
+    session.commit()
+    session.refresh(mfh)
+
+    context.objects["monitoring_frequency_histories"].append(mfh)
+    return mfh
 
 
 @add_context_object_container("springs")
@@ -163,7 +199,6 @@ def add_group(context, session, things):
         description="Healy Collaborative Network",
         project_area=None,
         group_type="Monitoring Plan",
-        monitoring_frequency="Quarterly",
     )
     for thing in things:
         assoc = GroupThingAssociation(group=group, thing=thing)
@@ -288,7 +323,7 @@ def before_all(context):
             end_date=datetime(2021, 1, 1),
             reason="Initial status",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         well_status_2 = add_status_history(
@@ -300,7 +335,7 @@ def before_all(context):
             end_date=None,
             reason="Roving bovine",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         monitoring_status_1 = add_status_history(
@@ -312,7 +347,7 @@ def before_all(context):
             end_date=datetime(2021, 1, 1),
             reason="Initial monitoring status",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
         )
 
         monitoring_status_2 = add_status_history(
@@ -324,7 +359,29 @@ def before_all(context):
             end_date=None,
             reason="Roving bovine destroyed well",
             target_id=context.objects["wells"][0].id,
-            target_table="Thing",
+            target_table="thing",
+        )
+
+        measuring_point_history_1 = add_measuring_point_history(
+            context, session, well=well_1
+        )
+
+        monitoring_frequency_history_1 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Monthly",
+            start_date="2020-01-01",
+            end_date="2021-01-01",
+        )
+
+        monitoring_frequency_history_2 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Annual",
+            start_date="2020-01-01",
+            end_date=None,
         )
 
         id_link_1 = add_id_link(

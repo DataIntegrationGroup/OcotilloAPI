@@ -37,7 +37,6 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
     )
     group_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
-    monitoring_frequency: Mapped[Optional[str]] = lexicon_term(nullable=True)
 
     # Foreign Keys
     parent_group_id: Mapped[Optional[int]] = mapped_column(

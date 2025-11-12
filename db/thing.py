@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from typing import List, TYPE_CHECKING
-
+from datetime import date
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -26,9 +26,10 @@ from db.base import (
     AutoBaseMixin,
     Base,
     ReleaseMixin,
-    StatusHistoryMixin,
     PermissionMixin,
 )
+from db.status_history import StatusHistoryMixin
+from db.measuring_point_history import MeasuringPointHistory
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -100,11 +101,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
     )
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
-
-    measuring_point_height: Mapped[float] = mapped_column(
-        Float, nullable=True, info={"unit": "feet above ground surface"}
-    )
-    measuring_point_description: Mapped[str] = mapped_column(String, nullable=True)
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
@@ -236,6 +232,23 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         lazy="joined",
     )
 
+    # One-To-Many: A Thing (well) can have multiple measuring points over time.
+    measuring_points: Mapped[List["MeasuringPointHistory"]] = relationship(
+        "MeasuringPointHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
+    monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
+        "MonitoringFrequencyHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -322,6 +335,38 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             return most_recent_status.status_value
         return None
 
+    @property
+    def measuring_point_height(self) -> int | None:
+        """
+        Returns the most recent measuring point height from the measuring point history
+        table. This assumes that every well has a measuring point
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_height
+        else:
+            return None
+
+    @property
+    def measuring_point_description(self) -> str | None:
+        """
+        Returns the most recent measuring point description from the measuring point history
+        table. This assumes that every well has a measuring point.
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_description
+        else:
+            return None
+
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     """
@@ -395,6 +440,23 @@ class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
 
     thing: Mapped["Thing"] = relationship(
         "Thing", back_populates="well_casing_materials"
+    )
+
+
+class MonitoringFrequencyHistory(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents the monitoring frequency history for a Thing.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    monitoring_frequency: Mapped[str] = lexicon_term(nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=True)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="monitoring_frequencies"
     )
 
 

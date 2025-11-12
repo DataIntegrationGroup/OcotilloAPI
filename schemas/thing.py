@@ -17,7 +17,14 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType, Organization
+from core.enums import (
+    WellPurpose,
+    CasingMaterial,
+    SpringType,
+    ScreenType,
+    Organization,
+    MonitoringFrequency,
+)
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationGeoJSONResponse
 from schemas.group import GroupResponse
@@ -160,6 +167,12 @@ class ThingIdLinkResponse(BaseResponseModel):
     alternate_organization: Organization
 
 
+class MonitoringFrequencyResponse(BaseModel):
+    monitoring_frequency: MonitoringFrequency
+    start_date: PastDate
+    end_date: PastDate | None
+
+
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
@@ -168,6 +181,21 @@ class BaseThingResponse(BaseResponseModel):
     groups: list[GroupResponse] = []
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
+    monitoring_frequencies: list[MonitoringFrequencyResponse] = []
+
+    @field_validator("monitoring_frequencies", mode="before")
+    def remove_records_with_end_date(cls, monitoring_frequencies):
+        if monitoring_frequencies is not None:
+            active_frequencies = [
+                {
+                    "monitoring_frequency": freq.monitoring_frequency,
+                    "start_date": freq.start_date.isoformat(),
+                    "end_date": None,
+                }
+                for freq in monitoring_frequencies
+                if freq.end_date is None
+            ]
+        return active_frequencies
 
 
 class WellResponse(BaseThingResponse):

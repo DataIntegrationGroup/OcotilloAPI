@@ -102,12 +102,14 @@ def step_impl(context):
 
 @then("the response should include the monitoring frequency (new field)")
 def step_impl(context):
-    for group in context.water_well_data["groups"]:
-        assert "monitoring_frequency" in group
-        assert (
-            group["monitoring_frequency"]
-            == context.objects["groups"][0].monitoring_frequency
-        )
+    assert "monitoring_frequencies" in context.water_well_data
+
+    assert len(context.water_well_data["monitoring_frequencies"]) == 1
+    assert context.water_well_data["monitoring_frequencies"][0] == {
+        "monitoring_frequency": "Annual",
+        "start_date": "2020-01-01",
+        "end_date": None,
+    }
 
 
 @then(

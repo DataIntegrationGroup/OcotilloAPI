@@ -133,6 +133,11 @@ def retrieve_latest_polymorphic_table_record(
         The specific type of the polymorphic record to retrieve (e.g., 'Use Status' or 'Monitoring Status' for StatusHistory).
     latest : bool, optional
         If True, retrieves the latest record based on start_date. Defaults to True.
+
+    Returns
+    -------
+    Base
+        The latest record from the specified polymorphic table.
     """
     if polymorphic_relationship == "permissions":
         type_field = "permission_type"
