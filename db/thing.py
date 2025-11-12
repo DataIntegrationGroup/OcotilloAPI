@@ -238,6 +238,13 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         lazy="joined",
     )
 
+    links: Mapped[List["ThingIdLink"]] = relationship(
+        "ThingIdLink",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -295,7 +302,7 @@ class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     alternate_id: Mapped[str] = mapped_column(String(100), nullable=False)
     alternate_organization: Mapped[str] = lexicon_term(nullable=False)
 
-    thing: Mapped["Thing"] = relationship("Thing", backref="links")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="links")
 
 
 class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
