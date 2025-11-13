@@ -75,15 +75,15 @@ class DataProvenance(AutoBaseMixin, ReleaseMixin, Base):
 
     # --- Polymorphic Parent Relationships (Internal) ---
     # These are view-only relationships used by the 'target' property below.
-    # They tell SQLAlchemy exactly how to find the specific parent record for a given child.
+    # They tell SQLAlchemy exactly how to join `DataProvenance` to the parent/target table.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin="and_(foreign(DataProvenance.target_id) == Thing.id, DataProvenance.target_table == 'Thing')",
+        primaryjoin="and_(foreign(DataProvenance.target_id) == Thing.id, DataProvenance.target_table == 'thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin="and_(foreign(DataProvenance.target_id) == Location.id, DataProvenance.target_table == 'Location')",
+        primaryjoin="and_(foreign(DataProvenance.target_id) == Location.id, DataProvenance.target_table == 'location')",
         viewonly=True,
     )
 
