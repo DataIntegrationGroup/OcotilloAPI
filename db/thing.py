@@ -27,8 +27,8 @@ from db.base import (
     Base,
     ReleaseMixin,
     StatusHistoryMixin,
-    PermissionMixin,
 )
+from db.permission_history import PermissionHistoryMixin
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -39,7 +39,9 @@ if TYPE_CHECKING:
     from db.group import Group, GroupThingAssociation
 
 
-class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
+class Thing(
+    Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionHistoryMixin
+):
     """
     Represents a physical object of interest being monitored (e.g., a well).
     Stores static, core attributes of the physical installation.
