@@ -28,7 +28,9 @@ from db.base import (
     ReleaseMixin,
     StatusHistoryMixin,
     PermissionMixin,
+    DataProvenanceMixin,
 )
+from db.measuring_point_history import MeasuringPointHistory
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -39,7 +41,14 @@ if TYPE_CHECKING:
     from db.group import Group, GroupThingAssociation
 
 
-class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
+class Thing(
+    Base,
+    AutoBaseMixin,
+    ReleaseMixin,
+    StatusHistoryMixin,
+    PermissionMixin,
+    DataProvenanceMixin,
+):
     """
     Represents a physical object of interest being monitored (e.g., a well).
     Stores static, core attributes of the physical installation.
@@ -240,6 +249,14 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
 
     links: Mapped[List["ThingIdLink"]] = relationship(
         "ThingIdLink",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing (well) can have multiple measuring points over time.
+    measuring_points: Mapped[List["MeasuringPointHistory"]] = relationship(
+        "MeasuringPointHistory",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,

@@ -30,14 +30,14 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin
 from db.lexicon import lexicon_term
 
 if TYPE_CHECKING:
     from db.thing import Thing
 
 
-class Location(Base, AutoBaseMixin, ReleaseMixin):
+class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True)
