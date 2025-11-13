@@ -140,7 +140,9 @@ def step_impl(context):
 @then("the response should include the casing materials")
 def step_impl(context):
     assert "well_casing_materials" in context.data
-    assert context.data["well_casing_materials"] == context.well.well_casing_materials
+    assert sorted(context.data["well_casing_materials"]) == sorted(
+        [m.material for m in context.well.well_casing_materials]
+    )
 
 
 # TODO: needs to be added to model, schemas, test data
