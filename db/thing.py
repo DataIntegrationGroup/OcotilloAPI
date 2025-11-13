@@ -118,6 +118,11 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the well pump from ground surface to the pump intake (in feet).",
     )
+    # TODO: should this be required for every well in the database? AMMP review
+    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment="Indicates if the well is suitable for datalogger installation.",
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(

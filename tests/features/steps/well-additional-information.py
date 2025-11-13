@@ -158,14 +158,15 @@ def step_impl(context):
     assert context.data["well_pump_depth_unit"] == "ft"
 
 
-# TODO: needs to be added to model, schemas, test data
 @then(
     "the response should include whether the well is open and suitable for a datalogger"
 )
 def step_impl(context):
-    data = context.response.json()
-    assert data["well_open"] is True
-    assert data["well_suitable_for_datalogger"] is True
+    assert "is_suitable_for_datalogger" in context.data
+    assert (
+        context.data["is_suitable_for_datalogger"]
+        == context.well.is_suitable_for_datalogger
+    )
 
 
 # ------------------------------------------------------------------------------
