@@ -20,7 +20,7 @@ from db import Thing, Group, GroupThingAssociation
 from db.engine import session_ctx
 from transfers.util import read_csv
 from transfers.logger import logger
-from tests import retrieve_latest_polymorphic_table_record
+from services.util import retrieve_latest_polymorphic_table_record
 
 
 def transfer_groups(
