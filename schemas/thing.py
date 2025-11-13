@@ -17,9 +17,17 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
+from core.enums import (
+    WellPurpose,
+    CasingMaterial,
+    SpringType,
+    ScreenType,
+    Organization,
+    MonitoringFrequency,
+)
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.location import LocationResponse
+from schemas.location import LocationGeoJSONResponse
+from schemas.group import GroupResponse
 
 
 # -------- VALIDATE ----------
@@ -130,11 +138,42 @@ class CreateWellScreen(BaseCreateModel):
 
 
 # ------ RESPONSE ----------
+class ThingIdLinkResponse(BaseResponseModel):
+    thing_id: int
+    relation: str
+    alternate_id: str
+    alternate_organization: Organization
+
+
+class MonitoringFrequencyResponse(BaseModel):
+    monitoring_frequency: MonitoringFrequency
+    start_date: PastDate
+    end_date: PastDate | None
+
+
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    current_location: LocationResponse | None
+    current_location: LocationGeoJSONResponse
     first_visit_date: PastDate | None
+    groups: list[GroupResponse] = []
+    monitoring_status: str | None
+    links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
+    monitoring_frequencies: list[MonitoringFrequencyResponse] = []
+
+    @field_validator("monitoring_frequencies", mode="before")
+    def remove_records_with_end_date(cls, monitoring_frequencies):
+        if monitoring_frequencies is not None:
+            active_frequencies = [
+                {
+                    "monitoring_frequency": freq.monitoring_frequency,
+                    "start_date": freq.start_date.isoformat(),
+                    "end_date": None,
+                }
+                for freq in monitoring_frequencies
+                if freq.end_date is None
+            ]
+        return active_frequencies
 
 
 class WellResponse(BaseThingResponse):
@@ -153,6 +192,10 @@ class WellResponse(BaseThingResponse):
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
+    well_status: str | None
+    measuring_point_height: float
+    measuring_point_height_unit: str = "ft"
+    measuring_point_description: str | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -184,22 +227,6 @@ class SpringResponse(BaseThingResponse):
 
 class ThingResponse(WellResponse, SpringResponse):
     pass
-
-
-class ThingIdLinkResponse(BaseResponseModel):
-    thing_id: int
-    thing: ThingResponse
-    relation: str
-    alternate_id: str
-    alternate_organization: str
-
-
-class LocationWellResponse(LocationResponse):
-    """
-    Response schema for sample location with well details.
-    """
-
-    well: List[WellResponse] = []  # List of wells associated with the sample location
 
 
 class WellScreenResponse(BaseResponseModel):

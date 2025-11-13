@@ -172,23 +172,6 @@ class PropertiesMixin:
 
 
 # ============= Polymorphic Helper Mixins =============================================
-class StatusHistoryMixin:
-    """
-    Mixin for models that can have a status history (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    StatusHistory table.
-    """
-
-    @declared_attr
-    def status_history(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "StatusHistory",
-            primaryjoin=f"and_({self.__name__}.id==foreign(StatusHistory.statusable_id), "
-            f"StatusHistory.statusable_type=='{self.__name__}')",
-            cascade="all, delete-orphan",
-            lazy="selectin",
-        )
 
 
 class PermissionMixin:

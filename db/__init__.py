@@ -40,6 +40,7 @@ from db.sensor import *
 from db.status_history import *
 from db.thing import *
 from db.transducer import *
+from db.measuring_point_history import *
 
 from sqlalchemy import (
     func,
