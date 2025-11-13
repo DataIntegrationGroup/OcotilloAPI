@@ -144,14 +144,10 @@ def step_impl(context):
 
 
 # TODO: needs to be added to model, schemas, test data
-@then(
-    "the response should include the casing description (previously casing notes field)"
-)
+@then("the response should include the casing materials")
 def step_impl(context):
-    assert "well_casing_description" in context.data
-    assert (
-        context.data["well_casing_description"] == context.well.well_casing_description
-    )
+    assert "well_casing_materials" in context.data
+    assert context.data["well_casing_materials"] == context.well.well_casing_materials
 
 
 @then("the response should include the well pump type (previously well_type field)")
