@@ -48,7 +48,7 @@
     {"name": "vertical_datum", "description": null},
     {"name": "well_purpose", "description": null},
     {"name": "well_status", "description": null},
-    {"name": "well_pump_type", "description": null}
+    {"name": "well_pump_type", "description": null},
     {"name": "permission_type", "description": null}
   ],
   "terms": [
@@ -679,7 +679,7 @@
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
     {"categories": ["well_pump_type"], "term": "Jet Pump", "definition": "Jet Pump"},
     {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
-    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"}
+    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"},
     {"categories": ["permission_type"], "term": "Water Level Sample", "definition": "Permissions for taking water level samples"},
     {"categories": ["permission_type"], "term": "Chemistry Sample", "definition": "Permissions for taking chemistry samples"},
     {"categories": ["permission_type"], "term": "Datalogger Installation", "definition": "Permissions for installing dataloggers"}
