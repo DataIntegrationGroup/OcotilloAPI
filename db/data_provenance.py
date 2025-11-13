@@ -51,23 +51,22 @@ class DataProvenance(AutoBaseMixin, ReleaseMixin, Base):
         comment="The specific column in the parent table that this metadata applies to (e.g., 'well_depth_ft', 'coordinates')."
         "If `NULL`, the record applies to the entire parent object.",
     )
-    # TODO: Values from the following NMAquifer tables should be included as terms in the lexicon:
-    #  'LU_DataSource', 'LU_Depth_CompletionSource'.
+    # Values from the following NMAquifer tables are included as `origin_source` terms in the lexicon:
+    # 'LU_DataSource', 'LU_Depth_CompletionSource'.
     origin_source: Mapped[str] = lexicon_term(
         nullable=True,
         comment="Indicates the origin source of the data (e.g'Driller's Log', 'Well Report'.",
     )
-    # TODO: Values from the following NMAquifer tables should be included as terms in the lexicon:
-    #  'LU_AltitudeMethod','LU_CoordinateMethod'.
+    # Values from the following NMAquifer tables are included as `collection_method` terms in the lexicon:
+    # 'LU_AltitudeMethod','LU_CoordinateMethod'.
     collection_method: Mapped[str] = lexicon_term(
         nullable=True,
         comment="Indicates the method used to collect the data (e.g., 'GPS - Survey Grade').",
     )
-    # TODO: Values from the following NMAquifer tables should be included as terms in the lexicon: 'LU_CoordinateAccuracy'.
     accuracy_value: Mapped[float] = mapped_column(
         nullable=True, comment="A numeric value representing the data's accuracy."
     )
-    # TODO: Values from the following NMAquifer tables should be included as terms in the lexicon: 'LU_CoordinateAccuracy'.
+    # Unit values from the following NMAquifer tables are included as 'unit' terms in the lexicon: 'LU_CoordinateAccuracy'.
     accuracy_unit: Mapped[str] = lexicon_term(
         nullable=True,
         comment="The unit for the `accuracy_value` (e.g., 'meters', 'feet').",
