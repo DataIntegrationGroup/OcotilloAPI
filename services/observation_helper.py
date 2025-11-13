@@ -53,7 +53,10 @@ def get_transducer_observations(
     filter_: str = Query(alias="filter", default=None),
 ):
     if thing_id:
-        simple_get_by_id(session, Thing, thing_id)
+        item = session.get(Thing, thing_id)
+        if item is None:
+            empty_query = select(TransducerObservation).where(False)
+            return paginate(query=empty_query, conn=session)
 
     # Subquery to get latest block for each observation
     block_subq = (

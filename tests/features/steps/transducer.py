@@ -35,14 +35,14 @@ def step_impl(context):
 @when("the user requests transducer data for a non-existing well")
 def step_impl(context):
     context.response = context.client.get(
-        "/observation/transducer-groundwater-level/9999"
+        "/observation/transducer-groundwater-level?thing_id=9999"
     )
 
 
 @when("the user requests transducer data for a well")
 def step_impl(context):
     context.response = context.client.get(
-        f"/observation/transducer-groundwater-level/{context.objects['wells'][0].id}",
+        f"/observation/transducer-groundwater-level?thing_id={context.objects['wells'][0].id}",
     )
 
 

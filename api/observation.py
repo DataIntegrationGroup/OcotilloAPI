@@ -114,14 +114,14 @@ async def update_water_chemistry_observation(
 
 # ============= Get ==============================================
 @router.get(
-    "/transducer-groundwater-level/{thing_id}",
+    "/transducer-groundwater-level",
     summary="Get transducer groundwater level observations",
 )
 async def get_transducer_groundwater_level_observations(
     request: Request,
     session: session_dependency,
     user: amp_viewer_dependency,
-    thing_id: int,
+    thing_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> CustomPage[TransducerObservationWithBlockResponse]:
