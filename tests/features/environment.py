@@ -29,6 +29,7 @@ from db import (
     Parameter,
     Deployment,
     TransducerObservationBlock,
+    WellCasingMaterial,
 )
 from db.engine import session_ctx
 
@@ -96,6 +97,20 @@ def add_well(context, session, location, name_num):
 
     context.objects["wells"].append(well)
     return well
+
+
+@add_context_object_container("well_casing_materials")
+def add_well_casing_material(context, session, well):
+    wcm = WellCasingMaterial(
+        thing_id=well.id,
+        material="PVC",
+    )
+    session.add(wcm)
+    session.commit()
+    session.refresh(wcm)
+
+    context.objects["well_casing_materials"].append(wcm)
+    return wcm
 
 
 @add_context_object_container("springs")
@@ -214,6 +229,8 @@ def before_all(context):
         sensor_1 = add_sensor(context, session, well_1.id)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
+        add_well_casing_material(context, session, well_1)
+
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
         add_obs = add_block(context, session, parameter)
@@ -227,6 +244,7 @@ def before_all(context):
                 )
                 session.add(obs)
         session.commit()
+        session.refresh(well_1)
 
 
 def after_all(context):
