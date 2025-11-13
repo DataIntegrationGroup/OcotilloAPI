@@ -166,6 +166,9 @@ class WellResponse(BaseThingResponse):
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
+    allow_water_level_samples: bool | None
+    allow_water_chemistry_samples: bool | None
+    allow_datalogger_installation: bool | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

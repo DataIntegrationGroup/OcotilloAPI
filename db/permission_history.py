@@ -29,7 +29,7 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Foreign Keys ---
     contact_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("contact.id"), nullable=False
+        Integer, ForeignKey("contact.id", ondelete="CASCADE"), nullable=False
     )
 
     # --- Columns ---
@@ -52,13 +52,13 @@ class PermissionHistory(Base, AutoBaseMixin, ReleaseMixin):
     # They tell SQLAlchemy exactly how to find the specific parent record for a given child.
     _thing_target: Mapped["Thing"] = relationship(
         "Thing",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == thing.id, "
+        primaryjoin="and_(foreign(PermissionHistory.target_id) == Thing.id, "
         "PermissionHistory.target_table == 'thing')",
         viewonly=True,
     )
     _location_target: Mapped["Location"] = relationship(
         "Location",
-        primaryjoin="and_(foreign(PermissionHistory.target_id) == location.id, "
+        primaryjoin="and_(foreign(PermissionHistory.target_id) == Location.id, "
         "PermissionHistory.target_table == 'location')",
         viewonly=True,
     )
@@ -81,7 +81,7 @@ class PermissionHistoryMixin:
     """
 
     @declared_attr
-    def permissions(cls):
+    def permission_history(cls):
         # One-to-Many polymorphic relationship
         return relationship(
             "PermissionHistory",

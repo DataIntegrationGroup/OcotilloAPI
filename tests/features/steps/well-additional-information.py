@@ -1,6 +1,6 @@
 from behave import when, then
 
-from services.util import retrieve_polymorphic_table_record
+from services.util import retrieve_latest_polymorphic_table_record
 
 
 @when("the user retrieves the well by ID via path parameter")
@@ -26,28 +26,26 @@ def step_impl(context):
     "the response should include whether repeat measurement permission is granted for the well"
 )
 def step_impl(context):
-    assert "permissions" in context.data
-
-    permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "Water Level Sample", latest=True
+    assert "allow_water_level_samples" in context.data
+    permission_record = retrieve_latest_polymorphic_table_record(
+        context.well, "permission_history", "Water Level Sample"
     )
-
     assert (
-        context.data["permissions"]["allow_water_level_samples"]
+        context.data["allow_water_level_samples"]
         == permission_record.permission_allowed
     )
 
 
 @then("the response should include whether sampling permission is granted for the well")
 def step_impl(context):
-    assert "permissions" in context.data
+    assert "allow_water_chemistry_samples" in context.data
 
-    permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "Water Chemistry Sample", latest=True
+    permission_record = retrieve_latest_polymorphic_table_record(
+        context.well, "permission_history", "Water Chemistry Sample"
     )
 
     assert (
-        context.data["permissions"]["allow_water_chemistry_samples"]
+        context.data["allow_water_chemistry_samples"]
         == permission_record.permission_allowed
     )
 
@@ -56,14 +54,14 @@ def step_impl(context):
     "the response should include whether datalogger installation permission is granted for the well"
 )
 def step_impl(context):
-    assert "permissions" in context.data
+    assert "allow_datalogger_installation" in context.data
 
-    permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "Datalogger Installation", latest=True
+    permission_record = retrieve_latest_polymorphic_table_record(
+        context.well, "permission_history", "Datalogger Installation"
     )
 
     assert (
-        context.data["permissions"]["allow_datalogger_installation"]
+        context.data["allow_datalogger_installation"]
         == permission_record.permission_allowed
     )
 

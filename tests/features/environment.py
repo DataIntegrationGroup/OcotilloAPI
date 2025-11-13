@@ -145,7 +145,7 @@ def add_spring(context, session, location, name_num):
 def add_contact(context, session):
     contact = Contact(
         name="Test Contact",
-        role="Field Technician",
+        role="Software Developer",
         organization="NMBGMR",
         release_status="draft",
         contact_type="Primary",
@@ -281,11 +281,11 @@ def before_all(context):
 
         add_well_casing_material(context, session, well_1)
 
-        add_contact(context, session)
+        contact = add_contact(context, session)
         add_permission_history(
             context,
             session,
-            contact_id=context.objects["contacts"][0].id,
+            contact_id=contact.id,
             permission_type="Datalogger Installation",
             permission_allowed=True,
             start_date=datetime(2025, 1, 1).date(),
@@ -310,7 +310,7 @@ def before_all(context):
             context,
             session,
             contact_id=context.objects["contacts"][0].id,
-            permission_type="Chemistry Sample",
+            permission_type="Water Chemistry Sample",
             permission_allowed=False,
             start_date=datetime(2025, 1, 1).date(),
             end_date=None,
@@ -338,8 +338,10 @@ def before_all(context):
 def after_all(context):
     with session_ctx() as session:
         for table in context.objects.values():
-            for obj in table:
-                session.delete(obj)
+            for record in table:
+                obj = session.get(record.__class__, record.id)
+                if obj:
+                    session.delete(obj)
         session.commit()
 
 

@@ -29,6 +29,7 @@ from db.base import (
     StatusHistoryMixin,
 )
 from db.permission_history import PermissionHistoryMixin
+from services.util import retrieve_latest_polymorphic_table_record
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -290,6 +291,36 @@ class Thing(
             if current_location and current_location[0].effective_end is None
             else None
         )
+
+    @property
+    def allow_water_level_samples(self):
+        """
+        Returns the current permissions for the Thing.
+        """
+        permission_record = retrieve_latest_polymorphic_table_record(
+            self, "permission_history", "Water Level Sample"
+        )
+        return permission_record.permission_allowed if permission_record else None
+
+    @property
+    def allow_water_chemistry_samples(self):
+        """
+        Returns the current permissions for the Thing.
+        """
+        permission_record = retrieve_latest_polymorphic_table_record(
+            self, "permission_history", "Water Chemistry Sample"
+        )
+        return permission_record.permission_allowed if permission_record else None
+
+    @property
+    def allow_datalogger_installation(self):
+        """
+        Returns the current permissions for the Thing.
+        """
+        permission_record = retrieve_latest_polymorphic_table_record(
+            self, "permission_history", "Datalogger Installation"
+        )
+        return permission_record.permission_allowed if permission_record else None
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
