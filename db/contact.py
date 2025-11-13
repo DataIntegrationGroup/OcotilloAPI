@@ -75,7 +75,9 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
 
     # One-To-Many: A Contact can grant many Permissions.
     permissions: Mapped[List["PermissionHistory"]] = relationship(
-        "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
+        "PermissionHistory",
+        back_populates="contact",
+        cascade="all, delete, delete-orphan",
     )
     # One-To-Many: A Contact can be associated with many Authors (in Publications).
     author_associations: Mapped[List["AuthorContactAssociation"]] = relationship(

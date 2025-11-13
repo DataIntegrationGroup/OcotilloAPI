@@ -3,11 +3,13 @@ import json
 from shapely.ops import transform
 import pyproj
 import httpx
+from sqlalchemy.orm import DeclarativeBase
 
 from constants import SRID_WGS84
-from db import Base
+
 
 TRANSFORMERS = {}
+METERS_TO_FEET = 3.28084
 
 
 def transform_srid(geometry, source_srid, target_srid):
@@ -25,6 +27,20 @@ def transform_srid(geometry, source_srid, target_srid):
     else:
         transformer = TRANSFORMERS[transformer_key]
     return transform(transformer.transform, geometry)
+
+
+def convert_m_to_ft(meters: float | None) -> float | None:
+    """Convert a length from meters to feet."""
+    if meters is None:
+        return None
+    return round(meters * METERS_TO_FEET, 6)
+
+
+def convert_ft_to_m(feet: float | None) -> float | None:
+    """Convert a length from feet to meters."""
+    if feet is None:
+        return None
+    return round(feet / METERS_TO_FEET, 6)
 
 
 def get_tiger_data(
@@ -116,29 +132,31 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     return data["value"]
 
 
-def retrieve_polymorphic_table_record(
-    target_record: Base,
+def retrieve_latest_polymorphic_table_record(
+    target_record: DeclarativeBase,
     polymorphic_relationship: str,
     polymorphic_type: str,
-    latest=True,
-) -> Base:
+) -> DeclarativeBase | None:
     """
-    Retrieve a record from a polymorphic table. This function assumes that the
-    parent class has the correct mixin to support retrieval via an attribute.
+    Retrieve the latest record from a polymorphic table. This function assumes that the
+    parent class has the correct mixin to support retrieval via an attribute. This
+    requires end_date to be None
 
     Parameters:
     ----------
-    target_record : Base
+    target_record : DeclarativeBase
         The parent record from which to retrieve the polymorphic child record.
-
     polymorphic_relationship : str
         The name of the relationship attribute on the parent record that corresponds to the polymorphic table.
-
     polymorphic_type : str
         The specific type of the polymorphic record to retrieve (e.g., 'Use Status' or 'Monitoring Status' for StatusHistory).
-
     latest : bool, optional
         If True, retrieves the latest record based on start_date. Defaults to True.
+
+    Returns
+    -------
+    DeclarativeBase | None
+        The latest record from the specified polymorphic table with the defined type if it exists.
     """
     if polymorphic_relationship == "permissions":
         type_field = "permission_type"
@@ -147,12 +165,17 @@ def retrieve_polymorphic_table_record(
 
     polymorphic_records = getattr(target_record, polymorphic_relationship)
     type_polymorphic_records = [
-        r for r in polymorphic_records if getattr(r, type_field) == polymorphic_type
+        r
+        for r in polymorphic_records
+        if getattr(r, type_field) == polymorphic_type and r.end_date is None
     ]
     sorted_type_polymorphic_records = sorted(
-        type_polymorphic_records, key=lambda r: r.start_date, reverse=latest
+        type_polymorphic_records, key=lambda r: r.start_date, reverse=True
     )
-    return sorted_type_polymorphic_records[0]
+    if sorted_type_polymorphic_records:
+        return sorted_type_polymorphic_records[0]
+    else:
+        return None
 
 
 if __name__ == "__main__":

@@ -22,12 +22,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 # Permissions / Operational OK flags
 # ------------------------------------------------------------------------------
-# TODO: the API needs to be updated to include Permissions
-# TODO: the schema and test data need to be updated
-# TODO: should the testing data and tests contain multiple permissions, one that has expired?
-# TODO: what are the permission_types that will be used? after they have been determined update these tests
-
-
 @then(
     "the response should include whether repeat measurement permission is granted for the well"
 )
@@ -35,11 +29,11 @@ def step_impl(context):
     assert "permissions" in context.data
 
     permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "allow_water_level_measurements", latest=True
+        context.well, "permissions", "Water Level Sample", latest=True
     )
 
     assert (
-        context.data["permissions"]["allow_water_level_measurements"]
+        context.data["permissions"]["allow_water_level_samples"]
         == permission_record.permission_allowed
     )
 
@@ -49,16 +43,15 @@ def step_impl(context):
     assert "permissions" in context.data
 
     permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "allow_water_chemistry_sample", latest=True
+        context.well, "permissions", "Water Chemistry Sample", latest=True
     )
 
     assert (
-        context.data["permissions"]["allow_sampling"]
+        context.data["permissions"]["allow_water_chemistry_samples"]
         == permission_record.permission_allowed
     )
 
 
-# TODO: should this be datalogger specific?
 @then(
     "the response should include whether datalogger installation permission is granted for the well"
 )
@@ -66,11 +59,11 @@ def step_impl(context):
     assert "permissions" in context.data
 
     permission_record = retrieve_polymorphic_table_record(
-        context.well, "permissions", "allow_data_logger_installation", latest=True
+        context.well, "permissions", "Datalogger Installation", latest=True
     )
 
     assert (
-        context.data["permissions"]["allow_data_logger_installation"]
+        context.data["permissions"]["allow_datalogger_installation"]
         == permission_record.permission_allowed
     )
 

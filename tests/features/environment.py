@@ -30,6 +30,8 @@ from db import (
     Deployment,
     TransducerObservationBlock,
     WellCasingMaterial,
+    PermissionHistory,
+    Contact,
 )
 from db.engine import session_ctx
 
@@ -139,6 +141,54 @@ def add_spring(context, session, location, name_num):
     return spring
 
 
+@add_context_object_container("contacts")
+def add_contact(context, session):
+    contact = Contact(
+        name="Test Contact",
+        role="Field Technician",
+        organization="NMBGMR",
+        release_status="draft",
+        contact_type="Primary",
+    )
+    session.add(contact)
+    session.commit()
+    session.refresh(contact)
+
+    context.objects["contacts"].append(contact)
+    return contact
+
+
+@add_context_object_container("permission_histories")
+def add_permission_history(
+    context,
+    session,
+    contact_id,
+    permission_type,
+    permission_allowed,
+    start_date,
+    end_date,
+    notes,
+    target_id,
+    target_table,
+):
+    permission_history = PermissionHistory(
+        contact_id=contact_id,
+        permission_type=permission_type,
+        permission_allowed=permission_allowed,
+        start_date=start_date,
+        end_date=end_date,
+        notes=notes,
+        target_id=target_id,
+        target_table=target_table,
+    )
+    session.add(permission_history)
+    session.commit()
+    session.refresh(permission_history)
+
+    context.objects["permission_histories"].append(permission_history)
+    return permission_history
+
+
 @add_context_object_container("sensors")
 def add_sensor(context, session, sid):
     sensor = Sensor(
@@ -230,6 +280,44 @@ def before_all(context):
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
         add_well_casing_material(context, session, well_1)
+
+        add_contact(context, session)
+        add_permission_history(
+            context,
+            session,
+            contact_id=context.objects["contacts"][0].id,
+            permission_type="Datalogger Installation",
+            permission_allowed=True,
+            start_date=datetime(2025, 1, 1).date(),
+            end_date=None,
+            notes="Permission granted for datalogger installation.",
+            target_id=well_1.id,
+            target_table="thing",
+        )
+        add_permission_history(
+            context,
+            session,
+            contact_id=context.objects["contacts"][0].id,
+            permission_type="Water Level Sample",
+            permission_allowed=True,
+            start_date=datetime(2025, 1, 1).date(),
+            end_date=None,
+            notes="Permission granted for water level sampling.",
+            target_id=well_1.id,
+            target_table="thing",
+        )
+        add_permission_history(
+            context,
+            session,
+            contact_id=context.objects["contacts"][0].id,
+            permission_type="Chemistry Sample",
+            permission_allowed=False,
+            start_date=datetime(2025, 1, 1).date(),
+            end_date=None,
+            notes="Permission granted for chemistry sampling.",
+            target_id=well_1.id,
+            target_table="thing",
+        )
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

@@ -81,14 +81,14 @@ class PermissionHistoryMixin:
     """
 
     @declared_attr
-    def permissions(self):
+    def permissions(cls):
         # One-to-Many polymorphic relationship
         return relationship(
             "PermissionHistory",
             primaryjoin=(
                 and_(
-                    self.__name__.id == foreign(PermissionHistory.target_id),
-                    PermissionHistory.target_table == pascal_to_snake(self.__name__),
+                    cls.id == foreign(PermissionHistory.target_id),
+                    PermissionHistory.target_table == pascal_to_snake(cls.__name__),
                 )
             ),
             lazy="selectin",
