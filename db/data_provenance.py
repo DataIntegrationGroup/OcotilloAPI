@@ -16,10 +16,10 @@ construction details or a site's coordinates.
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, Index
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import Integer, Index, and_
+from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, pascal_to_snake
 
 from db import lexicon_term
 
@@ -101,3 +101,24 @@ class DataProvenance(AutoBaseMixin, ReleaseMixin, Base):
         # Composite index for fast polymorphic lookups
         Index("ix_provenance_targets", "target_id", "target_table"),
     )
+
+
+class DataProvenanceMixin:
+    """
+    Mixin for models that can have data provenance records (e.g., Thing, Location).
+    It automatically creates a polymorphic One-to-Many relationship to the
+    DataProvenance table.
+    """
+
+    @declared_attr
+    def data_provenance(cls):
+        # One-to-Many polymorphic relationship
+        return relationship(
+            "DataProvenance",
+            primaryjoin=and_(
+                cls.id == foreign(DataProvenance.target_id),
+                DataProvenance.target_table == pascal_to_snake(cls.__name__),
+            ),
+            lazy="selectin",
+            viewonly=True,
+        )

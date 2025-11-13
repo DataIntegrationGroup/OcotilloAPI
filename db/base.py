@@ -210,25 +210,6 @@ class PermissionMixin:
         )
 
 
-class DataProvenanceMixin:
-    """
-    Mixin for models that can have data provenance records (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    DataProvenance table.
-    """
-
-    @declared_attr
-    def data_provenance(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "DataProvenance",
-            primaryjoin=f"and_({self.__name__}.id==foreign(DataProvenance.target_id), "
-            f"DataProvenance.target_table=='{self.__name__}')",
-            lazy="selectin",
-            viewonly=True,
-        )
-
-
 class User(Base):
     """Represents a user in the system."""
 
