@@ -165,9 +165,9 @@ def transfer_debugging(sess, limit=100):
     results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
     metrics.well_metrics(sess, *results)
 
-    # message("TRANSFERRING WELL SCREENS")
-    # results = timeit_direct(transfer_wellscreens, sess)
-    # metrics.well_screen_metrics(sess, *results)
+    message("TRANSFERRING WELL SCREENS")
+    results = timeit_direct(transfer_wellscreens, sess)
+    metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")
     results = timeit_direct(transfer_sensors, sess)
@@ -186,9 +186,9 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    # message("TRANSFERRING CONTACTS")
-    # results = timeit_direct(transfer_contacts, sess)
-    # metrics.contact_metrics(sess, *results)
+    message("TRANSFERRING CONTACTS")
+    results = timeit_direct(transfer_contacts, sess)
+    metrics.contact_metrics(sess, *results)
     #
     # message("TRANSFERRING WATER LEVELS")
     # results = timeit_direct(transfer_water_levels, sess)

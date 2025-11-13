@@ -28,7 +28,8 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 
 
 def transfer_sensors(session):
-    input_df = read_csv("Equipment")
+    source_table = "Equipment"
+    input_df = read_csv(source_table)
     input_df.columns = input_df.columns.str.replace(" ", "_")
     input_df = input_df[input_df.SerialNo.notna()]
     cleaned_df = filter_to_valid_point_ids(session, input_df)
@@ -53,11 +54,15 @@ def transfer_sensors(session):
                     logger.critical(
                         f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
                     )
+                    error = (
+                        f"key error adding sensor_type:{row.EquipmentType} error: {e}"
+                    )
                     errors.append(
                         {
                             "pointid": pointid,
-                            "error": f"key error adding sensor_type:{row.EquipmentType} "
-                            f"error: {e}",
+                            "error": error,
+                            "table": source_table,
+                            "field": "EquipmentType",
                         }
                     )
                     continue
@@ -100,8 +105,10 @@ def transfer_sensors(session):
                     errors.append(
                         {
                             "pointid": pointid,
-                            "error": f"{row.ID}, {row.SerialNo}. Installation Date cannot "
+                            "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. Installation Date cannot "
                             f"be None",
+                            "table": source_table,
+                            "field": "DateInstalled",
                         }
                     )
                     continue
@@ -123,8 +130,10 @@ def transfer_sensors(session):
                     errors.append(
                         {
                             "pointid": pointid,
-                            "error": f"{row.ID}, {row.SerialNo}. RecordingInterval is "
+                            "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. RecordingInterval is "
                             f"not an integer",
+                            "table": source_table,
+                            "field": "RecordingInterval",
                         }
                     )
                 sql = (
@@ -173,7 +182,7 @@ def transfer_sensors(session):
             session.commit()
         except Exception as e:
             logger.critical(f"Could not add sensor and deployment: {e}")
-            errors.append({"pointid": pointid, "error": f"row={row}. error={e}"})
+            errors.append({"pointid": pointid, "error": e, "table": source_table})
 
     return input_df, cleaned_df, errors
 

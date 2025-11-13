@@ -1,4 +1,4 @@
-# ===============================================================================
+1  # ===============================================================================
 # Copyright 2025 ross
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,9 @@ from datetime import datetime
 from pathlib import Path
 
 from pandas import DataFrame
+from pydantic import ValidationError
 from sqlalchemy import select, func
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from db import (
@@ -35,7 +37,7 @@ from db import (
 
 
 class Metrics:
-    include_errors = False
+    include_errors = True
 
     def __init__(self):
         # create a new path for the metrics
@@ -132,13 +134,35 @@ class Metrics:
     def _write_errors(self, errors: list) -> None:
         if self.include_errors:
             self._writer.writerow(["PointID", "Error"])
-            for e in errors:
-                error = e["error"]
-                if not isinstance(error, (list, tuple)):
+            for record in errors:
+                error = record["error"]
+                # if not isinstance(error, (list, tuple)):
+                #     error = [error]
+                if isinstance(error, str):
                     error = [error]
+                elif isinstance(error, ValidationError):
+                    nes = []
+                    for e in error.errors():
+                        try:
+                            nes.append(f"{e['loc'][0]}: {e['msg']}")
+                        except IndexError:
+                            nes.append(e["msg"])
+                    error = nes
+                elif isinstance(error, ProgrammingError):
+                    detail = error.orig.args[0].get("D")
+                    # first = error.args[0]
+                    # detail = first.get("D") if isinstance(first, dict) else first
+                    # print('eee', error)
+                    # print('vvve',type(error.args), error.args)
+                    # error=[error]
+                    # error = [error.args[0].get("D")]
+                    error = [detail]
+                elif isinstance(error, Exception):
+                    error = [str(error)]
 
                 for ee in error:
-                    self._writer.writerow([e["pointid"], ee])
+                    self._writer.writerow([record["pointid"], ee])
+
             self._writer.writerow([])
 
     def _write_metrics(

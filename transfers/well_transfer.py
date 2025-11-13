@@ -136,7 +136,7 @@ def get_wells_to_transfer(
 
 def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None:
     input_df, cleaned_df = get_wells_to_transfer(session, flags)
-
+    source_table = "WellData"
     wdf = cleaned_df
     n = len(wdf)
 
@@ -149,7 +149,14 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             logger.critical(
                 f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
             )
-            errors.append({"pointid": pointid, "error": "duplicate records"})
+            errors.append(
+                {
+                    "pointid": pointid,
+                    "error": "duplicate records",
+                    "table": source_table,
+                    "field": "PointID",
+                }
+            )
             continue
 
         if limit and i >= limit:
@@ -177,7 +184,14 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 session.expunge(location)
             # these rollbacks are cause an issue because they are discarding good data
             # session.rollback()
-            errors.append({"pointid": row.PointID, "error": str(e)})
+            errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": e,
+                    "table": "Location",
+                    "field": str(e),
+                }
+            )
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -205,7 +219,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            errors.append({"pointid": row.PointID, "error": e.errors()})
+            errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
@@ -249,7 +263,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             if well is not None:
                 session.expunge(well)
 
-            errors.append({"pointid": row.PointID, "error": str(e)})
+            errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
@@ -307,7 +321,9 @@ def transfer_wellscreens(session, limit=None):
                 logger.critical(
                     f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
                 )
-                errors.append({"pointid": row.PointID, "error": e.errors()})
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": "WellScreens"}
+                )
                 continue
 
             well_screen = WellScreen(**well_screen_data)
