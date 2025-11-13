@@ -1,6 +1,9 @@
 import os
+
 import sentry_sdk
 from dotenv import load_dotenv
+
+from core.initializers import register_routes
 
 load_dotenv()
 
@@ -25,6 +28,8 @@ sentry_sdk.init(
 from starlette.middleware.cors import CORSMiddleware
 
 from core.app import app
+
+register_routes(app)
 
 app.add_middleware(
     CORSMiddleware,
