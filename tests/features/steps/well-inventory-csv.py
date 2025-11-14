@@ -179,6 +179,27 @@ def step_impl(context: Context):
         context.rows = csv.DictReader(context.csv_file_content.splitlines())
 
 
+@given(
+    'my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "utm_easting"'
+)
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-invalid-numeric.csv", "r") as f:
+        context.csv_file_content = f.read()
+
+
+@given("my CSV file contains column headers but no data rows")
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-no-data.csv", "r") as f:
+        context.csv_file_content = f.read()
+        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+
+
+@given("my CSV file is empty")
+def step_impl(context: Context):
+    context.csv_file_content = ""
+    context.rows = []
+
+
 # @given(
 #     "the system has valid lexicon values for contact_role, contact_type, phone_type, email_type, address_type, elevation_method, well_pump_type, well_purpose, well_hole_status, and monitoring_frequency"
 # )
