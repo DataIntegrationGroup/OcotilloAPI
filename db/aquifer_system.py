@@ -8,16 +8,14 @@ from typing import List, TYPE_CHECKING
 
 from sqlalchemy import Text, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from geoalchemy2 import Geometry
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
 if TYPE_CHECKING:
-    from db.thing import (
-        WellScreen,
-        ThingAquiferAssociation,
-    )  # TODO: Add ThingAquiferAssociation class/model to Thing model.
+    from db.thing import WellScreen, ThingAquiferAssociation, Thing
 
 
 class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
@@ -54,7 +52,7 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     # One-To-Many: An AquiferSystem can be associated with many wells (Things) via the ThingAquiferAssociation join table.
-    things: Mapped[List["ThingAquiferAssociation"]] = relationship(
+    thing_associations: Mapped[List["ThingAquiferAssociation"]] = relationship(
         "ThingAquiferAssociation",
         back_populates="aquifer_system",
         cascade="all, delete-orphan",
@@ -67,6 +65,12 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="aquifer_system",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    # --- Association Proxies ---
+    # Many-To-Many Proxy: Provides direct access to the Thing objects.
+    things: AssociationProxy[List["Thing"]] = association_proxy(
+        "thing_associations", "thing"
     )
 
     # --- Table Arguments ---
