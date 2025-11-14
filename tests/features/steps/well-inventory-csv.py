@@ -42,7 +42,7 @@ def step_impl_csv_includes_required_fields(context: Context):
 def step_impl(context: Context):
     """Verifies that each "well_name_point_id" value is unique per row."""
     seen_ids = set()
-    for row in context.table:
+    for row in context.rows:
         if row["well_name_point_id"] in seen_ids:
             raise ValueError(
                 f"Duplicate well_name_point_id: {row['well_name_point_id']}"
@@ -55,7 +55,7 @@ def step_impl(context: Context):
 )
 def step_impl(context: Context):
     """Verifies that "date_time" values are valid ISO 8601 timestamps with timezone offsets."""
-    for row in context.table:
+    for row in context.rows:
         try:
             datetime.fromisoformat(row["date_time"])
         except ValueError as e:
