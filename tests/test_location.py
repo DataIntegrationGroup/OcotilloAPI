@@ -26,7 +26,6 @@ from tests import (
     client,
     override_authentication,
     cleanup_post_test,
-    cleanup_patch_test,
 )
 
 
@@ -130,7 +129,7 @@ def test_update_location(location):
     payload["state"] = location.state
     payload["county"] = location.county
     payload["quad_name"] = location.quad_name
-    cleanup_patch_test(Location, payload, location)
+    # cleanup_patch_test(Location, payload, location)
 
 
 def test_patch_location_404_not_found(location):

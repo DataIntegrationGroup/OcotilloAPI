@@ -30,8 +30,9 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin, NotesMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
+from db.notes import NotesMixin
 
 if TYPE_CHECKING:
     from db.thing import Thing

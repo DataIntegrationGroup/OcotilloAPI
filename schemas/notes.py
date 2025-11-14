@@ -32,8 +32,8 @@ class NoteResponse(BaseResponseModel, BaseNote):
     Response schema for Note details.
     """
 
-    notable_id: int
-    notable_type: str
+    target_id: int
+    target_table: str
 
 
 # -------- UPDATE ----------

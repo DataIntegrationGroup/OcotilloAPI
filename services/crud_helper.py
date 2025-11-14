@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, DeclarativeBase
 from starlette.status import HTTP_204_NO_CONTENT
 
-from db import NotesMixin
+from db.notes import NotesMixin
 from services.query_helper import simple_get_by_id
 
 

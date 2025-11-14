@@ -59,7 +59,7 @@ from sqlalchemy_continuum import make_versioned
 from sqlalchemy_searchable import make_searchable
 
 if TYPE_CHECKING:
-    from db.notes import Notes
+    pass
 
 
 make_versioned()
@@ -212,56 +212,6 @@ class PermissionMixin:
             f"Permission.permissible_type=='{self.__name__}')",
             lazy="selectin",
             viewonly=True,
-        )
-
-
-class NotesMixin:
-    """
-    Mixin for models that can have multiple types or categories of notes.
-    It automatically creates a polymorphic One-to-Many relationship to the
-    Notes table.
-    """
-
-    @declared_attr
-    def notes(cls):
-        """
-        The high-performance, declarative relationship for reading notes.
-        This provides a polymorphic one-to-many link to the Notes table.
-
-        PERFORMANCE NOTE: Use with `selectinload` in queries to prevent the
-        N+1 query problem when accessing notes for multiple parent objects.
-        """
-        # All parent tables use 'id' as their primary key.
-        pk_name = "id"
-
-        return relationship(
-            "Notes",
-            primaryjoin=f"and_({cls.__name__}.{pk_name}==foreign(Notes.notable_id), "
-            f"Notes.notable_type=='{cls.__name__}')",
-            lazy="selectin",
-            viewonly=True,
-        )
-
-    def add_note(
-        self,
-        content: str,
-        note_type: str,
-        release_status: str = "draft",
-        created_by: str = None,
-    ) -> "Notes":
-        """
-        A convenient factory method to create a new Note associated with this object.
-        This provides a clean, object-oriented API for writing.
-        """
-        # This import is inside the method to avoid circular import issues at runtime.
-        from db.notes import Notes
-
-        return Notes(
-            content=content,
-            note_type=note_type,
-            notable_id=self.id,
-            notable_type=self.__class__.__name__,
-            release_status=release_status,
         )
 
 

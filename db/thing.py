@@ -20,7 +20,7 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
-from db import lexicon_term
+from db import lexicon_term, NotesMixin
 from db.asset import Asset
 from db.base import (
     AutoBaseMixin,
@@ -28,7 +28,6 @@ from db.base import (
     ReleaseMixin,
     StatusHistoryMixin,
     PermissionMixin,
-    NotesMixin,
 )
 
 if TYPE_CHECKING:
