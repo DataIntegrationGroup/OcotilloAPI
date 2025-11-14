@@ -24,45 +24,44 @@ from db.engine import session_ctx
 def step_impl(context):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.thing_type == "water well")
-        well = session.execute(sql).scalars().first()
-        context.well = well
+        wells = session.execute(sql).unique().scalars().all()
+        assert len(wells) > 0, "No wells found in db"
 
         sql = select(TransducerObservation)
         transducer_observations = session.execute(sql).scalars().all()
-        context.transducer_observations = transducer_observations
-        assert len(transducer_observations) > 0
+        assert len(transducer_observations) > 0, "No transducer observations found db"
 
 
 @when("the user requests transducer data for a non-existing well")
 def step_impl(context):
     context.response = context.client.get(
-        "/observation/transducer-groundwater-level", params={"thing_id": 9999}
+        "/observation/transducer-groundwater-level?thing_id=9999"
     )
 
 
 @when("the user requests transducer data for a well")
 def step_impl(context):
     context.response = context.client.get(
-        "/observation/transducer-groundwater-level",
-        params={"thing_id": context.well.id},
+        f"/observation/transducer-groundwater-level?thing_id={context.objects['wells'][0].id}",
     )
 
 
 @then("each page should be an array of transducer data")
 def step_impl(context):
     data = context.response.json()
-    context.data = data["items"]
-    assert len(context.data) > 0
+    assert len(data["items"]) > 0, "Expected at least one transducer data entry"
 
 
 @then("each transducer data entry should include a timestamp, value, status")
 def step_impl(context):
-    item = context.data[0]["observation"]
-    block = context.data[0]["block"]
+    data = context.response.json()
+    items = data["items"][0]
+    item = items["observation"]
+    block = items["block"]
 
-    assert "observation_datetime" in item
-    assert "value" in item
-    assert "review_status" in block
+    assert "observation_datetime" in item, f"Expected a timestamp in the data {item}"
+    assert "value" in item, f"Expected a value in the data {item}"
+    assert "review_status" in block, f"Expected a review_status in the block {block}"
 
     context.timestamp = item["observation_datetime"]
     context.value = item["value"]
@@ -75,7 +74,9 @@ def step_impl(context):
     from datetime import datetime
 
     dt = datetime.fromisoformat(context.timestamp)
-    assert isinstance(dt, datetime)
+    assert isinstance(
+        dt, datetime
+    ), f"Timestamp is not in ISO 8601 format: {context.timestamp}"
 
 
 @then("the value should be a numeric type")
@@ -83,9 +84,12 @@ def step_impl(context):
     assert isinstance(context.value, (int, float))
 
 
-@then('the status should be one of "Draft", "Corrected"')
+@then('the status should be one of "approved", "not reviewed"')
 def step_impl(context):
-    assert context.status in ("not reviewed",)
+    assert context.status in (
+        "approved",
+        "not reviewed",
+    ), f'Unexpected status: {context.status} not in "approved", "not reviewed"'
 
 
 # ============= EOF =============================================
