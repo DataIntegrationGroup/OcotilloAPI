@@ -68,7 +68,7 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Association Proxies ---
-    # Many-To-Many Proxy: Provides direct access to the Thing objects.
+    # Proxy to directly access Things (wells) associated with this AquiferSystem.
     things: AssociationProxy[List["Thing"]] = association_proxy(
         "thing_associations", "thing"
     )
