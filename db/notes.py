@@ -19,8 +19,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, f
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
-    from db.thing import Thing
-    from db.location import Location
+    pass
 
 
 class Notes(Base, AutoBaseMixin, ReleaseMixin):
@@ -50,16 +49,16 @@ class Notes(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Polymorphic Parent Relationships (Internal) ---
     # These are viewonly relationships used by the 'target' property below.
-    _thing_target: Mapped["Thing"] = relationship(
-        "Thing",
-        primaryjoin="and_(foreign(Notes.target_id) == Thing.id, Notes.target_table == 'thing')",
-        viewonly=True,
-    )
-    _location_target: Mapped["Location"] = relationship(
-        "Location",
-        primaryjoin="and_(foreign(Notes.target_id) == Location.id, Notes.target_table == 'location')",
-        viewonly=True,
-    )
+    # _thing_target: Mapped["Thing"] = relationship(
+    #     "Thing",
+    #     primaryjoin="and_(foreign(Notes.target_id) == Thing.id, Notes.target_table == 'thing')",
+    #     viewonly=True,
+    # )
+    # _location_target: Mapped["Location"] = relationship(
+    #     "Location",
+    #     primaryjoin="and_(foreign(Notes.target_id) == Location.id, Notes.target_table == 'location')",
+    #     viewonly=True,
+    # )
 
     @property
     def target(self):
@@ -102,6 +101,7 @@ class NotesMixin:
             ),
             cascade="all, delete-orphan",
             lazy="selectin",
+            overlaps="notes",
         )
 
     def add_note(

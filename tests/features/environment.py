@@ -29,7 +29,6 @@ from db import (
     Deployment,
     TransducerObservationBlock,
 )
-
 from db.engine import session_ctx
 
 
@@ -49,7 +48,7 @@ def add_context_object_container(name):
 def add_location(context, session):
     loc = Location(
         # name="first location",
-        notes="these are some test notes",
+        # notes="these are some test notes",
         point="POINT(-107.949533 33.809665)",
         elevation=2464.9,
         release_status="draft",
