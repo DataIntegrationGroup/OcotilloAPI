@@ -1,3 +1,6 @@
+import csv
+from datetime import datetime
+
 from behave import given, when, then
 from behave.runner import Context
 
@@ -7,61 +10,221 @@ def step_impl_csv_file_is_encoded_utf8(context: Context):
     """Sets the CSV file encoding to UTF-8 and sets the CSV separator to commas."""
     # context.csv_file.encoding = 'utf-8'
     # context.csv_file.separator = ','
-    context.header = [
-        "project",
-        "well_name_point_id",
-        "site_name",
-        "date_time",
-        "field_staff",
-    ]
+    with open("tests/features/data/well-inventory-valid.csv", "r") as f:
+        context.csv_file_content = f.read()
 
 
-@given(
-    "the system has valid lexicon values for contact_role, contact_type, phone_type, email_type, address_type, elevation_method, well_pump_type, well_purpose, well_hole_status, and monitoring_frequency"
-)
+@given("valid lexicon values exist for:")
 def step_impl_valid_lexicon_values(context: Context):
-    pass
+    print(f"Valid lexicon values: {context.table}")
 
 
-@given(
-    "my CSV file contains multiple rows of well inventory data with the following fields"
-)
+@given("my CSV file contains multiple rows of well inventory data")
 def step_impl_csv_file_contains_multiple_rows(context: Context):
     """Sets up the CSV file with multiple rows of well inventory data."""
-    context.rows = [row.as_dict() for row in context.table]
-    # convert to csv content
-    keys = context.rows[0].keys()
-    nrows = [",".join(keys)]
-    for row in context.rows:
-        nrow = ",".join([row[k] for k in keys])
-        nrows.append(nrow)
+    context.rows = csv.DictReader(context.csv_file_content.splitlines())
 
-    context.csv_file_content = "\n".join(nrows)
+
+@given("the CSV includes required fields:")
+def step_impl_csv_includes_required_fields(context: Context):
+    """Sets up the CSV file with multiple rows of well inventory data."""
+    context.required_fields = [row[0] for row in context.table]
+    print(f"Required fields: {context.required_fields}")
+
+
+@given('each "well_name_point_id" value is unique per row')
+def step_impl(context: Context):
+    """Verifies that each "well_name_point_id" value is unique per row."""
+    seen_ids = set()
+    for row in context.table:
+        if row["well_name_point_id"] in seen_ids:
+            raise ValueError(
+                f"Duplicate well_name_point_id: {row['well_name_point_id']}"
+            )
+        seen_ids.add(row["well_name_point_id"])
+
+
+@given(
+    '"date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")'
+)
+def step_impl(context: Context):
+    """Verifies that "date_time" values are valid ISO 8601 timestamps with timezone offsets."""
+    for row in context.table:
+        try:
+            datetime.fromisoformat(row["date_time"])
+        except ValueError as e:
+            raise ValueError(f"Invalid date_time: {row['date_time']}") from e
+
+
+@given("the CSV includes optional fields when available:")
+def step_impl(context: Context):
+    optional_fields = [row[0] for row in context.table]
+    print(f"Optional fields: {optional_fields}")
 
 
 @when("I upload the CSV file to the bulk upload endpoint")
-def step_impl_upload_csv_file(context: Context):
-    """Uploads the CSV file to the bulk upload endpoint."""
-    # Simulate uploading the CSV file to the bulk upload endpoint
+def step_impl(context: Context):
     context.response = context.client.post(
-        "/bulk-upload/well-inventory",
-        files={"file": ("well_inventory.csv", context.csv_file_content, "text/csv")},
+        "/well-inventory-csv", data={"file": context.csv_file_content}
     )
 
 
-@then(
-    "null values in the response should be represented as JSON null (not placeholder strings)"
-)
-def step_impl_null_values_as_json_null(context: Context):
-    """Verifies that null values in the response are represented as JSON null."""
+@then("the response includes a summary containing:")
+def step_impl(context: Context):
     response_json = context.response.json()
-    for record in response_json:
-        for key, value in record.items():
-            if value is None:
-                assert (
-                    value is None
-                ), f"Expected JSON null for key '{key}', but got '{value}'"
+    summary = response_json.get("summary", {})
+    for row in context.table:
+        field = row[0]
+        expected_value = int(row[1])
+        actual_value = summary.get(field)
+        assert (
+            actual_value == expected_value
+        ), f"Expected {expected_value} for {field}, but got {actual_value}"
 
+
+@then("the response includes an array of created well objects")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    wells = response_json.get("wells", [])
+    assert len(wells) == len(
+        context.rows
+    ), "Expected the same number of wells as rows in the CSV"
+
+
+@given('my CSV file contains rows missing a required field "well_name_point_id"')
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-invalid.csv", "r") as f:
+        context.csv_file_content = f.read()
+        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+
+
+@then("the response includes validation errors for all rows missing required fields")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == len(
+        context.rows
+    ), "Expected the same number of validation errors as rows in the CSV"
+    for row in context.rows:
+        assert (
+            row["well_name_point_id"] in validation_errors
+        ), f"Missing required field for row {row}"
+
+
+@then("the response identifies the row and field for each error")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    for error in validation_errors:
+        assert "row" in error, "Expected validation error to include row number"
+        assert "field" in error, "Expected validation error to include field name"
+
+
+@then("no wells are imported")
+def step_impl(context: Context):
+    pass
+
+
+@given('my CSV file contains one or more duplicate "well_name_point_id" values')
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-duplicate.csv", "r") as f:
+        context.csv_file_content = f.read()
+        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+
+
+@then("the response includes validation errors indicating duplicated values")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == len(
+        context.rows
+    ), "Expected the same number of validation errors as rows in the CSV"
+    for row in context.rows:
+        assert (
+            row["well_name_point_id"] in validation_errors
+        ), f"Missing required field for row {row}"
+
+
+@then("each error identifies the row and field")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    for error in validation_errors:
+        assert "row" in error, "Expected validation error to include row number"
+        assert "field" in error, "Expected validation error to include field name"
+
+
+@then("the response includes validation errors identifying the invalid field and row")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    for error in validation_errors:
+        assert "field" in error, "Expected validation error to include field name"
+        assert "error" in error, "Expected validation error to include error message"
+
+
+@given(
+    'my CSV file contains invalid lexicon values for "contact_role" or other lexicon fields'
+)
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-invalid-lexicon.csv", "r") as f:
+        context.csv_file_content = f.read()
+        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+
+
+@given('my CSV file contains invalid ISO 8601 date values in the "date_time" field')
+def step_impl(context: Context):
+    with open("tests/features/data/well-inventory-invalid-date.csv", "r") as f:
+        context.csv_file_content = f.read()
+        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+
+
+# @given(
+#     "the system has valid lexicon values for contact_role, contact_type, phone_type, email_type, address_type, elevation_method, well_pump_type, well_purpose, well_hole_status, and monitoring_frequency"
+# )
+# def step_impl_valid_lexicon_values(context: Context):
+#     pass
+#
+#
+# @given(
+#     "my CSV file contains multiple rows of well inventory data with the following fields"
+# )
+# def step_impl_csv_file_contains_multiple_rows(context: Context):
+#     """Sets up the CSV file with multiple rows of well inventory data."""
+#     context.rows = [row.as_dict() for row in context.table]
+#     # convert to csv content
+#     keys = context.rows[0].keys()
+#     nrows = [",".join(keys)]
+#     for row in context.rows:
+#         nrow = ",".join([row[k] for k in keys])
+#         nrows.append(nrow)
+#
+#     context.csv_file_content = "\n".join(nrows)
+#
+#
+# @when("I upload the CSV file to the bulk upload endpoint")
+# def step_impl_upload_csv_file(context: Context):
+#     """Uploads the CSV file to the bulk upload endpoint."""
+#     # Simulate uploading the CSV file to the bulk upload endpoint
+#     context.response = context.client.post(
+#         "/bulk-upload/well-inventory",
+#         files={"file": ("well_inventory.csv", context.csv_file_content, "text/csv")},
+#     )
+#
+#
+# @then(
+#     "null values in the response should be represented as JSON null (not placeholder strings)"
+# )
+# def step_impl_null_values_as_json_null(context: Context):
+#     """Verifies that null values in the response are represented as JSON null."""
+#     response_json = context.response.json()
+#     for record in response_json:
+#         for key, value in record.items():
+#             if value is None:
+#                 assert (
+#                     value is None
+#                 ), f"Expected JSON null for key '{key}', but got '{value}'"
+#
 
 #
 # @given('the field "project" is provided')

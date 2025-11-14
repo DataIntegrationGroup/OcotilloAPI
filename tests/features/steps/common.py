@@ -72,6 +72,13 @@ def step_impl(context):
     ), f"Unexpected response: {context.response.text}"
 
 
+@then("the system returns a 201 Created status code")
+def step_impl(context):
+    assert (
+        context.response.status_code == 201
+    ), f"Unexpected response status code {context.response.status_code}"
+
+
 @then("the system should return a 200 status code")
 def step_impl(context):
     assert (
@@ -83,6 +90,13 @@ def step_impl(context):
 def step_impl(context):
     assert (
         context.response.status_code == 404
+    ), f"Unexpected response status code {context.response.status_code}"
+
+
+@then("the system returns a 422 Unprocessable Entity status code")
+def step_impl(context):
+    assert (
+        context.response.status_code == 422
     ), f"Unexpected response status code {context.response.status_code}"
 
 
