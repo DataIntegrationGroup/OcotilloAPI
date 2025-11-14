@@ -1,5 +1,7 @@
 import csv
 from datetime import datetime
+from pathlib import Path
+from typing import List
 
 from behave import given, when, then
 from behave.runner import Context
@@ -11,7 +13,7 @@ def step_impl_csv_file_is_encoded_utf8(context: Context):
     # context.csv_file.encoding = 'utf-8'
     # context.csv_file.separator = ','
     with open("tests/features/data/well-inventory-valid.csv", "r") as f:
-        context.csv_file_content = f.read()
+        context.file_content = f.read()
 
 
 @given("valid lexicon values exist for:")
@@ -22,7 +24,11 @@ def step_impl_valid_lexicon_values(context: Context):
 @given("my CSV file contains multiple rows of well inventory data")
 def step_impl_csv_file_contains_multiple_rows(context: Context):
     """Sets up the CSV file with multiple rows of well inventory data."""
-    context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    context.rows = _get_rows(context)
+
+
+def _get_rows(context: Context) -> List[str]:
+    return list(csv.DictReader(context.file_content.splitlines()))
 
 
 @given("the CSV includes required fields:")
@@ -62,10 +68,10 @@ def step_impl(context: Context):
     print(f"Optional fields: {optional_fields}")
 
 
-@when("I upload the CSV file to the bulk upload endpoint")
+@when("I upload the file to the bulk upload endpoint")
 def step_impl(context: Context):
     context.response = context.client.post(
-        "/well-inventory-csv", data={"file": context.csv_file_content}
+        "/well-inventory-csv", data={"file": context.file_content}
     )
 
 
@@ -87,15 +93,13 @@ def step_impl(context: Context):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
     assert len(wells) == len(
-        context.rows
+        context.row_count
     ), "Expected the same number of wells as rows in the CSV"
 
 
 @given('my CSV file contains rows missing a required field "well_name_point_id"')
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-invalid.csv", "r") as f:
-        context.csv_file_content = f.read()
-        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    _set_file_content(context, "well-inventory-missing-required.csv")
 
 
 @then("the response includes validation errors for all rows missing required fields")
@@ -127,9 +131,7 @@ def step_impl(context: Context):
 
 @given('my CSV file contains one or more duplicate "well_name_point_id" values')
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-duplicate.csv", "r") as f:
-        context.csv_file_content = f.read()
-        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    _set_file_content(context, "well-inventory-duplicate.csv")
 
 
 @then("the response includes validation errors indicating duplicated values")
@@ -163,41 +165,74 @@ def step_impl(context: Context):
         assert "error" in error, "Expected validation error to include error message"
 
 
+def _set_file_content(context: Context, name):
+    path = Path("tests") / "features" / "data" / name
+    with open(path, "r") as f:
+        context.file_content = f.read()
+        if name.endswith(".csv"):
+            context.rows = _get_rows(context)
+
+
 @given(
     'my CSV file contains invalid lexicon values for "contact_role" or other lexicon fields'
 )
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-invalid-lexicon.csv", "r") as f:
-        context.csv_file_content = f.read()
-        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    _set_file_content(context, "well-inventory-invalid-lexicon.csv")
 
 
 @given('my CSV file contains invalid ISO 8601 date values in the "date_time" field')
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-invalid-date.csv", "r") as f:
-        context.csv_file_content = f.read()
-        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    _set_file_content(context, "well-inventory-invalid-date.csv")
 
 
 @given(
     'my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "utm_easting"'
 )
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-invalid-numeric.csv", "r") as f:
-        context.csv_file_content = f.read()
+    _set_file_content(context, "well-inventory-invalid-numeric.csv")
 
 
 @given("my CSV file contains column headers but no data rows")
 def step_impl(context: Context):
-    with open("tests/features/data/well-inventory-no-data.csv", "r") as f:
-        context.csv_file_content = f.read()
-        context.rows = csv.DictReader(context.csv_file_content.splitlines())
+    _set_file_content(context, "well-inventory-no-data-headers.csv")
 
 
 @given("my CSV file is empty")
 def step_impl(context: Context):
-    context.csv_file_content = ""
+    context.file_content = ""
     context.rows = []
+
+
+@given("I have a non-CSV file")
+def step_impl(context: Context):
+    _set_file_content(context, "well-inventory-invalid-filetype.txt")
+
+
+@then("the response includes an error message indicating unsupported file type")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "error" in response_json, "Expected response to include an error message"
+    assert (
+        "Unsupported file type" in response_json["error"]
+    ), "Expected error message to indicate unsupported file type"
+
+
+@then("the response includes an error message indicating an empty file")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "error" in response_json, "Expected response to include an error message"
+    assert (
+        "Empty file" in response_json["error"]
+    ), "Expected error message to indicate an empty file"
+
+
+@then("the response includes an error indicating that no data rows were found")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "error" in response_json, "Expected response to include an error message"
+    assert (
+        "No data rows found" in response_json["error"]
+    ), "Expected error message to indicate no data rows were found"
 
 
 # @given(
@@ -220,7 +255,7 @@ def step_impl(context: Context):
 #         nrow = ",".join([row[k] for k in keys])
 #         nrows.append(nrow)
 #
-#     context.csv_file_content = "\n".join(nrows)
+#     context.file_content = "\n".join(nrows)
 #
 #
 # @when("I upload the CSV file to the bulk upload endpoint")
@@ -229,7 +264,7 @@ def step_impl(context: Context):
 #     # Simulate uploading the CSV file to the bulk upload endpoint
 #     context.response = context.client.post(
 #         "/bulk-upload/well-inventory",
-#         files={"file": ("well_inventory.csv", context.csv_file_content, "text/csv")},
+#         files={"file": ("well_inventory.csv", context.file_content, "text/csv")},
 #     )
 #
 #
