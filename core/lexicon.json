@@ -2,6 +2,7 @@
     {"name": "activity_type", "description": null},
     {"name": "address_type", "description": null},
     {"name": "analysis_method_type", "description": null},
+    {"name": "aquifer_type", "description": null},
     {"name": "casing_material", "description": null},
     {"name": "collection_method", "description": null},
     {"name": "well_construction_method", "description": null},
@@ -18,6 +19,7 @@
     {"name": "email_type", "description": null},
     {"name": "participant_role", "description": null},
     {"name": "geochronology", "description": null},
+    {"name": "geographic_scale", "description": null},
     {"name": "groundwater_level_reason", "description": null},
     {"name": "group_type", "description": null},
     {"name": "horizontal_datum", "description": null},
@@ -678,6 +680,19 @@
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
     {"categories": ["well_pump_type"], "term": "Jet Pump", "definition": "Jet Pump"},
     {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
-    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"}
+    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"},
+    {"categories": ["aquifer_type"], "term": "Artesian", "definition": "Artesian"},
+    {"categories": ["aquifer_type"], "term": "Confined, single", "definition": "Confined single aquifer"},
+    {"categories": ["aquifer_type"], "term": "Confined, multiple", "definition": "Confined multiple aquifers"},
+    {"categories": ["aquifer_type"], "term": "Fractured", "definition": "Fractured"},
+    {"categories": ["aquifer_type"], "term": "Mixed", "definition": "Mix of confined and unconfined aquifers"},
+    {"categories": ["aquifer_type"], "term": "Perched", "definition": "Perched"},
+    {"categories": ["aquifer_type"], "term": "Semi-confined", "definition": "Semi-confined"},
+    {"categories": ["aquifer_type"], "term": "Unconfined, single", "definition": "Unconfined single aquifer"},
+    {"categories": ["aquifer_type"], "term": "Unconfined, multiple", "definition": "Unconfined multiple aquifers"},
+    {"categories": ["aquifer_type"], "term": "Unsaturated", "definition": "Unsaturated (dry)"},
+    {"categories": ["geographic_scale"], "term": "Major", "definition": "Major"},
+    {"categories": ["geographic_scale"], "term": "Intermediate", "definition": "Regional"},
+    {"categories": ["geographic_scale"], "term": "Local", "definition": "Local"}
   ]
 }
