@@ -21,44 +21,9 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import Base
-from db.engine import engine, session_ctx
+from db.engine import session_ctx
 from db.parameter import Parameter
 from services.lexicon_helper import add_lexicon_term, add_lexicon_category
-
-
-# ============= EOF =============================================
-def init_db():
-    """
-    Initialize the database by creating all tables.
-    This function is called during application startup.
-    """
-
-    from sqlalchemy import text
-
-    with engine.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
-
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-
-
-def init_hypertables():
-    """
-    Initialize hypertables for time-series data.
-    This function is called during application startup.
-    """
-    # session = next(get_db_session())
-    # Create hypertables for time-series data
-    with session_ctx() as session:
-        session.execute(
-            text("select create_hypertable('observation', 'observation_datetime');")
-        )
-
-    # session.commit()
-    # session.close()
 
 
 def init_parameter(path: str = None) -> None:
@@ -92,13 +57,10 @@ def init_parameter(path: str = None) -> None:
 
 
 def erase_and_rebuild_db(session: Session):
-    from sqlalchemy import text
-
     session.execute(text("DROP SCHEMA public CASCADE"))
     session.execute(text("CREATE SCHEMA public"))
     session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
     session.commit()
-
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
 
@@ -173,3 +135,6 @@ def register_routes(app):
     app.include_router(search_router)
     app.include_router(thing_router)
     add_pagination(app)
+
+
+# ============= EOF =============================================

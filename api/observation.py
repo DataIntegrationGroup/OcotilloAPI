@@ -25,7 +25,7 @@ from core.dependencies import (
     amp_editor_dependency,
     amp_viewer_dependency,
 )
-from db import Observation
+from db import Observation, Parameter
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
@@ -113,8 +113,6 @@ async def update_water_chemistry_observation(
 
 
 # ============= Get ==============================================
-
-
 @router.get(
     "/transducer-groundwater-level",
     summary="Get transducer groundwater level observations",
@@ -124,12 +122,19 @@ async def get_transducer_groundwater_level_observations(
     session: session_dependency,
     user: amp_viewer_dependency,
     thing_id: int | None = None,
-    parameter_id: int | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> CustomPage[TransducerObservationWithBlockResponse]:
+
+    groundwater_parameter_id = (
+        session.query(Parameter)
+        .filter(Parameter.parameter_name == "groundwater level")
+        .one()
+        .id
+    )
+
     return get_transducer_observations(
-        session, thing_id, parameter_id, start_time, end_time
+        session, thing_id, groundwater_parameter_id, start_time, end_time
     )
 
 

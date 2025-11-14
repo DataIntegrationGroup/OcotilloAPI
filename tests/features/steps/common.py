@@ -123,4 +123,12 @@ def step_impl(context):
     ), f"Unexpected response type {context.response.headers['Content-Type']}"
 
 
+@then("the items should be an empty list")
+def step_impl(context):
+    data = context.response.json()
+    assert len(data["items"]) == 0, f'Unexpected items {data["items"]}'
+    assert data["total"] == 0, f'Unexpected total {data["total"]}'
+    assert data["page"] == 1, f'Unexpected page {data["page"]}'
+
+
 # ============= EOF =============================================
