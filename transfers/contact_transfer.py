@@ -103,7 +103,9 @@ def transfer_contacts(session):
                     f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
                 )
                 # session.rollback()
-                errors.append({"pointid": row.PointID, "error": e})
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": source_table}
+                )
             except Exception as e:
                 logger.critical(
                     f"Skipping first contact for PointID {row.PointID} due to error: {e}"

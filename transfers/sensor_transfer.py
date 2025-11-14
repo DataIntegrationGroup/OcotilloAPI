@@ -36,6 +36,7 @@ def transfer_sensors(session):
     cleaned_df = replace_nans(cleaned_df)
     errors = []
     grouped_equipment = cleaned_df.groupby(["PointID"])
+    added = {}
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -67,17 +68,23 @@ def transfer_sensors(session):
                     )
                     continue
 
-                sensor = (
-                    session.query(Sensor)
-                    .filter(Sensor.serial_no == row.SerialNo)
-                    .one_or_none()
-                )
-                if sensor:
+                if row.SerialNo in added:
                     logger.info(
-                        f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
+                        f"Sensor with serial number {row.SerialNo} already added in this transfer session. Only creating deployment for that record"
                     )
+                    sensor = added[row.SerialNo]
                 else:
+                    sensor = (
+                        session.query(Sensor)
+                        .filter(Sensor.serial_no == row.SerialNo)
+                        .one_or_none()
+                    )
+                    if sensor:
+                        logger.info(
+                            f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
+                        )
 
+                if not sensor:
                     # TODO: Add validation
                     sensor = Sensor(
                         nma_pk_equipment=row.GlobalID,
@@ -88,6 +95,7 @@ def transfer_sensors(session):
                         owner_agency="NMBGMR",
                         notes=row.Equipment_Notes,
                     )
+                    added[row.SerialNo] = sensor
                     session.add(sensor)
                     logger.info(
                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"

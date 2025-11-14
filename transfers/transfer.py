@@ -190,9 +190,9 @@ def transfer_debugging(sess, limit=100):
     results = timeit_direct(transfer_contacts, sess)
     metrics.contact_metrics(sess, *results)
     #
-    # message("TRANSFERRING WATER LEVELS")
-    # results = timeit_direct(transfer_water_levels, sess)
-    # metrics.water_level_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS")
+    results = timeit_direct(transfer_water_levels, sess)
+    metrics.water_level_metrics(sess, *results)
 
     # message("TRANSFERRING WATER LEVELS PRESSURE")
     # results = timeit_direct(transfer_water_levels_pressure, sess)
@@ -223,6 +223,7 @@ def transfer_debugging(sess, limit=100):
     # timeit_direct(transfer_water_levels_acoustic, sess)
     # message("TRANSFERRING ASSETS")
     # timeit_direct(transfer_assets, sess)
+    metrics.close()
 
 
 def main():

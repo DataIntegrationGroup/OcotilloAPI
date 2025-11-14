@@ -50,10 +50,14 @@ class Metrics:
 
         self.path = root / f"metrics_{datetime.now().strftime('%Y-%m-%dT%H_%M_%S')}.csv"
         delimiter = "|" if self.include_errors else ","
-        self._writer = csv.writer(self.path.open("a"), delimiter=delimiter)
+        self._fileobj = self.path.open("w")
+        self._writer = csv.writer(self._fileobj, delimiter=delimiter)
         self._writer.writerow(
             ["model", "input_count", "cleaned_count", "transferred", "issue_percentage"]
         )
+
+    def close(self):
+        self._fileobj.close()
 
     def well_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
@@ -133,7 +137,7 @@ class Metrics:
 
     def _write_errors(self, errors: list) -> None:
         if self.include_errors:
-            self._writer.writerow(["PointID", "Error"])
+            self._writer.writerow(["PointID", "Table", "Field", "Error"])
             for record in errors:
                 error = record["error"]
                 # if not isinstance(error, (list, tuple)):
@@ -150,18 +154,19 @@ class Metrics:
                     error = nes
                 elif isinstance(error, ProgrammingError):
                     detail = error.orig.args[0].get("D")
-                    # first = error.args[0]
-                    # detail = first.get("D") if isinstance(first, dict) else first
-                    # print('eee', error)
-                    # print('vvve',type(error.args), error.args)
-                    # error=[error]
-                    # error = [error.args[0].get("D")]
                     error = [detail]
                 elif isinstance(error, Exception):
                     error = [str(error)]
 
                 for ee in error:
-                    self._writer.writerow([record["pointid"], ee])
+                    self._writer.writerow(
+                        [
+                            record["pointid"],
+                            record.get("table"),
+                            record.get("field"),
+                            ee,
+                        ]
+                    )
 
             self._writer.writerow([])
 
