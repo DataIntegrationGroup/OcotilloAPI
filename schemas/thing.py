@@ -154,6 +154,10 @@ class WellResponse(BaseThingResponse):
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
 
+    water_notes: str | None = None
+    measuring_notes: str | None = None
+    notes: str | None = None
+
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
         if well_purposes is not None:
