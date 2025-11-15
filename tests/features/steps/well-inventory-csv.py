@@ -9,6 +9,7 @@ from behave.runner import Context
 def _set_file_content(context: Context, name):
     path = Path("tests") / "features" / "data" / name
     with open(path, "r") as f:
+        context.file_name = name
         context.file_content = f.read()
         if name.endswith(".csv"):
             context.rows = list(csv.DictReader(context.file_content.splitlines()))
@@ -88,7 +89,7 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     context.response = context.client.post(
         "/well-inventory-csv",
-        files={"file": ("well_inventory.csv", context.file_content, context.file_type)},
+        files={"file": (context.file_name, context.file_content, context.file_type)},
     )
 
 
@@ -126,10 +127,12 @@ def step_impl(context: Context):
     assert len(validation_errors) == len(
         context.rows
     ), "Expected the same number of validation errors as rows in the CSV"
-    for row in context.rows:
-        assert (
-            row["well_name_point_id"] in validation_errors
-        ), f"Missing required field for row {row}"
+    error_fields = [
+        e["row"] for e in validation_errors if e["field"] == "well_name_point_id"
+    ]
+    for i, row in enumerate(context.rows):
+        if row["well_name_point_id"] == "":
+            assert i + 1 in error_fields, f"Missing required field for row {row}"
 
 
 @then("the response identifies the row and field for each error")
@@ -155,13 +158,16 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
-    assert len(validation_errors) == len(
-        context.rows
-    ), "Expected the same number of validation errors as rows in the CSV"
-    for row in context.rows:
-        assert (
-            row["well_name_point_id"] in validation_errors
-        ), f"Missing required field for row {row}"
+
+    assert len(validation_errors) == 1, "Expected 1 validation error"
+
+    error_fields = [
+        e["row"] for e in validation_errors if e["field"] == "well_name_point_id"
+    ]
+    assert error_fields == [2], f"Expected duplicated values for row {error_fields}"
+    assert (
+        validation_errors[0]["error"] == "Duplicate value for well_name_point_id"
+    ), "Expected duplicated values for row 2"
 
 
 @then("each error identifies the row and field")
@@ -208,8 +214,10 @@ def step_impl(context: Context):
 
 @given("my CSV file is empty")
 def step_impl(context: Context):
-    context.file_content = ""
-    context.rows = []
+    # context.file_content = ""
+    # context.rows = []
+    # context.file_type = "text/csv"
+    _set_file_content(context, "well-inventory-empty.csv")
 
 
 @given("I have a non-CSV file")
@@ -239,6 +247,7 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     response_json = context.response.json()
     assert "error" in response_json, "Expected response to include an error message"
+    print("fa", response_json["error"])
     assert (
         "No data rows found" in response_json["error"]
     ), "Expected error message to indicate no data rows were found"

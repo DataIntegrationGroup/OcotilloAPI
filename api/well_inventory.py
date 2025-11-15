@@ -20,87 +20,38 @@ from typing import Optional, Set
 
 from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ValidationError
+
+from core.enums import ContactType, Role, ElevationMethod
 
 router = APIRouter(prefix="/well-inventory-csv")
-
-REQUIRED_FIELDS = [
-    "project",
-    "well_name_point_id",
-    "site_name",
-    "date_time",
-    "field_staff",
-    "utm_easting",
-    "utm_northing",
-    "utm_zone",
-    "elevation_ft",
-    "elevation_method",
-    "measuring_point_height_ft",
-]
-
-LEXICON_FIELDS = {
-    "contact_role": {"owner", "manager"},
-    "contact_type": {"owner", "manager"},
-    "elevation_method": {"survey"},
-    # Add other lexicon fields and their valid values as needed
-}
 
 
 class WellInventoryRow(BaseModel):
     project: str
     well_name_point_id: str
     site_name: str
-    date_time: str
+    date_time: datetime
     field_staff: str
     utm_easting: float
     utm_northing: float
     utm_zone: int
     elevation_ft: float
-    elevation_method: str
+    elevation_method: ElevationMethod
     measuring_point_height_ft: float
 
     # Optional lexicon fields
-    contact_role: Optional[str] = None
-    contact_type: Optional[str] = None
-
-    @field_validator("date_time")
-    def validate_date_time(cls, v):
-        try:
-            datetime.fromisoformat(v)
-        except Exception:
-            raise ValueError("Invalid date format")
-        return v
-
-    @field_validator("elevation_method")
-    def validate_elevation_method(cls, v):
-        if v is not None and v.lower() not in LEXICON_FIELDS["elevation_method"]:
-            raise ValueError(f"Invalid lexicon value: {v}")
-        return v
-
-    @field_validator("contact_role")
-    def validate_contact_role(cls, v):
-        if v is not None and v.lower() not in LEXICON_FIELDS["contact_role"]:
-            raise ValueError(f"Invalid lexicon value: {v}")
-        return v
-
-    @field_validator("contact_type")
-    def validate_contact_type(cls, v):
-        if v is not None and v.lower() not in LEXICON_FIELDS["contact_type"]:
-            raise ValueError(f"Invalid lexicon value: {v}")
-        return v
-
-    @model_validator(mode="after")
-    def check_required(cls, values):
-        for field in REQUIRED_FIELDS:
-            if getattr(values, field, None) in [None, ""]:
-                raise ValueError(f"Field required: {field}")
-        return values
+    contact_role: Optional[Role] = None
+    contact_type: Optional[ContactType] = None
 
 
 @router.post("")
 async def well_inventory_csv(file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
+    if not file.content_type.startswith("text/csv") or not file.filename.endswith(
+        ".csv"
+    ):
         return JSONResponse(status_code=400, content={"error": "Unsupported file type"})
+
     content = await file.read()
     if not content:
         return JSONResponse(status_code=400, content={"error": "Empty file"})
@@ -116,45 +67,28 @@ async def well_inventory_csv(file: UploadFile = File(...)):
     wells = []
     seen_ids: Set[str] = set()
     for idx, row in enumerate(rows):
-        row_errors = []
-        # Check required fields before Pydantic validation
-        for field in REQUIRED_FIELDS:
-            if field not in row or row[field] in [None, ""]:
-                row_errors.append(
-                    {"row": idx + 1, "field": field, "error": "Field required"}
-                )
-        # Check uniqueness
-        well_id = row.get("well_name_point_id")
-        if well_id:
+        try:
+            well_id = row.get("well_name_point_id")
+            if not well_id:
+                raise ValueError("Field required")
             if well_id in seen_ids:
-                row_errors.append(
+                raise ValueError("Duplicate value for well_name_point_id")
+            seen_ids.add(well_id)
+            model = WellInventoryRow(**row)
+            wells.append({"well_name_point_id": model.well_name_point_id})
+        except ValidationError as e:
+            for err in e.errors():
+                validation_errors.append(
                     {
                         "row": idx + 1,
-                        "field": "well_name_point_id",
-                        "error": "Duplicate value for well_name_point_id",
+                        "field": err["loc"][0],
+                        "error": f"Value error, {err['msg']}",
                     }
                 )
-            else:
-                seen_ids.add(well_id)
-        # Only validate with Pydantic if required fields are present
-        if not row_errors:
-            try:
-                model = WellInventoryRow(**row)
-                wells.append({"well_name_point_id": model.well_name_point_id})
-            except ValidationError as e:
-                for err in e.errors():
-                    row_errors.append(
-                        {
-                            "row": idx + 1,
-                            "field": err["loc"][0],
-                            "error": f"Value error, {err['msg']}",
-                        }
-                    )
-            except ValueError as e:
-                row_errors.append(
-                    {"row": idx + 1, "field": "well_name_point_id", "error": str(e)}
-                )
-        validation_errors.extend(row_errors)
+        except ValueError as e:
+            validation_errors.append(
+                {"row": idx + 1, "field": "well_name_point_id", "error": str(e)}
+            )
     if validation_errors:
         return JSONResponse(
             status_code=422,
