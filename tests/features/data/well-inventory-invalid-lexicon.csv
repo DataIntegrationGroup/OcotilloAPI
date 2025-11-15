@@ -1,0 +1,6 @@
+project,well_name_point_id,site_name,date_time,field_staff,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method,measuring_point_height_ft,contact_role,contact_type
+ProjectA,WELL001,Site1,2025-02-15T10:30:00-08:00,John Doe,345678,3987654,13,5000,Survey,2.5,INVALID_ROLE,owner
+ProjectB,WELL002,Site2,2025-02-16T11:00:00-08:00,Jane Smith,345679,3987655,13,5100,Survey,2.7,manager,INVALID_TYPE
+ProjectC,WELL003,Site3,2025-02-17T09:45:00-08:00,Jim Beam,345680,3987656,13,5200,INVALID_METHOD,2.6,manager,owner
+ProjectD,WELL004,Site4,2025-02-18T08:20:00-08:00,Jack Daniels,345681,3987657,13,5300,Survey,2.8,INVALID_ROLE,INVALID_TYPE
+

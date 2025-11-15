@@ -74,9 +74,11 @@ def step_impl(context):
 
 @then("the system returns a 201 Created status code")
 def step_impl(context):
-    assert (
-        context.response.status_code == 201
-    ), f"Unexpected response status code {context.response.status_code}"
+    assert context.response.status_code == 201, (
+        f"Unexpected response status code "
+        f"{context.response.status_code}. "
+        f"Response json: {context.response.json()}"
+    )
 
 
 @then("the system should return a 200 status code")

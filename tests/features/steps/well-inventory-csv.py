@@ -1,10 +1,28 @@
 import csv
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from behave import given, when, then
 from behave.runner import Context
+
+
+def _set_file_content(context: Context, name):
+    path = Path("tests") / "features" / "data" / name
+    with open(path, "r") as f:
+        context.file_content = f.read()
+        if name.endswith(".csv"):
+            context.rows = list(csv.DictReader(context.file_content.splitlines()))
+            context.row_count = len(context.rows)
+            context.file_type = "text/csv"
+        else:
+            context.rows = []
+            context.row_count = 0
+            context.file_type = "text/plain"
+
+
+@given("a valid CSV file for bulk well inventory upload")
+def step_impl_valid_csv_file(context: Context):
+    _set_file_content(context, "well-inventory-valid.csv")
 
 
 @given("my CSV file is encoded in UTF-8 and uses commas as separators")
@@ -12,8 +30,10 @@ def step_impl_csv_file_is_encoded_utf8(context: Context):
     """Sets the CSV file encoding to UTF-8 and sets the CSV separator to commas."""
     # context.csv_file.encoding = 'utf-8'
     # context.csv_file.separator = ','
-    with open("tests/features/data/well-inventory-valid.csv", "r") as f:
-        context.file_content = f.read()
+    # determine the separator from the file content
+    sample = context.file_content[:1024]
+    dialect = csv.Sniffer().sniff(sample)
+    assert dialect.delimiter == ","
 
 
 @given("valid lexicon values exist for:")
@@ -24,11 +44,7 @@ def step_impl_valid_lexicon_values(context: Context):
 @given("my CSV file contains multiple rows of well inventory data")
 def step_impl_csv_file_contains_multiple_rows(context: Context):
     """Sets up the CSV file with multiple rows of well inventory data."""
-    context.rows = _get_rows(context)
-
-
-def _get_rows(context: Context) -> List[str]:
-    return list(csv.DictReader(context.file_content.splitlines()))
+    assert len(context.rows) > 0, "CSV file contains no data rows"
 
 
 @given("the CSV includes required fields:")
@@ -71,7 +87,8 @@ def step_impl(context: Context):
 @when("I upload the file to the bulk upload endpoint")
 def step_impl(context: Context):
     context.response = context.client.post(
-        "/well-inventory-csv", data={"file": context.file_content}
+        "/well-inventory-csv",
+        files={"file": ("well_inventory.csv", context.file_content, context.file_type)},
     )
 
 
@@ -92,8 +109,8 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
-    assert len(wells) == len(
-        context.row_count
+    assert (
+        len(wells) == context.row_count
     ), "Expected the same number of wells as rows in the CSV"
 
 
@@ -163,14 +180,6 @@ def step_impl(context: Context):
     for error in validation_errors:
         assert "field" in error, "Expected validation error to include field name"
         assert "error" in error, "Expected validation error to include error message"
-
-
-def _set_file_content(context: Context, name):
-    path = Path("tests") / "features" / "data" / name
-    with open(path, "r") as f:
-        context.file_content = f.read()
-        if name.endswith(".csv"):
-            context.rows = _get_rows(context)
 
 
 @given(
