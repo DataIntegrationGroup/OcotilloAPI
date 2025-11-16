@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from db.sensor import Sensor
     from db.contact import Contact
     from db.group import Group, GroupThingAssociation
+    from db.thing_aquifer_association import ThingAquiferAssociation
 
 
 class Thing(
@@ -257,6 +258,14 @@ class Thing(
     # One-To-Many: A Thing (well) can have multiple measuring points over time.
     measuring_points: Mapped[List["MeasuringPointHistory"]] = relationship(
         "MeasuringPointHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can be associated with many AquiferSystems via the ThingAquiferAssociation join table.
+    aquifer_associations: Mapped[List["ThingAquiferAssociation"]] = relationship(
+        "ThingAquiferAssociation",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
