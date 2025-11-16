@@ -346,6 +346,9 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     thing_id: Mapped[int] = mapped_column(
         ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+    aquifer_system_id: Mapped[int] = mapped_column(
+        ForeignKey("aquifer_system.id", ondelete="SET NULL"), nullable=True
+    )
     screen_depth_top: Mapped[float] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
@@ -362,6 +365,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     # Many-To-One: A WellScreen belongs to one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="screens")
+
+    aquifer_system: Mapped["AquiferSystem"] = relationship(
+        "AquiferSystem", back_populates="well_screens", passive_deletes=True
+    )
 
 
 class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):
