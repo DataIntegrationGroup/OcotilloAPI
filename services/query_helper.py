@@ -168,12 +168,15 @@ def order_sort_filter(
     return sql
 
 
-def paginated_all_getter(session, table, sort=None, order=None, filter_=None) -> Any:
+def paginated_all_getter(
+    session, table, sort=None, order=None, filter_=None, sql=None
+) -> Any:
     """
     Helper function to get all records from the database with pagination.
     """
+    if sql is None:
+        sql = select(table)
 
-    sql = select(table)
     sql = order_sort_filter(sql, table, sort, order, filter_)
     return paginate(query=sql, conn=session)
 

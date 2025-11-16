@@ -39,7 +39,12 @@ def step_impl_csv_file_is_encoded_utf8(context: Context):
 
 @given("valid lexicon values exist for:")
 def step_impl_valid_lexicon_values(context: Context):
-    print(f"Valid lexicon values: {context.table}")
+    for row in context.table:
+        response = context.client.get(
+            "/lexicon/category",
+            params={"name": row[0]},
+        )
+        assert response.status_code == 200, f"Invalid lexicon category: {row[0]}"
 
 
 @given("my CSV file contains multiple rows of well inventory data")
@@ -52,7 +57,9 @@ def step_impl_csv_file_contains_multiple_rows(context: Context):
 def step_impl_csv_includes_required_fields(context: Context):
     """Sets up the CSV file with multiple rows of well inventory data."""
     context.required_fields = [row[0] for row in context.table]
-    print(f"Required fields: {context.required_fields}")
+    keys = context.rows[0].keys()
+    for field in context.required_fields:
+        assert field in keys, f"Missing required field: {field}"
 
 
 @given('each "well_name_point_id" value is unique per row')
@@ -247,7 +254,6 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     response_json = context.response.json()
     assert "error" in response_json, "Expected response to include an error message"
-    print("fa", response_json["error"])
     assert (
         "No data rows found" in response_json["error"]
     ), "Expected error message to indicate no data rows were found"
