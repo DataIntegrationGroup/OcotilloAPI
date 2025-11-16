@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from db.sensor import Sensor
     from db.contact import Contact
     from db.group import Group, GroupThingAssociation
+    from db.aquifer_system import AquiferSystem
     from db.thing_aquifer_association import ThingAquiferAssociation
 
 
@@ -294,6 +295,11 @@ class Thing(
     # Proxy to directly access the Group(s) this Thing is a member of.
     groups: AssociationProxy[List["Group"]] = association_proxy(
         "group_associations", "group"
+    )
+
+    # Proxy to directly access AquiferSystems associated with this Thing
+    aquifers: AssociationProxy[List["AquiferSystem"]] = association_proxy(
+        "aquifer_associations", "aquifer_system"
     )
 
     # Full-text search vector
