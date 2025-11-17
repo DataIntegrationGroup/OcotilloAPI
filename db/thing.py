@@ -54,9 +54,10 @@ class Thing(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
     )
-    notes = mapped_column(Text, nullable=True)
-    measuring_notes = mapped_column(Text, nullable=True)
-    water_notes = mapped_column(Text, nullable=True)
+
+    # notes = mapped_column(Text, nullable=True)
+    # measuring_notes = mapped_column(Text, nullable=True)
+    # water_notes = mapped_column(Text, nullable=True)
 
     # TODO: should `name` be unique?
     name: Mapped[str] = mapped_column(
@@ -278,6 +279,18 @@ class Thing(
             if current_location and current_location[0].effective_end is None
             else None
         )
+
+    @property
+    def water_notes(self):
+        return self._get_notes("Water")
+
+    @property
+    def general_notes(self):
+        return self._get_notes("Other")
+
+    @property
+    def measuring_notes(self):
+        return self._get_notes("Measuring")
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):

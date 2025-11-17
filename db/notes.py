@@ -123,3 +123,6 @@ class NotesMixin:
             target_table=self.__class__.__name__,
             release_status=release_status,
         )
+
+    def _get_notes(self, note_type: str) -> list[Notes]:
+        return [n for n in self.notes if n.note_type == note_type]

@@ -60,6 +60,10 @@ def add_location(context, session):
     session.add(loc)
     session.commit()
     session.refresh(loc)
+    n = loc.add_note("Test location", "Other")
+    session.add(n)
+    session.commit()
+    session.refresh(loc)
 
     context.objects["locations"].append(loc)
     return loc
@@ -77,10 +81,11 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
-        notes="These are some test well notes",
-        measuring_notes="These are some measuring notes",
-        water_notes="This are some water notes",
+        # notes="These are some test well notes",
+        # measuring_notes="These are some measuring notes",
+        # water_notes="This are some water notes",
     )
+
     session.add(well)
     session.commit()
 
@@ -88,7 +93,17 @@ def add_well(context, session, location, name_num):
     assoc.effective_start = "2025-02-01T00:00:00Z"
     session.add(assoc)
     session.commit()
+    session.refresh(well)
 
+    for nt, c in (
+        ("Other", "well notes"),
+        ("Water", "water notes"),
+        ("Measuring", "measuring notes"),
+    ):
+        n = well.add_note(c, nt)
+        session.add(n)
+
+    session.commit()
     session.refresh(well)
 
     context.objects["wells"].append(well)
