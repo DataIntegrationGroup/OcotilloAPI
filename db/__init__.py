@@ -41,6 +41,7 @@ from db.status_history import *
 from db.thing import *
 from db.transducer import *
 from db.measuring_point_history import *
+from db.data_provenance import *
 
 from sqlalchemy import (
     func,

@@ -27,11 +27,11 @@ from db.base import (
     Base,
     ReleaseMixin,
     PermissionMixin,
-    DataProvenanceMixin,
 )
 from db.status_history import StatusHistoryMixin
 from db.measuring_point_history import MeasuringPointHistory
-from services.util import retrieve_latest_polymorphic_table_record
+from db.data_provenance import DataProvenanceMixin
+from services.util import retrieve_latest_polymorphic_history_table_record
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -313,7 +313,7 @@ class Thing(
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        latest_status = retrieve_latest_polymorphic_table_record(
+        latest_status = retrieve_latest_polymorphic_history_table_record(
             self, "status_history", "Well Status"
         )
         return latest_status.status_value if latest_status else None
@@ -326,7 +326,7 @@ class Thing(
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        latest_status = retrieve_latest_polymorphic_table_record(
+        latest_status = retrieve_latest_polymorphic_history_table_record(
             self, "status_history", "Monitoring Status"
         )
         return latest_status.status_value if latest_status else None
@@ -362,6 +362,10 @@ class Thing(
             return sorted_measuring_point_history[0].measuring_point_description
         else:
             return None
+
+    @property
+    def well_depth_source(self) -> str | None:
+        return self._get_data_provenance_attribute("well_depth", "origin_source")
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):

@@ -30,8 +30,8 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin
-from db.lexicon import lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.data_provenance import DataProvenanceMixin
 
 if TYPE_CHECKING:
     from db.thing import Thing
@@ -58,10 +58,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
-    elevation_accuracy: Mapped[float] = mapped_column(nullable=True)
-    elevation_method: Mapped[str] = lexicon_term(nullable=True)
-    coordinate_accuracy: Mapped[float] = mapped_column(nullable=True)
-    coordinate_method: Mapped[str] = lexicon_term(nullable=True)
 
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
@@ -82,6 +78,10 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
 
         p = to_shape(point)
         return p.y, p.x
+
+    @property
+    def elevation_method(self) -> str | None:
+        return self._get_data_provenance_attribute("elevation", "collection_method")
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):

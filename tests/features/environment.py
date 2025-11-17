@@ -33,6 +33,7 @@ from db import (
     WellPurpose,
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
+    DataProvenance,
 )
 from db.engine import session_ctx
 
@@ -57,10 +58,10 @@ def add_location(context, session):
         point="POINT(-107.949533 33.809665)",
         elevation=2464.9,
         release_status="draft",
-        elevation_accuracy=100,
-        elevation_method="Survey-grade GPS",
-        coordinate_accuracy=50,
-        coordinate_method="GPS, uncorrected",
+        # elevation_accuracy=100,
+        # elevation_method="Survey-grade GPS",
+        # coordinate_accuracy=50,
+        # coordinate_method="GPS, uncorrected",
     )
     session.add(loc)
     session.commit()
@@ -294,6 +295,36 @@ def add_id_link(
     return id_link
 
 
+@add_context_object_container("data_provenance")
+def add_data_provenance(
+    context,
+    session,
+    target_id,
+    target_table,
+    field_name,
+    origin_source,
+    collection_method=None,
+    accuracy_value=None,
+    accuracy_unit=None,
+):
+    data_provenance = DataProvenance(
+        field_name=field_name,
+        collection_method=collection_method,
+        target_id=target_id,
+        target_table=target_table,
+        origin_source=origin_source,
+        accuracy_value=accuracy_value,
+        accuracy_unit=accuracy_unit,
+    )
+
+    session.add(data_provenance)
+    session.commit()
+    session.refresh(data_provenance)
+
+    context.objects["data_provenance"].append(data_provenance)
+    return data_provenance
+
+
 @add_context_object_container("transducer_observations")
 def add_transducer_observation(context, session, block, deployment_id, value):
     obs = TransducerObservation(
@@ -428,6 +459,25 @@ def before_all(context):
 
         group = add_group(context, session, [well_1, well_2])
 
+        elevation_method = add_data_provenance(
+            context,
+            session,
+            target_id=loc_1.id,
+            target_table="location",
+            field_name="elevation",
+            origin_source="Private geologist, consultant or univ associate",
+            collection_method="LiDAR DEM",
+        )
+
+        well_depth_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_depth",
+            origin_source="Other",
+        )
+
         for purpose in ["Domestic", "Irrigation"]:
             add_well_purpose(context, session, well_1, purpose)
 
@@ -441,8 +491,9 @@ def before_all(context):
 
         session.commit()
 
-        # the well needs to be refreshed to get all the new relationships
+        # the following needs to be refreshed to get all the new relationships
         session.refresh(well_1)
+        session.refresh(loc_1)
 
 
 def after_all(context):

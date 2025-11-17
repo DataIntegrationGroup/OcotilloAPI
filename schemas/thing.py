@@ -184,6 +184,7 @@ class WellResponse(BaseThingResponse):
     well_purposes: list[WellPurpose] = []
     well_depth: float | None = None
     well_depth_unit: str = "ft"
+    well_depth_source: str | None
     hole_depth: float | None = None
     hole_depth_unit: str = "ft"
     well_casing_diameter: float | None = None  # in inches
