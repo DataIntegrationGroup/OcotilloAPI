@@ -29,7 +29,6 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
         unique=True,
         comment="The full, human-readable name of the geologic formation (e.g., 'Navajo Sandstone').",
     )
-    # TODO: Implement controlled vocabulary for `code` using the `LU_Formation` table from NMAquifer.
     formation_code: Mapped[str] = lexicon_term(
         nullable=True,
         unique=True,
