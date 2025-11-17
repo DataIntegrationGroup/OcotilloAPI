@@ -271,9 +271,19 @@ def step_impl(context):
     assert (
         "elevation_method" in context.water_well_data["current_location"]["properties"]
     )
+
+    data_provenance_records = context.objects["data_provenance"]
+    elevation_method_records = [
+        r
+        for r in data_provenance_records
+        if r.field_name == "elevation"
+        and r.target_table == "location"
+        and r.target_id == context.objects["locations"][0].id
+    ]
+    elevation_method = elevation_method_records[0].collection_method
     assert (
         context.water_well_data["current_location"]["properties"]["elevation_method"]
-        == context.objects["locations"][0].elevation_method
+        == elevation_method
     )
 
 

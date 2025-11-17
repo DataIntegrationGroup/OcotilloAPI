@@ -468,8 +468,9 @@ def before_all(context):
                 session.add(obs)
         session.commit()
 
-        # the well needs to be refreshed to get all the new relationships
+        # the following needs to be refreshed to get all the new relationships
         session.refresh(well_1)
+        session.refresh(loc_1)
 
 
 def after_all(context):
