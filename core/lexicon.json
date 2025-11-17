@@ -49,7 +49,8 @@
     {"name": "vertical_datum", "description": null},
     {"name": "well_purpose", "description": null},
     {"name": "status_type", "description": null},
-    {"name": "status_value", "description": null}
+    {"name": "status_value", "description": null},
+    {"name": "origin_source", "description": null}
   ],
   "terms": [
     {"categories": ["review_status"], "term": "approved", "definition": "approved"},
@@ -146,6 +147,7 @@
     {"categories": ["unit"], "term": "second", "definition": "second"},
     {"categories": ["unit"], "term": "minute", "definition": "minute"},
     {"categories": ["unit"], "term": "hour", "definition": "hour"},
+    {"categories": ["unit"], "term": "m", "definition": "meters"},
     {"categories": ["parameter_name"], "term": "groundwater level", "definition": "groundwater level measurement"},
     {"categories": ["parameter_name"], "term": "temperature", "definition": "Temperature measurement"},
     {"categories": ["parameter_name"], "term": "pH", "definition": "pH"},
@@ -568,6 +570,20 @@
     {"categories": ["organization"], "term": "Winter Brothers", "definition": "Winter Brothers"},
     {"categories": ["organization"], "term": "Yates Petroleum Corporation", "definition": "Yates Petroleum Corporation"},
     {"categories": ["organization"], "term": "Zamora Accounting Services", "definition": "Zamora Accounting Services"},
+    {"categories": ["collection_method"], "term": "Altimeter", "definition": "ALtimeter"},
+    {"categories": ["collection_method"], "term": "Differentially corrected GPS", "definition": "Differentially corrected GPS"},
+    {"categories": ["collection_method"], "term": "Survey-grade GPS", "definition": "Survey-grade GPS"},
+    {"categories": ["collection_method"], "term": "Global positioning system (GPS)", "definition": "Global positioning system (GPS)"},
+    {"categories": ["collection_method"], "term": "LiDAR DEM", "definition": "LiDAR DEM"},
+    {"categories": ["collection_method"], "term": "Level or other survey method", "definition": "Level or other survey method"},
+    {"categories": ["collection_method"], "term": "Interpolated from topographic map", "definition": "Interpolated from topographic map"},
+    {"categories": ["collection_method"], "term": "Interpolated from digital elevation model (DEM)", "definition": "Interpolated from digital elevation model (DEM)"},
+    {"categories": ["collection_method"], "term": "Reported", "definition": "Reported"},
+    {"categories": ["collection_method"], "term": "Unknown", "definition": "Unknown"},
+    {"categories": ["collection_method"], "term": "Survey-grade Global Navigation Satellite Sys, Lvl1", "definition": "Survey-grade Global Navigation Satellite Sys, Lvl1"},
+    {"categories": ["collection_method"], "term": "USGS National Elevation Dataset (NED)", "definition": "USGS National Elevation Dataset (NED)"},
+    {"categories": ["collection_method"], "term": "Transit, theodolite, or other survey method", "definition": "Transit, theodolite, or other survey method"},
+    {"categories": ["role"], "term": "Principal Investigator", "definition": "Principal Investigator"},
     {"categories": ["organization"], "term": "PLSS", "definition": "Public Land Survey System"},
     {"categories": ["collection_method"], "term": "manual", "definition": "manual sampling"},
     {"categories": ["collection_method"], "term": "continuous", "definition": "continuous sampling"},
@@ -675,6 +691,18 @@
     {"categories": ["monitoring_frequency"], "term": "Biannual", "definition": "Location is monitored twice a year."},
     {"categories": ["monitoring_frequency"], "term": "Annual", "definition": "Location is monitored once a year."},
     {"categories": ["monitoring_frequency"], "term": "Decadal", "definition": "Location is monitored once every ten years."},
-    {"categories": ["monitoring_frequency"], "term": "Event-based", "definition": "Location is monitored based on specific events or triggers rather than a fixed schedule."}
+    {"categories": ["monitoring_frequency"], "term": "Event-based", "definition": "Location is monitored based on specific events or triggers rather than a fixed schedule."},
+    {"categories": ["origin_source"], "term": "Reported by another agency", "definition": "Reported by another agency"},
+    {"categories": ["origin_source"], "term": "From driller's log or well report", "definition": "From driller's log or well report"},
+    {"categories": ["origin_source"], "term": "Private geologist, consultant or univ associate", "definition": "Private geologist, consultant or univ associate"},
+    {"categories": ["origin_source"], "term": "Interpreted fr geophys logs by source agency", "definition": "Interpreted fr geophys logs by source agency"},
+    {"categories": ["origin_source"], "term": "Memory of owner, operator, driller", "definition": "Memory of owner, operator, driller"},
+    {"categories": ["origin_source"], "term": "Measured by source agency", "definition": "Measured by source agency"},
+    {"categories": ["origin_source"], "term": "Reported by owner of well", "definition": "Reported by owner of well"},
+    {"categories": ["origin_source"], "term": "Reported by person other than driller owner agency", "definition": "Reported by person other than driller owner agency"},
+    {"categories": ["origin_source"], "term": "Measured by NMBGMR staff", "definition": "Measured by NMBGMR staff"},
+    {"categories": ["origin_source"], "term": "Other", "definition": "Other"},
+    {"categories": ["origin_source"], "term": "Data Portal", "definition": "Data Portal"}
+
   ]
 }

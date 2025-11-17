@@ -48,6 +48,7 @@ MeasurementMethod: type[Enum] = build_enum_from_lexicon_category("measurement_me
 MonitoringStatus: type[Enum] = build_enum_from_lexicon_category("monitoring_status")
 ParameterName: type[Enum] = build_enum_from_lexicon_category("parameter_name")
 Organization: type[Enum] = build_enum_from_lexicon_category("organization")
+OriginSource: type[Enum] = build_enum_from_lexicon_category("origin_source")
 ParameterType: type[Enum] = build_enum_from_lexicon_category("parameter_type")
 PhoneType: type[Enum] = build_enum_from_lexicon_category("phone_type")
 PublicationType: type[Enum] = build_enum_from_lexicon_category("publication_type")
