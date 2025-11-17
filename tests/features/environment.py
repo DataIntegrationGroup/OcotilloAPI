@@ -29,7 +29,6 @@ from db import (
     Deployment,
     TransducerObservationBlock,
 )
-
 from db.engine import session_ctx
 
 
@@ -78,6 +77,9 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
+        notes="These are some test well notes",
+        measuring_notes="These are some measuring notes",
+        water_notes="This are some water notes",
     )
     session.add(well)
     session.commit()
@@ -203,6 +205,7 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 def before_all(context):
     context.objects = {}
     rebuild = False
+    # rebuild = True
     with session_ctx() as session:
         if rebuild:
             erase_and_rebuild_db(session)
