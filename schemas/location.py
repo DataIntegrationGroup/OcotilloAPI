@@ -123,6 +123,9 @@ class LocationGeoJSONResponse(BaseModel):
         if not isinstance(data, dict):
             data_dict = {c.name: getattr(data, c.name) for c in data.__table__.columns}
 
+            # @property need to be added manually
+            data_dict["elevation_method"] = data.elevation_method
+
         # add empty fields as necessary
         data_dict["geometry"] = {}
         data_dict["properties"] = {}

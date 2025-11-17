@@ -31,13 +31,13 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
-from db.lexicon import lexicon_term
+from db.data_provenance import DataProvenanceMixin
 
 if TYPE_CHECKING:
     from db.thing import Thing
 
 
-class Location(Base, AutoBaseMixin, ReleaseMixin):
+class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True)
@@ -58,10 +58,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
-    elevation_accuracy: Mapped[float] = mapped_column(nullable=True)
-    elevation_method: Mapped[str] = lexicon_term(nullable=True)
-    coordinate_accuracy: Mapped[float] = mapped_column(nullable=True)
-    coordinate_method: Mapped[str] = lexicon_term(nullable=True)
 
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
@@ -82,6 +78,17 @@ class Location(Base, AutoBaseMixin, ReleaseMixin):
 
         p = to_shape(point)
         return p.y, p.x
+
+    @property
+    def elevation_method(self) -> str | None:
+        data_provenance_records = self.data_provenance
+        elevation_method_record = [
+            r for r in data_provenance_records if r.field_name == "elevation"
+        ]
+        if elevation_method_record:
+            return elevation_method_record[0].collection_method
+        else:
+            return None
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):

@@ -2,14 +2,13 @@ from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from services.util import (
     transform_srid,
     convert_m_to_ft,
-    retrieve_latest_polymorphic_table_record,
+    retrieve_latest_polymorphic_history_table_record,
 )
 
 from behave import when, then
 from geoalchemy2.shape import to_shape
 
 
-# TODO: move to commonly used step definitions
 @when("the user retrieves the well by ID via path parameter")
 def step_impl(context):
     well_id = context.objects["wells"][0].id
@@ -93,7 +92,7 @@ def step_impl(context):
 def step_impl(context):
     assert "well_status" in context.water_well_data
 
-    well_status_record = retrieve_latest_polymorphic_table_record(
+    well_status_record = retrieve_latest_polymorphic_history_table_record(
         context.objects["wells"][0], "status_history", "Well Status"
     )
     assert context.water_well_data["well_status"] == well_status_record.status_value
@@ -117,7 +116,7 @@ def step_impl(context):
 def step_impl(context):
     assert "monitoring_status" in context.water_well_data
 
-    monitoring_status_record = retrieve_latest_polymorphic_table_record(
+    monitoring_status_record = retrieve_latest_polymorphic_history_table_record(
         context.objects["wells"][0], "status_history", "Monitoring Status"
     )
     assert (
@@ -168,15 +167,21 @@ def step_impl(context):
     assert context.water_well_data["well_depth_unit"] == "ft"
 
 
-# TODO: this needs to be added to the model, schema, and test data
 @then("the response should include the source of the well depth information")
 def step_impl(context):
     assert "well_depth_source" in context.water_well_data
 
-    assert (
-        context.water_well_data["well_depth_source"]
-        == context.objects["wells"][0].well_depth_source
-    )
+    data_provenance_records = context.objects["data_provenance"]
+    well_depth_source_records = [
+        r
+        for r in data_provenance_records
+        if r.field_name == "well_depth"
+        and r.target_table == "thing"
+        and r.target_id == context.objects["wells"][0].id
+    ]
+    well_depth_source = well_depth_source_records[0].origin_source
+
+    assert context.water_well_data["well_depth_source"] == well_depth_source
 
 
 # ------------------------------------------------------------------------------
@@ -271,9 +276,19 @@ def step_impl(context):
     assert (
         "elevation_method" in context.water_well_data["current_location"]["properties"]
     )
+
+    data_provenance_records = context.objects["data_provenance"]
+    elevation_method_records = [
+        r
+        for r in data_provenance_records
+        if r.field_name == "elevation"
+        and r.target_table == "location"
+        and r.target_id == context.objects["locations"][0].id
+    ]
+    elevation_method = elevation_method_records[0].collection_method
     assert (
         context.water_well_data["current_location"]["properties"]["elevation_method"]
-        == context.objects["locations"][0].elevation_method
+        == elevation_method
     )
 
 
