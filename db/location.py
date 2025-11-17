@@ -81,14 +81,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
 
     @property
     def elevation_method(self) -> str | None:
-        data_provenance_records = self.data_provenance
-        elevation_method_record = [
-            r for r in data_provenance_records if r.field_name == "elevation"
-        ]
-        if elevation_method_record:
-            return elevation_method_record[0].collection_method
-        else:
-            return None
+        return self._get_data_provenance_attribute("elevation", "collection_method")
 
 
 class LocationThingAssociation(Base, AutoBaseMixin):
