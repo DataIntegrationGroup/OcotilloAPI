@@ -41,6 +41,8 @@ if TYPE_CHECKING:
     from db.group import Group, GroupThingAssociation
     from db.aquifer_system import AquiferSystem
     from db.thing_aquifer_association import ThingAquiferAssociation
+    from db.geologic_formation import GeologicFormation
+    from db.thing_formation_association import ThingFormationAssociation
 
 
 class Thing(
@@ -272,6 +274,14 @@ class Thing(
         passive_deletes=True,
     )
 
+    # Many-To-Many: A Thing can penetrate many GeologicFormations.
+    formation_associations: Mapped[List["ThingFormationAssociation"]] = relationship(
+        "ThingFormationAssociation",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -300,6 +310,11 @@ class Thing(
     # Proxy to directly access AquiferSystems associated with this Thing
     aquifers: AssociationProxy[List["AquiferSystem"]] = association_proxy(
         "aquifer_associations", "aquifer_system"
+    )
+
+    # Proxy to directly access the GeologicFormations penetrated by this Thing.
+    formations: AssociationProxy[List["GeologicFormation"]] = association_proxy(
+        "formation_associations", "geologic_formation"
     )
 
     # Full-text search vector
