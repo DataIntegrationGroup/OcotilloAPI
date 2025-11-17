@@ -17,6 +17,8 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from db.engine import session_ctx
+
 from fastapi import FastAPI
 from fastapi.openapi.docs import (
     get_swagger_ui_html,
@@ -39,7 +41,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Application lifespan event handler to initialize the database and lexicon.
     """
     if settings.get_enum("MODE") == "development":
-        erase_and_rebuild_db()
+        with session_ctx() as session:
+            erase_and_rebuild_db(session)
         init_lexicon()
         init_parameter()
 
