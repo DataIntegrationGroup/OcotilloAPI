@@ -54,6 +54,9 @@ class Thing(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
     )
+    notes = mapped_column(Text, nullable=True)
+    measuring_notes = mapped_column(Text, nullable=True)
+    water_notes = mapped_column(Text, nullable=True)
 
     # TODO: should `name` be unique?
     name: Mapped[str] = mapped_column(
