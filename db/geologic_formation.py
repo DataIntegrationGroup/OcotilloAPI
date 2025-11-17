@@ -30,7 +30,7 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
         comment="The full, human-readable name of the geologic formation (e.g., 'Navajo Sandstone').",
     )
     # TODO: Implement controlled vocabulary for `code` using the `LU_Formation` table from NMAquifer.
-    code: Mapped[str] = lexicon_term(
+    formation_code: Mapped[str] = lexicon_term(
         nullable=True,
         unique=True,
         comment="A short code or abbreviation for the geologic formation (e.g., '120ELRT').",
@@ -41,7 +41,8 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
         comment="A detailed description of the geologic formation, its characteristics, and its significance.",
     )
     # TODO: Implement controlled vocabularies for `lithology` using NMAquifer's 'LU_Lithology' table.
-    lithology: Mapped[str] = lexicon_term(
+    #  This should be implemented after AMMP reviews and cleans up their formation terms and codes.
+    lithology: Mapped[str] = mapped_column(
         nullable=True,
         comment="A controlled vocabulary for the primary, dominant rock type"
         "(e.g., 'Tuff', 'Sandstone', 'Alluvium', 'Shale').",
