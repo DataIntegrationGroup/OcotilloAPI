@@ -121,3 +121,24 @@ class DataProvenanceMixin:
             lazy="selectin",
             viewonly=True,
         )
+
+    def _get_data_provenance_attribute(self, field_name, attribute):
+        """
+        Returns the specified attribute from the DataProvenance record
+        for the given field_name, or None if not found.
+
+        Args:
+            field_name (str): The name of the field to look up provenance for.
+            attribute (str): The attribute of the DataProvenance record to return.
+
+        Returns:
+            The value of the specified attribute, or None if no record found.
+        """
+        data_provenance_records = self.data_provenance
+        record = next(
+            (r for r in data_provenance_records if r.field_name == field_name), None
+        )
+        if record:
+            return getattr(record, attribute)
+        else:
+            return None

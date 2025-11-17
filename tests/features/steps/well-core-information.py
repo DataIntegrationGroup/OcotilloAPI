@@ -5,29 +5,13 @@ from services.util import (
     retrieve_latest_polymorphic_history_table_record,
 )
 
-from behave import when, then
+from behave import then
 from geoalchemy2.shape import to_shape
-
-
-@when("the user retrieves the well by ID via path parameter")
-def step_impl(context):
-    well_id = context.objects["wells"][0].id
-    context.response = context.client.get(f"/thing/water-well/{well_id}")
-    context.water_well_data = context.response.json()
 
 
 @then("the response should be in JSON format")
 def step_impl(context):
     assert context.response["Content-Type"] == "application/json"
-
-
-@then(
-    "null values in the response should be represented as JSON null (not placeholder strings)"
-)
-def step_impl(context):
-    for key, value in context.water_well_data.items():
-        if value is None:
-            assert value is None  # JSON null is represented as None in Python
 
 
 # ------------------------------------------------------------------------------
