@@ -22,8 +22,7 @@ from sqlalchemy.testing.schema import mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin
-from tests.conftest import lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.group import GroupThingAssociation
@@ -37,10 +36,7 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
     project_area: Mapped[Optional[WKBElement]] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
     )
-    group_type: Mapped[Optional[str]] = lexicon_term(String(50), nullable=True)
-    monitoring_frequency: Mapped[Optional[str]] = lexicon_term(
-        String(50), nullable=True
-    )
+    group_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
 
     # Foreign Keys
     parent_group_id: Mapped[Optional[int]] = mapped_column(

@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from typing import List, TYPE_CHECKING
-
+from datetime import date
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -26,11 +26,12 @@ from db.base import (
     AutoBaseMixin,
     Base,
     ReleaseMixin,
-    StatusHistoryMixin,
     PermissionMixin,
     DataProvenanceMixin,
 )
+from db.status_history import StatusHistoryMixin
 from db.measuring_point_history import MeasuringPointHistory
+from services.util import retrieve_latest_polymorphic_table_record
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -237,6 +238,7 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="joined",
     )
 
     # One-To-Many: A Thing (well) can have multiple measuring points over time.
@@ -245,6 +247,15 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="joined",
+    )
+
+    monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
+        "MonitoringFrequencyHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
     )
 
     # --- Association Proxies ---
@@ -290,6 +301,64 @@ class Thing(
             if current_location and current_location[0].effective_end is None
             else None
         )
+
+    @property
+    def well_status(self) -> str | None:
+        """
+        Returns the well status from the most recent status history entry
+        where status_type is "Well Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_table_record(
+            self, "status_history", "Well Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def monitoring_status(self) -> str | None:
+        """
+        Returns the monitoring status from the most recent status history entry
+        where status_type is "Monitoring Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_table_record(
+            self, "status_history", "Monitoring Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def measuring_point_height(self) -> int | None:
+        """
+        Returns the most recent measuring point height from the measuring point history
+        table. This assumes that every well has a measuring point
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_height
+        else:
+            return None
+
+    @property
+    def measuring_point_description(self) -> str | None:
+        """
+        Returns the most recent measuring point description from the measuring point history
+        table. This assumes that every well has a measuring point.
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_description
+        else:
+            return None
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
@@ -364,6 +433,23 @@ class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
 
     thing: Mapped["Thing"] = relationship(
         "Thing", back_populates="well_casing_materials"
+    )
+
+
+class MonitoringFrequencyHistory(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents the monitoring frequency history for a Thing.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    monitoring_frequency: Mapped[str] = lexicon_term(nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=True)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="monitoring_frequencies"
     )
 
 

@@ -68,4 +68,8 @@ Unit: type[Enum] = build_enum_from_lexicon_category("unit")
 Vertical_datum: type[Enum] = build_enum_from_lexicon_category("vertical_datum")
 ScreenType: type[Enum] = build_enum_from_lexicon_category("screen_type")
 SensorType: type[Enum] = build_enum_from_lexicon_category("sensor_type")
+GroupType: type[Enum] = build_enum_from_lexicon_category("group_type")
+MonitoringFrequency: type[Enum] = build_enum_from_lexicon_category(
+    "monitoring_frequency"
+)
 # ============= EOF =============================================
