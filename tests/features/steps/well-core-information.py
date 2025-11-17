@@ -2,7 +2,7 @@ from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from services.util import (
     transform_srid,
     convert_m_to_ft,
-    retrieve_latest_polymorphic_table_record,
+    retrieve_latest_polymorphic_history_table_record,
 )
 
 from behave import when, then
@@ -93,7 +93,7 @@ def step_impl(context):
 def step_impl(context):
     assert "well_status" in context.water_well_data
 
-    well_status_record = retrieve_latest_polymorphic_table_record(
+    well_status_record = retrieve_latest_polymorphic_history_table_record(
         context.objects["wells"][0], "status_history", "Well Status"
     )
     assert context.water_well_data["well_status"] == well_status_record.status_value
@@ -117,7 +117,7 @@ def step_impl(context):
 def step_impl(context):
     assert "monitoring_status" in context.water_well_data
 
-    monitoring_status_record = retrieve_latest_polymorphic_table_record(
+    monitoring_status_record = retrieve_latest_polymorphic_history_table_record(
         context.objects["wells"][0], "status_history", "Monitoring Status"
     )
     assert (

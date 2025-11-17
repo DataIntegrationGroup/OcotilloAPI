@@ -58,10 +58,10 @@ def add_location(context, session):
         point="POINT(-107.949533 33.809665)",
         elevation=2464.9,
         release_status="draft",
-        elevation_accuracy=100,
-        elevation_method="Survey-grade GPS",
-        coordinate_accuracy=50,
-        coordinate_method="GPS, uncorrected",
+        # elevation_accuracy=100,
+        # elevation_method="Survey-grade GPS",
+        # coordinate_accuracy=50,
+        # coordinate_method="GPS, uncorrected",
     )
     session.add(loc)
     session.commit()

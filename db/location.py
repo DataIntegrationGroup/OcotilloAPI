@@ -79,6 +79,17 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, DataProvenanceMixin):
         p = to_shape(point)
         return p.y, p.x
 
+    @property
+    def elevation_method(self) -> str | None:
+        data_provenance_records = self.data_provenance
+        elevation_method_record = [
+            r for r in data_provenance_records if r.field_name == "elevation_method"
+        ]
+        if elevation_method_record:
+            return elevation_method_record[0].collection_method
+        else:
+            return None
+
 
 class LocationThingAssociation(Base, AutoBaseMixin):
     location_id: Mapped[int] = mapped_column(
