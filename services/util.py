@@ -132,7 +132,7 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     return data["value"]
 
 
-def retrieve_latest_polymorphic_table_record(
+def retrieve_latest_polymorphic_history_table_record(
     target_record: DeclarativeBase,
     polymorphic_relationship: str,
     polymorphic_type: str,
@@ -141,6 +141,9 @@ def retrieve_latest_polymorphic_table_record(
     Retrieve the latest record from a polymorphic table. This function assumes that the
     parent class has the correct mixin to support retrieval via an attribute. This
     requires end_date to be None
+
+    This function does not apply to the DataProvenance table since it is not
+    a history table.
 
     Parameters:
     ----------
