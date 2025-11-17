@@ -9,7 +9,6 @@ from behave import when, then
 from geoalchemy2.shape import to_shape
 
 
-# TODO: move to commonly used step definitions
 @when("the user retrieves the well by ID via path parameter")
 def step_impl(context):
     well_id = context.objects["wells"][0].id
@@ -168,15 +167,21 @@ def step_impl(context):
     assert context.water_well_data["well_depth_unit"] == "ft"
 
 
-# TODO: this needs to be added to the model, schema, and test data
 @then("the response should include the source of the well depth information")
 def step_impl(context):
     assert "well_depth_source" in context.water_well_data
 
-    assert (
-        context.water_well_data["well_depth_source"]
-        == context.objects["wells"][0].well_depth_source
-    )
+    data_provenance_records = context.objects["data_provenance"]
+    well_depth_source_records = [
+        r
+        for r in data_provenance_records
+        if r.field_name == "well_depth"
+        and r.target_table == "thing"
+        and r.target_id == context.objects["wells"][0].id
+    ]
+    well_depth_source = well_depth_source_records[0].origin_source
+
+    assert context.water_well_data["well_depth_source"] == well_depth_source
 
 
 # ------------------------------------------------------------------------------

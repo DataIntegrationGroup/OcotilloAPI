@@ -310,6 +310,9 @@ def add_data_provenance(
         collection_method=collection_method,
         target_id=target_id,
         target_table=target_table,
+        origin_source=origin_source,
+        accuracy_value=accuracy_value,
+        accuracy_unit=accuracy_unit,
     )
 
     session.add(data_provenance)
@@ -449,6 +452,15 @@ def before_all(context):
             field_name="elevation",
             origin_source="Private geologist, consultant or univ associate",
             collection_method="LiDAR DEM",
+        )
+
+        well_depth_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_depth",
+            origin_source="Other",
         )
 
         for purpose in ["Domestic", "Irrigation"]:

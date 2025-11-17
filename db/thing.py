@@ -360,6 +360,17 @@ class Thing(
         else:
             return None
 
+    @property
+    def well_depth_source(self) -> str | None:
+        data_provenance_records = self.data_provenance
+        well_depth_source_records = [
+            r for r in data_provenance_records if r.field_name == "well_depth"
+        ]
+        if well_depth_source_records:
+            return well_depth_source_records[0].origin_source
+        else:
+            return None
+
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     """
