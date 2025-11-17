@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Tests
+name: Test Suite
 
 on:
   pull_request:
@@ -16,11 +16,8 @@ jobs:
 
     services:
       postgis:
-#        image: ghcr.io/dataintegrationgroup/nmdms:latest
-#        image: postgres
         image: postgis/postgis:latest
-#        image: postgis/postgis:17-3.5
-#        image: timescale/timescaledb:2.18.0-pg17
+        # image: postgis/postgis:17-3.5
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
@@ -35,11 +32,6 @@ jobs:
     steps:
     - name: Check out source repository
       uses: actions/checkout@v4
-
-#    - name: Install SpatiaLite
-#      run: |
-#          sudo apt-get update
-#          sudo apt-get install -y libsqlite3-mod-spatialite libspatialite-dev
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -62,26 +54,34 @@ jobs:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
-#        SPATIALITE_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/mod_spatialite.so
 
       run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
 
-#    - name: Checkout BDD repo (features only)
-#      uses: actions/checkout@v4
-#      with:
-#        repository: DataIntegrationGroup/OcotilloBDD
-#        path: bdd
-#
-#    - name: Copy BDD features into backend test directory
-#      run: |
-#        mkdir -p tests/features
-#        cp -r bdd/features/backend/* tests/features/
-#
-#    - name: Run BDD tests
-#      env:
-#        BASE_URL: ${{ secrets.BACKEND_URL }}
-#      run: |
-#        uv run behave tests/features --tags=@backend,@approved --no-capture
+    - name: Checkout BDD repo (features only)
+      uses: actions/checkout@v4
+      with:
+        repository: DataIntegrationGroup/OcotilloBDD
+        path: bdd
+
+    - name: Copy BDD features into backend test directory
+      run: |
+        mkdir -p tests/features
+        cp -r bdd/features/backend/* tests/features/
+
+    - name: Run BDD tests
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        DB_DRIVER: postgres
+        BASE_URL: http://localhost:8000
+      run: |
+        uv run behave tests/features/transducer-data-response.feature \
+             tests/features/thing-type-path-parameters.feature \
+             tests/features/thing-query-parameters.feature
+#        use this when we have consensus on tag nomenclature
+#        uv run behave tests/features --tags="@backend and @production" --no-capture
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v4

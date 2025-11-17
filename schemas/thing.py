@@ -198,6 +198,10 @@ class WellResponse(BaseThingResponse):
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
 
+    water_notes: str | None = None
+    measuring_notes: str | None = None
+    notes: str | None = None
+
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
         if well_purposes is not None:
