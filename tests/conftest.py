@@ -11,18 +11,10 @@ from tests import groundwater_level_parameter_id, pH_parameter_id
 def location():
     with session_ctx() as session:
         loc = Location(
-            # name="first location",
             notes="these are some test notes",
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
             release_status="draft",
-            elevation_accuracy=100,
-            elevation_method="Survey-grade GPS",
-            coordinate_accuracy=50,
-            coordinate_method="GPS, uncorrected",
-            # state="New Mexico",
-            # county="Catron",
-            # quad_name="Luera Mountains West",
         )
         session.add(loc)
         session.commit()
@@ -36,7 +28,6 @@ def location():
 def second_location():
     with session_ctx() as session:
         location = Location(
-            # name="second location",
             point="POINT (10.2 10.2)",
             elevation=0,
             release_status="draft",
