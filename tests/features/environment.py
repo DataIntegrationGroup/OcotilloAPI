@@ -373,6 +373,16 @@ def before_all(context):
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
+        measuring_point_history_1 = add_measuring_point_history(
+            context, session, well=well_1
+        )
+        measuring_point_history_2 = add_measuring_point_history(
+            context, session, well=well_2
+        )
+        measuring_point_history_3 = add_measuring_point_history(
+            context, session, well=well_3
+        )
+
         well_status_1 = add_status_history(
             context,
             session,
@@ -419,10 +429,6 @@ def before_all(context):
             reason="Roving bovine destroyed well",
             target_id=context.objects["wells"][0].id,
             target_table="thing",
-        )
-
-        measuring_point_history_1 = add_measuring_point_history(
-            context, session, well=well_1
         )
 
         monitoring_frequency_history_1 = add_monitoring_frequency_history(
