@@ -18,7 +18,7 @@ from db.lexicon import lexicon_term
 from constants import SRID_WGS84
 
 if TYPE_CHECKING:
-    from db.thing import Thing
+    from db.thing import Thing, WellScreen
     from db.thing_formation_association import ThingFormationAssociation
 
 
@@ -62,6 +62,10 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="geologic_formation",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+    # One-To-Many: A GeologicFormation can have many physical WellScreens installed in it.
+    screens: Mapped[List["WellScreen"]] = relationship(
+        "WellScreen", back_populates="geologic_formation", passive_deletes=True
     )
 
     # --- Association Proxies ---

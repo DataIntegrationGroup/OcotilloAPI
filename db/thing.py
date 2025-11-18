@@ -364,6 +364,9 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     aquifer_system_id: Mapped[int] = mapped_column(
         ForeignKey("aquifer_system.id", ondelete="SET NULL"), nullable=True
     )
+    geologic_formation_id: Mapped[int] = mapped_column(
+        ForeignKey("geologic_formation.id", ondelete="SET NULL"), nullable=True
+    )
     screen_depth_top: Mapped[float] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
