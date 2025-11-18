@@ -157,6 +157,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
     step = 25
     start_time = time.time()
     errors = []
+    added_locations = {}
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
@@ -193,12 +194,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         try:
             location, elevation_method = make_location(row)
             session.add(location)
-            session.flush()
-            data_provenances = make_location_data_provenance(
-                row, location, elevation_method
-            )
-            for dp in data_provenances:
-                session.add(dp)
+            added_locations[row.PointID] = elevation_method
         except Exception as e:
             if location is not None:
                 session.expunge(location)
@@ -267,28 +263,13 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
 
-            notes = well_data.pop("notes")
+            well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
-            logger.info(f"Created well for {row.PointID}")
+            # logger.info(f"Created well for {row.PointID}")
 
             # flush well to access its ID for status_history
-            session.flush()
-
-            """
-            Developer's note
-
-            It's not clear when the measuring point from NM_Aquifer was 
-            determined, so I'm setting start_date to the day of the transfer
-            """
-            measuring_point_history = MeasuringPointHistory(
-                thing_id=well.id,
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
-                start_date=datetime.now(tz=UTC),
-                end_date=None,
-            )
-            session.add(measuring_point_history)
+            # session.flush()
 
             # session.commit()
             # session.refresh(well)
@@ -330,6 +311,38 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         assoc.thing = well
         session.add(assoc)
 
+    session.commit()
+
+    # add things thate need well id
+    for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
+        row = wdf[wdf["PointID"] == well.name].iloc[0]
+        if not isna(row.Notes):
+            note = well.add_note(row.Notes, "Other")
+            session.add(note)
+
+        location = well.current_location
+        elevation_method = added_locations[row.PointID]
+        data_provenances = make_location_data_provenance(
+            row, location, elevation_method
+        )
+        for dp in data_provenances:
+            session.add(dp)
+
+        """
+            Developer's note
+
+            It's not clear when the measuring point from NM_Aquifer was 
+            determined, so I'm setting start_date to the day of the transfer
+        """
+        measuring_point_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=row.MPHeight,
+            measuring_point_description=row.MeasuringPoint,
+            start_date=datetime.now(tz=UTC),
+            end_date=None,
+        )
+        session.add(measuring_point_history)
+
         """
         Developer's notes
 
@@ -339,9 +352,10 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
         # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
         # TODO: have AMMP review and verify the various MonitoringStatus codes
+
         target_id = well.id
         target_table = "thing"
-        if row.MonitoringStatus:
+        if not isna(row.MonitoringStatus):
             if (
                 "X" in row.MonitoringStatus
                 or "I" in row.MonitoringStatus
@@ -378,7 +392,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                         f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
                     )
 
-        if row.Status:
+        if not isna(row.Status):
             status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
             status_history = StatusHistory(
                 status_type="Well Status",
@@ -390,15 +404,6 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             )
             session.add(status_history)
             logger.info(f"  Added well status for well {well.name}: {status_value}")
-
-    session.commit()
-
-    # add notes
-    for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
-        row = wdf[wdf["PointID"] == well.name].iloc[0]
-        if not isna(row.Notes):
-            note = well.add_note(row.Notes, "Other")
-            session.add(note)
 
     session.commit()
 
