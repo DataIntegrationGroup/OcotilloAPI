@@ -685,6 +685,7 @@
     {"categories": ["group_type"], "term": "Historical", "definition": "A group of `Things` that share a common historical attribute. E.g., 'Wells drilled before 1950', 'Legacy Wells (Pre-1990)'."},
     {"categories": ["monitoring_frequency"], "term": "Monthly", "definition": "Location is monitored on a monthly basis."},
     {"categories": ["monitoring_frequency"], "term": "Bimonthly", "definition": "Location is monitored every two months."},
+      {"categories": ["monitoring_frequency"], "term": "Bimonthly reported", "definition": "Location is monitored every two months and reported to NMBGMR."},
     {"categories": ["monitoring_frequency"], "term": "Quarterly", "definition": "Location is monitored on a quarterly basis."},
     {"categories": ["monitoring_frequency"], "term": "Biannual", "definition": "Location is monitored twice a year."},
     {"categories": ["monitoring_frequency"], "term": "Annual", "definition": "Location is monitored once a year."},

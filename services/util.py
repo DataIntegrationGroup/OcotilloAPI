@@ -132,6 +132,26 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     return data["value"]
 
 
+def convert_ngvd29_to_navd88(
+    elevation_ngvd29: float, longitude: float, latitude: float
+) -> float:
+    url = "https://geodesy.noaa.gov/api/ncat/llh"
+    params = {
+        "lat": latitude,
+        "lon": longitude,
+        "inDatum": "nad83(2011)",
+        "outDatum": "nad83(2011)",
+        "inVertDatum": "ngvd29",
+        "outVertDatum": "navd88",
+        "orthoHt": elevation_ngvd29,
+    }
+    response = httpx.get(url, params=params)
+    data = response.json()
+
+    elevation_navd88 = data.get("destOrthoht")
+    return elevation_navd88
+
+
 def retrieve_latest_polymorphic_history_table_record(
     target_record: DeclarativeBase,
     polymorphic_relationship: str,

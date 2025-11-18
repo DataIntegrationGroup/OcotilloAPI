@@ -15,7 +15,7 @@
 # ===============================================================================
 import json
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pandas as pd
 from pandas import isna
@@ -33,6 +33,9 @@ from db import (
     Location,
     WellPurpose,
     WellCasingMaterial,
+    StatusHistory,
+    MonitoringFrequencyHistory,
+    MeasuringPointHistory,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -43,6 +46,7 @@ from services.util import (
 )
 from transfers.util import (
     make_location,
+    make_location_data_provenance,
     filter_to_valid_point_ids,
     read_csv,
     logger,
@@ -54,6 +58,16 @@ from transfers.util import (
 )
 
 ADDED = []
+
+NMA_MONITORING_FREQUENCY = {
+    "6": "Biannual",
+    "A": "Annual",
+    "B": "Bimonthly",
+    "L": "Decadal",
+    "M": "Monthly",
+    "R": "Bimonthly reported",
+    "N": "Biannual",
+}
 
 
 def _get_first_visit_date(row) -> datetime | None:
@@ -170,8 +184,14 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         location = None
         try:
-            location = make_location(row)
+            location, elevation_method = make_location(row)
             session.add(location)
+            session.flush()
+            data_provenances = make_location_data_provenance(
+                row, location, elevation_method
+            )
+            for dp in data_provenances:
+                session.add(dp)
         except Exception as e:
             if location is not None:
                 session.expunge(location)
@@ -198,9 +218,13 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
                 well_construction_notes=row.ConstructionNotes,
-                well_casing_diameter=row.CasingDiameter,
+                well_casing_diameter=(
+                    row.CasingDiameter * 12 if row.CasingDiameter else None
+                ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
             )
 
             CreateWell.model_validate(data)
@@ -219,12 +243,33 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "group_id",
                     "well_purposes",
                     "well_casing_materials",
+                    "measuring_point_height",
+                    "measuring_point_description",
                 ]
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
             well = Thing(**well_data)
             session.add(well)
+            logger.info(f"Created well for {row.PointID}")
+
+            # flush well to access its ID for status_history
+            session.flush()
+
+            """
+            Developer's note
+
+            It's not clear when the measuring point from NM_Aquifer was 
+            determined, so I'm setting start_date to the day of the transfer
+            """
+            measuring_point_history = MeasuringPointHistory(
+                thing_id=well.id,
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
+                start_date=datetime.now(tz=UTC),
+                end_date=None,
+            )
+            session.add(measuring_point_history)
 
             if well_purposes:
                 for wp in well_purposes:
@@ -259,14 +304,69 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         assoc.thing = well
         session.add(assoc)
 
+        """
+        Developer's notes
+
+        For all status_history records the start_date will be now since that
+        isn't recorded in NM_Aquifer
+        """
+        # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
+        # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
+        # TODO: have AMMP review and verify the various MonitoringStatus codes
+        target_id = well.id
+        target_table = "thing"
+        if row.MonitoringStatus:
+            if (
+                "X" in row.MonitoringStatus
+                or "I" in row.MonitoringStatus
+                or "C" in row.MonitoringStatus
+            ):
+                status_value = "Not currently monitored"
+            else:
+                status_value = "Currently monitored"
+
+            status_history = StatusHistory(
+                status_type="Monitoring Status",
+                status_value=status_value,
+                reason=row.MonitorStatusReason,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+            logger.info(
+                f"  Added monitoring status for well {well.name}: {status_value}"
+            )
+
+            for code in NMA_MONITORING_FREQUENCY.keys():
+                if code in row.MonitoringStatus:
+                    monitoring_frequency = NMA_MONITORING_FREQUENCY[code]
+                    monitoring_frequency_history = MonitoringFrequencyHistory(
+                        thing_id=well.id,
+                        monitoring_frequency=monitoring_frequency,
+                        start_date=datetime.now(tz=UTC),
+                        end_date=None,
+                    )
+                    session.add(monitoring_frequency_history)
+                    logger.info(
+                        f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
+                    )
+
+        if row.Status:
+            status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
+            status_history = StatusHistory(
+                status_type="Well Status",
+                status_value=status_value,
+                reason=row.StatusUserNotes,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+            logger.info(f"  Added well status for well {well.name}: {status_value}")
+
     session.commit()
     return input_df, cleaned_df, errors
-    # try:
-    #     session.commit()
-    # except Exception as e:
-    #     logger.critical(f"Error committing well {row.PointID}: {e}")
-    #     session.rollback()
-    #     continue
 
 
 def transfer_wellscreens(session, limit=None):
