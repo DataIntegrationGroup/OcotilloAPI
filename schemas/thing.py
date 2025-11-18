@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List
 
-from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
+from pydantic import BaseModel, model_validator, Field, field_validator
 
 from core.enums import (
     WellPurpose,
@@ -25,9 +25,9 @@ from core.enums import (
     Organization,
     MonitoringFrequency,
 )
-from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.location import LocationGeoJSONResponse
+from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
+from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 
 
@@ -102,7 +102,7 @@ class CreateBaseThing(BaseCreateModel):
     location_id: int | None
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
-    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
+    first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
 
 
 class CreateWell(CreateBaseThing, ValidateWell):
@@ -171,15 +171,15 @@ class ThingIdLinkResponse(BaseResponseModel):
 
 class MonitoringFrequencyResponse(BaseModel):
     monitoring_frequency: MonitoringFrequency
-    start_date: PastDate
-    end_date: PastDate | None
+    start_date: PastOrTodayDate
+    end_date: PastOrTodayDate | None
 
 
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
     current_location: LocationGeoJSONResponse
-    first_visit_date: PastDate | None
+    first_visit_date: PastOrTodayDate | None
     # The new relationship to the polymorphic Notes table
     notes: List[NoteResponse] = []
 
@@ -317,7 +317,7 @@ class UpdateThing(BaseUpdateModel):
     """
 
     name: str | None = None  # Optional name for the thing
-    first_visit_date: PastDate | None = None  # Date of NMBGMR's first visit
+    first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
 
 
 class UpdateWell(UpdateThing, ValidateWell):
