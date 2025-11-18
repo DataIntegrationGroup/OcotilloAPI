@@ -20,6 +20,7 @@ from pydantic import BaseModel, model_validator, PastDate, Field, field_validato
 from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
+from schemas.notes import NoteResponse, CreateNote
 
 
 # -------- VALIDATE ----------
@@ -98,6 +99,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
+    notes: list[CreateNote] | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -135,6 +137,11 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationResponse | None
     first_visit_date: PastDate | None
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
+
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
 
 
 class WellResponse(BaseThingResponse):
@@ -154,9 +161,9 @@ class WellResponse(BaseThingResponse):
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
 
-    water_notes: str | None = None
-    measuring_notes: str | None = None
-    notes: str | None = None
+    water_notes: list[NoteResponse] | None = None
+    measuring_notes: list[NoteResponse] | None = None
+    general_notes: list[NoteResponse] | None = None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

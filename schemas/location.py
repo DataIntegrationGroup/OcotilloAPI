@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import List
+
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
 from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
+from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.validation.geospatial import validate_wkt_geometry
 
 
@@ -41,7 +44,10 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     """
 
     # name: str | None = None
-    notes: str | None = None
+    # TODO: AI suggested managing notes via a separate /locations/{id}/notes endpoint.
+    #  I don't know if we want to do that, but am leaving this comment for future reference.
+    # notes: str | None = None
+    notes: List[CreateNote] = []
     point: str  # point is required and should be in WKT format
     elevation: float
     elevation_accuracy: float | None = None
@@ -66,7 +72,9 @@ class LocationResponse(BaseResponseModel):
     """
 
     # name: str | None
-    notes: str | None
+    # The 'notes' field is now a List of NoteResponse objects,
+    # matching the polymorphic relationship in the database model.
+    notes: List[NoteResponse] = []
     point: str
     elevation: float | None
     horizontal_datum: str = "WGS84"
@@ -103,11 +111,13 @@ class GroupLocationResponse(BaseResponseModel):
 # -------- UPDATE ----------
 class UpdateLocation(BaseUpdateModel, ValidateLocation):
     """
-    Schema for updating a location.
+    Schema for updating a location. Notes are managed via the polymorphic Notes table.
     """
 
     # name: str | None = None
-    notes: str | None = None
+    # TODO: AI suggested managing notes via a separate API endpoint, /notes/{note_id}.
+    #  I don't know if we want to do that, but am leaving this comment for future reference.
+    notes: List[UpdateNote] = []
     point: str | None = None
     elevation: float | None = None
     elevation_accuracy: float | None = None

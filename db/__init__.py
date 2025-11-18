@@ -30,6 +30,7 @@ from db.field import *
 from db.group import *
 from db.lexicon import *
 from db.location import *
+from db.notes import *
 from db.observation import *
 from db.parameter import *
 from db.permission import *
