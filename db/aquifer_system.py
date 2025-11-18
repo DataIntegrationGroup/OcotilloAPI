@@ -14,6 +14,8 @@ from geoalchemy2 import Geometry
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
+from constants import SRID_WGS84
+
 if TYPE_CHECKING:
     from db.thing import WellScreen, ThingAquiferAssociation, Thing
 
@@ -41,7 +43,7 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
         comment="A controlled vocabulary field to classify the aquifer's geographic scale (e.g., 'Major', 'Regional', 'Local').",
     )
     boundary: Mapped[Geometry] = mapped_column(
-        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=True),
+        Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True),
         nullable=True,
         comment="A spatial representation of the aquifer system's boundary.",
     )

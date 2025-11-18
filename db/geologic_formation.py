@@ -15,6 +15,8 @@ from geoalchemy2 import Geometry
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.lexicon import lexicon_term
 
+from constants import SRID_WGS84
+
 if TYPE_CHECKING:
     from db.thing import Thing
     from db.thing_formation_association import ThingFormationAssociation
@@ -47,7 +49,7 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
         "(e.g., 'Tuff', 'Sandstone', 'Alluvium', 'Shale').",
     )
     boundary: Mapped[Geometry] = mapped_column(
-        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=True),
+        Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True),
         nullable=True,
         comment="A spatial representation of the geologic formation's extent.",
     )
