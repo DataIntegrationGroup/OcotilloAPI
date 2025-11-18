@@ -28,6 +28,7 @@ from core.enums import (
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationGeoJSONResponse
 from schemas.group import GroupResponse
+from schemas.notes import NoteResponse, CreateNote
 
 
 # -------- VALIDATE ----------
@@ -128,6 +129,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
         ge=0, description="Measuring point height in feet"
     )
     measuring_point_description: str | None
+    notes: list[CreateNote] | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -178,6 +180,9 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationGeoJSONResponse
     first_visit_date: PastDate | None
+    # The new relationship to the polymorphic Notes table
+    notes: List[NoteResponse] = []
+
     groups: list[GroupResponse] = []
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
@@ -220,9 +225,9 @@ class WellResponse(BaseThingResponse):
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
 
-    water_notes: str | None = None
-    measuring_notes: str | None = None
-    notes: str | None = None
+    water_notes: list[NoteResponse] | None = None
+    measuring_notes: list[NoteResponse] | None = None
+    general_notes: list[NoteResponse] | None = None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

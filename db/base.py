@@ -36,6 +36,9 @@ It includes:
 7.  An `AuditMixin` to add standard audit columns to tables.
 """
 
+import re
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -52,9 +55,11 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
-from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
-import re
+from sqlalchemy_searchable import make_searchable
+
+if TYPE_CHECKING:
+    pass
 
 
 make_versioned()

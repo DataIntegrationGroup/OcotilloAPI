@@ -16,10 +16,19 @@ def location():
             elevation=2464.9,
             release_status="draft",
         )
+
         session.add(loc)
         session.commit()
         session.refresh(loc)
+
+        note = loc.add_note("these are some test notes", "Other")
+        session.add(note)
+        session.commit()
+        session.refresh(loc)
+
         yield loc
+
+        session.delete(note)
         session.delete(loc)
         session.commit()
 
