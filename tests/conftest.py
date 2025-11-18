@@ -11,7 +11,6 @@ from tests import groundwater_level_parameter_id, pH_parameter_id
 def location():
     with session_ctx() as session:
         loc = Location(
-            notes="these are some test notes",
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
             release_status="draft",
