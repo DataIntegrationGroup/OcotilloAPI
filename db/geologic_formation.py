@@ -25,12 +25,14 @@ if TYPE_CHECKING:
 class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
     __versioned__ = {}
 
-    # TODO: Should `name` use a controlled vocabulary?
-    name: Mapped[str] = mapped_column(
-        nullable=False,
-        unique=True,
-        comment="The full, human-readable name of the geologic formation (e.g., 'Navajo Sandstone').",
-    )
+    # TODO: Let the API map formation codes to names using a formations.json file that can be periodically updated
+    #  from the authoritative source (.e.g USGS). A placeholder `formations.json` file had been added to the `core`
+    #  directory.
+    # name: Mapped[str] = mapped_column(
+    #     nullable=False,
+    #     unique=True,
+    #     comment="The full, human-readable name of the geologic formation (e.g., 'Navajo Sandstone').",
+    # )
     formation_code: Mapped[str] = lexicon_term(
         nullable=True,
         unique=True,
@@ -43,7 +45,7 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
     )
     # TODO: Implement controlled vocabularies for `lithology` using NMAquifer's 'LU_Lithology' table.
     #  This should be implemented after AMMP reviews and cleans up their formation terms and codes.
-    lithology: Mapped[str] = mapped_column(
+    lithology: Mapped[str] = lexicon_term(
         nullable=True,
         comment="A controlled vocabulary for the primary, dominant rock type"
         "(e.g., 'Tuff', 'Sandstone', 'Alluvium', 'Shale').",
