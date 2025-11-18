@@ -20,7 +20,7 @@ from db import Thing, Group, GroupThingAssociation
 from db.engine import session_ctx
 from transfers.util import read_csv
 from transfers.logger import logger
-from services.util import retrieve_latest_polymorphic_table_record
+from services.util import retrieve_latest_polymorphic_history_table_record
 
 
 def transfer_groups(
@@ -56,12 +56,10 @@ def transfer_groups(
                                     if sh.status_type == "Monitoring Status"
                                 ]
                                 if monitoring_status:
-                                    monitoring_status = (
-                                        retrieve_latest_polymorphic_table_record(
-                                            record,
-                                            "status_history",
-                                            "Monitoring Status",
-                                        )
+                                    monitoring_status = retrieve_latest_polymorphic_history_table_record(
+                                        record,
+                                        "status_history",
+                                        "Monitoring Status",
                                     )
                                     if (
                                         monitoring_status.status_value

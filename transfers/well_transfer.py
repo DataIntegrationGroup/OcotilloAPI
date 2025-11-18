@@ -46,6 +46,7 @@ from services.util import (
 )
 from transfers.util import (
     make_location,
+    make_location_data_provenance,
     filter_to_valid_point_ids,
     read_csv,
     logger,
@@ -173,8 +174,14 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         location = None
         try:
-            location = make_location(row)
+            location, elevation_method = make_location(row)
             session.add(location)
+            session.flush()
+            data_provenances = make_location_data_provenance(
+                row, location, elevation_method
+            )
+            for dp in data_provenances:
+                session.add(dp)
         except Exception as e:
             if location is not None:
                 session.expunge(location)
