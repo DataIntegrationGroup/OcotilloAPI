@@ -158,7 +158,7 @@ def add_sensor(context, session, sid):
 
 
 @add_context_object_container("groups")
-def add_group(context, session, wells, gid):
+def add_group(context, session, wells):
     group = Group(name="Collabnet")
     for w in wells:
         assoc = GroupThingAssociation(group=group, thing=w)
@@ -236,6 +236,7 @@ def before_all(context):
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session, well_1.id)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
+        add_group(context, session, [well_1, well_2])
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
