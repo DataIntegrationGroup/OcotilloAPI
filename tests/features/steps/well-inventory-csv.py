@@ -166,6 +166,8 @@ def step_impl(context: Context):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
 
+    print("adssaf", validation_errors)
+    print("ffff", response_json)
     assert len(validation_errors) == 1, "Expected 1 validation error"
 
     error_fields = [
