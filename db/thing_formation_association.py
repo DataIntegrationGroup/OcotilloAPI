@@ -51,10 +51,10 @@ class ThingFormationAssociation(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationship Definitions ---
     # Many-To-One: This association links to one Thing.
     thing: Mapped["Thing"] = relationship(
-        "Thing", back_populates="formation_associations"
+        "Thing", back_populates="formation_associations", lazy="joined"
     )
 
     # Many-To-One: This association links to one GeologicFormation.
     geologic_formation: Mapped["GeologicFormation"] = relationship(
-        "GeologicFormation", back_populates="thing_associations"
+        "GeologicFormation", back_populates="thing_associations", lazy="joined"
     )
