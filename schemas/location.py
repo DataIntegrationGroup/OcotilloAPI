@@ -47,10 +47,10 @@ class CreateLocation(BaseCreateModel, ValidateLocation):
     notes: str | None = None
     point: str  # point is required and should be in WKT format
     elevation: float
-    elevation_accuracy: float | None = None
-    elevation_method: ElevationMethod | None = None
-    coordinate_accuracy: float | None = None
-    coordinate_method: CoordinateMethod | None = None
+    # elevation_accuracy: float | None = None
+    # elevation_method: ElevationMethod | None = None
+    # coordinate_accuracy: float | None = None
+    # coordinate_method: CoordinateMethod | None = None
 
 
 class CreateGroupThing(BaseModel):
