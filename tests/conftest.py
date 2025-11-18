@@ -63,11 +63,24 @@ def water_well_thing(location):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+
+        measuring_point_history = MeasuringPointHistory(
+            thing_id=water_well.id,
+            measuring_point_height=2,
+            measuring_point_description="top of casing",
+            start_date="2023-01-01",
+            end_date=None,
+            reason="for fun",
+        )
+        session.add(measuring_point_history)
+        session.commit()
+
         session.refresh(water_well)
         session.refresh(assoc)
         yield water_well
         session.delete(water_well)
         session.delete(assoc)
+        session.delete(measuring_point_history)
         session.commit()
 
 
