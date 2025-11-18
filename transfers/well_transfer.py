@@ -215,6 +215,9 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 well_casing_diameter=row.CasingDiameter,
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
+                notes=(
+                    [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
+                ),
             )
 
             CreateWell.model_validate(data)
@@ -237,8 +240,17 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
+
+            notes = well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
+
+            # session.commit()
+            # session.refresh(well)
+            # if notes:
+            #     for ni in notes:
+            #         nn = well.add_note(ni['content'], ni['note_type'])
+            #         session.add(nn)
 
             if well_purposes:
                 for wp in well_purposes:
@@ -274,6 +286,16 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         session.add(assoc)
 
     session.commit()
+
+    # add notes
+    for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
+        row = wdf[wdf["PointID"] == well.name].iloc[0]
+        if not isna(row.Notes):
+            note = well.add_note(row.Notes, "Other")
+            session.add(note)
+
+    session.commit()
+
     return input_df, cleaned_df, errors
     # try:
     #     session.commit()

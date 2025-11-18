@@ -221,9 +221,10 @@ def before_all(context):
     context.objects = {}
     rebuild = False
     # rebuild = True
+    if rebuild:
+        erase_and_rebuild_db()
+
     with session_ctx() as session:
-        if rebuild:
-            erase_and_rebuild_db(session)
 
         loc_1 = add_location(context, session)
         loc_2 = add_location(context, session)
