@@ -11,18 +11,9 @@ from tests import groundwater_level_parameter_id, pH_parameter_id
 def location():
     with session_ctx() as session:
         loc = Location(
-            # name="first location",
-            # notes="these are some test notes",
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
             release_status="draft",
-            elevation_accuracy=100,
-            elevation_method="Survey-grade GPS",
-            coordinate_accuracy=50,
-            coordinate_method="GPS, uncorrected",
-            # state="New Mexico",
-            # county="Catron",
-            # quad_name="Luera Mountains West",
         )
 
         session.add(loc)
@@ -45,7 +36,6 @@ def location():
 def second_location():
     with session_ctx() as session:
         location = Location(
-            # name="second location",
             point="POINT (10.2 10.2)",
             elevation=0,
             release_status="draft",
@@ -81,11 +71,24 @@ def water_well_thing(location):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+
+        measuring_point_history = MeasuringPointHistory(
+            thing_id=water_well.id,
+            measuring_point_height=2,
+            measuring_point_description="top of casing",
+            start_date="2023-01-01",
+            end_date=None,
+            reason="for fun",
+        )
+        session.add(measuring_point_history)
+        session.commit()
+
         session.refresh(water_well)
         session.refresh(assoc)
         yield water_well
         session.delete(water_well)
         session.delete(assoc)
+        session.delete(measuring_point_history)
         session.commit()
 
 

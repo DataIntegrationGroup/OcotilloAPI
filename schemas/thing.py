@@ -17,9 +17,17 @@ from typing import List
 
 from pydantic import BaseModel, model_validator, PastDate, Field, field_validator
 
-from core.enums import WellPurpose, CasingMaterial, SpringType, ScreenType
+from core.enums import (
+    WellPurpose,
+    CasingMaterial,
+    SpringType,
+    ScreenType,
+    Organization,
+    MonitoringFrequency,
+)
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
-from schemas.location import LocationResponse
+from schemas.location import LocationGeoJSONResponse
+from schemas.group import GroupResponse
 from schemas.notes import NoteResponse, CreateNote
 
 
@@ -30,23 +38,41 @@ class ValidateWell(BaseModel):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
+    measuring_point_height: float | None = None  # in feet
 
     @model_validator(mode="after")
-    def check_depths(self):
-        if (
-            self.hole_depth is not None
-            and self.well_depth is not None
-            and self.well_depth > self.hole_depth
-        ):
-            raise ValueError("well depth must be less than than or equal to hole depth")
-        elif (
-            self.hole_depth is not None
-            and self.well_casing_depth is not None
-            and self.well_casing_depth > self.hole_depth
-        ):
-            raise ValueError(
-                "well casing depth must be less than or equal to hole depth"
-            )
+    def validate_values(self):
+        if self.hole_depth is not None:
+            if self.well_depth is not None and self.well_depth > self.hole_depth:
+                raise ValueError(
+                    "well depth must be less than than or equal to hole depth"
+                )
+            elif (
+                self.well_casing_depth is not None
+                and self.well_casing_depth > self.hole_depth
+            ):
+                raise ValueError(
+                    "well casing depth must be less than or equal to hole depth"
+                )
+
+        if self.measuring_point_height is not None:
+            if (
+                self.hole_depth is not None
+                and self.measuring_point_height >= self.hole_depth
+            ):
+                raise ValueError("measuring point height must be less than hole depth")
+            elif (
+                self.well_casing_depth is not None
+                and self.measuring_point_height >= self.well_casing_depth
+            ):
+                raise ValueError(
+                    "measuring point height must be less than well casing depth"
+                )
+            elif (
+                self.well_depth is not None
+                and self.measuring_point_height >= self.well_depth
+            ):
+                raise ValueError("measuring point height must be less than well depth")
 
         return self
 
@@ -99,6 +125,10 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
+    measuring_point_height: float = Field(
+        ge=0, description="Measuring point height in feet"
+    )
+    measuring_point_description: str | None
     notes: list[CreateNote] | None = None
 
 
@@ -132,16 +162,45 @@ class CreateWellScreen(BaseCreateModel):
 
 
 # ------ RESPONSE ----------
+class ThingIdLinkResponse(BaseResponseModel):
+    thing_id: int
+    relation: str
+    alternate_id: str
+    alternate_organization: Organization
+
+
+class MonitoringFrequencyResponse(BaseModel):
+    monitoring_frequency: MonitoringFrequency
+    start_date: PastDate
+    end_date: PastDate | None
+
+
 class BaseThingResponse(BaseResponseModel):
     name: str
     thing_type: str
-    current_location: LocationResponse | None
+    current_location: LocationGeoJSONResponse
     first_visit_date: PastDate | None
     # The new relationship to the polymorphic Notes table
     notes: List[NoteResponse] = []
 
-    # The new relationship to the polymorphic Notes table
-    notes: List[NoteResponse] = []
+    groups: list[GroupResponse] = []
+    monitoring_status: str | None
+    links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
+    monitoring_frequencies: list[MonitoringFrequencyResponse] = []
+
+    @field_validator("monitoring_frequencies", mode="before")
+    def remove_records_with_end_date(cls, monitoring_frequencies):
+        if monitoring_frequencies is not None:
+            active_frequencies = [
+                {
+                    "monitoring_frequency": freq.monitoring_frequency,
+                    "start_date": freq.start_date.isoformat(),
+                    "end_date": None,
+                }
+                for freq in monitoring_frequencies
+                if freq.end_date is None
+            ]
+        return active_frequencies
 
 
 class WellResponse(BaseThingResponse):
@@ -152,6 +211,7 @@ class WellResponse(BaseThingResponse):
     well_purposes: list[WellPurpose] = []
     well_depth: float | None = None
     well_depth_unit: str = "ft"
+    well_depth_source: str | None
     hole_depth: float | None = None
     hole_depth_unit: str = "ft"
     well_casing_diameter: float | None = None  # in inches
@@ -160,6 +220,10 @@ class WellResponse(BaseThingResponse):
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
+    well_status: str | None
+    measuring_point_height: float
+    measuring_point_height_unit: str = "ft"
+    measuring_point_description: str | None
 
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
@@ -194,23 +258,8 @@ class SpringResponse(BaseThingResponse):
 
 
 class ThingResponse(WellResponse, SpringResponse):
-    pass
-
-
-class ThingIdLinkResponse(BaseResponseModel):
-    thing_id: int
-    thing: ThingResponse
-    relation: str
-    alternate_id: str
-    alternate_organization: str
-
-
-class LocationWellResponse(LocationResponse):
-    """
-    Response schema for sample location with well details.
-    """
-
-    well: List[WellResponse] = []  # List of wells associated with the sample location
+    # required fields for wells that don't apply to other thing types
+    measuring_point_height: float | None
 
 
 class WellScreenResponse(BaseResponseModel):

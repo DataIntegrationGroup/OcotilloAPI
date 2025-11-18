@@ -25,6 +25,7 @@ from hamcrest import assert_that, equal_to, is_, contains_string
 # -----------------------------------------------------------------------------
 
 
+# TODO: should this use fixtures to populate and access data from the database?
 @given("the system has valid well and deployment data in the database")
 def step_impl_valid_data(context: Context):
     """
@@ -48,6 +49,7 @@ def step_impl_valid_data(context: Context):
     context.api_connected = True
 
 
+# TODO: this step could be moved to a common steps file if reused elsewhere
 @given("the user is authenticated as a field technician")
 def step_impl_authenticated_user(context: Context):
     """Simulates user authentication."""
