@@ -48,7 +48,9 @@ def step_impl(context):
 def step_impl(context):
     obj = context.response.json()
     features = obj["features"]
-    assert len(features) == 2
+    assert (
+        len(features) == 2
+    ), f"Unexpected number of features {len(features)}, features={features}"
 
 
 # ============= EOF =============================================

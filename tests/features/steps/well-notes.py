@@ -41,6 +41,7 @@ def step_impl(context):
     context.notes = {}
 
 
+@when
 @then(
     "null values in the response should be represented as JSON null (not placeholder strings)"
 )
