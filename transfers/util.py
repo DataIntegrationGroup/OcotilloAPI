@@ -32,7 +32,12 @@ from db import Thing, Location, DataProvenance
 from services.gcs_helper import get_storage_bucket
 
 # from services.lexicon_mapper import lexicon_mapper
-from services.util import transform_srid, get_epqs_elevation_from_point, convert_ft_to_m
+from services.util import (
+    transform_srid,
+    get_epqs_elevation_from_point,
+    convert_ft_to_m,
+    convert_ngvd29_to_navd88,
+)
 from transfers.logger import logger
 
 
@@ -147,14 +152,6 @@ def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFram
     return df[df["PointID"].isin(valid_point_ids)]
 
 
-def convert_to_wgs84_vertical_datum(row, z):
-    if row.VerticalDatum == "NAVD88":
-        z = z + 2.0  # TODO: check this transformation
-    elif row.VerticalDatum == "NGVD29":
-        z = z + 3.0  # TODO: check this transformation
-    return z
-
-
 def convert_mt_to_utc(dt_record: datetime):
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
@@ -222,6 +219,9 @@ def make_location(row: pd.Series) -> tuple:
     if z:
         elevation_from_epqs = False
         z = convert_ft_to_m(z)
+
+        if row.AltDatum == "NGVD29":
+            z = convert_ngvd29_to_navd88(z, transformed_point.x, transformed_point.y)
     else:
         elevation_from_epqs = True
         logger.info(
