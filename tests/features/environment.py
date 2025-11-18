@@ -16,7 +16,7 @@
 import random
 from datetime import datetime, timedelta
 
-from core.initializers import erase_and_rebuild_db, init_lexicon, init_parameter
+from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
     Thing,
@@ -29,7 +29,6 @@ from db import (
     Deployment,
     TransducerObservationBlock,
 )
-
 from db.engine import session_ctx
 
 
@@ -49,7 +48,7 @@ def add_context_object_container(name):
 def add_location(context, session):
     loc = Location(
         # name="first location",
-        notes="these are some test notes",
+        # notes="these are some test notes",
         point="POINT(-107.949533 33.809665)",
         elevation=2464.9,
         release_status="draft",
@@ -59,6 +58,10 @@ def add_location(context, session):
         coordinate_method="GPS, uncorrected",
     )
     session.add(loc)
+    session.commit()
+    session.refresh(loc)
+    n = loc.add_note("Test location", "Other")
+    session.add(n)
     session.commit()
     session.refresh(loc)
 
@@ -78,7 +81,11 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
+        # notes="These are some test well notes",
+        # measuring_notes="These are some measuring notes",
+        # water_notes="This are some water notes",
     )
+
     session.add(well)
     session.commit()
 
@@ -86,7 +93,17 @@ def add_well(context, session, location, name_num):
     assoc.effective_start = "2025-02-01T00:00:00Z"
     session.add(assoc)
     session.commit()
+    session.refresh(well)
 
+    for nt, c in (
+        ("Other", "well notes"),
+        ("Water", "water notes"),
+        ("Measuring", "measuring notes"),
+    ):
+        n = well.add_note(c, nt)
+        session.add(n)
+
+    session.commit()
     session.refresh(well)
 
     context.objects["wells"].append(well)
@@ -141,7 +158,7 @@ def add_sensor(context, session, sid):
 
 
 @add_context_object_container("groups")
-def add_group(context, session, wells, gid):
+def add_group(context, session, wells):
     group = Group(name="Collabnet")
     for w in wells:
         assoc = GroupThingAssociation(group=group, thing=w)
@@ -203,11 +220,10 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 def before_all(context):
     context.objects = {}
     rebuild = False
+    # rebuild = True
     with session_ctx() as session:
         if rebuild:
             erase_and_rebuild_db(session)
-            init_lexicon()
-            init_parameter()
 
         loc_1 = add_location(context, session)
         loc_2 = add_location(context, session)
@@ -220,6 +236,7 @@ def before_all(context):
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session, well_1.id)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
+        add_group(context, session, [well_1, well_2])
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

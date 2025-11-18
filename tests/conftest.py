@@ -12,7 +12,7 @@ def location():
     with session_ctx() as session:
         loc = Location(
             # name="first location",
-            notes="these are some test notes",
+            # notes="these are some test notes",
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
             release_status="draft",
@@ -24,10 +24,19 @@ def location():
             # county="Catron",
             # quad_name="Luera Mountains West",
         )
+
         session.add(loc)
         session.commit()
         session.refresh(loc)
+
+        note = loc.add_note("these are some test notes", "Other")
+        session.add(note)
+        session.commit()
+        session.refresh(loc)
+
         yield loc
+
+        session.delete(note)
         session.delete(loc)
         session.commit()
 

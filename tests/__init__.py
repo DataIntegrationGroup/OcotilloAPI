@@ -43,14 +43,9 @@ from db import Base, Parameter
 from db.engine import session_ctx
 from core.app import app
 
-
-# Base.metadata.drop_all(engine)
-# Base.metadata.create_all(engine)
 with session_ctx() as session:
     erase_and_rebuild_db(session)
 
-init_lexicon()
-init_parameter()
 
 register_routes(app)
 app.add_middleware(

@@ -20,7 +20,7 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
-from db import lexicon_term
+from db import lexicon_term, NotesMixin
 from db.asset import Asset
 from db.base import (
     AutoBaseMixin,
@@ -39,7 +39,9 @@ if TYPE_CHECKING:
     from db.group import Group, GroupThingAssociation
 
 
-class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
+class Thing(
+    Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin, NotesMixin
+):
     """
     Represents a physical object of interest being monitored (e.g., a well).
     Stores static, core attributes of the physical installation.
@@ -52,6 +54,10 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
     )
+
+    # notes = mapped_column(Text, nullable=True)
+    # measuring_notes = mapped_column(Text, nullable=True)
+    # water_notes = mapped_column(Text, nullable=True)
 
     # TODO: should `name` be unique?
     name: Mapped[str] = mapped_column(
@@ -273,6 +279,18 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             if current_location and current_location[0].effective_end is None
             else None
         )
+
+    @property
+    def water_notes(self):
+        return self._get_notes("Water")
+
+    @property
+    def general_notes(self):
+        return self._get_notes("Other")
+
+    @property
+    def measuring_notes(self):
+        return self._get_notes("Measuring")
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
