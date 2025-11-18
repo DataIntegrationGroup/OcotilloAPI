@@ -41,6 +41,50 @@ from services.util import (
 from transfers.logger import logger
 
 
+NMA_COORDINATE_ACCURACY = {
+    "5m": {
+        "accuracy_value": 5,
+        "accuracy_unit": "m",
+    },
+    "1": {
+        "accuracy_value": 0.1,
+        "accuracy_unit": "second",
+    },
+    "5": {
+        "accuracy_value": 0.5,
+        "accuracy_unit": "second",
+    },
+    "F": {
+        "accuracy_value": 5,
+        "accuracy_unit": "second",
+    },
+    "H": {
+        "accuracy_value": 0.01,
+        "accuracy_unit": "second",
+    },
+    "M": {
+        "accuracy_value": 1,
+        "accuracy_unit": "minute",
+    },
+    "R": {
+        "accuracy_value": 3,
+        "accuracy_unit": "second",
+    },
+    "S": {
+        "accuracy_value": 1,
+        "accuracy_unit": "second",
+    },
+    "T": {
+        "accuracy_value": 10,
+        "accuracy_unit": "second",
+    },
+    None: {
+        "accuracy_value": None,
+        "accuracy_unit": None,
+    },
+}
+
+
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     df = df.replace(pd.NA, default)
     return df.replace({np.nan: default})
@@ -342,36 +386,12 @@ def make_location_data_provenance(
             else None
         )
 
-        if row.CoordinateAccuracy == "5m":
-            accuracy_value = 5
-            accuracy_unit = "minute"
-        elif row.CoordinateAccuracy == "1":
-            accuracy_value = 0.1
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "5":
-            accuracy_value = 0.5
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "F":
-            accuracy_value = 5
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "H":
-            accuracy_value = 0.01
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "M":
-            accuracy_value = 1
-            accuracy_unit = "minute"
-        elif row.CoordinateAccuracy == "R":
-            accuracy_value = 3
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "S":
-            accuracy_value = 1
-            accuracy_unit = "second"
-        elif row.CoordinateAccuracy == "T":
-            accuracy_value = 10
-            accuracy_unit = "second"
-        else:
-            accuracy_value = None
-            accuracy_unit = None
+        accuracy_value = NMA_COORDINATE_ACCURACY.get(row.CoordinateAccuracy, None).get(
+            "accuracy_value"
+        )
+        accuracy_unit = NMA_COORDINATE_ACCURACY.get(row.CoordinateAccuracy, None).get(
+            "accuracy_unit"
+        )
 
         provenance = DataProvenance(
             target_id=location.id,
