@@ -59,10 +59,10 @@ def test_add_location():
         "point": "POINT (-106.607784 35.118924)",
         "elevation": 1558.8,
         "release_status": "draft",
-        "elevation_accuracy": 1.0,
-        "elevation_method": "Survey-grade GPS",
-        "coordinate_accuracy": 5.0,
-        "coordinate_method": "GPS, uncorrected",
+        # "elevation_accuracy": 1.0,
+        # "elevation_method": "Survey-grade GPS",
+        # "coordinate_accuracy": 5.0,
+        # "coordinate_method": "GPS, uncorrected",
     }
     response = client.post("/location", json=payload)
 
@@ -77,10 +77,10 @@ def test_add_location():
     assert data["point"] == payload["point"]
     assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
-    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
-    assert data["elevation_method"] == payload["elevation_method"]
-    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
-    assert data["coordinate_method"] == payload["coordinate_method"]
+    # assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    # assert data["elevation_method"] == payload["elevation_method"]
+    # assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    # assert data["coordinate_method"] == payload["coordinate_method"]
     assert data["state"] == "New Mexico"
     assert data["county"] == "Bernalillo"
     assert data["quad_name"] == "Albuquerque East"
@@ -101,10 +101,10 @@ def test_update_location(location):
         "point": "POINT (-106.904107 34.068198)",
         "elevation": 1408.3,
         "release_status": "draft",
-        "elevation_accuracy": 2.0,
-        "elevation_method": "Survey-grade GPS",
-        "coordinate_accuracy": 10.0,
-        "coordinate_method": "GPS, uncorrected",
+        # "elevation_accuracy": 2.0,
+        # "elevation_method": "Survey-grade GPS",
+        # "coordinate_accuracy": 10.0,
+        # "coordinate_method": "GPS, uncorrected",
     }
     response = client.patch(f"/location/{location.id}", json=payload)
     assert response.status_code == 200
@@ -117,10 +117,10 @@ def test_update_location(location):
     assert data["point"] == payload["point"]
     assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
-    assert data["elevation_accuracy"] == payload["elevation_accuracy"]
-    assert data["elevation_method"] == payload["elevation_method"]
-    assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
-    assert data["coordinate_method"] == payload["coordinate_method"]
+    # assert data["elevation_accuracy"] == payload["elevation_accuracy"]
+    # assert data["elevation_method"] == payload["elevation_method"]
+    # assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
+    # assert data["coordinate_method"] == payload["coordinate_method"]
     assert data["state"] == "New Mexico"
     assert data["county"] == "Socorro"
     assert data["quad_name"] == "Socorro"
@@ -172,10 +172,10 @@ def test_get_locations(location):
     assert data["items"][0]["point"] == to_shape(location.point).wkt
     assert data["items"][0]["elevation"] == location.elevation
     assert data["items"][0]["release_status"] == location.release_status
-    assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
-    assert data["items"][0]["elevation_method"] == location.elevation_method
-    assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
-    assert data["items"][0]["coordinate_method"] == location.coordinate_method
+    # assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
+    # assert data["items"][0]["elevation_method"] == location.elevation_method
+    # assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
+    # assert data["items"][0]["coordinate_method"] == location.coordinate_method
     assert data["items"][0]["state"] == location.state
     assert data["items"][0]["county"] == location.county
     assert data["items"][0]["quad_name"] == location.quad_name
@@ -193,10 +193,10 @@ def test_get_location_by_id(location):
     assert data["point"] == to_shape(location.point).wkt
     assert data["elevation"] == location.elevation
     assert data["release_status"] == location.release_status
-    assert data["elevation_accuracy"] == location.elevation_accuracy
-    assert data["elevation_method"] == location.elevation_method
-    assert data["coordinate_accuracy"] == location.coordinate_accuracy
-    assert data["coordinate_method"] == location.coordinate_method
+    # assert data["elevation_accuracy"] == location.elevation_accuracy
+    # assert data["elevation_method"] == location.elevation_method
+    # assert data["coordinate_accuracy"] == location.coordinate_accuracy
+    # assert data["coordinate_method"] == location.coordinate_method
     assert data["state"] == location.state
     assert data["county"] == location.county
     assert data["quad_name"] == location.quad_name

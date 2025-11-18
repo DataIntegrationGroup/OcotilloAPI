@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from behave import then, given
+from behave import then, given, when
 from starlette.testclient import TestClient
 
 from core.dependencies import (
@@ -63,6 +63,25 @@ def step_given_api_is_running(context):
     client = TestClient(app)
     context.client = client
     assert context.client is not None, "TestClient failed to initialize"
+
+
+@when("the user retrieves the well by ID via path parameter")
+def step_impl(context):
+    context.response = context.client.get(
+        f"thing/water-well/{context.objects['wells'][0].id}"
+    )
+    context.water_well_data = context.response.json()
+    context.notes = {}
+
+
+@then(
+    "null values in the response should be represented as JSON null (not placeholder strings)"
+)
+def step_impl(context):
+    data = context.response.json()
+    for k, v in data.items():
+        if v == "":
+            assert v is None, f"Value for key {k} is an empty string but should be null"
 
 
 @then("I should receive a successful response")

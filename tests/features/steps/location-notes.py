@@ -29,7 +29,7 @@ def step_impl(context):
 
 @then("the current location should include notes")
 def step_impl(context):
-    context.notes = context.response.json()["current_location"]["notes"]
+    context.notes = context.response.json()["current_location"]["properties"]["notes"]
     assert context.notes
 
 

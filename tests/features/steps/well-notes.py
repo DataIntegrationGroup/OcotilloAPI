@@ -33,33 +33,15 @@ def step_impl(context):
         assert note, f"{k} Note is empty"
 
 
-@when("the user retrieves the well by ID via path parameter")
-def step_impl(context):
-    context.response = context.client.get(
-        f"thing/water-well/{context.objects['wells'][0].id}"
-    )
-    context.notes = {}
-
-
-@then(
-    "null values in the response should be represented as JSON null (not placeholder strings)"
-)
-def step_impl(context):
-    data = context.response.json()
-    for k, v in data.items():
-        if v == "":
-            assert v is None, f"Value for key {k} is an empty string but should be null"
-
-
 @then(
     "the response should include location notes (i.e. driving directions and geographic well location notes)"
 )
 def step_impl(context):
     data = context.response.json()
     location = data["current_location"]
-    assert "notes" in location, "Response does not include location notes"
-    assert location["notes"] is not None, "Location notes is null"
-    context.notes["location"] = location["notes"]
+    assert "notes" in location["properties"], "Response does not include location notes"
+    assert location["properties"]["notes"] is not None, "Location notes is null"
+    context.notes["location"] = location["properties"]["notes"]
 
 
 @then(

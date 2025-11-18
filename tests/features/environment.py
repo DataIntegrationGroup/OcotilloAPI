@@ -28,6 +28,12 @@ from db import (
     Parameter,
     Deployment,
     TransducerObservationBlock,
+    StatusHistory,
+    ThingIdLink,
+    WellPurpose,
+    MeasuringPointHistory,
+    MonitoringFrequencyHistory,
+    DataProvenance,
 )
 from db.engine import session_ctx
 
@@ -52,10 +58,10 @@ def add_location(context, session):
         point="POINT(-107.949533 33.809665)",
         elevation=2464.9,
         release_status="draft",
-        elevation_accuracy=100,
-        elevation_method="Survey-grade GPS",
-        coordinate_accuracy=50,
-        coordinate_method="GPS, uncorrected",
+        # elevation_accuracy=100,
+        # elevation_method="Survey-grade GPS",
+        # coordinate_accuracy=50,
+        # coordinate_method="GPS, uncorrected",
     )
     session.add(loc)
     session.commit()
@@ -110,6 +116,53 @@ def add_well(context, session, location, name_num):
     return well
 
 
+@add_context_object_container("well_purposes")
+def add_well_purpose(context, session, well, purpose_term):
+    purpose = WellPurpose(thing=well, purpose=purpose_term)
+    session.add(purpose)
+    session.commit()
+    session.refresh(purpose)
+
+    context.objects["well_purposes"].append(purpose)
+    return purpose
+
+
+@add_context_object_container("measuring_point_histories")
+def add_measuring_point_history(context, session, well):
+    mph = MeasuringPointHistory(
+        thing=well,
+        measuring_point_height=2,
+        measuring_point_description="test description",
+        start_date="2024-01-01",
+        end_date=None,
+        reason="Initial measuring point record",
+    )
+    session.add(mph)
+    session.commit()
+    session.refresh(mph)
+
+    context.objects["measuring_point_histories"].append(mph)
+    return mph
+
+
+@add_context_object_container("monitoring_frequency_histories")
+def add_monitoring_frequency_history(
+    context, session, well, monitoring_frequency, start_date, end_date
+):
+    mfh = MonitoringFrequencyHistory(
+        thing=well,
+        monitoring_frequency=monitoring_frequency,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    session.add(mfh)
+    session.commit()
+    session.refresh(mfh)
+
+    context.objects["monitoring_frequency_histories"].append(mfh)
+    return mfh
+
+
 @add_context_object_container("springs")
 def add_spring(context, session, location, name_num):
     spring = Thing(
@@ -137,7 +190,7 @@ def add_spring(context, session, location, name_num):
 
 
 @add_context_object_container("sensors")
-def add_sensor(context, session, sid):
+def add_sensor(context, session):
     sensor = Sensor(
         name="Test Sensor",
         sensor_type="Pressure Transducer",
@@ -158,10 +211,15 @@ def add_sensor(context, session, sid):
 
 
 @add_context_object_container("groups")
-def add_group(context, session, wells):
-    group = Group(name="Collabnet")
-    for w in wells:
-        assoc = GroupThingAssociation(group=group, thing=w)
+def add_group(context, session, things):
+    group = Group(
+        name="Collabnet",
+        description="Healy Collaborative Network",
+        project_area=None,
+        group_type="Monitoring Plan",
+    )
+    for thing in things:
+        assoc = GroupThingAssociation(group=group, thing=thing)
         session.add(assoc)
 
     session.add(group)
@@ -204,6 +262,84 @@ def add_block(context, session, parameter):
     return block
 
 
+@add_context_object_container("status_history")
+def add_status_history(
+    context,
+    session,
+    status_type,
+    status_value,
+    start_date,
+    end_date,
+    reason,
+    target_id,
+    target_table,
+):
+    status_history = StatusHistory(
+        status_type=status_type,
+        status_value=status_value,
+        start_date=start_date,
+        end_date=end_date,
+        reason=reason,
+        target_id=target_id,
+        target_table=target_table,
+    )
+
+    session.add(status_history)
+    session.commit()
+    session.refresh(status_history)
+
+    context.objects["status_history"].append(status_history)
+    return status_history
+
+
+@add_context_object_container("id_links")
+def add_id_link(
+    context, session, thing, relation, alternate_id, alternate_organization
+):
+    id_link = ThingIdLink(
+        thing_id=thing.id,
+        relation=relation,
+        alternate_id=alternate_id,
+        alternate_organization=alternate_organization,
+    )
+    session.add(id_link)
+    session.commit()
+    session.refresh(id_link)
+
+    context.objects["id_links"].append(id_link)
+    return id_link
+
+
+@add_context_object_container("data_provenance")
+def add_data_provenance(
+    context,
+    session,
+    target_id,
+    target_table,
+    field_name,
+    origin_source,
+    collection_method=None,
+    accuracy_value=None,
+    accuracy_unit=None,
+):
+    data_provenance = DataProvenance(
+        field_name=field_name,
+        collection_method=collection_method,
+        target_id=target_id,
+        target_table=target_table,
+        origin_source=origin_source,
+        accuracy_value=accuracy_value,
+        accuracy_unit=accuracy_unit,
+    )
+
+    session.add(data_provenance)
+    session.commit()
+    session.refresh(data_provenance)
+
+    context.objects["data_provenance"].append(data_provenance)
+    return data_provenance
+
+
 @add_context_object_container("transducer_observations")
 def add_transducer_observation(context, session, block, deployment_id, value):
     obs = TransducerObservation(
@@ -235,9 +371,135 @@ def before_all(context):
         well_2 = add_well(context, session, loc_2, name_num=2)
         well_3 = add_well(context, session, loc_3, name_num=3)
         spring_4 = add_spring(context, session, loc_4, name_num=4)
-        sensor_1 = add_sensor(context, session, well_1.id)
+        sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
-        add_group(context, session, [well_1, well_2])
+
+        measuring_point_history_1 = add_measuring_point_history(
+            context, session, well=well_1
+        )
+        measuring_point_history_2 = add_measuring_point_history(
+            context, session, well=well_2
+        )
+        measuring_point_history_3 = add_measuring_point_history(
+            context, session, well=well_3
+        )
+
+        well_status_1 = add_status_history(
+            context,
+            session,
+            status_type="Well Status",
+            status_value="Active, pumping well",
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2021, 1, 1),
+            reason="Initial status",
+            target_id=context.objects["wells"][0].id,
+            target_table="thing",
+        )
+
+        well_status_2 = add_status_history(
+            context,
+            session,
+            status_type="Well Status",
+            status_value="Destroyed, exists but not usable",
+            start_date=datetime(2021, 1, 1),
+            end_date=None,
+            reason="Roving bovine",
+            target_id=context.objects["wells"][0].id,
+            target_table="thing",
+        )
+
+        monitoring_status_1 = add_status_history(
+            context,
+            session,
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=datetime(2020, 1, 1),
+            end_date=datetime(2021, 1, 1),
+            reason="Initial monitoring status",
+            target_id=context.objects["wells"][0].id,
+            target_table="thing",
+        )
+
+        monitoring_status_2 = add_status_history(
+            context,
+            session,
+            status_type="Monitoring Status",
+            status_value="Not currently monitored",
+            start_date=datetime(2021, 1, 1),
+            end_date=None,
+            reason="Roving bovine destroyed well",
+            target_id=context.objects["wells"][0].id,
+            target_table="thing",
+        )
+
+        monitoring_frequency_history_1 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Monthly",
+            start_date="2020-01-01",
+            end_date="2021-01-01",
+        )
+
+        monitoring_frequency_history_2 = add_monitoring_frequency_history(
+            context,
+            session,
+            well=well_1,
+            monitoring_frequency="Annual",
+            start_date="2020-01-01",
+            end_date=None,
+        )
+
+        id_link_1 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="12345678",
+            alternate_organization="USGS",
+        )
+
+        id_link_2 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="OSE-0001",
+            alternate_organization="NMOSE",
+        )
+
+        id_link_3 = add_id_link(
+            context,
+            session,
+            thing=well_1,
+            relation="same_as",
+            alternate_id="Roving Bovine Ranch Well #1",
+            alternate_organization="NMBGMR",
+        )
+
+        group = add_group(context, session, [well_1, well_2])
+
+        elevation_method = add_data_provenance(
+            context,
+            session,
+            target_id=loc_1.id,
+            target_table="location",
+            field_name="elevation",
+            origin_source="Private geologist, consultant or univ associate",
+            collection_method="LiDAR DEM",
+        )
+
+        well_depth_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_depth",
+            origin_source="Other",
+        )
+
+        for purpose in ["Domestic", "Irrigation"]:
+            add_well_purpose(context, session, well_1, purpose)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
@@ -248,6 +510,10 @@ def before_all(context):
             )
 
         session.commit()
+
+        # the following needs to be refreshed to get all the new relationships
+        session.refresh(well_1)
+        session.refresh(loc_1)
 
 
 def after_all(context):
