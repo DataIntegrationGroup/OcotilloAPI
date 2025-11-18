@@ -36,6 +36,7 @@ from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
     convert_ft_to_m,
+    convert_ngvd29_to_navd88,
 )
 from transfers.logger import logger
 
@@ -188,7 +189,7 @@ def chunk_by_size(df, chunk_size):
         yield df.iloc[i : i + chunk_size]
 
 
-def make_location(row: pd.Series) -> tuple:
+def make_location(row: pd.Series, elevations: dict) -> tuple:
     """
     Returns a tuple of location data and the elevation method
     """
@@ -231,11 +232,15 @@ def make_location(row: pd.Series) -> tuple:
         elevation_from_epqs = False
         z = convert_ft_to_m(z)
 
-        # This is slowing things down significantly
-        # this information should be cached in a json file and stored in storage bucket
-        # I am disabling this for now, until this can be sped up
-        # if row.AltDatum == "NGVD29":
-        #     z = convert_ngvd29_to_navd88(z, transformed_point.x, transformed_point.y)
+        if row.AltDatum == "NGVD29":
+            key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
+            if key in elevations:
+                z = elevations[key]
+            else:
+                z = convert_ngvd29_to_navd88(
+                    z, transformed_point.x, transformed_point.y
+                )
+            elevations[key] = z
     else:
         elevation_from_epqs = True
         logger.info(

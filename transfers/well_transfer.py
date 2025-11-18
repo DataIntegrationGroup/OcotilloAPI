@@ -148,6 +148,24 @@ def get_wells_to_transfer(
     return input_df, cleaned_df
 
 
+def get_cached_elevations() -> dict:
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/cached_elevations.json"
+    blob = bucket.blob(log_filename)
+    if blob.exists():
+        lut = json.loads(blob.download_as_string())
+        return lut
+    else:
+        return {}
+
+
+def dump_cached_elevations(lut: dict):
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/cached_elevations.json"
+    blob = bucket.blob(log_filename)
+    blob.upload_from_string(json.dumps(lut))
+
+
 def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None:
     input_df, cleaned_df = get_wells_to_transfer(session, flags)
     source_table = "WellData"
@@ -158,6 +176,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
     start_time = time.time()
     errors = []
     added_locations = {}
+    cached_elevations = get_cached_elevations()
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
@@ -192,7 +211,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         location = None
         try:
-            location, elevation_method = make_location(row)
+            location, elevation_method = make_location(row, cached_elevations)
             session.add(location)
             added_locations[row.PointID] = elevation_method
         except Exception as e:
@@ -407,6 +426,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
     session.commit()
 
+    dump_cached_elevations(cached_elevations)
     return input_df, cleaned_df, errors
 
 
