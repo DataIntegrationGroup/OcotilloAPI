@@ -105,6 +105,7 @@ class GeoJSONProperties(BaseModel):
     utm_coordinates: GeoJSONUTMCoordinates = Field(
         default_factory=GeoJSONUTMCoordinates
     )
+    notes: list[NoteResponse] = []
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -129,8 +130,9 @@ class LocationGeoJSONResponse(BaseModel):
         if not isinstance(data, dict):
             data_dict = {c.name: getattr(data, c.name) for c in data.__table__.columns}
 
-            # @property need to be added manually
+            # @property and @declared_attr need to be added manually
             data_dict["elevation_method"] = data.elevation_method
+            data_dict["notes"] = data.notes
 
         # add empty fields as necessary
         data_dict["geometry"] = {}
@@ -145,6 +147,7 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["geometry"]["coordinates"] = coordinates
 
         # populate properties
+        data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
 

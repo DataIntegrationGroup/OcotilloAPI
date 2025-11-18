@@ -39,9 +39,9 @@ def step_impl(context):
 def step_impl(context):
     data = context.response.json()
     location = data["current_location"]
-    assert "notes" in location, "Response does not include location notes"
-    assert location["notes"] is not None, "Location notes is null"
-    context.notes["location"] = location["notes"]
+    assert "notes" in location["properties"], "Response does not include location notes"
+    assert location["properties"]["notes"] is not None, "Location notes is null"
+    context.notes["location"] = location["properties"]["notes"]
 
 
 @then(
