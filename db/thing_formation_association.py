@@ -1,5 +1,5 @@
 """
-SQLAlchemy model for the ThingFormationAssociation table.
+SQLAlchemy model for the ThingGeologicFormationAssociation table.
 
 This table is an association object that creates a many-to-many relationship between a Thing (well) and a
 GeologicFormation. It stores the lithology for a well, detailing the depth intervals for each formation it penetrates.
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from db.geologic_formation import GeologicFormation
 
 
-class ThingFormationAssociation(Base, AutoBaseMixin, ReleaseMixin):
+class ThingGeologicFormationAssociation(Base, AutoBaseMixin, ReleaseMixin):
     """
     This is a= join table (Association Object). It represents the association of a Thing to a
     GeologicFormation at a specific depth interval.

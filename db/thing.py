@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from db.aquifer_system import AquiferSystem
     from db.thing_aquifer_association import ThingAquiferAssociation
     from db.geologic_formation import GeologicFormation
-    from db.thing_formation_association import ThingFormationAssociation
+    from db.thing_formation_association import ThingGeologicFormationAssociation
 
 
 class Thing(
@@ -275,11 +275,13 @@ class Thing(
     )
 
     # Many-To-Many: A Thing can penetrate many GeologicFormations.
-    formation_associations: Mapped[List["ThingFormationAssociation"]] = relationship(
-        "ThingFormationAssociation",
-        back_populates="thing",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+    formation_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
+        relationship(
+            "ThingGeologicFormationAssociation",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
     )
 
     # --- Association Proxies ---

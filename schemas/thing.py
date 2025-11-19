@@ -30,7 +30,7 @@ from schemas.location import LocationResponse
 from schemas.aquifer_system import AquiferSystemResponse
 from schemas.geologic_formation import (
     GeologicFormationResponse,
-    ThingFormationAssociationResponse,
+    ThingGeologicFormationAssociationResponse,
 )
 
 
@@ -174,7 +174,7 @@ class WellResponse(BaseThingResponse):
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
     aquifers: list[AquiferSystemResponse] = []
-    formations: list[ThingFormationAssociationResponse] = []
+    formations: list[ThingGeologicFormationAssociationResponse] = []
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -208,7 +208,7 @@ class WellResponse(BaseThingResponse):
     def populate_formations(cls, formations):
         """Convert formation association objects to response objects."""
         if formations is not None:
-            # formations should already be ThingFormationAssociation objects
+            # formations should already be ThingGeologicFormationAssociation objects
             return formations
         return []
 

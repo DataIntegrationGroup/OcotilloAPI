@@ -19,7 +19,7 @@ from constants import SRID_WGS84
 
 if TYPE_CHECKING:
     from db.thing import Thing, WellScreen
-    from db.thing_formation_association import ThingFormationAssociation
+    from db.thing_formation_association import ThingGeologicFormationAssociation
 
 
 class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
@@ -58,12 +58,14 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Relationships ---
     # One-To-Many (Association Object): A GeologicFormation can be associated with many Things (e.g., wells) via the
-    # ThingFormationAssociation join table.
-    thing_associations: Mapped[List["ThingFormationAssociation"]] = relationship(
-        "ThingFormationAssociation",
-        back_populates="geologic_formation",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+    # ThingGeologicFormationAssociation join table.
+    thing_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
+        relationship(
+            "ThingGeologicFormationAssociation",
+            back_populates="geologic_formation",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
     )
     # One-To-Many: A GeologicFormation can have many physical WellScreens installed in it.
     screens: Mapped[List["WellScreen"]] = relationship(

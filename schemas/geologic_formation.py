@@ -31,7 +31,7 @@ class GeologicFormationResponse(BaseResponseModel):
     boundary: GeoJSONGeometry | None = None
 
 
-class ThingFormationAssociationResponse(BaseResponseModel):
+class ThingGeologicFormationAssociationResponse(BaseResponseModel):
     """
     Response schema for the association between a Thing and a GeologicFormation.
     Includes depth interval information.
