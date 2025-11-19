@@ -1,6 +1,4 @@
-from services.gcs_helper import get_storage_bucket
-
-1  # ===============================================================================
+# ===============================================================================
 # Copyright 2025 ross
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +34,7 @@ from db import (
     Deployment,
     TransducerObservation,
 )
+from services.gcs_helper import get_storage_bucket
 
 
 class Metrics:
