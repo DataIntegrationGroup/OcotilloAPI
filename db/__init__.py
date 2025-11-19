@@ -43,7 +43,7 @@ from db.transducer import *
 from db.aquifer_system import *
 from db.geologic_formation import *
 from db.thing_aquifer_association import *
-from db.thing_formation_association import *
+from db.thing_geologic_formation_association import *
 
 from sqlalchemy import (
     func,

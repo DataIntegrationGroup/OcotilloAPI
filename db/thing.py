@@ -42,7 +42,9 @@ if TYPE_CHECKING:
     from db.aquifer_system import AquiferSystem
     from db.thing_aquifer_association import ThingAquiferAssociation
     from db.geologic_formation import GeologicFormation
-    from db.thing_formation_association import ThingGeologicFormationAssociation
+    from db.thing_geologic_formation_association import (
+        ThingGeologicFormationAssociation,
+    )
 
 
 class Thing(

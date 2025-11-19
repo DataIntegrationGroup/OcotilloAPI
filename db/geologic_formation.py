@@ -19,7 +19,9 @@ from constants import SRID_WGS84
 
 if TYPE_CHECKING:
     from db.thing import Thing, WellScreen
-    from db.thing_formation_association import ThingGeologicFormationAssociation
+    from db.thing_geologic_formation_association import (
+        ThingGeologicFormationAssociation,
+    )
 
 
 class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
