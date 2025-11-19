@@ -63,7 +63,6 @@ def step_impl(context):
     ].well_completion_date.strftime("%Y-%m-%d")
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the completion information")
 def step_impl(context):
     assert "well_completion_date_source" in context.water_well_data
@@ -92,7 +91,6 @@ def step_impl(context):
     )
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the construction information")
 def step_impl(context):
     assert "well_construction_method_source" in context.water_well_data
@@ -131,7 +129,6 @@ def step_impl(context):
     assert context.water_well_data["well_casing_depth_unit"] == "ft"
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the casing materials")
 def step_impl(context):
     assert "well_casing_materials" in context.water_well_data
