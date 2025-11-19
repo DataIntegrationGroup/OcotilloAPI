@@ -18,7 +18,6 @@ from pathlib import Path
 from fastapi_pagination import add_pagination
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
 
 from db import Base
 from db.engine import session_ctx
@@ -56,13 +55,14 @@ def init_parameter(path: str = None) -> None:
                 session.rollback()
 
 
-def erase_and_rebuild_db(session: Session):
-    session.execute(text("DROP SCHEMA public CASCADE"))
-    session.execute(text("CREATE SCHEMA public"))
-    session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    session.commit()
-    Base.metadata.drop_all(session.bind)
-    Base.metadata.create_all(session.bind)
+def erase_and_rebuild_db():
+    with session_ctx() as session:
+        session.execute(text("DROP SCHEMA public CASCADE"))
+        session.execute(text("CREATE SCHEMA public"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        session.commit()
+        Base.metadata.drop_all(session.bind)
+        Base.metadata.create_all(session.bind)
 
     init_lexicon()
     init_parameter()

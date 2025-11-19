@@ -41,11 +41,9 @@ from db import Base, Parameter
 from db.engine import session_ctx
 from core.app import app
 
-with session_ctx() as session:
-    erase_and_rebuild_db(session)
-
-
+erase_and_rebuild_db()
 register_routes(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins, adjust as needed for security

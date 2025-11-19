@@ -40,48 +40,16 @@ from services.util import (
 )
 from transfers.logger import logger
 
-
 NMA_COORDINATE_ACCURACY = {
-    "5m": {
-        "accuracy_value": 5,
-        "accuracy_unit": "m",
-    },
-    "1": {
-        "accuracy_value": 0.1,
-        "accuracy_unit": "second",
-    },
-    "5": {
-        "accuracy_value": 0.5,
-        "accuracy_unit": "second",
-    },
-    "F": {
-        "accuracy_value": 5,
-        "accuracy_unit": "second",
-    },
-    "H": {
-        "accuracy_value": 0.01,
-        "accuracy_unit": "second",
-    },
-    "M": {
-        "accuracy_value": 1,
-        "accuracy_unit": "minute",
-    },
-    "R": {
-        "accuracy_value": 3,
-        "accuracy_unit": "second",
-    },
-    "S": {
-        "accuracy_value": 1,
-        "accuracy_unit": "second",
-    },
-    "T": {
-        "accuracy_value": 10,
-        "accuracy_unit": "second",
-    },
-    None: {
-        "accuracy_value": None,
-        "accuracy_unit": None,
-    },
+    "5m": (5, "m"),
+    "1": (0.1, "second"),
+    "5": (0.5, "second"),
+    "F": (5, "second"),
+    "H": (0.01, "second"),
+    "M": (1, "minute"),
+    "R": (3, "second"),
+    "S": (1, "second"),
+    "T": (10, "second"),
 }
 
 
@@ -221,7 +189,7 @@ def chunk_by_size(df, chunk_size):
         yield df.iloc[i : i + chunk_size]
 
 
-def make_location(row: pd.Series) -> tuple:
+def make_location(row: pd.Series, elevations: dict) -> tuple:
     """
     Returns a tuple of location data and the elevation method
     """
@@ -265,7 +233,14 @@ def make_location(row: pd.Series) -> tuple:
         z = convert_ft_to_m(z)
 
         if row.AltDatum == "NGVD29":
-            z = convert_ngvd29_to_navd88(z, transformed_point.x, transformed_point.y)
+            key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
+            if key in elevations:
+                z = elevations[key]
+            else:
+                z = convert_ngvd29_to_navd88(
+                    z, transformed_point.x, transformed_point.y
+                )
+            elevations[key] = z
     else:
         elevation_from_epqs = True
         logger.info(
@@ -386,11 +361,8 @@ def make_location_data_provenance(
             else None
         )
 
-        accuracy_value = NMA_COORDINATE_ACCURACY.get(row.CoordinateAccuracy, None).get(
-            "accuracy_value"
-        )
-        accuracy_unit = NMA_COORDINATE_ACCURACY.get(row.CoordinateAccuracy, None).get(
-            "accuracy_unit"
+        accuracy_value, accuracy_unit = NMA_COORDINATE_ACCURACY.get(
+            row.CoordinateAccuracy, (None, None)
         )
 
         provenance = DataProvenance(
