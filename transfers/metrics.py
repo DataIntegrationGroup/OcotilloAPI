@@ -1,3 +1,5 @@
+from services.gcs_helper import get_storage_bucket
+
 1  # ===============================================================================
 # Copyright 2025 ross
 #
@@ -55,6 +57,12 @@ class Metrics:
         self._writer.writerow(
             ["model", "input_count", "cleaned_count", "transferred", "issue_percentage"]
         )
+
+    def save_to_storage_bucket(self):
+        bucket = get_storage_bucket()
+        log_filename = self.path.name
+        blob = bucket.blob(f"transfer_metrics/{log_filename}")
+        blob.upload_from_string(self.path.read_text())
 
     def close(self):
         self._fileobj.close()

@@ -199,6 +199,7 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING ASSETS")
     # timeit_direct(transfer_assets, sess)
     metrics.close()
+    metrics.save_to_storage_bucket()
 
 
 def main():
