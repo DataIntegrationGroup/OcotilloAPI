@@ -4,11 +4,13 @@ from shapely.ops import transform
 import pyproj
 import httpx
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase
 
 from constants import SRID_WGS84
 
 
 TRANSFORMERS = {}
+METERS_TO_FEET = 3.28084
 METERS_TO_FEET = 3.28084
 
 
@@ -27,6 +29,20 @@ def transform_srid(geometry, source_srid, target_srid):
     else:
         transformer = TRANSFORMERS[transformer_key]
     return transform(transformer.transform, geometry)
+
+
+def convert_m_to_ft(meters: float | None) -> float | None:
+    """Convert a length from meters to feet."""
+    if meters is None:
+        return None
+    return round(meters * METERS_TO_FEET, 6)
+
+
+def convert_ft_to_m(feet: float | None) -> float | None:
+    """Convert a length from feet to meters."""
+    if feet is None:
+        return None
+    return round(feet / METERS_TO_FEET, 6)
 
 
 def convert_m_to_ft(meters: float | None) -> float | None:
@@ -132,7 +148,27 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     return data["value"]
 
 
-def retrieve_latest_polymorphic_table_record(
+def convert_ngvd29_to_navd88(
+    elevation_ngvd29: float, longitude: float, latitude: float
+) -> float:
+    url = "https://geodesy.noaa.gov/api/ncat/llh"
+    params = {
+        "lat": latitude,
+        "lon": longitude,
+        "inDatum": "nad83(2011)",
+        "outDatum": "nad83(2011)",
+        "inVertDatum": "ngvd29",
+        "outVertDatum": "navd88",
+        "orthoHt": elevation_ngvd29,
+    }
+    response = httpx.get(url, params=params)
+    data = response.json()
+
+    elevation_navd88 = data.get("destOrthoht")
+    return elevation_navd88
+
+
+def retrieve_latest_polymorphic_history_table_record(
     target_record: DeclarativeBase,
     polymorphic_relationship: str,
     polymorphic_type: str,
@@ -141,6 +177,9 @@ def retrieve_latest_polymorphic_table_record(
     Retrieve the latest record from a polymorphic table. This function assumes that the
     parent class has the correct mixin to support retrieval via an attribute. This
     requires end_date to be None
+
+    This function does not apply to the DataProvenance table since it is not
+    a history table.
 
     Parameters:
     ----------

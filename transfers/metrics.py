@@ -19,7 +19,9 @@ from datetime import datetime
 from pathlib import Path
 
 from pandas import DataFrame
+from pydantic import ValidationError
 from sqlalchemy import select, func
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from db import (
@@ -32,10 +34,11 @@ from db import (
     Deployment,
     TransducerObservation,
 )
+from services.gcs_helper import get_storage_bucket
 
 
 class Metrics:
-    include_errors = False
+    include_errors = True
 
     def __init__(self):
         # create a new path for the metrics
@@ -48,10 +51,20 @@ class Metrics:
 
         self.path = root / f"metrics_{datetime.now().strftime('%Y-%m-%dT%H_%M_%S')}.csv"
         delimiter = "|" if self.include_errors else ","
-        self._writer = csv.writer(self.path.open("a"), delimiter=delimiter)
+        self._fileobj = self.path.open("w")
+        self._writer = csv.writer(self._fileobj, delimiter=delimiter)
         self._writer.writerow(
             ["model", "input_count", "cleaned_count", "transferred", "issue_percentage"]
         )
+
+    def save_to_storage_bucket(self):
+        bucket = get_storage_bucket()
+        log_filename = self.path.name
+        blob = bucket.blob(f"transfer_metrics/{log_filename}")
+        blob.upload_from_string(self.path.read_text())
+
+    def close(self):
+        self._fileobj.close()
 
     def well_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
@@ -131,14 +144,37 @@ class Metrics:
 
     def _write_errors(self, errors: list) -> None:
         if self.include_errors:
-            self._writer.writerow(["PointID", "Error"])
-            for e in errors:
-                error = e["error"]
-                if not isinstance(error, (list, tuple)):
+            self._writer.writerow(["PointID", "Table", "Field", "Error"])
+            for record in errors:
+                error = record["error"]
+                # if not isinstance(error, (list, tuple)):
+                #     error = [error]
+                if isinstance(error, str):
                     error = [error]
+                elif isinstance(error, ValidationError):
+                    nes = []
+                    for e in error.errors():
+                        try:
+                            nes.append(f"{e['loc'][0]}: {e['msg']}")
+                        except IndexError:
+                            nes.append(e["msg"])
+                    error = nes
+                elif isinstance(error, ProgrammingError):
+                    detail = error.orig.args[0].get("D")
+                    error = [detail]
+                elif isinstance(error, Exception):
+                    error = [str(error)]
 
                 for ee in error:
-                    self._writer.writerow([e["pointid"], ee])
+                    self._writer.writerow(
+                        [
+                            record["pointid"],
+                            record.get("table"),
+                            record.get("field"),
+                            ee,
+                        ]
+                    )
+
             self._writer.writerow([])
 
     def _write_metrics(

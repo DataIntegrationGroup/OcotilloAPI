@@ -30,6 +30,7 @@ from db.field import *
 from db.group import *
 from db.lexicon import *
 from db.location import *
+from db.notes import *
 from db.observation import *
 from db.parameter import *
 from db.permission_history import *
@@ -40,6 +41,8 @@ from db.sensor import *
 from db.status_history import *
 from db.thing import *
 from db.transducer import *
+from db.measuring_point_history import *
+from db.data_provenance import *
 
 from sqlalchemy import (
     func,

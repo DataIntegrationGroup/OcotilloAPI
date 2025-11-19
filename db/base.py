@@ -29,12 +29,15 @@ It includes:
     - `ReleaseMixin`: Adds a release status column referencing the `lexicon_term` table.
     - `AuditMixin`: Adds standard audit columns (created_at, created_by, updated_at, updated_by).
 5.  A simple `User` model for tracking user information in audit columns.
-6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `AttributionMixin`, `PermissionMixin`.)
+6.  Polymorphic helper mixins (`StatusHistoryMixin`, `NotesMixin`, `DataProvenanceMixin`, `PermissionMixin`.)
     which provide a clean, reusable way to add relationships to the polymorphic
     metadata tables. Any model that can have a status history (like Thing or Location)
     can simply inherit from the `StatusHistoryMixin` mixin.
 7.  An `AuditMixin` to add standard audit columns to tables.
 """
+
+import re
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
@@ -50,11 +53,12 @@ from sqlalchemy.orm import (
     declared_attr,
     Mapped,
     mapped_column,
-    relationship,
 )
-from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
-import re
+from sqlalchemy_searchable import make_searchable
+
+if TYPE_CHECKING:
+    pass
 
 
 make_versioned()
@@ -172,23 +176,6 @@ class PropertiesMixin:
 
 
 # ============= Polymorphic Helper Mixins =============================================
-class StatusHistoryMixin:
-    """
-    Mixin for models that can have a status history (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    StatusHistory table.
-    """
-
-    @declared_attr
-    def status_history(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "StatusHistory",
-            primaryjoin=f"and_({self.__name__}.id==foreign(StatusHistory.statusable_id), "
-            f"StatusHistory.statusable_type=='{self.__name__}')",
-            cascade="all, delete-orphan",
-            lazy="selectin",
-        )
 
 
 class User(Base):

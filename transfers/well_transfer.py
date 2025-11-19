@@ -15,7 +15,7 @@
 # ===============================================================================
 import json
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pandas as pd
 from pandas import isna
@@ -33,6 +33,9 @@ from db import (
     Location,
     WellPurpose,
     WellCasingMaterial,
+    StatusHistory,
+    MonitoringFrequencyHistory,
+    MeasuringPointHistory,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -43,6 +46,7 @@ from services.util import (
 )
 from transfers.util import (
     make_location,
+    make_location_data_provenance,
     filter_to_valid_point_ids,
     read_csv,
     logger,
@@ -54,6 +58,16 @@ from transfers.util import (
 )
 
 ADDED = []
+
+NMA_MONITORING_FREQUENCY = {
+    "6": "Biannual",
+    "A": "Annual",
+    "B": "Bimonthly",
+    "L": "Decadal",
+    "M": "Monthly",
+    "R": "Bimonthly reported",
+    "N": "Biannual",
+}
 
 
 def _get_first_visit_date(row) -> datetime | None:
@@ -134,22 +148,49 @@ def get_wells_to_transfer(
     return input_df, cleaned_df
 
 
+def get_cached_elevations() -> dict:
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/cached_elevations.json"
+    blob = bucket.blob(log_filename)
+    if blob.exists():
+        lut = json.loads(blob.download_as_string())
+        return lut
+    else:
+        return {}
+
+
+def dump_cached_elevations(lut: dict):
+    bucket = get_storage_bucket()
+    log_filename = "transfer_data/cached_elevations.json"
+    blob = bucket.blob(log_filename)
+    blob.upload_from_string(json.dumps(lut))
+
+
 def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None:
     input_df, cleaned_df = get_wells_to_transfer(session, flags)
-
+    source_table = "WellData"
     wdf = cleaned_df
     n = len(wdf)
 
     step = 25
     start_time = time.time()
     errors = []
+    added_locations = {}
+    cached_elevations = get_cached_elevations()
     for i, row in enumerate(wdf.itertuples()):
         pointid = row.PointID
         if wdf[wdf["PointID"] == pointid].shape[0] > 1:
             logger.critical(
                 f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
             )
-            errors.append({"pointid": pointid, "error": "duplicate records"})
+            errors.append(
+                {
+                    "pointid": pointid,
+                    "error": "duplicate records",
+                    "table": source_table,
+                    "field": "PointID",
+                }
+            )
             continue
 
         if limit and i >= limit:
@@ -170,14 +211,22 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         location = None
         try:
-            location = make_location(row)
+            location, elevation_method = make_location(row, cached_elevations)
             session.add(location)
+            added_locations[row.PointID] = elevation_method
         except Exception as e:
             if location is not None:
                 session.expunge(location)
             # these rollbacks are cause an issue because they are discarding good data
             # session.rollback()
-            errors.append({"pointid": row.PointID, "error": str(e)})
+            errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": e,
+                    "table": "Location",
+                    "field": str(e),
+                }
+            )
             logger.critical(f"Error making location for {row.PointID}: {e}")
             continue
 
@@ -198,14 +247,21 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
                 well_construction_notes=row.ConstructionNotes,
-                well_casing_diameter=row.CasingDiameter,
+                well_casing_diameter=(
+                    row.CasingDiameter * 12 if row.CasingDiameter else None
+                ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
+                notes=(
+                    [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
+                ),
             )
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            errors.append({"pointid": row.PointID, "error": e.errors()})
+            errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
@@ -219,12 +275,27 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "group_id",
                     "well_purposes",
                     "well_casing_materials",
+                    "measuring_point_height",
+                    "measuring_point_description",
                 ]
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
+
+            well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
+            # logger.info(f"Created well for {row.PointID}")
+
+            # flush well to access its ID for status_history
+            # session.flush()
+
+            # session.commit()
+            # session.refresh(well)
+            # if notes:
+            #     for ni in notes:
+            #         nn = well.add_note(ni['content'], ni['note_type'])
+            #         session.add(nn)
 
             if well_purposes:
                 for wp in well_purposes:
@@ -249,7 +320,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             if well is not None:
                 session.expunge(well)
 
-            errors.append({"pointid": row.PointID, "error": str(e)})
+            errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             continue
 
@@ -260,13 +331,103 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         session.add(assoc)
 
     session.commit()
+
+    # add things thate need well id
+    for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
+        row = wdf[wdf["PointID"] == well.name].iloc[0]
+        if not isna(row.Notes):
+            note = well.add_note(row.Notes, "Other")
+            session.add(note)
+
+        location = well.current_location
+        elevation_method = added_locations[row.PointID]
+        data_provenances = make_location_data_provenance(
+            row, location, elevation_method
+        )
+        for dp in data_provenances:
+            session.add(dp)
+
+        """
+            Developer's note
+
+            It's not clear when the measuring point from NM_Aquifer was 
+            determined, so I'm setting start_date to the day of the transfer
+        """
+        measuring_point_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=row.MPHeight,
+            measuring_point_description=row.MeasuringPoint,
+            start_date=datetime.now(tz=UTC),
+            end_date=None,
+        )
+        session.add(measuring_point_history)
+
+        """
+        Developer's notes
+
+        For all status_history records the start_date will be now since that
+        isn't recorded in NM_Aquifer
+        """
+        # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
+        # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
+        # TODO: have AMMP review and verify the various MonitoringStatus codes
+
+        target_id = well.id
+        target_table = "thing"
+        if not isna(row.MonitoringStatus):
+            if (
+                "X" in row.MonitoringStatus
+                or "I" in row.MonitoringStatus
+                or "C" in row.MonitoringStatus
+            ):
+                status_value = "Not currently monitored"
+            else:
+                status_value = "Currently monitored"
+
+            status_history = StatusHistory(
+                status_type="Monitoring Status",
+                status_value=status_value,
+                reason=row.MonitorStatusReason,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+            logger.info(
+                f"  Added monitoring status for well {well.name}: {status_value}"
+            )
+
+            for code in NMA_MONITORING_FREQUENCY.keys():
+                if code in row.MonitoringStatus:
+                    monitoring_frequency = NMA_MONITORING_FREQUENCY[code]
+                    monitoring_frequency_history = MonitoringFrequencyHistory(
+                        thing_id=well.id,
+                        monitoring_frequency=monitoring_frequency,
+                        start_date=datetime.now(tz=UTC),
+                        end_date=None,
+                    )
+                    session.add(monitoring_frequency_history)
+                    logger.info(
+                        f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
+                    )
+
+        if not isna(row.Status):
+            status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
+            status_history = StatusHistory(
+                status_type="Well Status",
+                status_value=status_value,
+                reason=row.StatusUserNotes,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+            logger.info(f"  Added well status for well {well.name}: {status_value}")
+
+    session.commit()
+
+    dump_cached_elevations(cached_elevations)
     return input_df, cleaned_df, errors
-    # try:
-    #     session.commit()
-    # except Exception as e:
-    #     logger.critical(f"Error committing well {row.PointID}: {e}")
-    #     session.rollback()
-    #     continue
 
 
 def transfer_wellscreens(session, limit=None):
@@ -307,7 +468,9 @@ def transfer_wellscreens(session, limit=None):
                 logger.critical(
                     f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
                 )
-                errors.append({"pointid": row.PointID, "error": e.errors()})
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": "WellScreens"}
+                )
                 continue
 
             well_screen = WellScreen(**well_screen_data)

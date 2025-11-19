@@ -61,7 +61,8 @@ def transfer_contacts(session):
     with open(co_to_org_mapper_path, "r") as f:
         co_to_org_mapper = json.load(f)
 
-    input_df = read_csv("OwnersData")
+    source_table = "OwnersData"
+    input_df = read_csv(source_table)
     odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
     ldf = read_csv("OwnerLink")
     ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
@@ -75,11 +76,13 @@ def transfer_contacts(session):
     odf = filter_to_valid_point_ids(session, odf)
     cleaned_df = odf
     errors = []
-    # for i, row in odf.iterrows():
-    for chunk in chunk_by_size(odf, 500):
-        things = (
-            session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
-        )
+    added = []
+    odf = odf.sort_values(by=["PointID"])
+
+    for chunk in chunk_by_size(odf, 100):
+        pointids = chunk.PointID.tolist()
+        logger.info(f"Processing chunk {pointids[0]} to {pointids[-1]}")
+        things = session.query(Thing).filter(Thing.name.in_(pointids)).all()
         for i, row in chunk.iterrows():
             thing = next((thing for thing in things if thing.name == row.PointID), None)
             logger.info(f"Processing PointID: {i} {row.PointID}")
@@ -91,22 +94,26 @@ def transfer_contacts(session):
 
             # TODO: use contact_helper.add_contact
             try:
-                _add_first_contact(session, row, thing, co_to_org_mapper)
-                session.commit()
-                # session.flush()
-                logger.info(f"added first contact for PointID {row.PointID}")
+                if _add_first_contact(session, row, thing, co_to_org_mapper, added):
+                    session.commit()
+                    # session.flush()
+                    logger.info(f"added first contact for PointID {row.PointID}")
             except ValidationError as e:
                 logger.critical(
                     f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
                 )
-                session.rollback()
-                errors.append({"pointid": row.PointID, "error": e.errors()})
+                # session.rollback()
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": source_table}
+                )
             except Exception as e:
                 logger.critical(
                     f"Skipping first contact for PointID {row.PointID} due to error: {e}"
                 )
                 session.rollback()
-                errors.append({"pointid": row.PointID, "error": e})
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": source_table}
+                )
 
             try:
                 if (
@@ -119,27 +126,32 @@ def transfer_contacts(session):
                         f"No second contact info for PointID {row.PointID}, skipping."
                     )
                     continue
-                _add_second_contact(session, row, thing, co_to_org_mapper)
-                session.commit()
-                # session.flush()
-                logger.info(f"added second contact for PointID {row.PointID}")
+                if _add_second_contact(session, row, thing, co_to_org_mapper, added):
+                    session.commit()
+                    # session.flush()
+                    logger.info(f"added second contact for PointID {row.PointID}")
+
             except ValidationError as e:
                 logger.critical(
                     f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
                 )
-                session.rollback()
-                errors.append({"pointid": row.PointID, "error": e.errors()})
+                # session.rollback()
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": source_table}
+                )
             except Exception as e:
                 logger.critical(
                     f"Skipping second contact for PointID {row.PointID} due to error: {e}"
                 )
                 session.rollback()
-                errors.append({"pointid": row.PointID, "error": e})
+                errors.append(
+                    {"pointid": row.PointID, "error": e, "table": source_table}
+                )
 
     return input_df, cleaned_df, errors
 
 
-def _add_first_contact(session, row, thing, co_to_org_mapper):
+def _add_first_contact(session, row, thing, co_to_org_mapper, added):
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
@@ -148,6 +160,10 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
     name = _make_name(row.FirstName, row.LastName)
 
     organization = co_to_org_mapper.get(row.Company, row.Company)
+
+    if (name, organization) in added:
+        return
+    added.append((name, organization))
 
     contact_data = {
         "thing_id": thing.id,
@@ -232,14 +248,18 @@ def _add_first_contact(session, row, thing, co_to_org_mapper):
         )
         if address:
             contact.addresses.append(address)
+    return True
 
 
-def _add_second_contact(session, row, thing, co_to_org_mapper):
+def _add_second_contact(session, row, thing, co_to_org_mapper, added):
 
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
 
     organization = co_to_org_mapper.get(row.Company, row.Company)
+    if (name, organization) in added:
+        return
+    added.append((name, organization))
 
     contact_data = {
         "thing_id": thing.id,
@@ -280,6 +300,7 @@ def _add_second_contact(session, row, thing, co_to_org_mapper):
                 contact.phones.append(phone)
             else:
                 contact.incomplete_nma_phones.append(phone)
+    return True
 
 
 # helpers

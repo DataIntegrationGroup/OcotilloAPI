@@ -1,22 +1,6 @@
-from behave import when, then
+from behave import then
 
-from services.util import retrieve_latest_polymorphic_table_record
-
-
-@when("the user retrieves the well by ID via path parameter")
-def step_impl_retrieve_well_by_id(context):
-    context.well = context.objects["wells"][0]
-    context.response = context.client.get(f"/thing/water-well/{context.well.id}")
-    context.data = context.response.json()
-
-
-@then(
-    "null values in the response should be represented as JSON null (not placeholder strings)"
-)
-def step_impl(context):
-    for key, value in context.data.items():
-        if value is None:
-            assert value is None  # JSON null is represented as None in Python
+from services.util import retrieve_latest_polymorphic_history_table_record
 
 
 # ------------------------------------------------------------------------------
@@ -26,26 +10,26 @@ def step_impl(context):
     "the response should include whether repeat measurement permission is granted for the well"
 )
 def step_impl(context):
-    assert "allow_water_level_samples" in context.data
-    permission_record = retrieve_latest_polymorphic_table_record(
+    assert "allow_water_level_samples" in context.water_well_data
+    permission_record = retrieve_latest_polymorphic_history_table_record(
         context.well, "permission_history", "Water Level Sample"
     )
     assert (
-        context.data["allow_water_level_samples"]
+        context.water_well_data["allow_water_level_samples"]
         == permission_record.permission_allowed
     )
 
 
 @then("the response should include whether sampling permission is granted for the well")
 def step_impl(context):
-    assert "allow_water_chemistry_samples" in context.data
+    assert "allow_water_chemistry_samples" in context.water_well_data
 
-    permission_record = retrieve_latest_polymorphic_table_record(
+    permission_record = retrieve_latest_polymorphic_history_table_record(
         context.well, "permission_history", "Water Chemistry Sample"
     )
 
     assert (
-        context.data["allow_water_chemistry_samples"]
+        context.water_well_data["allow_water_chemistry_samples"]
         == permission_record.permission_allowed
     )
 
@@ -54,14 +38,14 @@ def step_impl(context):
     "the response should include whether datalogger installation permission is granted for the well"
 )
 def step_impl(context):
-    assert "allow_datalogger_installation" in context.data
+    assert "allow_datalogger_installation" in context.water_well_data
 
-    permission_record = retrieve_latest_polymorphic_table_record(
+    permission_record = retrieve_latest_polymorphic_history_table_record(
         context.well, "permission_history", "Datalogger Installation"
     )
 
     assert (
-        context.data["allow_datalogger_installation"]
+        context.water_well_data["permissions"]["allow_data_logger_installation"]
         == permission_record.permission_allowed
     )
 
@@ -73,40 +57,43 @@ def step_impl(context):
 
 @then("the response should include the completion date of the well")
 def step_impl(context):
-    assert "well_completion_date" in context.data
-    assert context.data[
-        "well_completion_date"
-    ] == context.well.well_completion_date.strftime("%Y-%m-%d")
+    assert "completion_date" in context.water_well_data
+    assert context.water_well_data[
+        "completion_date"
+    ] == context.well.completion_date.strftime("%Y-%m-%d")
 
 
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the completion information")
 def step_impl(context):
-    assert "completion_info_source" in context.data
-    assert context.data["completion_info_source"] == context.well.completion_info_source
+    assert "completion_info_source" in context.water_well_data
+    assert (
+        context.water_well_data["completion_info_source"]
+        == context.well.completion_info_source
+    )
 
 
 @then("the response should include the driller name")
 def step_impl(context):
-    assert "well_driller_name" in context.data
-    assert context.data["well_driller_name"] == context.well.well_driller_name
+    assert "driller_name" in context.water_well_data
+    assert context.water_well_data["driller_name"] == context.well.driller_name
 
 
 @then("the response should include the construction method")
 def step_impl(context):
-    assert "well_construction_method" in context.data
+    assert "construction_method" in context.water_well_data
     assert (
-        context.data["well_construction_method"]
-        == context.well.well_construction_method
+        context.water_well_data["construction_method"]
+        == context.well.construction_method
     )
 
 
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the construction information")
 def step_impl(context):
-    assert "construction_info_source" in context.data
+    assert "construction_info_source" in context.water_well_data
     assert (
-        context.data["construction_info_source"]
+        context.water_well_data["construction_info_source"]
         == context.well.construction_info_source
     )
 
@@ -118,53 +105,56 @@ def step_impl(context):
 
 @then("the response should include the casing diameter in inches")
 def step_impl(context):
-    assert "well_casing_diameter" in context.data
-    assert "well_casing_diameter_unit" in context.data
+    assert "casing_diameter" in context.water_well_data
+    assert "casing_diameter_unit" in context.water_well_data
 
-    assert context.data["well_casing_diameter"] == context.well.well_casing_diameter
-    assert context.data["well_casing_diameter_unit"] == "in"
+    assert context.water_well_data["casing_diameter"] == context.well.casing_diameter
+    assert context.water_well_data["casing_diameter_unit"] == "in"
 
 
 @then("the response should include the casing depth in feet below ground surface")
 def step_impl(context):
-    assert "well_casing_depth" in context.data
-    assert "well_casing_depth_unit" in context.data
+    assert "well_casing_depth" in context.water_well_data
+    assert "well_casing_depth_unit" in context.water_well_data
 
-    assert context.data["well_casing_depth"] == context.well.well_casing_depth
-    assert context.data["well_casing_depth_unit"] == "ft"
+    assert (
+        context.water_well_data["well_casing_depth"] == context.well.well_casing_depth
+    )
+    assert context.water_well_data["well_casing_depth_unit"] == "ft"
 
 
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the casing materials")
 def step_impl(context):
-    assert "well_casing_materials" in context.data
-    assert sorted(context.data["well_casing_materials"]) == sorted(
-        [m.material for m in context.well.well_casing_materials]
+    assert "well_casing_materials" in context.water_well_data
+    assert (
+        context.water_well_data["well_casing_materials"]
+        == context.well.well_casing_materials
     )
 
 
 @then("the response should include the well pump type (previously well_type field)")
 def step_impl(context):
-    assert "well_pump_type" in context.data
-    assert context.data["well_pump_type"] == context.well.well_pump_type
+    assert "well_pump_type" in context.water_well_data
+    assert context.water_well_data["well_pump_type"] == context.well.well_pump_type
 
 
 @then("the response should include the well pump depth in feet (new field)")
 def step_impl(context):
-    assert "well_pump_depth" in context.data
-    assert "well_pump_depth_unit" in context.data
+    assert "well_pump_depth" in context.water_well_data
+    assert "well_pump_depth_unit" in context.water_well_data
 
-    assert context.data["well_pump_depth"] == context.well.well_pump_depth
-    assert context.data["well_pump_depth_unit"] == "ft"
+    assert context.water_well_data["well_pump_depth"] == context.well.well_pump_depth
+    assert context.water_well_data["well_pump_depth_unit"] == "ft"
 
 
 @then(
     "the response should include whether the well is open and suitable for a datalogger"
 )
 def step_impl(context):
-    assert "is_suitable_for_datalogger" in context.data
+    assert "is_suitable_for_datalogger" in context.water_well_data
     assert (
-        context.data["is_suitable_for_datalogger"]
+        context.water_well_data["is_suitable_for_datalogger"]
         == context.well.is_suitable_for_datalogger
     )
 
@@ -179,8 +169,8 @@ def step_impl(context):
     "the response should include the formation as the formation zone of well completion"
 )
 def step_impl(context):
-    assert "formation" in context.data
-    assert context.data["formation"] == context.well.formation
+    assert "formation" in context.water_well_data
+    assert context.water_well_data["formation"] == context.well.formation
 
 
 # TODO: needs to be added to model, schemas, test data, lexicon
@@ -188,8 +178,10 @@ def step_impl(context):
     "the response should include the aquifer class code to classify the aquifer into aquifer system."
 )
 def step_impl(context):
-    assert "aquifer_class_code" in context.data
-    assert context.data["aquifer_class_code"] == context.well.aquifer_class_code
+    assert "aquifer_class_code" in context.water_well_data
+    assert (
+        context.water_well_data["aquifer_class_code"] == context.well.aquifer_class_code
+    )
 
 
 # TODO: needs to be added to model, schemas, test data
@@ -198,5 +190,5 @@ def step_impl(context):
     "the response should include the aquifer type as the type of aquifers penetrated by the well"
 )
 def step_impl(context):
-    assert "aquifer_type" in context.data
-    assert context.data["aquifer_type"] == context.well.aquifer_type
+    assert "aquifer_type" in context.water_well_data
+    assert context.water_well_data["aquifer_type"] == context.well.aquifer_type
