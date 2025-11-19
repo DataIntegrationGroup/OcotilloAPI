@@ -66,10 +66,11 @@ def step_impl(context):
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the completion information")
 def step_impl(context):
-    assert "completion_info_source" in context.water_well_data
+    assert "well_completion_date_source" in context.water_well_data
+
     assert (
-        context.water_well_data["completion_info_source"]
-        == context.objects["wells"][0].completion_info_source
+        context.water_well_data["well_completion_date_source"]
+        == context.objects["wells"][0].well_completion_date_source
     )
 
 
@@ -94,10 +95,10 @@ def step_impl(context):
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the source of the construction information")
 def step_impl(context):
-    assert "construction_info_source" in context.water_well_data
+    assert "well_construction_method_source" in context.water_well_data
     assert (
-        context.water_well_data["construction_info_source"]
-        == context.objects["wells"][0].construction_info_source
+        context.water_well_data["well_construction_method_source"]
+        == context.objects["wells"][0].well_construction_method_source
     )
 
 

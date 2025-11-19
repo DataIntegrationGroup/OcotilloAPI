@@ -399,6 +399,18 @@ class Thing(
         return self._get_data_provenance_attribute("well_depth", "origin_source")
 
     @property
+    def well_completion_date_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_completion_date", "origin_source"
+        )
+
+    @property
+    def well_construction_method_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_construction_method", "origin_source"
+        )
+
+    @property
     def allow_water_level_samples(self):
         """
         Returns the current permissions for the Thing.

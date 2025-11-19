@@ -66,7 +66,7 @@ export BASE_URL=${BASE_URL:-http://localhost:8000}
 #  tests/features/thing-query-parameters.feature
 
 #uv run behave tests/features/well-inventory-csv.feature
-uv run behave tests/features/well-additional-information.feature --capture
-# uv run behave tests/features --tags="@backend and @production" --capture
+# uv run behave tests/features/well-additional-information.feature --capture
+uv run behave tests/features --tags="@backend and @production" --capture
 
 echo "✅ BDD test run complete."

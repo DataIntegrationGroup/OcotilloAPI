@@ -606,6 +606,24 @@ def before_all(context):
             origin_source="Other",
         )
 
+        well_completion_date_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_completion_date",
+            origin_source="Data Portal",
+        )
+
+        well_construction_method_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_construction_method",
+            origin_source="Data Portal",
+        )
+
         for purpose in ["Domestic", "Irrigation"]:
             add_well_purpose(context, session, well_1, purpose)
 

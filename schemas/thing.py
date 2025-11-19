@@ -223,8 +223,10 @@ class WellResponse(BaseThingResponse):
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
     well_completion_date: PastOrTodayDate | None
+    well_completion_date_source: str | None
     well_driller_name: str | None
     well_construction_method: WellConstructionMethod | None
+    well_construction_method_source: str | None
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
