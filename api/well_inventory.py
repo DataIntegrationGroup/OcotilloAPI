@@ -33,10 +33,14 @@ from db import (
     GroupThingAssociation,
     Location,
     LocationThingAssociation,
+    MeasuringPointHistory,
+    DataProvenance,
 )
-from db.thing import Thing, WellPurpose
+from db.thing import Thing, WellPurpose, MonitoringFrequencyHistory
+from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
+from services.thing_helper import add_thing, modify_well_descriptor_tables
 from services.util import transform_srid
 
 router = APIRouter(prefix="/well-inventory-csv")
@@ -59,17 +63,16 @@ def _add_location(model, well) -> Location:
     )
     elevation_ft = float(model.elevation_ft)
     elevation_m = convert_f_to_m(elevation_ft)
-    elevation_method = model.elevation_method
 
     loc = Location(
         point=transformed_point.wkt,
         elevation=elevation_m,
-        elevation_method=elevation_method,
     )
     date_time = model.date_time
     assoc = LocationThingAssociation(location=loc, thing=well)
     assoc.effective_start = date_time
-    return loc
+
+    return loc, assoc
 
 
 def _add_group_association(group, well) -> GroupThingAssociation:
@@ -195,8 +198,9 @@ async def well_inventory_csv(
     ):
         # get project and add if does not exist
         # BDMS-221 adds group_type
-        # .where(Group.group_type == "Monitoring Plan", Group.name == project)
-        sql = select(Group).where(Group.name == project)
+        sql = select(Group).where(
+            Group.group_type == "Monitoring Plan" and Group.name == project
+        )
         group = session.scalars(sql).one_or_none()
         if not group:
             group = Group(name=project)
@@ -210,15 +214,27 @@ async def well_inventory_csv(
             # add field staff
 
             # add Thing
-            well = Thing(
+            well_data = CreateWell(
                 name=name,
-                thing_type="water well",
                 first_visit_date=date_time.date(),
+                well_depth=model.total_well_depth_ft,
+                well_casing_diameter=model.casing_diameter_ft,
             )
+            well = add_thing(
+                session=session, data=well_data, user=user, thing_type="water well"
+            )
+            modify_well_descriptor_tables(session, well, well_data, user)
             wells.append(name)
-            session.add(well)
-            session.commit()
             session.refresh(well)
+
+            # add MonitoringFrequency
+            if model.monitoring_frequency:
+                mfh = MonitoringFrequencyHistory(
+                    thing=well,
+                    monitoring_frequency=model.monitoring_frequency,
+                    start_date=date_time.date(),
+                )
+                session.add(mfh)
 
             # add WellPurpose
             if model.well_purpose:
@@ -226,15 +242,29 @@ async def well_inventory_csv(
                 session.add(well_purpose)
 
             # BDMS-221 adds MeasuringPointHistory model
-            # measuring_point_height_ft = model.measuring_point_height_ft
-            # if measuring_point_height_ft:
-            #     mph = MeasuringPointHistory(well=well,
-            #                                 height=measuring_point_height_ft)
-            #     session.add(mph)
+            measuring_point_height_ft = model.measuring_point_height_ft
+            if measuring_point_height_ft:
+                mph = MeasuringPointHistory(
+                    thing=well,
+                    measuring_point_height=measuring_point_height_ft,
+                    measuring_point_description=model.measuring_point_description,
+                    start_date=date_time.date(),
+                )
+                session.add(mph)
 
             # add Location
-            assoc = _add_location(model, well)
+            loc, assoc = _add_location(model, well)
+            session.add(loc)
             session.add(assoc)
+            session.flush()
+
+            dp = DataProvenance(
+                target_id=loc.id,
+                target_table="location",
+                field_name="elevation",
+                collection_method=model.elevation_method,
+            )
+            session.add(dp)
 
             gta = _add_group_association(group, well)
             session.add(gta)

@@ -25,7 +25,6 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db import (
     LocationThingAssociation,
     Thing,
-    Base,
     Location,
     WellScreen,
     WellPurpose,
@@ -144,7 +143,7 @@ def add_thing(
     user: dict = None,
     request: Request | None = None,
     thing_type: str | None = None,  # to be used only for data transfers, not the API
-) -> Base:
+) -> Thing:
     if request is not None:
         thing_type = get_thing_type_from_request(request)
 
