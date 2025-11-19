@@ -195,23 +195,6 @@ class WellResponse(BaseThingResponse):
             materials = []
         return materials
 
-    @field_validator("aquifers", mode="before")
-    def populate_aquifers(cls, aquifers):
-        """Convert aquifer association objects to aquifer system objects."""
-        if aquifers is not None:
-            # Handle if aquifers are already AquiferSystem objects
-            if hasattr(aquifers[0] if aquifers else None, "aquifer_system"):
-                return [assoc.aquifer_system for assoc in aquifers]
-        return aquifers or []
-
-    @field_validator("formations", mode="before")
-    def populate_formations(cls, formations):
-        """Convert formation association objects to response objects."""
-        if formations is not None:
-            # formations should already be ThingGeologicFormationAssociation objects
-            return formations
-        return []
-
 
 class SpringResponse(BaseThingResponse):
     """
