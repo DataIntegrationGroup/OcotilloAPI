@@ -130,7 +130,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     measuring_point_height: float = Field(
         ge=0, description="Measuring point height in feet"
     )
-    measuring_point_description: str | None
+    measuring_point_description: str | None = None
     notes: list[CreateNote] | None = None
 
 

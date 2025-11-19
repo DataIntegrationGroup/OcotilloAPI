@@ -36,6 +36,7 @@ from transfers.well_transfer import (
     transfer_wells,
     transfer_wellscreens,
 )
+from transfers.permissions_transfer import transfer_permissions
 
 from transfers.asset_transfer import transfer_assets
 from transfers.util import timeit, timeit_direct
@@ -123,6 +124,9 @@ def transfer_all(sess, limit=100):
 
     message("TRANSFERRING ASSETS")
     timeit_direct(transfer_assets, sess)
+
+    message("TRANSFERRING PERMISSIONS")
+    results = timeit_direct(transfer_permissions, sess)
 
 
 def transfer_debugging(sess, limit=100):
