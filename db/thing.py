@@ -28,7 +28,7 @@ from db.base import (
     ReleaseMixin,
 )
 from db.permission_history import PermissionHistoryMixin
-from services.util import retrieve_latest_polymorphic_table_record
+from services.util import retrieve_latest_polymorphic_history_table_record
 from db.status_history import StatusHistoryMixin
 from db.measuring_point_history import MeasuringPointHistory
 from db.data_provenance import DataProvenanceMixin
@@ -403,7 +403,7 @@ class Thing(
         """
         Returns the current permissions for the Thing.
         """
-        permission_record = retrieve_latest_polymorphic_table_record(
+        permission_record = retrieve_latest_polymorphic_history_table_record(
             self, "permission_history", "Water Level Sample"
         )
         return permission_record.permission_allowed if permission_record else None
@@ -413,7 +413,7 @@ class Thing(
         """
         Returns the current permissions for the Thing.
         """
-        permission_record = retrieve_latest_polymorphic_table_record(
+        permission_record = retrieve_latest_polymorphic_history_table_record(
             self, "permission_history", "Water Chemistry Sample"
         )
         return permission_record.permission_allowed if permission_record else None
@@ -423,7 +423,7 @@ class Thing(
         """
         Returns the current permissions for the Thing.
         """
-        permission_record = retrieve_latest_polymorphic_table_record(
+        permission_record = retrieve_latest_polymorphic_history_table_record(
             self, "permission_history", "Datalogger Installation"
         )
         return permission_record.permission_allowed if permission_record else None

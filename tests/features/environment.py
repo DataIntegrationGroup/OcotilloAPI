@@ -448,7 +448,7 @@ def before_all(context):
         add_permission_history(
             context,
             session,
-            contact_id=contact.id,
+            contact_id=context.objects["contacts"][0].id,
             permission_type="Datalogger Installation",
             permission_allowed=True,
             start_date=datetime(2025, 1, 1).date(),
@@ -618,7 +618,6 @@ def before_all(context):
             )
 
         session.commit()
-        session.refresh(well_1)
 
         # the following needs to be refreshed to get all the new relationships
         session.refresh(well_1)
