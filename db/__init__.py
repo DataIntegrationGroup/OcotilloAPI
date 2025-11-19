@@ -40,6 +40,10 @@ from db.sensor import *
 from db.status_history import *
 from db.thing import *
 from db.transducer import *
+from db.aquifer_system import *
+from db.geologic_formation import *
+from db.thing_aquifer_association import *
+from db.thing_formation_association import *
 
 from sqlalchemy import (
     func,
