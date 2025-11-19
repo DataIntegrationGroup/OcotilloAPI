@@ -24,8 +24,7 @@ from transfers.waterlevels_transducer_transfer import (
     transfer_water_levels_pressure,
     transfer_water_levels_acoustic,
 )
-from sqlalchemy.orm import Session
-from core.initializers import init_lexicon, init_parameter, erase_and_rebuild_db
+from core.initializers import erase_and_rebuild_db
 from db.engine import session_ctx
 
 from transfers.group_transfer import transfer_groups
@@ -43,33 +42,6 @@ from transfers.util import timeit, timeit_direct
 from transfers.logger import logger, save_log_to_bucket
 
 
-def erase_and_initalize(session: Session) -> None:
-    logger.info(
-        "Erasing existing data and initializing lexicon, parameter, and sensors"
-    )
-    erase(session)
-    lexicon()
-    parameter()
-
-
-@timeit
-def lexicon():
-    logger.info("Initializing lexicon")
-    init_lexicon()
-
-
-@timeit
-def parameter():
-    logger.info("Initializing parameter")
-    init_parameter()
-
-
-@timeit
-def erase(session: Session):
-    logger.info("Erase and rebuilding database")
-    erase_and_rebuild_db(session)
-
-
 def message(msg, pad=10, new_line_at_top=True):
     pad = "*" * pad
     if new_line_at_top:
@@ -80,7 +52,9 @@ def message(msg, pad=10, new_line_at_top=True):
 @timeit
 def transfer_all(sess, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
-    erase_and_initalize(sess)
+
+    logger.info("Erase and rebuilding database")
+    erase_and_rebuild_db()
 
     metrics = Metrics()
     message("TRANSFERRING WELLS")
@@ -155,7 +129,8 @@ def transfer_debugging(sess, limit=100):
     message("STARTING TRANSFER DEBUG", new_line_at_top=False)
 
     if int(os.environ.get("ERASE_AND_REBUILD", 0)):
-        erase_and_initalize(sess)
+        logger.info("Erase and rebuilding database")
+        erase_and_rebuild_db()
 
     metrics = Metrics()
     message("TRANSFERRING WELLS")
@@ -165,9 +140,9 @@ def transfer_debugging(sess, limit=100):
     results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
     metrics.well_metrics(sess, *results)
 
-    # message("TRANSFERRING WELL SCREENS")
-    # results = timeit_direct(transfer_wellscreens, sess)
-    # metrics.well_screen_metrics(sess, *results)
+    message("TRANSFERRING WELL SCREENS")
+    results = timeit_direct(transfer_wellscreens, sess)
+    metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")
     results = timeit_direct(transfer_sensors, sess)
@@ -186,13 +161,13 @@ def transfer_debugging(sess, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    # message("TRANSFERRING CONTACTS")
-    # results = timeit_direct(transfer_contacts, sess)
-    # metrics.contact_metrics(sess, *results)
+    message("TRANSFERRING CONTACTS")
+    results = timeit_direct(transfer_contacts, sess)
+    metrics.contact_metrics(sess, *results)
     #
-    # message("TRANSFERRING WATER LEVELS")
-    # results = timeit_direct(transfer_water_levels, sess)
-    # metrics.water_level_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS")
+    results = timeit_direct(transfer_water_levels, sess)
+    metrics.water_level_metrics(sess, *results)
 
     # message("TRANSFERRING WATER LEVELS PRESSURE")
     # results = timeit_direct(transfer_water_levels_pressure, sess)
@@ -223,6 +198,8 @@ def transfer_debugging(sess, limit=100):
     # timeit_direct(transfer_water_levels_acoustic, sess)
     # message("TRANSFERRING ASSETS")
     # timeit_direct(transfer_assets, sess)
+    metrics.close()
+    metrics.save_to_storage_bucket()
 
 
 def main():

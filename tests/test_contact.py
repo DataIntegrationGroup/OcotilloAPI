@@ -368,7 +368,12 @@ def test_add_phone_409_contact_not_found(contact):
 
 
 def test_get_contacts(
-    contact, email, address, phone, incomplete_nma_phone_1, incomplete_nma_phone_2
+    contact,
+    email,
+    address,
+    phone,
+    incomplete_nma_phone_1,
+    incomplete_nma_phone_2,
 ):
     response = client.get("/contact")
     assert response.status_code == 200

@@ -22,7 +22,7 @@ from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
 
 from constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.group import GroupThingAssociation
@@ -31,11 +31,12 @@ if TYPE_CHECKING:
 
 class Group(Base, AutoBaseMixin, ReleaseMixin):
     # --- Column Definitions ---
-    description: Mapped[str] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
     project_area: Mapped[Optional[WKBElement]] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
     )
+    group_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
 
     # Foreign Keys
     parent_group_id: Mapped[Optional[int]] = mapped_column(

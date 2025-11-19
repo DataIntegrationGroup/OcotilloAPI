@@ -32,6 +32,7 @@ transfers/data/nma_csv_cache/*
 tests/features/*.feature
 transfers/metrics/*
 transfers/logs/*
+run_bdd-local.sh
 
 
 # deployment files

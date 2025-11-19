@@ -17,6 +17,7 @@ from behave import given, when, then
 from behave.runner import Context
 
 
+# TODO: should this use fixtures to populate and access data from the database?
 @given("the system has valid well and location data in the database")
 def step_impl(context):
     context.database = {

@@ -25,8 +25,6 @@ from fastapi.openapi.docs import (
 from fastapi.openapi.utils import get_openapi
 
 from .initializers import (
-    init_lexicon,
-    init_parameter,
     register_routes,
     erase_and_rebuild_db,
 )
@@ -40,8 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     if settings.get_enum("MODE") == "development":
         erase_and_rebuild_db()
-        init_lexicon()
-        init_parameter()
 
     register_routes(app)
     yield
