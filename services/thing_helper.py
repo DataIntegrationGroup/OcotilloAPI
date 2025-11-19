@@ -152,6 +152,10 @@ def add_thing(
         well_descriptor_table_list = list(WELL_DESCRIPTOR_MODEL_MAP.keys())
         data = data.model_dump(exclude=well_descriptor_table_list)
 
+    notes = None
+    if "notes" in data:
+        notes = data.pop("notes")
+
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
 
@@ -183,6 +187,14 @@ def add_thing(
 
         session.commit()
         session.refresh(thing)
+
+        if notes:
+            for n in notes:
+                nn = thing.add_note(n["content"], n["note_type"])
+                session.add(nn)
+            session.commit()
+            session.refresh(thing)
+
     except Exception as e:
         session.rollback()
         raise e

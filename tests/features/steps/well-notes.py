@@ -16,25 +16,10 @@
 from behave import when, then
 
 
-@when("the user retrieves the well 1")
-def step_impl(context):
-    context.response = context.client.get("thing/water-well/1")
-
-
 @when("the user retrieves the well 9999")
 def step_impl(context):
     context.response = context.client.get("thing/water-well/9999")
-
-
-@then("the response should contain a current_location field")
-def step_impl(context):
-    assert "current_location" in context.response.json()
-
-
-@then("the response should include notes")
-def step_impl(context):
-    assert "notes" in context.response.json()
-    context.notes = context.response.json()["notes"]
+    context.notes = {}
 
 
 @then("the response should include an error message indicating the well was not found")
@@ -42,15 +27,61 @@ def step_impl(context):
     assert {"detail": "Thing with ID 9999 not found."} == context.response.json()
 
 
-@then("the response should include well_construction_notes")
-def step_impl(context):
-    assert "well_construction_notes" in context.response.json()
-    context.notes = context.response.json()["well_construction_notes"]
-
-
 @then("the notes should be a non-empty string")
 def step_impl(context):
-    assert bool(context.notes) == True
+    for k, note in context.notes.items():
+        assert note, f"{k} Note is empty"
+
+
+@then(
+    "the response should include location notes (i.e. driving directions and geographic well location notes)"
+)
+def step_impl(context):
+    data = context.response.json()
+    location = data["current_location"]
+    assert "notes" in location["properties"], "Response does not include location notes"
+    assert location["properties"]["notes"] is not None, "Location notes is null"
+    context.notes["location"] = location["properties"]["notes"]
+
+
+@then(
+    "the response should include construction notes (i.e. pump notes and other construction notes)"
+)
+def step_impl(context):
+    data = context.response.json()
+    assert (
+        "well_construction_notes" in data
+    ), "Response does not include construction notes"
+    assert data["well_construction_notes"] is not None, "Construction notes is null"
+    context.notes["construction"] = data["well_construction_notes"]
+
+
+@then("the response should include general well notes (catch all notes field)")
+def step_impl(context):
+    data = context.response.json()
+    assert "notes" in data, "Response does not include notes"
+    assert data["notes"] is not None, "Notes is null"
+    context.notes["general"] = data["notes"]
+
+
+@then(
+    "the response should include measuring notes (notes about measuring/visiting the well, on Access form)"
+)
+def step_impl(context):
+    data = context.response.json()
+    assert "measuring_notes" in data, "Response does not include measuring notes"
+    assert data["measuring_notes"] is not None, "Measuring notes is null"
+    context.notes["measuring"] = data["measuring_notes"]
+
+
+@then(
+    "the response should include water notes (i.e. water bearing zone information and other info from ose reports)"
+)
+def step_impl(context):
+    data = context.response.json()
+    assert "water_notes" in data, "Response does not include water notes"
+    assert data["water_notes"] is not None, "Water notes is null"
+    context.notes["water"] = data["water_notes"]
 
 
 # ============= EOF =============================================
