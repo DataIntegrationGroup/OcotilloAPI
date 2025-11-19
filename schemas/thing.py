@@ -27,6 +27,11 @@ from core.enums import (
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.location import LocationResponse
+from schemas.aquifer_system import AquiferSystemResponse
+from schemas.geologic_formation import (
+    GeologicFormationResponse,
+    ThingFormationAssociationResponse,
+)
 
 
 # -------- VALIDATE ----------
@@ -121,6 +126,8 @@ class CreateWellScreen(BaseCreateModel):
     """
 
     thing_id: int
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
     screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
     screen_type: ScreenType | None = None
@@ -166,6 +173,8 @@ class WellResponse(BaseThingResponse):
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
+    aquifers: list[AquiferSystemResponse] = []
+    formations: list[ThingFormationAssociationResponse] = []
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -185,6 +194,23 @@ class WellResponse(BaseThingResponse):
         else:
             materials = []
         return materials
+
+    @field_validator("aquifers", mode="before")
+    def populate_aquifers(cls, aquifers):
+        """Convert aquifer association objects to aquifer system objects."""
+        if aquifers is not None:
+            # Handle if aquifers are already AquiferSystem objects
+            if hasattr(aquifers[0] if aquifers else None, "aquifer_system"):
+                return [assoc.aquifer_system for assoc in aquifers]
+        return aquifers or []
+
+    @field_validator("formations", mode="before")
+    def populate_formations(cls, formations):
+        """Convert formation association objects to response objects."""
+        if formations is not None:
+            # formations should already be ThingFormationAssociation objects
+            return formations
+        return []
 
 
 class SpringResponse(BaseThingResponse):
@@ -222,6 +248,10 @@ class WellScreenResponse(BaseResponseModel):
 
     thing_id: int
     thing: WellResponse
+    aquifer_system_id: int | None = None
+    aquifer_system: AquiferSystemResponse | None = None
+    geologic_formation_id: int | None = None
+    geologic_formation: GeologicFormationResponse | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
@@ -295,6 +325,8 @@ class UpdateThingIdLink(BaseUpdateModel):
 
 
 class UpdateWellScreen(BaseUpdateModel):
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float | None = None
     screen_depth_top: float | None = None
     screen_description: str | None = None
