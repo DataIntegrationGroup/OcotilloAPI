@@ -222,7 +222,9 @@ async def well_inventory_csv(
                 if added:
                     session.commit()
             except DatabaseError as e:
-                logging.error(f"Database error while importing row '{model.well_name_point_id}': {e}")
+                logging.error(
+                    f"Database error while importing row '{model.well_name_point_id}': {e}"
+                )
                 validation_errors.append(
                     {
                         "row": model.well_name_point_id,
