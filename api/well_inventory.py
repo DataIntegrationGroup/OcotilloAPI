@@ -25,7 +25,11 @@ from pydantic import ValidationError
 from shapely import Point
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError
-from starlette.status import HTTP_201_CREATED, HTTP_422_UNPROCESSABLE_ENTITY
+from starlette.status import (
+    HTTP_201_CREATED,
+    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_400_BAD_REQUEST,
+)
 
 from constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from core.dependencies import session_dependency, amp_editor_dependency
@@ -42,6 +46,7 @@ from db.thing import Thing, WellPurpose, MonitoringFrequencyHistory
 from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
+from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing, modify_well_descriptor_tables
 from services.util import transform_srid
 
@@ -186,55 +191,92 @@ async def well_inventory_csv(
     if not file.content_type.startswith("text/csv") or not file.filename.endswith(
         ".csv"
     ):
-        return JSONResponse(status_code=400, content={"error": "Unsupported file type"})
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "Unsupported file type",
+                    "type": "Unsupported file type",
+                    "input": f"file.content_type {file.content_type} name={file.filename}",
+                }
+            ],
+        )
 
     content = await file.read()
     if not content:
-        return JSONResponse(status_code=400, content={"error": "Empty file"})
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {"loc": [], "msg": "Empty file", "type": "Empty file", "input": content}
+            ],
+        )
+
     try:
         text = content.decode("utf-8")
-    except Exception:
-        return JSONResponse(status_code=400, content={"error": "File encoding error"})
+    except UnicodeDecodeError:
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "File encoding error",
+                    "type": "File encoding error",
+                    "input": content,
+                }
+            ],
+        )
+
     reader = csv.DictReader(StringIO(text))
     rows = list(reader)
     if not rows:
-        return JSONResponse(status_code=400, content={"error": "No data rows found"})
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "No data rows found",
+                    "type": "No data rows found",
+                    "input": str(rows),
+                }
+            ],
+        )
 
     wells = []
     models, validation_errors = _make_row_models(rows)
+    if models and not validation_errors:
+        for project, items in groupby(
+            sorted(models, key=lambda x: x.project), key=lambda x: x.project
+        ):
+            # get project and add if does not exist
+            # BDMS-221 adds group_type
+            sql = select(Group).where(
+                Group.group_type == "Monitoring Plan" and Group.name == project
+            )
+            group = session.scalars(sql).one_or_none()
+            if not group:
+                group = Group(name=project)
+                session.add(group)
 
-    for project, items in groupby(
-        sorted(models, key=lambda x: x.project), key=lambda x: x.project
-    ):
-        # get project and add if does not exist
-        # BDMS-221 adds group_type
-        sql = select(Group).where(
-            Group.group_type == "Monitoring Plan" and Group.name == project
-        )
-        group = session.scalars(sql).one_or_none()
-        if not group:
-            group = Group(name=project)
-            session.add(group)
+            for model in items:
+                try:
+                    added = _add_csv_row(session, group, model, user)
+                    if added:
+                        session.commit()
+                except DatabaseError as e:
+                    logging.error(
+                        f"Database error while importing row '{model.well_name_point_id}': {e}"
+                    )
+                    validation_errors.append(
+                        {
+                            "row": model.well_name_point_id,
+                            "field": "Database error",
+                            "error": "A database error occurred while importing this row.",
+                        }
+                    )
+                    continue
 
-        for model in items:
-            try:
-                added = _add_csv_row(session, group, model, user)
-                if added:
-                    session.commit()
-            except DatabaseError as e:
-                logging.error(
-                    f"Database error while importing row '{model.well_name_point_id}': {e}"
-                )
-                validation_errors.append(
-                    {
-                        "row": model.well_name_point_id,
-                        "field": "Database error",
-                        "error": "A database error occurred while importing this row.",
-                    }
-                )
-                continue
-
-            wells.append(added)
+                wells.append(added)
 
     rows_imported = len(wells)
     rows_processed = len(rows)
