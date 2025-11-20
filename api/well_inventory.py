@@ -52,7 +52,9 @@ def _add_location(model, well) -> Location:
         return round(r * 0.3048, 6)
 
     point = Point(model.utm_easting, model.utm_northing)
-    if model.utm_zone == 13:
+
+    # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
+    if model.utm_zone == "13N":
         source_srid = SRID_UTM_ZONE_13N
     else:
         source_srid = SRID_UTM_ZONE_12N
@@ -86,46 +88,47 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     emails = []
     phones = []
     addresses = []
-    for i in (1, 2):
-        email = getattr(model, f"contact_email_{i}")
-        etype = getattr(model, f"contact_email_{i}_type")
-        if email and etype:
-            emails.append({"email": email, "email_type": etype})
-        phone = getattr(model, f"contact_phone_{i}")
-        ptype = getattr(model, f"contact_phone_{i}_type")
-        if phone and ptype:
-            phones.append({"phone_number": phone, "phone_type": ptype})
+    name = getattr(model, f"contact_{idx}_name")
+    if name:
+        for j in (1, 2):
+            for i in (1, 2):
+                email = getattr(model, f"contact_{j}_email_{i}")
+                etype = getattr(model, f"contact_{j}_email_{i}_type")
+                if email and etype:
+                    emails.append({"email": email, "email_type": etype})
+                phone = getattr(model, f"contact_{j}_phone_{i}")
+                ptype = getattr(model, f"contact_{j}_phone_{i}_type")
+                if phone and ptype:
+                    phones.append({"phone_number": phone, "phone_type": ptype})
 
-        address_line_1 = getattr(model, f"contact_address_{i}_line_1")
-        address_line_2 = getattr(model, f"contact_address_{i}_line_2")
-        city = getattr(model, f"contact_address_{i}_city")
-        state = getattr(model, f"contact_address_{i}_state")
-        postal_code = getattr(model, f"contact_address_{i}_postal_code")
-        address_type = getattr(model, f"contact_address_{i}_type")
-        if address_line_1 and city and state and postal_code and address_type:
-            addresses.append(
-                {
-                    "address": {
-                        "address_line_1": address_line_1,
-                        "address_line_2": address_line_2,
-                        "city": city,
-                        "state": state,
-                        "postal_code": postal_code,
-                        "address_type": address_type,
-                    }
-                }
-            )
+                address_line_1 = getattr(model, f"contact_{j}_address_{i}_line_1")
+                address_line_2 = getattr(model, f"contact_{j}_address_{i}_line_2")
+                city = getattr(model, f"contact_{j}_address_{i}_city")
+                state = getattr(model, f"contact_{j}_address_{i}_state")
+                postal_code = getattr(model, f"contact_{j}_address_{i}_postal_code")
+                address_type = getattr(model, f"contact_{j}_address_{i}_type")
+                if address_line_1 and city and state and postal_code and address_type:
+                    addresses.append(
+                        {
+                            "address_line_1": address_line_1,
+                            "address_line_2": address_line_2,
+                            "city": city,
+                            "state": state,
+                            "postal_code": postal_code,
+                            "address_type": address_type,
+                        }
+                    )
 
-    return {
-        "thing_id": well.id,
-        "name": model.contact_name,
-        "organization": model.contact_organization,
-        "role": model.contact_role,
-        "contact_type": model.contact_type,
-        "emails": emails,
-        "phones": phones,
-        "addresses": addresses,
-    }
+        return {
+            "thing_id": well.id,
+            "name": name,
+            "organization": getattr(model, f"contact_{idx}_organization"),
+            "role": getattr(model, f"contact_{idx}_role"),
+            "contact_type": getattr(model, f"contact_{idx}_type"),
+            "emails": emails,
+            "phones": phones,
+            "addresses": addresses,
+        }
 
 
 def _make_row_models(rows):
@@ -150,6 +153,7 @@ def _make_row_models(rows):
                         "row": idx + 1,
                         "field": err["loc"][0],
                         "error": f"Value error, {err['msg']}",
+                        "value": row.get(err["loc"][0]),
                     }
                 )
         except ValueError as e:
@@ -214,16 +218,28 @@ async def well_inventory_csv(
             # add field staff
 
             # add Thing
-            well_data = CreateWell(
+            data = CreateWell(
                 name=name,
                 first_visit_date=date_time.date(),
                 well_depth=model.total_well_depth_ft,
                 well_casing_diameter=model.casing_diameter_ft,
+                measuring_point_height=model.measuring_point_height_ft,
+                measuring_point_description=model.measuring_point_description,
+            )
+            well_data = data.model_dump(
+                exclude=[
+                    "location_id",
+                    "group_id",
+                    "well_purposes",
+                    "well_casing_materials",
+                    "measuring_point_height",
+                    "measuring_point_description",
+                ]
             )
             well = add_thing(
                 session=session, data=well_data, user=user, thing_type="water well"
             )
-            modify_well_descriptor_tables(session, well, well_data, user)
+            modify_well_descriptor_tables(session, well, data, user)
             wells.append(name)
             session.refresh(well)
 

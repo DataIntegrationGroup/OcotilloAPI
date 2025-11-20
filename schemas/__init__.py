@@ -59,7 +59,7 @@ def past_or_today_validator(value: date) -> date:
     return value
 
 
-PastOrTodayDate = Annotated[date, AfterValidator(past_or_today_validator)]
+PastOrTodayDate: type[date] = Annotated[date, AfterValidator(past_or_today_validator)]
 
 
 # Custom type for UTC datetime serialization

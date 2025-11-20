@@ -356,7 +356,7 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 def before_all(context):
     context.objects = {}
     rebuild = False
-    # rebuild = True
+    rebuild = True
     if rebuild:
         erase_and_rebuild_db()
 
@@ -374,15 +374,8 @@ def before_all(context):
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
-        measuring_point_history_1 = add_measuring_point_history(
-            context, session, well=well_1
-        )
-        measuring_point_history_2 = add_measuring_point_history(
-            context, session, well=well_2
-        )
-        measuring_point_history_3 = add_measuring_point_history(
-            context, session, well=well_3
-        )
+        for well in [well_1, well_2, well_3]:
+            add_measuring_point_history(context, session, well=well)
 
         well_status_1 = add_status_history(
             context,
@@ -432,74 +425,69 @@ def before_all(context):
             target_table="thing",
         )
 
-        monitoring_frequency_history_1 = add_monitoring_frequency_history(
-            context,
-            session,
-            well=well_1,
-            monitoring_frequency="Monthly",
-            start_date="2020-01-01",
-            end_date="2021-01-01",
-        )
+        monitoring_frequency_histories = [
+            (well_1, "Monthly", "2020-01-01", "2021-01-01"),
+            (well_1, "Annual", "2020-01-01", None),
+        ]
+        for (
+            well,
+            monitoring_frequency,
+            start_date,
+            end_date,
+        ) in monitoring_frequency_histories:
+            add_monitoring_frequency_history(
+                context, session, well, monitoring_frequency, start_date, end_date
+            )
 
-        monitoring_frequency_history_2 = add_monitoring_frequency_history(
-            context,
-            session,
-            well=well_1,
-            monitoring_frequency="Annual",
-            start_date="2020-01-01",
-            end_date=None,
-        )
-
-        id_link_1 = add_id_link(
-            context,
-            session,
-            thing=well_1,
-            relation="same_as",
-            alternate_id="12345678",
-            alternate_organization="USGS",
-        )
-
-        id_link_2 = add_id_link(
-            context,
-            session,
-            thing=well_1,
-            relation="same_as",
-            alternate_id="OSE-0001",
-            alternate_organization="NMOSE",
-        )
-
-        id_link_3 = add_id_link(
-            context,
-            session,
-            thing=well_1,
-            relation="same_as",
-            alternate_id="Roving Bovine Ranch Well #1",
-            alternate_organization="NMBGMR",
-        )
+        id_links = [
+            ("same_as", "12345678", "USGS"),
+            ("same_as", "OSE-0001", "NMOSE"),
+            ("same_as", "Roving Bovine Ranch Well #1", "NMBGMR"),
+        ]
+        for relation, alternate_id, alternate_organization in id_links:
+            add_id_link(
+                context,
+                session,
+                thing=well_1,
+                relation=relation,
+                alternate_id=alternate_id,
+                alternate_organization=alternate_organization,
+            )
 
         group = add_group(context, session, [well_1, well_2])
 
-        elevation_method = add_data_provenance(
-            context,
-            session,
-            target_id=loc_1.id,
-            target_table="location",
-            field_name="elevation",
-            origin_source="Private geologist, consultant or univ associate",
-            collection_method="LiDAR DEM",
-        )
-
-        well_depth_source = add_data_provenance(
-            context,
-            session,
-            target_id=well_1.id,
-            target_table="thing",
-            field_name="well_depth",
-            origin_source="Other",
-        )
-
-        for purpose in ["Domestic", "Irrigation"]:
-            add_well_purpose(context, session, well_1, purpose)
+        data_provenance_entries = [
+            (
+                loc_1.id,
+                "location",
+                "elevation",
+                "Private geologist, consultant or univ associate",
+                "LiDAR DEM",
+                None,
+                None,
+            ),
+            (well_1.id, "thing", "well_depth", "Other", None, None, None),
+        ]
+        for (
+            target_id,
+            target_table,
+            field_name,
+            origin_source,
+            collection_method,
+            accuracy_value,
+            accuracy_unit,
+        ) in data_provenance_entries:
+            add_data_provenance(
+                context,
+                session,
+                target_id,
+                target_table,
+                field_name,
+                origin_source,
+                collection_method,
+                accuracy_value,
+                accuracy_unit,
+            )
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

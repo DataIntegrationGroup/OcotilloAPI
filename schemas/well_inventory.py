@@ -14,9 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Annotated
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, BeforeValidator
 
 from core.enums import (
     ElevationMethod,
@@ -29,6 +29,41 @@ from core.enums import (
 )
 
 
+def empty_str_to_none(v):
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
+def blank_to_none(v):
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
+def owner_default(v):
+    v = blank_to_none(v)
+    if v is None:
+        return "Owner"
+    return v
+
+
+def primary_default(v):
+    v = blank_to_none(v)
+    if v is None:
+        return "Primary"
+    return v
+
+
+# Reusable type
+PhoneTypeField = Annotated[Optional[PhoneType], BeforeValidator(blank_to_none)]
+ContactTypeField = Annotated[Optional[ContactType], BeforeValidator(primary_default)]
+EmailTypeField = Annotated[Optional[EmailType], BeforeValidator(blank_to_none)]
+AddressTypeField = Annotated[Optional[AddressType], BeforeValidator(blank_to_none)]
+ContactRoleField = Annotated[Optional[Role], BeforeValidator(owner_default)]
+FloatOrNone = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
+
+
 # ============= EOF =============================================
 class WellInventoryRow(BaseModel):
     # Required fields
@@ -39,7 +74,7 @@ class WellInventoryRow(BaseModel):
     field_staff: str
     utm_easting: float
     utm_northing: float
-    utm_zone: int
+    utm_zone: str
     elevation_ft: float
     elevation_method: ElevationMethod
     measuring_point_height_ft: float
@@ -47,30 +82,57 @@ class WellInventoryRow(BaseModel):
     # Optional fields
     field_staff_2: Optional[str] = None
     field_staff_3: Optional[str] = None
-    contact_name: Optional[str] = None
-    contact_organization: Optional[str] = None
-    contact_role: Optional[Role] = None
-    contact_type: Optional[ContactType] = "Primary"
-    contact_phone_1: Optional[str] = None
-    contact_phone_1_type: Optional[PhoneType] = None
-    contact_phone_2: Optional[str] = None
-    contact_phone_2_type: Optional[PhoneType] = None
-    contact_email_1: Optional[str] = None
-    contact_email_1_type: Optional[EmailType] = None
-    contact_email_2: Optional[str] = None
-    contact_email_2_type: Optional[EmailType] = None
-    contact_address_1_line_1: Optional[str] = None
-    contact_address_1_line_2: Optional[str] = None
-    contact_address_1_type: Optional[AddressType] = None
-    contact_address_1_state: Optional[str] = None
-    contact_address_1_city: Optional[str] = None
-    contact_address_1_postal_code: Optional[str] = None
-    contact_address_2_line_1: Optional[str] = None
-    contact_address_2_line_2: Optional[str] = None
-    contact_address_2_type: Optional[AddressType] = None
-    contact_address_2_state: Optional[str] = None
-    contact_address_2_city: Optional[str] = None
-    contact_address_2_postal_code: Optional[str] = None
+
+    contact_1_name: Optional[str] = None
+    contact_1_organization: Optional[str] = None
+    contact_1_role: ContactRoleField = "Owner"
+    contact_1_type: ContactTypeField = "Primary"
+    contact_1_phone_1: Optional[str] = None
+    contact_1_phone_1_type: PhoneTypeField = None
+    contact_1_phone_2: Optional[str] = None
+    contact_1_phone_2_type: PhoneTypeField = None
+    contact_1_email_1: Optional[str] = None
+    contact_1_email_1_type: EmailTypeField = None
+    contact_1_email_2: Optional[str] = None
+    contact_1_email_2_type: EmailTypeField = None
+    contact_1_address_1_line_1: Optional[str] = None
+    contact_1_address_1_line_2: Optional[str] = None
+    contact_1_address_1_type: AddressTypeField = None
+    contact_1_address_1_state: Optional[str] = None
+    contact_1_address_1_city: Optional[str] = None
+    contact_1_address_1_postal_code: Optional[str] = None
+    contact_1_address_2_line_1: Optional[str] = None
+    contact_1_address_2_line_2: Optional[str] = None
+    contact_1_address_2_type: AddressTypeField = None
+    contact_1_address_2_state: Optional[str] = None
+    contact_1_address_2_city: Optional[str] = None
+    contact_1_address_2_postal_code: Optional[str] = None
+
+    contact_2_name: Optional[str] = None
+    contact_2_organization: Optional[str] = None
+    contact_2_role: ContactRoleField = "Owner"
+    contact_2_type: ContactTypeField = "Primary"
+    contact_2_phone_1: Optional[str] = None
+    contact_2_phone_1_type: PhoneTypeField = None
+    contact_2_phone_2: Optional[str] = None
+    contact_2_phone_2_type: PhoneTypeField = None
+    contact_2_email_1: Optional[str] = None
+    contact_2_email_1_type: EmailTypeField = None
+    contact_2_email_2: Optional[str] = None
+    contact_2_email_2_type: EmailTypeField = None
+    contact_2_address_1_line_1: Optional[str] = None
+    contact_2_address_1_line_2: Optional[str] = None
+    contact_2_address_1_type: AddressTypeField = None
+    contact_2_address_1_state: Optional[str] = None
+    contact_2_address_1_city: Optional[str] = None
+    contact_2_address_1_postal_code: Optional[str] = None
+    contact_2_address_2_line_1: Optional[str] = None
+    contact_2_address_2_line_2: Optional[str] = None
+    contact_2_address_2_type: AddressTypeField = None
+    contact_2_address_2_state: Optional[str] = None
+    contact_2_address_2_city: Optional[str] = None
+    contact_2_address_2_postal_code: Optional[str] = None
+
     directions_to_site: Optional[str] = None
     specific_location_of_well: Optional[str] = None
     repeat_measurement_permission: Optional[bool] = None
@@ -85,7 +147,7 @@ class WellInventoryRow(BaseModel):
     historic_depth_to_water_ft: Optional[float] = None
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
-    well_pump_depth_ft: Optional[float] = None
+    well_pump_depth_ft: FloatOrNone = None
     is_open: Optional[bool] = None
     datalogger_possible: Optional[bool] = None
     casing_diameter_ft: Optional[float] = None
@@ -94,20 +156,37 @@ class WellInventoryRow(BaseModel):
     well_hole_status: Optional[str] = None
     monitoring_frequency: Optional[str] = None
 
+    result_communication_preference: Optional[str] = None
+    contact_special_requests_notes: Optional[str] = None
+    sampling_scenario_notes: Optional[str] = None
+    well_measuring_notes: Optional[str] = None
+    sample_possible: Optional[bool] = None
+
     @model_validator(mode="after")
     def validate_model(self):
         required_attrs = ("line_1", "type", "state", "city", "postal_code")
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
-        for idx in (1, 2):
-            if any(getattr(self, f"contact_address_{idx}_{a}") for a in all_attrs):
-                if not all(
-                    getattr(self, f"contact_address_{idx}_{a}") for a in required_attrs
+        for jdx in (1, 2):
+            for idx in (1, 2):
+                if any(
+                    getattr(self, f"contact_{jdx}_address_{idx}_{a}") for a in all_attrs
                 ):
-                    raise ValueError("All contact address fields must be provided")
+                    if not all(
+                        getattr(self, f"contact_{jdx}_address_{idx}_{a}")
+                        for a in required_attrs
+                    ):
+                        raise ValueError("All contact address fields must be provided")
 
-        if self.contact_phone_1 and not self.contact_phone_1_type:
-            raise ValueError("Phone type must be provided if phone number is provided")
-        if self.contact_email_1 and not self.contact_email_1_type:
-            raise ValueError("Email type must be provided if email is provided")
+                phone = getattr(self, f"contact_{jdx}_phone_1")
+                phone_type = getattr(self, f"contact_{jdx}_phone_1_type")
+                if phone and not phone_type:
+                    raise ValueError(
+                        "Phone type must be provided if phone number is provided"
+                    )
+
+                email = getattr(self, f"contact_{jdx}_email_1")
+                email_type = getattr(self, f"contact_{jdx}_email_1_type")
+                if email and not email_type:
+                    raise ValueError("Email type must be provided if email is provided")
 
         return self

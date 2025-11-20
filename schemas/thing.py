@@ -99,7 +99,7 @@ class CreateBaseThing(BaseCreateModel):
     e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
     """
 
-    location_id: int | None
+    location_id: int | None = None
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
     first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
