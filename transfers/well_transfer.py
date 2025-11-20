@@ -257,6 +257,9 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
+                well_completion_date=row.CompletionDate,
+                well_driller_name=row.DrillerName,
+                well_construction_method=row.ConstructionMethod,
             )
 
             CreateWell.model_validate(data)

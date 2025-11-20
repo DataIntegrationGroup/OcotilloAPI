@@ -132,6 +132,9 @@ class CreateWell(CreateBaseThing, ValidateWell):
     )
     measuring_point_description: str | None = None
     notes: list[CreateNote] | None = None
+    well_completion_date: PastOrTodayDate | None = None
+    well_driller_name: str | None = None
+    well_construction_method: WellConstructionMethod | None = None
 
 
 class CreateSpring(CreateBaseThing):
