@@ -36,6 +36,7 @@ from db import (
     StatusHistory,
     MonitoringFrequencyHistory,
     MeasuringPointHistory,
+    DataProvenance,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -280,6 +281,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "well_casing_materials",
                     "measuring_point_height",
                     "measuring_point_description",
+                    "well_completion_date_source",
+                    "well_construction_method_source",
                 ]
             )
             well_data["thing_type"] = "water well"
@@ -288,17 +291,6 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
-            # logger.info(f"Created well for {row.PointID}")
-
-            # flush well to access its ID for status_history
-            # session.flush()
-
-            # session.commit()
-            # session.refresh(well)
-            # if notes:
-            #     for ni in notes:
-            #         nn = well.add_note(ni['content'], ni['note_type'])
-            #         session.add(nn)
 
             if well_purposes:
                 for wp in well_purposes:
@@ -350,11 +342,44 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         for dp in data_provenances:
             session.add(dp)
 
-        """
-            Developer's note
+        if not isna(row.CompletionSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_completion_date",
+                origin_source=lexicon_mapper.map_value(
+                    f"LU_Depth_CompletionSource:{row.CompletionSource}"
+                ),
+            )
+            session.add(dp)
 
-            It's not clear when the measuring point from NM_Aquifer was 
-            determined, so I'm setting start_date to the day of the transfer
+        if not isna(row.DataSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_construction_method",
+                origin_source=lexicon_mapper.map_value(
+                    f"LU_DataSource:{row.DataSource}"
+                ),
+            )
+            session.add(dp)
+
+        if not isna(row.DepthSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_depth",
+                origin_source=lexicon_mapper.map_value(
+                    f"LU_Depth_CompletionSource:{row.DepthSource}"
+                ),
+            )
+            session.add(dp)
+
+        """
+        Developer's note
+
+        It's not clear when the measuring point from NM_Aquifer was 
+        determined, so I'm setting start_date to the day of the transfer
         """
         measuring_point_history = MeasuringPointHistory(
             thing_id=well.id,
