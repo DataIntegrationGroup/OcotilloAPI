@@ -396,12 +396,12 @@ class Thing(
 
     @property
     def well_depth_source(self) -> str | None:
-        return self._get_data_provenance_attribute("well_depth", "origin_source")
+        return self._get_data_provenance_attribute("well_depth", "origin_type")
 
     @property
     def well_completion_date_source(self) -> str | None:
         return self._get_data_provenance_attribute(
-            "well_completion_date", "origin_source"
+            "well_completion_date", "origin_type"
         )
 
     @property

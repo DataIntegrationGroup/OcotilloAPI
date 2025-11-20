@@ -53,9 +53,13 @@ class DataProvenance(AutoBaseMixin, ReleaseMixin, Base):
     )
     # Values from the following NMAquifer tables are included as `origin_source` terms in the lexicon:
     # 'LU_DataSource', 'LU_Depth_CompletionSource'.
-    origin_source: Mapped[str] = lexicon_term(
+    origin_type: Mapped[str] = lexicon_term(
         nullable=True,
-        comment="Indicates the origin source of the data (e.g'Driller's Log', 'Well Report'.",
+        comment="Indicates the type of origin the data (e.g'Driller's Log', 'Well Report'.",
+    )
+    origin_source: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="The specific source of the data (e.g., 'J. Brown Thesis, \"I like APIs\", Pomona College, 1994').",
     )
     # Values from the following NMAquifer tables are included as `collection_method` terms in the lexicon:
     # 'LU_AltitudeMethod','LU_CoordinateMethod'.
