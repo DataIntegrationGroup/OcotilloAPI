@@ -385,7 +385,8 @@ def add_data_provenance(
     target_id,
     target_table,
     field_name,
-    origin_source,
+    origin_type=None,
+    origin_source=None,
     collection_method=None,
     accuracy_value=None,
     accuracy_unit=None,
@@ -395,6 +396,7 @@ def add_data_provenance(
         collection_method=collection_method,
         target_id=target_id,
         target_table=target_table,
+        origin_type=origin_type,
         origin_source=origin_source,
         accuracy_value=accuracy_value,
         accuracy_unit=accuracy_unit,
@@ -603,7 +605,7 @@ def before_all(context):
             target_id=well_1.id,
             target_table="thing",
             field_name="well_depth",
-            origin_source="Other",
+            origin_type="Other",
         )
 
         well_completion_date_source = add_data_provenance(
@@ -612,7 +614,7 @@ def before_all(context):
             target_id=well_1.id,
             target_table="thing",
             field_name="well_completion_date",
-            origin_source="Data Portal",
+            origin_type="Data Portal",
         )
 
         well_construction_method_source = add_data_provenance(
@@ -621,7 +623,7 @@ def before_all(context):
             target_id=well_1.id,
             target_table="thing",
             field_name="well_construction_method",
-            origin_source="Data Portal",
+            origin_source="Jacob's 2013 Thesis",
         )
 
         for purpose in ["Domestic", "Irrigation"]:
