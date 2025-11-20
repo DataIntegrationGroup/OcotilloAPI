@@ -369,7 +369,6 @@ def make_location_data_provenance(
             target_id=location.id,
             target_table="location",
             field_name="point",
-            origin_source=None,
             collection_method=coordinate_method,
             accuracy_value=accuracy_value,
             accuracy_unit=accuracy_unit,

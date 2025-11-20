@@ -260,7 +260,13 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 ),
                 well_completion_date=row.CompletionDate,
                 well_driller_name=row.DrillerName,
-                well_construction_method=row.ConstructionMethod,
+                well_construction_method=(
+                    lexicon_mapper.map_value(
+                        f"LU_ConstructionMethod:{row.ConstructionMethod}"
+                    )
+                    if not isna(row.ConstructionMethod)
+                    else None
+                ),
             )
 
             CreateWell.model_validate(data)
@@ -347,7 +353,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 target_id=well.id,
                 target_table="thing",
                 field_name="well_completion_date",
-                origin_source=lexicon_mapper.map_value(
+                origin_type=lexicon_mapper.map_value(
                     f"LU_Depth_CompletionSource:{row.CompletionSource}"
                 ),
             )
@@ -358,9 +364,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 target_id=well.id,
                 target_table="thing",
                 field_name="well_construction_method",
-                origin_source=lexicon_mapper.map_value(
-                    f"LU_DataSource:{row.DataSource}"
-                ),
+                origin_source=row.DataSource,
             )
             session.add(dp)
 
@@ -369,7 +373,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 target_id=well.id,
                 target_table="thing",
                 field_name="well_depth",
-                origin_source=lexicon_mapper.map_value(
+                origin_type=lexicon_mapper.map_value(
                     f"LU_Depth_CompletionSource:{row.DepthSource}"
                 ),
             )
