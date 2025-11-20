@@ -17,6 +17,7 @@ import csv
 from io import StringIO
 from itertools import groupby
 from typing import Set
+import logging
 
 from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -221,13 +222,12 @@ async def well_inventory_csv(
                 if added:
                     session.commit()
             except DatabaseError as e:
+                logging.error(f"Database error while importing row '{model.well_name_point_id}': {e}")
                 validation_errors.append(
                     {
-                        {
-                            "row": model.well_name_point_id,
-                            "field": "Database error",
-                            "error": str(e),
-                        }
+                        "row": model.well_name_point_id,
+                        "field": "Database error",
+                        "error": "A database error occurred while importing this row.",
                     }
                 )
                 continue
