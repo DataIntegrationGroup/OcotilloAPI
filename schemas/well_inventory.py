@@ -60,7 +60,7 @@ PhoneTypeField = Annotated[Optional[PhoneType], BeforeValidator(blank_to_none)]
 ContactTypeField = Annotated[Optional[ContactType], BeforeValidator(primary_default)]
 EmailTypeField = Annotated[Optional[EmailType], BeforeValidator(blank_to_none)]
 AddressTypeField = Annotated[Optional[AddressType], BeforeValidator(blank_to_none)]
-ContactRoleField = Annotated[Optional[Role], BeforeValidator(owner_default)]
+ContactRoleField = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
 FloatOrNone = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
 
 
@@ -85,7 +85,7 @@ class WellInventoryRow(BaseModel):
 
     contact_1_name: Optional[str] = None
     contact_1_organization: Optional[str] = None
-    contact_1_role: ContactRoleField = "Owner"
+    contact_1_role: ContactRoleField = None
     contact_1_type: ContactTypeField = "Primary"
     contact_1_phone_1: Optional[str] = None
     contact_1_phone_1_type: PhoneTypeField = None
@@ -110,7 +110,7 @@ class WellInventoryRow(BaseModel):
 
     contact_2_name: Optional[str] = None
     contact_2_organization: Optional[str] = None
-    contact_2_role: ContactRoleField = "Owner"
+    contact_2_role: ContactRoleField = None
     contact_2_type: ContactTypeField = "Primary"
     contact_2_phone_1: Optional[str] = None
     contact_2_phone_1_type: PhoneTypeField = None
@@ -167,25 +167,29 @@ class WellInventoryRow(BaseModel):
         required_attrs = ("line_1", "type", "state", "city", "postal_code")
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
         for jdx in (1, 2):
+            key = f"contact_{jdx}"
+
             for idx in (1, 2):
-                if any(
-                    getattr(self, f"contact_{jdx}_address_{idx}_{a}") for a in all_attrs
-                ):
+                if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):
                     if not all(
-                        getattr(self, f"contact_{jdx}_address_{idx}_{a}")
+                        getattr(self, f"{key}_address_{idx}_{a}")
                         for a in required_attrs
                     ):
                         raise ValueError("All contact address fields must be provided")
 
-                phone = getattr(self, f"contact_{jdx}_phone_1")
-                phone_type = getattr(self, f"contact_{jdx}_phone_1_type")
+                name = getattr(self, f"{key}_name")
+                if name and not getattr(self, f"{key}_role"):
+                    raise ValueError("Role must be provided if name is provided")
+
+                phone = getattr(self, f"{key}_phone_1")
+                phone_type = getattr(self, f"{key}_phone_1_type")
                 if phone and not phone_type:
                     raise ValueError(
                         "Phone type must be provided if phone number is provided"
                     )
 
-                email = getattr(self, f"contact_{jdx}_email_1")
-                email_type = getattr(self, f"contact_{jdx}_email_1_type")
+                email = getattr(self, f"{key}_email_1")
+                email_type = getattr(self, f"{key}_email_1_type")
                 if email and not email_type:
                     raise ValueError("Email type must be provided if email is provided")
 

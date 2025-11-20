@@ -34,6 +34,7 @@ from db import (
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
     DataProvenance,
+    Contact,
 )
 from db.engine import session_ctx
 
@@ -356,7 +357,7 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 def before_all(context):
     context.objects = {}
     rebuild = False
-    rebuild = True
+    # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
 
@@ -509,6 +510,18 @@ def after_all(context):
         for table in context.objects.values():
             for obj in table:
                 session.delete(obj)
+
+        # session.query(TransducerObservationBlock).delete()
+        # session.query(TransducerObservation).delete()
+        # session.query(StatusHistory).delete()
+        # session.query(DataProvenance).delete()
+        # session.query(ThingIdLink).delete()
+        # session.query(Parameter).delete()
+        # session.query(Deployment).delete()
+        # session.query(GroupThingAssociation).delete()
+        # session.query(Group).delete()
+        # session.query(Sensor).delete()
+        session.query(Contact).delete()
         session.commit()
 
 

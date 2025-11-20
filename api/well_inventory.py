@@ -148,12 +148,16 @@ def _make_row_models(rows):
 
         except ValidationError as e:
             for err in e.errors():
+                loc = err["loc"]
+
+                field = loc[0] if loc else "composite field error"
+                value = row.get(field) if loc else None
                 validation_errors.append(
                     {
                         "row": idx + 1,
-                        "field": err["loc"][0],
-                        "error": f"Value error, {err['msg']}",
-                        "value": row.get(err["loc"][0]),
+                        "error": err["msg"],
+                        "field": field,
+                        "value": value,
                     }
                 )
         except ValueError as e:

@@ -261,6 +261,29 @@ def step_impl(context: Context):
     ), "Expected error message to indicate no data rows were found"
 
 
+@given(
+    'my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact'
+)
+def step_impl(context: Context):
+    _set_file_content(context, "well-inventory-missing-contact-role.csv")
+
+
+@then(
+    'the response includes a validation error indicating the missing "contact_role" field'
+)
+def step_impl(context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == 1, "Expected 1 validation error"
+    assert (
+        validation_errors[0]["field"] == "composite field error"
+    ), "Expected missing contact_role"
+    assert (
+        validation_errors[0]["error"]
+        == "Value error, Role must be provided if name is provided"
+    ), "Expected missing contact_role error message"
+
+
 # @given(
 #     "the system has valid lexicon values for contact_role, contact_type, phone_type, email_type, address_type, elevation_method, well_pump_type, well_purpose, well_hole_status, and monitoring_frequency"
 # )
