@@ -275,7 +275,7 @@ def make_location_data_provenance(
 ) -> list[DataProvenance]:
     provenance_records = []
 
-    if row.AltitudeAccuracy or row.CoordinateAccuracy:
+    if row.AltitudeAccuracy:
         provenance = DataProvenance(
             target_id=location.id,
             target_table="location",
