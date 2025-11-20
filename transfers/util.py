@@ -366,6 +366,8 @@ class LexiconMapper:
         # Lookup tables where CODE maps to MEANING
         lu_tables = [
             "LU_AltitudeMethod",
+            "LU_AquiferClass",
+            "LU_AquiferType",
             "LU_CollectionMethod",
             "LU_ConstructionMethod",
             "LU_CoordinateAccuracy",
