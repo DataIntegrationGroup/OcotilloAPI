@@ -25,7 +25,6 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db import (
     LocationThingAssociation,
     Thing,
-    Base,
     Location,
     WellScreen,
     WellPurpose,
@@ -144,13 +143,17 @@ def add_thing(
     user: dict = None,
     request: Request | None = None,
     thing_type: str | None = None,  # to be used only for data transfers, not the API
-) -> Base:
+) -> Thing:
     if request is not None:
         thing_type = get_thing_type_from_request(request)
 
     if isinstance(data, BaseModel):
         well_descriptor_table_list = list(WELL_DESCRIPTOR_MODEL_MAP.keys())
         data = data.model_dump(exclude=well_descriptor_table_list)
+
+    notes = None
+    if "notes" in data:
+        notes = data.pop("notes")
 
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
@@ -183,6 +186,14 @@ def add_thing(
 
         session.commit()
         session.refresh(thing)
+
+        if notes:
+            for n in notes:
+                nn = thing.add_note(n["content"], n["note_type"])
+                session.add(nn)
+            session.commit()
+            session.refresh(thing)
+
     except Exception as e:
         session.rollback()
         raise e

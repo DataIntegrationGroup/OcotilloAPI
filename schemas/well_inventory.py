@@ -1,0 +1,252 @@
+# ===============================================================================
+# Copyright 2025 ross
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+import re
+from datetime import datetime
+from typing import Optional, Annotated, TypeAlias
+
+from pydantic import BaseModel, model_validator, BeforeValidator, field_validator
+
+from constants import STATE_CODES
+from core.enums import (
+    ElevationMethod,
+    Role,
+    ContactType,
+    PhoneType,
+    EmailType,
+    AddressType,
+    WellPurpose as WellPurposeEnum,
+    MonitoringFrequency,
+)
+
+
+def empty_str_to_none(v):
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
+def blank_to_none(v):
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
+def owner_default(v):
+    v = blank_to_none(v)
+    if v is None:
+        return "Owner"
+    return v
+
+
+def primary_default(v):
+    v = blank_to_none(v)
+    if v is None:
+        return "Primary"
+    return v
+
+
+US_POSTAL_REGEX = re.compile(r"^\d{5}(-\d{4})?$")
+
+
+def postal_code_or_none(v):
+    if v is None or (isinstance(v, str) and v.strip() == ""):
+        return None
+
+    if not US_POSTAL_REGEX.match(v):
+        raise ValueError("Invalid postal code")
+
+    return v
+
+
+def state_validator(v):
+    if v and len(v) != 2:
+        raise ValueError("State must be a 2 letter abbreviation")
+
+    if v and v.upper() not in STATE_CODES:
+        raise ValueError("State must be a valid US state abbreviation")
+    return v
+
+
+# Reusable type
+PhoneTypeField: TypeAlias = Annotated[
+    Optional[PhoneType], BeforeValidator(blank_to_none)
+]
+ContactTypeField: TypeAlias = Annotated[
+    Optional[ContactType], BeforeValidator(primary_default)
+]
+EmailTypeField: TypeAlias = Annotated[
+    Optional[EmailType], BeforeValidator(blank_to_none)
+]
+AddressTypeField: TypeAlias = Annotated[
+    Optional[AddressType], BeforeValidator(blank_to_none)
+]
+ContactRoleField: TypeAlias = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
+FloatOrNone: TypeAlias = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
+MonitoryFrequencyField: TypeAlias = Annotated[
+    Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
+]
+PostalCodeField: TypeAlias = Annotated[
+    Optional[str], BeforeValidator(postal_code_or_none)
+]
+StateField: TypeAlias = Annotated[Optional[str], BeforeValidator(state_validator)]
+
+
+# ============= EOF =============================================
+class WellInventoryRow(BaseModel):
+    # Required fields
+    project: str
+    well_name_point_id: str
+    site_name: str
+    date_time: datetime
+    field_staff: str
+    utm_easting: float
+    utm_northing: float
+    utm_zone: str
+    elevation_ft: float
+    elevation_method: ElevationMethod
+    measuring_point_height_ft: float
+
+    # Optional fields
+    field_staff_2: Optional[str] = None
+    field_staff_3: Optional[str] = None
+
+    contact_1_name: Optional[str] = None
+    contact_1_organization: Optional[str] = None
+    contact_1_role: ContactRoleField = None
+    contact_1_type: ContactTypeField = "Primary"
+    contact_1_phone_1: Optional[str] = None
+    contact_1_phone_1_type: PhoneTypeField = None
+    contact_1_phone_2: Optional[str] = None
+    contact_1_phone_2_type: PhoneTypeField = None
+    contact_1_email_1: Optional[str] = None
+    contact_1_email_1_type: EmailTypeField = None
+    contact_1_email_2: Optional[str] = None
+    contact_1_email_2_type: EmailTypeField = None
+    contact_1_address_1_line_1: Optional[str] = None
+    contact_1_address_1_line_2: Optional[str] = None
+    contact_1_address_1_type: AddressTypeField = None
+    contact_1_address_1_state: StateField = None
+    contact_1_address_1_city: Optional[str] = None
+    contact_1_address_1_postal_code: PostalCodeField = None
+    contact_1_address_2_line_1: Optional[str] = None
+    contact_1_address_2_line_2: Optional[str] = None
+    contact_1_address_2_type: AddressTypeField = None
+    contact_1_address_2_state: StateField = None
+    contact_1_address_2_city: Optional[str] = None
+    contact_1_address_2_postal_code: PostalCodeField = None
+
+    contact_2_name: Optional[str] = None
+    contact_2_organization: Optional[str] = None
+    contact_2_role: ContactRoleField = None
+    contact_2_type: ContactTypeField = "Primary"
+    contact_2_phone_1: Optional[str] = None
+    contact_2_phone_1_type: PhoneTypeField = None
+    contact_2_phone_2: Optional[str] = None
+    contact_2_phone_2_type: PhoneTypeField = None
+    contact_2_email_1: Optional[str] = None
+    contact_2_email_1_type: EmailTypeField = None
+    contact_2_email_2: Optional[str] = None
+    contact_2_email_2_type: EmailTypeField = None
+    contact_2_address_1_line_1: Optional[str] = None
+    contact_2_address_1_line_2: Optional[str] = None
+    contact_2_address_1_type: AddressTypeField = None
+    contact_2_address_1_state: StateField = None
+    contact_2_address_1_city: Optional[str] = None
+    contact_2_address_1_postal_code: PostalCodeField = None
+    contact_2_address_2_line_1: Optional[str] = None
+    contact_2_address_2_line_2: Optional[str] = None
+    contact_2_address_2_type: AddressTypeField = None
+    contact_2_address_2_state: StateField = None
+    contact_2_address_2_city: Optional[str] = None
+    contact_2_address_2_postal_code: PostalCodeField = None
+
+    directions_to_site: Optional[str] = None
+    specific_location_of_well: Optional[str] = None
+    repeat_measurement_permission: Optional[bool] = None
+    sampling_permission: Optional[bool] = None
+    datalogger_installation_permission: Optional[bool] = None
+    public_availability_acknowledgement: Optional[bool] = None
+    special_requests: Optional[str] = None
+    ose_well_record_id: Optional[str] = None
+    date_drilled: Optional[datetime] = None
+    completion_source: Optional[str] = None
+    total_well_depth_ft: FloatOrNone = None
+    historic_depth_to_water_ft: Optional[float] = None
+    depth_source: Optional[str] = None
+    well_pump_type: Optional[str] = None
+    well_pump_depth_ft: FloatOrNone = None
+    is_open: Optional[bool] = None
+    datalogger_possible: Optional[bool] = None
+    casing_diameter_ft: FloatOrNone = None
+    measuring_point_description: Optional[str] = None
+    well_purpose: Optional[WellPurposeEnum] = None
+    well_hole_status: Optional[str] = None
+    monitoring_frequency: MonitoryFrequencyField = None
+
+    result_communication_preference: Optional[str] = None
+    contact_special_requests_notes: Optional[str] = None
+    sampling_scenario_notes: Optional[str] = None
+    well_measuring_notes: Optional[str] = None
+    sample_possible: Optional[bool] = None
+
+    @field_validator("contact_1_address_1_postal_code", mode="before")
+    def validate_postal_code(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_2_address_1_postal_code", mode="before")
+    def validate_postal_code_2(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_1_address_2_postal_code", mode="before")
+    def validate_postal_code_3(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_2_address_2_postal_code", mode="before")
+    def validate_postal_code_4(cls, v):
+        return postal_code_or_none(v)
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        required_attrs = ("line_1", "type", "state", "city", "postal_code")
+        all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
+        for jdx in (1, 2):
+            key = f"contact_{jdx}"
+
+            for idx in (1, 2):
+                if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):
+                    if not all(
+                        getattr(self, f"{key}_address_{idx}_{a}")
+                        for a in required_attrs
+                    ):
+                        raise ValueError("All contact address fields must be provided")
+
+                name = getattr(self, f"{key}_name")
+                if name and not getattr(self, f"{key}_role"):
+                    raise ValueError("Role must be provided if name is provided")
+
+                phone = getattr(self, f"{key}_phone_1")
+                phone_type = getattr(self, f"{key}_phone_1_type")
+                if phone and not phone_type:
+                    raise ValueError(
+                        "Phone type must be provided if phone number is provided"
+                    )
+
+                email = getattr(self, f"{key}_email_1")
+                email_type = getattr(self, f"{key}_email_1_type")
+                if email and not email_type:
+                    raise ValueError("Email type must be provided if email is provided")
+
+        return self

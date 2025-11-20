@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
@@ -21,6 +22,7 @@ from pydantic import (
     AwareDatetime,
     field_validator,
 )
+from pydantic.functional_validators import AfterValidator
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
@@ -49,6 +51,15 @@ class BaseCreateModel(BaseModel):
 
 class BaseUpdateModel(BaseCreateModel):
     release_status: ReleaseStatus | None = None
+
+
+def past_or_today_validator(value: date) -> date:
+    if value > date.today():
+        raise ValueError("Date must be today or in the past.")
+    return value
+
+
+PastOrTodayDate: type[date] = Annotated[date, AfterValidator(past_or_today_validator)]
 
 
 # Custom type for UTC datetime serialization

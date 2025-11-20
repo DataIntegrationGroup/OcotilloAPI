@@ -166,6 +166,8 @@ def step_impl(context: Context):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
 
+    print("adssaf", validation_errors)
+    print("ffff", response_json)
     assert len(validation_errors) == 1, "Expected 1 validation error"
 
     error_fields = [
@@ -257,6 +259,51 @@ def step_impl(context: Context):
     assert (
         "No data rows found" in response_json["error"]
     ), "Expected error message to indicate no data rows were found"
+
+
+@given(
+    'my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact'
+)
+def step_impl(context: Context):
+    _set_file_content(context, "well-inventory-missing-contact-role.csv")
+
+
+@then(
+    'the response includes a validation error indicating the missing "contact_role" field'
+)
+def step_impl(context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == 1, "Expected 1 validation error"
+    assert (
+        validation_errors[0]["field"] == "composite field error"
+    ), "Expected missing contact_role"
+    assert (
+        validation_errors[0]["error"]
+        == "Value error, Role must be provided if name is provided"
+    ), "Expected missing contact_role error message"
+
+
+@given(
+    "my CSV file contains a row  that has an invalid postal code format in contact_1_address_1_postal_code"
+)
+def step_impl(context: Context):
+    _set_file_content(context, "well-inventory-invalid-postal-code.csv")
+
+
+@then(
+    "the response includes a validation error indicating the invalid postal code format"
+)
+def step_impl(context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == 1, "Expected 1 validation error"
+    assert (
+        validation_errors[0]["field"] == "contact_1_address_1_postal_code"
+    ), "Expected invalid postal code field"
+    assert (
+        validation_errors[0]["error"] == "Value error, Invalid postal code"
+    ), "Expected Value error, Invalid postal code"
 
 
 # @given(

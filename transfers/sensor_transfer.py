@@ -28,13 +28,15 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 
 
 def transfer_sensors(session):
-    input_df = read_csv("Equipment")
+    source_table = "Equipment"
+    input_df = read_csv(source_table)
     input_df.columns = input_df.columns.str.replace(" ", "_")
     input_df = input_df[input_df.SerialNo.notna()]
     cleaned_df = filter_to_valid_point_ids(session, input_df)
     cleaned_df = replace_nans(cleaned_df)
     errors = []
     grouped_equipment = cleaned_df.groupby(["PointID"])
+    added = {}
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -53,20 +55,36 @@ def transfer_sensors(session):
                     logger.critical(
                         f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
                     )
-                    errors.append({"pointid": pointid, "error": e})
+                    error = (
+                        f"key error adding sensor_type:{row.EquipmentType} error: {e}"
+                    )
+                    errors.append(
+                        {
+                            "pointid": pointid,
+                            "error": error,
+                            "table": source_table,
+                            "field": "EquipmentType",
+                        }
+                    )
                     continue
 
-                sensor = (
-                    session.query(Sensor)
-                    .filter(Sensor.serial_no == row.SerialNo)
-                    .one_or_none()
-                )
-                if sensor:
+                if row.SerialNo in added:
                     logger.info(
-                        f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
+                        f"Sensor with serial number {row.SerialNo} already added in this transfer session. Only creating deployment for that record"
                     )
+                    sensor = added[row.SerialNo]
                 else:
+                    sensor = (
+                        session.query(Sensor)
+                        .filter(Sensor.serial_no == row.SerialNo)
+                        .one_or_none()
+                    )
+                    if sensor:
+                        logger.info(
+                            f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
+                        )
 
+                if not sensor:
                     # TODO: Add validation
                     sensor = Sensor(
                         nma_pk_equipment=row.GlobalID,
@@ -77,6 +95,7 @@ def transfer_sensors(session):
                         owner_agency="NMBGMR",
                         notes=row.Equipment_Notes,
                     )
+                    added[row.SerialNo] = sensor
                     session.add(sensor)
                     logger.info(
                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
@@ -94,8 +113,10 @@ def transfer_sensors(session):
                     errors.append(
                         {
                             "pointid": pointid,
-                            "error": f"{row.ID}, {row.SerialNo}. Installation Date cannot "
+                            "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. Installation Date cannot "
                             f"be None",
+                            "table": source_table,
+                            "field": "DateInstalled",
                         }
                     )
                     continue
@@ -117,8 +138,10 @@ def transfer_sensors(session):
                     errors.append(
                         {
                             "pointid": pointid,
-                            "error": f"{row.ID}, {row.SerialNo}. RecordingInterval is "
+                            "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. RecordingInterval is "
                             f"not an integer",
+                            "table": source_table,
+                            "field": "RecordingInterval",
                         }
                     )
                 sql = (
@@ -167,7 +190,7 @@ def transfer_sensors(session):
             session.commit()
         except Exception as e:
             logger.critical(f"Could not add sensor and deployment: {e}")
-            errors.append({"pointid": pointid, "error": e})
+            errors.append({"pointid": pointid, "error": e, "table": source_table})
 
     return input_df, cleaned_df, errors
 
