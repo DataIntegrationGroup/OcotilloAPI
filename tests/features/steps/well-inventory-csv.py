@@ -284,6 +284,28 @@ def step_impl(context):
     ), "Expected missing contact_role error message"
 
 
+@given(
+    "my CSV file contains a row  that has an invalid postal code format in contact_1_address_1_postal_code"
+)
+def step_impl(context: Context):
+    _set_file_content(context, "well-inventory-invalid-postal-code.csv")
+
+
+@then(
+    "the response includes a validation error indicating the invalid postal code format"
+)
+def step_impl(context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert len(validation_errors) == 1, "Expected 1 validation error"
+    assert (
+        validation_errors[0]["field"] == "contact_1_address_1_postal_code"
+    ), "Expected invalid postal code field"
+    assert (
+        validation_errors[0]["error"] == "Value error, Invalid postal code"
+    ), "Expected Value error, Invalid postal code"
+
+
 # @given(
 #     "the system has valid lexicon values for contact_role, contact_type, phone_type, email_type, address_type, elevation_method, well_pump_type, well_purpose, well_hole_status, and monitoring_frequency"
 # )

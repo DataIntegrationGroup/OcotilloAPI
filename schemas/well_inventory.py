@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import re
 from datetime import datetime
-from typing import Optional, Annotated
+from typing import Optional, Annotated, TypeAlias
 
-from pydantic import BaseModel, model_validator, BeforeValidator
+from pydantic import BaseModel, model_validator, BeforeValidator, field_validator
 
+from constants import STATE_CODES
 from core.enums import (
     ElevationMethod,
     Role,
@@ -26,6 +28,7 @@ from core.enums import (
     EmailType,
     AddressType,
     WellPurpose as WellPurposeEnum,
+    MonitoringFrequency,
 )
 
 
@@ -55,13 +58,50 @@ def primary_default(v):
     return v
 
 
+US_POSTAL_REGEX = re.compile(r"^\d{5}(-\d{4})?$")
+
+
+def postal_code_or_none(v):
+    if v is None or (isinstance(v, str) and v.strip() == ""):
+        return None
+
+    if not US_POSTAL_REGEX.match(v):
+        raise ValueError("Invalid postal code")
+
+    return v
+
+
+def state_validator(v):
+    if v and len(v) != 2:
+        raise ValueError("State must be a 2 letter abbreviation")
+
+    if v and v.upper() not in STATE_CODES:
+        raise ValueError("State must be a valid US state abbreviation")
+    return v
+
+
 # Reusable type
-PhoneTypeField = Annotated[Optional[PhoneType], BeforeValidator(blank_to_none)]
-ContactTypeField = Annotated[Optional[ContactType], BeforeValidator(primary_default)]
-EmailTypeField = Annotated[Optional[EmailType], BeforeValidator(blank_to_none)]
-AddressTypeField = Annotated[Optional[AddressType], BeforeValidator(blank_to_none)]
-ContactRoleField = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
-FloatOrNone = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
+PhoneTypeField: TypeAlias = Annotated[
+    Optional[PhoneType], BeforeValidator(blank_to_none)
+]
+ContactTypeField: TypeAlias = Annotated[
+    Optional[ContactType], BeforeValidator(primary_default)
+]
+EmailTypeField: TypeAlias = Annotated[
+    Optional[EmailType], BeforeValidator(blank_to_none)
+]
+AddressTypeField: TypeAlias = Annotated[
+    Optional[AddressType], BeforeValidator(blank_to_none)
+]
+ContactRoleField: TypeAlias = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
+FloatOrNone: TypeAlias = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
+MonitoryFrequencyField: TypeAlias = Annotated[
+    Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
+]
+PostalCodeField: TypeAlias = Annotated[
+    Optional[str], BeforeValidator(postal_code_or_none)
+]
+StateField: TypeAlias = Annotated[Optional[str], BeforeValidator(state_validator)]
 
 
 # ============= EOF =============================================
@@ -98,15 +138,15 @@ class WellInventoryRow(BaseModel):
     contact_1_address_1_line_1: Optional[str] = None
     contact_1_address_1_line_2: Optional[str] = None
     contact_1_address_1_type: AddressTypeField = None
-    contact_1_address_1_state: Optional[str] = None
+    contact_1_address_1_state: StateField = None
     contact_1_address_1_city: Optional[str] = None
-    contact_1_address_1_postal_code: Optional[str] = None
+    contact_1_address_1_postal_code: PostalCodeField = None
     contact_1_address_2_line_1: Optional[str] = None
     contact_1_address_2_line_2: Optional[str] = None
     contact_1_address_2_type: AddressTypeField = None
-    contact_1_address_2_state: Optional[str] = None
+    contact_1_address_2_state: StateField = None
     contact_1_address_2_city: Optional[str] = None
-    contact_1_address_2_postal_code: Optional[str] = None
+    contact_1_address_2_postal_code: PostalCodeField = None
 
     contact_2_name: Optional[str] = None
     contact_2_organization: Optional[str] = None
@@ -123,15 +163,15 @@ class WellInventoryRow(BaseModel):
     contact_2_address_1_line_1: Optional[str] = None
     contact_2_address_1_line_2: Optional[str] = None
     contact_2_address_1_type: AddressTypeField = None
-    contact_2_address_1_state: Optional[str] = None
+    contact_2_address_1_state: StateField = None
     contact_2_address_1_city: Optional[str] = None
-    contact_2_address_1_postal_code: Optional[str] = None
+    contact_2_address_1_postal_code: PostalCodeField = None
     contact_2_address_2_line_1: Optional[str] = None
     contact_2_address_2_line_2: Optional[str] = None
     contact_2_address_2_type: AddressTypeField = None
-    contact_2_address_2_state: Optional[str] = None
+    contact_2_address_2_state: StateField = None
     contact_2_address_2_city: Optional[str] = None
-    contact_2_address_2_postal_code: Optional[str] = None
+    contact_2_address_2_postal_code: PostalCodeField = None
 
     directions_to_site: Optional[str] = None
     specific_location_of_well: Optional[str] = None
@@ -143,24 +183,40 @@ class WellInventoryRow(BaseModel):
     ose_well_record_id: Optional[str] = None
     date_drilled: Optional[datetime] = None
     completion_source: Optional[str] = None
-    total_well_depth_ft: Optional[float] = None
+    total_well_depth_ft: FloatOrNone = None
     historic_depth_to_water_ft: Optional[float] = None
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
     well_pump_depth_ft: FloatOrNone = None
     is_open: Optional[bool] = None
     datalogger_possible: Optional[bool] = None
-    casing_diameter_ft: Optional[float] = None
+    casing_diameter_ft: FloatOrNone = None
     measuring_point_description: Optional[str] = None
     well_purpose: Optional[WellPurposeEnum] = None
     well_hole_status: Optional[str] = None
-    monitoring_frequency: Optional[str] = None
+    monitoring_frequency: MonitoryFrequencyField = None
 
     result_communication_preference: Optional[str] = None
     contact_special_requests_notes: Optional[str] = None
     sampling_scenario_notes: Optional[str] = None
     well_measuring_notes: Optional[str] = None
     sample_possible: Optional[bool] = None
+
+    @field_validator("contact_1_address_1_postal_code", mode="before")
+    def validate_postal_code(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_2_address_1_postal_code", mode="before")
+    def validate_postal_code_2(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_1_address_2_postal_code", mode="before")
+    def validate_postal_code_3(cls, v):
+        return postal_code_or_none(v)
+
+    @field_validator("contact_2_address_2_postal_code", mode="before")
+    def validate_postal_code_4(cls, v):
+        return postal_code_or_none(v)
 
     @model_validator(mode="after")
     def validate_model(self):
