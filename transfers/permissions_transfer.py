@@ -48,5 +48,58 @@ def transfer_permissions(session: Session):
             except Exception as e:
                 logger.error(f"Error transferring permission for well {well.name}: {e}")
                 session.rollback()
-                continue
+                pass
+
+        allow_water_chemistry_samples = wdf.loc[
+            wdf["PointID"] == well.name, "SampleOK"
+        ].values
+        if (
+            len(allow_water_chemistry_samples) > 0
+            and allow_water_chemistry_samples is not None
+        ):
+            try:
+                permission_allowed = bool(allow_water_chemistry_samples[0])
+                permission = PermissionHistory(
+                    contact_id=contact_id,
+                    permission_type="Water Chemistry Sample",
+                    permission_allowed=permission_allowed,
+                    start_date=datetime.today().date(),
+                    target_id=well.id,
+                    target_table="thing",
+                )
+                session.add(permission)
+                logger.info(
+                    f"Transferred Water Chemistry Sample permission for well {well.name}: {permission_allowed}."
+                )
+            except Exception as e:
+                logger.error(f"Error transferring permission for well {well.name}: {e}")
+                session.rollback()
+                pass
+
+        allow_datalogger_installation = wdf.loc[
+            wdf["PointID"] == well.name, "OpenWellLoggerOK"
+        ].values
+        if (
+            len(allow_datalogger_installation) > 0
+            and allow_datalogger_installation is not None
+        ):
+            try:
+                permission_allowed = bool(allow_datalogger_installation[0])
+                permission = PermissionHistory(
+                    contact_id=contact_id,
+                    permission_type="Datalogger Installation",
+                    permission_allowed=permission_allowed,
+                    start_date=datetime.today().date(),
+                    target_id=well.id,
+                    target_table="thing",
+                )
+                session.add(permission)
+                logger.info(
+                    f"Transferred Datalogger Installation permission for well {well.name}: {permission_allowed}."
+                )
+            except Exception as e:
+                logger.error(f"Error transferring permission for well {well.name}: {e}")
+                session.rollback()
+                pass
+
     session.commit()
