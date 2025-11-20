@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from shapely import Point
 from sqlalchemy import select
+from sqlalchemy.exc import DatabaseError
 from starlette.status import HTTP_201_CREATED, HTTP_422_UNPROCESSABLE_ENTITY
 
 from constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
@@ -200,112 +201,38 @@ async def well_inventory_csv(
 
     wells = []
     models, validation_errors = _make_row_models(rows)
-    print("valasdfas", validation_errors)
-    # don't add any wells if there are validation errors
-    if not validation_errors:
-        for project, items in groupby(
-            sorted(models, key=lambda x: x.project), key=lambda x: x.project
-        ):
-            # get project and add if does not exist
-            # BDMS-221 adds group_type
-            sql = select(Group).where(
-                Group.group_type == "Monitoring Plan" and Group.name == project
-            )
-            group = session.scalars(sql).one_or_none()
-            if not group:
-                group = Group(name=project)
-                session.add(group)
 
-            for model in items:
-                name = model.well_name_point_id
-                date_time = model.date_time
-                site_name = model.site_name
+    for project, items in groupby(
+        sorted(models, key=lambda x: x.project), key=lambda x: x.project
+    ):
+        # get project and add if does not exist
+        # BDMS-221 adds group_type
+        sql = select(Group).where(
+            Group.group_type == "Monitoring Plan" and Group.name == project
+        )
+        group = session.scalars(sql).one_or_none()
+        if not group:
+            group = Group(name=project)
+            session.add(group)
 
-                # add field staff
-
-                # add Thing
-                data = CreateWell(
-                    name=name,
-                    first_visit_date=date_time.date(),
-                    well_depth=model.total_well_depth_ft,
-                    well_casing_diameter=model.casing_diameter_ft,
-                    measuring_point_height=model.measuring_point_height_ft,
-                    measuring_point_description=model.measuring_point_description,
+        for model in items:
+            try:
+                added = _add_csv_row(session, group, model, user)
+                if added:
+                    session.commit()
+            except DatabaseError as e:
+                validation_errors.append(
+                    {
+                        {
+                            "row": model.well_name_point_id,
+                            "field": "Database error",
+                            "error": str(e),
+                        }
+                    }
                 )
-                well_data = data.model_dump(
-                    exclude=[
-                        "location_id",
-                        "group_id",
-                        "well_purposes",
-                        "well_casing_materials",
-                        "measuring_point_height",
-                        "measuring_point_description",
-                    ]
-                )
-                well = add_thing(
-                    session=session, data=well_data, user=user, thing_type="water well"
-                )
-                modify_well_descriptor_tables(session, well, data, user)
-                wells.append(name)
-                session.refresh(well)
+                continue
 
-                # add MonitoringFrequency
-                if model.monitoring_frequency:
-                    mfh = MonitoringFrequencyHistory(
-                        thing=well,
-                        monitoring_frequency=model.monitoring_frequency,
-                        start_date=date_time.date(),
-                    )
-                    session.add(mfh)
-
-                # add WellPurpose
-                if model.well_purpose:
-                    well_purpose = WellPurpose(purpose=model.well_purpose, thing=well)
-                    session.add(well_purpose)
-
-                # BDMS-221 adds MeasuringPointHistory model
-                measuring_point_height_ft = model.measuring_point_height_ft
-                if measuring_point_height_ft:
-                    mph = MeasuringPointHistory(
-                        thing=well,
-                        measuring_point_height=measuring_point_height_ft,
-                        measuring_point_description=model.measuring_point_description,
-                        start_date=date_time.date(),
-                    )
-                    session.add(mph)
-
-                # add Location
-                loc, assoc = _add_location(model, well)
-                session.add(loc)
-                session.add(assoc)
-                session.flush()
-
-                dp = DataProvenance(
-                    target_id=loc.id,
-                    target_table="location",
-                    field_name="elevation",
-                    collection_method=model.elevation_method,
-                )
-                session.add(dp)
-
-                gta = _add_group_association(group, well)
-                session.add(gta)
-
-                # add alternate ids
-                well.links.append(
-                    ThingIdLink(
-                        alternate_id=site_name,
-                        alternate_organization="NMBGMR",
-                        relation="same_as",
-                    )
-                )
-
-                for idx in (1, 2):
-                    contact = _make_contact(model, well, idx)
-                    if contact:
-                        add_contact(session, contact, user=user)
-
-            session.commit()
+            wells.append(added)
 
     rows_imported = len(wells)
     rows_processed = len(rows)
@@ -327,6 +254,97 @@ async def well_inventory_csv(
             "wells": wells,
         },
     )
+
+
+def _add_csv_row(session, group, model, user):
+    name = model.well_name_point_id
+    date_time = model.date_time
+    site_name = model.site_name
+
+    # add field staff
+
+    # add Thing
+    data = CreateWell(
+        name=name,
+        first_visit_date=date_time.date(),
+        well_depth=model.total_well_depth_ft,
+        well_casing_diameter=model.casing_diameter_ft,
+        measuring_point_height=model.measuring_point_height_ft,
+        measuring_point_description=model.measuring_point_description,
+    )
+    well_data = data.model_dump(
+        exclude=[
+            "location_id",
+            "group_id",
+            "well_purposes",
+            "well_casing_materials",
+            "measuring_point_height",
+            "measuring_point_description",
+        ]
+    )
+    well = add_thing(
+        session=session, data=well_data, user=user, thing_type="water well"
+    )
+    modify_well_descriptor_tables(session, well, data, user)
+    session.refresh(well)
+
+    # add MonitoringFrequency
+    if model.monitoring_frequency:
+        mfh = MonitoringFrequencyHistory(
+            thing=well,
+            monitoring_frequency=model.monitoring_frequency,
+            start_date=date_time.date(),
+        )
+        session.add(mfh)
+
+    # add WellPurpose
+    if model.well_purpose:
+        well_purpose = WellPurpose(purpose=model.well_purpose, thing=well)
+        session.add(well_purpose)
+
+    # BDMS-221 adds MeasuringPointHistory model
+    measuring_point_height_ft = model.measuring_point_height_ft
+    if measuring_point_height_ft:
+        mph = MeasuringPointHistory(
+            thing=well,
+            measuring_point_height=measuring_point_height_ft,
+            measuring_point_description=model.measuring_point_description,
+            start_date=date_time.date(),
+        )
+        session.add(mph)
+
+    # add Location
+    loc, assoc = _add_location(model, well)
+    session.add(loc)
+    session.add(assoc)
+    session.flush()
+
+    dp = DataProvenance(
+        target_id=loc.id,
+        target_table="location",
+        field_name="elevation",
+        collection_method=model.elevation_method,
+    )
+    session.add(dp)
+
+    gta = _add_group_association(group, well)
+    session.add(gta)
+
+    # add alternate ids
+    well.links.append(
+        ThingIdLink(
+            alternate_id=site_name,
+            alternate_organization="NMBGMR",
+            relation="same_as",
+        )
+    )
+
+    for idx in (1, 2):
+        contact = _make_contact(model, well, idx)
+        if contact:
+            add_contact(session, contact, user=user)
+
+    return model.well_name_point_id
 
 
 # ============= EOF =============================================
