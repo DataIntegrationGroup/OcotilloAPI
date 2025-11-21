@@ -46,11 +46,11 @@ def step_impl(context: Context):
     expected_errors = [
         {
             "field": "composite field error",
-            "error": "Value error, UTM coordinates are outside of the NM",
+            "error": "Value error, UTM coordinates are outside of the NM. E=457100.0 N=4159020.0 Zone=13N",
         },
         {
             "field": "composite field error",
-            "error": "Value error, UTM coordinates are outside of the NM",
+            "error": "Value error, UTM coordinates are outside of the NM. E=250000.0 N=4000000.0 Zone=13S",
         },
     ]
     _handle_validation_error(context, expected_errors)
@@ -154,6 +154,22 @@ def step_impl(context):
             "field": "composite field error",
             "error": "Value error, contact_1_type must be provided if name is provided",
         }
+    ]
+    _handle_validation_error(context, expected_errors)
+
+
+@then("the response includes a validation error indicating a repeated header row")
+def step_impl(context: Context):
+    expected_errors = [{"field": "header", "error": "Duplicate header row"}]
+    _handle_validation_error(context, expected_errors)
+
+
+@then("the response includes a validation error indicating duplicate header names")
+def step_impl(context: Context):
+    print(context.response.json())
+
+    expected_errors = [
+        {"field": "['contact_1_email_1']", "error": "Duplicate columns found"}
     ]
     _handle_validation_error(context, expected_errors)
 

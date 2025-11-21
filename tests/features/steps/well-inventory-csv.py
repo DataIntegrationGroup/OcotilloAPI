@@ -177,3 +177,62 @@ def step_impl(context: Context):
     assert (
         response_json["detail"][0]["msg"] == "No data rows found"
     ), "Expected error message to indicate no data rows were found"
+
+
+@then("all wells are imported")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "wells" in response_json, "Expected response to include wells"
+    assert len(response_json["wells"]) == context.row_count
+
+
+@then(
+    'the response includes a validation error for the row missing "well_name_point_id"'
+)
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "summary" in response_json, "Expected summary in response"
+    summary = response_json["summary"]
+    assert "total_rows_processed" in summary, "Expected total_rows_processed"
+    assert (
+        summary["total_rows_processed"] == context.row_count
+    ), f"Expected total_rows_processed = {context.row_count}"
+    assert "total_rows_imported" in summary, "Expected total_rows_imported"
+    assert summary["total_rows_imported"] == 0, "Expected total_rows_imported=0"
+    assert (
+        "validation_errors_or_warnings" in summary
+    ), "Expected validation_errors_or_warnings"
+    assert (
+        summary["validation_errors_or_warnings"] == 1
+    ), "Expected validation_errors_or_warnings = 1"
+
+    assert "validation_errors" in response_json, "Expected validation_errors"
+    ve = response_json["validation_errors"]
+    assert (
+        ve[0]["field"] == "well_name_point_id"
+    ), "Expected missing field well_name_point_id"
+    assert ve[0]["error"] == "Field required", "Expected Field required"
+
+
+@then('the response includes a validation error for the "{required_field}" field')
+def step_impl(context: Context, required_field: str):
+    response_json = context.response.json()
+    assert "validation_errors" in response_json, "Expected validation errors"
+    vs = response_json["validation_errors"]
+    assert len(vs) == 2, "Expected 2 validation error"
+    assert vs[0]["field"] == required_field
+
+
+@then(
+    'the response includes a validation error indicating an invalid boolean value for the "is_open" field'
+)
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "validation_errors" in response_json, "Expected validation errors"
+    ve = response_json["validation_errors"]
+    assert len(ve) == 1, "Expected 1 validation error"
+    assert ve[0]["field"] == "is_open", "Expected field= is_open"
+    assert (
+        ve[0]["error"] == "Input should be a valid boolean, unable to interpret input"
+    ), "Expected Input should be a valid boolean, unable to interpret input"
+    assert ve[0]["value"] == "maybe", "Expected value=maybe"

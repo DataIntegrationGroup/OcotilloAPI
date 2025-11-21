@@ -15,6 +15,7 @@
 # ===============================================================================
 import csv
 import logging
+from collections import Counter
 from io import StringIO
 from itertools import groupby
 from typing import Set
@@ -140,6 +141,9 @@ def _make_row_models(rows):
     seen_ids: Set[str] = set()
     for idx, row in enumerate(rows):
         try:
+            if all(key == row.get(key) for key in row.keys()):
+                raise ValueError("Duplicate header row")
+
             well_id = row.get("well_name_point_id")
             if not well_id:
                 raise ValueError("Field required")
@@ -164,16 +168,20 @@ def _make_row_models(rows):
                     }
                 )
         except ValueError as e:
+            field = "well_name_point_id"
             # Map specific controlled errors to safe, non-revealing messages
             if str(e) == "Field required":
                 error_msg = "Field required"
             elif str(e) == "Duplicate value for well_name_point_id":
                 error_msg = "Duplicate value for well_name_point_id"
+            elif str(e) == "Duplicate header row":
+                error_msg = "Duplicate header row"
+                field = "header"
             else:
                 error_msg = "Invalid value"
 
             validation_errors.append(
-                {"row": idx + 1, "field": "well_name_point_id", "error": error_msg}
+                {"row": idx + 1, "field": field, "error": error_msg}
             )
     return models, validation_errors
 
@@ -225,6 +233,7 @@ async def well_inventory_csv(
 
     reader = csv.DictReader(StringIO(text))
     rows = list(reader)
+
     if not rows:
         raise PydanticStyleException(
             HTTP_400_BAD_REQUEST,
@@ -238,41 +247,58 @@ async def well_inventory_csv(
             ],
         )
 
+    header = text.splitlines()[0]
+    dialect = csv.Sniffer().sniff(header)
+    header = header.split(dialect.delimiter)
+    counts = Counter(header)
+    duplicates = [col for col, count in counts.items() if count > 1]
+
     wells = []
-    models, validation_errors = _make_row_models(rows)
-    if models and not validation_errors:
-        for project, items in groupby(
-            sorted(models, key=lambda x: x.project), key=lambda x: x.project
-        ):
-            # get project and add if does not exist
-            # BDMS-221 adds group_type
-            sql = select(Group).where(
-                Group.group_type == "Monitoring Plan" and Group.name == project
-            )
-            group = session.scalars(sql).one_or_none()
-            if not group:
-                group = Group(name=project)
-                session.add(group)
+    if duplicates:
+        validation_errors = [
+            {
+                "row": 0,
+                "field": f"{duplicates}",
+                "error": "Duplicate columns found",
+            }
+        ]
 
-            for model in items:
-                try:
-                    added = _add_csv_row(session, group, model, user)
-                    if added:
-                        session.commit()
-                except DatabaseError as e:
-                    logging.error(
-                        f"Database error while importing row '{model.well_name_point_id}': {e}"
-                    )
-                    validation_errors.append(
-                        {
-                            "row": model.well_name_point_id,
-                            "field": "Database error",
-                            "error": "A database error occurred while importing this row.",
-                        }
-                    )
-                    continue
+    else:
+        models, validation_errors = _make_row_models(rows)
+        if models and not validation_errors:
+            for project, items in groupby(
+                sorted(models, key=lambda x: x.project), key=lambda x: x.project
+            ):
+                # get project and add if does not exist
+                # BDMS-221 adds group_type
+                sql = select(Group).where(
+                    Group.group_type == "Monitoring Plan" and Group.name == project
+                )
+                group = session.scalars(sql).one_or_none()
+                if not group:
+                    group = Group(name=project)
+                    session.add(group)
 
-                wells.append(added)
+                for model in items:
+                    try:
+                        added = _add_csv_row(session, group, model, user)
+                        if added:
+                            session.commit()
+                    except DatabaseError as e:
+                        logging.error(
+                            f"Database error while importing row '{model.well_name_point_id}': {e}"
+                        )
+                        print(e)
+                        validation_errors.append(
+                            {
+                                "row": model.well_name_point_id,
+                                "field": "Database error",
+                                "error": "A database error occurred while importing this row.",
+                            }
+                        )
+                        continue
+
+                    wells.append(added)
 
     rows_imported = len(wells)
     rows_processed = len(rows)

@@ -14,14 +14,17 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+from io import StringIO
 from pathlib import Path
 
+import pandas as pd
 from behave import given
 from behave.runner import Context
 
 
 def _set_file_content(context: Context, name):
     path = Path("tests") / "features" / "data" / name
+    context.file_path = path
     with open(path, "r") as f:
         context.file_name = name
         context.file_content = f.read()
@@ -181,4 +184,54 @@ def step_impl(context):
     _set_file_content(context, "well-inventory-invalid-date-format.csv")
 
 
+@given("my CSV file contains all required headers but in a different column order")
+def step_impl(context):
+    _set_file_content(context, "well-inventory-valid-reordered.csv")
+
+
+@given("my CSV file contains extra columns but is otherwise valid")
+def step_impl(context):
+    _set_file_content(context, "well-inventory-valid-extra-columns.csv")
+
+
 # ============= EOF =============================================
+
+
+@given(
+    'my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"'
+)
+def step_impl(context):
+    _set_file_content(context, "well-inventory-invalid-partial.csv")
+
+
+@given('my CSV file contains a row missing the required "{required_field}" field')
+def step_impl(context, required_field):
+    _set_file_content(context, "well-inventory-valid.csv")
+
+    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    df = df.drop(required_field, axis=1)
+
+    buffer = StringIO()
+    df.to_csv(buffer, index=False)
+
+    context.file_content = buffer.getvalue()
+    context.rows = list(csv.DictReader(context.file_content.splitlines()))
+
+
+@given(
+    'my CSV file contains a row with an invalid boolean value "maybe" in the "is_open" field'
+)
+def step_impl(context):
+    _set_file_content(context, "well-inventory-invalid-boolean-value-maybe.csv")
+
+
+@given("my CSV file contains a valid but duplicate header row")
+def step_impl(context):
+    _set_file_content(context, "well-inventory-duplicate-header.csv")
+
+
+@given(
+    'my CSV file header row contains the "contact_1_email_1" column name more than once'
+)
+def step_impl(context):
+    _set_file_content(context, "well-inventory-duplicate-columns.csv")

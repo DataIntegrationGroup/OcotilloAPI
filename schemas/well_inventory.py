@@ -249,14 +249,21 @@ class WellInventoryRow(BaseModel):
     @model_validator(mode="after")
     def validate_model(self):
         # verify utm in NM
-        zone = int(self.utm_zone[:-1])
-        northern = self.utm_zone[-1] == "N"
 
+        zone = int(self.utm_zone[:-1])
+        northern = self.utm_zone[-1]
+        if northern.upper() not in ("S", "N"):
+            raise ValueError("Invalid utm zone. Must end in S or N. e.g 13N")
+
+        northern = self.utm_zone[-1] == "N"
         lat, lon = utm.to_latlon(
             self.utm_easting, self.utm_northing, zone, northern=northern
         )
         if not ((31.33 <= lat <= 37.00) and (-109.05 <= lon <= -103.00)):
-            raise ValueError("UTM coordinates are outside of the NM")
+            raise ValueError(
+                f"UTM coordinates are outside of the NM. E={self.utm_easting} N={self.utm_northing}"
+                f" Zone={self.utm_zone}"
+            )
 
         required_attrs = ("line_1", "type", "state", "city", "postal_code")
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
