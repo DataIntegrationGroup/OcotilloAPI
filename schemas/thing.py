@@ -137,6 +137,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_driller_name: str | None = None
     well_construction_method: WellConstructionMethod | None = None
     well_construction_method_source: str | None = None
+    well_pump_type: WellPumpType | None = None
 
 
 class CreateSpring(CreateBaseThing):

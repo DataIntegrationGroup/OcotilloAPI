@@ -118,6 +118,21 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
+def _extract_well_pump_type(row) -> str | None:
+    construction_notes = row.ConstructionNotes.lower()
+    if "pump" in construction_notes:
+        if "submersible" in construction_notes:
+            return "Submersible"
+        elif "jet" in construction_notes:
+            return "Jet"
+        elif "line shaft" in construction_notes or "lineshaft" in construction_notes:
+            return "Line Shaft"
+        elif "hand" in construction_notes:
+            return "Hand"
+        else:
+            return None
+
+
 def get_wells_to_transfer(
     sess: Session, flags: dict = None
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -237,6 +252,9 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_casing_materials = (
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
+            well_pump_type = (
+                _extract_well_pump_type(row) if row.ConstructionNotes else None
+            )
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
@@ -267,6 +285,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     if not isna(row.ConstructionMethod)
                     else None
                 ),
+                well_pump_type=well_pump_type,
             )
 
             CreateWell.model_validate(data)

@@ -714,9 +714,9 @@
     {"categories": ["note_type"], "term": "Water", "definition": "Water bearing zone information and other info from ose reports"},
     {"categories": ["note_type"], "term": "Measuring", "definition": "Notes about measuring/visiting the well, on Access form"},
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
-    {"categories": ["well_pump_type"], "term": "Jet Pump", "definition": "Jet Pump"},
+    {"categories": ["well_pump_type"], "term": "Jet", "definition": "Jet Pump"},
     {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
-    {"categories": ["well_pump_type"], "term": "Hand Pump", "definition": "Hand Pump"},
+    {"categories": ["well_pump_type"], "term": "Hand", "definition": "Hand Pump"},
     {"categories": ["permission_type"], "term": "Water Level Sample", "definition": "Permissions for taking water level samples"},
     {"categories": ["permission_type"], "term": "Water Chemistry Sample", "definition": "Permissions for water taking chemistry samples"},
     {"categories": ["permission_type"], "term": "Datalogger Installation", "definition": "Permissions for installing dataloggers"}
