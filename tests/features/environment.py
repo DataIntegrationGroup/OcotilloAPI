@@ -509,7 +509,9 @@ def after_all(context):
     with session_ctx() as session:
         for table in context.objects.values():
             for obj in table:
-                session.delete(obj)
+                obj = session.get(type(obj), obj.id)
+                if obj:
+                    session.delete(obj)
 
         # session.query(TransducerObservationBlock).delete()
         # session.query(TransducerObservation).delete()

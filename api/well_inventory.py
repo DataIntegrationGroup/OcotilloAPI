@@ -14,10 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+import logging
 from io import StringIO
 from itertools import groupby
 from typing import Set
-import logging
 
 from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
@@ -80,10 +80,10 @@ def _add_location(model, well) -> Location:
     return loc, assoc
 
 
-def _add_group_association(group, well) -> GroupThingAssociation:
-    gta = GroupThingAssociation(group=group, thing=well)
-    group.thing_associations.append(gta)
-    return gta
+# def _add_group_association(group, well) -> GroupThingAssociation:
+#     gta = GroupThingAssociation(group=group, thing=well)
+#     group.thing_associations.append(gta)
+#     return gta
 
 
 def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
@@ -367,8 +367,9 @@ def _add_csv_row(session, group, model, user):
     )
     session.add(dp)
 
-    gta = _add_group_association(group, well)
+    gta = GroupThingAssociation(group=group, thing=well)
     session.add(gta)
+    group.thing_associations.append(gta)
 
     # add alternate ids
     well.links.append(
