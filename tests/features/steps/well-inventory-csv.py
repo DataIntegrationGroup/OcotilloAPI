@@ -237,27 +237,27 @@ def step_impl(context: Context):
 @then("the response includes an error message indicating unsupported file type")
 def step_impl(context: Context):
     response_json = context.response.json()
-    assert "error" in response_json, "Expected response to include an error message"
+    assert "detail" in response_json, "Expected response to include an detail object"
     assert (
-        "Unsupported file type" in response_json["error"]
+        response_json["detail"][0]["msg"] == "Unsupported file type"
     ), "Expected error message to indicate unsupported file type"
 
 
 @then("the response includes an error message indicating an empty file")
 def step_impl(context: Context):
     response_json = context.response.json()
-    assert "error" in response_json, "Expected response to include an error message"
+    assert "detail" in response_json, "Expected response to include an detail object"
     assert (
-        "Empty file" in response_json["error"]
+        response_json["detail"][0]["msg"] == "Empty file"
     ), "Expected error message to indicate an empty file"
 
 
 @then("the response includes an error indicating that no data rows were found")
 def step_impl(context: Context):
     response_json = context.response.json()
-    assert "error" in response_json, "Expected response to include an error message"
+    assert "detail" in response_json, "Expected response to include an detail object"
     assert (
-        "No data rows found" in response_json["error"]
+        response_json["detail"][0]["msg"] == "No data rows found"
     ), "Expected error message to indicate no data rows were found"
 
 

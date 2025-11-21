@@ -48,16 +48,12 @@ from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing, modify_well_descriptor_tables
-from services.util import transform_srid
+from services.util import transform_srid, convert_ft_to_m
 
 router = APIRouter(prefix="/well-inventory-csv")
 
 
 def _add_location(model, well) -> Location:
-
-    def convert_f_to_m(r):
-        return round(r * 0.3048, 6)
-
     point = Point(model.utm_easting, model.utm_northing)
 
     # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
@@ -71,7 +67,7 @@ def _add_location(model, well) -> Location:
         point, source_srid=source_srid, target_srid=SRID_WGS84
     )
     elevation_ft = float(model.elevation_ft)
-    elevation_m = convert_f_to_m(elevation_ft)
+    elevation_m = convert_ft_to_m(elevation_ft)
 
     loc = Location(
         point=transformed_point.wkt,
@@ -208,7 +204,7 @@ async def well_inventory_csv(
         raise PydanticStyleException(
             HTTP_400_BAD_REQUEST,
             detail=[
-                {"loc": [], "msg": "Empty file", "type": "Empty file", "input": content}
+                {"loc": [], "msg": "Empty file", "type": "Empty file", "input": ""}
             ],
         )
 
@@ -222,7 +218,7 @@ async def well_inventory_csv(
                     "loc": [],
                     "msg": "File encoding error",
                     "type": "File encoding error",
-                    "input": content,
+                    "input": "",
                 }
             ],
         )

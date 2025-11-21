@@ -17,7 +17,7 @@ import re
 from datetime import datetime
 from typing import Optional, Annotated, TypeAlias
 
-from pydantic import BaseModel, model_validator, BeforeValidator, field_validator
+from pydantic import BaseModel, model_validator, BeforeValidator
 
 from constants import STATE_CODES
 from core.enums import (
@@ -202,21 +202,21 @@ class WellInventoryRow(BaseModel):
     well_measuring_notes: Optional[str] = None
     sample_possible: Optional[bool] = None
 
-    @field_validator("contact_1_address_1_postal_code", mode="before")
-    def validate_postal_code(cls, v):
-        return postal_code_or_none(v)
-
-    @field_validator("contact_2_address_1_postal_code", mode="before")
-    def validate_postal_code_2(cls, v):
-        return postal_code_or_none(v)
-
-    @field_validator("contact_1_address_2_postal_code", mode="before")
-    def validate_postal_code_3(cls, v):
-        return postal_code_or_none(v)
-
-    @field_validator("contact_2_address_2_postal_code", mode="before")
-    def validate_postal_code_4(cls, v):
-        return postal_code_or_none(v)
+    # @field_validator("contact_1_address_1_postal_code", mode="before")
+    # def validate_postal_code(cls, v):
+    #     return postal_code_or_none(v)
+    #
+    # @field_validator("contact_2_address_1_postal_code", mode="before")
+    # def validate_postal_code_2(cls, v):
+    #     return postal_code_or_none(v)
+    #
+    # @field_validator("contact_1_address_2_postal_code", mode="before")
+    # def validate_postal_code_3(cls, v):
+    #     return postal_code_or_none(v)
+    #
+    # @field_validator("contact_2_address_2_postal_code", mode="before")
+    # def validate_postal_code_4(cls, v):
+    #     return postal_code_or_none(v)
 
     @model_validator(mode="after")
     def validate_model(self):
