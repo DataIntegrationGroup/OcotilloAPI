@@ -17,7 +17,9 @@ import re
 from datetime import datetime
 from typing import Optional, Annotated, TypeAlias
 
-from pydantic import BaseModel, model_validator, BeforeValidator
+import phonenumbers
+import utm
+from pydantic import BaseModel, model_validator, BeforeValidator, validate_email
 
 from constants import STATE_CODES
 from core.enums import (
@@ -80,12 +82,34 @@ def state_validator(v):
     return v
 
 
+def phone_validator(phone_number_str):
+    phone_number_str = phone_number_str.strip()
+    if phone_number_str:
+        parsed_number = phonenumbers.parse(phone_number_str, "US")
+        if phonenumbers.is_valid_number(parsed_number):
+            formatted_number = phonenumbers.format_number(
+                parsed_number, phonenumbers.PhoneNumberFormat.E164
+            )
+            return formatted_number
+        else:
+            raise ValueError(f"Invalid phone number. {phone_number_str}")
+
+
+def email_validator_function(email_str):
+    if email_str:
+        try:
+            validate_email(email_str)
+            return email_str
+        except ValueError as e:
+            raise ValueError(f"Invalid email format. {email_str}") from e
+
+
 # Reusable type
 PhoneTypeField: TypeAlias = Annotated[
     Optional[PhoneType], BeforeValidator(blank_to_none)
 ]
 ContactTypeField: TypeAlias = Annotated[
-    Optional[ContactType], BeforeValidator(primary_default)
+    Optional[ContactType], BeforeValidator(blank_to_none)
 ]
 EmailTypeField: TypeAlias = Annotated[
     Optional[EmailType], BeforeValidator(blank_to_none)
@@ -102,6 +126,10 @@ PostalCodeField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(postal_code_or_none)
 ]
 StateField: TypeAlias = Annotated[Optional[str], BeforeValidator(state_validator)]
+PhoneField: TypeAlias = Annotated[Optional[str], BeforeValidator(phone_validator)]
+EmailField: TypeAlias = Annotated[
+    Optional[str], BeforeValidator(email_validator_function)
+]
 
 
 # ============= EOF =============================================
@@ -126,14 +154,14 @@ class WellInventoryRow(BaseModel):
     contact_1_name: Optional[str] = None
     contact_1_organization: Optional[str] = None
     contact_1_role: ContactRoleField = None
-    contact_1_type: ContactTypeField = "Primary"
-    contact_1_phone_1: Optional[str] = None
+    contact_1_type: ContactTypeField = None
+    contact_1_phone_1: PhoneField = None
     contact_1_phone_1_type: PhoneTypeField = None
-    contact_1_phone_2: Optional[str] = None
+    contact_1_phone_2: PhoneField = None
     contact_1_phone_2_type: PhoneTypeField = None
-    contact_1_email_1: Optional[str] = None
+    contact_1_email_1: EmailField = None
     contact_1_email_1_type: EmailTypeField = None
-    contact_1_email_2: Optional[str] = None
+    contact_1_email_2: EmailField = None
     contact_1_email_2_type: EmailTypeField = None
     contact_1_address_1_line_1: Optional[str] = None
     contact_1_address_1_line_2: Optional[str] = None
@@ -151,14 +179,14 @@ class WellInventoryRow(BaseModel):
     contact_2_name: Optional[str] = None
     contact_2_organization: Optional[str] = None
     contact_2_role: ContactRoleField = None
-    contact_2_type: ContactTypeField = "Primary"
-    contact_2_phone_1: Optional[str] = None
+    contact_2_type: ContactTypeField = None
+    contact_2_phone_1: PhoneField = None
     contact_2_phone_1_type: PhoneTypeField = None
-    contact_2_phone_2: Optional[str] = None
+    contact_2_phone_2: PhoneField = None
     contact_2_phone_2_type: PhoneTypeField = None
-    contact_2_email_1: Optional[str] = None
+    contact_2_email_1: EmailField = None
     contact_2_email_1_type: EmailTypeField = None
-    contact_2_email_2: Optional[str] = None
+    contact_2_email_2: EmailField = None
     contact_2_email_2_type: EmailTypeField = None
     contact_2_address_1_line_1: Optional[str] = None
     contact_2_address_1_line_2: Optional[str] = None
@@ -220,6 +248,16 @@ class WellInventoryRow(BaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
+        # verify utm in NM
+        zone = int(self.utm_zone[:-1])
+        northern = self.utm_zone[-1] == "N"
+
+        lat, lon = utm.to_latlon(
+            self.utm_easting, self.utm_northing, zone, northern=northern
+        )
+        if not ((31.33 <= lat <= 37.00) and (-109.05 <= lon <= -103.00)):
+            raise ValueError("UTM coordinates are outside of the NM")
+
         required_attrs = ("line_1", "type", "state", "city", "postal_code")
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
         for jdx in (1, 2):
@@ -234,19 +272,30 @@ class WellInventoryRow(BaseModel):
                         raise ValueError("All contact address fields must be provided")
 
                 name = getattr(self, f"{key}_name")
-                if name and not getattr(self, f"{key}_role"):
-                    raise ValueError("Role must be provided if name is provided")
+                if name:
+                    if not getattr(self, f"{key}_role"):
+                        raise ValueError(
+                            f"{key}_role must be provided if name is provided"
+                        )
+                    if not getattr(self, f"{key}_type"):
+                        raise ValueError(
+                            f"{key}_type must be provided if name is provided"
+                        )
 
-                phone = getattr(self, f"{key}_phone_1")
-                phone_type = getattr(self, f"{key}_phone_1_type")
+                phone = getattr(self, f"{key}_phone_{idx}")
+                tag = f"{key}_phone_{idx}_type"
+                phone_type = getattr(self, f"{key}_phone_{idx}_type")
                 if phone and not phone_type:
                     raise ValueError(
-                        "Phone type must be provided if phone number is provided"
+                        f"{tag} must be provided if phone number is provided"
                     )
 
-                email = getattr(self, f"{key}_email_1")
-                email_type = getattr(self, f"{key}_email_1_type")
+                email = getattr(self, f"{key}_email_{idx}")
+                tag = f"{key}_email_{idx}_type"
+                email_type = getattr(self, tag)
                 if email and not email_type:
-                    raise ValueError("Email type must be provided if email is provided")
+                    raise ValueError(
+                        f"{tag} type must be provided if email is provided"
+                    )
 
         return self

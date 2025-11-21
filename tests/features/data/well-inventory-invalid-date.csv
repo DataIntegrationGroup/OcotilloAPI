@@ -1,5 +1,5 @@
 well_name_point_id,site_name,date_time,field_staff,contact_role,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method
-WELL005,Site Alpha,2025-02-30T10:30:00-08:00,Jane Doe,Owner,345678.12,3987654.21,13,5120.5,GPS
-WELL006,Site Beta,2025-13-20T09:15:00-08:00,John Smith,Manager,346789.34,3987655.32,13,5130.7,Survey
-WELL007,Site Gamma,not-a-date,Emily Clark,Supervisor,347890.45,3987657.54,13,5150.3,Survey
-WELL008,Site Delta,2025-04-10 11:00:00,Michael Lee,Technician,348901.56,3987658.65,13,5160.4,GPS
+WELL005,Site Alpha,2025-02-30T10:30:00-08:00,Jane Doe,Owner,250000,4000000,13N,5120.5,GPS
+WELL006,Site Beta,2025-13-20T09:15:00-08:00,John Smith,Manager,250000,4000000,13N,5130.7,Survey
+WELL007,Site Gamma,not-a-date,Emily Clark,Supervisor,250000,4000000,13N,5150.3,Survey
+WELL008,Site Delta,2025-04-10 11:00:00,Michael Lee,Technician,250000,4000000,13N,5160.4,GPS
