@@ -5,6 +5,19 @@ from pydantic import BaseModel
 from schemas import BaseResponseModel
 
 
+# ------ CREATE ----------
+class CreateGeologicFormation(BaseModel):
+    """
+    Schema for creating a geologic formation.
+    Used during data transfer and API creation.
+    """
+
+    formation_code: str | None = None
+    description: str | None = None
+    lithology: str | None = None
+    boundary: str | None = None
+
+
 # ------ RESPONSE ----------
 class GeoJSONGeometry(BaseModel):
     """

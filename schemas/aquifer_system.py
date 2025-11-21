@@ -5,6 +5,20 @@ from pydantic import BaseModel
 from schemas import BaseResponseModel
 
 
+# ------ CREATE ----------
+class CreateAquiferSystem(BaseModel):
+    """
+    Schema for creating an aquifer system.
+    Used during data transfer and API creation.
+    """
+
+    name: str
+    description: str | None = None
+    aquifer_type: str
+    geographic_scale: str
+    boundary: str | None = None
+
+
 # ------ RESPONSE ----------
 class GeoJSONGeometry(BaseModel):
     """
