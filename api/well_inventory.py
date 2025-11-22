@@ -81,12 +81,6 @@ def _add_location(model, well) -> Location:
     return loc, assoc
 
 
-# def _add_group_association(group, well) -> GroupThingAssociation:
-#     gta = GroupThingAssociation(group=group, thing=well)
-#     group.thing_associations.append(gta)
-#     return gta
-
-
 def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     # add contact
     emails = []
@@ -247,8 +241,33 @@ async def well_inventory_csv(
             ],
         )
 
+    if len(rows) > 2000:
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": f"Too many rows {len(rows)}>2000",
+                    "type": "Too many rows",
+                }
+            ],
+        )
+
     header = text.splitlines()[0]
     dialect = csv.Sniffer().sniff(header)
+
+    if dialect.delimiter in (";", "\t"):
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": f"Unsupported delimiter '{dialect.delimiter}'",
+                    "type": "Unsupported delimiter",
+                }
+            ],
+        )
+
     header = header.split(dialect.delimiter)
     counts = Counter(header)
     duplicates = [col for col, count in counts.items() if count > 1]

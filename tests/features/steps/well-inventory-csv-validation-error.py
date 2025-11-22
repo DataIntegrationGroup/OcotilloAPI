@@ -21,11 +21,13 @@ from behave.runner import Context
 def _handle_validation_error(context, expected_errors):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
-
-    assert len(validation_errors) == len(expected_errors), "Expected 1 validation error"
+    n = len(validation_errors)
+    assert len(validation_errors) == n, f"Expected {n} validation error"
     for v, e in zip(validation_errors, expected_errors):
         assert v["field"] == e["field"], f"Expected {e['field']} for {v['field']}"
         assert v["error"] == e["error"], f"Expected {e['error']} for {v['error']}"
+        if "value" in e:
+            assert v["value"] == e["value"], f"Expected {e['value']} for {v['value']}"
 
 
 @then(
@@ -166,10 +168,22 @@ def step_impl(context: Context):
 
 @then("the response includes a validation error indicating duplicate header names")
 def step_impl(context: Context):
-    print(context.response.json())
 
     expected_errors = [
         {"field": "['contact_1_email_1']", "error": "Duplicate columns found"}
+    ]
+    _handle_validation_error(context, expected_errors)
+
+
+@then(
+    'the response includes a validation error indicating an invalid boolean value for the "is_open" field'
+)
+def step_impl(context: Context):
+    expected_errors = [
+        {
+            "field": "is_open",
+            "error": "Input should be a valid boolean, unable to interpret input",
+        }
     ]
     _handle_validation_error(context, expected_errors)
 

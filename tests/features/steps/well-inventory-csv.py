@@ -223,16 +223,20 @@ def step_impl(context: Context, required_field: str):
     assert vs[0]["field"] == required_field
 
 
-@then(
-    'the response includes a validation error indicating an invalid boolean value for the "is_open" field'
-)
+@then("the response includes an error message indicating the row limit was exceeded")
 def step_impl(context: Context):
     response_json = context.response.json()
-    assert "validation_errors" in response_json, "Expected validation errors"
-    ve = response_json["validation_errors"]
-    assert len(ve) == 1, "Expected 1 validation error"
-    assert ve[0]["field"] == "is_open", "Expected field= is_open"
+    assert "detail" in response_json, "Expected response to include an detail object"
     assert (
-        ve[0]["error"] == "Input should be a valid boolean, unable to interpret input"
-    ), "Expected Input should be a valid boolean, unable to interpret input"
-    assert ve[0]["value"] == "maybe", "Expected value=maybe"
+        response_json["detail"][0]["msg"] == "Too many rows 2002>2000"
+    ), "Expected error message to indicate too many rows uploaded"
+
+
+@then("the response includes an error message indicating an unsupported delimiter")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "detail" in response_json, "Expected response to include an detail object"
+    assert (
+        response_json["detail"][0]["msg"]
+        == f"Unsupported delimiter '{context.delimiter}'"
+    ), "Expected error message to indicate unsupported delimiter"

@@ -235,3 +235,66 @@ def step_impl(context):
 )
 def step_impl(context):
     _set_file_content(context, "well-inventory-duplicate-columns.csv")
+
+
+def _get_valid_df(context: Context) -> pd.DataFrame:
+    _set_file_content(context, "well-inventory-valid.csv")
+    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    return df
+
+
+def _set_content_from_df(context: Context, df: pd.DataFrame, delimiter: str = ","):
+    buffer = StringIO()
+    df.to_csv(buffer, index=False, sep=delimiter)
+    context.file_content = buffer.getvalue()
+    context.rows = list(csv.DictReader(context.file_content.splitlines()))
+
+
+@given("my CSV file contains more rows than the configured maximum for bulk upload")
+def step_impl(context):
+    df = _get_valid_df(context)
+
+    df = pd.concat([df.iloc[:2]] * 1001, ignore_index=True)
+
+    _set_content_from_df(context, df)
+
+
+@given("my file is named with a .csv extension")
+def step_impl(context):
+    _set_file_content(context, "well-inventory-valid.csv")
+
+
+@given(
+    'my file uses "{delimiter_description}" as the field delimiter instead of commas'
+)
+def step_impl(context, delimiter_description: str):
+    df = _get_valid_df(context)
+
+    if delimiter_description == "semicolons":
+        delimiter = ";"
+    else:
+        delimiter = "\t"
+
+    context.delimiter = delimiter
+    _set_content_from_df(context, df, delimiter=delimiter)
+
+
+@given("my CSV file header row contains all required columns")
+def step_impl(context):
+    _set_file_content(context, "well-inventory-valid.csv")
+
+
+@given(
+    'my CSV file contains a data row where the "site_name" field value includes a comma and is enclosed in quotes'
+)
+def step_impl(context):
+    _set_file_content(context, "well-inventory-valid-comma-in-quotes.csv")
+
+
+@given(
+    "my CSV file contains a data row where a field begins with a quote but does not have a matching closing quote"
+)
+def step_impl(context):
+    df = _get_valid_df(context)
+    df.loc[0]["well_name_point_id"] = '"well-name-point-id'
+    _set_content_from_df(context, df)
