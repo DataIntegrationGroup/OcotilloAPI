@@ -50,13 +50,12 @@ def message(msg, pad=10, new_line_at_top=True):
 
 
 @timeit
-def transfer_all(sess, limit=100):
+def transfer_all(sess, metrics, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
 
     logger.info("Erase and rebuilding database")
     erase_and_rebuild_db()
 
-    metrics = Metrics()
     message("TRANSFERRING WELLS")
 
     flags = {
@@ -125,14 +124,13 @@ def transfer_all(sess, limit=100):
     timeit_direct(transfer_assets, sess)
 
 
-def transfer_debugging(sess, limit=100):
+def transfer_debugging(sess, metrics, limit=100):
     message("STARTING TRANSFER DEBUG", new_line_at_top=False)
 
     if int(os.environ.get("ERASE_AND_REBUILD", 0)):
         logger.info("Erase and rebuilding database")
         erase_and_rebuild_db()
 
-    metrics = Metrics()
     message("TRANSFERRING WELLS")
 
     flags = {"TRANSFER_ALL_WELLS": True}
@@ -205,12 +203,15 @@ def transfer_debugging(sess, limit=100):
 def main():
     message("START--------------------------------------")
     limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
+    metrics = Metrics()
     with session_ctx() as sess:
         if int(os.environ.get("TRANSFER_DEBUG", 0)):
-            transfer_debugging(sess, limit=limit)
+            transfer_debugging(sess, metrics, limit=limit)
         else:
-            transfer_all(sess, limit=limit)
+            transfer_all(sess, metrics, limit=limit)
 
+    metrics.close()
+    metrics.save_to_storage_bucket()
     # todo: move the log file to a storage bucket
     save_log_to_bucket()
     message("END--------------------------------------")
