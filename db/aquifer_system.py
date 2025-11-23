@@ -18,6 +18,7 @@ from constants import SRID_WGS84
 
 if TYPE_CHECKING:
     from db.thing import WellScreen, ThingAquiferAssociation, Thing
+    from db.aquifer_type import AquiferType
 
 
 class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
@@ -34,9 +35,9 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
         comment="A detailed description of the aquifer system, its characteristics, and its significance.",
     )
     # Lexicon terms were retrieved from NMAquifer's 'LU_AquiferType' table.
-    aquifer_type: Mapped[str] = lexicon_term(
+    primary_aquifer_type: Mapped[str] = lexicon_term(
         nullable=False,
-        comment="A controlled vocabulary field to classify the aquifer's hydrologic properties (e.g., 'Unconfined', 'Confined', 'Perched').",
+        comment="A controlled vocabulary field to classify the aquifer's primary hydrologic properties (e.g., 'Unconfined', 'Confined', 'Perched').",
     )
     geographic_scale: Mapped[str] = lexicon_term(
         nullable=False,
@@ -73,6 +74,10 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
     # Proxy to directly access Things (wells) associated with this AquiferSystem.
     things: AssociationProxy[List["Thing"]] = association_proxy(
         "thing_associations", "thing"
+    )
+    # Proxy to directly access all AquiferTypes associated with this AquiferSystem.
+    aquifer_types: AssociationProxy[List["AquiferType"]] = association_proxy(
+        "thing_associations", "aquifer_types"
     )
 
     # --- Table Arguments ---

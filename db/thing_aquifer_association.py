@@ -16,6 +16,7 @@ from db.base import Base, AutoBaseMixin, ReleaseMixin
 if TYPE_CHECKING:
     from db.thing import Thing
     from db.aquifer_system import AquiferSystem
+    from db.aquifer_type import AquiferType
 
 
 class ThingAquiferAssociation(Base, AutoBaseMixin, ReleaseMixin):
@@ -39,4 +40,11 @@ class ThingAquiferAssociation(Base, AutoBaseMixin, ReleaseMixin):
     # Many-To-One: This association links to one AquiferSystem.
     aquifer_system: Mapped["AquiferSystem"] = relationship(
         "AquiferSystem", back_populates="thing_associations", lazy="joined"
+    )
+    # One-To-Many: An association can have multiple aquifer types.
+    aquifer_types: Mapped[list["AquiferType"]] = relationship(
+        "AquiferType",
+        back_populates="thing_aquifer_association",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

@@ -14,7 +14,7 @@ class CreateAquiferSystem(BaseModel):
 
     name: str
     description: str | None = None
-    aquifer_type: str
+    primary_aquifer_type: str
     geographic_scale: str
     boundary: str | None = None
 
@@ -41,6 +41,6 @@ class AquiferSystemResponse(BaseResponseModel):
 
     name: str
     description: str | None = None
-    aquifer_type: str
+    primary_aquifer_type: str
     geographic_scale: str
     boundary: GeoJSONGeometry | None = None
