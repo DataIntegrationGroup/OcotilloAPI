@@ -15,6 +15,7 @@
 # ===============================================================================
 import csv
 import logging
+import re
 from collections import Counter
 from io import StringIO
 from itertools import groupby
@@ -129,10 +130,39 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
         }
 
 
-def _make_row_models(rows):
+AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
+
+
+def generate_autogen_well_id(session, prefix: str, offset: int = 0) -> str:
+    # get the latest well_name_point_id that starts with the same prefix
+    if not offset:
+        latest_well = session.scalars(
+            select(Thing)
+            .where(Thing.name.like(f"{prefix}%"))
+            .order_by(Thing.name.desc())
+        ).first()
+
+        if latest_well:
+            latest_id = latest_well.name
+            # extract the numeric part and increment it
+            number_part = latest_id.replace(prefix, "")
+            if number_part.isdigit():
+                new_number = int(number_part) + 1
+            else:
+                new_number = 1
+        else:
+            new_number = 1
+    else:
+        new_number = offset + 1
+
+    return f"{prefix}{new_number:04d}", new_number
+
+
+def _make_row_models(rows, session):
     models = []
     validation_errors = []
     seen_ids: Set[str] = set()
+    offset = 0
     for idx, row in enumerate(rows):
         try:
             if all(key == row.get(key) for key in row.keys()):
@@ -141,9 +171,16 @@ def _make_row_models(rows):
             well_id = row.get("well_name_point_id")
             if not well_id:
                 raise ValueError("Field required")
+            print(f"Processing well_name_point_id: {well_id}")
+            if AUTOGEN_REGEX.match(well_id):
+                well_id, offset = generate_autogen_well_id(session, well_id, offset)
+                row["well_name_point_id"] = well_id
+
             if well_id in seen_ids:
+                print(seen_ids)
                 raise ValueError("Duplicate value for well_name_point_id")
             seen_ids.add(well_id)
+
             model = WellInventoryRow(**row)
             models.append(model)
 
@@ -283,7 +320,7 @@ async def well_inventory_csv(
         ]
 
     else:
-        models, validation_errors = _make_row_models(rows)
+        models, validation_errors = _make_row_models(rows, session)
         if models and not validation_errors:
             for project, items in groupby(
                 sorted(models, key=lambda x: x.project), key=lambda x: x.project

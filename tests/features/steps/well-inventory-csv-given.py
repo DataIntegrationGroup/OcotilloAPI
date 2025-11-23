@@ -124,83 +124,80 @@ def step_impl_csv_file_is_encoded_utf8(context: Context):
 @given(
     "my CSV file contains a row with a contact with a phone number that is not in the valid format"
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-phone-number.csv")
 
 
 @given(
     "my CSV file contains a row with a contact with an email that is not in the valid format"
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-email.csv")
 
 
 @given(
     'my CSV file contains a row with a contact but is missing the required "contact_type" field for that contact'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-missing-contact-type.csv")
 
 
 @given(
     'my CSV file contains a row with a contact_type value that is not in the valid lexicon for "contact_type"'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-contact-type.csv")
 
 
 @given(
     'my CSV file contains a row with a contact with an email but is missing the required "email_type" field for that email'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-missing-email-type.csv")
 
 
 @given(
     'my CSV file contains a row with a contact with a phone but is missing the required "phone_type" field for that phone'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-missing-phone-type.csv")
 
 
 @given(
     'my CSV file contains a row with a contact with an address but is missing the required "address_type" field for that address'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-missing-address-type.csv")
 
 
 @given(
     "my CSV file contains a row with utm_easting utm_northing and utm_zone values that are not within New Mexico"
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-utm.csv")
 
 
 @given(
     'my CSV file contains invalid ISO 8601 date values in the "date_time" or "date_drilled" field'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-date-format.csv")
 
 
 @given("my CSV file contains all required headers but in a different column order")
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-valid-reordered.csv")
 
 
 @given("my CSV file contains extra columns but is otherwise valid")
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-valid-extra-columns.csv")
-
-
-# ============= EOF =============================================
 
 
 @given(
     'my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-partial.csv")
 
 
@@ -221,19 +218,19 @@ def step_impl(context, required_field):
 @given(
     'my CSV file contains a row with an invalid boolean value "maybe" in the "is_open" field'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-boolean-value-maybe.csv")
 
 
 @given("my CSV file contains a valid but duplicate header row")
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-duplicate-header.csv")
 
 
 @given(
     'my CSV file header row contains the "contact_1_email_1" column name more than once'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-duplicate-columns.csv")
 
 
@@ -251,7 +248,7 @@ def _set_content_from_df(context: Context, df: pd.DataFrame, delimiter: str = ",
 
 
 @given("my CSV file contains more rows than the configured maximum for bulk upload")
-def step_impl(context):
+def step_impl(context: Context):
     df = _get_valid_df(context)
 
     df = pd.concat([df.iloc[:2]] * 1001, ignore_index=True)
@@ -260,7 +257,7 @@ def step_impl(context):
 
 
 @given("my file is named with a .csv extension")
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-valid.csv")
 
 
@@ -280,21 +277,33 @@ def step_impl(context, delimiter_description: str):
 
 
 @given("my CSV file header row contains all required columns")
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-valid.csv")
 
 
 @given(
     'my CSV file contains a data row where the "site_name" field value includes a comma and is enclosed in quotes'
 )
-def step_impl(context):
+def step_impl(context: Context):
     _set_file_content(context, "well-inventory-valid-comma-in-quotes.csv")
 
 
 @given(
     "my CSV file contains a data row where a field begins with a quote but does not have a matching closing quote"
 )
-def step_impl(context):
+def step_impl(context: Context):
     df = _get_valid_df(context)
     df.loc[0]["well_name_point_id"] = '"well-name-point-id'
     _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains all valid columns but uses "XY-" prefix for well_name_point_id values'
+)
+def step_impl(context: Context):
+    df = _get_valid_df(context)
+    df["well_name_point_id"] = df["well_name_point_id"].apply(lambda x: "XY-")
+    _set_content_from_df(context, df)
+
+
+# ============= EOF =============================================

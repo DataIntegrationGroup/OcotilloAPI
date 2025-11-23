@@ -240,3 +240,12 @@ def step_impl(context: Context):
         response_json["detail"][0]["msg"]
         == f"Unsupported delimiter '{context.delimiter}'"
     ), "Expected error message to indicate unsupported delimiter"
+
+
+@then("all wells are imported with system-generated unique well_name_point_id values")
+def step_impl(context: Context):
+    response_json = context.response.json()
+    assert "wells" in response_json, "Expected response to include wells"
+    wells = response_json["wells"]
+    assert len(wells) == context.row_count
+    assert len(wells) == len(set(wells)), "Expected unique well_name_point_id values"
