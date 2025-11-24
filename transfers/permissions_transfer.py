@@ -4,6 +4,14 @@ from datetime import datetime
 from db import Thing, PermissionHistory
 from transfers.util import read_csv, logger, replace_nans
 
+"""
+Developer's notes
+
+According to Laila the column WellData.OpenWellLoggerOK only pertains to the
+physical properties of a well (that is, if a datalogger can be installed). It
+does not pertain to permissions.
+"""
+
 
 def transfer_permissions(session: Session):
     """
@@ -70,32 +78,6 @@ def transfer_permissions(session: Session):
                 session.add(permission)
                 logger.info(
                     f"Transferred Water Chemistry Sample permission for well {well.name}: {permission_allowed}."
-                )
-            except Exception as e:
-                logger.error(f"Error transferring permission for well {well.name}: {e}")
-                session.rollback()
-                pass
-
-        allow_datalogger_installation = wdf.loc[
-            wdf["PointID"] == well.name, "OpenWellLoggerOK"
-        ].values
-        if (
-            len(allow_datalogger_installation) > 0
-            and allow_datalogger_installation is not None
-        ):
-            try:
-                permission_allowed = bool(allow_datalogger_installation[0])
-                permission = PermissionHistory(
-                    contact_id=contact_id,
-                    permission_type="Datalogger Installation",
-                    permission_allowed=permission_allowed,
-                    start_date=datetime.today().date(),
-                    target_id=well.id,
-                    target_table="thing",
-                )
-                session.add(permission)
-                logger.info(
-                    f"Transferred Datalogger Installation permission for well {well.name}: {permission_allowed}."
                 )
             except Exception as e:
                 logger.error(f"Error transferring permission for well {well.name}: {e}")

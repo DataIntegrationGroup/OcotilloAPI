@@ -286,6 +286,11 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     else None
                 ),
                 well_pump_type=well_pump_type,
+                is_suitable_for_datalogger=(
+                    bool(row.OpenWellLoggerOK)
+                    if not isna(row.OpenWellLoggerOK)
+                    else None
+                ),
             )
 
             CreateWell.model_validate(data)

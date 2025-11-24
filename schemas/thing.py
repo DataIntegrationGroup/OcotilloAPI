@@ -144,6 +144,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_construction_method: WellConstructionMethod | None = None
     well_construction_method_source: str | None = None
     well_pump_type: WellPumpType | None = None
+    is_suitable_for_datalogger: bool | None = None
 
 
 class CreateSpring(CreateBaseThing):
