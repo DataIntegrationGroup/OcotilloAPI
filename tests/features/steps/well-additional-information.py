@@ -183,15 +183,13 @@ def step_impl(context):
     assert context.water_well_data["formation"] == context.objects["wells"][0].formation
 
 
-# TODO: needs to be added to model, schemas, test data, lexicon
 @then(
     "the response should include the aquifer class code to classify the aquifer into aquifer system."
 )
 def step_impl(context):
     assert "aquifer_systems" in context.water_well_data
-    assert (
-        context.water_well_data["aquifer_systems"]
-        == context.objects["wells"][0].aquifer_systems
+    assert sorted(context.water_well_data["aquifer_systems"]) == sorted(
+        [system.name for system in context.objects["aquifer_systems"]]
     )
 
 

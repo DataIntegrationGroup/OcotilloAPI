@@ -38,6 +38,7 @@ from db import (
     MonitoringFrequencyHistory,
     DataProvenance,
     AquiferSystem,
+    ThingAquiferAssociation,
 )
 from db.engine import session_ctx
 
@@ -436,6 +437,10 @@ def add_aquifer_system(context, session, name, well):
     session.add(aquifer_system)
     session.commit()
     session.refresh(aquifer_system)
+
+    association = ThingAquiferAssociation(thing=well, aquifer_system=aquifer_system)
+    session.add(association)
+    session.commit()
 
     context.objects["aquifer_systems"].append(aquifer_system)
     return aquifer_system
