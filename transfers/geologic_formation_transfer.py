@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from db import GeologicFormation
 from schemas.geologic_formation import CreateGeologicFormation
-from transfers.util import read_csv, replace_nans, lexicon_mapper, logger
+from transfers.util import read_csv, replace_nans, logger
 
 
 def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
@@ -54,32 +54,88 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             try:
                 session.commit()
             except Exception as e:
-                logger.critical(f"Error committing geologic formation {i}: {e}")
+                logger.critical(f"Error committing geologic formations: {e}")
                 session.rollback()
                 continue
 
-        try:
-            payload = CreateGeologicFormation(
-                name=row.GeologicFormationName,
-                description=row.Description,
-                lithology=lexicon_mapper("Lithology", row.Lithology),
-                age=lexicon_mapper("GeologicAge", row.Age),
-            )
-            formation = GeologicFormation(**payload.dict())
-            session.add(formation)
-            created_count += 1
-        except ValidationError as e:
-            error_msg = f"Validation error for row {i} with GeologicFormationName {row.GeologicFormationName}: {e.errors()}"
-            logger.critical(error_msg)
-            errors.append(error_msg)
-        except Exception as e:
-            error_msg = f"Error creating geologic formation for {row.GeologicFormationName}: {e}"
-            logger.critical(error_msg)
-            errors.append(error_msg)
+        # 5. Extract formation code and description
+        formation_code = row.Code
+
+        if not formation_code:
+            logger.warning(f"Skipping row {i}: Missing formation code")
+            skipped_count += 1
             continue
 
-    # Final commit after all rows are processed
+        # Check if this formation already exists
+        existing = (
+            session.query(GeologicFormation)
+            .filter(GeologicFormation.formation_code == formation_code)
+            .first()
+        )
+
+        if existing:
+            logger.info(
+                f"Skipping row {i}: Formation code {formation_code} already exists"
+            )
+            skipped_count += 1
+            continue
+
+        # 6. Prepare data for creation
+        # Note: We only store the formation_code. Formation names will be mapped by the API using a
+        # formations.json file from authoritative sources (e.g., USGS).
+        # The description field is left as None and can be populated later if needed.
+        # Note: lithology is set to None here and will be updated during stratigraphy transfer
+        try:
+            data = CreateGeologicFormation(
+                formation_code=formation_code,
+                description=None,  # Not storing from legacy data
+                lithology=None,  # Will be populated from Stratigraphy.csv
+            )
+
+            # Validate the data using Pydantic schema
+            CreateGeologicFormation.model_validate(data)
+
+        except ValidationError as e:
+            errors.append({"code": formation_code, "errors": e.errors()})
+            logger.critical(
+                f"Validation error for row {i} with Code {formation_code}: {e.errors()}"
+            )
+            continue
+        except Exception as e:
+            errors.append({"code": formation_code, "errors": str(e)})
+            logger.critical(f"Error preparing data for {formation_code}: {e}")
+            continue
+
+        # 7. Create database object
+        geologic_formation = None
+        try:
+            formation_data = data.model_dump()
+            geologic_formation = GeologicFormation(**formation_data)
+            session.add(geologic_formation)
+            created_count += 1
+
+            logger.info(
+                f"Created geologic formation: {geologic_formation.formation_code}"
+            )
+
+        except Exception as e:
+            if geologic_formation is not None:
+                session.expunge(geologic_formation)
+            errors.append({"code": formation_code, "error": str(e)})
+            logger.critical(
+                f"Error creating geologic formation for {formation_code}: {e}"
+            )
+            continue
+
+    # 8. Final commit
     try:
         session.commit()
+        logger.info(
+            f"Successfully transferred {created_count} geologic formations, skipped {skipped_count}. "
+            f"Note: lithology is None and will be updated during stratigraphy transfer."
+        )
     except Exception as e:
         logger.critical(f"Error during final commit of geologic formations: {e}")
+        session.rollback()
+
+    return input_df, cleaned_df, errors

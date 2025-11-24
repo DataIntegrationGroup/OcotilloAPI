@@ -421,6 +421,7 @@ class LexiconMapper:
             "LU_Depth_CompletionSource",
             "LU_Discharge_ChemistrySource",
             "LU_LevelStatus",
+            "LU_Lithology",
             "LU_MajorAnalyte",
             "LU_MeasurementMethod",
             "LU_MinorTraceAnalyte",
