@@ -332,7 +332,7 @@ async def well_inventory_csv(
                 )
                 group = session.scalars(sql).one_or_none()
                 if not group:
-                    group = Group(name=project)
+                    group = Group(name=project, group_type="Monitoring Plan")
                     session.add(group)
 
                 for model in items:
