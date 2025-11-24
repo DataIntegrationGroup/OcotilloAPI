@@ -40,6 +40,8 @@ from db import (
     AquiferSystem,
     AquiferType,
     ThingAquiferAssociation,
+    GeologicFormation,
+    ThingGeologicFormationAssociation,
 )
 from db.engine import session_ctx
 
@@ -468,6 +470,29 @@ def add_aquifer_type(context, session, aquifer_type_str, thing_aquifer_associati
     return aquifer_type
 
 
+@add_context_object_container("geologic_formations")
+def add_geologic_formation(context, session, formation_code, well):
+    formation = GeologicFormation(
+        formation_code=formation_code,
+        description="This is a test geologic formation.",
+        lithology="Peat",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(formation)
+    session.commit()
+    session.refresh(formation)
+
+    association = ThingGeologicFormationAssociation(
+        top_depth=1, bottom_depth=10, thing=well, geologic_formation=formation
+    )
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["geologic_formations"].append(formation)
+    return formation
+
+
 def before_all(context):
     context.objects = {}
     rebuild = False
@@ -683,6 +708,8 @@ def before_all(context):
         for t in ["Artesian", "Fractured"]:
             taa = context.objects["thing_aquifer_associations"][0]
             add_aquifer_type(context, session, t, taa)
+
+        add_geologic_formation(context, session, "000EXRV", well_1)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

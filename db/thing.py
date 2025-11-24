@@ -337,8 +337,8 @@ class Thing(
     )
 
     # Proxy to directly access the GeologicFormations penetrated by this Thing.
-    formations: AssociationProxy[List["GeologicFormation"]] = association_proxy(
-        "formation_associations", "geologic_formation"
+    geologic_formations: AssociationProxy[List["GeologicFormation"]] = (
+        association_proxy("formation_associations", "geologic_formation")
     )
 
     # Full-text search vector
