@@ -40,6 +40,12 @@ if TYPE_CHECKING:
     from db.sensor import Sensor
     from db.contact import Contact
     from db.group import Group, GroupThingAssociation
+    from db.aquifer_system import AquiferSystem
+    from db.thing_aquifer_association import ThingAquiferAssociation
+    from db.geologic_formation import GeologicFormation
+    from db.thing_geologic_formation_association import (
+        ThingGeologicFormationAssociation,
+    )
 
 
 class Thing(
@@ -115,6 +121,21 @@ class Thing(
     )
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
+
+    well_completion_date: Mapped[str] = mapped_column(
+        Date, nullable=True, comment="the date the well was completed if known"
+    )
+    well_driller_name: Mapped[str] = mapped_column(
+        String(200), nullable=True, comment="Name of the well driller."
+    )
+    well_construction_method = lexicon_term(nullable=True)
+    well_pump_type: Mapped[str] = lexicon_term(nullable=True)
+    well_pump_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
@@ -263,6 +284,26 @@ class Thing(
         lazy="joined",
     )
 
+    # One-To-Many: A Thing can be associated with many AquiferSystems via the ThingAquiferAssociation join table.
+    aquifer_associations: Mapped[List["ThingAquiferAssociation"]] = relationship(
+        "ThingAquiferAssociation",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="joined",
+    )
+
+    # Many-To-Many: A Thing can penetrate many GeologicFormations.
+    formation_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
+        relationship(
+            "ThingGeologicFormationAssociation",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            lazy="joined",
+        )
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -286,6 +327,16 @@ class Thing(
     # Proxy to directly access the Group(s) this Thing is a member of.
     groups: AssociationProxy[List["Group"]] = association_proxy(
         "group_associations", "group"
+    )
+
+    # Proxy to directly access AquiferSystems associated with this Thing
+    aquifers: AssociationProxy[List["AquiferSystem"]] = association_proxy(
+        "aquifer_associations", "aquifer_system"
+    )
+
+    # Proxy to directly access the GeologicFormations penetrated by this Thing.
+    formations: AssociationProxy[List["GeologicFormation"]] = association_proxy(
+        "formation_associations", "geologic_formation"
     )
 
     # Full-text search vector
@@ -406,6 +457,12 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     thing_id: Mapped[int] = mapped_column(
         ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+    aquifer_system_id: Mapped[int] = mapped_column(
+        ForeignKey("aquifer_system.id", ondelete="SET NULL"), nullable=True
+    )
+    geologic_formation_id: Mapped[int] = mapped_column(
+        ForeignKey("geologic_formation.id", ondelete="SET NULL"), nullable=True
+    )
     screen_depth_top: Mapped[float] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
@@ -422,6 +479,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     # Many-To-One: A WellScreen belongs to one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="screens")
+
+    aquifer_system: Mapped["AquiferSystem"] = relationship(
+        "AquiferSystem", back_populates="well_screens", passive_deletes=True
+    )
 
 
 class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):

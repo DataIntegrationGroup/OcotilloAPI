@@ -80,19 +80,16 @@ def step_impl(context):
 # TODO: needs to be added to model, schemas, test data
 @then("the response should include the driller name")
 def step_impl(context):
-    assert "driller_name" in context.water_well_data
-    assert context.water_well_data["driller_name"] == context.well.driller_name
+    assert "driller_name" in context.data
+    assert context.data["driller_name"] == context.well.driller_name
 
 
 # TODO: needs to be added to model, schemas, test data
 # TODO: needs to be an enum and added to lexicon
 @then("the response should include the construction method")
 def step_impl(context):
-    assert "construction_method" in context.water_well_data
-    assert (
-        context.water_well_data["construction_method"]
-        == context.well.construction_method
-    )
+    assert "construction_method" in context.data
+    assert context.data["construction_method"] == context.well.construction_method
 
 
 # TODO: needs to be added to model, schemas, test data

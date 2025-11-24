@@ -43,6 +43,11 @@ from db.thing import *
 from db.transducer import *
 from db.measuring_point_history import *
 from db.data_provenance import *
+from db.aquifer_system import *
+from db.geologic_formation import *
+from db.thing_aquifer_association import *
+from db.thing_geologic_formation_association import *
+from db.aquifer_type import *
 
 from sqlalchemy import (
     func,

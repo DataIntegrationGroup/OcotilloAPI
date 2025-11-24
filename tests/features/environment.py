@@ -34,6 +34,7 @@ from db import (
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
     DataProvenance,
+    WellCasingMaterial,
 )
 from db.engine import session_ctx
 
@@ -87,9 +88,11 @@ def add_well(context, session, location, name_num):
         well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
-        # notes="These are some test well notes",
-        # measuring_notes="These are some measuring notes",
-        # water_notes="This are some water notes",
+        well_completion_date="2013-05-15",
+        well_driller_name="Jonsi",
+        well_construction_method="Driven",
+        well_pump_type="Submersible",
+        well_pump_depth=8,
     )
 
     session.add(well)
@@ -114,6 +117,20 @@ def add_well(context, session, location, name_num):
 
     context.objects["wells"].append(well)
     return well
+
+
+@add_context_object_container("well_casing_materials")
+def add_well_casing_material(context, session, well):
+    wcm = WellCasingMaterial(
+        thing_id=well.id,
+        material="PVC",
+    )
+    session.add(wcm)
+    session.commit()
+    session.refresh(wcm)
+
+    context.objects["well_casing_materials"].append(wcm)
+    return wcm
 
 
 @add_context_object_container("well_purposes")
@@ -476,6 +493,8 @@ def before_all(context):
             alternate_id="Roving Bovine Ranch Well #1",
             alternate_organization="NMBGMR",
         )
+
+        add_well_casing_material(context, session, well_1)
 
         group = add_group(context, session, [well_1, well_2])
 

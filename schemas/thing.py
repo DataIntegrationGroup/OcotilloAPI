@@ -24,12 +24,18 @@ from core.enums import (
     ScreenType,
     Organization,
     MonitoringFrequency,
+    WellConstructionMethod,
+    WellPumpType,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-
+from schemas.aquifer_system import AquiferSystemResponse
+from schemas.geologic_formation import (
+    GeologicFormationResponse,
+    ThingGeologicFormationAssociationResponse,
+)
 
 # -------- VALIDATE ----------
 
@@ -146,6 +152,8 @@ class CreateWellScreen(BaseCreateModel):
     """
 
     thing_id: int
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
     screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
     screen_type: ScreenType | None = None
@@ -220,6 +228,14 @@ class WellResponse(BaseThingResponse):
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
     well_construction_notes: str | None = None
+    well_completion_date: PastOrTodayDate | None
+    well_driller_name: str | None
+    well_construction_method: WellConstructionMethod | None
+    well_pump_type: WellPumpType | None
+    well_pump_depth: float | None
+    well_pump_depth_unit: str = "ft"
+    aquifers: list[AquiferSystemResponse] = []
+    formations: list[ThingGeologicFormationAssociationResponse] = []
     well_status: str | None
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
@@ -269,6 +285,10 @@ class WellScreenResponse(BaseResponseModel):
 
     thing_id: int
     thing: WellResponse
+    aquifer_system_id: int | None = None
+    aquifer_system: AquiferSystemResponse | None = None
+    geologic_formation_id: int | None = None
+    geologic_formation: GeologicFormationResponse | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
@@ -342,6 +362,8 @@ class UpdateThingIdLink(BaseUpdateModel):
 
 
 class UpdateWellScreen(BaseUpdateModel):
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float | None = None
     screen_depth_top: float | None = None
     screen_description: str | None = None
