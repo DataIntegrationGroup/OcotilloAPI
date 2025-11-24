@@ -46,10 +46,18 @@ SPACE_4 = " " * 4
 SPACE_6 = " " * 6
 
 
-def get_dt_utc(row):
+def get_dt_utc(row, errors):
     if pd.isna(row.DateMeasured):
         logger.critical(
             f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} because there is no DateMeasured"
+        )
+        errors.append(
+            {
+                "pointid": row.PointID,
+                "error": "no DateMeasured",
+                "table": "WaterLevels",
+                "field": "DateMeasured",
+            }
         )
         return
 
@@ -69,6 +77,14 @@ def get_dt_utc(row):
         dt = datetime.strptime(dt_measured, fmt)
         return convert_mt_to_utc(dt)
     except ValueError as e:
+        errors.append(
+            {
+                "pointid": row.PointID,
+                "error": str(e),
+                "table": "WaterLevels",
+                "field": "DateMeasured",
+            }
+        )
         logger.critical(
             f"transfer_water_levels. Skipping row PointID={row.PointID}, objectid={row.OBJECTID} due to "
             f"invalid date/time: {e}"
@@ -120,8 +136,8 @@ def transfer_water_levels(session):
 
     with open(path, "r") as f:
         measured_by_mapper = json.load(f)
-
-    input_df = read_csv("WaterLevels")
+    source_table = "WaterLevels"
+    input_df = read_csv(source_table)
     cleaned_df = filter_to_valid_point_ids(session, input_df)
     cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
 
@@ -141,6 +157,14 @@ def transfer_water_levels(session):
             logger.critical(
                 f"Thing with PointID={pointid} not found. Skipping water levels"
             )
+            errors.append(
+                {
+                    "pointid": pointid,
+                    "error": "Thing with PointID not found",
+                    "table": source_table,
+                    "field": "PointID",
+                }
+            )
             continue
 
         n = len(group)
@@ -151,7 +175,7 @@ def transfer_water_levels(session):
                 )
                 session.commit()
 
-            dt_utc = get_dt_utc(row)
+            dt_utc = get_dt_utc(row, errors)
             if dt_utc is None:
                 continue
 

@@ -28,18 +28,29 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from db import Thing, Location
+from db import Thing, Location, DataProvenance
 from services.gcs_helper import get_storage_bucket
 
 # from services.lexicon_mapper import lexicon_mapper
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
-    # get_state_from_point,
-    # get_county_from_point,
-    # get_quad_name_from_point,
+    convert_ft_to_m,
+    convert_ngvd29_to_navd88,
 )
 from transfers.logger import logger
+
+NMA_COORDINATE_ACCURACY = {
+    "5m": (5, "m"),
+    "1": (0.1, "second"),
+    "5": (0.5, "second"),
+    "F": (5, "second"),
+    "H": (0.01, "second"),
+    "M": (1, "minute"),
+    "R": (3, "second"),
+    "S": (1, "second"),
+    "T": (10, "second"),
+}
 
 
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
@@ -153,14 +164,6 @@ def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFram
     return df[df["PointID"].isin(valid_point_ids)]
 
 
-def convert_to_wgs84_vertical_datum(row, z):
-    if row.VerticalDatum == "NAVD88":
-        z = z + 2.0  # TODO: check this transformation
-    elif row.VerticalDatum == "NGVD29":
-        z = z + 3.0  # TODO: check this transformation
-    return z
-
-
 def convert_mt_to_utc(dt_record: datetime):
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
@@ -186,47 +189,16 @@ def chunk_by_size(df, chunk_size):
         yield df.iloc[i : i + chunk_size]
 
 
-def make_location(row: pd.Series) -> Location:
+def make_location(row: pd.Series, elevations: dict) -> tuple:
+    """
+    Returns a tuple of location data and the elevation method
+    """
     point = Point(row.Easting, row.Northing)
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
         point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
-
-    # since this is such a time consuming operation, I do not want to run it during this step
-    # cleanup_wells was added for this reason
-
-    # state = get_state_from_point(transformed_point.x, transformed_point.y)
-    # county = get_county_from_point(transformed_point.x, transformed_point.y)
-    # quad_name = get_quad_name_from_point(transformed_point.x, transformed_point.y)
-
-    z = row.Altitude
-    if z:
-        elevation_from_epqs = False
-        z = z * 0.3048
-    else:
-        elevation_from_epqs = True
-        logger.info(
-            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
-        )
-        z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
-
-    if elevation_from_epqs:
-        elevation_method = "USGS National Elevation Dataset (NED)"
-    elif pd.isna(row.AltitudeMethod):
-        elevation_method = None
-    else:
-        elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
-        )
-
-    if pd.isna(row.CoordinateMethod):
-        coordinate_method = None
-    else:
-        coordinate_method = lexicon_mapper.map_value(
-            f"LU_CoordinateMethod:{row.CoordinateMethod}"
-        )
 
     """
     Developer's notes
@@ -254,6 +226,70 @@ def make_location(row: pd.Series) -> Location:
     # convert created_at from MST/MDT to UTC
     if created_at is not None:
         created_at = convert_mt_to_utc(created_at)
+
+    z = row.Altitude
+    if z:
+        elevation_from_epqs = False
+        z = convert_ft_to_m(z)
+
+        if row.AltDatum == "NGVD29":
+            key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
+            if key in elevations:
+                z = elevations[key]
+            else:
+                z = convert_ngvd29_to_navd88(
+                    z, transformed_point.x, transformed_point.y
+                )
+            elevations[key] = z
+    else:
+        elevation_from_epqs = True
+        logger.info(
+            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
+        )
+        z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
+
+    if elevation_from_epqs:
+        elevation_method = "USGS National Elevation Dataset (NED)"
+    elif pd.isna(row.AltitudeMethod):
+        elevation_method = None
+    else:
+        elevation_method = lexicon_mapper.map_value(
+            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
+        )
+
+    location = Location(
+        nma_pk_location=row.LocationId,
+        point=transformed_point.wkt,
+        elevation=z,
+        release_status="public" if row.PublicRelease else "private",
+        created_at=created_at,
+        nma_coordinate_notes=row.CoordinateNotes,
+        nma_notes_location=row.LocationNotes,
+    )
+
+    return location, elevation_method
+
+
+def make_location_data_provenance(
+    row: pd.Series, location: Location, elevation_method: str | None
+) -> list[DataProvenance]:
+    provenance_records = []
+
+    if row.AltitudeAccuracy or row.CoordinateAccuracy:
+        provenance = DataProvenance(
+            target_id=location.id,
+            target_table="location",
+            field_name="elevation",
+            origin_source=None,
+            collection_method=elevation_method,
+            accuracy_value=(
+                None
+                if pd.isna(row.AltitudeAccuracy)
+                else convert_ft_to_m(row.AltitudeAccuracy)
+            ),
+            accuracy_unit="m",
+        )
+        provenance_records.append(provenance)
 
     # TODO: AMP feedback is required for transfering coordinate accuracy values
     #       from NM_Aquifer to Ocotillo
@@ -318,22 +354,29 @@ def make_location(row: pd.Series) -> Location:
     #     minus_latitude = original_latitude - coordinate_accuracy_decimal_deg
     #     minus_point_decimal_deg = Point(minus_longitude, minus_latitude)
 
-    location = Location(
-        nma_pk_location=row.LocationId,
-        # name=row.PointID,
-        point=transformed_point.wkt,
-        elevation=z,
-        release_status="public" if row.PublicRelease else "private",
-        elevation_accuracy=row.AltitudeAccuracy,
-        elevation_method=elevation_method,
-        created_at=created_at,
-        # TODO: get AMP feedback on transfering these values. See above note
-        # coordinate_accuracy=row.CoordinateAccuracy,
-        coordinate_method=coordinate_method,
-        nma_coordinate_notes=row.CoordinateNotes,
-        nma_notes_location=row.LocationNotes,
-    )
-    return location
+    if row.CoordinateMethod or row.CoordinateAccuracy:
+        coordinate_method = (
+            lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
+            if not pd.isna(row.CoordinateMethod)
+            else None
+        )
+
+        accuracy_value, accuracy_unit = NMA_COORDINATE_ACCURACY.get(
+            row.CoordinateAccuracy, (None, None)
+        )
+
+        provenance = DataProvenance(
+            target_id=location.id,
+            target_table="location",
+            field_name="point",
+            origin_source=None,
+            collection_method=coordinate_method,
+            accuracy_value=accuracy_value,
+            accuracy_unit=accuracy_unit,
+        )
+        provenance_records.append(provenance)
+
+    return provenance_records
 
 
 def timeit_direct(func, *args, **kwargs):

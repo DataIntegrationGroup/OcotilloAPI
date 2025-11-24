@@ -24,16 +24,11 @@ class GeoJSONGeometry(BaseModel):
     Geometry schema for GeoJSON response.
     """
 
-    type: str
-    coordinates: (
-        List[float]
-        | List[List[float]]
-        | List[List[List[float]]]
-        | List[List[List[List[float]]]]
-    )
+    type: str = "MULTIPOLYGON"
+    coordinates: List[List[List[float]]]
 
 
-class GeologicFormationResponse(BaseResponseModel):
+class GeoJSONProperties(BaseResponseModel):
     """
     Response schema for geologic formation details.
     """
@@ -41,7 +36,16 @@ class GeologicFormationResponse(BaseResponseModel):
     formation_code: str | None = None
     description: str | None = None
     lithology: str | None = None
-    boundary: GeoJSONGeometry | None = None
+
+
+class GeologicFormationGeoJSONResponse(BaseModel):
+    """
+    Response schema for geologic formation details.
+    """
+
+    type: str = "Feature"
+    geometry: GeoJSONGeometry
+    properties: GeoJSONProperties
 
 
 class ThingGeologicFormationAssociationResponse(BaseResponseModel):
@@ -52,7 +56,7 @@ class ThingGeologicFormationAssociationResponse(BaseResponseModel):
 
     thing_id: int
     geologic_formation_id: int | None = None
-    geologic_formation: GeologicFormationResponse | None = None
+    geologic_formation: GeologicFormationGeoJSONResponse | None = None
     top_depth: float
     top_depth_unit: str = "ft"
     bottom_depth: float

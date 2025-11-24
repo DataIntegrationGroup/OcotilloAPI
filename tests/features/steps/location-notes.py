@@ -16,9 +16,10 @@
 from behave import when, then
 
 
-@when("the user retrieves the location with ID 1")
+@when("the user retrieves the location by ID via path parameter")
 def step_impl(context):
-    context.response = context.client.get("location/1")
+    location_id = context.objects["locations"][0].id
+    context.response = context.client.get(f"location/{location_id}")
 
 
 @then("the response should include a current location")
@@ -28,15 +29,33 @@ def step_impl(context):
 
 @then("the current location should include notes")
 def step_impl(context):
-    context.notes = context.response.json()["current_location"]["notes"]
+    context.notes = context.response.json()["current_location"]["properties"]["notes"]
     assert context.notes
 
 
-# @then("the location should include notes")
-# def step_impl(context):
-#     print(context.response.json())
-#     context.notes = context.response.json()["current_location"]["notes"]
-#     assert context.notes
+@then("the notes should be a list of dictionaries")
+def step_impl(context):
+    assert isinstance(context.notes, list)
+    assert all(isinstance(n, dict) for n in context.notes)
+
+
+@then('each note dictionary should have "content" and "note_type" keys')
+def step_impl(context):
+    for note in context.notes:
+        assert "content" in note
+        assert "note_type" in note
+
+
+@then("each note in the notes list should be a non-empty string")
+def step_impl(context):
+    for note in context.notes:
+        assert note["content"], "Note is empty"
+
+
+@then("the location response should include notes")
+def step_impl(context):
+    context.notes = context.response.json()["notes"]
+    assert context.notes
 
 
 # ============= EOF =============================================

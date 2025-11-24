@@ -12,6 +12,11 @@ services:
       - 5432:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
 
   app:
     build: 
@@ -27,7 +32,8 @@ services:
     ports:
       - 8000:8000
     depends_on:
-      - db
+      db:
+        condition: service_healthy # <-- wait for DB to be ready
     links:
       - db
     volumes:

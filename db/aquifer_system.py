@@ -37,7 +37,7 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
     # Lexicon terms were retrieved from NMAquifer's 'LU_AquiferType' table.
     primary_aquifer_type: Mapped[str] = lexicon_term(
         nullable=False,
-        comment="A controlled vocabulary field to classify the aquifer's primary hydrologic properties (e.g., 'Unconfined', 'Confined', 'Perched').",
+        comment="A controlled vocabulary field to classify the aquifer system as a whole (e.g., 'Unconfined', 'Confined', 'Perched').",
     )
     geographic_scale: Mapped[str] = lexicon_term(
         nullable=False,

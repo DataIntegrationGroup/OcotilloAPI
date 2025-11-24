@@ -36,6 +36,9 @@ It includes:
 7.  An `AuditMixin` to add standard audit columns to tables.
 """
 
+import re
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -52,9 +55,11 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
-from sqlalchemy_searchable import make_searchable
 from sqlalchemy_continuum import make_versioned
-import re
+from sqlalchemy_searchable import make_searchable
+
+if TYPE_CHECKING:
+    pass
 
 
 make_versioned()
@@ -172,23 +177,6 @@ class PropertiesMixin:
 
 
 # ============= Polymorphic Helper Mixins =============================================
-class StatusHistoryMixin:
-    """
-    Mixin for models that can have a status history (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    StatusHistory table.
-    """
-
-    @declared_attr
-    def status_history(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "StatusHistory",
-            primaryjoin=f"and_({self.__name__}.id==foreign(StatusHistory.statusable_id), "
-            f"StatusHistory.statusable_type=='{self.__name__}')",
-            cascade="all, delete-orphan",
-            lazy="selectin",
-        )
 
 
 class PermissionMixin:
@@ -205,25 +193,6 @@ class PermissionMixin:
             "Permission",
             primaryjoin=f"and_({self.__name__}.id==foreign(Permission.permissible_id), "
             f"Permission.permissible_type=='{self.__name__}')",
-            lazy="selectin",
-            viewonly=True,
-        )
-
-
-class DataProvenanceMixin:
-    """
-    Mixin for models that can have data provenance records (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    DataProvenance table.
-    """
-
-    @declared_attr
-    def data_provenance(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "DataProvenance",
-            primaryjoin=f"and_({self.__name__}.id==foreign(DataProvenance.target_id), "
-            f"DataProvenance.target_table=='{self.__name__}')",
             lazy="selectin",
             viewonly=True,
         )
