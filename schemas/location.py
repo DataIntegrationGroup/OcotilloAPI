@@ -97,7 +97,7 @@ class GeoJSONUTMCoordinates(BaseModel):
     )
 
 
-class GeoJSONProperties(BaseModel):
+class GeoJSONProperties(BaseResponseModel):
     elevation: float
     elevation_unit: str = "ft"
     vertical_datum: str = "NAVD88"
