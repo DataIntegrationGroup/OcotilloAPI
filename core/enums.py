@@ -76,4 +76,7 @@ GroupType: type[Enum] = build_enum_from_lexicon_category("group_type")
 MonitoringFrequency: type[Enum] = build_enum_from_lexicon_category(
     "monitoring_frequency"
 )
+AquiferType: type[Enum] = build_enum_from_lexicon_category("aquifer_type")
+GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale")
+Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
 # ============= EOF =============================================

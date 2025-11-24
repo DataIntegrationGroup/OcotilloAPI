@@ -587,6 +587,8 @@ def before_all(context):
             alternate_organization="NMBGMR",
         )
 
+        add_well_casing_material(context, session, well_1)
+
         group = add_group(context, session, [well_1, well_2])
 
         elevation_method = add_data_provenance(
