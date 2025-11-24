@@ -147,6 +147,9 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["geometry"]["coordinates"] = coordinates
 
         # populate properties
+        data_dict["properties"]["id"] = data_dict.get("id")
+        data_dict["properties"]["created_at"] = data_dict.get("created_at")
+        data_dict["properties"]["release_status"] = data_dict.get("release_status")
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
