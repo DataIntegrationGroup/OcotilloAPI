@@ -290,6 +290,7 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="joined",
     )
 
     # Many-To-Many: A Thing can penetrate many GeologicFormations.
@@ -299,6 +300,7 @@ class Thing(
             back_populates="thing",
             cascade="all, delete-orphan",
             passive_deletes=True,
+            lazy="joined",
         )
     )
 

@@ -47,4 +47,5 @@ class ThingAquiferAssociation(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="thing_aquifer_association",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        lazy="joined",
     )
