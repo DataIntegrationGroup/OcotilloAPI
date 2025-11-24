@@ -528,6 +528,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
         "AquiferSystem", back_populates="well_screens", passive_deletes=True
     )
 
+    geologic_formation: Mapped["GeologicFormation"] = relationship(
+        "GeologicFormation", back_populates="well_screens", passive_deletes=True
+    )
+
 
 class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):
     """
