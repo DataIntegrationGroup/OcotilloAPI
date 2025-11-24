@@ -20,8 +20,13 @@ from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location, read_csv, replace_nans
 from transfers.logger import logger
+from transfers.util import (
+    make_location,
+    make_location_data_provenance,
+    read_csv,
+    replace_nans,
+)
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
@@ -32,6 +37,9 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     ldf = replace_nans(ldf)
     n = len(ldf)
     start_time = time.time()
+
+    cached_elevations = {}
+
     for i, row in enumerate(ldf.itertuples()):
         pointid = row.PointID
         if ldf[ldf["PointID"] == pointid].shape[0] > 1:
@@ -49,7 +57,15 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             session.commit()
 
         try:
-            location = make_location(row)
+            location, elevation_method = make_location(row, cached_elevations)
+            session.add(location)
+            session.flush()
+            data_provenances = make_location_data_provenance(
+                row, location, elevation_method
+            )
+            for dp in data_provenances:
+                session.add(dp)
+
             payload = make_payload(row)
             thing_type = payload.pop("thing_type")
             thing = add_thing(session, payload, thing_type=thing_type)

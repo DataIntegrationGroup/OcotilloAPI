@@ -211,6 +211,7 @@ def test_patch_water_chemistry_observation_404_wrong_activity_type(
 # ============= Get tests =================
 
 
+@pytest.mark.skip(reason="No longer supported")
 def test_get_transducer_observations():
     response = client.get("/observation/transducer-groundwater-level")
     assert response.status_code == 200
