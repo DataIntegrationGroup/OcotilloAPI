@@ -25,16 +25,11 @@ class GeoJSONGeometry(BaseModel):
     Geometry schema for GeoJSON response.
     """
 
-    type: str
-    coordinates: (
-        List[float]
-        | List[List[float]]
-        | List[List[List[float]]]
-        | List[List[List[List[float]]]]
-    )
+    type: str = "MULTIPOLYGON"
+    coordinates: List[List[List[float]]]
 
 
-class AquiferSystemResponse(BaseResponseModel):
+class GeoJSONProperties(BaseResponseModel):
     """
     Response schema for aquifer system details.
     """
@@ -43,4 +38,13 @@ class AquiferSystemResponse(BaseResponseModel):
     description: str | None = None
     primary_aquifer_type: str
     geographic_scale: str
-    boundary: GeoJSONGeometry | None = None
+
+
+class AquiferSystemGeoJSONResponse(BaseModel):
+    """
+    Response schema for aquifer system details.
+    """
+
+    type: str = "Feature"
+    geometry: GeoJSONGeometry
+    properties: GeoJSONProperties
