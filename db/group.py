@@ -16,7 +16,7 @@
 from typing import Optional, List, TYPE_CHECKING
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 class Group(Base, AutoBaseMixin, ReleaseMixin):
     # --- Column Definitions ---
-    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=True)
     project_area: Mapped[Optional[WKBElement]] = mapped_column(
         Geometry(geometry_type="MULTIPOLYGON", srid=SRID_WGS84, spatial_index=True)
@@ -54,6 +54,10 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
     # Many-To-Many Proxy: Provides direct access to the Thing objects in this group.
     things: AssociationProxy[List["Thing"]] = association_proxy(
         "thing_associations", "thing"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("name", "group_type", name="uq_group_name_group_type"),
     )
 
 
