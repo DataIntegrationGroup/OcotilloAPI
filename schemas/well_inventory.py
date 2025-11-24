@@ -231,6 +231,7 @@ class WellInventoryRow(BaseModel):
     casing_diameter_ft: OptionalFloat = None
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
+    well_purpose_2: WellPurposeField = None
     well_hole_status: Optional[str] = None
     monitoring_frequency: MonitoryFrequencyField = None
 
@@ -239,22 +240,6 @@ class WellInventoryRow(BaseModel):
     sampling_scenario_notes: Optional[str] = None
     well_measuring_notes: Optional[str] = None
     sample_possible: OptionalBool = None
-
-    # @field_validator("contact_1_address_1_postal_code", mode="before")
-    # def validate_postal_code(cls, v):
-    #     return postal_code_or_none(v)
-    #
-    # @field_validator("contact_2_address_1_postal_code", mode="before")
-    # def validate_postal_code_2(cls, v):
-    #     return postal_code_or_none(v)
-    #
-    # @field_validator("contact_1_address_2_postal_code", mode="before")
-    # def validate_postal_code_3(cls, v):
-    #     return postal_code_or_none(v)
-    #
-    # @field_validator("contact_2_address_2_postal_code", mode="before")
-    # def validate_postal_code_4(cls, v):
-    #     return postal_code_or_none(v)
 
     @model_validator(mode="after")
     def validate_model(self):

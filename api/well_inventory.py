@@ -424,6 +424,10 @@ def _add_csv_row(session, group, model, user):
         well_purpose = WellPurpose(purpose=model.well_purpose, thing=well)
         session.add(well_purpose)
 
+    if model.well_purpose_2:
+        well_purpose = WellPurpose(purpose=model.well_purpose_2, thing=well)
+        session.add(well_purpose)
+
     # BDMS-221 adds MeasuringPointHistory model
     measuring_point_height_ft = model.measuring_point_height_ft
     if measuring_point_height_ft:
