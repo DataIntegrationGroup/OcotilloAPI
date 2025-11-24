@@ -246,8 +246,7 @@ class WellResponse(BaseThingResponse):
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
-    aquifer_systems: list[str] = []
-
+    aquifers: list[dict] = []
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
@@ -270,14 +269,6 @@ class WellResponse(BaseThingResponse):
         else:
             materials = []
         return materials
-
-    @field_validator("aquifer_systems", mode="before")
-    def populate_aquifer_types_with_strings(cls, aquifer_systems):
-        if aquifer_systems is not None:
-            systems = [aquifer_system.name for aquifer_system in aquifer_systems]
-        else:
-            systems = []
-        return systems
 
 
 class SpringResponse(BaseThingResponse):

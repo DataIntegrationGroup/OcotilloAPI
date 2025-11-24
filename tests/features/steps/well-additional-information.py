@@ -187,20 +187,23 @@ def step_impl(context):
     "the response should include the aquifer class code to classify the aquifer into aquifer system."
 )
 def step_impl(context):
-    assert "aquifer_systems" in context.water_well_data
-    assert sorted(context.water_well_data["aquifer_systems"]) == sorted(
-        [system.name for system in context.objects["aquifer_systems"]]
-    )
+    for aquifer in context.water_well_data["aquifers"]:
+        assert "aquifer_system" in aquifer
+    assert sorted(
+        [a.get("aquifer_system") for a in context.water_well_data["aquifers"]]
+    ) == sorted([system.name for system in context.objects["aquifer_systems"]])
 
 
-# TODO: needs to be added to model, schemas, test data
-# TODO: should this be plural? that is, a descriptor model of the well
 @then(
     "the response should include the aquifer type as the type of aquifers penetrated by the well"
 )
 def step_impl(context):
-    assert "aquifer_type" in context.water_well_data
-    assert (
-        context.water_well_data["aquifer_type"]
-        == context.objects["wells"][0].aquifer_type
-    )
+    for aquifer in context.water_well_data["aquifers"]:
+        assert "aquifer_types" in aquifer
+
+        if aquifer["aquifer_system"] == "Aquifer A":
+            assert sorted(aquifer["aquifer_types"]) == sorted(
+                [a.aquifer_type for a in context.objects["aquifer_types"]]
+            )
+        else:
+            assert aquifer["aquifer_types"] == []

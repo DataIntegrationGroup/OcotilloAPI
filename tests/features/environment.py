@@ -38,6 +38,7 @@ from db import (
     MonitoringFrequencyHistory,
     DataProvenance,
     AquiferSystem,
+    AquiferType,
     ThingAquiferAssociation,
 )
 from db.engine import session_ctx
@@ -438,17 +439,38 @@ def add_aquifer_system(context, session, name, well):
     session.commit()
     session.refresh(aquifer_system)
 
-    association = ThingAquiferAssociation(thing=well, aquifer_system=aquifer_system)
-    session.add(association)
-    session.commit()
-
     context.objects["aquifer_systems"].append(aquifer_system)
     return aquifer_system
 
 
+@add_context_object_container("thing_aquifer_associations")
+def add_thing_aquifer_association(context, session, well, aquifer_system):
+    association = ThingAquiferAssociation(thing=well, aquifer_system=aquifer_system)
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["thing_aquifer_associations"].append(association)
+    return association
+
+
+@add_context_object_container("aquifer_types")
+def add_aquifer_type(context, session, aquifer_type_str, thing_aquifer_association):
+    aquifer_type = AquiferType(
+        aquifer_type=aquifer_type_str,
+        thing_aquifer_association=thing_aquifer_association,
+    )
+    session.add(aquifer_type)
+    session.commit()
+    session.refresh(aquifer_type)
+
+    context.objects["aquifer_types"].append(aquifer_type)
+    return aquifer_type
+
+
 def before_all(context):
     context.objects = {}
-    rebuild = True
+    rebuild = False
     # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
@@ -655,7 +677,12 @@ def before_all(context):
             add_well_purpose(context, session, well_1, purpose)
 
         for name in ["Aquifer A", "Aquifer B"]:
-            add_aquifer_system(context, session, name, well_1)
+            system = add_aquifer_system(context, session, name, well_1)
+            add_thing_aquifer_association(context, session, well_1, system)
+
+        for t in ["Artesian", "Fractured"]:
+            taa = context.objects["thing_aquifer_associations"][0]
+            add_aquifer_type(context, session, t, taa)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
