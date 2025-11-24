@@ -303,6 +303,12 @@ def step_impl(context: Context):
 def step_impl(context: Context):
     df = _get_valid_df(context)
     df["well_name_point_id"] = df["well_name_point_id"].apply(lambda x: "XY-")
+
+    # change contact name
+    df.loc[0, "contact_1_name"] = "Contact 1"
+    df.loc[0, "contact_2_name"] = "Contact 2"
+    df.loc[1, "contact_1_name"] = "Contact 3"
+
     _set_content_from_df(context, df)
 
 

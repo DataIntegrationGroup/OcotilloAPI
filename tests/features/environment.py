@@ -357,7 +357,7 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 def before_all(context):
     context.objects = {}
     rebuild = False
-    # rebuild = True
+    rebuild = True
     if rebuild:
         erase_and_rebuild_db()
 

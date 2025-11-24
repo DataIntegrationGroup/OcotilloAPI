@@ -118,7 +118,9 @@ AddressTypeField: TypeAlias = Annotated[
     Optional[AddressType], BeforeValidator(blank_to_none)
 ]
 ContactRoleField: TypeAlias = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
-FloatOrNone: TypeAlias = Annotated[Optional[float], BeforeValidator(empty_str_to_none)]
+OptionalFloat: TypeAlias = Annotated[
+    Optional[float], BeforeValidator(empty_str_to_none)
+]
 MonitoryFrequencyField: TypeAlias = Annotated[
     Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
 ]
@@ -129,6 +131,11 @@ StateField: TypeAlias = Annotated[Optional[str], BeforeValidator(state_validator
 PhoneField: TypeAlias = Annotated[Optional[str], BeforeValidator(phone_validator)]
 EmailField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(email_validator_function)
+]
+
+OptionalBool: TypeAlias = Annotated[Optional[bool], BeforeValidator(empty_str_to_none)]
+OptionalDateTime: TypeAlias = Annotated[
+    Optional[datetime], BeforeValidator(empty_str_to_none)
 ]
 
 
@@ -203,22 +210,22 @@ class WellInventoryRow(BaseModel):
 
     directions_to_site: Optional[str] = None
     specific_location_of_well: Optional[str] = None
-    repeat_measurement_permission: Optional[bool] = None
-    sampling_permission: Optional[bool] = None
-    datalogger_installation_permission: Optional[bool] = None
-    public_availability_acknowledgement: Optional[bool] = None
+    repeat_measurement_permission: OptionalBool = None
+    sampling_permission: OptionalBool = None
+    datalogger_installation_permission: OptionalBool = None
+    public_availability_acknowledgement: OptionalBool = None
     special_requests: Optional[str] = None
     ose_well_record_id: Optional[str] = None
-    date_drilled: Optional[datetime] = None
+    date_drilled: OptionalDateTime = None
     completion_source: Optional[str] = None
-    total_well_depth_ft: FloatOrNone = None
+    total_well_depth_ft: OptionalFloat = None
     historic_depth_to_water_ft: Optional[float] = None
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
-    well_pump_depth_ft: FloatOrNone = None
-    is_open: Optional[bool] = None
-    datalogger_possible: Optional[bool] = None
-    casing_diameter_ft: FloatOrNone = None
+    well_pump_depth_ft: OptionalFloat = None
+    is_open: OptionalBool = None
+    datalogger_possible: OptionalBool = None
+    casing_diameter_ft: OptionalFloat = None
     measuring_point_description: Optional[str] = None
     well_purpose: Optional[WellPurposeEnum] = None
     well_hole_status: Optional[str] = None
@@ -228,7 +235,7 @@ class WellInventoryRow(BaseModel):
     contact_special_requests_notes: Optional[str] = None
     sampling_scenario_notes: Optional[str] = None
     well_measuring_notes: Optional[str] = None
-    sample_possible: Optional[bool] = None
+    sample_possible: OptionalBool = None
 
     # @field_validator("contact_1_address_1_postal_code", mode="before")
     # def validate_postal_code(cls, v):
