@@ -37,6 +37,7 @@ from db import (
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
     DataProvenance,
+    AquiferSystem,
 )
 from db.engine import session_ctx
 
@@ -423,9 +424,26 @@ def add_transducer_observation(context, session, block, deployment_id, value):
     return obs
 
 
+@add_context_object_container("aquifer_systems")
+def add_aquifer_system(context, session, name, well):
+    aquifer_system = AquiferSystem(
+        name=name,
+        description="this is a test aquifer",
+        primary_aquifer_type="Artesian",
+        geographic_scale="Major",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(aquifer_system)
+    session.commit()
+    session.refresh(aquifer_system)
+
+    context.objects["aquifer_systems"].append(aquifer_system)
+    return aquifer_system
+
+
 def before_all(context):
     context.objects = {}
-    rebuild = False
+    rebuild = True
     # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
@@ -630,6 +648,9 @@ def before_all(context):
 
         for purpose in ["Domestic", "Irrigation"]:
             add_well_purpose(context, session, well_1, purpose)
+
+        for name in ["Aquifer A", "Aquifer B"]:
+            add_aquifer_system(context, session, name, well_1)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)

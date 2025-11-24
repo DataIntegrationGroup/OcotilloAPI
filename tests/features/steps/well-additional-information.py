@@ -55,7 +55,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the completion date of the well")
 def step_impl(context):
     assert "well_completion_date" in context.water_well_data
@@ -74,7 +73,6 @@ def step_impl(context):
     )
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the driller name")
 def step_impl(context):
     assert "well_driller_name" in context.water_well_data
@@ -107,7 +105,6 @@ def step_impl(context):
 # ------------------------------------------------------------------------------
 
 
-# TODO: the transfer script needs to convert ft to in
 @then("the response should include the casing diameter in inches")
 def step_impl(context):
     assert "well_casing_diameter" in context.water_well_data
@@ -140,8 +137,6 @@ def step_impl(context):
     )
 
 
-# TODO: needs to be added to model, schemas, test data
-# TODO: needs to be added to lexicon and an enum should be created
 @then("the response should include the well pump type (previously well_type field)")
 def step_impl(context):
     assert "well_pump_type" in context.water_well_data
@@ -151,7 +146,6 @@ def step_impl(context):
     )
 
 
-# TODO: needs to be added to model, schemas, test data
 @then("the response should include the well pump depth in feet (new field)")
 def step_impl(context):
     assert "well_pump_depth" in context.water_well_data
@@ -194,10 +188,10 @@ def step_impl(context):
     "the response should include the aquifer class code to classify the aquifer into aquifer system."
 )
 def step_impl(context):
-    assert "aquifer_class_code" in context.water_well_data
+    assert "aquifer_systems" in context.water_well_data
     assert (
-        context.water_well_data["aquifer_class_code"]
-        == context.objects["wells"][0].aquifer_class_code
+        context.water_well_data["aquifer_systems"]
+        == context.objects["wells"][0].aquifer_systems
     )
 
 

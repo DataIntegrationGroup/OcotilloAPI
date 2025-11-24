@@ -332,7 +332,7 @@ class Thing(
     )
 
     # Proxy to directly access AquiferSystems associated with this Thing
-    aquifers: AssociationProxy[List["AquiferSystem"]] = association_proxy(
+    aquifer_systems: AssociationProxy[List["AquiferSystem"]] = association_proxy(
         "aquifer_associations", "aquifer_system"
     )
 

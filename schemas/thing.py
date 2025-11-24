@@ -33,10 +33,11 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-from schemas.aquifer_system import AquiferSystemResponse
-from schemas.geologic_formation import (
-    GeologicFormationResponse,
-)
+from schemas.aquifer_system import AquiferSystemGeoJSONResponse
+
+# from schemas.geologic_formation import (
+#     GeologicFormationResponse,
+# )
 
 # -------- VALIDATE ----------
 
@@ -245,6 +246,7 @@ class WellResponse(BaseThingResponse):
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
+    aquifer_systems: list[str] = []
 
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
@@ -269,6 +271,14 @@ class WellResponse(BaseThingResponse):
             materials = []
         return materials
 
+    @field_validator("aquifer_systems", mode="before")
+    def populate_aquifer_types_with_strings(cls, aquifer_systems):
+        if aquifer_systems is not None:
+            systems = [aquifer_system.name for aquifer_system in aquifer_systems]
+        else:
+            systems = []
+        return systems
+
 
 class SpringResponse(BaseThingResponse):
     """
@@ -291,9 +301,10 @@ class WellScreenResponse(BaseResponseModel):
     thing_id: int
     thing: WellResponse
     aquifer_system_id: int | None = None
-    aquifer_system: AquiferSystemResponse | None = None
+    aquifer_system: AquiferSystemGeoJSONResponse | None = None
+    aquifer_type: str | None = None
     geologic_formation_id: int | None = None
-    geologic_formation: GeologicFormationResponse | None = None
+    # geologic_formation: GeologicFormationResponse | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
