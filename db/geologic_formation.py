@@ -79,7 +79,4 @@ class GeologicFormation(Base, AutoBaseMixin, ReleaseMixin):
     things: AssociationProxy["Thing"] = association_proxy("thing_associations", "thing")
 
     # --- Table Arguments ---
-    __table_args__ = (
-        Index("ix_geologicformation_name", "name"),
-        Index("ix_geologicformation_code", "code"),
-    )
+    __table_args__ = (Index("ix_geologicformation_formation_code", "formation_code"),)

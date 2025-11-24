@@ -81,4 +81,4 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Table Arguments ---
-    __table_args__ = Index("ix_aquifersystem_name", "name")
+    __table_args__ = (Index("ix_aquifersystem_name", "name"),)
