@@ -55,7 +55,7 @@
     {"name": "status_value", "description": null},
     {"name": "origin_source", "description": null},
     {"name": "well_pump_type", "description": null},
-    {"name": "permission_type", "description": null}
+    {"name": "permission_type", "description": null},
     {"name": "formation_code", "description": null},
     {"name": "lithology", "description": null}
   ],
