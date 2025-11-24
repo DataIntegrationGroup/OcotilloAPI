@@ -24,6 +24,8 @@ from core.enums import (
     ScreenType,
     Organization,
     MonitoringFrequency,
+    Organization,
+    MonitoringFrequency,
     WellConstructionMethod,
     WellPumpType,
 )
@@ -31,7 +33,11 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
+from schemas.aquifer_system import AquiferSystemGeoJSONResponse
 
+# from schemas.geologic_formation import (
+#     GeologicFormationResponse,
+# )
 
 # -------- VALIDATE ----------
 
@@ -154,6 +160,8 @@ class CreateWellScreen(BaseCreateModel):
     """
 
     thing_id: int
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
     screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
     screen_type: ScreenType | None = None
@@ -244,7 +252,8 @@ class WellResponse(BaseThingResponse):
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
-
+    aquifers: list[dict] = []
+    geologic_formations: list[str] = []
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
@@ -268,6 +277,14 @@ class WellResponse(BaseThingResponse):
             materials = []
         return materials
 
+    @field_validator("geologic_formations", mode="before")
+    def populate_geologic_formations_with_strings(cls, geologic_formations):
+        if geologic_formations is not None:
+            formations = [formation.formation_code for formation in geologic_formations]
+        else:
+            formations = []
+        return formations
+
 
 class SpringResponse(BaseThingResponse):
     """
@@ -289,6 +306,11 @@ class WellScreenResponse(BaseResponseModel):
 
     thing_id: int
     thing: WellResponse
+    aquifer_system_id: int | None = None
+    aquifer_system: AquiferSystemGeoJSONResponse | None = None
+    aquifer_type: str | None = None
+    geologic_formation_id: int | None = None
+    # geologic_formation: GeologicFormationResponse | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
@@ -362,6 +384,8 @@ class UpdateThingIdLink(BaseUpdateModel):
 
 
 class UpdateWellScreen(BaseUpdateModel):
+    aquifer_system_id: int | None = None
+    geologic_formation_id: int | None = None
     screen_depth_bottom: float | None = None
     screen_depth_top: float | None = None
     screen_description: str | None = None

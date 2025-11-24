@@ -37,6 +37,11 @@ from db import (
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
     DataProvenance,
+    AquiferSystem,
+    AquiferType,
+    ThingAquiferAssociation,
+    GeologicFormation,
+    ThingGeologicFormationAssociation,
 )
 from db.engine import session_ctx
 
@@ -423,6 +428,71 @@ def add_transducer_observation(context, session, block, deployment_id, value):
     return obs
 
 
+@add_context_object_container("aquifer_systems")
+def add_aquifer_system(context, session, name, well):
+    aquifer_system = AquiferSystem(
+        name=name,
+        description="this is a test aquifer",
+        primary_aquifer_type="Artesian",
+        geographic_scale="Major",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(aquifer_system)
+    session.commit()
+    session.refresh(aquifer_system)
+
+    context.objects["aquifer_systems"].append(aquifer_system)
+    return aquifer_system
+
+
+@add_context_object_container("thing_aquifer_associations")
+def add_thing_aquifer_association(context, session, well, aquifer_system):
+    association = ThingAquiferAssociation(thing=well, aquifer_system=aquifer_system)
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["thing_aquifer_associations"].append(association)
+    return association
+
+
+@add_context_object_container("aquifer_types")
+def add_aquifer_type(context, session, aquifer_type_str, thing_aquifer_association):
+    aquifer_type = AquiferType(
+        aquifer_type=aquifer_type_str,
+        thing_aquifer_association=thing_aquifer_association,
+    )
+    session.add(aquifer_type)
+    session.commit()
+    session.refresh(aquifer_type)
+
+    context.objects["aquifer_types"].append(aquifer_type)
+    return aquifer_type
+
+
+@add_context_object_container("geologic_formations")
+def add_geologic_formation(context, session, formation_code, well):
+    formation = GeologicFormation(
+        formation_code=formation_code,
+        description="This is a test geologic formation.",
+        lithology="Peat",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(formation)
+    session.commit()
+    session.refresh(formation)
+
+    association = ThingGeologicFormationAssociation(
+        top_depth=1, bottom_depth=10, thing=well, geologic_formation=formation
+    )
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["geologic_formations"].append(formation)
+    return formation
+
+
 def before_all(context):
     context.objects = {}
     rebuild = False
@@ -587,6 +657,8 @@ def before_all(context):
             alternate_organization="NMBGMR",
         )
 
+        add_well_casing_material(context, session, well_1)
+
         group = add_group(context, session, [well_1, well_2])
 
         elevation_method = add_data_provenance(
@@ -628,6 +700,16 @@ def before_all(context):
 
         for purpose in ["Domestic", "Irrigation"]:
             add_well_purpose(context, session, well_1, purpose)
+
+        for name in ["Aquifer A", "Aquifer B"]:
+            system = add_aquifer_system(context, session, name, well_1)
+            add_thing_aquifer_association(context, session, well_1, system)
+
+        for t in ["Artesian", "Fractured"]:
+            taa = context.objects["thing_aquifer_associations"][0]
+            add_aquifer_type(context, session, t, taa)
+
+        add_geologic_formation(context, session, "000EXRV", well_1)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
