@@ -37,6 +37,7 @@ from db import (
     Contact,
 )
 from db.engine import session_ctx
+from services.util import get_bool_env
 
 
 def add_context_object_container(name):
@@ -356,9 +357,8 @@ def add_transducer_observation(context, session, block, deployment_id, value):
 
 def before_all(context):
     context.objects = {}
-    rebuild = False
-    rebuild = True
-    if rebuild:
+
+    if get_bool_env("REBUILD_DB", False):
         erase_and_rebuild_db()
 
     with session_ctx() as session:

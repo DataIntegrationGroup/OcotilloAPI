@@ -1,15 +1,23 @@
 import json
+import os
 
-from shapely.ops import transform
-import pyproj
 import httpx
+import pyproj
+from shapely.ops import transform
 from sqlalchemy.orm import DeclarativeBase
 
 from constants import SRID_WGS84
 
-
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
+
+
+def get_bool_env(name: str, default: bool = False) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    val = val.strip().lower()
+    return val in {"1", "true", "t", "yes", "y", "on"}
 
 
 def transform_srid(geometry, source_srid, target_srid):

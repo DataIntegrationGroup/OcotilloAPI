@@ -124,6 +124,9 @@ OptionalFloat: TypeAlias = Annotated[
 MonitoryFrequencyField: TypeAlias = Annotated[
     Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
 ]
+WellPurposeField: TypeAlias = Annotated[
+    Optional[WellPurposeEnum], BeforeValidator(blank_to_none)
+]
 PostalCodeField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(postal_code_or_none)
 ]
@@ -227,7 +230,7 @@ class WellInventoryRow(BaseModel):
     datalogger_possible: OptionalBool = None
     casing_diameter_ft: OptionalFloat = None
     measuring_point_description: Optional[str] = None
-    well_purpose: Optional[WellPurposeEnum] = None
+    well_purpose: WellPurposeField = None
     well_hole_status: Optional[str] = None
     monitoring_frequency: MonitoryFrequencyField = None
 
