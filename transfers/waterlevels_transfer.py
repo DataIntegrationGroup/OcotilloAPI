@@ -385,6 +385,19 @@ def transfer_water_levels(session):
             logger.info(
                 f"{SPACE_4}Created observation: ID {observation.id} | DT {observation.observation_datetime} | Value {observation.value} | MPHeight {observation.measuring_point_height} | nma_pk_waterlevels {observation.nma_pk_waterlevels}"
             )
+
+            # WaterLevels.SiteNotes --> notes where note_type = "measuring_notes"
+            if not pd.isna(row.SiteNotes):
+                note = thing.add_note(
+                    content=row.SiteNotes,
+                    note_type="Measuring",
+                    release_status=release_status,
+                )
+                session.add(note)
+                logger.info(
+                    f"{SPACE_4}Added 'Measuring' note to Thing ID {thing.id} | Note ID {note.id}"
+                )
+
         session.commit()
 
     return input_df, cleaned_df, errors
