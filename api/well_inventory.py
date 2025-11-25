@@ -391,7 +391,7 @@ async def well_inventory_csv(
 
 
 def _add_field_staff(
-    session: Session, fs: str, field_event: FieldEvent, role: str
+    session: Session, fs: str, field_event: FieldEvent, role: str, user: str
 ) -> None:
     ct = "Field Event Participant"
     org = "NMBGMR"
@@ -403,9 +403,8 @@ def _add_field_staff(
     ).first()
 
     if not contact:
-        contact = Contact(name=fs, role="Technician", organization=org, contact_type=ct)
-        session.add(contact)
-        session.flush()
+        payload = dict(name=fs, role="Technician", organization=org, contact_type=ct)
+        contact = add_contact(session, payload, user)
 
     fec = FieldEventParticipant(
         field_event=field_event, contact_id=contact.id, participant_role=role
@@ -460,7 +459,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         if not fsi:
             continue
 
-        _add_field_staff(session, fsi, fe, role)
+        _add_field_staff(session, fsi, fe, role, user)
 
     # add MonitoringFrequency
     if model.monitoring_frequency:
