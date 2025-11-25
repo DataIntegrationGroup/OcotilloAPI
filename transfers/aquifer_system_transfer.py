@@ -66,9 +66,9 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
         aquifer_name = row.MEANING
 
         if not aquifer_name:
-            logger.warning(
-                f"Row {i} (code: {aquifer_code}) has no aquifer name (MEANING). Skipping."
-            )
+            error_msg = f"Row {i} (code: {aquifer_code}) has no aquifer name (MEANING)."
+            logger.critical(error_msg)
+            errors.append({"row": i, "code": aquifer_code, "error": error_msg})
             skipped_count += 1
             continue
 
