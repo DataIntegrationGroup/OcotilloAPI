@@ -403,7 +403,7 @@ def _add_field_staff(
     ).first()
 
     if not contact:
-        contact = Contact(name=fs, role="Primary", organization=org, contact_type=ct)
+        contact = Contact(name=fs, role="Technician", organization=org, contact_type=ct)
         session.add(contact)
         session.flush()
 
