@@ -265,7 +265,6 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 first_visit_date=first_visit_date,
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
-                well_construction_notes=row.ConstructionNotes,
                 well_casing_diameter=(
                     row.CasingDiameter * 12 if row.CasingDiameter else None
                 ),
@@ -273,9 +272,6 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 release_status="public" if row.PublicRelease else "private",
                 measuring_point_height=row.MPHeight,
                 measuring_point_description=row.MeasuringPoint,
-                notes=(
-                    [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
-                ),
                 well_completion_date=row.CompletionDate,
                 well_driller_name=row.DrillerName,
                 well_construction_method=(
@@ -313,12 +309,12 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "measuring_point_description",
                     "well_completion_date_source",
                     "well_construction_method_source",
+                    "notes",
                 ]
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
 
-            well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
 
@@ -360,9 +356,21 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
     # add things thate need well id
     for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
         row = wdf[wdf["PointID"] == well.name].iloc[0]
-        if not isna(row.Notes):
-            note = well.add_note(row.Notes, "Other")
-            session.add(note)
+
+        notes = []
+        if row.Notes:
+            notes.append({"content": row.Notes, "note_type": "Other"})
+        if row.ConstructionNotes:
+            notes.append(
+                {"content": row.ConstructionNotes, "note_type": "Construction"}
+            )
+        if row.WaterNotes:
+            notes.append({"content": row.WaterNotes, "note_type": "Water"})
+        if notes:
+            for note in notes:
+                n = well.add_note(note["content"], note["note_type"])
+                session.add(n)
+                print("ADDED NOTES!!!")
 
         location = well.current_location
         elevation_method = added_locations[row.PointID]
