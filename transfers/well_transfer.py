@@ -227,9 +227,12 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         location = None
         try:
-            location, elevation_method = make_location(row, cached_elevations)
+            location, elevation_method, location_notes = make_location(
+                row, cached_elevations
+            )
             session.add(location)
-            added_locations[row.PointID] = elevation_method
+
+            added_locations[row.PointID] = elevation_method, location_notes
         except Exception as e:
             if location is not None:
                 session.expunge(location)
@@ -370,13 +373,21 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             for note in notes:
                 n = well.add_note(note["content"], note["note_type"])
                 session.add(n)
-                print("ADDED NOTES!!!")
 
         location = well.current_location
-        elevation_method = added_locations[row.PointID]
+        elevation_method, location_notes = added_locations[row.PointID]
         data_provenances = make_location_data_provenance(
             row, location, elevation_method
         )
+
+        for note_type, note_content in location_notes.items():
+            if not isna(note_content):
+                ln = location.add_note(note_content, note_type)
+                session.add(ln)
+                logger.info(
+                    f"Added note of type {note_type} for current location of well {well.name}"
+                )
+
         for dp in data_provenances:
             session.add(dp)
 

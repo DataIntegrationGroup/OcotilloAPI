@@ -191,7 +191,7 @@ def chunk_by_size(df, chunk_size):
 
 def make_location(row: pd.Series, elevations: dict) -> tuple:
     """
-    Returns a tuple of location data and the elevation method
+    Returns a tuple of location data, elevation method, and notes
     """
     point = Point(row.Easting, row.Northing)
 
@@ -257,17 +257,20 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
             f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
+    notes = {
+        "Coordinate": row.CoordinateNotes,
+        "Other": row.LocationNotes,
+    }
+
     location = Location(
         nma_pk_location=row.LocationId,
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
         created_at=created_at,
-        nma_coordinate_notes=row.CoordinateNotes,
-        nma_notes_location=row.LocationNotes,
     )
 
-    return location, elevation_method
+    return location, elevation_method, notes
 
 
 def make_location_data_provenance(
