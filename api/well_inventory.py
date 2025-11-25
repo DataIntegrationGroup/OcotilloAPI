@@ -27,6 +27,7 @@ from pydantic import ValidationError
 from shapely import Point
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
 from starlette.status import (
     HTTP_201_CREATED,
     HTTP_422_UNPROCESSABLE_ENTITY,
@@ -43,6 +44,9 @@ from db import (
     LocationThingAssociation,
     MeasuringPointHistory,
     DataProvenance,
+    FieldEvent,
+    FieldEventParticipant,
+    Contact,
 )
 from db.thing import Thing, WellPurpose, MonitoringFrequencyHistory
 from schemas.thing import CreateWell
@@ -340,11 +344,19 @@ async def well_inventory_csv(
                         added = _add_csv_row(session, group, model, user)
                         if added:
                             session.commit()
+                    except ValueError as e:
+                        validation_errors.append(
+                            {
+                                "row": model.well_name_point_id,
+                                "field": "Invalid value",
+                                "error": str(e),
+                            }
+                        )
+                        continue
                     except DatabaseError as e:
                         logging.error(
                             f"Database error while importing row '{model.well_name_point_id}': {e}"
                         )
-                        print(e)
                         validation_errors.append(
                             {
                                 "row": model.well_name_point_id,
@@ -378,12 +390,33 @@ async def well_inventory_csv(
     )
 
 
-def _add_csv_row(session, group, model, user):
+def _add_field_staff(
+    session: Session, fs: str, field_event: FieldEvent, role: str
+) -> None:
+    ct = "Field Event Participant"
+    org = "NMBGMR"
+    contact = session.scalars(
+        select(Contact)
+        .where(Contact.name == fs)
+        .where(Contact.organization == org)
+        .where(Contact.contact_type == ct)
+    ).first()
+
+    if not contact:
+        contact = Contact(name=fs, role="Primary", organization=org, contact_type=ct)
+        session.add(contact)
+        session.flush()
+
+    fec = FieldEventParticipant(
+        field_event=field_event, contact_id=contact.id, participant_role=role
+    )
+    session.add(fec)
+
+
+def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) -> str:
     name = model.well_name_point_id
     date_time = model.date_time
     site_name = model.site_name
-
-    # add field staff
 
     # add Thing
     data = CreateWell(
@@ -410,6 +443,25 @@ def _add_csv_row(session, group, model, user):
     modify_well_descriptor_tables(session, well, data, user)
     session.refresh(well)
 
+    # add field event
+    fe = FieldEvent(
+        event_date=date_time,
+        notes="Initial field event from well inventory import",
+        thing_id=well.id,
+    )
+    session.add(fe)
+
+    # add field staff
+    for fsi, role in (
+        (model.field_staff, "Lead"),
+        (model.field_staff_2, "Participant"),
+        (model.field_staff_3, "Participant"),
+    ):
+        if not fsi:
+            continue
+
+        _add_field_staff(session, fsi, fe, role)
+
     # add MonitoringFrequency
     if model.monitoring_frequency:
         mfh = MonitoringFrequencyHistory(
@@ -420,13 +472,11 @@ def _add_csv_row(session, group, model, user):
         session.add(mfh)
 
     # add WellPurpose
-    if model.well_purpose:
-        well_purpose = WellPurpose(purpose=model.well_purpose, thing=well)
-        session.add(well_purpose)
-
-    if model.well_purpose_2:
-        well_purpose = WellPurpose(purpose=model.well_purpose_2, thing=well)
-        session.add(well_purpose)
+    for p in (model.well_purpose, model.well_purpose_2):
+        if not p:
+            continue
+        wp = WellPurpose(purpose=p, thing=well)
+        session.add(wp)
 
     # BDMS-221 adds MeasuringPointHistory model
     measuring_point_height_ft = model.measuring_point_height_ft
