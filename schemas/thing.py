@@ -120,7 +120,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     hole_depth: float | None = Field(
         default=None, gt=0, description="Hole depth in feet"
     )
-    well_construction_notes: str | None = None
     well_casing_diameter: float | None = Field(
         default=None, gt=0, description="Well casing diameter in inches"
     )
@@ -231,7 +230,6 @@ class WellResponse(BaseThingResponse):
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
-    well_construction_notes: str | None = None
     well_completion_date: PastOrTodayDate | None
     well_completion_date_source: str | None
     well_driller_name: str | None
@@ -250,6 +248,7 @@ class WellResponse(BaseThingResponse):
     measuring_point_description: str | None
     aquifers: list[dict] = []
     geologic_formations: list[str] = []
+    construction_notes: list[NoteResponse] | None = None
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
