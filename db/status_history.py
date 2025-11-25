@@ -19,7 +19,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, declared_attr, relationship, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term, pascal_to_snake
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
 class StatusHistory(Base, AutoBaseMixin, ReleaseMixin):
@@ -47,7 +47,7 @@ class StatusHistoryMixin:
             "StatusHistory",
             primaryjoin=and_(
                 cls.id == foreign(StatusHistory.target_id),
-                StatusHistory.target_table == pascal_to_snake(cls.__name__),
+                StatusHistory.target_table == cls.__tablename__,
             ),
             cascade="all, delete-orphan",
             lazy="selectin",

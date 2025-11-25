@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, Index, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, pascal_to_snake
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 from db import lexicon_term
 
@@ -120,7 +120,7 @@ class DataProvenanceMixin:
             "DataProvenance",
             primaryjoin=and_(
                 cls.id == foreign(DataProvenance.target_id),
-                DataProvenance.target_table == pascal_to_snake(cls.__name__),
+                DataProvenance.target_table == cls.__tablename__,
             ),
             lazy="selectin",
             viewonly=True,

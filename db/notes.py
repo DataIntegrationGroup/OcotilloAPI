@@ -97,7 +97,7 @@ class NotesMixin:
             "Notes",
             primaryjoin=and_(
                 cls.id == foreign(Notes.target_id),
-                Notes.target_table == cls.__name__,
+                Notes.target_table == cls.__tablename__,
             ),
             cascade="all, delete-orphan",
             lazy="selectin",
