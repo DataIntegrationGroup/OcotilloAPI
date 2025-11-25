@@ -78,4 +78,5 @@ WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
 AquiferType: type[Enum] = build_enum_from_lexicon_category("aquifer_type")
 GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale")
 Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
+FormationCode: type[Enum] = build_enum_from_lexicon_category("formation_code")
 # ============= EOF =============================================
