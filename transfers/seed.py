@@ -15,7 +15,13 @@ from geoalchemy2.elements import WKTElement
 # Core models
 from db.contact import Contact, ThingContactAssociation, Email, Phone, Address
 from db.location import Location, LocationThingAssociation
-from db.thing import Thing, ThingIdLink, WellPurpose, WellCasingMaterial, MonitoringFrequencyHistory
+from db.thing import (
+    Thing,
+    ThingIdLink,
+    WellPurpose,
+    WellCasingMaterial,
+    MonitoringFrequencyHistory,
+)
 from db.measuring_point_history import MeasuringPointHistory
 from db.sensor import Sensor
 from db.deployment import Deployment
@@ -95,7 +101,7 @@ def seed_all(n: int = 5):
             )
             s.add(c)
             s.flush()  # Need ID for related records
-            
+
             # Add email
             email = Email(
                 contact_id=c.id,
@@ -104,21 +110,23 @@ def seed_all(n: int = 5):
                 release_status="public",
             )
             s.add(email)
-            
+
             # Add phone
             phone = Phone(
                 contact_id=c.id,
-                phone_number=fake.numerify('##########')[:20],
+                phone_number=fake.numerify("##########")[:20],
                 phone_type=random.choice(phone_type_terms).term,
                 release_status="public",
             )
             s.add(phone)
-            
+
             # Add address
             addr = Address(
                 contact_id=c.id,
                 address_line_1=fake.street_address(),
-                address_line_2=fake.secondary_address() if random.random() > 0.5 else None,
+                address_line_2=(
+                    fake.secondary_address() if random.random() > 0.5 else None
+                ),
                 city=fake.city(),
                 state="New Mexico",
                 postal_code=fake.zipcode(),
@@ -127,7 +135,7 @@ def seed_all(n: int = 5):
                 release_status="public",
             )
             s.add(addr)
-            
+
             contacts.append(c)
 
         # 2. Locations
@@ -144,7 +152,7 @@ def seed_all(n: int = 5):
             )
             s.add(loc)
             s.flush()  # Need ID for notes
-            
+
             # Add a note for the location
             if note_type_terms:
                 note = Notes(
@@ -155,7 +163,7 @@ def seed_all(n: int = 5):
                     release_status="public",
                 )
                 s.add(note)
-            
+
             locations.append(loc)
 
         # 3. Retrieve existing Parameters & Methods
@@ -195,7 +203,7 @@ def seed_all(n: int = 5):
             )
             s.add(t)
             s.flush()  # Need ID for related records
-            
+
             # Add measuring point history (required for measuring_point_height/description)
             mph = MeasuringPointHistory(
                 thing_id=t.id,
@@ -207,7 +215,7 @@ def seed_all(n: int = 5):
                 release_status="public",
             )
             s.add(mph)
-            
+
             # Add monitoring frequency history
             if monitoring_frequency_terms:
                 mfh = MonitoringFrequencyHistory(
@@ -218,11 +226,13 @@ def seed_all(n: int = 5):
                     release_status="public",
                 )
                 s.add(mfh)
-            
+
             # Add well purposes
             if well_purpose_terms:
                 num_purposes = random.randint(1, 2)
-                selected_purposes = random.sample(well_purpose_terms, k=min(num_purposes, len(well_purpose_terms)))
+                selected_purposes = random.sample(
+                    well_purpose_terms, k=min(num_purposes, len(well_purpose_terms))
+                )
                 for purpose_term in selected_purposes:
                     wp = WellPurpose(
                         thing_id=t.id,
@@ -230,11 +240,14 @@ def seed_all(n: int = 5):
                         release_status="public",
                     )
                     s.add(wp)
-            
+
             # Add well casing materials
             if casing_material_terms:
                 num_materials = random.randint(1, 2)
-                selected_materials = random.sample(casing_material_terms, k=min(num_materials, len(casing_material_terms)))
+                selected_materials = random.sample(
+                    casing_material_terms,
+                    k=min(num_materials, len(casing_material_terms)),
+                )
                 for material_term in selected_materials:
                     wcm = WellCasingMaterial(
                         thing_id=t.id,
@@ -242,7 +255,7 @@ def seed_all(n: int = 5):
                         release_status="public",
                     )
                     s.add(wcm)
-            
+
             # Add notes for the thing
             if note_type_terms:
                 note = Notes(
@@ -253,7 +266,7 @@ def seed_all(n: int = 5):
                     release_status="public",
                 )
                 s.add(note)
-            
+
             things.append(t)
 
         s.flush()
@@ -279,7 +292,7 @@ def seed_all(n: int = 5):
                 effective_end=None,
             )
             s.add(assoc)
-        
+
         s.flush()  # Need to flush to get associations loaded
 
         # Add ThingIdLinks
@@ -313,12 +326,18 @@ def seed_all(n: int = 5):
         for fe in field_events:
             # Add 1-2 participants per field event
             num_participants = random.randint(1, 2)
-            selected_contacts = random.sample(contacts, k=min(num_participants, len(contacts)))
+            selected_contacts = random.sample(
+                contacts, k=min(num_participants, len(contacts))
+            )
             for contact in selected_contacts:
                 fep = FieldEventParticipant(
                     field_event_id=fe.id,
                     contact_id=contact.id,
-                    participant_role=random.choice(participant_role_terms).term if participant_role_terms else "Participant",
+                    participant_role=(
+                        random.choice(participant_role_terms).term
+                        if participant_role_terms
+                        else "Participant"
+                    ),
                     release_status="public",
                 )
                 s.add(fep)
@@ -350,7 +369,7 @@ def seed_all(n: int = 5):
             s.add(sn)
 
         s.flush()
-        
+
         # Create deployments
         deployments: list[Deployment] = []
         for t in things:
@@ -373,7 +392,11 @@ def seed_all(n: int = 5):
                 sample_matrix="water",
                 sample_method=random.choice(sample_method_terms).term,
                 sample_date=fake.date_time_this_year(),
-                field_event_participant_id=random.choice(field_event_participants).id if field_event_participants else None,
+                field_event_participant_id=(
+                    random.choice(field_event_participants).id
+                    if field_event_participants
+                    else None
+                ),
             )
             t = random.choice(things)
             samp.thing_id = t.id
@@ -381,7 +404,7 @@ def seed_all(n: int = 5):
             s.add(samp)
 
         s.flush()
-        
+
         # Create observations
         for i in range(n * 2):
             obs = Observation(
@@ -396,7 +419,7 @@ def seed_all(n: int = 5):
             )
             observations.append(obs)
             s.add(obs)
-        
+
         try:
             s.commit()
             print(
