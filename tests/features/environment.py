@@ -495,7 +495,7 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
-    rebuild = False
+    rebuild = True
     # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
@@ -517,42 +517,24 @@ def before_all(context):
         add_well_casing_material(context, session, well_1)
 
         contact = add_contact(context, session)
-        add_permission_history(
-            context,
-            session,
-            contact_id=context.objects["contacts"][0].id,
-            permission_type="Datalogger Installation",
-            permission_allowed=True,
-            start_date=datetime(2025, 1, 1).date(),
-            end_date=None,
-            notes="Permission granted for datalogger installation.",
-            target_id=well_1.id,
-            target_table="thing",
-        )
-        add_permission_history(
-            context,
-            session,
-            contact_id=context.objects["contacts"][0].id,
-            permission_type="Water Level Sample",
-            permission_allowed=True,
-            start_date=datetime(2025, 1, 1).date(),
-            end_date=None,
-            notes="Permission granted for water level sampling.",
-            target_id=well_1.id,
-            target_table="thing",
-        )
-        add_permission_history(
-            context,
-            session,
-            contact_id=context.objects["contacts"][0].id,
-            permission_type="Water Chemistry Sample",
-            permission_allowed=False,
-            start_date=datetime(2025, 1, 1).date(),
-            end_date=None,
-            notes="Permission granted for chemistry sampling.",
-            target_id=well_1.id,
-            target_table="thing",
-        )
+
+        for permission in [
+            "Datalogger Installation",
+            "Water Level Sample",
+            "Water Chemistry Sample",
+        ]:
+            add_permission_history(
+                context,
+                session,
+                contact_id=context.objects["contacts"][0].id,
+                permission_type=permission,
+                permission_allowed=True,
+                start_date=datetime(2025, 1, 1).date(),
+                end_date=None,
+                notes=f"Permission granted for {permission.lower()}.",
+                target_id=well_1.id,
+                target_table="thing",
+            )
 
         measuring_point_history_1 = add_measuring_point_history(
             context, session, well=well_1

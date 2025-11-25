@@ -12,7 +12,7 @@ from datetime import date
 from sqlalchemy import Integer, ForeignKey, String, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term, pascal_to_snake
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 
 if TYPE_CHECKING:
@@ -88,7 +88,7 @@ class PermissionHistoryMixin:
             primaryjoin=(
                 and_(
                     cls.id == foreign(PermissionHistory.target_id),
-                    PermissionHistory.target_table == pascal_to_snake(cls.__name__),
+                    PermissionHistory.target_table == cls.__tablename__,
                 )
             ),
             lazy="selectin",
