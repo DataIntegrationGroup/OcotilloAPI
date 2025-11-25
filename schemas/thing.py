@@ -33,11 +33,6 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-from schemas.aquifer_system import AquiferSystemGeoJSONResponse
-
-# from schemas.geologic_formation import (
-#     GeologicFormationResponse,
-# )
 
 # -------- VALIDATE ----------
 
@@ -308,16 +303,34 @@ class WellScreenResponse(BaseResponseModel):
     thing_id: int
     thing: WellResponse
     aquifer_system_id: int | None = None
-    aquifer_system: AquiferSystemGeoJSONResponse | None = None
+    aquifer_system: str | None = None
     aquifer_type: str | None = None
     geologic_formation_id: int | None = None
-    # geologic_formation: GeologicFormationResponse | None = None
+    geologic_formation: str | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
     screen_depth_top_unit: str = "ft"
     screen_type: str | None = None
     screen_description: str | None = None
+
+    @field_validator("aquifer_system", mode="before")
+    def populate_aquifer_system_with_name(cls, aquifer_system):
+        if aquifer_system is not None:
+            return aquifer_system.name
+        return None
+
+    @field_validator("aquifer_type", mode="before")
+    def populate_aquifer_type_with_name(cls, aquifer_type):
+        if aquifer_type is not None:
+            return aquifer_type.name
+        return None
+
+    @field_validator("geologic_formation_id", mode="before")
+    def populate_geologic_formation_with_code(cls, geologic_formation):
+        if geologic_formation is not None:
+            return geologic_formation.formation_code
+        return None
 
 
 class GeoJSONGeometry(BaseModel):
