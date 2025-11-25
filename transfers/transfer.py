@@ -133,13 +133,13 @@ def transfer_debugging(sess, metrics, limit=100):
 
     message("TRANSFERRING WELLS")
 
-    flags = {"TRANSFER_ALL_WELLS": True}
+    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
 
-    results = timeit_direct(transfer_wells, sess, flags=flags, limit=limit)
+    results = timeit_direct(transfer_wells, flags=flags)
     metrics.well_metrics(sess, *results)
 
     message("TRANSFERRING WELL SCREENS")
-    results = timeit_direct(transfer_wellscreens, sess)
+    results = timeit_direct(transfer_wellscreens, flags=flags)
     metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")

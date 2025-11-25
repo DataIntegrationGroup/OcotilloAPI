@@ -53,6 +53,59 @@ NMA_COORDINATE_ACCURACY = {
 }
 
 
+class RecordingIntervalEstimator:
+    def __init__(self, sensor_type: str):
+        if sensor_type == "Pressure Transducer":
+            self._df = read_csv("WaterLevelsContinuous_Pressure")
+        else:
+            self._df = read_csv("WaterLevelsContinuous_Acoustic")
+
+        # convert "DateMeasured" to date"
+        self._df["DateMeasured"] = pd.to_datetime(self._df["DateMeasured"]).dt.date
+
+    def estimate_recording_interval(
+        self,
+        record: pd.Series,
+        installation_date: datetime = None,
+        removal_date: datetime = None,
+    ):
+        point_id = record.PointID
+
+        cdf = self._df[self._df["PointID"] == point_id]
+        if len(cdf) == 0:
+            return None, None
+
+        cdf = cdf.sort_values("DateMeasured")
+        if installation_date is not None:
+            cdf = cdf[cdf["DateMeasured"] >= installation_date]
+        if removal_date is not None:
+            cdf = cdf[cdf["DateMeasured"] <= removal_date]
+
+        # calculate the average interval in seconds
+        try:
+            date_series = pd.to_datetime(cdf["DateMeasured"])
+            intervals = date_series.diff().dropna().dt.total_seconds()
+            if len(intervals) == 0:
+                avg_interval = None
+            else:
+                avg_interval = intervals.mean()
+        except IndexError:
+            return None, None
+
+        # convert to hours
+        avg_interval /= 3600
+
+        unit = "hour"
+        if avg_interval < 1:
+            avg_interval *= 60
+            unit = "minute"
+            if avg_interval < 1:
+                avg_interval *= 60
+                unit = "second"
+
+        return int(avg_interval), unit
+
+
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     df = df.replace(pd.NA, default)
     return df.replace({np.nan: default})
@@ -127,11 +180,12 @@ def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        f.seek(0)
-        invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
-        logger.info("Invalid WellData Datasources:")
-        for vd in invalid_datasources:
-            logger.info(f"  {vd}")
+
+        # f.seek(0)
+        # invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
+        # logger.info("Invalid WellData Datasources:")
+        # for vd in invalid_datasources:
+        #     logger.info(f"  {vd}")
 
     counts = df.groupby("DataSource").size().reset_index(name="WellCount")
     counts = counts.sort_values("WellCount", ascending=False)

@@ -18,7 +18,13 @@ from datetime import datetime
 from sqlalchemy import select
 
 from db import Sensor, Deployment, Thing
-from transfers.util import read_csv, logger, filter_to_valid_point_ids, replace_nans
+from transfers.util import (
+    read_csv,
+    logger,
+    filter_to_valid_point_ids,
+    replace_nans,
+    RecordingIntervalEstimator,
+)
 
 EQUIPMENT_TO_SENSOR_TYPE_MAP = {
     "Pressure transducer": "Pressure Transducer",
@@ -37,6 +43,7 @@ def transfer_sensors(session):
     errors = []
     grouped_equipment = cleaned_df.groupby(["PointID"])
     added = {}
+    estimators = {}
     for index, group in grouped_equipment:
         pointid = index[0]
         thing = session.query(Thing).filter(Thing.name == pointid).first()
@@ -127,23 +134,43 @@ def transfer_sensors(session):
                         row.DateRemoved, "%Y-%m-%d %H:%M:%S.%f"
                     ).date()
 
+                recording_interval_unit = "hour"
                 try:
                     recording_interval = int(row.RecordingInterval)
                 except (ValueError, TypeError):
-                    logger.critical(
-                        f"name={sensor.name}, serial_no={sensor.serial_no} RecordingInterval is not an "
-                        f"integer. Setting to None"
+
+                    # try to calculate recording interval from measurements
+                    if sensor_type in estimators:
+                        estimator = estimators[sensor_type]
+                    else:
+                        estimator = RecordingIntervalEstimator(sensor_type)
+                        estimators[sensor_type] = estimator
+
+                    recording_interval, unit = estimator.estimate_recording_interval(
+                        row, installation_date, removal_date
                     )
-                    recording_interval = None
-                    errors.append(
-                        {
-                            "pointid": pointid,
-                            "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. RecordingInterval is "
-                            f"not an integer",
-                            "table": source_table,
-                            "field": "RecordingInterval",
-                        }
-                    )
+
+                    if recording_interval:
+                        recording_interval_unit = unit
+                        logger.info(
+                            f"name={sensor.name}, serial_no={sensor.serial_no}. "
+                            f"estimated recording interval: {recording_interval} "
+                        )
+                    else:
+
+                        logger.critical(
+                            f"name={sensor.name}, serial_no={sensor.serial_no} RecordingInterval is not an integer"
+                        )
+
+                        errors.append(
+                            {
+                                "pointid": pointid,
+                                "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. RecordingInterval is "
+                                f"not an integer",
+                                "table": source_table,
+                                "field": "RecordingInterval",
+                            }
+                        )
                 sql = (
                     select(Deployment)
                     .join(Thing)
@@ -166,7 +193,7 @@ def transfer_sensors(session):
                     installation_date=installation_date,
                     removal_date=removal_date,
                     recording_interval=recording_interval,
-                    recording_interval_units="hour",
+                    recording_interval_units=recording_interval_unit,
                     hanging_cable_length=row.HangingCableLength,
                     hanging_point_height=row.HangingPointHgt,
                     hanging_point_description=row.HangingPointDescription,
@@ -189,6 +216,9 @@ def transfer_sensors(session):
                     sensor.sensor_status = "Retired"
             session.commit()
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             logger.critical(f"Could not add sensor and deployment: {e}")
             errors.append({"pointid": pointid, "error": e, "table": source_table})
 
