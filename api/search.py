@@ -175,7 +175,8 @@ async def search_api(
     user: viewer_dependency,
     session: session_dependency,
     q: str,
-    limit: int = 100,
+    size: int = 100,
+    limit: int = 25,
 ) -> CustomPage[dict]:
     """
     Search endpoint for the collaborative network.
