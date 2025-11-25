@@ -47,7 +47,7 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
             break
 
         # Log progress every 'step' rows
-        if i and not i % 25:
+        if i and not i % step:
             logger.info(
                 f"Processing row {i} of {n}. Avg rows per second: {step / (time.time() - start_time):.2f}"
             )

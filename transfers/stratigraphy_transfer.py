@@ -137,25 +137,38 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 top_depth = float(row.StratTop)
                 bottom_depth = float(row.StratBottom)
             except (ValueError, TypeError) as e:
-                logger.warning(
-                    f"Invalid depth values for {pointid}: StratTop={row.StratTop}, "
-                    f"StratBottom={row.StratBottom}, error: {e}"
+                error_msg = f"Invalid depth values: StratTop={row.StratTop}, StratBottom={row.StratBottom}"
+                logger.critical(
+                    f"{pointid} layer {layer_index}: {error_msg}, error: {e}"
+                )
+                errors.append(
+                    {
+                        "pointid": pointid,
+                        "layer": layer_index,
+                        "error": error_msg,
+                        "details": str(e),  # for conversion errors
+                    }
                 )
                 skipped_count += 1
                 continue
 
             # Validate depth logic
             if top_depth >= bottom_depth:
-                logger.warning(
-                    f"Invalid depths for {pointid} layer {layer_index}: "
-                    f"top={top_depth} >= bottom={bottom_depth}, skipping"
+                error_msg = (
+                    f"Invalid depth logic: top={top_depth} >= bottom={bottom_depth}"
+                )
+                logger.critical(f"{pointid} layer {layer_index}: {error_msg}")
+                errors.append(
+                    {"pointid": pointid, "layer": layer_index, "error": error_msg}
                 )
                 skipped_count += 1
                 continue
 
             if top_depth < 0:
-                logger.warning(
-                    f"Negative top depth for {pointid} layer {layer_index}: {top_depth}, skipping"
+                error_msg = f"Negative top depth: {top_depth}"
+                logger.critical(f"{pointid} layer {layer_index}: {error_msg}")
+                errors.append(
+                    {"pointid": pointid, "layer": layer_index, "error": error_msg}
                 )
                 skipped_count += 1
                 continue
