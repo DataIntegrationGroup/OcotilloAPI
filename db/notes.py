@@ -120,7 +120,7 @@ class NotesMixin:
             content=content,
             note_type=note_type,
             target_id=self.id,
-            target_table=self.__class__.__name__,
+            target_table=self.__class__.__tablename__,
             release_status=release_status,
         )
 

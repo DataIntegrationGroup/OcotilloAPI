@@ -495,7 +495,7 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
-    rebuild = False
+    rebuild = True
     # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
