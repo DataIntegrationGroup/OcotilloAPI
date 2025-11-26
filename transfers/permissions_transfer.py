@@ -41,9 +41,11 @@ def transfer_permissions(session: Session):
         allow_water_level_samples = wdf.loc[
             wdf["PointID"] == well.name, "MonitorOK"
         ].values
-        if len(allow_water_level_samples) > 0 and not isna(
-            allow_water_level_samples[0]
-        ):
+        if len(allow_water_level_samples) == 0:
+            pass
+        elif isna(allow_water_level_samples[0]):
+            pass
+        else:
             try:
                 permission_allowed = bool(allow_water_level_samples[0])
                 permission = PermissionHistory(
@@ -66,9 +68,11 @@ def transfer_permissions(session: Session):
         allow_water_chemistry_samples = wdf.loc[
             wdf["PointID"] == well.name, "SampleOK"
         ].values
-        if len(allow_water_chemistry_samples) > 0 and not isna(
-            allow_water_chemistry_samples[0]
-        ):
+        if len(allow_water_chemistry_samples) == 0:
+            pass
+        elif isna(allow_water_chemistry_samples[0]):
+            pass
+        else:
             try:
                 permission_allowed = bool(allow_water_chemistry_samples[0])
                 permission = PermissionHistory(
