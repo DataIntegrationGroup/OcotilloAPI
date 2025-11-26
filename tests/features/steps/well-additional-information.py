@@ -10,44 +10,103 @@ from services.util import retrieve_latest_polymorphic_history_table_record
     "the response should include whether repeat measurement permission is granted for the well"
 )
 def step_impl(context):
-    assert "allow_water_level_samples" in context.water_well_data
+    permission_type = "Water Level Sample"
+    assert "permissions" in context.water_well_data
+
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", "Water Level Sample"
+        context.objects["wells"][0], "permission_history", permission_type
+    )
+
+    water_well_data_permissions = [
+        p
+        for p in context.water_well_data["permissions"]
+        if p["permission_type"] == permission_type
+    ][0]
+    assert (
+        water_well_data_permissions["permission_type"]
+        == permission_record.permission_type
     )
     assert (
-        context.water_well_data["allow_water_level_samples"]
+        water_well_data_permissions["permission_allowed"]
         == permission_record.permission_allowed
     )
+    assert water_well_data_permissions[
+        "start_date"
+    ] == permission_record.start_date.strftime("%Y-%m-%d")
+    if permission_record.end_date:
+        assert water_well_data_permissions[
+            "end_date"
+        ] == permission_record.end_date.strftime("%Y-%m-%d")
+    else:
+        assert water_well_data_permissions["end_date"] is None
 
 
 @then("the response should include whether sampling permission is granted for the well")
 def step_impl(context):
-    assert "allow_water_chemistry_samples" in context.water_well_data
+    permission_type = "Water Chemistry Sample"
+    assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", "Water Chemistry Sample"
+        context.objects["wells"][0], "permission_history", permission_type
     )
 
+    water_well_data_permissions = [
+        p
+        for p in context.water_well_data["permissions"]
+        if p["permission_type"] == permission_type
+    ][0]
     assert (
-        context.water_well_data["allow_water_chemistry_samples"]
+        water_well_data_permissions["permission_type"]
+        == permission_record.permission_type
+    )
+    assert (
+        water_well_data_permissions["permission_allowed"]
         == permission_record.permission_allowed
     )
+    assert water_well_data_permissions[
+        "start_date"
+    ] == permission_record.start_date.strftime("%Y-%m-%d")
+    if permission_record.end_date:
+        assert water_well_data_permissions[
+            "end_date"
+        ] == permission_record.end_date.strftime("%Y-%m-%d")
+    else:
+        assert water_well_data_permissions["end_date"] is None
 
 
 @then(
     "the response should include whether datalogger installation permission is granted for the well"
 )
 def step_impl(context):
-    assert "allow_datalogger_installation" in context.water_well_data
+    permission_type = "Datalogger Installation"
+    assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
-        context.objects["wells"][0], "permission_history", "Datalogger Installation"
+        context.objects["wells"][0], "permission_history", permission_type
     )
 
+    water_well_data_permissions = [
+        p
+        for p in context.water_well_data["permissions"]
+        if p["permission_type"] == permission_type
+    ][0]
     assert (
-        context.water_well_data["allow_datalogger_installation"]
+        water_well_data_permissions["permission_type"]
+        == permission_record.permission_type
+    )
+    assert (
+        water_well_data_permissions["permission_allowed"]
         == permission_record.permission_allowed
     )
+    assert water_well_data_permissions[
+        "start_date"
+    ] == permission_record.start_date.strftime("%Y-%m-%d")
+    if permission_record.end_date:
+        assert water_well_data_permissions[
+            "end_date"
+        ] == permission_record.end_date.strftime("%Y-%m-%d")
+    else:
+        assert water_well_data_permissions["end_date"] is None
 
 
 # ------------------------------------------------------------------------------
