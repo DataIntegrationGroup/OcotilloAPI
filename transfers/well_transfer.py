@@ -473,9 +473,10 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                         )
                     except KeyError:
                         logger.warning(
-                            f"Unknown aquifer type code '{aquifer_codes[0]}' for well {row.PointID}"
+                            f"Unknown aquifer type code '{aquifer_codes[0]}' for well {row.PointID}."
+                            f"Setting primary_type to 'Unknown'"
                         )
-                        primary_type = None
+                        primary_type = "Unknown"  # Creates aquifer with placeholder
 
                     if primary_type:
                         # Get or create the aquifer
