@@ -534,18 +534,28 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 )
 
         # --- Create Formation Association (if FormationZone exists) ---
+        # Note: This creates a single formation association from WellData.
+        # For detailed stratigraphy with depth intervals, see transfer_stratigraphy()
         if hasattr(row, "FormationZone") and not isna(row.FormationZone):
             try:
                 formation_code = row.FormationZone
                 formation = get_or_create_geologic_formation(session, formation_code)
 
                 if formation:
-                    top_depth = 0.0
-                    bottom_depth = (
-                        row.WellDepth
-                        if row.WellDepth and not isna(row.WellDepth)
-                        else 100.0
-                    )
+                    # Onlyl create association if valid well depth data exists
+                    if (
+                        not hasattr(row, "WellDepth")
+                        or isna(row.WellDepth)
+                        or not row.WellDepth
+                    ):
+                        logger.warning(
+                            f"Well {well.name} has FormationZone but no valid WellDepth. "
+                            f"Skipping formation association. Use stratigraphy transfer for detailed depth data."
+                        )
+                    else:
+                        # Create association using actual well depth
+                        top_depth = 0.0
+                        bottom_depth = float(row.WellDepth)
 
                     formation_assoc = ThingGeologicFormationAssociation(
                         thing=well,
