@@ -467,6 +467,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                         )
 
                     # Determine primary type
+                    # This assumes the first recorded type of a compound type is the primary type of the aquifer.
+                    # TODO: verify with AMMP
                     try:
                         primary_type = lexicon_mapper.map_value(
                             f"LU_AquiferType:{aquifer_codes[0]}"
