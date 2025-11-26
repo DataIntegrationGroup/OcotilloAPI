@@ -53,7 +53,6 @@ from sqlalchemy.orm import (
     declared_attr,
     Mapped,
     mapped_column,
-    relationship,
 )
 from sqlalchemy_continuum import make_versioned
 from sqlalchemy_searchable import make_searchable
@@ -177,25 +176,6 @@ class PropertiesMixin:
 
 
 # ============= Polymorphic Helper Mixins =============================================
-
-
-class PermissionMixin:
-    """
-    Mixin for models that can have permissions (e.g., Thing, Location).
-    It automatically creates a polymorphic One-to-Many relationship to the
-    Permission table.
-    """
-
-    @declared_attr
-    def permissions(self):
-        # One-to-Many polymorphic relationship
-        return relationship(
-            "Permission",
-            primaryjoin=f"and_({self.__name__}.id==foreign(Permission.permissible_id), "
-            f"Permission.permissible_type=='{self.__name__}')",
-            lazy="selectin",
-            viewonly=True,
-        )
 
 
 class User(Base):

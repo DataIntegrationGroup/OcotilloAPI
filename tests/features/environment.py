@@ -28,13 +28,20 @@ from db import (
     Parameter,
     Deployment,
     TransducerObservationBlock,
+    WellCasingMaterial,
+    PermissionHistory,
+    Contact,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
     MeasuringPointHistory,
     MonitoringFrequencyHistory,
     DataProvenance,
-    WellCasingMaterial,
+    AquiferSystem,
+    AquiferType,
+    ThingAquiferAssociation,
+    GeologicFormation,
+    ThingGeologicFormationAssociation,
 )
 from db.engine import session_ctx
 
@@ -93,6 +100,7 @@ def add_well(context, session, location, name_num):
         well_construction_method="Driven",
         well_pump_type="Submersible",
         well_pump_depth=8,
+        is_suitable_for_datalogger=True,
     )
 
     session.add(well)
@@ -204,6 +212,54 @@ def add_spring(context, session, location, name_num):
     session.refresh(spring)
     context.objects["springs"].append(spring)
     return spring
+
+
+@add_context_object_container("contacts")
+def add_contact(context, session):
+    contact = Contact(
+        name="Test Contact",
+        role="Software Developer",
+        organization="NMBGMR",
+        release_status="draft",
+        contact_type="Primary",
+    )
+    session.add(contact)
+    session.commit()
+    session.refresh(contact)
+
+    context.objects["contacts"].append(contact)
+    return contact
+
+
+@add_context_object_container("permission_histories")
+def add_permission_history(
+    context,
+    session,
+    contact_id,
+    permission_type,
+    permission_allowed,
+    start_date,
+    end_date,
+    notes,
+    target_id,
+    target_table,
+):
+    permission_history = PermissionHistory(
+        contact_id=contact_id,
+        permission_type=permission_type,
+        permission_allowed=permission_allowed,
+        start_date=start_date,
+        end_date=end_date,
+        notes=notes,
+        target_id=target_id,
+        target_table=target_table,
+    )
+    session.add(permission_history)
+    session.commit()
+    session.refresh(permission_history)
+
+    context.objects["permission_histories"].append(permission_history)
+    return permission_history
 
 
 @add_context_object_container("sensors")
@@ -334,7 +390,8 @@ def add_data_provenance(
     target_id,
     target_table,
     field_name,
-    origin_source,
+    origin_type=None,
+    origin_source=None,
     collection_method=None,
     accuracy_value=None,
     accuracy_unit=None,
@@ -344,6 +401,7 @@ def add_data_provenance(
         collection_method=collection_method,
         target_id=target_id,
         target_table=target_table,
+        origin_type=origin_type,
         origin_source=origin_source,
         accuracy_value=accuracy_value,
         accuracy_unit=accuracy_unit,
@@ -370,9 +428,74 @@ def add_transducer_observation(context, session, block, deployment_id, value):
     return obs
 
 
+@add_context_object_container("aquifer_systems")
+def add_aquifer_system(context, session, name, well):
+    aquifer_system = AquiferSystem(
+        name=name,
+        description="this is a test aquifer",
+        primary_aquifer_type="Artesian",
+        geographic_scale="Major",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(aquifer_system)
+    session.commit()
+    session.refresh(aquifer_system)
+
+    context.objects["aquifer_systems"].append(aquifer_system)
+    return aquifer_system
+
+
+@add_context_object_container("thing_aquifer_associations")
+def add_thing_aquifer_association(context, session, well, aquifer_system):
+    association = ThingAquiferAssociation(thing=well, aquifer_system=aquifer_system)
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["thing_aquifer_associations"].append(association)
+    return association
+
+
+@add_context_object_container("aquifer_types")
+def add_aquifer_type(context, session, aquifer_type_str, thing_aquifer_association):
+    aquifer_type = AquiferType(
+        aquifer_type=aquifer_type_str,
+        thing_aquifer_association=thing_aquifer_association,
+    )
+    session.add(aquifer_type)
+    session.commit()
+    session.refresh(aquifer_type)
+
+    context.objects["aquifer_types"].append(aquifer_type)
+    return aquifer_type
+
+
+@add_context_object_container("geologic_formations")
+def add_geologic_formation(context, session, formation_code, well):
+    formation = GeologicFormation(
+        formation_code=formation_code,
+        description="This is a test geologic formation.",
+        lithology="Peat",
+        boundary="MULTIPOLYGON(((0 0, 1 1, 2 2, 3 3, 1 2, 0 0)))",
+    )
+    session.add(formation)
+    session.commit()
+    session.refresh(formation)
+
+    association = ThingGeologicFormationAssociation(
+        top_depth=1, bottom_depth=10, thing=well, geologic_formation=formation
+    )
+    session.add(association)
+    session.commit()
+    session.refresh(association)
+
+    context.objects["geologic_formations"].append(formation)
+    return formation
+
+
 def before_all(context):
     context.objects = {}
-    rebuild = False
+    rebuild = True
     # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
@@ -390,6 +513,28 @@ def before_all(context):
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
+
+        add_well_casing_material(context, session, well_1)
+
+        contact = add_contact(context, session)
+
+        for permission in [
+            "Datalogger Installation",
+            "Water Level Sample",
+            "Water Chemistry Sample",
+        ]:
+            add_permission_history(
+                context,
+                session,
+                contact_id=context.objects["contacts"][0].id,
+                permission_type=permission,
+                permission_allowed=True,
+                start_date=datetime(2025, 1, 1).date(),
+                end_date=None,
+                notes=f"Permission granted for {permission.lower()}.",
+                target_id=well_1.id,
+                target_table="thing",
+            )
 
         measuring_point_history_1 = add_measuring_point_history(
             context, session, well=well_1
@@ -514,11 +659,39 @@ def before_all(context):
             target_id=well_1.id,
             target_table="thing",
             field_name="well_depth",
-            origin_source="Other",
+            origin_type="Other",
+        )
+
+        well_completion_date_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_completion_date",
+            origin_type="Data Portal",
+        )
+
+        well_construction_method_source = add_data_provenance(
+            context,
+            session,
+            target_id=well_1.id,
+            target_table="thing",
+            field_name="well_construction_method",
+            origin_source="Jacob's 2013 Thesis",
         )
 
         for purpose in ["Domestic", "Irrigation"]:
             add_well_purpose(context, session, well_1, purpose)
+
+        for name in ["Aquifer A", "Aquifer B"]:
+            system = add_aquifer_system(context, session, name, well_1)
+            add_thing_aquifer_association(context, session, well_1, system)
+
+        for t in ["Artesian", "Fractured"]:
+            taa = context.objects["thing_aquifer_associations"][0]
+            add_aquifer_type(context, session, t, taa)
+
+        add_geologic_formation(context, session, "000EXRV", well_1)
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
@@ -538,8 +711,10 @@ def before_all(context):
 def after_all(context):
     with session_ctx() as session:
         for table in context.objects.values():
-            for obj in table:
-                session.delete(obj)
+            for record in table:
+                obj = session.get(record.__class__, record.id)
+                if obj:
+                    session.delete(obj)
         session.commit()
 
 
