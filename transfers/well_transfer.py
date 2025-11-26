@@ -36,6 +36,7 @@ from db import (
     StatusHistory,
     MonitoringFrequencyHistory,
     MeasuringPointHistory,
+    DataProvenance,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -115,6 +116,21 @@ def _extract_casing_materials(row) -> list[str]:
     if "concrete" in row.CasingDescription.lower():
         materials.append("Concrete")
     return materials
+
+
+def _extract_well_pump_type(row) -> str | None:
+    construction_notes = row.ConstructionNotes.lower()
+    if "pump" in construction_notes:
+        if "submersible" in construction_notes:
+            return "Submersible"
+        elif "jet" in construction_notes:
+            return "Jet"
+        elif "line shaft" in construction_notes or "lineshaft" in construction_notes:
+            return "Line Shaft"
+        elif "hand" in construction_notes:
+            return "Hand"
+        else:
+            return None
 
 
 def get_wells_to_transfer(
@@ -236,6 +252,9 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_casing_materials = (
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
+            well_pump_type = (
+                _extract_well_pump_type(row) if row.ConstructionNotes else None
+            )
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
@@ -257,6 +276,21 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
+                well_completion_date=row.CompletionDate,
+                well_driller_name=row.DrillerName,
+                well_construction_method=(
+                    lexicon_mapper.map_value(
+                        f"LU_ConstructionMethod:{row.ConstructionMethod}"
+                    )
+                    if not isna(row.ConstructionMethod)
+                    else None
+                ),
+                well_pump_type=well_pump_type,
+                is_suitable_for_datalogger=(
+                    bool(row.OpenWellLoggerOK)
+                    if not isna(row.OpenWellLoggerOK)
+                    else None
+                ),
             )
 
             CreateWell.model_validate(data)
@@ -277,6 +311,8 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     "well_casing_materials",
                     "measuring_point_height",
                     "measuring_point_description",
+                    "well_completion_date_source",
+                    "well_construction_method_source",
                 ]
             )
             well_data["thing_type"] = "water well"
@@ -285,17 +321,6 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
-            # logger.info(f"Created well for {row.PointID}")
-
-            # flush well to access its ID for status_history
-            # session.flush()
-
-            # session.commit()
-            # session.refresh(well)
-            # if notes:
-            #     for ni in notes:
-            #         nn = well.add_note(ni['content'], ni['note_type'])
-            #         session.add(nn)
 
             if well_purposes:
                 for wp in well_purposes:
@@ -347,11 +372,42 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         for dp in data_provenances:
             session.add(dp)
 
-        """
-            Developer's note
+        if not isna(row.CompletionSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_completion_date",
+                origin_type=lexicon_mapper.map_value(
+                    f"LU_Depth_CompletionSource:{row.CompletionSource}"
+                ),
+            )
+            session.add(dp)
 
-            It's not clear when the measuring point from NM_Aquifer was 
-            determined, so I'm setting start_date to the day of the transfer
+        if not isna(row.DataSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_construction_method",
+                origin_source=row.DataSource,
+            )
+            session.add(dp)
+
+        if not isna(row.DepthSource):
+            dp = DataProvenance(
+                target_id=well.id,
+                target_table="thing",
+                field_name="well_depth",
+                origin_type=lexicon_mapper.map_value(
+                    f"LU_Depth_CompletionSource:{row.DepthSource}"
+                ),
+            )
+            session.add(dp)
+
+        """
+        Developer's note
+
+        It's not clear when the measuring point from NM_Aquifer was 
+        determined, so I'm setting start_date to the day of the transfer
         """
         measuring_point_history = MeasuringPointHistory(
             thing_id=well.id,

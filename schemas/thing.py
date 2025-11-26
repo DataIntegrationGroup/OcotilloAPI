@@ -132,8 +132,15 @@ class CreateWell(CreateBaseThing, ValidateWell):
     measuring_point_height: float = Field(
         ge=0, description="Measuring point height in feet"
     )
-    measuring_point_description: str | None
+    measuring_point_description: str | None = None
     notes: list[CreateNote] | None = None
+    well_completion_date: PastOrTodayDate | None = None
+    well_completion_date_source: str | None = None
+    well_driller_name: str | None = None
+    well_construction_method: WellConstructionMethod | None = None
+    well_construction_method_source: str | None = None
+    well_pump_type: WellPumpType | None = None
+    is_suitable_for_datalogger: bool | None
 
 
 class CreateSpring(CreateBaseThing):
@@ -335,7 +342,7 @@ class WellScreenResponse(BaseResponseModel):
     aquifer_system: str | None = None
     aquifer_type: str | None = None
     geologic_formation_id: int | None = None
-    # geologic_formation: GeologicFormationResponse | None = None
+    geologic_formation: str | None = None
     screen_depth_bottom: float
     screen_depth_bottom_unit: str = "ft"
     screen_depth_top: float
@@ -355,7 +362,7 @@ class WellScreenResponse(BaseResponseModel):
             return aquifer_type.name
         return None
 
-    @field_validator("geologic_formation_id", mode="before")
+    @field_validator("geologic_formation", mode="before")
     def populate_geologic_formation_with_code(cls, geologic_formation):
         if geologic_formation is not None:
             return geologic_formation.formation_code
