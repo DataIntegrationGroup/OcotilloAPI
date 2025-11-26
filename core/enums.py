@@ -70,11 +70,12 @@ Unit: type[Enum] = build_enum_from_lexicon_category("unit")
 Vertical_datum: type[Enum] = build_enum_from_lexicon_category("vertical_datum")
 ScreenType: type[Enum] = build_enum_from_lexicon_category("screen_type")
 SensorType: type[Enum] = build_enum_from_lexicon_category("sensor_type")
+WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
+PermissionType: type[Enum] = build_enum_from_lexicon_category("permission_type")
 GroupType: type[Enum] = build_enum_from_lexicon_category("group_type")
 MonitoringFrequency: type[Enum] = build_enum_from_lexicon_category(
     "monitoring_frequency"
 )
-WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
 AquiferType: type[Enum] = build_enum_from_lexicon_category("aquifer_type")
 GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale")
 Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")

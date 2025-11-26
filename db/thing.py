@@ -26,8 +26,9 @@ from db.base import (
     AutoBaseMixin,
     Base,
     ReleaseMixin,
-    PermissionMixin,
 )
+from db.permission_history import PermissionHistoryMixin
+from services.util import retrieve_latest_polymorphic_history_table_record
 from db.status_history import StatusHistoryMixin
 from db.measuring_point_history import MeasuringPointHistory
 from db.data_provenance import DataProvenanceMixin
@@ -53,7 +54,7 @@ class Thing(
     AutoBaseMixin,
     ReleaseMixin,
     StatusHistoryMixin,
-    PermissionMixin,
+    PermissionHistoryMixin,
     DataProvenanceMixin,
     NotesMixin,
 ):
@@ -69,10 +70,6 @@ class Thing(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
     )
-
-    # notes = mapped_column(Text, nullable=True)
-    # measuring_notes = mapped_column(Text, nullable=True)
-    # water_notes = mapped_column(Text, nullable=True)
 
     # TODO: should `name` be unique?
     name: Mapped[str] = mapped_column(
@@ -135,6 +132,11 @@ class Thing(
         nullable=True,
         info={"unit": "feet below ground surface"},
         comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+    )
+    # TODO: should this be required for every well in the database? AMMP review
+    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment="Indicates if the well is suitable for datalogger installation.",
     )
 
     # Spring-related columns
@@ -330,13 +332,13 @@ class Thing(
     )
 
     # Proxy to directly access AquiferSystems associated with this Thing
-    aquifers: AssociationProxy[List["AquiferSystem"]] = association_proxy(
+    aquifer_systems: AssociationProxy[List["AquiferSystem"]] = association_proxy(
         "aquifer_associations", "aquifer_system"
     )
 
     # Proxy to directly access the GeologicFormations penetrated by this Thing.
-    formations: AssociationProxy[List["GeologicFormation"]] = association_proxy(
-        "formation_associations", "geologic_formation"
+    geologic_formations: AssociationProxy[List["GeologicFormation"]] = (
+        association_proxy("formation_associations", "geologic_formation")
     )
 
     # Full-text search vector
@@ -430,7 +432,48 @@ class Thing(
 
     @property
     def well_depth_source(self) -> str | None:
-        return self._get_data_provenance_attribute("well_depth", "origin_source")
+        return self._get_data_provenance_attribute("well_depth", "origin_type")
+
+    @property
+    def well_completion_date_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_completion_date", "origin_type"
+        )
+
+    @property
+    def well_construction_method_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_construction_method", "origin_source"
+        )
+
+    @property
+    def aquifers(self) -> List[dict]:
+        """
+        Returns a list of aquifer systems and their associated types for this Thing.
+        Each aquifer system is represented as a dictionary with its name and a list of types.
+        """
+        aquifer_list = []
+        for association in self.aquifer_associations:
+            aquifer_info = {
+                "aquifer_system": association.aquifer_system.name,
+                "aquifer_types": [
+                    atype.aquifer_type for atype in association.aquifer_types
+                ],
+            }
+            aquifer_list.append(aquifer_info)
+        return aquifer_list
+
+    @property
+    def permissions(self) -> list:
+        """
+        Returns the associated permissions or an empty list. If there are no
+        associated permissions, an empty list is returned instead of None to
+        allow the API to serialize correctly (see schemas/thing.py).
+        """
+        if self.permission_history:
+            return self.permission_history
+        else:
+            return []
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
@@ -482,6 +525,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
 
     aquifer_system: Mapped["AquiferSystem"] = relationship(
         "AquiferSystem", back_populates="well_screens", passive_deletes=True
+    )
+
+    geologic_formation: Mapped["GeologicFormation"] = relationship(
+        "GeologicFormation", back_populates="well_screens", passive_deletes=True
     )
 
 

@@ -54,8 +54,8 @@
     {"name": "status_type", "description": null},
     {"name": "status_value", "description": null},
     {"name": "origin_source", "description": null},
-    {"name": "status_value", "description": null},
     {"name": "well_pump_type", "description": null},
+    {"name": "permission_type", "description": null},
     {"name": "formation_code", "description": null},
     {"name": "lithology", "description": null}
   ],
@@ -1104,6 +1104,9 @@
     {"categories": ["note_type"], "term": "Historical", "definition": "Historical information or context about the well or location."},
     {"categories": ["note_type"], "term": "Other", "definition": "Other types of notes that do not fit into the predefined categories."},
     {"categories": ["note_type"], "term": "Water", "definition": "Water bearing zone information and other info from ose reports"},
-    {"categories": ["note_type"], "term": "Measuring", "definition": "Notes about measuring/visiting the well, on Access form"}
+    {"categories": ["note_type"], "term": "Measuring", "definition": "Notes about measuring/visiting the well, on Access form"},
+    {"categories": ["permission_type"], "term": "Water Level Sample", "definition": "Permissions for taking water level samples"},
+    {"categories": ["permission_type"], "term": "Water Chemistry Sample", "definition": "Permissions for water taking chemistry samples"},
+    {"categories": ["permission_type"], "term": "Datalogger Installation", "definition": "Permissions for installing dataloggers"}
   ]
 }
