@@ -480,55 +480,53 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                         )
                         primary_type = "Unknown"  # Creates aquifer with placeholder
 
-                    if primary_type:
-                        # Get or create the aquifer
-                        aquifer = get_or_create_aquifer_system(
-                            session, aquifer_name, primary_type
+                    # Get or create the aquifer
+                    aquifer = get_or_create_aquifer_system(
+                        session, aquifer_name, primary_type
+                    )
+
+                    if aquifer:
+                        # Check if association already exists
+                        existing_assoc = (
+                            session.query(ThingAquiferAssociation)
+                            .filter(
+                                ThingAquiferAssociation.thing_id == well.id,
+                                ThingAquiferAssociation.aquifer_system_id == aquifer.id,
+                            )
+                            .first()
                         )
 
-                        if aquifer:
-                            # Check if association already exists
-                            existing_assoc = (
-                                session.query(ThingAquiferAssociation)
-                                .filter(
-                                    ThingAquiferAssociation.thing_id == well.id,
-                                    ThingAquiferAssociation.aquifer_system_id
-                                    == aquifer.id,
-                                )
-                                .first()
+                        if not existing_assoc:
+                            # Create the association
+                            aquifer_assoc = ThingAquiferAssociation(
+                                thing=well, aquifer_system=aquifer
                             )
+                            session.add(aquifer_assoc)
+                            session.flush()
 
-                            if not existing_assoc:
-                                # Create the association
-                                aquifer_assoc = ThingAquiferAssociation(
-                                    thing=well, aquifer_system=aquifer
-                                )
-                                session.add(aquifer_assoc)
-                                session.flush()
+                            # Create AquiferType records for EACH characteristic
+                            aquifer_type_names = []
+                            for aquifer_code in aquifer_codes:
+                                try:
+                                    type_name = lexicon_mapper.map_value(
+                                        f"LU_AquiferType:{aquifer_code}"
+                                    )
+                                    aquifer_type = AquiferType(
+                                        thing_aquifer_association=aquifer_assoc,
+                                        aquifer_type=type_name,
+                                    )
+                                    session.add(aquifer_type)
+                                    aquifer_type_names.append(type_name)
+                                except KeyError:
+                                    logger.warning(
+                                        f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
+                                        f"for well {well.name}. Skipping this code."
+                                    )
 
-                                # Create AquiferType records for EACH characteristic
-                                aquifer_type_names = []
-                                for aquifer_code in aquifer_codes:
-                                    try:
-                                        type_name = lexicon_mapper.map_value(
-                                            f"LU_AquiferType:{aquifer_code}"
-                                        )
-                                        aquifer_type = AquiferType(
-                                            thing_aquifer_association=aquifer_assoc,
-                                            aquifer_type=type_name,
-                                        )
-                                        session.add(aquifer_type)
-                                        aquifer_type_names.append(type_name)
-                                    except KeyError:
-                                        logger.warning(
-                                            f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
-                                            f"for well {well.name}. Skipping this code."
-                                        )
-
-                                logger.info(
-                                    f"Associated well {well.name} with aquifer {aquifer.name} "
-                                    f"(types: {', '.join(aquifer_type_names)})"
-                                )
+                            logger.info(
+                                f"Associated well {well.name} with aquifer {aquifer.name} "
+                                f"(types: {', '.join(aquifer_type_names)})"
+                            )
 
             except Exception as e:
                 logger.critical(
