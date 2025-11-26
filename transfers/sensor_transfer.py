@@ -138,7 +138,7 @@ def transfer_sensors(session):
                 try:
                     recording_interval = int(row.RecordingInterval)
                 except (ValueError, TypeError):
-
+                    error = "RecordingInterval is not an integer"
                     # try to calculate recording interval from measurements
                     if sensor_type in estimators:
                         estimator = estimators[sensor_type]
@@ -146,27 +146,26 @@ def transfer_sensors(session):
                         estimator = RecordingIntervalEstimator(sensor_type)
                         estimators[sensor_type] = estimator
 
-                    recording_interval, unit = estimator.estimate_recording_interval(
-                        row, installation_date, removal_date
+                    recording_interval, unit, error = (
+                        estimator.estimate_recording_interval(
+                            row, installation_date, removal_date
+                        )
                     )
 
                     if recording_interval:
                         recording_interval_unit = unit
                         logger.info(
                             f"name={sensor.name}, serial_no={sensor.serial_no}. "
-                            f"estimated recording interval: {recording_interval} "
+                            f"estimated recording interval: {recording_interval} {unit}"
                         )
                     else:
-
                         logger.critical(
-                            f"name={sensor.name}, serial_no={sensor.serial_no} RecordingInterval is not an integer"
+                            f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
                         )
-
                         errors.append(
                             {
                                 "pointid": pointid,
-                                "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. RecordingInterval is "
-                                f"not an integer",
+                                "error": f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
                                 "table": source_table,
                                 "field": "RecordingInterval",
                             }

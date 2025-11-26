@@ -15,9 +15,10 @@
 # ===============================================================================
 import csv
 import io
+import math
 import os
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, UTC
 from pathlib import Path
 
 import numpy as np
@@ -53,6 +54,58 @@ NMA_COORDINATE_ACCURACY = {
 }
 
 
+class MeasuringPointEstimator:
+    def __init__(self):
+        df = read_csv("WaterLevels")
+        df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
+        self._df = df.dropna(subset=["DateMeasured"])
+
+    def estimate_measuring_point_height(
+        self, row
+    ) -> tuple[float, str, datetime | None]:
+        mph = row.MPHeight
+        mph_desc = row.MeasuringPoint
+
+        df = self._df[self._df["PointID"] == row.PointID]
+        df = df.sort_values("DateMeasured")
+        if mph is None:
+            logger.info(
+                f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
+            )
+            # try to estimate mpheight from measurements
+            mphs = []
+            start_dates = []
+            mph_descs = []
+            for m in df.itertuples():
+                mphi = m.DepthToWater - m.DepthToWaterBGS
+                start_date = m.DateMeasured
+                if mphi not in mphs:
+                    mphs.append(mphi)
+                    mph_descs.append(
+                        "Auto calculated from measurements at depth to water and depth to water below ground surface"
+                    )
+                    start_dates.append(start_date)
+
+        else:
+            mphs = [mph]
+            mph_descs = [mph_desc]
+            if len(df) > 0:
+                start_dates = [df["DateMeasured"].min()]
+            else:
+                start_dates = [datetime.now(tz=UTC)]
+
+        if len(mphs) == 1:
+            end_dates = [None]
+        else:
+            end_dates = [start_dates[i + 1] for i in range(len(start_dates) - 1)]
+            end_dates.append(None)
+
+        logger.info(
+            f"Estimated MPHeight: {mph}, {start_dates} for PointID: {row.PointID}."
+        )
+        return zip(mphs, mph_descs, start_dates, end_dates)
+
+
 class RecordingIntervalEstimator:
     def __init__(self, sensor_type: str):
         if sensor_type == "Pressure Transducer":
@@ -68,12 +121,12 @@ class RecordingIntervalEstimator:
         record: pd.Series,
         installation_date: datetime = None,
         removal_date: datetime = None,
-    ):
+    ) -> tuple[int | None, str | None, str | None]:
         point_id = record.PointID
 
         cdf = self._df[self._df["PointID"] == point_id]
         if len(cdf) == 0:
-            return None, None
+            return None, None, f"No measurements found for PointID: {point_id}"
 
         cdf = cdf.sort_values("DateMeasured")
         if installation_date is not None:
@@ -86,24 +139,47 @@ class RecordingIntervalEstimator:
             date_series = pd.to_datetime(cdf["DateMeasured"])
             intervals = date_series.diff().dropna().dt.total_seconds()
             if len(intervals) == 0:
-                avg_interval = None
+                logger.warning(
+                    f"No intervals found for {point_id} for time range "
+                    f"{installation_date}-{removal_date}. using entire series "
+                )
+                # take average of entire series
+                df = self._df[self._df["PointID"] == point_id]
+                df = df.sort_values("DateMeasured")
+                date_series = pd.to_datetime(df["DateMeasured"])
+                intervals = date_series.diff().dropna().dt.total_seconds()
+                if len(intervals) == 0:
+                    return (
+                        None,
+                        None,
+                        f"No measurements found for {point_id} for entire series",
+                    )
+                else:
+                    avg_interval = intervals.mean()
             else:
                 avg_interval = intervals.mean()
         except IndexError:
-            return None, None
+            return (
+                None,
+                None,
+                (
+                    f"Not enough measurements to calculate interval for PointID: {point_id},"
+                    f"{installation_date} to {removal_date}."
+                ),
+            )
 
         # convert to hours
         avg_interval /= 3600
 
         unit = "hour"
-        if avg_interval < 1:
+        if avg_interval < 0.95:  # if less then 57 minutes convert to minutes
             avg_interval *= 60
             unit = "minute"
-            if avg_interval < 1:
+            if avg_interval < 0.95:  # if less then 57 seconds convert to seconds
                 avg_interval *= 60
                 unit = "second"
 
-        return int(avg_interval), unit
+        return math.ceil(avg_interval), unit, None
 
 
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:

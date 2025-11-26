@@ -34,6 +34,17 @@ def transfer_water_levels_pressure(session):
     return _transfer_water_levels_continuous(session, wd, "QCed", "Pressure Transducer")
 
 
+def _find_deployment(ts, deployments):
+    for d in deployments:
+        start = Timestamp(d.installation_date)
+        if start > ts:
+            break  # because sorted by start
+        end = Timestamp(d.removal_date) if d.removal_date else Timestamp.max
+        if end >= ts:
+            return d
+    return None
+
+
 def _transfer_water_levels_continuous(session, input_df, partition_field, sensor_type):
     from schemas.transducer import CreateTransducerObservation
 
@@ -46,11 +57,16 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
     cleaned_df = filter_to_valid_point_ids(session, input_df)
 
     # group by pointid
+    cleaned_df = cleaned_df.sort_values(by=["PointID"])
     gwd = cleaned_df.groupby(["PointID"])
+    n = len(gwd)
     errors = []
-    for index, group in gwd:
+    nodeployments = {}
+    for i, (index, group) in enumerate(gwd):
         pointid = index[0]
-        logger.info(f"Processing PointID: {pointid}")
+        logger.info(
+            f"Processing PointID: {pointid}. {i + 1}/{n} ({100*(i+1)/n:0.2f}) completed."
+        )
 
         deployments = (
             session.query(Deployment)
@@ -98,27 +114,47 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
                 continue
 
             observations = []
+
+            # min_deployment_date = Timestamp(min([d.installation_date for d in deployments]))
+            # max_deployment_date = Timestamp(max([d.removal_date or d.installation_date for d in deployments]))
+            deps_sorted = sorted(
+                deployments, key=lambda d: Timestamp(d.installation_date)
+            )
+
             for row in rows.itertuples():
-                deployment = next(
-                    (
-                        d
-                        for d in deployments
-                        if Timestamp(d.installation_date) <= row.DateMeasured
-                        and (
-                            d.removal_date is None
-                            or Timestamp(d.removal_date) >= row.DateMeasured
-                        )
-                    ),
-                    None,
-                )
+                deployment = _find_deployment(row.DateMeasured, deps_sorted)
+
+                # if min_deployment_date < row.DateMeasured < max_deployment_date:
+                #     deployment = next(
+                #         (
+                #             d
+                #             for d in deployments
+                #             if Timestamp(d.installation_date) <= row.DateMeasured
+                #             and (
+                #                 d.removal_date is None
+                #                 or Timestamp(d.removal_date) >= row.DateMeasured
+                #             )
+                #         ),
+                #         None,
+                #     )
 
                 if deployment is None:
-                    errors.append(
-                        {
-                            "pointid": pointid,
-                            "error": f"no deployment at {row.DateMeasured}",
-                        }
-                    )
+                    # errors.append(
+                    #     {
+                    #         "pointid": pointid,
+                    #         "error": f"no deployment at {row.DateMeasured}",
+                    #     }
+                    # )
+                    if pointid not in nodeployments:
+                        nodeployments[pointid] = (row.DateMeasured, row.DateMeasured)
+                    else:
+                        min_date, max_date = nodeployments[pointid]
+                        if row.DateMeasured < min_date:
+                            min_date = row.DateMeasured
+                        elif row.DateMeasured > max_date:
+                            max_date = row.DateMeasured
+                        nodeployments[pointid] = min_date, max_date
+
                     logger.critical(
                         f"No deployment found for PointID={pointid} at {row.DateMeasured}"
                     )
@@ -154,6 +190,15 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
                 )
                 session.rollback()
                 continue
+
+    # convert nodeployments to errors
+    for pointid, (min_date, max_date) in nodeployments.items():
+        errors.append(
+            {
+                "pointid": pointid,
+                "error": f"no deployment between {min_date} and {max_date}",
+            }
+        )
 
     return input_df, cleaned_df, errors
 

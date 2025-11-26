@@ -56,6 +56,7 @@ from transfers.util import (
     lexicon_mapper,
     filter_non_transferred_wells,
     chunk_by_size,
+    MeasuringPointEstimator,
 )
 
 ADDED = []
@@ -291,8 +292,10 @@ class WellTransferer(Transferer):
                 ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
+                measuring_point_height=0,
+                measuring_point_description="",
+                # measuring_point_height=row.MPHeight,
+                # measuring_point_description=row.MeasuringPoint,
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
@@ -375,7 +378,7 @@ class WellTransferer(Transferer):
 
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
-
+        measuring_point_estimator = MeasuringPointEstimator()
         # add things thate need well id
         for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
             row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
@@ -391,20 +394,18 @@ class WellTransferer(Transferer):
             for dp in data_provenances:
                 session.add(dp)
 
-            """
-                Developer's note
-    
-                It's not clear when the measuring point from NM_Aquifer was 
-                determined, so I'm setting start_date to the day of the transfer
-            """
-            measuring_point_history = MeasuringPointHistory(
-                thing_id=well.id,
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
-                start_date=datetime.now(tz=UTC),
-                end_date=None,
-            )
-            session.add(measuring_point_history)
+            mphs = measuring_point_estimator.estimate_measuring_point_height(row)
+
+            for mph, mph_desc, start_date, end_date in mphs:
+                measuring_point_history = MeasuringPointHistory(
+                    thing_id=well.id,
+                    measuring_point_height=mph,
+                    measuring_point_description=mph_desc,
+                    # start_date=datetime.now(tz=UTC),
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                session.add(measuring_point_history)
 
             """
             Developer's notes

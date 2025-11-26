@@ -162,29 +162,19 @@ def transfer_debugging(sess, metrics, limit=100):
     message("TRANSFERRING CONTACTS")
     results = timeit_direct(transfer_contacts, sess)
     metrics.contact_metrics(sess, *results)
-    #
+
     message("TRANSFERRING WATER LEVELS")
     results = timeit_direct(transfer_water_levels, sess)
     metrics.water_level_metrics(sess, *results)
 
-    # message("TRANSFERRING WATER LEVELS PRESSURE")
-    # results = timeit_direct(transfer_water_levels_pressure, sess)
-    # metrics.pressure_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS PRESSURE")
+    results = timeit_direct(transfer_water_levels_pressure, sess)
+    metrics.pressure_metrics(sess, *results)
 
-    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    # results = timeit_direct(transfer_water_levels_acoustic, sess)
-    # metrics.acoustic_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    results = timeit_direct(transfer_water_levels_acoustic, sess)
+    metrics.acoustic_metrics(sess, *results)
 
-    """
-    Developer's notes
-
-    When transfering water chemistry data use the qc_type field to indicate
-    normal/blanks/duplicates instead of what comes from LU_SampleType. Use
-    those values, however, to map to the standard qc_type fields if applicable
-    (i.e. not applicable when sample type is "Soil or rock sample" or
-    "Precipitation," but is applicable when sample type is "Equipment blank"
-    or "Field duplicate")
-    """
     # message("TRANSFERRING LINK IDS")
     # timeit_direct(transfer_link_ids, sess)
     # timeit_direct(transfer_link_ids_welldata, sess)
@@ -192,20 +182,16 @@ def transfer_debugging(sess, metrics, limit=100):
     # message("TRANSFERRING GROUPS")
     # timeit_direct(transfer_groups, sess)
 
-    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    # timeit_direct(transfer_water_levels_acoustic, sess)
     # message("TRANSFERRING ASSETS")
     # timeit_direct(transfer_assets, sess)
-    metrics.close()
-    metrics.save_to_storage_bucket()
 
 
 def main():
     message("START--------------------------------------")
-    limit = int(os.environ.get("TRANSFER_LIMIT", 1000))
+    limit = int(os.getenv("TRANSFER_LIMIT", 1000))
     metrics = Metrics()
     with session_ctx() as sess:
-        if int(os.environ.get("TRANSFER_DEBUG", 0)):
+        if int(os.getenv("TRANSFER_DEBUG", 0)):
             transfer_debugging(sess, metrics, limit=limit)
         else:
             transfer_all(sess, metrics, limit=limit)
