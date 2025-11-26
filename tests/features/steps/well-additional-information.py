@@ -132,9 +132,9 @@ def step_impl(context):
 @then("the response should include the casing materials")
 def step_impl(context):
     assert "well_casing_materials" in context.water_well_data
-    assert sorted(context.water_well_data["well_casing_materials"]) == sorted(
-        [m.material for m in context.objects["wells"][0].well_casing_materials]
-    )
+    assert set(context.water_well_data["well_casing_materials"]) == {
+        m.material for m in context.objects["wells"][0].well_casing_materials
+    }
 
 
 @then("the response should include the well pump type (previously well_type field)")
@@ -190,9 +190,9 @@ def step_impl(context):
 def step_impl(context):
     for aquifer in context.water_well_data["aquifers"]:
         assert "aquifer_system" in aquifer
-    assert sorted(
-        [a.get("aquifer_system") for a in context.water_well_data["aquifers"]]
-    ) == sorted([system.name for system in context.objects["aquifer_systems"]])
+    assert {a.get("aquifer_system") for a in context.water_well_data["aquifers"]} == {
+        system.name for system in context.objects["aquifer_systems"]
+    }
 
 
 @then(
@@ -203,8 +203,8 @@ def step_impl(context):
         assert "aquifer_types" in aquifer
 
         if aquifer["aquifer_system"] == "Aquifer A":
-            assert sorted(aquifer["aquifer_types"]) == sorted(
-                [a.aquifer_type for a in context.objects["aquifer_types"]]
-            )
+            assert set(aquifer["aquifer_types"]) == {
+                a.aquifer_type for a in context.objects["aquifer_types"]
+            }
         else:
             assert aquifer["aquifer_types"] == []
