@@ -115,8 +115,6 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
 
             observations = []
 
-            # min_deployment_date = Timestamp(min([d.installation_date for d in deployments]))
-            # max_deployment_date = Timestamp(max([d.removal_date or d.installation_date for d in deployments]))
             deps_sorted = sorted(
                 deployments, key=lambda d: Timestamp(d.installation_date)
             )
@@ -124,27 +122,7 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
             for row in rows.itertuples():
                 deployment = _find_deployment(row.DateMeasured, deps_sorted)
 
-                # if min_deployment_date < row.DateMeasured < max_deployment_date:
-                #     deployment = next(
-                #         (
-                #             d
-                #             for d in deployments
-                #             if Timestamp(d.installation_date) <= row.DateMeasured
-                #             and (
-                #                 d.removal_date is None
-                #                 or Timestamp(d.removal_date) >= row.DateMeasured
-                #             )
-                #         ),
-                #         None,
-                #     )
-
                 if deployment is None:
-                    # errors.append(
-                    #     {
-                    #         "pointid": pointid,
-                    #         "error": f"no deployment at {row.DateMeasured}",
-                    #     }
-                    # )
                     if pointid not in nodeployments:
                         nodeployments[pointid] = (row.DateMeasured, row.DateMeasured)
                     else:
