@@ -85,7 +85,9 @@ class MeasuringPointEstimator:
                         "Auto calculated from measurements at depth to water and depth to water below ground surface"
                     )
                     start_dates.append(start_date)
-
+            logger.info(
+                f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
+            )
         else:
             mphs = [mph]
             mph_descs = [mph_desc]
@@ -100,9 +102,6 @@ class MeasuringPointEstimator:
             end_dates = [start_dates[i + 1] for i in range(len(start_dates) - 1)]
             end_dates.append(None)
 
-        logger.info(
-            f"Estimated MPHeight: {mph}, {start_dates} for PointID: {row.PointID}."
-        )
         return zip(mphs, mph_descs, start_dates, end_dates)
 
 

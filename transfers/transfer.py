@@ -30,12 +30,9 @@ from db.engine import session_ctx
 from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
-from transfers.sensor_transfer import transfer_sensors
+from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import transfer_water_levels
-from transfers.well_transfer import (
-    transfer_wells,
-    transfer_wellscreens,
-)
+from transfers.well_transfer import WellTransferer, WellScreenTransferer
 
 from transfers.asset_transfer import transfer_assets
 from transfers.util import timeit, timeit_direct
@@ -64,15 +61,15 @@ def transfer_all(sess, metrics, limit=100):
         "LIMIT": limit,
     }
 
-    results = timeit_direct(transfer_wells, flags=flags)
+    results = _execute_transfer(WellTransferer, flags=flags)
     metrics.well_metrics(sess, *results)
 
     message("TRANSFERRING WELL SCREENS")
-    results = timeit_direct(transfer_wellscreens, flags=flags)
+    results = _execute_transfer(WellScreenTransferer, flags=flags)
     metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")
-    results = timeit_direct(transfer_sensors, sess)
+    results = _execute_transfer(SensorTransferer, flags=flags)
     metrics.sensor_metrics(sess, *results)
 
     # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
@@ -125,6 +122,12 @@ def transfer_all(sess, metrics, limit=100):
     timeit_direct(transfer_assets, sess)
 
 
+def _execute_transfer(klass, flags: dict = None):
+    transferer = klass(flags=flags)
+    transferer.transfer()
+    return transferer.input_df, transferer.cleaned_df, transferer.errors
+
+
 def transfer_debugging(sess, metrics, limit=100):
     message("STARTING TRANSFER DEBUG", new_line_at_top=False)
 
@@ -134,17 +137,18 @@ def transfer_debugging(sess, metrics, limit=100):
 
     message("TRANSFERRING WELLS")
 
-    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
+    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}  # not currently used
 
-    results = timeit_direct(transfer_wells, flags=flags)
+    results = _execute_transfer(WellTransferer, flags=flags)
     metrics.well_metrics(sess, *results)
 
     message("TRANSFERRING WELL SCREENS")
-    results = timeit_direct(transfer_wellscreens, flags=flags)
+    results = _execute_transfer(WellScreenTransferer, flags=flags)
     metrics.well_screen_metrics(sess, *results)
 
     message("TRANSFERRING SENSORS")
-    results = timeit_direct(transfer_sensors, sess)
+    results = _execute_transfer(SensorTransferer, flags=flags)
+    # results = timeit_direct(transfer_sensors, sess)
     metrics.sensor_metrics(sess, *results)
 
     # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'

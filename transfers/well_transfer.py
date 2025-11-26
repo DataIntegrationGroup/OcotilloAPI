@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 import json
-import time
 from datetime import datetime, UTC
 
 import pandas as pd
@@ -37,7 +36,6 @@ from db import (
     MonitoringFrequencyHistory,
     MeasuringPointHistory,
 )
-from db.engine import session_ctx
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
 from services.util import (
@@ -45,6 +43,7 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
+from transfers.transferer import ChunkTransferer, Transferer
 from transfers.util import (
     make_location,
     make_location_data_provenance,
@@ -55,7 +54,6 @@ from transfers.util import (
     filter_by_welldata_datasource_and_project,
     lexicon_mapper,
     filter_non_transferred_wells,
-    chunk_by_size,
     MeasuringPointEstimator,
 )
 
@@ -122,8 +120,8 @@ def _extract_casing_materials(row) -> list[str]:
 def get_wells_to_transfer(
     sess: Session, flags: dict = None
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if flags is None:
-        flags = {}
+    # if flags is None:
+    #     flags = {}
 
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     ldf = read_csv("Location")
@@ -134,17 +132,19 @@ def get_wells_to_transfer(
 
     input_df = wdf
     wdf = replace_nans(wdf)
-    if flags.get("TRANSFER_ALL_WELLS", True):
-        # todo: filter Locations by DataSource
-        cleaned_df = filter_by_welldata_datasource_and_project(wdf)
-    else:
-        # get a subset of wells that have not been transferred yet
-        # todo: this needs to be defined.
-        #       for now, we are just filtering out wells that have not been transferred yet
-        #       In the future we will be using criteria to determine which wells to transfer
-        #       for example, wells in the "Water Level Network" project
-        cleaned_df = wdf
 
+    # if flags.get("TRANSFER_ALL_WELLS", False):
+    #     # todo: filter Locations by DataSource
+    #     cleaned_df = filter_by_welldata_datasource_and_project(wdf)
+    # else:
+    #     # get a subset of wells that have not been transferred yet
+    #     # todo: this needs to be defined.
+    #     #       for now, we are just filtering out wells that have not been transferred yet
+    #     #       In the future we will be using criteria to determine which wells to transfer
+    #     #       for example, wells in the "Water Level Network" project
+    #     cleaned_df = wdf
+
+    cleaned_df = filter_by_welldata_datasource_and_project(wdf)
     cleaned_df = filter_non_transferred_wells(sess, cleaned_df)
 
     return input_df, cleaned_df
@@ -166,60 +166,6 @@ def dump_cached_elevations(lut: dict):
     log_filename = "transfer_data/cached_elevations.json"
     blob = bucket.blob(log_filename)
     blob.upload_from_string(json.dumps(lut))
-
-
-class Transferer(object):
-    input_df: pd.DataFrame = None
-    cleaned_df: pd.DataFrame = None
-    errors: list = None
-    flags: dict = None
-
-    def __init__(self, flags: dict = None):
-        self.errors = []
-        self.flags = flags if flags else {}
-
-    def transfer(self):
-        with session_ctx() as session:
-            self.input_df, self.cleaned_df = self._get_dfs(session)
-            self._limit_iterator(session, self.flags.get("LIMIT", 0))
-
-    def _get_df_to_iterate(self) -> pd.DataFrame:
-        return self.cleaned_df
-
-    def _limit_iterator(self, session: Session, limit: int, step: int = 25):
-        df = self._get_df_to_iterate()
-        n = len(df)
-        start_time = time.time()
-        for i, row in enumerate(df.itertuples()):
-            if limit and i >= limit:
-                logger.info(f"Reached limit of {limit} rows. Stopping migration.")
-                break
-
-            if i and not i % step:
-                logger.info(
-                    f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
-                )
-                start_time = time.time()
-                try:
-                    session.commit()
-                except Exception as e:
-                    logger.critical(f"Error committing wells. {e}")
-                    session.rollback()
-                    continue
-
-            self._iterator(session, df, i, row)
-
-        session.commit()
-        self._after_hook(session)
-
-    def _iterator(self, session: Session, df: pd.DataFrame, i: int, row: dict):
-        raise NotImplementedError("Must implement _iterator method")
-
-    def _after_hook(self, session: Session):
-        pass
-
-    def _get_dfs(self, session: Session):
-        raise NotImplementedError("Must implement _get_dfs method")
 
 
 class WellTransferer(Transferer):
@@ -472,41 +418,6 @@ class WellTransferer(Transferer):
         session.commit()
 
 
-class ChunkTransferer(Transferer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.chunk_size = 1000
-
-    def chunk_transfer(self):
-        with session_ctx() as session:
-            self.input_df, self.cleaned_df = self._get_dfs(session)
-            df = self._get_df_to_iterate()
-            for ci, chunk in enumerate(chunk_by_size(df, self.chunk_size)):
-                dbchunk = self._get_df_chunk(session, chunk)
-                logger.info(
-                    f"Processing chunk {ci}, {len(chunk)} rows, {len(dbchunk)} db items"
-                )
-                for i, row in enumerate(chunk.itertuples()):
-                    dbitem = self._get_db_item(dbchunk, row)
-                    if not dbitem:
-                        self._missing_db_item_warning(row)
-                        continue
-                    self._chunk_iterator(session, df, i, row, dbitem)
-            session.commit()
-
-    def _get_df_chunk(self, session, chunk):
-        raise NotImplementedError("Must be implemented in subclass")
-
-    def _missing_db_item_warning(self, row):
-        raise NotImplementedError("Must be implemented in subclass")
-
-    def _chunk_iterator(self, session, df, i, row, dbitem):
-        raise NotImplementedError("Must be implemented in subclass")
-
-    def _get_db_item(self, chunk, row):
-        raise NotImplementedError("Must be implemented in subclass")
-
-
 class WellScreenTransferer(ChunkTransferer):
     def _get_dfs(self, session: Session):
         input_df = read_csv("WellScreens")
@@ -552,16 +463,16 @@ class WellScreenTransferer(ChunkTransferer):
         session.add(well_screen)
 
 
-def transfer_wells(flags: dict = None):
-    transferer = WellTransferer(flags=flags)
-    transferer.transfer()
-    return transferer.input_df, transferer.cleaned_df, transferer.errors
-
-
-def transfer_wellscreens(flags: dict = None):
-    transferer = WellScreenTransferer(flags=flags)
-    transferer.chunk_transfer()
-    return transferer.input_df, transferer.cleaned_df, transferer.errors
+# def transfer_wells(flags: dict = None):
+#     transferer = WellTransferer(flags=flags)
+#     transferer.transfer()
+#     return transferer.input_df, transferer.cleaned_df, transferer.errors
+#
+#
+# def transfer_wellscreens(flags: dict = None):
+#     transferer = WellScreenTransferer(flags=flags)
+#     transferer.chunk_transfer()
+#     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
 
 def cleanup_locations(session):
@@ -624,314 +535,3 @@ def cleanup_locations(session):
 
 
 # ============= EOF =============================================
-# def transfer_wells_old(session: Session, flags: dict = None, limit: int = 0) -> None:
-#     # input_df, cleaned_df = get_wells_to_transfer(session, flags)
-#     # wdf = cleaned_df
-#     # n = len(wdf)
-#
-#     # step = 25
-#     # start_time = time.time()
-#     errors = []
-#     added_locations = {}
-#     # cached_elevations = get_cached_elevations()
-#     # for i, row in enumerate(wdf.itertuples()):
-#     # pointid = row.PointID
-#     # if wdf[wdf["PointID"] == pointid].shape[0] > 1:
-#     #     logger.critical(
-#     #         f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
-#     #     )
-#     #     errors.append(
-#     #         {
-#     #             "pointid": pointid,
-#     #             "error": "duplicate records",
-#     #             "table": source_table,
-#     #             "field": "PointID",
-#     #         }
-#     #     )
-#     #     continue
-#
-#     # if limit and i >= limit:
-#     #     logger.info(f"Reached limit of {limit} rows. Stopping migration.")
-#     #     break
-#     #
-#     # if i and not i % step:
-#     #     logger.info(
-#     #         f"Processing row {i} of {n},  avg rows per second: {step / (time.time() - start_time):.2f}"
-#     #     )
-#     #     start_time = time.time()
-#     #     try:
-#     #         session.commit()
-#     #     except Exception as e:
-#     #         logger.critical(f"Error committing wells. {e}")
-#     #         session.rollback()
-#     #         continue
-#
-#     # location = None
-#     # try:
-#     #     location, elevation_method = make_location(row, cached_elevations)
-#     #     session.add(location)
-#     #     added_locations[row.PointID] = elevation_method
-#     # except Exception as e:
-#     #     if location is not None:
-#     #         session.expunge(location)
-#     #     # these rollbacks are cause an issue because they are discarding good data
-#     #     # session.rollback()
-#     #     errors.append(
-#     #         {
-#     #             "pointid": row.PointID,
-#     #             "error": e,
-#     #             "table": "Location",
-#     #             "field": str(e),
-#     #         }
-#     #     )
-#     #     logger.critical(f"Error making location for {row.PointID}: {e}")
-#     #     continue
-#     #
-#     # try:
-#     #     first_visit_date = _get_first_visit_date(row)
-#     #     well_purposes = [] if isna(row.CurrentUse) else _extract_well_purposes(row)
-#     #     well_casing_materials = (
-#     #         [] if isna(row.CasingDescription) else _extract_casing_materials(row)
-#     #     )
-#     #
-#     #     # manually add the well rather than add_well from services/thing_helper.py
-#     #     # so that effective_start can be set on the location assocation
-#     #
-#     #     data = CreateWell(
-#     #         location_id=location.id,
-#     #         name=row.PointID,
-#     #         first_visit_date=first_visit_date,
-#     #         hole_depth=row.HoleDepth,
-#     #         well_depth=row.WellDepth,
-#     #         well_construction_notes=row.ConstructionNotes,
-#     #         well_casing_diameter=(
-#     #             row.CasingDiameter * 12 if row.CasingDiameter else None
-#     #         ),
-#     #         well_casing_depth=row.CasingDepth,
-#     #         release_status="public" if row.PublicRelease else "private",
-#     #         measuring_point_height=row.MPHeight,
-#     #         measuring_point_description=row.MeasuringPoint,
-#     #         notes=(
-#     #             [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
-#     #         ),
-#     #     )
-#     #
-#     #     CreateWell.model_validate(data)
-#     # except ValidationError as e:
-#     #     errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
-#     #     logger.critical(
-#     #         f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
-#     #     )
-#     #     continue
-#     #
-#     # well = None
-#     # try:
-#     #     well_data = data.model_dump(
-#     #         exclude=[
-#     #             "location_id",
-#     #             "group_id",
-#     #             "well_purposes",
-#     #             "well_casing_materials",
-#     #             "measuring_point_height",
-#     #             "measuring_point_description",
-#     #         ]
-#     #     )
-#     #     well_data["thing_type"] = "water well"
-#     #     well_data["nma_pk_welldata"] = row.WellID
-#     #
-#     #     well_data.pop("notes")
-#     #     well = Thing(**well_data)
-#     #     session.add(well)
-#     #     # logger.info(f"Created well for {row.PointID}")
-#     #
-#     #     # flush well to access its ID for status_history
-#     #     # session.flush()
-#     #
-#     #     # session.commit()
-#     #     # session.refresh(well)
-#     #     # if notes:
-#     #     #     for ni in notes:
-#     #     #         nn = well.add_note(ni['content'], ni['note_type'])
-#     #     #         session.add(nn)
-#     #
-#     #     if well_purposes:
-#     #         for wp in well_purposes:
-#     #             # TODO: add validation logic here
-#     #             if wp in WellPurposeEnum:
-#     #                 wp_obj = WellPurpose(thing=well, purpose=wp)
-#     #                 session.add(wp_obj)
-#     #             else:
-#     #                 logger.critical(f"{well.name}. Invalid well purpose: {wp}")
-#     #
-#     #     if well_casing_materials:
-#     #         for wcm in well_casing_materials:
-#     #             # TODO: add validation logic here
-#     #             if wcm in WellCasingMaterialEnum:
-#     #                 wcm_obj = WellCasingMaterial(thing=well, material=wcm)
-#     #                 session.add(wcm_obj)
-#     #             else:
-#     #                 logger.critical(
-#     #                     f"{well.name}. Invalid well casing material: {wcm}"
-#     #                 )
-#     # except Exception as e:
-#     #     if well is not None:
-#     #         session.expunge(well)
-#     #
-#     #     errors.append({"pointid": row.PointID, "error": e, "table": "WellData"})
-#     #     logger.critical(f"Error creating well for {row.PointID}: {e}")
-#     #     continue
-#     #
-#     # assoc = LocationThingAssociation(effective_start=location.created_at)
-#     #
-#     # assoc.location = location
-#     # assoc.thing = well
-#     # session.add(assoc)
-#
-#     # session.commit()
-#
-#     # # add things thate need well id
-#     # for well in session.query(Thing).filter(Thing.thing_type == "water well").all():
-#     #     row = wdf[wdf["PointID"] == well.name].iloc[0]
-#     #     if not isna(row.Notes):
-#     #         note = well.add_note(row.Notes, "Other")
-#     #         session.add(note)
-#     #
-#     #     location = well.current_location
-#     #     elevation_method = added_locations[row.PointID]
-#     #     data_provenances = make_location_data_provenance(
-#     #         row, location, elevation_method
-#     #     )
-#     #     for dp in data_provenances:
-#     #         session.add(dp)
-#     #
-#     #     """
-#     #         Developer's note
-#     #
-#     #         It's not clear when the measuring point from NM_Aquifer was
-#     #         determined, so I'm setting start_date to the day of the transfer
-#     #     """
-#     #     measuring_point_history = MeasuringPointHistory(
-#     #         thing_id=well.id,
-#     #         measuring_point_height=row.MPHeight,
-#     #         measuring_point_description=row.MeasuringPoint,
-#     #         start_date=datetime.now(tz=UTC),
-#     #         end_date=None,
-#     #     )
-#     #     session.add(measuring_point_history)
-#     #
-#     #     """
-#     #     Developer's notes
-#     #
-#     #     For all status_history records the start_date will be now since that
-#     #     isn't recorded in NM_Aquifer
-#     #     """
-#     #     # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
-#     #     # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
-#     #     # TODO: have AMMP review and verify the various MonitoringStatus codes
-#     #
-#     #     target_id = well.id
-#     #     target_table = "thing"
-#     #     if not isna(row.MonitoringStatus):
-#     #         if (
-#     #             "X" in row.MonitoringStatus
-#     #             or "I" in row.MonitoringStatus
-#     #             or "C" in row.MonitoringStatus
-#     #         ):
-#     #             status_value = "Not currently monitored"
-#     #         else:
-#     #             status_value = "Currently monitored"
-#     #
-#     #         status_history = StatusHistory(
-#     #             status_type="Monitoring Status",
-#     #             status_value=status_value,
-#     #             reason=row.MonitorStatusReason,
-#     #             start_date=datetime.now(tz=UTC),
-#     #             target_id=target_id,
-#     #             target_table=target_table,
-#     #         )
-#     #         session.add(status_history)
-#     #         logger.info(
-#     #             f"  Added monitoring status for well {well.name}: {status_value}"
-#     #         )
-#     #
-#     #         for code in NMA_MONITORING_FREQUENCY.keys():
-#     #             if code in row.MonitoringStatus:
-#     #                 monitoring_frequency = NMA_MONITORING_FREQUENCY[code]
-#     #                 monitoring_frequency_history = MonitoringFrequencyHistory(
-#     #                     thing_id=well.id,
-#     #                     monitoring_frequency=monitoring_frequency,
-#     #                     start_date=datetime.now(tz=UTC),
-#     #                     end_date=None,
-#     #                 )
-#     #                 session.add(monitoring_frequency_history)
-#     #                 logger.info(
-#     #                     f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
-#     #                 )
-#     #
-#     #     if not isna(row.Status):
-#     #         status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
-#     #         status_history = StatusHistory(
-#     #             status_type="Well Status",
-#     #             status_value=status_value,
-#     #             reason=row.StatusUserNotes,
-#     #             start_date=datetime.now(tz=UTC),
-#     #             target_id=target_id,
-#     #             target_table=target_table,
-#     #         )
-#     #         session.add(status_history)
-#     #         logger.info(f"  Added well status for well {well.name}: {status_value}")
-#     #
-#     # session.commit()
-#     #
-#     # dump_cached_elevations(cached_elevations)
-#     # return input_df, cleaned_df, errors
-
-# def transfer_wellscreens_old(session, limit=None):
-
-# input_df = read_csv("WellScreens")
-# wdf = replace_nans(input_df)
-#
-# cleaned_df = filter_to_valid_point_ids(session, wdf)
-
-# errors = []
-# for ci, chunk in enumerate(chunk_by_size(cleaned_df, 1000)):
-#     things = (
-#         session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
-#     )
-#
-#     logger.info(f"Processing chunk {ci}, {len(chunk)} rows, {len(things)} things")
-#     for i, row in enumerate(chunk.itertuples()):
-#         thing = next((thing for thing in things if thing.name == row.PointID), None)
-#         if not thing:
-#             logger.warning(
-#                 f"Thing with PointID {row.PointID} not found. Skipping well screen."
-#             )
-#             continue
-#
-#         well_screen_data = {
-#             "thing_id": thing.id,
-#             "screen_depth_top": row.ScreenTop,
-#             "screen_depth_bottom": row.ScreenBottom,
-#             # "screen_type": row.ScreenType,
-#             "screen_description": row.ScreenDescription,
-#             "release_status": "draft",
-#             "nma_pk_wellscreens": row.GlobalID,
-#         }
-#         try:
-#             # TODO: add validation logic here to ensure no overlapping screens for the same well
-#             CreateWellScreen.model_validate(well_screen_data)
-#         except ValidationError as e:
-#             logger.critical(
-#                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
-#             )
-#             errors.append(
-#                 {"pointid": row.PointID, "error": e, "table": "WellScreens"}
-#             )
-#             continue
-#
-#         well_screen = WellScreen(**well_screen_data)
-#         session.add(well_screen)
-#
-#     session.commit()
-#
-# return input_df, cleaned_df, errors
