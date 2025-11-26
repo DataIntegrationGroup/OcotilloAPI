@@ -33,11 +33,7 @@ from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrT
 from schemas.group import GroupResponse
 from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
-from schemas.aquifer_system import AquiferSystemGeoJSONResponse
-
-# from schemas.geologic_formation import (
-#     GeologicFormationResponse,
-# )
+from schemas.permission_history import PermissionHistoryResponse
 
 # -------- VALIDATE ----------
 
@@ -238,9 +234,6 @@ class WellResponse(BaseThingResponse):
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
-    allow_water_level_samples: bool | None
-    allow_water_chemistry_samples: bool | None
-    allow_datalogger_installation: bool | None
     is_suitable_for_datalogger: bool | None
     well_status: str | None
     measuring_point_height: float
@@ -251,6 +244,7 @@ class WellResponse(BaseThingResponse):
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
+    permissions: list[PermissionHistoryResponse]
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -279,6 +273,43 @@ class WellResponse(BaseThingResponse):
             formations = []
         return formations
 
+    @field_validator("permissions", mode="before")
+    def populate_permission_history_with_latest_records(cls, permissions):
+        """
+        Populate the permission history with the latest records for each
+        type of permission. If multiple records exist for the same permission type
+        only the most recent one is included. If there are no records
+        the permission_allowed will be None
+        """
+        permissions_to_return = []
+        for permission_type in [
+            "Water Level Sample",
+            "Water Chemistry Sample",
+            "Datalogger Installation",
+        ]:
+            # Filter records for the current permission type
+            filtered_records = [
+                record
+                for record in permissions
+                if record.permission_type == permission_type and record.end_date is None
+            ]
+            if filtered_records:
+                # Get the most recent record based on start_date
+                latest_record = max(
+                    filtered_records, key=lambda record: record.start_date
+                )
+                permissions_to_return.append(latest_record)
+            else:
+                permissions_to_return.append(
+                    PermissionHistoryResponse(
+                        permission_type=permission_type,
+                        permission_allowed=None,
+                        start_date=None,
+                        end_date=None,
+                    )
+                )
+        return permissions_to_return
+
 
 class SpringResponse(BaseThingResponse):
     """
@@ -301,7 +332,7 @@ class WellScreenResponse(BaseResponseModel):
     thing_id: int
     thing: WellResponse
     aquifer_system_id: int | None = None
-    aquifer_system: AquiferSystemGeoJSONResponse | None = None
+    aquifer_system: str | None = None
     aquifer_type: str | None = None
     geologic_formation_id: int | None = None
     # geologic_formation: GeologicFormationResponse | None = None
@@ -311,6 +342,24 @@ class WellScreenResponse(BaseResponseModel):
     screen_depth_top_unit: str = "ft"
     screen_type: str | None = None
     screen_description: str | None = None
+
+    @field_validator("aquifer_system", mode="before")
+    def populate_aquifer_system_with_name(cls, aquifer_system):
+        if aquifer_system is not None:
+            return aquifer_system.name
+        return None
+
+    @field_validator("aquifer_type", mode="before")
+    def populate_aquifer_type_with_name(cls, aquifer_type):
+        if aquifer_type is not None:
+            return aquifer_type.name
+        return None
+
+    @field_validator("geologic_formation_id", mode="before")
+    def populate_geologic_formation_with_code(cls, geologic_formation):
+        if geologic_formation is not None:
+            return geologic_formation.formation_code
+        return None
 
 
 class GeoJSONGeometry(BaseModel):
