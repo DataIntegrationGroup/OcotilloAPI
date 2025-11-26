@@ -448,36 +448,6 @@ class Thing(
         )
 
     @property
-    def allow_water_level_samples(self):
-        """
-        Returns the current permissions for the Thing.
-        """
-        permission_record = retrieve_latest_polymorphic_history_table_record(
-            self, "permission_history", "Water Level Sample"
-        )
-        return permission_record.permission_allowed if permission_record else None
-
-    @property
-    def allow_water_chemistry_samples(self):
-        """
-        Returns the current permissions for the Thing.
-        """
-        permission_record = retrieve_latest_polymorphic_history_table_record(
-            self, "permission_history", "Water Chemistry Sample"
-        )
-        return permission_record.permission_allowed if permission_record else None
-
-    @property
-    def allow_datalogger_installation(self):
-        """
-        Returns the current permissions for the Thing.
-        """
-        permission_record = retrieve_latest_polymorphic_history_table_record(
-            self, "permission_history", "Datalogger Installation"
-        )
-        return permission_record.permission_allowed if permission_record else None
-
-    @property
     def aquifers(self) -> List[dict]:
         """
         Returns a list of aquifer systems and their associated types for this Thing.
@@ -493,6 +463,18 @@ class Thing(
             }
             aquifer_list.append(aquifer_info)
         return aquifer_list
+
+    @property
+    def permissions(self) -> list:
+        """
+        Returns the associated permissions or an empty list. If there are no
+        associated permissions, an empty list is returned instead of None to
+        allow the API to serialize correctly (see schemas/thing.py).
+        """
+        if self.permission_history:
+            return self.permission_history
+        else:
+            return []
 
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
