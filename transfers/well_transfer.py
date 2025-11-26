@@ -16,7 +16,7 @@
 import json
 import time
 from datetime import datetime, UTC
-
+import re
 import pandas as pd
 from pandas import isna
 from pydantic import ValidationError
@@ -118,19 +118,26 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
+pattern = re.compile(
+    r"\b(?P<term>jet|hand|submersible)\b|\b(?P<phrase>line[-\s]+shaft)\b", re.IGNORECASE
+)
+
+
+def first_matched_term(text: str):
+    m = pattern.search(text)
+    if not m:
+        return None
+    return m.group("term") or m.group("phrase")
+
+
+PUMP_MAPPING = {"jet": "Jet", "hand": "Hand", "submersible": "Submersible"}
+
+
 def _extract_well_pump_type(row) -> str | None:
+    if isna(row.ConstructionNotes):
+        return None
     construction_notes = row.ConstructionNotes.lower()
-    if "pump" in construction_notes:
-        if "submersible" in construction_notes:
-            return "Submersible"
-        elif "jet" in construction_notes:
-            return "Jet"
-        elif "line shaft" in construction_notes or "lineshaft" in construction_notes:
-            return "Line Shaft"
-        elif "hand" in construction_notes:
-            return "Hand"
-        else:
-            return None
+    return PUMP_MAPPING.get(first_matched_term(construction_notes), None)
 
 
 def get_wells_to_transfer(
@@ -252,9 +259,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_casing_materials = (
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
-            well_pump_type = (
-                _extract_well_pump_type(row) if row.ConstructionNotes else None
-            )
+            well_pump_type = _extract_well_pump_type(row)
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
