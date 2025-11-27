@@ -115,6 +115,11 @@ class Thing(
     )
 
     well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    well_completed_on: Mapped[date] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Date when well construction/drilling was completed (from AMPAPI CompletionDate, active field for new wells)",
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
