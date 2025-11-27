@@ -30,7 +30,6 @@ transfers/transfer*.log
 transfer*.log
 transfers/data/nma_csv_cache/*
 !transfers/data/nma_csv_cache/.gitkeep
-tests/features/*.feature
 transfers/metrics/*
 transfers/logs/*
 run_bdd-local.sh
