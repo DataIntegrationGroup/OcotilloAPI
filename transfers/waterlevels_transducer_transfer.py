@@ -23,15 +23,19 @@ from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 def transfer_water_levels_acoustic(session):
-    wd = read_csv("WaterLevelsContinuous_Acoustic")
+    source_table = "WaterLevelsContinuous_Acoustic"
+    wd = read_csv(source_table)
     return _transfer_water_levels_continuous(
-        session, wd, "PublicRelease", "Acoustic Sounder"
+        session, source_table, wd, "PublicRelease", "Acoustic Sounder"
     )
 
 
 def transfer_water_levels_pressure(session):
-    wd = read_csv("WaterLevelsContinuous_Pressure")
-    return _transfer_water_levels_continuous(session, wd, "QCed", "Pressure Transducer")
+    source_table = "WaterLevelsContinuous_Pressure"
+    wd = read_csv(source_table)
+    return _transfer_water_levels_continuous(
+        session, source_table, wd, "QCed", "Pressure Transducer"
+    )
 
 
 def _find_deployment(ts, deployments):
@@ -45,7 +49,9 @@ def _find_deployment(ts, deployments):
     return None
 
 
-def _transfer_water_levels_continuous(session, input_df, partition_field, sensor_type):
+def _transfer_water_levels_continuous(
+    session, source_table, input_df, partition_field, sensor_type
+):
     from schemas.transducer import CreateTransducerObservation
 
     groundwater_parameter_id = (
@@ -173,6 +179,7 @@ def _transfer_water_levels_continuous(session, input_df, partition_field, sensor
     for pointid, (min_date, max_date) in nodeployments.items():
         errors.append(
             {
+                "table": source_table,
                 "pointid": pointid,
                 "error": f"no deployment between {min_date} and {max_date}",
             }
