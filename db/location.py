@@ -64,7 +64,9 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
 
     # --- Legacy AMPAPI Date Fields (Migration-Only, Read-Only Post-Migration) ---
     legacy_date_created: Mapped[datetime.date] = mapped_column(
-        Date, nullable=True, comment="Original AMPAPI DateCreated (migration-only field)"
+        Date,
+        nullable=True,
+        comment="Original AMPAPI DateCreated (migration-only field)",
     )
     legacy_site_date: Mapped[datetime.date] = mapped_column(
         Date, nullable=True, comment="Original AMPAPI SiteDate (migration-only field)"

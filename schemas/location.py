@@ -155,7 +155,9 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
         # populate legacy date fields
-        data_dict["properties"]["legacy_date_created"] = data_dict.get("legacy_date_created")
+        data_dict["properties"]["legacy_date_created"] = data_dict.get(
+            "legacy_date_created"
+        )
         data_dict["properties"]["legacy_site_date"] = data_dict.get("legacy_site_date")
 
         # populate UTM coordinates
