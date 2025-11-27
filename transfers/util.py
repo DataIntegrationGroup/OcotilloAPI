@@ -59,10 +59,24 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
 
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+    # Try to read from local data directory first
+    local_file = Path(__file__).parent / 'data' / f"{name}.csv"
+
+    if local_file.exists():
+        logger.info(f"Reading {name} from local file: {local_file}")
+        if dtype:
+            return pd.read_csv(local_file, dtype=dtype)
+        else:
+            return pd.read_csv(local_file)
+
+    # Check cache directory
     p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
     if os.path.exists(p):
+        logger.info(f"Reading {name} from cache: {p}")
         return pd.read_csv(p, dtype=dtype)
 
+    # Fall back to GCS if local file doesn't exist
+    logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
