@@ -14,35 +14,35 @@ Feature: Post-Migration Legacy Data Retrieval
     Given a location exists with:
       | field                | value      |
       | legacy_date_created  | 2014-04-03 |
-      | inventoried_on       | 2002-12-10 |
+      | legacy_site_date     | 2002-12-10 |
     When I retrieve that location via the API
     Then the response should include legacy_date_created as "2014-04-03"
-    And the response should include inventoried_on as "2002-12-10"
+    And the response should include legacy_site_date as "2002-12-10"
     And the time gap should be approximately 11.3 years
 
   Scenario: Retrieve location with large time gap (54 years)
     Given a location exists with:
       | field                | value      |
       | legacy_date_created  | 2008-05-28 |
-      | inventoried_on       | 1954-05-01 |
+      | legacy_site_date     | 1954-05-01 |
     When I retrieve that location via the API
     Then the response should include legacy_date_created as "2008-05-28"
-    And the response should include inventoried_on as "2002-12-10"
+    And the response should include legacy_site_date as "1954-05-01"
     And the time gap should be approximately 54 years
 
   Scenario: List all locations includes legacy date fields
     Given 5 locations exist with various legacy dates
     When I GET /location to list all locations
     Then each location should have a legacy_date_created field
-    And each location should have an inventoried_on field
-    And some locations should have null inventoried_on
+    And each location should have a legacy_site_date field
+    And some locations should have null legacy_site_date
 
-  Scenario: Filter locations by inventory date range
-    Given locations exist with inventoried_on ranging from 1950 to 2024
-    When I filter locations where inventoried_on is between "2000-01-01" and "2010-12-31"
-    Then the response should only include locations inventoried in that decade
-    And locations inventoried before 2000 should not be included
-    And locations inventoried after 2010 should not be included
+  Scenario: Filter locations by legacy site date range
+    Given locations exist with legacy_site_date ranging from 1950 to 2024
+    When I filter locations where legacy_site_date is between "2000-01-01" and "2010-12-31"
+    Then the response should only include locations with legacy_site_date in that decade
+    And locations with legacy_site_date before 2000 should not be included
+    And locations with legacy_site_date after 2010 should not be included
 
   Scenario: Query location by legacy_date_created
     Given 3 locations exist with legacy_date_created "2014-04-03"
@@ -94,20 +94,20 @@ Feature: Post-Migration Legacy Data Retrieval
     And that well's location has:
       | field                | value      |
       | legacy_date_created  | 2014-04-03 |
-      | inventoried_on       | 2002-12-10 |
+      | legacy_site_date     | 2002-12-10 |
     When I retrieve the well via the API
     Then the well should have well_completed_on as "2004-08-08"
     And the current_location should include legacy_date_created as "2014-04-03"
-    And the current_location should include inventoried_on as "2002-12-10"
+    And the current_location should include legacy_site_date as "2002-12-10"
 
   Scenario: Timeline reconstruction - well completed before site inventoried
     Given a well exists with well_completed_on "1995-06-15"
     And that well's location has:
       | field                | value      |
-      | inventoried_on       | 2003-12-10 |
+      | legacy_site_date     | 2003-12-10 |
       | legacy_date_created  | 2014-04-03 |
     When I retrieve the well and its location
-    Then the temporal sequence should be: well_completed_on → inventoried_on → legacy_date_created
+    Then the temporal sequence should be: well_completed_on → legacy_site_date → legacy_date_created
     And the timeline should show: 1995 → 2003 → 2014
 
   # Data Quality Validation
@@ -116,7 +116,7 @@ Feature: Post-Migration Legacy Data Retrieval
     Given 100 locations were migrated
     And 9 of them had non-null SiteDate in AMPAPI
     When I query the migrated locations
-    Then 9% should have non-null inventoried_on
+    Then 9% should have non-null legacy_site_date
     And 100% should have non-null legacy_date_created
 
   Scenario: Verify well completion date coverage matches expectation
@@ -132,7 +132,7 @@ Feature: Post-Migration Legacy Data Retrieval
     When I retrieve that location
     Then it should have created_at (new system timestamp from migration)
     And it should have legacy_date_created (original AMPAPI DateCreated)
-    And it should have inventoried_on (original AMPAPI SiteDate)
+    And it should have legacy_site_date (original AMPAPI SiteDate)
     And all three timestamps should be independently queryable
     And created_at should be a recent timestamp
     And legacy_date_created should be an older date
@@ -143,10 +143,10 @@ Feature: Post-Migration Legacy Data Retrieval
     Given a location exists with:
       | field                | value      |
       | legacy_date_created  | 2010-01-15 |
-      | inventoried_on       | 2015-06-20 |
+      | legacy_site_date     | 2015-06-20 |
     When I retrieve that location
     Then legacy_date_created should be "2010-01-15"
-    And inventoried_on should be "2015-06-20"
+    And legacy_site_date should be "2015-06-20"
     And the system should accept this without error
 
   Scenario: Spring does not use well_completed_on field
@@ -156,14 +156,14 @@ Feature: Post-Migration Legacy Data Retrieval
     And the field should exist in the response schema
     And it should not cause validation errors
 
-  Scenario: Location with only legacy_date_created (no inventoried_on)
+  Scenario: Location with only legacy_date_created (no legacy_site_date)
     Given a location exists with:
       | field                | value      |
       | legacy_date_created  | 2014-10-17 |
-      | inventoried_on       | null       |
+      | legacy_site_date     | null       |
     When I retrieve that location
     Then legacy_date_created should be "2014-10-17"
-    And inventoried_on should be null
+    And legacy_site_date should be null
 
   Scenario: Well without completion date
     Given a well exists with well_completed_on null
