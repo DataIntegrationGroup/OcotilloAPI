@@ -1237,8 +1237,9 @@ def test_well_with_completion_date_and_location_legacy_fields(location):
     assert data["well_completed_on"] == "2020-06-15"
 
     # Location legacy fields are null (migration-only fields)
-    assert data["current_location"]["legacy_date_created"] is None
-    assert data["current_location"]["legacy_site_date"] is None
+    # current_location is a GeoJSON Feature, so fields are under properties
+    assert data["current_location"]["properties"]["legacy_date_created"] is None
+    assert data["current_location"]["properties"]["legacy_site_date"] is None
 
     # cleanup after test
     from db import Thing, Location

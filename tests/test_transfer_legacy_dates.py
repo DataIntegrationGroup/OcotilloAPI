@@ -67,8 +67,8 @@ def test_make_location_with_both_legacy_dates():
     assert location.legacy_site_date is not None
     assert location.legacy_site_date == datetime.date(2002, 12, 10)
 
-    # Verify created_at is still set (should be the later date)
-    assert location.created_at is not None
+    # Verify created_at is NOT set during migration (it's auto-set by AutoBaseMixin on save)
+    assert location.created_at is None
 
 
 def test_make_location_with_only_date_created():
@@ -209,15 +209,14 @@ def test_make_location_legacy_dates_independent_of_created_at():
     elevations = {}
     location, elevation_method = make_location(row, elevations)
 
-    # created_at should be a DateTime (with timezone)
-    assert isinstance(location.created_at, datetime.datetime)
+    # created_at should be None during transfer (auto-set by AutoBaseMixin on save)
+    assert location.created_at is None
 
     # legacy fields should be Date (no timezone)
     assert isinstance(location.legacy_date_created, datetime.date)
     assert isinstance(location.legacy_site_date, datetime.date)
 
-    # They should be independent
-    assert location.created_at is not None
+    # Legacy fields should be populated
     assert location.legacy_date_created is not None
     assert location.legacy_site_date is not None
 
