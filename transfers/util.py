@@ -60,7 +60,7 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
 
 def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
     # Try to read from local data directory first
-    local_file = Path(__file__).parent / 'data' / f"{name}.csv"
+    local_file = Path(__file__).parent / "data" / f"{name}.csv"
 
     if local_file.exists():
         logger.info(f"Reading {name} from local file: {local_file}")
