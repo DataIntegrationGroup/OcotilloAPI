@@ -237,6 +237,19 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
 
+            # Extract well_completed_on from CompletionDate (Date type, not DateTime)
+            well_completed_on = None
+            if not isna(row.CompletionDate):
+                try:
+                    well_completed_on = datetime.strptime(
+                        row.CompletionDate, "%Y-%m-%d %H:%M:%S.%f"
+                    ).date()
+                except (ValueError, AttributeError):
+                    # If parsing fails, leave as None
+                    logger.warning(
+                        f"Could not parse CompletionDate for {row.PointID}: {row.CompletionDate}"
+                    )
+
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
 
@@ -254,6 +267,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                 release_status="public" if row.PublicRelease else "private",
                 measuring_point_height=row.MPHeight,
                 measuring_point_description=row.MeasuringPoint,
+                well_completed_on=well_completed_on,
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
@@ -283,6 +297,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
             well_data["nma_pk_welldata"] = row.WellID
 
             well_data.pop("notes")
+            # well_completed_on is kept in well_data (not excluded above)
             well = Thing(**well_data)
             session.add(well)
             # logger.info(f"Created well for {row.PointID}")
