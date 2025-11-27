@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
@@ -32,6 +35,7 @@ from db import (
     WellCasingMaterial,
 )
 from db.group import GroupThingAssociation
+from db.measuring_point_history import MeasuringPointHistory
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
@@ -159,6 +163,10 @@ def add_thing(
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
 
+    # Extract measuring point data (stored in separate history table)
+    measuring_point_height = data.pop("measuring_point_height", None)
+    measuring_point_description = data.pop("measuring_point_description", None)
+
     try:
         thing = Thing(**data)
         thing.thing_type = thing_type
@@ -168,6 +176,18 @@ def add_thing(
         session.add(thing)
         session.flush()
         session.refresh(thing)
+
+        # Create MeasuringPointHistory record if measuring_point_height provided
+        if measuring_point_height is not None:
+            measuring_point_history = MeasuringPointHistory(
+                thing_id=thing.id,
+                measuring_point_height=measuring_point_height,
+                measuring_point_description=measuring_point_description,
+                start_date=datetime.now(tz=ZoneInfo("UTC")),
+                end_date=None,
+            )
+            audit_add(user, measuring_point_history)
+            session.add(measuring_point_history)
 
         # endpoint catches ProgrammingError if location_id or group_id do not exist
         if group_id:
