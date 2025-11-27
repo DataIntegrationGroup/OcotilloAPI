@@ -235,4 +235,83 @@ def test_delete_location_404_not_found(second_location):
     assert data["detail"] == f"Location with ID {bad_location_id} not found."
 
 
+#  ============= Legacy date field tests =======================================
+
+
+def test_new_location_has_null_legacy_fields():
+    """Test that newly created locations have null legacy date fields (legacy fields are migration-only)"""
+    payload = {
+        "point": "POINT (-106.607784 35.118924)",
+        "elevation": 1558.8,
+        "release_status": "draft",
+    }
+    response = client.post("/location", json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    # Legacy fields should be present in response but null (not set during creation)
+    assert "legacy_date_created" in data
+    assert "legacy_site_date" in data
+    assert data["legacy_date_created"] is None
+    assert data["legacy_site_date"] is None
+
+    # cleanup after test
+    cleanup_post_test(Location, data["id"])
+
+
+def test_legacy_fields_present_in_location_response():
+    """Test that legacy fields are included in location GET response"""
+    # Create a new location (without legacy fields)
+    payload = {
+        "point": "POINT (-106.607784 35.118924)",
+        "elevation": 1558.8,
+        "release_status": "draft",
+    }
+    create_response = client.post("/location", json=payload)
+    assert create_response.status_code == 201
+    location_id = create_response.json()["id"]
+
+    # Retrieve the location and verify legacy fields are in the schema
+    get_response = client.get(f"/location/{location_id}")
+    assert get_response.status_code == 200
+    data = get_response.json()
+
+    # Verify fields exist in response (even if null)
+    assert "legacy_date_created" in data
+    assert "legacy_site_date" in data
+    assert data["legacy_date_created"] is None
+    assert data["legacy_site_date"] is None
+
+    # cleanup after test
+    cleanup_post_test(Location, location_id)
+
+
+def test_legacy_fields_independent_of_created_at():
+    """Test that created_at (system timestamp) is separate from legacy fields"""
+    payload = {
+        "point": "POINT (-106.607784 35.118924)",
+        "elevation": 1558.8,
+        "release_status": "draft",
+    }
+    response = client.post("/location", json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+
+    # created_at is automatically set by AutoBaseMixin
+    assert "created_at" in data
+    assert data["created_at"] is not None
+
+    # legacy_date_created is separate and null for new records
+    assert "legacy_date_created" in data
+    assert data["legacy_date_created"] is None
+
+    # These are independent fields with different purposes
+    assert "created_at" != "legacy_date_created"
+
+    # cleanup after test
+    cleanup_post_test(Location, data["id"])
+
+
 # ============= EOF =============================================
