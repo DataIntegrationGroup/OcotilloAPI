@@ -117,9 +117,7 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
-def get_wells_to_transfer(
-    sess: Session, flags: dict = None
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def get_wells_to_transfer(flags: dict = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     # if flags is None:
     #     flags = {}
 
@@ -145,7 +143,7 @@ def get_wells_to_transfer(
     #     cleaned_df = wdf
 
     cleaned_df = filter_by_welldata_datasource_and_project(wdf)
-    cleaned_df = filter_non_transferred_wells(sess, cleaned_df)
+    cleaned_df = filter_non_transferred_wells(cleaned_df)
 
     return input_df, cleaned_df
 
@@ -176,23 +174,16 @@ class WellTransferer(Transferer):
         self._cached_elevations = get_cached_elevations()
         self._added_locations = {}
 
-    def _get_dfs(self, session: Session):
-        return get_wells_to_transfer(session, self.flags)
+    def _get_dfs(self):
+        return get_wells_to_transfer(self.flags)
 
-    def _iterator(self, session, df, i, row):
+    def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
         pointid = row.PointID
         if df[df["PointID"] == pointid].shape[0] > 1:
             logger.critical(
                 f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
             )
-            self.errors.append(
-                {
-                    "pointid": pointid,
-                    "error": "duplicate records",
-                    "table": self.source_table,
-                    "field": "PointID",
-                }
-            )
+            self._capture_error(pointid, "duplicate records", "PointID")
             return
 
         location = None
@@ -203,16 +194,8 @@ class WellTransferer(Transferer):
         except Exception as e:
             if location is not None:
                 session.expunge(location)
-            # these rollbacks are cause an issue because they are discarding good data
-            # session.rollback()
-            self.errors.append(
-                {
-                    "pointid": row.PointID,
-                    "error": e,
-                    "table": "Location",
-                    "field": str(e),
-                }
-            )
+
+            self._capture_error(row.PointID, str(e), str(e), "Location")
             logger.critical(f"Error making location for {row.PointID}: {e}")
             return
 
@@ -249,9 +232,7 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            self.errors.append(
-                {"pointid": row.PointID, "error": e, "table": "WellData"}
-            )
+            self._capture_error(row.PointID, str(e), "UnknownField")
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
@@ -310,9 +291,8 @@ class WellTransferer(Transferer):
             if well is not None:
                 session.expunge(well)
 
-            self.errors.append(
-                {"pointid": row.PointID, "error": e, "table": "WellData"}
-            )
+            self._capture_error(row.PointID, str(e), "UnknownField")
+
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             return
 
@@ -418,11 +398,22 @@ class WellTransferer(Transferer):
         session.commit()
 
 
-class WellScreenTransferer(ChunkTransferer):
-    def _get_dfs(self, session: Session):
-        input_df = read_csv("WellScreens")
+class WellChunkTransferer(ChunkTransferer):
+    source_table: str = None
+    source_dtypes: dict = None
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        if self.source_table is None:
+            raise ValueError("source_table must be set")
+
+    def _get_dfs(self):
+        if self.source_table is None:
+            raise ValueError("source_table must be set")
+
+        input_df = read_csv(self.source_table, self.source_dtypes)
         wdf = replace_nans(input_df)
-        cleaned_df = filter_to_valid_point_ids(session, wdf)
+        cleaned_df = filter_to_valid_point_ids(wdf)
         return input_df, cleaned_df
 
     def _get_df_chunk(self, session, chunk):
@@ -437,7 +428,11 @@ class WellScreenTransferer(ChunkTransferer):
     def _missing_db_item_warning(self, row):
         logger.warning(f"Thing with PointID {row.PointID} not found in database.")
 
-    def _chunk_iterator(self, session, df, i, row, db_item):
+
+class WellScreenTransferer(WellChunkTransferer):
+    source_table = "WellScreens"
+
+    def _chunk_step(self, session, df, i, row, db_item):
         well_screen_data = {
             "thing_id": db_item.id,
             "screen_depth_top": row.ScreenTop,
@@ -454,9 +449,7 @@ class WellScreenTransferer(ChunkTransferer):
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
-            self.errors.append(
-                {"pointid": row.PointID, "error": e, "table": "WellScreens"}
-            )
+            self._capture_error(row.PointID, str(e), "UnknownField")
             return
 
         well_screen = WellScreen(**well_screen_data)

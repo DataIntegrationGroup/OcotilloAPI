@@ -26,10 +26,10 @@ import pandas as pd
 import pytz
 from shapely import Point
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location, DataProvenance
+from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
 
 # from services.lexicon_mapper import lexicon_mapper
@@ -72,22 +72,26 @@ class MeasuringPointEstimator:
             logger.info(
                 f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
             )
-            # try to estimate mpheight from measurements
             mphs = []
             start_dates = []
             mph_descs = []
-            for m in df.itertuples():
-                mphi = m.DepthToWater - m.DepthToWaterBGS
-                start_date = m.DateMeasured
-                if mphi not in mphs:
-                    mphs.append(mphi)
-                    mph_descs.append(
-                        "Auto calculated from measurements at depth to water and depth to water below ground surface"
-                    )
-                    start_dates.append(start_date)
-            logger.info(
-                f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
-            )
+
+            if len(df) == 0:
+                logger.warning(f"No measurements found for PointID: {row.PointID}.")
+            else:
+                # try to estimate mpheight from measurements
+                for m in df.itertuples():
+                    mphi = m.DepthToWater - m.DepthToWaterBGS
+                    start_date = m.DateMeasured
+                    if mphi not in mphs:
+                        mphs.append(mphi)
+                        mph_descs.append(
+                            "Auto calculated from measurements at depth to water and depth to water below ground surface"
+                        )
+                        start_dates.append(start_date)
+                logger.info(
+                    f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
+                )
         else:
             mphs = [mph]
             mph_descs = [mph_desc]
@@ -105,7 +109,7 @@ class MeasuringPointEstimator:
         return zip(mphs, mph_descs, start_dates, end_dates)
 
 
-class RecordingIntervalEstimator:
+class SensorParameterEstimator:
     def __init__(self, sensor_type: str):
         if sensor_type == "Pressure Transducer":
             self._df = read_csv("WaterLevelsContinuous_Pressure")
@@ -115,6 +119,23 @@ class RecordingIntervalEstimator:
         # convert "DateMeasured" to date"
         self._df["DateMeasured"] = pd.to_datetime(self._df["DateMeasured"]).dt.date
 
+    def estimate_installation_date(
+        self, record: pd.Series
+    ) -> tuple[datetime | None, str | None]:
+        # get the first measurement for this pointid
+        point_id = record.PointID
+        cdf = self._get_values(point_id)
+        if len(cdf) == 0:
+            logger.warning(
+                f"Unable to estimate installation date, no measurements found for PointID: {point_id}."
+            )
+            return None
+        return cdf["DateMeasured"].min()
+
+    def _get_values(self, point_id: str):
+        cdf = self._df[self._df["PointID"] == point_id]
+        return cdf.sort_values("DateMeasured")
+
     def estimate_recording_interval(
         self,
         record: pd.Series,
@@ -122,12 +143,10 @@ class RecordingIntervalEstimator:
         removal_date: datetime = None,
     ) -> tuple[int | None, str | None, str | None]:
         point_id = record.PointID
-
-        cdf = self._df[self._df["PointID"] == point_id]
+        cdf = self._get_values(point_id)
         if len(cdf) == 0:
             return None, None, f"No measurements found for PointID: {point_id}"
 
-        cdf = cdf.sort_values("DateMeasured")
         if installation_date is not None:
             cdf = cdf[cdf["DateMeasured"] >= installation_date]
         if removal_date is not None:
@@ -203,9 +222,10 @@ def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
         return pd.read_csv(io.BytesIO(data))
 
 
-def get_valid_point_ids(session, thing_type="water well"):
-    things = get_valid_things(session, thing_type)
-    valid_pointids = [thing.name for thing in things]
+def get_valid_point_ids(thing_type="water well"):
+    with session_ctx() as session:
+        things = get_valid_things(session, thing_type)
+        valid_pointids = [thing.name for thing in things]
     return valid_pointids
 
 
@@ -243,9 +263,10 @@ def get_transfers_data_path(name):
     return root / name
 
 
-def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFrame:
-    sql = select(Thing.name).where(Thing.thing_type == "water well")
-    existing_ids = sess.execute(sql).scalars().all()
+def filter_non_transferred_wells(df: pd.DataFrame) -> pd.DataFrame:
+    with session_ctx() as sess:
+        sql = select(Thing.name).where(Thing.thing_type == "water well")
+        existing_ids = sess.execute(sql).scalars().all()
     return df[~(df["PointID"].isin(existing_ids))]
 
 
@@ -265,7 +286,7 @@ def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
     counts = df.groupby("DataSource").size().reset_index(name="WellCount")
     counts = counts.sort_values("WellCount", ascending=False)
     for count in counts.itertuples():
-        logger.info(f"{count.DataSource}: {count.WellCount}")
+        logger.info(f"{count.WellCount}: {count.DataSource[:50]} ")
 
     pldf = read_csv("ProjectLocations")
     collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
@@ -288,8 +309,8 @@ def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 
-def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
-    valid_point_ids = get_valid_point_ids(session)
+def filter_to_valid_point_ids(df: pd.DataFrame) -> pd.DataFrame:
+    valid_point_ids = get_valid_point_ids()
     return df[df["PointID"].isin(valid_point_ids)]
 
 

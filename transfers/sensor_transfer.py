@@ -15,16 +15,18 @@
 # ===============================================================================
 from datetime import datetime
 
+import pandas as pd
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from db import Sensor, Deployment, Thing
+from db import Sensor, Deployment, Thing, Base
 from transfers.transferer import ThingBasedTransferer
 from transfers.util import (
     read_csv,
     logger,
     filter_to_valid_point_ids,
     replace_nans,
-    RecordingIntervalEstimator,
+    SensorParameterEstimator,
 )
 
 EQUIPMENT_TO_SENSOR_TYPE_MAP = {
@@ -42,11 +44,11 @@ class SensorTransferer(ThingBasedTransferer):
         self._estimators = {}
         self._added = {}
 
-    def _get_dfs(self, session):
+    def _get_dfs(self):
         input_df = read_csv(self.source_table)
         input_df.columns = input_df.columns.str.replace(" ", "_")
         input_df = input_df[input_df.SerialNo.notna()]
-        cleaned_df = filter_to_valid_point_ids(session, input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df)
         cleaned_df = replace_nans(cleaned_df)
         return input_df, cleaned_df
 
@@ -56,7 +58,15 @@ class SensorTransferer(ThingBasedTransferer):
     def _get_prepped_group(self, group):
         return group.sort_values(by=["DateInstalled"])
 
-    def _step(self, session, row, db_item):
+    def _get_estimator(self, sensor_type):
+        if sensor_type in self._estimators:
+            estimator = self._estimators[sensor_type]
+        else:
+            estimator = SensorParameterEstimator(sensor_type)
+            self._estimators[sensor_type] = estimator
+        return estimator
+
+    def _group_step(self, session: Session, row: pd.Series, db_item: Base):
         pointid = self._get_point_id(row, db_item)
 
         try:
@@ -66,14 +76,8 @@ class SensorTransferer(ThingBasedTransferer):
                 f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
             )
             error = f"key error adding sensor_type:{row.EquipmentType} error: {e}"
-            self.errors.append(
-                {
-                    "pointid": pointid,
-                    "error": error,
-                    "table": self.source_table,
-                    "field": "EquipmentType",
-                }
-            )
+            self._capture_error(pointid, error, "EquipmentType")
+
             return
 
         if row.SerialNo in self._added:
@@ -114,21 +118,29 @@ class SensorTransferer(ThingBasedTransferer):
                 row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
             ).date()
         else:
-            pointid = self._get_point_id(row)
-            logger.critical(
-                f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
-                f"SerialNo: {row.SerialNo} PointID: {pointid}"
-            )
-            self.errors.append(
-                {
-                    "pointid": pointid,
-                    "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. Installation Date cannot "
-                    f"be None",
-                    "table": self.source_table,
-                    "field": "DateInstalled",
-                }
-            )
-            return
+            pointid = self._get_point_id(row, None)
+            estimator = self._get_estimator(sensor_type)
+            installation_date = estimator.estimate_installation_date(row)
+            if not installation_date:
+                logger.critical(
+                    f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
+                    f"SerialNo: {row.SerialNo} PointID: {pointid}"
+                )
+                self._capture_error(
+                    pointid,
+                    f"row.SerialNo={row.SerialNo}. Installation Date cannot be None",
+                    "DateInstalled",
+                )
+                return
+            else:
+                logger.warning(
+                    f"Estimated installation date={installation_date} for {pointid}"
+                )
+                self._capture_error(
+                    pointid,
+                    f"Estimated installation date={installation_date}. Is this correct?",
+                    "DateInstalled",
+                )
 
         removal_date = None
         if row.DateRemoved:
@@ -141,12 +153,7 @@ class SensorTransferer(ThingBasedTransferer):
             recording_interval = int(row.RecordingInterval)
         except (ValueError, TypeError):
             # try to calculate recording interval from measurements
-            if sensor_type in self._estimators:
-                estimator = self._estimators[sensor_type]
-            else:
-                estimator = RecordingIntervalEstimator(sensor_type)
-                self._estimators[sensor_type] = estimator
-
+            estimator = self._get_estimator(sensor_type)
             recording_interval, unit, error = estimator.estimate_recording_interval(
                 row, installation_date, removal_date
             )
@@ -157,18 +164,20 @@ class SensorTransferer(ThingBasedTransferer):
                     f"name={sensor.name}, serial_no={sensor.serial_no}. "
                     f"estimated recording interval: {recording_interval} {unit}"
                 )
+                self._capture_error(
+                    pointid,
+                    f"Estimated recording interval={recording_interval} {unit}. Is this correct?",
+                    "RecordingInterval",
+                )
+
             else:
                 logger.critical(
                     f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
                 )
-
-                self.errors.append(
-                    {
-                        "pointid": pointid,
-                        "error": f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
-                        "table": self.source_table,
-                        "field": "RecordingInterval",
-                    }
+                self._capture_error(
+                    pointid,
+                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
+                    "RecordingInterval",
                 )
 
         sql = (
@@ -215,197 +224,6 @@ class SensorTransferer(ThingBasedTransferer):
             sensor.sensor_status = "In Service"
         if removal_date:
             sensor.sensor_status = "Retired"
-
-
-# def transfer_sensors(session):
-#     source_table = "Equipment"
-#     input_df = read_csv(source_table)
-#     input_df.columns = input_df.columns.str.replace(" ", "_")
-#     input_df = input_df[input_df.SerialNo.notna()]
-#     cleaned_df = filter_to_valid_point_ids(session, input_df)
-#     cleaned_df = replace_nans(cleaned_df)
-#     errors = []
-#     grouped_equipment = cleaned_df.groupby(["PointID"])
-#     added = {}
-#     estimators = {}
-#     for index, group in grouped_equipment:
-#         pointid = index[0]
-#         thing = session.query(Thing).filter(Thing.name == pointid).first()
-#         if thing is None:
-#             logger.warning(
-#                 f"Skipping sensor transfer for Thing with PointID {pointid} since it is not in the DB"
-#             )
-#             continue
-#         ordered_group = group.sort_values(by=["DateInstalled"])
-#
-#         try:
-#             for row in ordered_group.itertuples():
-#                 try:
-#                     sensor_type = EQUIPMENT_TO_SENSOR_TYPE_MAP[row.EquipmentType]
-#                 except KeyError as e:
-#                     logger.critical(
-#                         f"Skipping equipment with type {row.EquipmentType} for point {pointid}"
-#                     )
-#                     error = (
-#                         f"key error adding sensor_type:{row.EquipmentType} error: {e}"
-#                     )
-#                     errors.append(
-#                         {
-#                             "pointid": pointid,
-#                             "error": error,
-#                             "table": source_table,
-#                             "field": "EquipmentType",
-#                         }
-#                     )
-#                     continue
-#
-#                 if row.SerialNo in added:
-#                     logger.info(
-#                         f"Sensor with serial number {row.SerialNo} already added in this transfer session. Only creating deployment for that record"
-#                     )
-#                     sensor = added[row.SerialNo]
-#                 else:
-#                     sensor = (
-#                         session.query(Sensor)
-#                         .filter(Sensor.serial_no == row.SerialNo)
-#                         .one_or_none()
-#                     )
-#                     if sensor:
-#                         logger.info(
-#                             f"Sensor with serial number {row.SerialNo} already exists. Only creating deployment for that record"
-#                         )
-#
-#                 if not sensor:
-#                     # TODO: Add validation
-#                     sensor = Sensor(
-#                         nma_pk_equipment=row.GlobalID,
-#                         name=row.ID,
-#                         sensor_type=sensor_type,
-#                         model=row.Model,
-#                         serial_no=row.SerialNo,
-#                         owner_agency="NMBGMR",
-#                         notes=row.Equipment_Notes,
-#                     )
-#                     added[row.SerialNo] = sensor
-#                     session.add(sensor)
-#                     logger.info(
-#                         f"Added sensor {sensor.name} with serial number {sensor.serial_no}"
-#                     )
-#
-#                 if row.DateInstalled:
-#                     installation_date = datetime.strptime(
-#                         row.DateInstalled, "%Y-%m-%d %H:%M:%S.%f"
-#                     ).date()
-#                 else:
-#                     logger.critical(
-#                         f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
-#                         f"SerialNo: {row.SerialNo} PointID: {pointid}"
-#                     )
-#                     errors.append(
-#                         {
-#                             "pointid": pointid,
-#                             "error": f"row.ID={row.ID}, row.SerialNo={row.SerialNo}. Installation Date cannot "
-#                             f"be None",
-#                             "table": source_table,
-#                             "field": "DateInstalled",
-#                         }
-#                     )
-#                     continue
-#
-#                 removal_date = None
-#                 if row.DateRemoved:
-#                     removal_date = datetime.strptime(
-#                         row.DateRemoved, "%Y-%m-%d %H:%M:%S.%f"
-#                     ).date()
-#
-#                 recording_interval_unit = "hour"
-#                 try:
-#                     recording_interval = int(row.RecordingInterval)
-#                 except (ValueError, TypeError):
-#                     error = "RecordingInterval is not an integer"
-#                     # try to calculate recording interval from measurements
-#                     if sensor_type in estimators:
-#                         estimator = estimators[sensor_type]
-#                     else:
-#                         estimator = RecordingIntervalEstimator(sensor_type)
-#                         estimators[sensor_type] = estimator
-#
-#                     recording_interval, unit, error = (
-#                         estimator.estimate_recording_interval(
-#                             row, installation_date, removal_date
-#                         )
-#                     )
-#
-#                     if recording_interval:
-#                         recording_interval_unit = unit
-#                         logger.info(
-#                             f"name={sensor.name}, serial_no={sensor.serial_no}. "
-#                             f"estimated recording interval: {recording_interval} {unit}"
-#                         )
-#                     else:
-#                         logger.critical(
-#                             f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
-#                         )
-#                         errors.append(
-#                             {
-#                                 "pointid": pointid,
-#                                 "error": f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
-#                                 "table": source_table,
-#                                 "field": "RecordingInterval",
-#                             }
-#                         )
-#                 sql = (
-#                     select(Deployment)
-#                     .join(Thing)
-#                     .join(Sensor)
-#                     .where(Thing.name == pointid)
-#                     .where(Sensor.serial_no == sensor.serial_no)
-#                     .where(Deployment.installation_date == installation_date)
-#                     .where(Deployment.removal_date == removal_date)
-#                 )
-#
-#                 existing_deployment = session.execute(sql).scalars().one_or_none()
-#                 if existing_deployment:
-#                     logger.info("existing deployment")
-#                     continue
-#
-#                 # TODO: add validation
-#                 deployment = Deployment(
-#                     thing=thing,
-#                     sensor=sensor,
-#                     installation_date=installation_date,
-#                     removal_date=removal_date,
-#                     recording_interval=recording_interval,
-#                     recording_interval_units=recording_interval_unit,
-#                     hanging_cable_length=row.HangingCableLength,
-#                     hanging_point_height=row.HangingPointHgt,
-#                     hanging_point_description=row.HangingPointDescription,
-#                 )
-#                 session.add(deployment)
-#                 logger.info(
-#                     f"Added deployment for sensor with serial number {sensor.serial_no}, deployed to {thing.name}: | Installation Date: {installation_date} | Removal Date: {removal_date}"
-#                 )
-#
-#                 """
-#                 Developer's notes
-#
-#                 Since it's unclear beforehand if a sensor has been removed just update
-#                 the sensor_status based off of each deployments installation/removal
-#                 dates
-#                 """
-#                 if installation_date:
-#                     sensor.sensor_status = "In Service"
-#                 if removal_date:
-#                     sensor.sensor_status = "Retired"
-#             session.commit()
-#         except Exception as e:
-#             import traceback
-#
-#             traceback.print_exc()
-#             logger.critical(f"Could not add sensor and deployment: {e}")
-#             errors.append({"pointid": pointid, "error": e, "table": source_table})
-#
-#     return input_df, cleaned_df, errors
 
 
 # ============= EOF =============================================

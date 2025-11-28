@@ -19,10 +19,14 @@ import pandas as pd
 from pandas import DataFrame
 from sqlalchemy.orm import Session
 
-from db import Thing
+from db import Thing, Base
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.util import chunk_by_size
+
+
+class ManualFixer(object):
+    pass
 
 
 class Transferer(object):
@@ -30,16 +34,31 @@ class Transferer(object):
     cleaned_df: pd.DataFrame = None
     errors: list = None
     flags: dict = None
+    source_table: str = None
 
     def __init__(self, flags: dict = None):
         self.errors = []
         self.flags = flags if flags else {}
+        self.manual_fixer = ManualFixer()
 
     def transfer(self):
         with session_ctx() as session:
-            self.input_df, self.cleaned_df = self._get_dfs(session)
+            self.input_df, self.cleaned_df = self._get_dfs()
             self._transfer_hook(session)
             session.commit()
+
+    def _capture_error(self, pointid, error, field, table=None):
+        if table is None:
+            table = self.source_table
+
+        self.errors.append(
+            {
+                "pointid": pointid,
+                "error": error,
+                "table": table,
+                "field": field,
+            }
+        )
 
     def _transfer_hook(self, session: Session):
         self._limit_iterator(session, self.flags.get("LIMIT", 0))
@@ -68,18 +87,18 @@ class Transferer(object):
                     session.rollback()
                     continue
 
-            self._iterator(session, df, i, row)
+            self._step(session, df, i, row)
 
         session.commit()
         self._after_hook(session)
 
-    def _iterator(self, session: Session, df: pd.DataFrame, i: int, row: dict):
+    def _step(self, session: Session, df: pd.DataFrame, i: int, row: dict):
         raise NotImplementedError("Must implement _iterator method")
 
     def _after_hook(self, session: Session):
         pass
 
-    def _get_dfs(self, session: Session):
+    def _get_dfs(self):
         raise NotImplementedError("Must implement _get_dfs method")
 
 
@@ -100,7 +119,7 @@ class ChunkTransferer(Transferer):
                 if not dbitem:
                     self._missing_db_item_warning(row)
                     continue
-                self._chunk_iterator(session, df, i, row, dbitem)
+                self._chunk_step(session, df, i, row, dbitem)
 
     # def chunk_transfer(self):
     #     with session_ctx() as session:
@@ -125,7 +144,7 @@ class ChunkTransferer(Transferer):
     def _missing_db_item_warning(self, row):
         raise NotImplementedError("Must be implemented in subclass")
 
-    def _chunk_iterator(self, session, df, i, row, dbitem):
+    def _chunk_step(self, session, df, i, row, dbitem):
         raise NotImplementedError("Must be implemented in subclass")
 
     def _get_db_item(self, chunk, row):
@@ -150,21 +169,19 @@ class GroupTransferer(Transferer):
             prepped_group = self._get_prepped_group(group)
             for row in prepped_group.itertuples():
                 try:
-                    self._step(session, row, db_item)
+                    self._group_step(session, row, db_item)
                 except Exception as e:
                     import traceback
 
                     pointid = self._get_point_id(row, db_item)
                     traceback.print_exc()
                     logger.critical(f"Could not add sensor and deployment: {e}")
-                    self.errors.append(
-                        {"pointid": pointid, "error": e, "table": self.source_table}
-                    )
+                    self._capture_error(pointid, e, "UnknownField")
 
-    def _get_point_id(self, row, db_item) -> str:
+    def _get_point_id(self, row: pd.Series, db_item: Base) -> str:
         return row.PointID
 
-    def _step(self, session: Session, row, db_item):
+    def _group_step(self, session: Session, row: pd.Series, db_item: Base):
         raise NotImplementedError("Must be implemented in subclass")
 
     def _get_prepped_group(self, group) -> DataFrame:
