@@ -47,7 +47,7 @@ class LinkIdsWellDataTransferer(WellChunkTransferer):
             if pd.isna(aid):
                 # logger.warning(f"{klass} is null for {row.PointID}")
                 continue
-            print("aid", aid, type(aid))
+
             # RULE: exclude any id that == 'X', '?'
             if aid.strip().lower() in ("x", "?", "exempt"):
                 logger.critical(

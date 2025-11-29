@@ -33,7 +33,7 @@ from transfers.link_ids_transfer import (
 )
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import SensorTransferer
-from transfers.waterlevels_transfer import transfer_water_levels
+from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import WellTransferer, WellScreenTransferer
 
 from transfers.asset_transfer import AssetTransferer
@@ -92,8 +92,8 @@ def transfer_all(sess, metrics, limit=100):
     metrics.contact_metrics(sess, *results)
 
     message("TRANSFERRING WATER LEVELS")
-    results = timeit_direct(transfer_water_levels, sess)
-    metrics.water_level_metrics(sess, *results)
+    results = _execute_transfer(WaterLevelTransferer, flags=flags)
+    metrics.water_level_metrics(*results)
 
     message("TRANSFERRING WATER LEVELS PRESSURE")
     results = timeit_direct(transfer_water_levels_pressure, sess)
@@ -172,9 +172,9 @@ def transfer_debugging(metrics, limit=100):
     # results = timeit_direct(transfer_contacts, sess)
     # metrics.contact_metrics(sess, *results)
     #
-    # message("TRANSFERRING WATER LEVELS")
-    # results = timeit_direct(transfer_water_levels, sess)
-    # metrics.water_level_metrics(sess, *results)
+    message("TRANSFERRING WATER LEVELS")
+    results = _execute_transfer(WaterLevelTransferer, flags=flags)
+    metrics.water_level_metrics(*results)
     #
     # message("TRANSFERRING WATER LEVELS PRESSURE")
     # results = timeit_direct(transfer_water_levels_pressure, sess)
