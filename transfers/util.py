@@ -18,6 +18,7 @@ import io
 import math
 import os
 import re
+import time
 from datetime import datetime, timezone, timedelta, UTC
 from pathlib import Path
 
@@ -28,7 +29,7 @@ from shapely import Point
 from sqlalchemy import select
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from db import Thing, Location, DataProvenance
+from db import Thing, Location, DataProvenance, Parameter
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
 
@@ -205,10 +206,16 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     return df.replace({np.nan: default})
 
 
-def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+def read_csv(name: str, dtype: dict | None = None, *args, **kw) -> pd.DataFrame:
     p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
     if os.path.exists(p):
-        return pd.read_csv(p, dtype=dtype)
+        logger.info(f"Using cached csv: {p}")
+        starttime = time.time()
+        df = pd.read_csv(p, dtype=dtype, *args, **kw)
+        logger.info(f"Read csv in {time.time()-starttime:0.2f}")
+        return df
+    else:
+        logger.info(f"Downloading csv: {name}")
 
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
@@ -216,10 +223,7 @@ def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
     with open(p, "wb") as f:
         f.write(data)
 
-    if dtype:
-        return pd.read_csv(io.BytesIO(data), dtype=dtype)
-    else:
-        return pd.read_csv(io.BytesIO(data))
+    return pd.read_csv(io.BytesIO(data), dtype=dtype)
 
 
 def get_valid_point_ids(thing_type="water well"):
@@ -337,6 +341,17 @@ def convert_mt_to_utc(dt_record: datetime):
 def chunk_by_size(df, chunk_size):
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
+
+
+def get_groundwater_parameter_id():
+    with session_ctx() as session:
+        groundwater_parameter_id = (
+            session.query(Parameter)
+            .filter(Parameter.parameter_name == "groundwater level")
+            .one()
+            .id
+        )
+    return groundwater_parameter_id
 
 
 def make_location(row: pd.Series, elevations: dict) -> tuple:
