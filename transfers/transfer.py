@@ -17,7 +17,7 @@ import os
 
 from dotenv import load_dotenv
 
-from db.engine import session_ctx
+from services.util import get_bool_env
 
 load_dotenv()
 
@@ -34,13 +34,13 @@ from transfers.link_ids_transfer import (
     LinkIdsWellDataTransferer,
     LinkIdsLocationDataTransferer,
 )
-from transfers.contact_transfer import transfer_contacts
+from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import WellTransferer, WellScreenTransferer
 
 from transfers.asset_transfer import AssetTransferer
-from transfers.util import timeit, timeit_direct
+from transfers.util import timeit
 from transfers.logger import logger, save_log_to_bucket
 
 
@@ -64,15 +64,15 @@ def transfer_all(metrics, limit=100):
     results = _execute_transfer(WellTransferer, flags=flags)
     metrics.well_metrics(*results)
 
-    transfer_screens = False
-    transfer_sensors = True
-    transfer_waterlevels = False
-    transfer_pressure = True
-    transfer_acoustic = True
-    transfer_link_ids = False
-    transfer_groups = False
-    transfer_assets = False
-    do_transfer_contacts = False
+    transfer_screens = get_bool_env("TRANSFER_WELL_SCREENS", True)
+    transfer_sensors = get_bool_env("TRANSFER_SENSORS", True)
+    transfer_contacts = get_bool_env("TRANSFER_CONTACTS", True)
+    transfer_waterlevels = get_bool_env("TRANSFER_WATERLEVELS", True)
+    transfer_pressure = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE", True)
+    transfer_acoustic = get_bool_env("TRANSFER_WATERLEVELS_ACOUSTIC", True)
+    transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
+    transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
+    transfer_assets = get_bool_env("TRANSFER_ASSETS", True)
 
     if transfer_screens:
         message("TRANSFERRING WELL SCREENS")
@@ -97,11 +97,10 @@ def transfer_all(metrics, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    if do_transfer_contacts:
+    if transfer_contacts:
         message("TRANSFERRING CONTACTS")
-        with session_ctx() as sess:
-            results = timeit_direct(transfer_contacts, sess)
-            metrics.contact_metrics(sess, *results)
+        results = _execute_transfer(ContactTransfer, flags=flags)
+        metrics.contact_metrics(*results)
 
     if transfer_waterlevels:
         message("TRANSFERRING WATER LEVELS")
