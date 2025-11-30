@@ -17,6 +17,8 @@ import os
 
 from dotenv import load_dotenv
 
+from db.engine import session_ctx
+
 load_dotenv()
 
 from transfers.waterlevels_transducer_transfer import (
@@ -50,94 +52,8 @@ def message(msg, pad=10, new_line_at_top=True):
 
 
 @timeit
-def transfer_all(sess, metrics, limit=100):
+def transfer_all(metrics, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
-
-    logger.info("Erase and rebuilding database")
-    erase_and_rebuild_db()
-
-    message("TRANSFERRING WELLS")
-
-    flags = {
-        "TRANSFER_ALL_WELLS": True,
-        "TRANSFER_ALL_WELLSCREENS": True,
-        "LIMIT": limit,
-    }
-
-    results = _execute_transfer(WellTransferer, flags=flags)
-    metrics.well_metrics(sess, *results)
-
-    message("TRANSFERRING WELL SCREENS")
-    results = _execute_transfer(WellScreenTransferer, flags=flags)
-    metrics.well_screen_metrics(sess, *results)
-
-    message("TRANSFERRING SENSORS")
-    results = _execute_transfer(SensorTransferer, flags=flags)
-    metrics.sensor_metrics(sess, *results)
-
-    # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
-    # message("TRANSFERRING SPRINGS")
-    # timeit_direct(transfer_springs, sess, limit=limit)
-    #
-    # message("TRANSFERRING PERENNIAL STREAMS")
-    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING EPHEMERAL STREAMS")
-    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING METEOROLOGICAL")
-    # timeit_direct(transfer_met, sess, limit)
-
-    message("TRANSFERRING CONTACTS")
-    results = timeit_direct(transfer_contacts, sess)
-    metrics.contact_metrics(sess, *results)
-
-    message("TRANSFERRING WATER LEVELS")
-    results = _execute_transfer(WaterLevelTransferer, flags=flags)
-    metrics.water_level_metrics(*results)
-
-    # message("TRANSFERRING WATER LEVELS PRESSURE")
-    # results = timeit_direct(transfer_water_levels_pressure, sess)
-    # metrics.pressure_metrics(sess, *results)
-    #
-    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    # results = timeit_direct(transfer_water_levels_acoustic, sess)
-    # metrics.acoustic_metrics(sess, *results)
-
-    """
-    Developer's notes
-
-    When transfering water chemistry data use the qc_type field to indicate
-    normal/blanks/duplicates instead of what comes from LU_SampleType. Use
-    those values, however, to map to the standard qc_type fields if applicable
-    (i.e. not applicable when sample type is "Soil or rock sample" or
-    "Precipitation," but is applicable when sample type is "Equipment blank"
-    or "Field duplicate")
-    """
-    message("TRANSFERRING LINK IDS")
-    results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
-    metrics.welldata_link_ids_metrics(*results)
-    results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
-    metrics.location_link_ids_metrics(*results)
-
-    message("TRANSFERRING GROUPS")
-    results = _execute_transfer(ProjectGroupTransferer, flags=flags)
-    metrics.group_metrics(*results)
-
-    message("TRANSFERRING ASSETS")
-    results = _execute_transfer(AssetTransferer, flags=flags)
-    metrics.asset_metrics(*results)
-
-
-def _execute_transfer(klass, flags: dict = None):
-    transferer = klass(flags=flags)
-    transferer.transfer()
-    return transferer.input_df, transferer.cleaned_df, transferer.errors
-
-
-def transfer_debugging(metrics, limit=100):
-    message("STARTING TRANSFER DEBUG", new_line_at_top=False)
-
     if int(os.environ.get("ERASE_AND_REBUILD", 0)):
         logger.info("Erase and rebuilding database")
         erase_and_rebuild_db()
@@ -150,11 +66,13 @@ def transfer_debugging(metrics, limit=100):
 
     transfer_screens = False
     transfer_sensors = True
+    transfer_waterlevels = False
     transfer_pressure = True
     transfer_acoustic = True
     transfer_link_ids = False
     transfer_groups = False
     transfer_assets = False
+    do_transfer_contacts = False
 
     if transfer_screens:
         message("TRANSFERRING WELL SCREENS")
@@ -179,13 +97,16 @@ def transfer_debugging(metrics, limit=100):
     # message("TRANSFERRING METEOROLOGICAL")
     # timeit_direct(transfer_met, sess, limit)
 
-    # message("TRANSFERRING CONTACTS")
-    # results = timeit_direct(transfer_contacts, sess)
-    # metrics.contact_metrics(sess, *results)
-    #
-    # message("TRANSFERRING WATER LEVELS")
-    # results = _execute_transfer(WaterLevelTransferer, flags=flags)
-    # metrics.water_level_metrics(*results)
+    if do_transfer_contacts:
+        message("TRANSFERRING CONTACTS")
+        with session_ctx() as sess:
+            results = timeit_direct(transfer_contacts, sess)
+            metrics.contact_metrics(sess, *results)
+
+    if transfer_waterlevels:
+        message("TRANSFERRING WATER LEVELS")
+        results = _execute_transfer(WaterLevelTransferer, flags=flags)
+        metrics.water_level_metrics(*results)
 
     if transfer_pressure:
         message("TRANSFERRING WATER LEVELS PRESSURE")
@@ -219,15 +140,18 @@ def transfer_debugging(metrics, limit=100):
         metrics.asset_metrics(*results)
 
 
+def _execute_transfer(klass, flags: dict = None):
+    transferer = klass(flags=flags)
+    transferer.transfer()
+    return transferer.input_df, transferer.cleaned_df, transferer.errors
+
+
 def main():
     message("START--------------------------------------")
     limit = int(os.getenv("TRANSFER_LIMIT", 1000))
     metrics = Metrics()
 
-    if int(os.getenv("TRANSFER_DEBUG", 0)):
-        transfer_debugging(metrics, limit=limit)
-    else:
-        transfer_all(metrics, limit=limit)
+    transfer_all(metrics, limit=limit)
 
     metrics.close()
     metrics.save_to_storage_bucket()
