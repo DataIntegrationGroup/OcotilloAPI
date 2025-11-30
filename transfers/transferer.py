@@ -167,6 +167,7 @@ class GroupTransferer(Transferer):
                 continue
 
             prepped_group = self._get_prepped_group(group)
+            self._pre_group_step(session, prepped_group, db_item)
             for row in prepped_group.itertuples():
                 try:
                     self._group_step(session, row, db_item)
@@ -180,6 +181,9 @@ class GroupTransferer(Transferer):
 
     def _get_point_id(self, row: pd.Series, db_item: Base) -> str:
         return row.PointID
+
+    def _pre_group_step(self, session: Session, group: DataFrame, db_item: Base):
+        pass
 
     def _group_step(self, session: Session, row: pd.Series, db_item: Base):
         raise NotImplementedError("Must be implemented in subclass")

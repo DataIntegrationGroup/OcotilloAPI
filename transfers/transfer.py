@@ -19,11 +19,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from transfers.metrics import Metrics
 from transfers.waterlevels_transducer_transfer import (
-    transfer_water_levels_pressure,
-    transfer_water_levels_acoustic,
+    WaterLevelsContinuousPressureTransferer,
+    WaterLevelsContinuousAcousticTransferer,
 )
+
+from transfers.metrics import Metrics
 from core.initializers import erase_and_rebuild_db
 
 from transfers.group_transfer import ProjectGroupTransferer
@@ -95,13 +96,13 @@ def transfer_all(sess, metrics, limit=100):
     results = _execute_transfer(WaterLevelTransferer, flags=flags)
     metrics.water_level_metrics(*results)
 
-    message("TRANSFERRING WATER LEVELS PRESSURE")
-    results = timeit_direct(transfer_water_levels_pressure, sess)
-    metrics.pressure_metrics(sess, *results)
-
-    message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    results = timeit_direct(transfer_water_levels_acoustic, sess)
-    metrics.acoustic_metrics(sess, *results)
+    # message("TRANSFERRING WATER LEVELS PRESSURE")
+    # results = timeit_direct(transfer_water_levels_pressure, sess)
+    # metrics.pressure_metrics(sess, *results)
+    #
+    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
+    # results = timeit_direct(transfer_water_levels_acoustic, sess)
+    # metrics.acoustic_metrics(sess, *results)
 
     """
     Developer's notes
@@ -147,13 +148,23 @@ def transfer_debugging(metrics, limit=100):
     results = _execute_transfer(WellTransferer, flags=flags)
     metrics.well_metrics(*results)
 
-    message("TRANSFERRING WELL SCREENS")
-    results = _execute_transfer(WellScreenTransferer, flags=flags)
-    metrics.well_screen_metrics(*results)
+    transfer_screens = False
+    transfer_sensors = True
+    transfer_pressure = True
+    transfer_acoustic = True
+    transfer_link_ids = False
+    transfer_groups = False
+    transfer_assets = False
 
-    message("TRANSFERRING SENSORS")
-    results = _execute_transfer(SensorTransferer, flags=flags)
-    metrics.sensor_metrics(*results)
+    if transfer_screens:
+        message("TRANSFERRING WELL SCREENS")
+        results = _execute_transfer(WellScreenTransferer, flags=flags)
+        metrics.well_screen_metrics(*results)
+
+    if transfer_sensors:
+        message("TRANSFERRING SENSORS")
+        results = _execute_transfer(SensorTransferer, flags=flags)
+        metrics.sensor_metrics(*results)
 
     # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
     # message("TRANSFERRING SPRINGS")
@@ -172,31 +183,40 @@ def transfer_debugging(metrics, limit=100):
     # results = timeit_direct(transfer_contacts, sess)
     # metrics.contact_metrics(sess, *results)
     #
-    message("TRANSFERRING WATER LEVELS")
-    results = _execute_transfer(WaterLevelTransferer, flags=flags)
-    metrics.water_level_metrics(*results)
-    #
-    # message("TRANSFERRING WATER LEVELS PRESSURE")
-    # results = timeit_direct(transfer_water_levels_pressure, sess)
-    # metrics.pressure_metrics(sess, *results)
-    #
-    # message("TRANSFERRING WATER LEVELS ACOUSTIC")
-    # results = timeit_direct(transfer_water_levels_acoustic, sess)
-    # metrics.acoustic_metrics(sess, *results)
+    # message("TRANSFERRING WATER LEVELS")
+    # results = _execute_transfer(WaterLevelTransferer, flags=flags)
+    # metrics.water_level_metrics(*results)
 
-    message("TRANSFERRING LINK IDS")
-    results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
-    metrics.welldata_link_ids_metrics(*results)
-    results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
-    metrics.location_link_ids_metrics(*results)
+    if transfer_pressure:
+        message("TRANSFERRING WATER LEVELS PRESSURE")
+        results = _execute_transfer(
+            WaterLevelsContinuousPressureTransferer, flags=flags
+        )
+        metrics.pressure_metrics(*results)
 
-    message("TRANSFERRING GROUPS")
-    results = _execute_transfer(ProjectGroupTransferer, flags=flags)
-    metrics.group_metrics(*results)
+    if transfer_acoustic:
+        message("TRANSFERRING WATER LEVELS ACOUSTIC")
+        results = _execute_transfer(
+            WaterLevelsContinuousAcousticTransferer, flags=flags
+        )
+        metrics.acoustic_metrics(*results)
 
-    message("TRANSFERRING ASSETS")
-    results = _execute_transfer(AssetTransferer, flags=flags)
-    metrics.asset_metrics(*results)
+    if transfer_link_ids:
+        message("TRANSFERRING LINK IDS")
+        results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
+        metrics.welldata_link_ids_metrics(*results)
+        results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
+        metrics.location_link_ids_metrics(*results)
+
+    if transfer_groups:
+        message("TRANSFERRING GROUPS")
+        results = _execute_transfer(ProjectGroupTransferer, flags=flags)
+        metrics.group_metrics(*results)
+
+    if transfer_assets:
+        message("TRANSFERRING ASSETS")
+        results = _execute_transfer(AssetTransferer, flags=flags)
+        metrics.asset_metrics(*results)
 
 
 def main():
