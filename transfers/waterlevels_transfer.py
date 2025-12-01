@@ -251,6 +251,19 @@ def transfer_water_levels(session):
             )
 
             session.add(field_event)
+            session.flush()  # to get the field_event.id
+
+            # WaterLevels.SiteNotes --> notes where note_type = "measuring_notes"
+            if not pd.isna(row.SiteNotes):
+                note = field_event.add_note(
+                    content=row.SiteNotes,
+                    note_type="General",
+                    release_status=release_status,
+                )
+                session.add(note)
+                logger.info(
+                    f"{SPACE_4}Added 'General' note to FieldEvent ID {field_event.id} | Note ID {note.id}"
+                )
 
             logger.info(
                 f"{SPACE_2}Created field event: ID {field_event.id} | Date {field_event.event_date} | Thing ID {field_event.thing.id} | Thing Name {field_event.thing.name}"
@@ -385,18 +398,6 @@ def transfer_water_levels(session):
             logger.info(
                 f"{SPACE_4}Created observation: ID {observation.id} | DT {observation.observation_datetime} | Value {observation.value} | MPHeight {observation.measuring_point_height} | nma_pk_waterlevels {observation.nma_pk_waterlevels}"
             )
-
-            # WaterLevels.SiteNotes --> notes where note_type = "measuring_notes"
-            if not pd.isna(row.SiteNotes):
-                note = thing.add_note(
-                    content=row.SiteNotes,
-                    note_type="Measuring",
-                    release_status=release_status,
-                )
-                session.add(note)
-                logger.info(
-                    f"{SPACE_4}Added 'Measuring' note to Thing ID {thing.id} | Note ID {note.id}"
-                )
 
         session.commit()
 

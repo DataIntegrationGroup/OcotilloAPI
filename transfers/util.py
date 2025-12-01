@@ -259,7 +259,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
 
     notes = {
         "Coordinate": row.CoordinateNotes,
-        "Other": row.LocationNotes,
+        "General": row.LocationNotes,
     }
 
     location = Location(

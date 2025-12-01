@@ -367,7 +367,7 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
 
         notes = []
         if row.Notes:
-            notes.append({"content": row.Notes, "note_type": "Other"})
+            notes.append({"content": row.Notes, "note_type": "General"})
         if row.ConstructionNotes:
             notes.append(
                 {"content": row.ConstructionNotes, "note_type": "Construction"}
