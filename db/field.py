@@ -4,7 +4,8 @@ from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from typing import TYPE_CHECKING
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, NotesMixin, lexicon_term
+from db.notes import NotesMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.contact import Contact
