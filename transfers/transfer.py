@@ -31,11 +31,14 @@ from transfers.group_transfer import transfer_groups
 from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
 from transfers.contact_transfer import transfer_contacts
 from transfers.sensor_transfer import transfer_sensors
+from transfers.aquifer_system_transfer import transfer_aquifer_systems
+from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.waterlevels_transfer import transfer_water_levels
 from transfers.well_transfer import (
     transfer_wells,
     transfer_wellscreens,
 )
+from transfers.stratigraphy_transfer import transfer_stratigraphy
 from transfers.permissions_transfer import transfer_permissions
 
 from transfers.asset_transfer import transfer_assets
@@ -58,6 +61,14 @@ def transfer_all(sess, limit=100):
     erase_and_rebuild_db()
 
     metrics = Metrics()
+
+    # transfer aquifer systems and geologic formations first as well_transfer depend on them
+    message("TRANSFERRING AQUIFER SYSTEMS")
+    timeit_direct(transfer_aquifer_systems, sess)
+
+    message("TRANSFERRING GEOLOGIC FORMATIONS")
+    timeit_direct(transfer_geologic_formations, sess)
+
     message("TRANSFERRING WELLS")
 
     flags = {
@@ -71,6 +82,9 @@ def transfer_all(sess, limit=100):
     message("TRANSFERRING WELL SCREENS")
     results = timeit_direct(transfer_wellscreens, sess)
     metrics.well_screen_metrics(sess, *results)
+
+    message("TRANSFERRING STRATIGRAPHY")
+    timeit_direct(transfer_stratigraphy, sess)
 
     message("TRANSFERRING SENSORS")
     results = timeit_direct(transfer_sensors, sess)

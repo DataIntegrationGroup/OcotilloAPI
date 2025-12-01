@@ -28,6 +28,7 @@ from core.enums import (
     MonitoringFrequency,
     WellConstructionMethod,
     WellPumpType,
+    FormationCode,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
@@ -141,6 +142,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_construction_method_source: str | None = None
     well_pump_type: WellPumpType | None = None
     is_suitable_for_datalogger: bool | None
+    formation_completion_code: FormationCode | None = None
 
 
 class CreateSpring(CreateBaseThing):

@@ -37,6 +37,10 @@ from db import (
     MonitoringFrequencyHistory,
     MeasuringPointHistory,
     DataProvenance,
+    AquiferSystem,
+    AquiferType,
+    GeologicFormation,
+    ThingAquiferAssociation,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -138,6 +142,107 @@ def _extract_well_pump_type(row) -> str | None:
         return None
     construction_notes = row.ConstructionNotes.lower()
     return PUMP_MAPPING.get(first_matched_term(construction_notes), None)
+
+
+# Parse aquifer codes
+def _extract_aquifer_type_codes(aquifer_code: str) -> list[str]:
+    """
+    Parse aquifer type codes that may contain multiple values.
+
+    Args:
+        aquifer_code: Raw code from AquiferType field
+
+    Returns:
+        List of individual codes
+    """
+    if not aquifer_code:
+        return []
+    # clean the code
+    code = aquifer_code.strip().upper()
+    # split into individual characters. This handles cases like "FC" -> ["F", "C"]
+    individual_codes = list(code)
+    return individual_codes
+
+
+# Get or create aquifer system
+def get_or_create_aquifer_system(
+    session: Session, aquifer_name: str, primary_type: str
+) -> AquiferSystem | None:
+    """
+    Get existing aquifer or create new one if it doesn't exist.
+
+    With the new AquiferType model, we create ONE aquifer record per named
+    aquifer (e.g., one "Santa Fe Group"), not multiple variants.
+
+    Args:
+        session: Database session
+        aquifer_name: Name of the aquifer (from AqClass or type name)
+        primary_type: Primary aquifer type for the aquifer_type field
+    """
+    # Try to find existing aquifer by name
+    aquifer = (
+        session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
+    )
+
+    if aquifer:
+        return aquifer
+
+    # Create new aquifer
+    try:
+        logger.info(
+            f"Creating new aquifer system: {aquifer_name} (primary type: {primary_type})"
+        )
+
+        aquifer = AquiferSystem(
+            name=aquifer_name,
+            aquifer_type=primary_type,  # Primary type
+            geographic_scale=None,  # Default
+        )
+        session.add(aquifer)
+        session.flush()  # Get the ID
+        return aquifer
+    except Exception as e:
+        logger.critical(f"Error creating aquifer {aquifer_name}: {e}")
+        return None
+
+
+def get_or_create_geologic_formation(
+    session: Session, formation_code: str
+) -> GeologicFormation | None:
+    """
+    Get existing geologic formation or create new one if it doesn't exist.
+
+    Args:
+        session: Database session
+        formation_code: The formation code from FormationZone field
+
+    Returns:
+        GeologicFormation object or None if creation fails
+    """
+    # Try to find existing formation
+    formation = (
+        session.query(GeologicFormation)
+        .filter(GeologicFormation.formation_code == formation_code)
+        .first()
+    )
+
+    if formation:
+        return formation
+
+    # If not found, create new formation
+    try:
+        logger.info(f"Creating new geologic formation: {formation_code}")
+        formation = GeologicFormation(
+            formation_code=formation_code,
+            description=None,
+            lithology=None,
+        )
+        session.add(formation)
+        session.flush()
+        return formation
+    except Exception as e:
+        logger.critical(f"Error creating formation {formation_code}: {e}")
+        return None
 
 
 def get_wells_to_transfer(
@@ -359,6 +464,140 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         assoc.location = location
         assoc.thing = well
         session.add(assoc)
+
+        # --- Create Aquifer Association with AquiferType records ---
+        if hasattr(row, "AquiferType") and not isna(row.AquiferType):
+            try:
+                # Parse codes (handles multi-character codes like "FC")
+                aquifer_codes = _extract_aquifer_type_codes(row.AquiferType)
+
+                if not aquifer_codes:
+                    logger.warning(
+                        f"Well {row.PointID}: Empty aquifer codes after parsing '{row.AquiferType}'"
+                    )
+                else:
+                    # Map AqClass code to aquifer name using lexicon mapper
+                    if hasattr(row, "AqClass") and not isna(row.AqClass):
+                        try:
+                            aquifer_name = lexicon_mapper.map_value(
+                                f"LU_AquiferClass:{row.AqClass}"
+                            )
+                        except KeyError:
+                            logger.warning(
+                                f"Unknown AqClass code '{row.AqClass}' for well {row.PointID}, using first type as name"
+                            )
+                            aquifer_name = lexicon_mapper.map_value(
+                                f"LU_AquiferType:{aquifer_codes[0]}"
+                            )
+                    else:
+                        # No AqClass - use first code's mapped name as aquifer name
+                        aquifer_name = lexicon_mapper.map_value(
+                            f"LU_AquiferType:{aquifer_codes[0]}"
+                        )
+
+                    # Determine primary type
+                    # This assumes the first recorded type of a compound type is the primary type of the aquifer.
+                    # TODO: verify with AMMP
+                    try:
+                        primary_type = lexicon_mapper.map_value(
+                            f"LU_AquiferType:{aquifer_codes[0]}"
+                        )
+                    except KeyError:
+                        logger.warning(
+                            f"Unknown aquifer type code '{aquifer_codes[0]}' for well {row.PointID}."
+                            f"Setting primary_type to 'Unknown'"
+                        )
+                        primary_type = "Unknown"  # Creates aquifer with placeholder
+
+                    # Get or create the aquifer
+                    aquifer = get_or_create_aquifer_system(
+                        session, aquifer_name, primary_type
+                    )
+
+                    if aquifer:
+                        # Check if association already exists
+                        existing_assoc = (
+                            session.query(ThingAquiferAssociation)
+                            .filter(
+                                ThingAquiferAssociation.thing_id == well.id,
+                                ThingAquiferAssociation.aquifer_system_id == aquifer.id,
+                            )
+                            .first()
+                        )
+
+                        if not existing_assoc:
+                            # Create the association
+                            aquifer_assoc = ThingAquiferAssociation(
+                                thing=well, aquifer_system=aquifer
+                            )
+                            session.add(aquifer_assoc)
+                            session.flush()
+
+                            # Create AquiferType records for EACH characteristic
+                            aquifer_type_names = []
+                            for aquifer_code in aquifer_codes:
+                                try:
+                                    type_name = lexicon_mapper.map_value(
+                                        f"LU_AquiferType:{aquifer_code}"
+                                    )
+                                    aquifer_type = AquiferType(
+                                        thing_aquifer_association=aquifer_assoc,
+                                        aquifer_type=type_name,
+                                    )
+                                    session.add(aquifer_type)
+                                    aquifer_type_names.append(type_name)
+                                except KeyError:
+                                    logger.warning(
+                                        f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
+                                        f"for well {well.name}. Skipping this code."
+                                    )
+
+                            logger.info(
+                                f"Associated well {well.name} with aquifer {aquifer.name} "
+                                f"(types: {', '.join(aquifer_type_names)})"
+                            )
+
+            except Exception as e:
+                logger.critical(
+                    f"Error creating aquifer associations for {well.name}: {e}"
+                )
+
+        # --- Set Formation Completion (NOT depth-based stratigraphy) ---
+        # This simply records which formation the well was completed in.
+        # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
+        if hasattr(row, "FormationZone") and not isna(row.FormationZone):
+            try:
+                formation_code = row.FormationZone
+
+                # Validate formation exists
+                formation = (
+                    session.query(GeologicFormation)
+                    .filter(GeologicFormation.formation_code == formation_code)
+                    .first()
+                )
+
+                if formation:
+                    # Formation exists: Set association
+                    well.formation_completion_code = formation_code
+                    logger.info(
+                        f"Set completion formation for {well.name}: {formation_code}"
+                    )
+                else:
+                    # Formation does NOT exist: Do not create new formation. Flag and log for review
+                    logger.warning(
+                        f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
+                    )
+                    errors.append(
+                        {
+                            "well": well.name,
+                            "error": f"Unknown formation: {formation_code}",
+                        }
+                    )
+
+            except Exception as e:
+                logger.critical(
+                    f"Error setting completion formation for {well.name}: {e}"
+                )
 
     session.commit()
 
