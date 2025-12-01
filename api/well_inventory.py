@@ -25,7 +25,7 @@ from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from shapely import Point
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from starlette.status import (
@@ -332,7 +332,7 @@ async def well_inventory_csv(
                 # get project and add if does not exist
                 # BDMS-221 adds group_type
                 sql = select(Group).where(
-                    Group.group_type == "Monitoring Plan" and Group.name == project
+                    and_(Group.group_type == "Monitoring Plan", Group.name == project)
                 )
                 group = session.scalars(sql).one_or_none()
                 if not group:
