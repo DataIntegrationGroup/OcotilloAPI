@@ -562,15 +562,36 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
         # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
         if hasattr(row, "FormationZone") and not isna(row.FormationZone):
             try:
-                formation_code = row.FormationZone.strip()
-                # Set the formation_completion_code field directly on the well
-                well.formation_completion_code = formation_code
-                logger.info(
-                    f"Set formation_completion_code for {well.name}: {formation_code}"
+                formation_code = row.FormationZone
+
+                # Validate formation exists
+                formation = (
+                    session.query(GeologicFormation)
+                    .filter(GeologicFormation.formation_code == formation_code)
+                    .first()
                 )
+
+                if formation:
+                    # Formation exists: Set association
+                    well.formation_completion_code = formation_code
+                    logger.info(
+                        f"Set completion formation for {well.name}: {formation_code}"
+                    )
+                else:
+                    # Formation does NOT exist: Do not create new formation. Flag and log for review
+                    logger.warning(
+                        f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
+                    )
+                    errors.append(
+                        {
+                            "well": well.name,
+                            "error": f"Unknown formation: {formation_code}",
+                        }
+                    )
+
             except Exception as e:
                 logger.critical(
-                    f"Error setting formation completion for {well.name}: {e}"
+                    f"Error setting completion formation for {well.name}: {e}"
                 )
 
     session.commit()
