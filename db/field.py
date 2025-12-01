@@ -4,7 +4,7 @@ from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from typing import TYPE_CHECKING
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin, NotesMixin, lexicon_term
 
 if TYPE_CHECKING:
     from db.contact import Contact
@@ -52,7 +52,7 @@ class FieldEventParticipant(Base, AutoBaseMixin, ReleaseMixin):
     )
 
 
-class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
+class FieldEvent(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
     """
     This table serves as the master log for all field visits. Each
     record in this table represents a single, continuous collection event at a
@@ -81,10 +81,6 @@ class FieldEvent(Base, AutoBaseMixin, ReleaseMixin):
         DateTime(timezone=True),
         nullable=False,
         comment="Date and time of the field event.",
-    )
-    notes: Mapped[str] = mapped_column(
-        nullable=True,
-        comment="Notes or comments about the field event.",
     )
     # --- Relationships ---
     thing: Mapped["Thing"] = relationship(back_populates="field_events")
