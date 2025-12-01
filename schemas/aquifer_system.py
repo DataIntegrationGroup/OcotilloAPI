@@ -2,6 +2,7 @@ from typing import List
 
 from pydantic import BaseModel
 
+from core.enums import GeographicScale, AquiferType
 from schemas import BaseResponseModel
 
 
@@ -14,8 +15,8 @@ class CreateAquiferSystem(BaseModel):
 
     name: str
     description: str | None = None
-    primary_aquifer_type: str
-    geographic_scale: str
+    primary_aquifer_type: AquiferType
+    geographic_scale: GeographicScale | None = None  # e.g., "Regional", "Local", etc.
     boundary: str | None = None
 
 
@@ -36,8 +37,8 @@ class GeoJSONProperties(BaseResponseModel):
 
     name: str
     description: str | None = None
-    primary_aquifer_type: str
-    geographic_scale: str
+    primary_aquifer_type: AquiferType
+    geographic_scale: GeographicScale | None
 
 
 class AquiferSystemGeoJSONResponse(BaseModel):
