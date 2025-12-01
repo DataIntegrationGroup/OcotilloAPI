@@ -254,6 +254,7 @@ class WellResponse(BaseThingResponse):
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
     permissions: list[PermissionHistoryResponse]
+    formation_completion_code: FormationCode | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):

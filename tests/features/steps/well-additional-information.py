@@ -237,10 +237,11 @@ def step_impl(context):
     "the response should include the formation as the formation zone of well completion"
 )
 def step_impl(context):
-    assert "geologic_formations" in context.water_well_data
-    assert context.water_well_data["geologic_formations"] == [
-        context.objects["geologic_formations"][0].formation_code
-    ]
+    assert "formation_completion_code" in context.water_well_data
+    assert (
+        context.water_well_data["formation_completion_code"]
+        == context.objects["wells"][0].formation_completion_code
+    )
 
 
 @then(
