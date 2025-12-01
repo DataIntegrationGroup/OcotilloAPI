@@ -249,7 +249,6 @@ class WellResponse(BaseThingResponse):
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []
-    geologic_formations: list[str] = []
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
@@ -274,14 +273,6 @@ class WellResponse(BaseThingResponse):
         else:
             materials = []
         return materials
-
-    @field_validator("geologic_formations", mode="before")
-    def populate_geologic_formations_with_strings(cls, geologic_formations):
-        if geologic_formations is not None:
-            formations = [formation.formation_code for formation in geologic_formations]
-        else:
-            formations = []
-        return formations
 
     @field_validator("permissions", mode="before")
     def populate_permission_history_with_latest_records(cls, permissions):
