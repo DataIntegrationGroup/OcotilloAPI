@@ -262,7 +262,7 @@ def transfer_water_levels(session):
                 )
                 session.add(note)
                 logger.info(
-                    f"{SPACE_4}Added 'General' note to FieldEvent ID {field_event.id} | Note ID {note.id}"
+                    f"{SPACE_4}Added 'General' note to FieldEvent ID {field_event.id}"
                 )
 
             logger.info(
