@@ -98,9 +98,11 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
             CreateAquiferSystem.model_validate(data)
 
         except ValidationError as e:
-            errors.append({"code": aquifer_code, "name": aquifer_name, "error": str(e)})
+            errors.append(
+                {"code": aquifer_code, "name": aquifer_name, "error": e.errors()}
+            )
             logger.critical(
-                f"Error creating aquifer system '{aquifer_name}' (code: {aquifer_code}) (row {i}): {e}"
+                f"Error creating aquifer system '{aquifer_name}' (code: {aquifer_code}) (row {i}): {e.errors()}"
             )
             continue
 
