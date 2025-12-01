@@ -419,6 +419,7 @@ class LexiconMapper:
             "LU_DataSource",
             "LU_Depth_CompletionSource",
             "LU_Discharge_ChemistrySource",
+            "LU_Formations",
             "LU_LevelStatus",
             "LU_Lithology",
             "LU_MajorAnalyte",
@@ -436,8 +437,6 @@ class LexiconMapper:
             "LU_AltitudeDatum": "code is the value, so no need for mapping",
             "LU_CoordinateDatum": "code is the value, so no need for mapping",
             "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
-            "LU_Formations": "needs to be cleaned before it can be used",
-            "LU_Lithology": "needs to be cleaned before it can be used",
             "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
         }
         mappers = {}
@@ -449,6 +448,9 @@ class LexiconMapper:
                 if lu_table == "LU_Formations":
                     code = row.Code
                     meaning = row.Meaning
+                elif lu_table == "LU_Lithology":
+                    code = row.ABBREVIATION
+                    meaning = row.TERM
                 else:
                     code = row.CODE
                     meaning = row.MEANING
