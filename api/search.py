@@ -175,6 +175,7 @@ async def search_api(
     user: viewer_dependency,
     session: session_dependency,
     q: str,
+    size: int = 100,
     limit: int = 25,
 ) -> CustomPage[dict]:
     """
