@@ -133,6 +133,12 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the well pump from ground surface to the pump intake (in feet).",
     )
+    formation_completion_code: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="The geologic formation in which the well was completed (from WellData.FormationZone). "
+        "This indicates the target formation for the well, not the full stratigraphic column. "
+        "For detailed depth-interval stratigraphy, see formation_associations.",
+    )
     # TODO: should this be required for every well in the database? AMMP review
     is_suitable_for_datalogger: Mapped[bool] = mapped_column(
         nullable=True,

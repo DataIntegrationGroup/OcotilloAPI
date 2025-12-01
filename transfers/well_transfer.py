@@ -41,7 +41,6 @@ from db import (
     AquiferType,
     GeologicFormation,
     ThingAquiferAssociation,
-    ThingGeologicFormationAssociation,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
@@ -558,43 +557,20 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     f"Error creating aquifer associations for {well.name}: {e}"
                 )
 
-        # --- Create Formation Association (if FormationZone exists) ---
-        # Note: This creates a single formation association from WellData.
-        # For detailed stratigraphy with depth intervals, see transfer_stratigraphy()
+        # --- Set Formation Completion (NOT depth-based stratigraphy) ---
+        # This simply records which formation the well was completed in.
+        # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
         if hasattr(row, "FormationZone") and not isna(row.FormationZone):
             try:
-                formation_code = row.FormationZone
-                formation = get_or_create_geologic_formation(session, formation_code)
-
-                if formation:
-                    # Onlyl create association if valid well depth data exists
-                    if (
-                        not hasattr(row, "WellDepth")
-                        or isna(row.WellDepth)
-                        or not row.WellDepth
-                    ):
-                        logger.warning(
-                            f"Well {well.name} has FormationZone but no valid WellDepth. "
-                            f"Skipping formation association. Use stratigraphy transfer for detailed depth data."
-                        )
-                    else:
-                        # Create association using actual well depth
-                        top_depth = 0.0
-                        bottom_depth = float(row.WellDepth)
-
-                    formation_assoc = ThingGeologicFormationAssociation(
-                        thing=well,
-                        geologic_formation=formation,
-                        top_depth=top_depth,
-                        bottom_depth=bottom_depth,
-                    )
-                    session.add(formation_assoc)
-                    logger.info(
-                        f"Associated well {well.name} with formation {formation.formation_code} (0-{bottom_depth} ft)"
-                    )
+                formation_code = row.FormationZone.strip()
+                # Set the formation_completion_code field directly on the well
+                well.formation_completion_code = formation_code
+                logger.info(
+                    f"Set formation_completion_code for {well.name}: {formation_code}"
+                )
             except Exception as e:
                 logger.critical(
-                    f"Error creating formation association for {well.name}: {e}"
+                    f"Error setting formation completion for {well.name}: {e}"
                 )
 
     session.commit()
