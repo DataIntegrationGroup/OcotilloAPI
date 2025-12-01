@@ -3,6 +3,20 @@ from typing import List
 from pydantic import BaseModel
 
 from schemas import BaseResponseModel
+from core.enums import FormationCode, Lithology
+
+
+# ------ CREATE ----------
+class CreateGeologicFormation(BaseModel):
+    """
+    Schema for creating a geologic formation.
+    Used during data transfer and API creation.
+    """
+
+    formation_code: FormationCode | None = None
+    description: str | None = None
+    lithology: Lithology | None = None
+    boundary: str | None = None
 
 
 # ------ RESPONSE ----------
