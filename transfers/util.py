@@ -27,13 +27,12 @@ import pandas as pd
 import pytz
 from shapely import Point
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location, DataProvenance, Parameter
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
-
-# from services.lexicon_mapper import lexicon_mapper
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
@@ -232,14 +231,14 @@ def read_csv(
     return pd.read_csv(io.BytesIO(data), dtype=dtype)
 
 
-def get_valid_point_ids(thing_type="water well"):
+def get_valid_point_ids(thing_type: str = "water well") -> list[str]:
     with session_ctx() as session:
         things = get_valid_things(session, thing_type)
         valid_pointids = [thing.name for thing in things]
     return valid_pointids
 
 
-def get_valid_things(session, thing_type="water well"):
+def get_valid_things(session: Session, thing_type: str = "water well") -> list[Thing]:
     return session.query(Thing).where(Thing.thing_type == thing_type).all()
 
 
@@ -260,7 +259,7 @@ def extract_organization(alternate_id: str) -> str:
     return "Unknown"
 
 
-def get_transfers_data_path(name):
+def get_transfers_data_path(name: str) -> Path:
     def data_path(r):
         return Path(r) / "transfers" / "data"
 
@@ -349,7 +348,7 @@ def filter_to_valid_point_ids(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["PointID"].isin(valid_point_ids)]
 
 
-def convert_mt_to_utc(dt_record: datetime):
+def convert_mt_to_utc(dt_record: datetime) -> datetime:
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
         # no time was measured, so just set the timezone to UTC and keep
@@ -369,12 +368,12 @@ def convert_mt_to_utc(dt_record: datetime):
     return dt_record
 
 
-def chunk_by_size(df, chunk_size):
+def chunk_by_size(df: pd.DataFrame, chunk_size: int) -> pd.DataFrame:
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
 
 
-def get_groundwater_parameter_id():
+def get_groundwater_parameter_id() -> int:
     with session_ctx() as session:
         groundwater_parameter_id = (
             session.query(Parameter)
@@ -592,13 +591,26 @@ def timeit(func):
 
 class LexiconMapper:
     def __init__(self):
-        self._mappers = None
+        self._mappers: dict[str, str] = None
 
-    def map_value(self, value):
+    def map_value(self, value) -> str:
         value = value.strip()
         return self._make_lu_to_lexicon_mapper().get(value, value)
 
-    def _make_lu_to_lexicon_mapper(self):
+    def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
+        """
+        Lookup tables intentionally skipped (kept for documentation only)
+        Each entry explains why the table is excluded
+
+        "LU_AltitudeDatum": "code is the value, so no need for mapping",
+        "LU_CoordinateDatum": "code is the value, so no need for mapping",
+        "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
+        "LU_Formations": "needs to be cleaned before it can be used",
+        "LU_Lithology": "needs to be cleaned before it can be used",
+        "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
+
+        :return: dict
+        """
         if self._mappers:
             return self._mappers
 
@@ -624,16 +636,6 @@ class LexiconMapper:
             "LU_Status",
         ]
 
-        # Lookup tables intentionally skipped (kept for documentation only)
-        # Each entry explains why the table is excluded
-        _lu_tables_skipped = {
-            "LU_AltitudeDatum": "code is the value, so no need for mapping",
-            "LU_CoordinateDatum": "code is the value, so no need for mapping",
-            "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
-            "LU_Formations": "needs to be cleaned before it can be used",
-            "LU_Lithology": "needs to be cleaned before it can be used",
-            "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
-        }
         mappers = {}
 
         for lu_table in lu_tables:
