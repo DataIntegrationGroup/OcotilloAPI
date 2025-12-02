@@ -1,9 +1,8 @@
 from typing import List
 
-from pydantic import BaseModel, field_validator
-
+from pydantic import BaseModel
 from schemas import BaseResponseModel
-from schemas.validators import GeometryMixin, validate_enum_input
+from schemas.validators import GeometryMixin
 from core.enums import AquiferType, GeographicScale  # Import specific Enums
 
 
@@ -16,19 +15,9 @@ class CreateAquiferSystem(BaseModel, GeometryMixin):
 
     name: str
     description: str | None = None
-    primary_aquifer_type: str
-    geographic_scale: str
+    primary_aquifer_type: AquiferType
+    geographic_scale: GeographicScale | None = None
     # boundary field inherited from GeometryMixin
-
-    @field_validator("primary_aquifer_type", mode="before")
-    @classmethod
-    def check_aquifer_type(cls, v):
-        return validate_enum_input(v, AquiferType)
-
-    @field_validator("geographic_scale", mode="before")
-    @classmethod
-    def check_geographic_scale(cls, v):
-        return validate_enum_input(v, GeographicScale)
 
 
 # ------ RESPONSE ----------
@@ -48,8 +37,8 @@ class GeoJSONProperties(BaseResponseModel):
 
     name: str
     description: str | None = None
-    primary_aquifer_type: str
-    geographic_scale: str
+    primary_aquifer_type: AquiferType
+    geographic_scale: GeographicScale | None = None
 
 
 class AquiferSystemGeoJSONResponse(BaseModel):

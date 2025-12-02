@@ -3,7 +3,7 @@ from typing import List
 from pydantic import BaseModel, field_validator
 
 from schemas import BaseResponseModel
-from schemas.validators import DepthIntervalMixin, GeometryMixin, validate_enum_input
+from schemas.validators import DepthIntervalMixin, GeometryMixin
 from core.enums import FormationCode, Lithology
 
 
@@ -30,11 +30,6 @@ class CreateGeologicFormation(BaseModel, GeometryMixin):
             return v.upper()
         return v
 
-    @field_validator("lithology", mode="before")
-    @classmethod
-    def check_lithology(cls, v):
-        return validate_enum_input(v, Lithology)
-
 
 class CreateThingGeologicFormationAssociation(BaseModel, DepthIntervalMixin):
     """
@@ -43,7 +38,7 @@ class CreateThingGeologicFormationAssociation(BaseModel, DepthIntervalMixin):
     """
 
     thing_id: int
-    geologic_formation_id: int | None = None
+    geologic_formation_id: int
     top_depth: float
     bottom_depth: float
 

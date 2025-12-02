@@ -4,36 +4,8 @@ Reusable Pydantic validators and mixins for aquifer and geology related schemas.
 May consider expansion for other domain models in the future.
 """
 
-from typing import Any, Type
 from pydantic import model_validator, field_validator, BaseModel, ValueError
-
-from enum import Enum
-
-
-def validate_enum_input(v: Any, enum_cls: Type[Enum]) -> Any:
-    """
-    Validates that the input matches an enum value, either exactly or case-insensitively.
-    Returns the actual Enum member value.
-    """
-    if v is None:
-        return None
-
-    # 1. Check if it's already a valid enum member or value
-    try:
-        return enum_cls(v).value
-    except ValueError:
-        pass
-
-    # 2. Case-insensitive fallback (for string inputs)
-    if isinstance(v, str):
-        v_lower = v.lower()
-        for member in enum_cls:
-            if str(member.value).lower() == v_lower:
-                return member.value
-
-    # 3. Fail if no match found
-    valid_options = [str(e.value) for e in enum_cls]
-    raise ValueError(f"Invalid value '{v}'. Must be one of: {', '.join(valid_options)}")
+from services.validation.geospatial import validate_wkt_geometry
 
 
 class DepthIntervalMixin(BaseModel):
@@ -61,6 +33,7 @@ class DepthIntervalMixin(BaseModel):
 class GeometryMixin(BaseModel):
     """
     Mixin to validate WKT strings for boundary fields.
+    Delegates logic to the validate_wkt_geometry service function.
     """
 
     boundary: str | None = None
@@ -68,9 +41,4 @@ class GeometryMixin(BaseModel):
     @field_validator("boundary")
     @classmethod
     def validate_wkt(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-
-        # Basic String Check
-        if not isinstance(v, str) or not v.strip():
-            raise ValueError("Boundary must be a valid WKT string.")
+        return validate_wkt_geometry(v)
