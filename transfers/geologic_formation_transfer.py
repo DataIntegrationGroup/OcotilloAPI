@@ -21,7 +21,7 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
         tuple: (input_df, cleaned_df, errors)
     """
     # 1. Read the CSV file
-    input_df = read_csv("LU_Formation")
+    input_df = read_csv("LU_Formations")
 
     # 2. Replace NaNs with None
     cleaned_df = replace_nans(input_df)
