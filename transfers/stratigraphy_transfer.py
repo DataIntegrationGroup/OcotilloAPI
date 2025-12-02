@@ -109,24 +109,45 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
             # Validate required fields
             # UnitIdentifier
             if not hasattr(row, "UnitIdentifier") or not row.UnitIdentifier:
-                logger.warning(
+                logger.critical(
                     f"Stratigraphy record {layer_index} for {pointid} has no UnitIdentifier, skipping"
                 )
                 skipped_count += 1
+                errors.append(
+                    {
+                        "pointid": pointid,
+                        "layer": layer_index,
+                        "error": "Missing UnitIdentifier",
+                    }
+                )
                 continue
             # StratTop
             if not hasattr(row, "StratTop") or row.StratTop is None:
-                logger.warning(
+                logger.critical(
                     f"Stratigraphy record {layer_index} for {pointid} has no StratTop, skipping"
                 )
                 skipped_count += 1
+                errors.append(
+                    {
+                        "pointid": pointid,
+                        "layer": layer_index,
+                        "error": "Missing StratTop",
+                    }
+                )
                 continue
             # StratBottom
             if not hasattr(row, "StratBottom") or row.StratBottom is None:
-                logger.warning(
+                logger.critical(
                     f"Stratigraphy record {layer_index} for {pointid} has no StratBottom, skipping"
                 )
                 skipped_count += 1
+                errors.append(
+                    {
+                        "pointid": pointid,
+                        "layer": layer_index,
+                        "error": "Missing StratBottom",
+                    }
+                )
                 continue
 
             # Extract formation code
