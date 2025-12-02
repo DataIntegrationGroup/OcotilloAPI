@@ -101,6 +101,7 @@ def add_well(context, session, location, name_num):
         well_pump_type="Submersible",
         well_pump_depth=8,
         is_suitable_for_datalogger=True,
+        formation_completion_code="000EXRV",
     )
 
     session.add(well)

@@ -40,7 +40,7 @@ class AquiferSystem(Base, AutoBaseMixin, ReleaseMixin):
         comment="A controlled vocabulary field to classify the aquifer system as a whole (e.g., 'Unconfined', 'Confined', 'Perched').",
     )
     geographic_scale: Mapped[str] = lexicon_term(
-        nullable=False,
+        nullable=True,
         comment="A controlled vocabulary field to classify the aquifer's geographic scale (e.g., 'Major', 'Regional', 'Local').",
     )
     boundary: Mapped[Geometry] = mapped_column(

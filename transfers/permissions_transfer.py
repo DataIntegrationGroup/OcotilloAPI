@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
+from pandas import isna
 
 from db import Thing, PermissionHistory
 from transfers.util import read_csv, logger, replace_nans
@@ -15,8 +16,10 @@ does not pertain to permissions.
 
 def transfer_permissions(session: Session):
     """
-    The transferred wells and contacts need to be queried to know who gave
-    permission to which well since contact_id is required for PermissionHistory
+    The transferred wells and contacts need to be transferred first
+    - to access the auto-generated well IDs
+    - to know who gave permission to which well since contact_id is required for
+        PermissionHistory
     """
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     wdf = replace_nans(wdf)
@@ -38,7 +41,11 @@ def transfer_permissions(session: Session):
         allow_water_level_samples = wdf.loc[
             wdf["PointID"] == well.name, "MonitorOK"
         ].values
-        if len(allow_water_level_samples) > 0 and allow_water_level_samples is not None:
+        if len(allow_water_level_samples) == 0:
+            pass
+        elif isna(allow_water_level_samples[0]):
+            pass
+        else:
             try:
                 permission_allowed = bool(allow_water_level_samples[0])
                 permission = PermissionHistory(
@@ -61,10 +68,11 @@ def transfer_permissions(session: Session):
         allow_water_chemistry_samples = wdf.loc[
             wdf["PointID"] == well.name, "SampleOK"
         ].values
-        if (
-            len(allow_water_chemistry_samples) > 0
-            and allow_water_chemistry_samples is not None
-        ):
+        if len(allow_water_chemistry_samples) == 0:
+            pass
+        elif isna(allow_water_chemistry_samples[0]):
+            pass
+        else:
             try:
                 permission_allowed = bool(allow_water_chemistry_samples[0])
                 permission = PermissionHistory(

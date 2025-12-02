@@ -38,7 +38,7 @@ class GeoJSONProperties(BaseResponseModel):
     name: str
     description: str | None = None
     primary_aquifer_type: AquiferType
-    geographic_scale: GeographicScale | None = None
+    geographic_scale: GeographicScale | None
 
 
 class AquiferSystemGeoJSONResponse(BaseModel):
