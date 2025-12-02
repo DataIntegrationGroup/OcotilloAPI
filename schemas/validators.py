@@ -19,12 +19,11 @@ class DepthIntervalMixin(BaseModel):
 
     @model_validator(mode="after")
     def check_depth_logical_order(self) -> "DepthIntervalMixin":
-        if self.bottom_depth is not None and self.top_depth is not None:
-            if self.bottom_depth <= self.top_depth:
-                raise ValueError(
-                    f"Bottom depth ({self.bottom_depth}) must be greater "
-                    f"than top depth ({self.top_depth})"
-                )
+        if self.bottom_depth <= self.top_depth:
+            raise ValueError(
+                f"Bottom depth ({self.bottom_depth}) must be greater "
+                f"than top depth ({self.top_depth})"
+            )
         if self.top_depth < 0:
             raise ValueError("Top depth cannot be negative.")
         return self
