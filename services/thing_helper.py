@@ -163,7 +163,7 @@ def add_thing(
     location_id = data.pop("location_id", None)
     group_id = data.pop("group_id", None)
 
-    # Extract measuring point data (stored in separate history table)
+    # Extract measuring point data (stored in separate history table, not as Thing columns)
     measuring_point_height = data.pop("measuring_point_height", None)
     measuring_point_description = data.pop("measuring_point_description", None)
 
