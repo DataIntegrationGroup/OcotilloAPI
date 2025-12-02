@@ -188,7 +188,7 @@ def get_or_create_aquifer_system(
 
         aquifer = AquiferSystem(
             name=aquifer_name,
-            aquifer_type=primary_type,  # Primary type
+            primary_aquifer_type=primary_type,  # Primary type
             geographic_scale=None,  # Default
         )
         session.add(aquifer)
@@ -542,9 +542,17 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                                     session.add(aquifer_type)
                                     aquifer_type_names.append(type_name)
                                 except KeyError:
-                                    logger.warning(
+                                    logger.critical(
                                         f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
                                         f"for well {well.name}. Skipping this code."
+                                    )
+                                    errors.append(
+                                        {
+                                            "pointid": well.name,
+                                            "table": source_table,
+                                            "field": "AquiferType",
+                                            "error": f"Unknown aquifer code: {aquifer_code}",
+                                        }
                                     )
 
                             logger.info(
@@ -579,12 +587,14 @@ def transfer_wells(session: Session, flags: dict = None, limit: int = 0) -> None
                     )
                 else:
                     # Formation does NOT exist: Do not create new formation. Flag and log for review
-                    logger.warning(
+                    logger.critical(
                         f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
                     )
                     errors.append(
                         {
-                            "well": well.name,
+                            "pointid": well.name,
+                            "table": source_table,
+                            "field": "FormationZone",
                             "error": f"Unknown formation: {formation_code}",
                         }
                     )
