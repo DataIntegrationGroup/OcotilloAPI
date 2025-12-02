@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 from schemas import BaseResponseModel
 from schemas.validators import DepthIntervalMixin, GeometryMixin
@@ -39,8 +39,8 @@ class CreateThingGeologicFormationAssociation(BaseModel, DepthIntervalMixin):
 
     thing_id: int
     geologic_formation_id: int
-    top_depth: float
-    bottom_depth: float
+    top_depth: float = Field(ge=0)
+    bottom_depth: float = Field(ge=0)
 
 
 # ------ RESPONSE ----------

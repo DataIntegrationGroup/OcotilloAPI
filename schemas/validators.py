@@ -4,18 +4,20 @@ Reusable Pydantic validators and mixins for aquifer and geology related schemas.
 May consider expansion for other domain models in the future.
 """
 
-from pydantic import model_validator, field_validator, BaseModel, ValueError
+from pydantic import model_validator, field_validator, BaseModel, ValueError, Field
 from services.validation.geospatial import validate_wkt_geometry
 
 
 class DepthIntervalMixin(BaseModel):
     """
-    Mixin to enforce that bottom_depth is greater than top_depth.
+    Mixin to enforce:
+    1. Depths are non-negative (via Field constraints).
+    2. Bottom depth > top depth (via model_validator).
     Assumes the model has 'top_depth' and 'bottom_depth' fields.
     """
 
-    top_depth: float
-    bottom_depth: float
+    top_depth: float = Field(ge=0)
+    bottom_depth: float = Field(ge=0)
 
     @model_validator(mode="after")
     def check_depth_logical_order(self) -> "DepthIntervalMixin":
@@ -24,8 +26,6 @@ class DepthIntervalMixin(BaseModel):
                 f"Bottom depth ({self.bottom_depth}) must be greater "
                 f"than top depth ({self.top_depth})"
             )
-        if self.top_depth < 0:
-            raise ValueError("Top depth cannot be negative.")
         return self
 
 
