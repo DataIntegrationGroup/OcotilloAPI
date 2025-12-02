@@ -1,22 +1,46 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
 
 from schemas import BaseResponseModel
+from schemas.validators import DepthIntervalMixin, GeometryMixin
 from core.enums import FormationCode, Lithology
 
 
 # ------ CREATE ----------
-class CreateGeologicFormation(BaseModel):
+class CreateGeologicFormation(BaseModel, GeometryMixin):
     """
     Schema for creating a geologic formation.
     Used during data transfer and API creation.
     """
 
+    # formation_code has its own custom uppercase validator
     formation_code: FormationCode | None = None
     description: str | None = None
     lithology: Lithology | None = None
-    boundary: str | None = None
+    # boundary: inherited from GeometryMixin
+
+    @field_validator("formation_code", mode="before")
+    @classmethod
+    def upper_case_code(cls, v: str | None) -> str | None:
+        """
+        Automatically uppercase the formation code.
+        """
+        if isinstance(v, str):
+            return v.upper()
+        return v
+
+
+class CreateThingGeologicFormationAssociation(BaseModel, DepthIntervalMixin):
+    """
+    Schema for linking a Thing (Well) to a GeologicFormation.
+    Uses DepthIntervalMixin to enforce bottom_depth > top_depth.
+    """
+
+    thing_id: int
+    geologic_formation_id: int
+    top_depth: float = Field(ge=0)
+    bottom_depth: float = Field(ge=0)
 
 
 # ------ RESPONSE ----------
