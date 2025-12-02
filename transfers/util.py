@@ -206,16 +206,22 @@ def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     return df.replace({np.nan: default})
 
 
-def read_csv(name: str, dtype: dict | None = None, *args, **kw) -> pd.DataFrame:
+def read_csv(
+    name: str, dtype: dict | None = None, verbose=False, *args, **kw
+) -> pd.DataFrame:
     p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
     if os.path.exists(p):
-        logger.info(f"Using cached csv: {p}")
+        if verbose:
+            logger.info(f"Using cached csv: {p}")
         starttime = time.time()
         df = pd.read_csv(p, dtype=dtype, *args, **kw)
-        logger.info(f"Read csv in {time.time()-starttime:0.2f}")
+
+        if verbose:
+            logger.info(f"Read csv in {time.time()-starttime:0.2f}")
         return df
     else:
-        logger.info(f"Downloading csv: {name}")
+        if verbose:
+            logger.info(f"Downloading csv: {name}")
 
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
@@ -274,30 +280,55 @@ def filter_non_transferred_wells(df: pd.DataFrame) -> pd.DataFrame:
     return df[~(df["PointID"].isin(existing_ids))]
 
 
-def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
+def get_transferable_wells(
+    df: pd.DataFrame, log_datasource_counts=False, log_invalid_datasources=False
+) -> pd.DataFrame:
     path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
 
-        # f.seek(0)
-        # invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
-        # logger.info("Invalid WellData Datasources:")
-        # for vd in invalid_datasources:
-        #     logger.info(f"  {vd}")
+        if log_invalid_datasources:
+            f.seek(0)
+            invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
+            logger.info("Invalid WellData Datasources:")
+            for vd in invalid_datasources:
+                logger.info(f"  {vd}")
 
-    counts = df.groupby("DataSource").size().reset_index(name="WellCount")
-    counts = counts.sort_values("WellCount", ascending=False)
-    for count in counts.itertuples():
-        logger.info(f"{count.WellCount}: {count.DataSource[:50]} ")
+    if log_datasource_counts:
+        counts = df.groupby("DataSource").size().reset_index(name="WellCount")
+        counts = counts.sort_values("WellCount", ascending=False)
+        for count in counts.itertuples():
+            logger.info(f"{count.WellCount}: {count.DataSource[:50]} ")
 
     pldf = read_csv("ProjectLocations")
     collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
-    return df[
-        df["DataSource"].isin(valid_datasources)
-        | df["PointID"].isin(collabnet["PointID"])
-    ]
+
+    collabnet_pointids = collabnet["PointID"].unique().tolist()
+    logger.info(
+        f"collabnet pointids: {len(collabnet_pointids)} {collabnet_pointids[:10]}"
+    )
+
+    # get all pointids that have USGS as the DataSource but also have WaterLevel measurements where datasource is
+    # NMBGMR
+    usgs_df = df[df["DataSource"] == "USGS"]
+
+    waterlevel_df = read_csv("WaterLevels")
+    waterlevel_df = waterlevel_df[waterlevel_df["MeasuringAgency"] == "NMBGMR"]
+
+    usgs_pointids = (
+        usgs_df[usgs_df["PointID"].isin(waterlevel_df["PointID"])]["PointID"]
+        .unique()
+        .tolist()
+    )
+    logger.info(f"usgs pointids: {len(usgs_pointids)} {usgs_pointids[:10]}")
+
+    # get all the pointids from the well photos and include them
+    wellphotos_df = read_csv("WellPhotos")
+    wellphotos_pointids = wellphotos_df["PointID"].unique().tolist()
+    pointids = list(set(usgs_pointids + collabnet_pointids + wellphotos_pointids))
+    return df[df["DataSource"].isin(valid_datasources) | df["PointID"].isin(pointids)]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:

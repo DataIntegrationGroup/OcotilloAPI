@@ -51,7 +51,7 @@ from transfers.util import (
     read_csv,
     logger,
     replace_nans,
-    filter_by_welldata_datasource_and_project,
+    get_transferable_wells,
     lexicon_mapper,
     filter_non_transferred_wells,
     MeasuringPointEstimator,
@@ -117,35 +117,35 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
-def get_wells_to_transfer(flags: dict = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    # if flags is None:
-    #     flags = {}
-
-    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
-    ldf = read_csv("Location")
-    ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
-    wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
-    wdf = wdf[wdf["SiteType"] == "GW"]
-    wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
-
-    input_df = wdf
-    wdf = replace_nans(wdf)
-
-    # if flags.get("TRANSFER_ALL_WELLS", False):
-    #     # todo: filter Locations by DataSource
-    #     cleaned_df = filter_by_welldata_datasource_and_project(wdf)
-    # else:
-    #     # get a subset of wells that have not been transferred yet
-    #     # todo: this needs to be defined.
-    #     #       for now, we are just filtering out wells that have not been transferred yet
-    #     #       In the future we will be using criteria to determine which wells to transfer
-    #     #       for example, wells in the "Water Level Network" project
-    #     cleaned_df = wdf
-
-    cleaned_df = filter_by_welldata_datasource_and_project(wdf)
-    cleaned_df = filter_non_transferred_wells(cleaned_df)
-
-    return input_df, cleaned_df
+# def get_wells_to_transfer(flags: dict = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+#     # if flags is None:
+#     #     flags = {}
+#
+#     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+#     ldf = read_csv("Location")
+#     ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
+#     wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
+#     wdf = wdf[wdf["SiteType"] == "GW"]
+#     wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+#
+#     input_df = wdf
+#     wdf = replace_nans(wdf)
+#
+#     # if flags.get("TRANSFER_ALL_WELLS", False):
+#     #     # todo: filter Locations by DataSource
+#     #     cleaned_df = filter_by_welldata_datasource_and_project(wdf)
+#     # else:
+#     #     # get a subset of wells that have not been transferred yet
+#     #     # todo: this needs to be defined.
+#     #     #       for now, we are just filtering out wells that have not been transferred yet
+#     #     #       In the future we will be using criteria to determine which wells to transfer
+#     #     #       for example, wells in the "Water Level Network" project
+#     #     cleaned_df = wdf
+#
+#     cleaned_df = get_transferable_wells(wdf)
+#     cleaned_df = filter_non_transferred_wells(cleaned_df)
+#
+#     return input_df, cleaned_df
 
 
 def get_cached_elevations() -> dict:
@@ -175,7 +175,31 @@ class WellTransferer(Transferer):
         self._added_locations = {}
 
     def _get_dfs(self):
-        return get_wells_to_transfer(self.flags)
+        wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+        ldf = read_csv("Location")
+        ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
+        wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
+        wdf = wdf[wdf["SiteType"] == "GW"]
+        wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+
+        input_df = wdf
+        wdf = replace_nans(wdf)
+
+        # if flags.get("TRANSFER_ALL_WELLS", False):
+        #     # todo: filter Locations by DataSource
+        #     cleaned_df = filter_by_welldata_datasource_and_project(wdf)
+        # else:
+        #     # get a subset of wells that have not been transferred yet
+        #     # todo: this needs to be defined.
+        #     #       for now, we are just filtering out wells that have not been transferred yet
+        #     #       In the future we will be using criteria to determine which wells to transfer
+        #     #       for example, wells in the "Water Level Network" project
+        #     cleaned_df = wdf
+
+        cleaned_df = get_transferable_wells(wdf)
+        cleaned_df = filter_non_transferred_wells(cleaned_df)
+
+        return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
         pointid = row.PointID
