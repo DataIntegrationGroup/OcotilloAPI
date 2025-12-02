@@ -8,7 +8,7 @@ from core.enums import FormationCode, Lithology
 
 
 # ------ CREATE ----------
-class CreateGeologicFormation(BaseModel, GeometryMixin):
+class CreateGeologicFormation(GeometryMixin):
     """
     Schema for creating a geologic formation.
     Used during data transfer and API creation.
@@ -31,7 +31,7 @@ class CreateGeologicFormation(BaseModel, GeometryMixin):
         return v
 
 
-class CreateThingGeologicFormationAssociation(BaseModel, DepthIntervalMixin):
+class CreateThingGeologicFormationAssociation(DepthIntervalMixin):
     """
     Schema for linking a Thing (Well) to a GeologicFormation.
     Uses DepthIntervalMixin to enforce bottom_depth > top_depth.

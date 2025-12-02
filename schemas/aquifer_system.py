@@ -7,7 +7,7 @@ from core.enums import AquiferType, GeographicScale  # Import specific Enums
 
 
 # ------ CREATE ----------
-class CreateAquiferSystem(BaseModel, GeometryMixin):
+class CreateAquiferSystem(GeometryMixin):
     """
     Schema for creating an aquifer system.
     Used during data transfer and API creation.
