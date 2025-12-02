@@ -152,6 +152,9 @@ def test_add_water_well(location, group):
     cleanup_post_test(Thing, data["id"])
 
 
+@pytest.mark.skip(
+    "This duplicates the test above. That one will need to eventually be updated"
+)
 def test_add_water_well_with_measuring_point(location, group):
     """
     Test creating a well with measuring_point_height and measuring_point_description.
