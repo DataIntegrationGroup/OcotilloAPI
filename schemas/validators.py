@@ -4,7 +4,7 @@ Reusable Pydantic validators and mixins for aquifer and geology related schemas.
 May consider expansion for other domain models in the future.
 """
 
-from pydantic import model_validator, field_validator, BaseModel, ValueError, Field
+from pydantic import model_validator, field_validator, BaseModel, Field
 from services.validation.geospatial import validate_wkt_geometry
 
 
