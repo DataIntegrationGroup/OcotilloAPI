@@ -1,13 +1,13 @@
 from typing import List
 
 from pydantic import BaseModel
-
-from core.enums import GeographicScale, AquiferType
 from schemas import BaseResponseModel
+from schemas.validators import GeometryMixin
+from core.enums import AquiferType, GeographicScale  # Import specific Enums
 
 
 # ------ CREATE ----------
-class CreateAquiferSystem(BaseModel):
+class CreateAquiferSystem(BaseModel, GeometryMixin):
     """
     Schema for creating an aquifer system.
     Used during data transfer and API creation.
@@ -16,8 +16,8 @@ class CreateAquiferSystem(BaseModel):
     name: str
     description: str | None = None
     primary_aquifer_type: AquiferType
-    geographic_scale: GeographicScale | None = None  # e.g., "Regional", "Local", etc.
-    boundary: str | None = None
+    geographic_scale: GeographicScale | None = None
+    # boundary field inherited from GeometryMixin
 
 
 # ------ RESPONSE ----------
