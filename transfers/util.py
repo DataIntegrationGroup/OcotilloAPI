@@ -253,9 +253,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
 
     nma_site_date = None
     if row.SiteDate:
-        nma_site_date = datetime.strptime(
-            row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-        ).date()
+        nma_site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
 
     location = Location(
         nma_pk_location=row.LocationId,
