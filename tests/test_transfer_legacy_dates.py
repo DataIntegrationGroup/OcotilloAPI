@@ -46,7 +46,7 @@ def mock_lexicon_mapper():
 # ============================================================================
 
 
-def test_make_location_with_both_legacy_dates(mock_lexicon_mapper):
+def test_make_location_with_both_ampapi_dates(mock_lexicon_mapper):
     """Test that make_location populates both nma_date_created and nma_site_date"""
 
     # Create a mock CSV row with both DateCreated and SiteDate
@@ -175,7 +175,7 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
     assert time_gap == 19751  # Approximately 54 years
 
 
-def test_make_location_legacy_dates_are_date_not_datetime(mock_lexicon_mapper):
+def test_make_location_ampapi_dates_are_date_not_datetime(mock_lexicon_mapper):
     """Test that AMPAPI date fields are Date type (not DateTime)"""
     row = pd.Series(
         {
@@ -210,7 +210,7 @@ def test_make_location_legacy_dates_are_date_not_datetime(mock_lexicon_mapper):
     assert location.nma_site_date == datetime.date(2002, 12, 10)
 
 
-def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mapper):
+def test_make_location_ampapi_dates_independent_of_created_at(mock_lexicon_mapper):
     """Test that AMPAPI dates don't affect created_at timestamp"""
     row = pd.Series(
         {
@@ -250,7 +250,7 @@ def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mappe
 # ============================================================================
 
 
-def test_location_legacy_date_coverage_statistics(mock_lexicon_mapper):
+def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
     """Test that migration preserves expected percentages of AMPAPI dates"""
 
     def create_test_row(i, has_site_date):

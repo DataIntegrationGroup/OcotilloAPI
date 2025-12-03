@@ -235,11 +235,11 @@ def test_delete_location_404_not_found(second_location):
     assert data["detail"] == f"Location with ID {bad_location_id} not found."
 
 
-#  ============= Legacy date field tests =======================================
+#  ============= AMPAPI date field tests =======================================
 
 
-def test_new_location_has_null_legacy_fields():
-    """Test that newly created locations have null legacy date fields (legacy fields are migration-only)"""
+def test_new_location_has_null_ampapi_fields():
+    """Test that newly created locations have null AMPAPI date fields (AMPAPI fields are migration-only)"""
     payload = {
         "point": "POINT (-106.607784 35.118924)",
         "elevation": 1558.8,
@@ -260,7 +260,7 @@ def test_new_location_has_null_legacy_fields():
     cleanup_post_test(Location, data["id"])
 
 
-def test_legacy_fields_present_in_location_response():
+def test_ampapi_fields_present_in_location_response():
     """Test that AMPAPI date fields (read-only) are included in location GET response"""
     # Create a new location (without AMPAPI date fields set - they're read-only)
     payload = {
@@ -287,7 +287,7 @@ def test_legacy_fields_present_in_location_response():
     cleanup_post_test(Location, location_id)
 
 
-def test_legacy_fields_independent_of_created_at():
+def test_ampapi_fields_independent_of_created_at():
     """Test that created_at (system timestamp) is separate from AMPAPI date fields (read-only)"""
     payload = {
         "point": "POINT (-106.607784 35.118924)",

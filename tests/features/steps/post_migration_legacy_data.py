@@ -91,9 +91,9 @@ def step_given_multiple_locations(context: Context, count: int):
     ]
 
     for i in range(min(count, len(test_data))):
-        legacy_date, site_date = test_data[i]
+        created_date, site_date = test_data[i]
         location = create_test_location(
-            nma_date_created=date.fromisoformat(legacy_date),
+            nma_date_created=date.fromisoformat(created_date),
             nma_site_date=(date.fromisoformat(site_date) if site_date else None),
         )
         context.test_locations.append(location)
@@ -203,7 +203,7 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
 
 
 @when('I query for locations with nma_date_created "{target_date}"')
-def step_when_query_by_legacy_date(context: Context, target_date: str):
+def step_when_query_by_ampapi_date(context: Context, target_date: str):
     """Query locations by nma_date_created."""
     with session_ctx() as session:
         target = date.fromisoformat(target_date)
@@ -251,16 +251,16 @@ def step_then_nma_site_date(context: Context, expected_date: str):
 @then("the time gap should be approximately {years} years")
 def step_then_time_gap_years(context: Context, years: str):
     """Assert approximate year gap."""
-    legacy_str = context.location_response.get("nma_date_created")
+    created_str = context.location_response.get("nma_date_created")
     site_date_str = context.location_response.get("nma_site_date")
 
-    if not legacy_str or not site_date_str:
+    if not created_str or not site_date_str:
         raise AssertionError("Missing date fields for gap calculation")
 
-    legacy_date = date.fromisoformat(legacy_str)
+    created_date = date.fromisoformat(created_str)
     site_date = date.fromisoformat(site_date_str)
 
-    gap_days = (legacy_date - site_date).days
+    gap_days = (created_date - site_date).days
     gap_years = gap_days / 365.25
 
     expected_years = float(years)
@@ -271,7 +271,7 @@ def step_then_time_gap_years(context: Context, years: str):
 
 
 @then("each location should have a date created field")
-def step_then_all_have_legacy_field(context: Context):
+def step_then_all_have_date_created_field(context: Context):
     """Assert all locations have the date created field."""
     items = context.locations_response.get("items", [])
     for item in items:
@@ -371,7 +371,7 @@ def step_then_has_created_at(context: Context):
 
 
 @then("it should have nma_date_created (original AMPAPI DateCreated)")
-def step_then_has_legacy_date(context: Context):
+def step_then_has_ampapi_date_created(context: Context):
     """Assert nma_date_created exists."""
     assert context.retrieved_location.nma_date_created is not None
 
@@ -405,14 +405,14 @@ def step_then_created_at_recent(context: Context):
 
 
 @then("nma_date_created should be an older date")
-def step_then_legacy_date_older(context: Context):
+def step_then_ampapi_date_older(context: Context):
     """Assert nma_date_created is old."""
-    legacy_date = context.retrieved_location.nma_date_created
-    assert legacy_date.year < 2024, "nma_date_created should be from the past"
+    ampapi_created_date = context.retrieved_location.nma_date_created
+    assert ampapi_created_date.year < 2024, "nma_date_created should be from the past"
 
 
 @then('nma_date_created should be "{expected_date}"')
-def step_then_legacy_is(context: Context, expected_date: str):
+def step_then_ampapi_created_is(context: Context, expected_date: str):
     """Assert nma_date_created value."""
     actual = context.retrieved_location.nma_date_created
     expected = date.fromisoformat(expected_date)
