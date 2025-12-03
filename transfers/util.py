@@ -64,10 +64,7 @@ def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
 
     if local_file.exists():
         logger.info(f"Reading {name} from local file: {local_file}")
-        if dtype:
-            return pd.read_csv(local_file, dtype=dtype)
-        else:
-            return pd.read_csv(local_file)
+        return pd.read_csv(local_file, dtype=dtype)
 
     # Check cache directory
     p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
@@ -83,10 +80,7 @@ def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
     with open(p, "wb") as f:
         f.write(data)
 
-    if dtype:
-        return pd.read_csv(io.BytesIO(data), dtype=dtype)
-    else:
-        return pd.read_csv(io.BytesIO(data))
+    return pd.read_csv(io.BytesIO(data), dtype=dtype)
 
 
 def get_valid_point_ids(session, thing_type="water well"):
