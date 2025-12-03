@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from db.field import FieldEventParticipant, FieldEvent
     from db.thing import Thing
     from db.publication import Author, AuthorContactAssociation
-    from db.permission import Permission
+    from db.permission_history import PermissionHistory
 
 
 class ThingContactAssociation(Base, AutoBaseMixin):
@@ -74,8 +74,10 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # One-To-Many: A Contact can grant many Permissions.
-    permissions: Mapped[List["Permission"]] = relationship(
-        "Permission", back_populates="contact", cascade="all, delete, delete-orphan"
+    permissions: Mapped[List["PermissionHistory"]] = relationship(
+        "PermissionHistory",
+        back_populates="contact",
+        cascade="all, delete, delete-orphan",
     )
     # One-To-Many: A Contact can be associated with many Authors (in Publications).
     author_associations: Mapped[List["AuthorContactAssociation"]] = relationship(

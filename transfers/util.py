@@ -15,9 +15,11 @@
 # ===============================================================================
 import csv
 import io
+import math
 import os
 import re
-from datetime import datetime, timezone, timedelta
+import time
+from datetime import datetime, timezone, timedelta, UTC
 from pathlib import Path
 
 import numpy as np
@@ -28,10 +30,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from db import Thing, Location, DataProvenance
+from db import Thing, Location, DataProvenance, Parameter
+from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
-
-# from services.lexicon_mapper import lexicon_mapper
 from services.util import (
     transform_srid,
     get_epqs_elevation_from_point,
@@ -53,35 +54,192 @@ NMA_COORDINATE_ACCURACY = {
 }
 
 
+class MeasuringPointEstimator:
+    def __init__(self):
+        df = read_csv("WaterLevels")
+        df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
+        self._df = df.dropna(subset=["DateMeasured"])
+
+    def estimate_measuring_point_height(
+        self, row
+    ) -> tuple[float, str, datetime | None]:
+        mph = row.MPHeight
+        mph_desc = row.MeasuringPoint
+        df = self._df[self._df["PointID"] == row.PointID]
+        df = df.sort_values("DateMeasured")
+        if mph is None:
+            logger.info(
+                f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
+            )
+            mphs = []
+            start_dates = []
+            mph_descs = []
+
+            if len(df) == 0:
+                logger.warning(f"No measurements found for PointID: {row.PointID}.")
+            else:
+                # try to estimate mpheight from measurements
+                for m in df.itertuples():
+                    mphi = m.DepthToWater - m.DepthToWaterBGS
+                    start_date = m.DateMeasured
+                    if mphi not in mphs:
+                        mphs.append(mphi)
+                        mph_descs.append(
+                            "Auto calculated from measurements at depth to water and depth to water below ground surface"
+                        )
+                        start_dates.append(start_date)
+                logger.info(
+                    f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
+                )
+        else:
+            mphs = [mph]
+            mph_descs = [mph_desc]
+            if len(df) > 0:
+                start_dates = [df["DateMeasured"].min()]
+            else:
+                start_dates = [datetime.now(tz=UTC)]
+
+        if len(mphs) == 1:
+            end_dates = [None]
+        else:
+            end_dates = [start_dates[i + 1] for i in range(len(start_dates) - 1)]
+            end_dates.append(None)
+
+        return zip(mphs, mph_descs, start_dates, end_dates)
+
+
+class SensorParameterEstimator:
+    def __init__(self, sensor_type: str):
+        if sensor_type == "Pressure Transducer":
+            self._df = read_csv("WaterLevelsContinuous_Pressure")
+        else:
+            self._df = read_csv("WaterLevelsContinuous_Acoustic")
+
+        # convert "DateMeasured" to date"
+        self._df["DateMeasured"] = pd.to_datetime(self._df["DateMeasured"]).dt.date
+
+    def estimate_installation_date(
+        self, record: pd.Series
+    ) -> tuple[datetime | None, str | None]:
+        # get the first measurement for this pointid
+        point_id = record.PointID
+        cdf = self._get_values(point_id)
+        if len(cdf) == 0:
+            logger.warning(
+                f"Unable to estimate installation date, no measurements found for PointID: {point_id}."
+            )
+            return None
+        return cdf["DateMeasured"].min()
+
+    def _get_values(self, point_id: str):
+        cdf = self._df[self._df["PointID"] == point_id]
+        return cdf.sort_values("DateMeasured")
+
+    def estimate_recording_interval(
+        self,
+        record: pd.Series,
+        installation_date: datetime = None,
+        removal_date: datetime = None,
+    ) -> tuple[int | None, str | None, str | None]:
+        point_id = record.PointID
+        cdf = self._get_values(point_id)
+        if len(cdf) == 0:
+            return None, None, f"No measurements found for PointID: {point_id}"
+
+        if installation_date is not None:
+            cdf = cdf[cdf["DateMeasured"] >= installation_date]
+        if removal_date is not None:
+            cdf = cdf[cdf["DateMeasured"] <= removal_date]
+
+        # calculate the average interval in seconds
+        try:
+            date_series = pd.to_datetime(cdf["DateMeasured"])
+            intervals = date_series.diff().dropna().dt.total_seconds()
+            if len(intervals) == 0:
+                logger.warning(
+                    f"No intervals found for {point_id} for time range "
+                    f"{installation_date}-{removal_date}. using entire series "
+                )
+                # take average of entire series
+                df = self._df[self._df["PointID"] == point_id]
+                df = df.sort_values("DateMeasured")
+                date_series = pd.to_datetime(df["DateMeasured"])
+                intervals = date_series.diff().dropna().dt.total_seconds()
+                if len(intervals) == 0:
+                    return (
+                        None,
+                        None,
+                        f"No measurements found for {point_id} for entire series",
+                    )
+                else:
+                    avg_interval = intervals.mean()
+            else:
+                avg_interval = intervals.mean()
+        except IndexError:
+            return (
+                None,
+                None,
+                (
+                    f"Not enough measurements to calculate interval for PointID: {point_id},"
+                    f"{installation_date} to {removal_date}."
+                ),
+            )
+
+        # convert to hours
+        avg_interval /= 3600
+
+        unit = "hour"
+        if avg_interval < 0.95:  # if less then 57 minutes convert to minutes
+            avg_interval *= 60
+            unit = "minute"
+            if avg_interval < 0.95:  # if less then 57 seconds convert to seconds
+                avg_interval *= 60
+                unit = "second"
+
+        return math.ceil(avg_interval), unit, None
+
+
 def replace_nans(df: pd.DataFrame, default=None) -> pd.DataFrame:
     df = df.replace(pd.NA, default)
     return df.replace({np.nan: default})
 
 
-def read_csv(name: str, dtype: dict | None = None) -> pd.DataFrame:
+def read_csv(
+    name: str, dtype: dict | None = None, verbose=False, *args, **kw
+) -> pd.DataFrame:
     p = get_transfers_data_path(Path("nma_csv_cache") / f"{name}.csv")
     if os.path.exists(p):
-        return pd.read_csv(p, dtype=dtype)
+        if verbose:
+            logger.info(f"Using cached csv: {p}")
+        starttime = time.time()
+        df = pd.read_csv(p, dtype=dtype, *args, **kw)
 
+        if verbose:
+            logger.info(f"Read csv in {time.time()-starttime:0.2f}")
+        return df
+    else:
+        if verbose:
+            logger.info(f"Downloading csv: {name}")
+
+    # Fall back to GCS if local file doesn't exist
+    logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
     with open(p, "wb") as f:
         f.write(data)
 
-    if dtype:
-        return pd.read_csv(io.BytesIO(data), dtype=dtype)
-    else:
-        return pd.read_csv(io.BytesIO(data))
+    return pd.read_csv(io.BytesIO(data), dtype=dtype)
 
 
-def get_valid_point_ids(session, thing_type="water well"):
-    things = get_valid_things(session, thing_type)
-    valid_pointids = [thing.name for thing in things]
+def get_valid_point_ids(thing_type: str = "water well") -> list[str]:
+    with session_ctx() as session:
+        things = get_valid_things(session, thing_type)
+        valid_pointids = [thing.name for thing in things]
     return valid_pointids
 
 
-def get_valid_things(session, thing_type="water well"):
+def get_valid_things(session: Session, thing_type: str = "water well") -> list[Thing]:
     return session.query(Thing).where(Thing.thing_type == thing_type).all()
 
 
@@ -102,7 +260,7 @@ def extract_organization(alternate_id: str) -> str:
     return "Unknown"
 
 
-def get_transfers_data_path(name):
+def get_transfers_data_path(name: str) -> Path:
     def data_path(r):
         return Path(r) / "transfers" / "data"
 
@@ -115,35 +273,75 @@ def get_transfers_data_path(name):
     return root / name
 
 
-def filter_non_transferred_wells(sess: Session, df: pd.DataFrame) -> pd.DataFrame:
-    sql = select(Thing.name).where(Thing.thing_type == "water well")
-    existing_ids = sess.execute(sql).scalars().all()
+def filter_non_transferred_wells(df: pd.DataFrame) -> pd.DataFrame:
+    with session_ctx() as sess:
+        sql = select(Thing.name).where(Thing.thing_type == "water well")
+        existing_ids = sess.execute(sql).scalars().all()
     return df[~(df["PointID"].isin(existing_ids))]
 
 
-def filter_by_welldata_datasource_and_project(df: pd.DataFrame) -> pd.DataFrame:
+def get_transferable_wells(
+    df: pd.DataFrame, log_datasource_counts=False, log_invalid_datasources=False
+) -> pd.DataFrame:
     path = get_transfers_data_path("valid_welldata_datasources.csv")
     with open(path, "r") as f:
         reader = csv.reader(f)
         _ = next(reader)
         valid_datasources = [row[0] for row in reader if row[1] == "Yes"]
-        f.seek(0)
-        invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
-        logger.info("Invalid WellData Datasources:")
-        for vd in invalid_datasources:
-            logger.info(f"  {vd}")
 
-    counts = df.groupby("DataSource").size().reset_index(name="WellCount")
-    counts = counts.sort_values("WellCount", ascending=False)
-    for count in counts.itertuples():
-        logger.info(f"{count.DataSource}: {count.WellCount}")
+        if log_invalid_datasources:
+            f.seek(0)
+            invalid_datasources = [row[0] for row in reader if row[1] == "NO"]
+            logger.info("Invalid WellData Datasources:")
+            for vd in invalid_datasources:
+                logger.info(f"  {vd}")
+
+    if log_datasource_counts:
+        counts = df.groupby("DataSource").size().reset_index(name="WellCount")
+        counts = counts.sort_values("WellCount", ascending=False)
+        for count in counts.itertuples():
+            logger.info(f"{count.WellCount}: {count.DataSource[:50]} ")
 
     pldf = read_csv("ProjectLocations")
     collabnet = pldf[pldf["ProjectName"] == "Water Level Network"]
-    return df[
-        df["DataSource"].isin(valid_datasources)
-        | df["PointID"].isin(collabnet["PointID"])
-    ]
+
+    collabnet_pointids = collabnet["PointID"].unique().tolist()
+    logger.info(
+        f"collabnet pointids: {len(collabnet_pointids)} {collabnet_pointids[:10]}"
+    )
+
+    # get all pointids that have USGS as the DataSource but also have WaterLevel measurements where datasource is
+    # NMBGMR
+    usgs_df = df[df["DataSource"] == "USGS"]
+
+    waterlevel_df = read_csv("WaterLevels")
+    waterlevel_df = waterlevel_df[waterlevel_df["MeasuringAgency"] == "NMBGMR"]
+
+    usgs_pointids = (
+        usgs_df[usgs_df["PointID"].isin(waterlevel_df["PointID"])]["PointID"]
+        .unique()
+        .tolist()
+    )
+    logger.info(f"usgs pointids: {len(usgs_pointids)} {usgs_pointids[:10]}")
+
+    # get all the pointids from the well photos and include them
+    wellphotos_df = read_csv("WellPhotos")
+    wellphotos_pointids = wellphotos_df["PointID"].unique().tolist()
+
+    pointids = list(set(usgs_pointids + collabnet_pointids + wellphotos_pointids))
+    logger.info(f"total pointids: {len(pointids)} {pointids[:10]}")
+
+    # get all pointids that have owner info
+    ownerlinks_df = read_csv("OwnerLink")
+    locdf = read_csv("Location")
+
+    ownerlinks_df = ownerlinks_df.join(locdf.set_index("LocationId"), on="LocationId")
+    ownerlinks_pointids = ownerlinks_df["PointID"].unique().tolist()
+    ownerpointids = list(set(ownerlinks_pointids) - set(pointids))
+    logger.info(f"ownerpointids: {len(ownerpointids)} {ownerpointids[:10]}")
+    pointids = pointids + ownerpointids
+
+    return df[df["DataSource"].isin(valid_datasources) | df["PointID"].isin(pointids)]
 
 
 def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
@@ -159,12 +357,12 @@ def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 
-def filter_to_valid_point_ids(session: Session, df: pd.DataFrame) -> pd.DataFrame:
-    valid_point_ids = get_valid_point_ids(session)
+def filter_to_valid_point_ids(df: pd.DataFrame) -> pd.DataFrame:
+    valid_point_ids = get_valid_point_ids()
     return df[df["PointID"].isin(valid_point_ids)]
 
 
-def convert_mt_to_utc(dt_record: datetime):
+def convert_mt_to_utc(dt_record: datetime) -> datetime:
     t = dt_record.time()
     if t.hour == 0 and t.minute == 0:
         # no time was measured, so just set the timezone to UTC and keep
@@ -184,9 +382,20 @@ def convert_mt_to_utc(dt_record: datetime):
     return dt_record
 
 
-def chunk_by_size(df, chunk_size):
+def chunk_by_size(df: pd.DataFrame, chunk_size: int) -> pd.DataFrame:
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
+
+
+def get_groundwater_parameter_id() -> int:
+    with session_ctx() as session:
+        groundwater_parameter_id = (
+            session.query(Parameter)
+            .filter(Parameter.parameter_name == "groundwater level")
+            .one()
+            .id
+        )
+    return groundwater_parameter_id
 
 
 def make_location(row: pd.Series, elevations: dict) -> tuple:
@@ -199,33 +408,6 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     transformed_point = transform_srid(
         point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
-
-    """
-    Developer's notes
-
-    AMP folks said that the earlier date between DateCreated and SiteDate is when
-    the site was inventoried, whereas the later is when the record was made in
-    the database. This was because they were used interchangeably. 
-    """
-    if row.DateCreated and row.SiteDate:
-
-        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
-        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
-
-        if date_created > site_date:
-            created_at = date_created
-        else:
-            created_at = site_date
-    elif row.DateCreated and not row.SiteDate:
-        created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
-    elif not row.DateCreated and row.SiteDate:
-        created_at = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
-    else:
-        created_at = None
-
-    # convert created_at from MST/MDT to UTC
-    if created_at is not None:
-        created_at = convert_mt_to_utc(created_at)
 
     z = row.Altitude
     if z:
@@ -244,7 +426,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     else:
         elevation_from_epqs = True
         logger.info(
-            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
+            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS. "
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
 
@@ -257,14 +439,26 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
             f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
+    # Extract AMPAPI date fields (Date type, not DateTime)
+    nma_date_created = None
+    if row.DateCreated:
+        nma_date_created = datetime.strptime(
+            row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+
+    nma_site_date = None
+    if row.SiteDate:
+        nma_site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
+
     location = Location(
         nma_pk_location=row.LocationId,
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
-        created_at=created_at,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
+        nma_date_created=nma_date_created,
+        nma_site_date=nma_site_date,
     )
 
     return location, elevation_method
@@ -275,7 +469,7 @@ def make_location_data_provenance(
 ) -> list[DataProvenance]:
     provenance_records = []
 
-    if row.AltitudeAccuracy or row.CoordinateAccuracy:
+    if row.AltitudeAccuracy:
         provenance = DataProvenance(
             target_id=location.id,
             target_table="location",
@@ -369,7 +563,6 @@ def make_location_data_provenance(
             target_id=location.id,
             target_table="location",
             field_name="point",
-            origin_source=None,
             collection_method=coordinate_method,
             accuracy_value=accuracy_value,
             accuracy_unit=accuracy_unit,
@@ -396,19 +589,34 @@ def timeit(func):
 
 class LexiconMapper:
     def __init__(self):
-        self._mappers = None
+        self._mappers: dict[str, str] = None
 
-    def map_value(self, value):
+    def map_value(self, value) -> str:
         value = value.strip()
         return self._make_lu_to_lexicon_mapper().get(value, value)
 
-    def _make_lu_to_lexicon_mapper(self):
+    def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
+        """
+        Lookup tables intentionally skipped (kept for documentation only)
+        Each entry explains why the table is excluded
+
+        "LU_AltitudeDatum": "code is the value, so no need for mapping",
+        "LU_CoordinateDatum": "code is the value, so no need for mapping",
+        "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
+        "LU_Formations": "needs to be cleaned before it can be used",
+        "LU_Lithology": "needs to be cleaned before it can be used",
+        "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
+
+        :return: dict
+        """
         if self._mappers:
             return self._mappers
 
         # Lookup tables where CODE maps to MEANING
         lu_tables = [
             "LU_AltitudeMethod",
+            "LU_AquiferClass",
+            "LU_AquiferType",
             "LU_CollectionMethod",
             "LU_ConstructionMethod",
             "LU_CoordinateAccuracy",
@@ -418,7 +626,9 @@ class LexiconMapper:
             "LU_DataSource",
             "LU_Depth_CompletionSource",
             "LU_Discharge_ChemistrySource",
+            "LU_Formations",
             "LU_LevelStatus",
+            "LU_Lithology",
             "LU_MajorAnalyte",
             "LU_MeasurementMethod",
             "LU_MinorTraceAnalyte",
@@ -428,16 +638,6 @@ class LexiconMapper:
             "LU_Status",
         ]
 
-        # Lookup tables intentionally skipped (kept for documentation only)
-        # Each entry explains why the table is excluded
-        _lu_tables_skipped = {
-            "LU_AltitudeDatum": "code is the value, so no need for mapping",
-            "LU_CoordinateDatum": "code is the value, so no need for mapping",
-            "LU_FieldNoteTypes": "not being used in the transfers since there are no records",
-            "LU_Formations": "needs to be cleaned before it can be used",
-            "LU_Lithology": "needs to be cleaned before it can be used",
-            "LU_MeasuringAgency": "the abbreviation is what is used in the new schema",
-        }
         mappers = {}
 
         for lu_table in lu_tables:
@@ -447,6 +647,9 @@ class LexiconMapper:
                 if lu_table == "LU_Formations":
                     code = row.Code
                     meaning = row.Meaning
+                elif lu_table == "LU_Lithology":
+                    code = row.ABBREVIATION
+                    meaning = row.TERM
                 else:
                     code = row.CODE
                     meaning = row.MEANING
