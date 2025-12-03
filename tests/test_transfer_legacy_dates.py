@@ -252,55 +252,37 @@ def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mappe
 
 def test_location_legacy_date_coverage_statistics(mock_lexicon_mapper):
     """Test that migration preserves expected percentages of AMPAPI dates"""
-    # Simulate 100 location records from CSV
+
+    def create_test_row(i, has_site_date):
+        """Helper to create test row with common fields"""
+        return pd.Series({
+            "PointID": f"TEST-{i:03d}",
+            "Easting": 350000 + i,
+            "Northing": 3880000 + i,
+            "DateCreated": "2014-04-03 00:00:00.000",
+            "SiteDate": "2002-12-10 00:00:00.000" if has_site_date else None,
+            "Altitude": 1558.8,
+            "AltDatum": "NAVD88",
+            "AltitudeMethod": "GPS",
+            "LocationId": i,
+            "PublicRelease": True,
+            "CoordinateNotes": None,
+            "LocationNotes": None,
+            "AltitudeAccuracy": None,
+        })
+
+    # Simulate 100 location records from CSV (9% with SiteDate, 91% without)
     locations_created = 0
     locations_with_site_date = 0
+    elevations = {}
 
     for i in range(100):
-        if i < 9:  # 9% have SiteDate
-            row = pd.Series(
-                {
-                    "PointID": f"TEST-{i:03d}",
-                    "Easting": 350000 + i,
-                    "Northing": 3880000 + i,
-                    "DateCreated": "2014-04-03 00:00:00.000",
-                    "SiteDate": "2002-12-10 00:00:00.000",
-                    "Altitude": 1558.8,
-                    "AltDatum": "NAVD88",
-                    "AltitudeMethod": "GPS",
-                    "LocationId": i,
-                    "PublicRelease": True,
-                    "CoordinateNotes": None,
-                    "LocationNotes": None,
-                    "AltitudeAccuracy": None,
-                }
-            )
-        else:  # 91% don't have SiteDate
-            row = pd.Series(
-                {
-                    "PointID": f"TEST-{i:03d}",
-                    "Easting": 350000 + i,
-                    "Northing": 3880000 + i,
-                    "DateCreated": "2014-04-03 00:00:00.000",
-                    "SiteDate": None,
-                    "Altitude": 1558.8,
-                    "AltDatum": "NAVD88",
-                    "AltitudeMethod": "GPS",
-                    "LocationId": i,
-                    "PublicRelease": True,
-                    "CoordinateNotes": None,
-                    "LocationNotes": None,
-                    "AltitudeAccuracy": None,
-                }
-            )
-
-        elevations = {}
+        row = create_test_row(i, has_site_date=(i < 9))
         location, _ = make_location(row, elevations)
 
         # Count coverage
         if location.nma_date_created is not None:
             locations_created += 1
-
         if location.nma_site_date is not None:
             locations_with_site_date += 1
 
