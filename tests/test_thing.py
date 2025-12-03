@@ -1207,7 +1207,7 @@ def test_create_well_without_completion_date(location):
 
 
 def test_spring_well_completed_on_is_null(location):
-    """Test that springs have null well_completed_on field"""
+    """Test that springs do NOT have well_completed_on field (it's well-specific)"""
     payload = {
         "name": "Test Spring",
         "location_id": location.id,
@@ -1218,9 +1218,8 @@ def test_spring_well_completed_on_is_null(location):
 
     assert response.status_code == 201
     data = response.json()
-    # Springs should have null well_completed_on
-    assert "well_completed_on" in data
-    assert data["well_completed_on"] is None
+    # Springs should NOT have well_completed_on field (only wells have completion dates)
+    assert "well_completed_on" not in data
     assert data["thing_type"] == "spring"
 
     # cleanup after test
