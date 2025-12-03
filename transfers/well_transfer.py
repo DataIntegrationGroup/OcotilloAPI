@@ -425,6 +425,9 @@ class WellTransferer(Transferer):
             if well is not None:
                 session.expunge(well)
 
+            if location is not None:
+                session.delete(location)
+
             self._capture_error(row.PointID, str(e), "UnknownField")
 
             logger.critical(f"Error creating well for {row.PointID}: {e}")
@@ -588,19 +591,19 @@ class WellTransferer(Transferer):
         query = session.query(Thing).filter(Thing.thing_type == "water well")
         count = query.count()
         for i, well in enumerate(query.all()):
+            objs = []
             step_start_time = time.time()
             row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
             if notna(row.Notes):
                 note = well.add_note(row.Notes, "Other")
-                session.add(note)
+                objs.append(note)
 
             location = well.current_location
             elevation_method = self._added_locations[row.PointID]
             data_provenances = make_location_data_provenance(
                 row, location, elevation_method
             )
-            for dp in data_provenances:
-                session.add(dp)
+            objs.extend(data_provenances)
 
             for row_field, kw in (
                 (
@@ -631,15 +634,9 @@ class WellTransferer(Transferer):
             ):
 
                 if notna(row[row_field]):
-                    try:
-                        dp = DataProvenance(
-                            target_id=well.id, target_table="thing", **kw
-                        )
-                        session.add(dp)
-                        session.commit()
-                    except DatabaseError as e:
-                        self._capture_error(row.PointID, str(e), "DataProvenance")
-                        session.rollback()
+                    dp = DataProvenance(target_id=well.id, target_table="thing", **kw)
+                    objs.append(dp)
+
             start_time = time.time()
             mphs = measuring_point_estimator.estimate_measuring_point_height(row)
             logger.info(
@@ -654,7 +651,7 @@ class WellTransferer(Transferer):
                     start_date=start_date,
                     end_date=end_date,
                 )
-                session.add(measuring_point_history)
+                objs.append(measuring_point_history)
 
             """
             Developer's notes
@@ -686,7 +683,7 @@ class WellTransferer(Transferer):
                     target_id=target_id,
                     target_table=target_table,
                 )
-                session.add(status_history)
+                objs.append(status_history)
                 logger.info(
                     f"  Added monitoring status for well {well.name}: {status_value}"
                 )
@@ -700,7 +697,8 @@ class WellTransferer(Transferer):
                             start_date=datetime.now(tz=UTC),
                             end_date=None,
                         )
-                        session.add(monitoring_frequency_history)
+
+                        objs.append(monitoring_frequency_history)
                         logger.info(
                             f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
                         )
@@ -715,14 +713,18 @@ class WellTransferer(Transferer):
                     target_id=target_id,
                     target_table=target_table,
                 )
-                session.add(status_history)
+                objs.append(status_history)
                 logger.info(f"  Added well status for well {well.name}: {status_value}")
+            try:
+                session.bulk_save_objects(objs)
+            except DatabaseError as e:
+                session.rollback()
+                error_dict = e.orig.args[0]
+                self._capture_error(well.name, error_dict["D"], error_dict["t"])
 
             logger.info(
                 f"After hook: {well.name} {i+1}/{count} took {time.time() - step_start_time:.2f}s"
             )
-
-        session.commit()
 
 
 class WellChunkTransferer(ChunkTransferer):

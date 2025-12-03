@@ -57,7 +57,7 @@ def message(msg, pad=10, new_line_at_top=True):
 @timeit
 def transfer_all(metrics, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
-    if int(os.environ.get("ERASE_AND_REBUILD", 0)):
+    if get_bool_env("ERASE_AND_REBUILD", False):
         logger.info("Erase and rebuilding database")
         erase_and_rebuild_db()
 
