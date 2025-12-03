@@ -393,8 +393,13 @@ def step_then_all_queryable(context: Context):
 @then("created_at should be a recent timestamp")
 def step_then_created_at_recent(context: Context):
     """Assert created_at is recent."""
-    created_at = context.retrieved_location.created_at.replace(tzinfo=None)
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    created_at = context.retrieved_location.created_at
+    now = datetime.now(timezone.utc)
+
+    # Ensure both datetimes are timezone-aware for accurate comparison
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+
     diff_seconds = abs((now - created_at).total_seconds())
     assert diff_seconds < 3600, "created_at should be within last hour"
 
