@@ -676,6 +676,9 @@
     {"categories": ["parameter_type"], "term": "Major Element", "definition": "Major Element"},
     {"categories": ["parameter_type"], "term": "Minor Element", "definition": "Minor Element"},
     {"categories": ["parameter_type"], "term": "Physical property", "definition": "Physical property"},
+
+    {"categories": ["sensor_type"], "term": "DiverLink", "definition": "DiverLink"},
+    {"categories": ["sensor_type"], "term": "Diver Cable", "definition": "Diver Cable"},
     {"categories": ["sensor_type"], "term": "Pressure Transducer", "definition": "Pressure Transducer"},
     {"categories": ["sensor_type"], "term": "Data Logger", "definition": "Data Logger"},
     {"categories": ["sensor_type"], "term": "Barometer", "definition": "Barometer"},

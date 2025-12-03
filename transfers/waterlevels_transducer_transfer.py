@@ -33,13 +33,13 @@ from transfers.util import (
 
 class WaterLevelsContinuousTransferer(Transferer):
     _partition_field: str
-    _sensor_type: str
+    _sensor_types: tuple[str]
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.groundwater_parameter_id = get_groundwater_parameter_id()
-        if self._sensor_type is None:
-            raise ValueError("_sensor_type must be set")
+        if self._sensor_types is None:
+            raise ValueError("_sensor_types must be set")
         if self._partition_field is None:
             raise ValueError("_partition_field must be set")
 
@@ -66,7 +66,7 @@ class WaterLevelsContinuousTransferer(Transferer):
                 session.query(Deployment)
                 .join(Thing)
                 .join(Sensor)
-                .where(Sensor.sensor_type == self._sensor_type)
+                .where(Sensor.sensor_type.in_(self._sensor_types))
                 .where(Thing.name == pointid)
                 .all()
             )
@@ -185,13 +185,13 @@ class WaterLevelsContinuousTransferer(Transferer):
 class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
     source_table = "WaterLevelsContinuous_Pressure"
     _partition_field = "QCed"
-    _sensor_type = "Pressure Transducer"
+    _sensor_types = ("Pressure Transducer", "Barometer", "DiverLink", "Diver Cable")
 
 
 class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
     source_table = "WaterLevelsContinuous_Acoustic"
     _partition_field = "PublicRelease"
-    _sensor_type = "Acoustic Sounder"
+    _sensor_types = ("Acoustic Sounder",)
 
 
 def _find_deployment(ts, deployments):
