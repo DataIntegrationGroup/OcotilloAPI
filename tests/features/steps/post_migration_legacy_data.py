@@ -396,9 +396,14 @@ def step_then_created_at_recent(context: Context):
     created_at = context.retrieved_location.created_at
     now = datetime.now(timezone.utc)
 
-    # Ensure both datetimes are timezone-aware for accurate comparison
+    # created_at should always be timezone-aware (configured in AutoBaseMixin with DateTime(timezone=True))
+    # If it's naive, this indicates a database/ORM configuration issue
     if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
+        raise AssertionError(
+            "created_at is a naive datetime (no timezone info). "
+            "Ensure the database and ORM are configured to return timezone-aware datetimes in UTC. "
+            "AutoBaseMixin.created_at uses DateTime(timezone=True) with server_default=func.timezone('UTC', func.now())"
+        )
 
     diff_seconds = abs((now - created_at).total_seconds())
     assert diff_seconds < 3600, "created_at should be within last hour"
