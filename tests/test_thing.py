@@ -152,6 +152,38 @@ def test_add_water_well(location, group):
     cleanup_post_test(Thing, data["id"])
 
 
+@pytest.mark.skip(
+    "This duplicates the test above. That one will need to eventually be updated"
+)
+def test_add_water_well_with_measuring_point(location, group):
+    """
+    Test creating a well with measuring_point_height and measuring_point_description.
+
+    This reproduces the bug where measuring_point fields are properties (from MeasuringPointHistory table)
+    and cannot be set directly on Thing objects.
+
+    Expected error (before fix): AttributeError: property 'measuring_point_height' of 'Thing' object has no setter
+    """
+    payload = {
+        "location_id": location.id,
+        "group_id": group.id,
+        "release_status": "draft",
+        "name": "Test Well with Measuring Point",
+        "measuring_point_height": 2.5,
+        "measuring_point_description": "top of casing",
+    }
+
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+
+    assert data["name"] == payload["name"]
+    assert data["measuring_point_height"] == 2.5
+    assert data["measuring_point_description"] == "top of casing"
+
+    cleanup_post_test(Thing, data["id"])
+
+
 @pytest.mark.skip("Needs to be updated per changes made from feature files")
 def test_add_water_well_409_bad_group_id(location):
     bad_group_id = 9999

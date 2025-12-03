@@ -14,8 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 import json
+
+# import time
 from datetime import datetime, UTC
 
+# import re
 import pandas as pd
 from pandas import isna
 from pydantic import ValidationError
@@ -35,6 +38,11 @@ from db import (
     StatusHistory,
     MonitoringFrequencyHistory,
     MeasuringPointHistory,
+    # DataProvenance,
+    # AquiferSystem,
+    # AquiferType,
+    # GeologicFormation,
+    # ThingAquiferAssociation,
 )
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket

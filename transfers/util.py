@@ -326,6 +326,9 @@ def get_transferable_wells(
     # get all the pointids from the well photos and include them
     wellphotos_df = read_csv("WellPhotos")
     wellphotos_pointids = wellphotos_df["PointID"].unique().tolist()
+
+    # get all pointids that have owner info
+
     pointids = list(set(usgs_pointids + collabnet_pointids + wellphotos_pointids))
     return df[df["DataSource"].isin(valid_datasources) | df["PointID"].isin(pointids)]
 
@@ -470,7 +473,7 @@ def make_location_data_provenance(
 ) -> list[DataProvenance]:
     provenance_records = []
 
-    if row.AltitudeAccuracy or row.CoordinateAccuracy:
+    if row.AltitudeAccuracy:
         provenance = DataProvenance(
             target_id=location.id,
             target_table="location",
@@ -564,7 +567,6 @@ def make_location_data_provenance(
             target_id=location.id,
             target_table="location",
             field_name="point",
-            origin_source=None,
             collection_method=coordinate_method,
             accuracy_value=accuracy_value,
             accuracy_unit=accuracy_unit,
@@ -617,6 +619,8 @@ class LexiconMapper:
         # Lookup tables where CODE maps to MEANING
         lu_tables = [
             "LU_AltitudeMethod",
+            "LU_AquiferClass",
+            "LU_AquiferType",
             "LU_CollectionMethod",
             "LU_ConstructionMethod",
             "LU_CoordinateAccuracy",
@@ -626,7 +630,9 @@ class LexiconMapper:
             "LU_DataSource",
             "LU_Depth_CompletionSource",
             "LU_Discharge_ChemistrySource",
+            "LU_Formations",
             "LU_LevelStatus",
+            "LU_Lithology",
             "LU_MajorAnalyte",
             "LU_MeasurementMethod",
             "LU_MinorTraceAnalyte",
@@ -645,6 +651,9 @@ class LexiconMapper:
                 if lu_table == "LU_Formations":
                     code = row.Code
                     meaning = row.Meaning
+                elif lu_table == "LU_Lithology":
+                    code = row.ABBREVIATION
+                    meaning = row.TERM
                 else:
                     code = row.CODE
                     meaning = row.MEANING
