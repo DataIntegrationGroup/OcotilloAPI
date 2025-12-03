@@ -17,8 +17,8 @@
 Unit tests for legacy date field population during AMPAPI → NMSampleLocations migration.
 
 These tests verify that:
-1. Location.legacy_date_created is populated from CSV DateCreated
-2. Location.legacy_site_date is populated from CSV SiteDate (if not null)
+1. Location.nma_date_created is populated from CSV DateCreated
+2. Location.nma_site_date is populated from CSV SiteDate (if not null)
 """
 import datetime
 from unittest.mock import Mock, patch, MagicMock
@@ -35,7 +35,7 @@ from transfers.util import make_location
 
 @patch("transfers.util.lexicon_mapper")
 def test_make_location_with_both_legacy_dates(mock_lexicon_mapper):
-    """Test that make_location populates both legacy_date_created and legacy_site_date"""
+    """Test that make_location populates both nma_date_created and nma_site_date"""
     # Mock lexicon mapper to avoid GCS calls
     mock_lexicon_mapper.map_value.return_value = "GPS"
 
@@ -63,13 +63,13 @@ def test_make_location_with_both_legacy_dates(mock_lexicon_mapper):
     # Call make_location
     location, elevation_method = make_location(row, elevations)
 
-    # Verify legacy_date_created is set from DateCreated
-    assert location.legacy_date_created is not None
-    assert location.legacy_date_created == datetime.date(2014, 4, 3)
+    # Verify nma_date_created is set from DateCreated
+    assert location.nma_date_created is not None
+    assert location.nma_date_created == datetime.date(2014, 4, 3)
 
-    # Verify legacy_site_date is set from SiteDate
-    assert location.legacy_site_date is not None
-    assert location.legacy_site_date == datetime.date(2002, 12, 10)
+    # Verify nma_site_date is set from SiteDate
+    assert location.nma_site_date is not None
+    assert location.nma_site_date == datetime.date(2002, 12, 10)
 
     # Verify created_at is NOT set during migration (it's auto-set by AutoBaseMixin on save)
     assert location.created_at is None
@@ -102,11 +102,11 @@ def test_make_location_with_only_date_created(mock_lexicon_mapper):
     elevations = {}
     location, elevation_method = make_location(row, elevations)
 
-    # Verify legacy_date_created is set
-    assert location.legacy_date_created == datetime.date(2014, 4, 3)
+    # Verify nma_date_created is set
+    assert location.nma_date_created == datetime.date(2014, 4, 3)
 
-    # Verify legacy_site_date is null (91% of locations don't have SiteDate)
-    assert location.legacy_site_date is None
+    # Verify nma_site_date is null (91% of locations don't have SiteDate)
+    assert location.nma_site_date is None
 
 
 @patch("transfers.util.lexicon_mapper")
@@ -137,8 +137,8 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     location, elevation_method = make_location(row, elevations)
 
     # Both dates should be preserved as-is, regardless of order
-    assert location.legacy_date_created == datetime.date(2010, 1, 15)
-    assert location.legacy_site_date == datetime.date(2015, 6, 20)
+    assert location.nma_date_created == datetime.date(2010, 1, 15)
+    assert location.nma_site_date == datetime.date(2015, 6, 20)
 
 
 @patch("transfers.util.lexicon_mapper")
@@ -169,11 +169,11 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
     location, elevation_method = make_location(row, elevations)
 
     # Verify very old date is preserved
-    assert location.legacy_site_date == datetime.date(1954, 5, 1)
-    assert location.legacy_date_created == datetime.date(2008, 5, 28)
+    assert location.nma_site_date == datetime.date(1954, 5, 1)
+    assert location.nma_date_created == datetime.date(2008, 5, 28)
 
     # Verify 54-year time gap
-    time_gap = (location.legacy_date_created - location.legacy_site_date).days
+    time_gap = (location.nma_date_created - location.nma_site_date).days
     assert time_gap == 19751  # Approximately 54 years
 
 
@@ -205,15 +205,15 @@ def test_make_location_legacy_dates_are_date_not_datetime(mock_lexicon_mapper):
     location, elevation_method = make_location(row, elevations)
 
     # Verify they are date objects (not datetime)
-    assert isinstance(location.legacy_date_created, datetime.date)
-    assert not isinstance(location.legacy_date_created, datetime.datetime)
+    assert isinstance(location.nma_date_created, datetime.date)
+    assert not isinstance(location.nma_date_created, datetime.datetime)
 
-    assert isinstance(location.legacy_site_date, datetime.date)
-    assert not isinstance(location.legacy_site_date, datetime.datetime)
+    assert isinstance(location.nma_site_date, datetime.date)
+    assert not isinstance(location.nma_site_date, datetime.datetime)
 
     # Verify time component is stripped
-    assert location.legacy_date_created == datetime.date(2014, 4, 3)
-    assert location.legacy_site_date == datetime.date(2002, 12, 10)
+    assert location.nma_date_created == datetime.date(2014, 4, 3)
+    assert location.nma_site_date == datetime.date(2002, 12, 10)
 
 
 @patch("transfers.util.lexicon_mapper")
@@ -247,12 +247,12 @@ def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mappe
     assert location.created_at is None
 
     # legacy fields should be Date (no timezone)
-    assert isinstance(location.legacy_date_created, datetime.date)
-    assert isinstance(location.legacy_site_date, datetime.date)
+    assert isinstance(location.nma_date_created, datetime.date)
+    assert isinstance(location.nma_site_date, datetime.date)
 
     # Legacy fields should be populated
-    assert location.legacy_date_created is not None
-    assert location.legacy_site_date is not None
+    assert location.nma_date_created is not None
+    assert location.nma_site_date is not None
 
 
 # ============================================================================
@@ -312,15 +312,15 @@ def test_location_legacy_date_coverage_statistics(mock_lexicon_mapper):
         location, _ = make_location(row, elevations)
 
         # Count coverage
-        if location.legacy_date_created is not None:
+        if location.nma_date_created is not None:
             locations_created += 1
 
-        if location.legacy_site_date is not None:
+        if location.nma_site_date is not None:
             locations_with_site_date += 1
 
     # Verify expected coverage
-    assert locations_created == 100  # 100% should have legacy_date_created
-    assert locations_with_site_date == 9  # 9% should have legacy_site_date
+    assert locations_created == 100  # 100% should have nma_date_created
+    assert locations_with_site_date == 9  # 9% should have nma_site_date
 
 
 # ============================================================================

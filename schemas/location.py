@@ -107,9 +107,9 @@ class GeoJSONProperties(BaseModel):
         default_factory=GeoJSONUTMCoordinates
     )
     notes: list[NoteResponse] = []
-    # Legacy AMPAPI date fields (migration-only, read-only)
-    legacy_date_created: date | None = None
-    legacy_site_date: date | None = None
+    # AMPAPI date fields (migration-only, read-only)
+    nma_date_created: date | None = None
+    nma_site_date: date | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -154,11 +154,11 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
-        # populate legacy date fields
-        data_dict["properties"]["legacy_date_created"] = data_dict.get(
-            "legacy_date_created"
+        # populate AMPAPI date fields
+        data_dict["properties"]["nma_date_created"] = data_dict.get(
+            "nma_date_created"
         )
-        data_dict["properties"]["legacy_site_date"] = data_dict.get("legacy_site_date")
+        data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
 
         # populate UTM coordinates
         point_utm_zone_13n_wkt = transform_srid(
@@ -190,9 +190,9 @@ class LocationResponse(BaseResponseModel):
     county: str | None
     quad_name: str | None
 
-    # Legacy AMPAPI date fields (migration-only, read-only post-migration)
-    legacy_date_created: date | None = None
-    legacy_site_date: date | None = None
+    # AMPAPI date fields (migration-only, read-only post-migration)
+    nma_date_created: date | None = None
+    nma_site_date: date | None = None
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):
@@ -232,9 +232,9 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     coordinate_accuracy: float | None = None
     coordinate_method: CoordinateMethod | None = None
 
-    # Legacy AMPAPI date fields (migration-only, can be updated but not created)
-    legacy_date_created: date | None = None
-    legacy_site_date: date | None = None
+    # AMPAPI date fields (migration-only, can be updated but not created)
+    nma_date_created: date | None = None
+    nma_site_date: date | None = None
 
 
 # ============= EOF =============================================

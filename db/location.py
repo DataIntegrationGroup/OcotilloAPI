@@ -62,13 +62,13 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # --- Legacy AMPAPI Date Fields (Migration-Only, Read-Only Post-Migration) ---
-    legacy_date_created: Mapped[datetime.date] = mapped_column(
+    # --- AMPAPI Date Fields (Migration-Only, Read-Only Post-Migration) ---
+    nma_date_created: Mapped[datetime.date] = mapped_column(
         Date,
         nullable=True,
         comment="Original AMPAPI DateCreated (migration-only field)",
     )
-    legacy_site_date: Mapped[datetime.date] = mapped_column(
+    nma_site_date: Mapped[datetime.date] = mapped_column(
         Date, nullable=True, comment="Original AMPAPI SiteDate (migration-only field)"
     )
 

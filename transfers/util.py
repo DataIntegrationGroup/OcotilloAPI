@@ -244,16 +244,16 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
             f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
-    # Extract legacy date fields (Date type, not DateTime)
-    legacy_date_created = None
+    # Extract AMPAPI date fields (Date type, not DateTime)
+    nma_date_created = None
     if row.DateCreated:
-        legacy_date_created = datetime.strptime(
+        nma_date_created = datetime.strptime(
             row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
         ).date()
 
-    legacy_site_date = None
+    nma_site_date = None
     if row.SiteDate:
-        legacy_site_date = datetime.strptime(
+        nma_site_date = datetime.strptime(
             row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
         ).date()
 
@@ -264,8 +264,8 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         release_status="public" if row.PublicRelease else "private",
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
-        legacy_date_created=legacy_date_created,
-        legacy_site_date=legacy_site_date,
+        nma_date_created=nma_date_created,
+        nma_site_date=nma_site_date,
     )
 
     return location, elevation_method

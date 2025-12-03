@@ -31,15 +31,15 @@ def parse_number(text):
 register_type(Number=parse_number)
 
 
-def create_test_location(legacy_date_created=None, legacy_site_date=None):
+def create_test_location(nma_date_created=None, nma_site_date=None):
     """Helper to create a test location with legacy dates."""
     with session_ctx() as session:
         location = Location(
             point="POINT(-106.607784 35.118924)",
             elevation=1558.8,
             release_status="public",
-            legacy_date_created=legacy_date_created,
-            legacy_site_date=legacy_site_date,
+            nma_date_created=nma_date_created,
+            nma_site_date=nma_site_date,
         )
         session.add(location)
         session.commit()
@@ -58,19 +58,19 @@ def step_given_location_with_table(context: Context):
     """Create location with fields from table."""
     data = {row["field"]: row["value"] for row in context.table}
 
-    legacy_date_created = (
-        date.fromisoformat(data["legacy_date_created"])
-        if data.get("legacy_date_created") and data["legacy_date_created"] != "null"
+    nma_date_created = (
+        date.fromisoformat(data["nma_date_created"])
+        if data.get("nma_date_created") and data["nma_date_created"] != "null"
         else None
     )
-    legacy_site_date = (
-        date.fromisoformat(data["legacy_site_date"])
-        if data.get("legacy_site_date") and data["legacy_site_date"] != "null"
+    nma_site_date = (
+        date.fromisoformat(data["nma_site_date"])
+        if data.get("nma_site_date") and data["nma_site_date"] != "null"
         else None
     )
 
     location = create_test_location(
-        legacy_date_created=legacy_date_created, legacy_site_date=legacy_site_date
+        nma_date_created=nma_date_created, nma_site_date=nma_site_date
     )
 
     context.test_location = location
@@ -93,33 +93,33 @@ def step_given_multiple_locations(context: Context, count: int):
     for i in range(min(count, len(test_data))):
         legacy_date, site_date = test_data[i]
         location = create_test_location(
-            legacy_date_created=date.fromisoformat(legacy_date),
-            legacy_site_date=(date.fromisoformat(site_date) if site_date else None),
+            nma_date_created=date.fromisoformat(legacy_date),
+            nma_site_date=(date.fromisoformat(site_date) if site_date else None),
         )
         context.test_locations.append(location)
 
 
 @given(
-    "locations exist with legacy_site_date ranging from {start_year:Number} to {end_year:Number}"
+    "locations exist with nma_site_date ranging from {start_year:Number} to {end_year:Number}"
 )
 def step_given_locations_date_range(context: Context, start_year: int, end_year: int):
-    """Create locations with legacy_site_date across a date range."""
+    """Create locations with nma_site_date across a date range."""
     context.test_locations = []
 
     years = [1954, 2002, 2003, 2010, 2015, 2020, 2024]
     for year in years:
         location = create_test_location(
-            legacy_date_created=date(year + 5, 1, 1),  # Always 5 years after site date
-            legacy_site_date=date(year, 6, 15),
+            nma_date_created=date(year + 5, 1, 1),  # Always 5 years after site date
+            nma_site_date=date(year, 6, 15),
         )
         context.test_locations.append(location)
 
 
-@given('{count:Number} locations exist with legacy_date_created "{target_date}"')
+@given('{count:Number} locations exist with nma_date_created "{target_date}"')
 def step_given_locations_with_specific_date(
     context: Context, count: int, target_date: str
 ):
-    """Create locations with specific legacy_date_created."""
+    """Create locations with specific nma_date_created."""
     if not hasattr(context, "test_locations"):
         context.test_locations = []
 
@@ -127,8 +127,8 @@ def step_given_locations_with_specific_date(
 
     for i in range(count):
         location = create_test_location(
-            legacy_date_created=target,
-            legacy_site_date=date(2000 + i, 1, 1),  # Vary the site dates
+            nma_date_created=target,
+            nma_site_date=date(2000 + i, 1, 1),  # Vary the site dates
         )
         context.test_locations.append(location)
 
@@ -139,12 +139,12 @@ def step_given_count_locations_migrated(context: Context, count: int):
     context.test_locations = []
 
     for i in range(count):
-        # 9% have legacy_site_date
+        # 9% have nma_site_date
         has_site_date = i < count * 0.09
 
         location = create_test_location(
-            legacy_date_created=date(2014, 1, i % 28 + 1),
-            legacy_site_date=date(2003, 1, i % 28 + 1) if has_site_date else None,
+            nma_date_created=date(2014, 1, i % 28 + 1),
+            nma_site_date=date(2003, 1, i % 28 + 1) if has_site_date else None,
         )
         context.test_locations.append(location)
 
@@ -159,7 +159,7 @@ def step_given_sitedate_count(context: Context, count: int):
 def step_given_location_migrated_with_dates(context: Context):
     """Create location with both legacy dates."""
     location = create_test_location(
-        legacy_date_created=date(2014, 4, 3), legacy_site_date=date(2002, 12, 10)
+        nma_date_created=date(2014, 4, 3), nma_site_date=date(2002, 12, 10)
     )
     context.test_location = location
 
@@ -184,7 +184,7 @@ def step_when_get_all_locations(context: Context):
 
 
 @when(
-    'I filter locations where legacy_site_date is between "{start_date}" and "{end_date}"'
+    'I filter locations where nma_site_date is between "{start_date}" and "{end_date}"'
 )
 def step_when_filter_locations(context: Context, start_date: str, end_date: str):
     """Filter locations by date range."""
@@ -196,7 +196,7 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
         locations = (
             session.query(Location)
             .filter(
-                Location.legacy_site_date >= start, Location.legacy_site_date <= end
+                Location.nma_site_date >= start, Location.nma_site_date <= end
             )
             .all()
         )
@@ -204,13 +204,13 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
         context.filtered_locations = locations
 
 
-@when('I query for locations with legacy_date_created "{target_date}"')
+@when('I query for locations with nma_date_created "{target_date}"')
 def step_when_query_by_legacy_date(context: Context, target_date: str):
-    """Query locations by legacy_date_created."""
+    """Query locations by nma_date_created."""
     with session_ctx() as session:
         target = date.fromisoformat(target_date)
         locations = (
-            session.query(Location).filter(Location.legacy_date_created == target).all()
+            session.query(Location).filter(Location.nma_date_created == target).all()
         )
         context.queried_locations = locations
 
@@ -236,25 +236,25 @@ def step_when_retrieve_location(context: Context):
 # THEN steps
 
 
-@then('the response should include legacy_date_created as "{expected_date}"')
-def step_then_legacy_date_created(context: Context, expected_date: str):
-    """Assert legacy_date_created matches."""
-    actual = context.location_response.get("legacy_date_created")
+@then('the response should include nma_date_created as "{expected_date}"')
+def step_then_nma_date_created(context: Context, expected_date: str):
+    """Assert nma_date_created matches."""
+    actual = context.location_response.get("nma_date_created")
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
-@then('the response should include legacy_site_date as "{expected_date}"')
-def step_then_legacy_site_date(context: Context, expected_date: str):
-    """Assert legacy_site_date matches."""
-    actual = context.location_response.get("legacy_site_date")
+@then('the response should include nma_site_date as "{expected_date}"')
+def step_then_nma_site_date(context: Context, expected_date: str):
+    """Assert nma_site_date matches."""
+    actual = context.location_response.get("nma_site_date")
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
 @then("the time gap should be approximately {years} years")
 def step_then_time_gap_years(context: Context, years: str):
     """Assert approximate year gap."""
-    legacy_str = context.location_response.get("legacy_date_created")
-    site_date_str = context.location_response.get("legacy_site_date")
+    legacy_str = context.location_response.get("nma_date_created")
+    site_date_str = context.location_response.get("nma_site_date")
 
     if not legacy_str or not site_date_str:
         raise AssertionError("Missing date fields for gap calculation")
@@ -272,28 +272,28 @@ def step_then_time_gap_years(context: Context, years: str):
     ), f"Expected ~{expected_years} year gap, got {gap_years:.1f} years"
 
 
-@then("each location should have a legacy_date_created field")
+@then("each location should have a nma_date_created field")
 def step_then_all_have_legacy_field(context: Context):
     """Assert all locations have the field."""
     items = context.locations_response.get("items", [])
     for item in items:
-        assert "legacy_date_created" in item, f"Location missing legacy_date_created"
+        assert "nma_date_created" in item, f"Location missing nma_date_created"
 
 
-@then("each location should have a legacy_site_date field")
+@then("each location should have a nma_site_date field")
 def step_then_all_have_site_date_field(context: Context):
     """Assert all locations have the field."""
     items = context.locations_response.get("items", [])
     for item in items:
-        assert "legacy_site_date" in item, f"Location missing legacy_site_date"
+        assert "nma_site_date" in item, f"Location missing nma_site_date"
 
 
-@then("some locations should have null legacy_site_date")
+@then("some locations should have null nma_site_date")
 def step_then_some_null_site_date(context: Context):
     """Assert some locations have null."""
     items = context.locations_response.get("items", [])
-    null_count = sum(1 for item in items if item.get("legacy_site_date") is None)
-    assert null_count > 0, "Expected at least one location with null legacy_site_date"
+    null_count = sum(1 for item in items if item.get("nma_site_date") is None)
+    assert null_count > 0, "Expected at least one location with null nma_site_date"
 
 
 @then("the response should only include locations with site date in that decade")
@@ -301,8 +301,8 @@ def step_then_locations_in_decade(context: Context):
     """Assert filtered locations are in range."""
     for loc in context.filtered_locations:
         assert (
-            2000 <= loc.legacy_site_date.year <= 2010
-        ), f"Location not in 2000-2010: {loc.legacy_site_date}"
+            2000 <= loc.nma_site_date.year <= 2010
+        ), f"Location not in 2000-2010: {loc.nma_site_date}"
 
 
 @then("locations with site date before {year:Number} should not be included")
@@ -310,8 +310,8 @@ def step_then_locations_before_excluded(context: Context, year: int):
     """Assert no locations before year."""
     for loc in context.filtered_locations:
         assert (
-            loc.legacy_site_date.year >= year
-        ), f"Location from {loc.legacy_site_date.year} should not be included"
+            loc.nma_site_date.year >= year
+        ), f"Location from {loc.nma_site_date.year} should not be included"
 
 
 @then("locations with site date after {year:Number} should not be included")
@@ -319,8 +319,8 @@ def step_then_locations_after_excluded(context: Context, year: int):
     """Assert no locations after year."""
     for loc in context.filtered_locations:
         assert (
-            loc.legacy_site_date.year <= year
-        ), f"Location from {loc.legacy_site_date.year} should not be included"
+            loc.nma_site_date.year <= year
+        ), f"Location from {loc.nma_site_date.year} should not be included"
 
 
 @then("the response should include exactly {count:Number} locations")
@@ -330,21 +330,21 @@ def step_then_exact_count_locations(context: Context, count: int):
     assert actual == count, f"Expected {count} locations, got {actual}"
 
 
-@then('all should have legacy_date_created "{expected_date}"')
+@then('all should have nma_date_created "{expected_date}"')
 def step_then_all_have_date(context: Context, expected_date: str):
     """Assert all have same date."""
     expected = date.fromisoformat(expected_date)
     for loc in context.queried_locations:
         assert (
-            loc.legacy_date_created == expected
-        ), f"Location has {loc.legacy_date_created}, expected {expected}"
+            loc.nma_date_created == expected
+        ), f"Location has {loc.nma_date_created}, expected {expected}"
 
 
-@then("{percentage:Number}% should have non-null legacy_site_date")
+@then("{percentage:Number}% should have non-null nma_site_date")
 def step_then_percentage_site_date(context: Context, percentage: int):
-    """Assert percentage with legacy_site_date."""
+    """Assert percentage with nma_site_date."""
     total = len(context.queried_locations)
-    populated = sum(1 for loc in context.queried_locations if loc.legacy_site_date)
+    populated = sum(1 for loc in context.queried_locations if loc.nma_site_date)
     actual_pct = (populated / total) * 100
 
     tolerance = 2
@@ -353,11 +353,11 @@ def step_then_percentage_site_date(context: Context, percentage: int):
     ), f"Expected ~{percentage}%, got {actual_pct:.1f}%"
 
 
-@then("{percentage:Number}% should have non-null legacy_date_created")
+@then("{percentage:Number}% should have non-null nma_date_created")
 def step_then_percentage_legacy(context: Context, percentage: int):
-    """Assert percentage with legacy_date_created."""
+    """Assert percentage with nma_date_created."""
     total = len(context.queried_locations)
-    populated = sum(1 for loc in context.queried_locations if loc.legacy_date_created)
+    populated = sum(1 for loc in context.queried_locations if loc.nma_date_created)
     actual_pct = (populated / total) * 100
 
     tolerance = 2
@@ -372,24 +372,24 @@ def step_then_has_created_at(context: Context):
     assert context.retrieved_location.created_at is not None
 
 
-@then("it should have legacy_date_created (original AMPAPI DateCreated)")
+@then("it should have nma_date_created (original AMPAPI DateCreated)")
 def step_then_has_legacy_date(context: Context):
-    """Assert legacy_date_created exists."""
-    assert context.retrieved_location.legacy_date_created is not None
+    """Assert nma_date_created exists."""
+    assert context.retrieved_location.nma_date_created is not None
 
 
-@then("it should have legacy_site_date (original AMPAPI SiteDate)")
+@then("it should have nma_site_date (original AMPAPI SiteDate)")
 def step_then_has_site_date(context: Context):
-    """Assert legacy_site_date exists."""
-    assert context.retrieved_location.legacy_site_date is not None
+    """Assert nma_site_date exists."""
+    assert context.retrieved_location.nma_site_date is not None
 
 
 @then("all three timestamps should be independently queryable")
 def step_then_all_queryable(context: Context):
     """Assert all fields are queryable."""
     assert hasattr(context.retrieved_location, "created_at")
-    assert hasattr(context.retrieved_location, "legacy_date_created")
-    assert hasattr(context.retrieved_location, "legacy_site_date")
+    assert hasattr(context.retrieved_location, "nma_date_created")
+    assert hasattr(context.retrieved_location, "nma_site_date")
 
 
 @then("created_at should be a recent timestamp")
@@ -401,25 +401,25 @@ def step_then_created_at_recent(context: Context):
     assert diff_seconds < 3600, "created_at should be within last hour"
 
 
-@then("legacy_date_created should be an older date")
+@then("nma_date_created should be an older date")
 def step_then_legacy_date_older(context: Context):
-    """Assert legacy_date_created is old."""
-    legacy_date = context.retrieved_location.legacy_date_created
-    assert legacy_date.year < 2024, "legacy_date_created should be from the past"
+    """Assert nma_date_created is old."""
+    legacy_date = context.retrieved_location.nma_date_created
+    assert legacy_date.year < 2024, "nma_date_created should be from the past"
 
 
-@then('legacy_date_created should be "{expected_date}"')
+@then('nma_date_created should be "{expected_date}"')
 def step_then_legacy_is(context: Context, expected_date: str):
-    """Assert legacy_date_created value."""
-    actual = context.retrieved_location.legacy_date_created
+    """Assert nma_date_created value."""
+    actual = context.retrieved_location.nma_date_created
     expected = date.fromisoformat(expected_date)
     assert actual == expected, f"Expected {expected}, got {actual}"
 
 
-@then('legacy_site_date should be "{expected_date}"')
+@then('nma_site_date should be "{expected_date}"')
 def step_then_site_date_is(context: Context, expected_date: str):
-    """Assert legacy_site_date value."""
-    actual = context.retrieved_location.legacy_site_date
+    """Assert nma_site_date value."""
+    actual = context.retrieved_location.nma_site_date
     expected = date.fromisoformat(expected_date)
     assert actual == expected, f"Expected {expected}, got {actual}"
 
@@ -431,10 +431,10 @@ def step_then_no_error(context: Context):
     pass
 
 
-@then("legacy_site_date should be null")
+@then("nma_site_date should be null")
 def step_then_site_date_null(context: Context):
-    """Assert legacy_site_date is null."""
-    assert context.retrieved_location.legacy_site_date is None
+    """Assert nma_site_date is null."""
+    assert context.retrieved_location.nma_site_date is None
 
 
 @then("the well should still be valid")

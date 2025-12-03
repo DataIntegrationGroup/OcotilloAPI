@@ -13,43 +13,43 @@ Feature: Post-Migration Legacy Data Retrieval
   Scenario: Retrieve location with both legacy dates via API
     Given a location exists with:
       | field                | value      |
-      | legacy_date_created  | 2014-04-03 |
-      | legacy_site_date     | 2002-12-10 |
+      | nma_date_created  | 2014-04-03 |
+      | nma_site_date     | 2002-12-10 |
     When I retrieve that location via the API
-    Then the response should include legacy_date_created as "2014-04-03"
-    And the response should include legacy_site_date as "2002-12-10"
+    Then the response should include nma_date_created as "2014-04-03"
+    And the response should include nma_site_date as "2002-12-10"
     And the time gap should be approximately 11.3 years
 
   Scenario: Retrieve location with large time gap (54 years)
     Given a location exists with:
       | field                | value      |
-      | legacy_date_created  | 2008-05-28 |
-      | legacy_site_date     | 1954-05-01 |
+      | nma_date_created  | 2008-05-28 |
+      | nma_site_date     | 1954-05-01 |
     When I retrieve that location via the API
-    Then the response should include legacy_date_created as "2008-05-28"
-    And the response should include legacy_site_date as "1954-05-01"
+    Then the response should include nma_date_created as "2008-05-28"
+    And the response should include nma_site_date as "1954-05-01"
     And the time gap should be approximately 54 years
 
   Scenario: List all locations includes legacy date fields
     Given 5 locations exist with various legacy dates
     When I GET /location to list all locations
-    Then each location should have a legacy_date_created field
-    And each location should have a legacy_site_date field
-    And some locations should have null legacy_site_date
+    Then each location should have a nma_date_created field
+    And each location should have a nma_site_date field
+    And some locations should have null nma_site_date
 
   Scenario: Filter locations by legacy site date range
-    Given locations exist with legacy_site_date ranging from 1950 to 2024
-    When I filter locations where legacy_site_date is between "2000-01-01" and "2010-12-31"
-    Then the response should only include locations with legacy_site_date in that decade
-    And locations with legacy_site_date before 2000 should not be included
-    And locations with legacy_site_date after 2010 should not be included
+    Given locations exist with nma_site_date ranging from 1950 to 2024
+    When I filter locations where nma_site_date is between "2000-01-01" and "2010-12-31"
+    Then the response should only include locations with nma_site_date in that decade
+    And locations with nma_site_date before 2000 should not be included
+    And locations with nma_site_date after 2010 should not be included
 
-  Scenario: Query location by legacy_date_created
-    Given 3 locations exist with legacy_date_created "2014-04-03"
-    And 2 locations exist with legacy_date_created "2017-12-06"
-    When I query for locations with legacy_date_created "2014-04-03"
+  Scenario: Query location by nma_date_created
+    Given 3 locations exist with nma_date_created "2014-04-03"
+    And 2 locations exist with nma_date_created "2017-12-06"
+    When I query for locations with nma_date_created "2014-04-03"
     Then the response should include exactly 3 locations
-    And all should have legacy_date_created "2014-04-03"
+    And all should have nma_date_created "2014-04-03"
 
   # Data Quality Validation
 
@@ -57,8 +57,8 @@ Feature: Post-Migration Legacy Data Retrieval
     Given 100 locations were migrated
     And 9 of them had non-null SiteDate in AMPAPI
     When I query the migrated locations
-    Then 9% should have non-null legacy_site_date
-    And 100% should have non-null legacy_date_created
+    Then 9% should have non-null nma_site_date
+    And 100% should have non-null nma_date_created
 
   # Audit Trail Verification
 
@@ -66,29 +66,29 @@ Feature: Post-Migration Legacy Data Retrieval
     Given a location was migrated with legacy dates
     When I retrieve that location
     Then it should have created_at (new system timestamp from migration)
-    And it should have legacy_date_created (original AMPAPI DateCreated)
-    And it should have legacy_site_date (original AMPAPI SiteDate)
+    And it should have nma_date_created (original AMPAPI DateCreated)
+    And it should have nma_site_date (original AMPAPI SiteDate)
     And all three timestamps should be independently queryable
     And created_at should be a recent timestamp
-    And legacy_date_created should be an older date
+    And nma_date_created should be an older date
 
   # Edge Cases
 
   Scenario: Location where SiteDate is later than DateCreated (data anomaly)
     Given a location exists with:
       | field                | value      |
-      | legacy_date_created  | 2010-01-15 |
-      | legacy_site_date     | 2015-06-20 |
+      | nma_date_created  | 2010-01-15 |
+      | nma_site_date     | 2015-06-20 |
     When I retrieve that location
-    Then legacy_date_created should be "2010-01-15"
-    And legacy_site_date should be "2015-06-20"
+    Then nma_date_created should be "2010-01-15"
+    And nma_site_date should be "2015-06-20"
     And the system should accept this without error
 
-  Scenario: Location with only legacy_date_created (no legacy_site_date)
+  Scenario: Location with only nma_date_created (no nma_site_date)
     Given a location exists with:
       | field                | value      |
-      | legacy_date_created  | 2014-10-17 |
-      | legacy_site_date     | null       |
+      | nma_date_created  | 2014-10-17 |
+      | nma_site_date     | null       |
     When I retrieve that location
-    Then legacy_date_created should be "2014-10-17"
-    And legacy_site_date should be null
+    Then nma_date_created should be "2014-10-17"
+    And nma_site_date should be null
