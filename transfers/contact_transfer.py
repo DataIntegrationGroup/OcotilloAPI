@@ -20,6 +20,7 @@ from pandas import DataFrame
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from core.enums import Organization
 from db import (
     Contact,
     ThingContactAssociation,
@@ -48,6 +49,10 @@ class ContactTransfer(ThingBasedTransferer):
         with open(co_to_org_mapper_path, "r") as f:
             self._co_to_org_mapper = json.load(f)
 
+        organization_mapper_path = get_transfers_data_path("organization_mapping.json")
+        with open(organization_mapper_path, "r") as f:
+            self._organization_mapper = json.load(f)
+
         self._added = []
 
     def _get_dfs(self):
@@ -74,7 +79,14 @@ class ContactTransfer(ThingBasedTransferer):
             "second",
         ):
             try:
-                if adder(session, row, db_item, self._co_to_org_mapper, self._added):
+                if adder(
+                    session,
+                    row,
+                    db_item,
+                    self._co_to_org_mapper,
+                    self._organization_mapper,
+                    self._added,
+                ):
                     session.commit()
                     logger.info(f"added {tag} contact for PointID {row.PointID}")
             except ValidationError as e:
@@ -90,7 +102,7 @@ class ContactTransfer(ThingBasedTransferer):
                 self._capture_error(row.PointID, str(e), "UnknownError")
 
 
-def _add_first_contact(session, row, thing, co_to_org_mapper, added):
+def _add_first_contact(session, row, thing, co_to_org_mapper, org_mapper, added):
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
@@ -98,10 +110,10 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
 
     name = _make_name(row.FirstName, row.LastName)
 
-    organization = co_to_org_mapper.get(row.Company, row.Company)
-
+    # check if organization is in lexicon
+    organization = _get_organization(row, co_to_org_mapper, org_mapper)
     if (name, organization) in added:
-        return
+        return None
     added.append((name, organization))
 
     contact_data = {
@@ -190,7 +202,22 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
     return True
 
 
-def _add_second_contact(session, row, thing, co_to_org_mapper, added):
+def _get_organization(row, co_to_org_mapper, org_mapper):
+    organization = co_to_org_mapper.get(row.Company, row.Company)
+
+    try:
+        Organization(organization)
+    except ValueError:
+        norganization = next(
+            (k for k, v in org_mapper.items() if v == organization), None
+        )
+        logger.warning(f"mapping {organization} to {norganization}")
+        organization = norganization
+
+    return organization
+
+
+def _add_second_contact(session, row, thing, co_to_org_mapper, org_mapper, added):
     if all(
         [
             getattr(row, f"Second{f}") is None
@@ -203,9 +230,10 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
 
-    organization = co_to_org_mapper.get(row.Company, row.Company)
+    organization = _get_organization(row, co_to_org_mapper, org_mapper)
     if (name, organization) in added:
         return
+
     added.append((name, organization))
 
     contact_data = {
