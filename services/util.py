@@ -1,13 +1,12 @@
 import json
 import os
-from shapely.ops import transform
-import pyproj
+
 import httpx
-from sqlalchemy.orm import DeclarativeBase
+import pyproj
+from shapely.ops import transform
 from sqlalchemy.orm import DeclarativeBase
 
 from constants import SRID_WGS84
-
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
@@ -151,6 +150,7 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     try:
         data = resp.json()
     except json.decoder.JSONDecodeError:
+        print(f"Error decoding JSON from EPQS: {resp.text}")
         return None
 
     return data["value"]

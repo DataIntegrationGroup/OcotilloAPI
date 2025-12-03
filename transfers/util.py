@@ -65,7 +65,6 @@ class MeasuringPointEstimator:
     ) -> tuple[float, str, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
-
         df = self._df[self._df["PointID"] == row.PointID]
         df = df.sort_values("DateMeasured")
         if mph is None:
@@ -327,9 +326,19 @@ def get_transferable_wells(
     wellphotos_df = read_csv("WellPhotos")
     wellphotos_pointids = wellphotos_df["PointID"].unique().tolist()
 
-    # get all pointids that have owner info
-
     pointids = list(set(usgs_pointids + collabnet_pointids + wellphotos_pointids))
+    logger.info(f"total pointids: {len(pointids)} {pointids[:10]}")
+
+    # get all pointids that have owner info
+    ownerlinks_df = read_csv("OwnerLink")
+    locdf = read_csv("Location")
+
+    ownerlinks_df = ownerlinks_df.join(locdf.set_index("LocationId"), on="LocationId")
+    ownerlinks_pointids = ownerlinks_df["PointID"].unique().tolist()
+    ownerpointids = list(set(ownerlinks_pointids) - set(pointids))
+    logger.info(f"ownerpointids: {len(ownerpointids)} {ownerpointids[:10]}")
+    pointids = pointids + ownerpointids
+
     return df[df["DataSource"].isin(valid_datasources) | df["PointID"].isin(pointids)]
 
 
@@ -442,7 +451,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     else:
         elevation_from_epqs = True
         logger.info(
-            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS for "
+            f"Location {row.PointID} has no Altitude. Setting from National Map EPQS. "
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
 

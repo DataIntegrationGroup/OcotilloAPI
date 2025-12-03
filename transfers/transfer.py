@@ -17,7 +17,10 @@ import os
 
 from dotenv import load_dotenv
 
+from db.engine import session_ctx
 from services.util import get_bool_env
+from transfers.aquifer_system_transfer import transfer_aquifer_systems
+from transfers.geologic_formation_transfer import transfer_geologic_formations
 
 load_dotenv()
 
@@ -59,6 +62,10 @@ def transfer_all(metrics, limit=100):
         erase_and_rebuild_db()
 
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}  # not currently used
+
+    with session_ctx() as session:
+        transfer_aquifer_systems(session, limit=limit)
+        transfer_geologic_formations(session, limit=limit)
 
     message("TRANSFERRING WELLS")
     results = _execute_transfer(WellTransferer, flags=flags)

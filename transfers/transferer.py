@@ -70,6 +70,7 @@ class Transferer(object):
         df = self._get_df_to_iterate()
         n = len(df)
         start_time = time.time()
+        logger.info(f"Starting transfer of {n} [limit={limit}] rows")
         for i, row in enumerate(df.itertuples()):
             if limit and i >= limit:
                 logger.info(f"Reached limit of {limit} rows. Stopping migration.")
