@@ -31,7 +31,7 @@ def parse_number(text):
 register_type(Number=parse_number)
 
 
-def create_test_location(legacy_date_created=None, inventoried_on=None):
+def create_test_location(legacy_date_created=None, legacy_site_date=None):
     """Helper to create a test location with legacy dates."""
     with session_ctx() as session:
         location = Location(
@@ -39,7 +39,7 @@ def create_test_location(legacy_date_created=None, inventoried_on=None):
             elevation=1558.8,
             release_status="public",
             legacy_date_created=legacy_date_created,
-            inventoried_on=inventoried_on,
+            legacy_site_date=legacy_site_date,
         )
         session.add(location)
         session.commit()
@@ -99,14 +99,14 @@ def step_given_location_with_table(context: Context):
         if data.get("legacy_date_created") and data["legacy_date_created"] != "null"
         else None
     )
-    inventoried_on = (
-        date.fromisoformat(data["inventoried_on"])
-        if data.get("inventoried_on") and data["inventoried_on"] != "null"
+    legacy_site_date = (
+        date.fromisoformat(data["legacy_site_date"])
+        if data.get("legacy_site_date") and data["legacy_site_date"] != "null"
         else None
     )
 
     location = create_test_location(
-        legacy_date_created=legacy_date_created, inventoried_on=inventoried_on
+        legacy_date_created=legacy_date_created, legacy_site_date=legacy_site_date
     )
 
     context.test_location = location
@@ -127,28 +127,28 @@ def step_given_multiple_locations(context: Context, count: int):
     ]
 
     for i in range(min(count, len(test_data))):
-        legacy_date, inventory_date = test_data[i]
+        legacy_date, site_date = test_data[i]
         location = create_test_location(
             legacy_date_created=date.fromisoformat(legacy_date),
-            inventoried_on=(
-                date.fromisoformat(inventory_date) if inventory_date else None
+            legacy_site_date=(
+                date.fromisoformat(site_date) if site_date else None
             ),
         )
         context.test_locations.append(location)
 
 
 @given(
-    "locations exist with inventoried_on ranging from {start_year:Number} to {end_year:Number}"
+    "locations exist with legacy_site_date ranging from {start_year:Number} to {end_year:Number}"
 )
 def step_given_locations_date_range(context: Context, start_year: int, end_year: int):
-    """Create locations with inventoried_on across a date range."""
+    """Create locations with legacy_site_date across a date range."""
     context.test_locations = []
 
     years = [1954, 2002, 2003, 2010, 2015, 2020, 2024]
     for year in years:
         location = create_test_location(
-            legacy_date_created=date(year + 5, 1, 1),  # Always 5 years after inventory
-            inventoried_on=date(year, 6, 15),
+            legacy_date_created=date(year + 5, 1, 1),  # Always 5 years after site date
+            legacy_site_date=date(year, 6, 15),
         )
         context.test_locations.append(location)
 
@@ -166,7 +166,7 @@ def step_given_locations_with_specific_date(
     for i in range(count):
         location = create_test_location(
             legacy_date_created=target,
-            inventoried_on=date(2000 + i, 1, 1),  # Vary the inventory dates
+            legacy_site_date=date(2000 + i, 1, 1),  # Vary the site dates
         )
         context.test_locations.append(location)
 
@@ -261,16 +261,16 @@ def step_given_well_location_has_table(context: Context):
         if data.get("legacy_date_created")
         else None
     )
-    inventoried_on = (
-        date.fromisoformat(data.get("inventoried_on"))
-        if data.get("inventoried_on")
+    legacy_site_date = (
+        date.fromisoformat(data.get("legacy_site_date"))
+        if data.get("legacy_site_date")
         else None
     )
 
     with session_ctx() as session:
         location = session.get(Location, context.test_well_location.id)
         location.legacy_date_created = legacy_date_created
-        location.inventoried_on = inventoried_on
+        location.legacy_site_date = legacy_site_date
         session.commit()
         session.refresh(location)
         context.test_well_location = location
@@ -282,12 +282,12 @@ def step_given_count_locations_migrated(context: Context, count: int):
     context.test_locations = []
 
     for i in range(count):
-        # 9% have inventoried_on
-        has_inventory = i < count * 0.09
+        # 9% have legacy_site_date
+        has_site_date = i < count * 0.09
 
         location = create_test_location(
             legacy_date_created=date(2014, 1, i % 28 + 1),
-            inventoried_on=date(2003, 1, i % 28 + 1) if has_inventory else None,
+            legacy_site_date=date(2003, 1, i % 28 + 1) if has_site_date else None,
         )
         context.test_locations.append(location)
 
@@ -323,7 +323,7 @@ def step_given_completion_count(context: Context, count: int):
 def step_given_location_migrated_with_dates(context: Context):
     """Create location with both legacy dates."""
     location = create_test_location(
-        legacy_date_created=date(2014, 4, 3), inventoried_on=date(2002, 12, 10)
+        legacy_date_created=date(2014, 4, 3), legacy_site_date=date(2002, 12, 10)
     )
     context.test_location = location
 
@@ -364,7 +364,7 @@ def step_when_get_all_locations(context: Context):
 
 
 @when(
-    'I filter locations where inventoried_on is between "{start_date}" and "{end_date}"'
+    'I filter locations where legacy_site_date is between "{start_date}" and "{end_date}"'
 )
 def step_when_filter_locations(context: Context, start_date: str, end_date: str):
     """Filter locations by date range."""
@@ -375,7 +375,7 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
 
         locations = (
             session.query(Location)
-            .filter(Location.inventoried_on >= start, Location.inventoried_on <= end)
+            .filter(Location.legacy_site_date >= start, Location.legacy_site_date <= end)
             .all()
         )
 
@@ -509,10 +509,10 @@ def step_then_legacy_date_created(context: Context, expected_date: str):
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
-@then('the response should include inventoried_on as "{expected_date}"')
-def step_then_inventoried_on(context: Context, expected_date: str):
-    """Assert inventoried_on matches."""
-    actual = context.location_response.get("inventoried_on")
+@then('the response should include legacy_site_date as "{expected_date}"')
+def step_then_legacy_site_date(context: Context, expected_date: str):
+    """Assert legacy_site_date matches."""
+    actual = context.location_response.get("legacy_site_date")
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
@@ -520,15 +520,15 @@ def step_then_inventoried_on(context: Context, expected_date: str):
 def step_then_time_gap_years(context: Context, years: str):
     """Assert approximate year gap."""
     legacy_str = context.location_response.get("legacy_date_created")
-    inventory_str = context.location_response.get("inventoried_on")
+    site_date_str = context.location_response.get("legacy_site_date")
 
-    if not legacy_str or not inventory_str:
+    if not legacy_str or not site_date_str:
         raise AssertionError("Missing date fields for gap calculation")
 
     legacy_date = date.fromisoformat(legacy_str)
-    inventory_date = date.fromisoformat(inventory_str)
+    site_date = date.fromisoformat(site_date_str)
 
-    gap_days = (legacy_date - inventory_date).days
+    gap_days = (legacy_date - site_date).days
     gap_years = gap_days / 365.25
 
     expected_years = float(years)
@@ -546,47 +546,47 @@ def step_then_all_have_legacy_field(context: Context):
         assert "legacy_date_created" in item, f"Location missing legacy_date_created"
 
 
-@then("each location should have an inventoried_on field")
-def step_then_all_have_inventory_field(context: Context):
+@then("each location should have a legacy_site_date field")
+def step_then_all_have_site_date_field(context: Context):
     """Assert all locations have the field."""
     items = context.locations_response.get("items", [])
     for item in items:
-        assert "inventoried_on" in item, f"Location missing inventoried_on"
+        assert "legacy_site_date" in item, f"Location missing legacy_site_date"
 
 
-@then("some locations should have null inventoried_on")
-def step_then_some_null_inventory(context: Context):
+@then("some locations should have null legacy_site_date")
+def step_then_some_null_site_date(context: Context):
     """Assert some locations have null."""
     items = context.locations_response.get("items", [])
-    null_count = sum(1 for item in items if item.get("inventoried_on") is None)
-    assert null_count > 0, "Expected at least one location with null inventoried_on"
+    null_count = sum(1 for item in items if item.get("legacy_site_date") is None)
+    assert null_count > 0, "Expected at least one location with null legacy_site_date"
 
 
-@then("the response should only include locations inventoried in that decade")
+@then("the response should only include locations with site date in that decade")
 def step_then_locations_in_decade(context: Context):
     """Assert filtered locations are in range."""
     for loc in context.filtered_locations:
         assert (
-            2000 <= loc.inventoried_on.year <= 2010
-        ), f"Location not in 2000-2010: {loc.inventoried_on}"
+            2000 <= loc.legacy_site_date.year <= 2010
+        ), f"Location not in 2000-2010: {loc.legacy_site_date}"
 
 
-@then("locations inventoried before {year:Number} should not be included")
+@then("locations with site date before {year:Number} should not be included")
 def step_then_locations_before_excluded(context: Context, year: int):
     """Assert no locations before year."""
     for loc in context.filtered_locations:
         assert (
-            loc.inventoried_on.year >= year
-        ), f"Location from {loc.inventoried_on.year} should not be included"
+            loc.legacy_site_date.year >= year
+        ), f"Location from {loc.legacy_site_date.year} should not be included"
 
 
-@then("locations inventoried after {year:Number} should not be included")
+@then("locations with site date after {year:Number} should not be included")
 def step_then_locations_after_excluded(context: Context, year: int):
     """Assert no locations after year."""
     for loc in context.filtered_locations:
         assert (
-            loc.inventoried_on.year <= year
-        ), f"Location from {loc.inventoried_on.year} should not be included"
+            loc.legacy_site_date.year <= year
+        ), f"Location from {loc.legacy_site_date.year} should not be included"
 
 
 @then("the response should include exactly {count:Number} locations")
@@ -721,44 +721,44 @@ def step_then_location_has_legacy(context: Context, expected_date: str):
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
-@then('the current_location should include inventoried_on as "{expected_date}"')
-def step_then_location_has_inventory(context: Context, expected_date: str):
-    """Assert location has inventoried_on."""
+@then('the current_location should include legacy_site_date as "{expected_date}"')
+def step_then_location_has_site_date(context: Context, expected_date: str):
+    """Assert location has legacy_site_date."""
     current_location = context.well_response.get("current_location", {})
-    actual = current_location.get("inventoried_on")
+    actual = current_location.get("legacy_site_date")
     assert actual == expected_date, f"Expected {expected_date}, got {actual}"
 
 
 @then(
-    "the temporal sequence should be: well_completed_on → inventoried_on → legacy_date_created"
+    "the temporal sequence should be: well_completed_on → legacy_site_date → legacy_date_created"
 )
 def step_then_temporal_sequence(context: Context):
     """Assert temporal order."""
     well_completed = context.retrieved_well.well_completed_on
-    inventoried = context.retrieved_location.inventoried_on
+    site_date = context.retrieved_location.legacy_site_date
     legacy_created = context.retrieved_location.legacy_date_created
 
     assert (
-        well_completed < inventoried
-    ), "Well should be completed before site inventoried"
+        well_completed < site_date
+    ), "Well should be completed before site date"
     assert (
-        inventoried < legacy_created
-    ), "Site should be inventoried before DB record created"
+        site_date < legacy_created
+    ), "Site date should be before DB record created"
 
 
 @then("the timeline should show: {year1:Number} → {year2:Number} → {year3:Number}")
 def step_then_timeline_years(context: Context, year1: int, year2: int, year3: int):
     """Assert specific years in sequence."""
     assert context.retrieved_well.well_completed_on.year == year1
-    assert context.retrieved_location.inventoried_on.year == year2
+    assert context.retrieved_location.legacy_site_date.year == year2
     assert context.retrieved_location.legacy_date_created.year == year3
 
 
-@then("{percentage:Number}% should have non-null inventoried_on")
-def step_then_percentage_inventory(context: Context, percentage: int):
-    """Assert percentage with inventoried_on."""
+@then("{percentage:Number}% should have non-null legacy_site_date")
+def step_then_percentage_site_date(context: Context, percentage: int):
+    """Assert percentage with legacy_site_date."""
     total = len(context.queried_locations)
-    populated = sum(1 for loc in context.queried_locations if loc.inventoried_on)
+    populated = sum(1 for loc in context.queried_locations if loc.legacy_site_date)
     actual_pct = (populated / total) * 100
 
     tolerance = 2
@@ -805,10 +805,10 @@ def step_then_has_legacy_date(context: Context):
     assert context.retrieved_location.legacy_date_created is not None
 
 
-@then("it should have inventoried_on (original AMPAPI SiteDate)")
-def step_then_has_inventory_date(context: Context):
-    """Assert inventoried_on exists."""
-    assert context.retrieved_location.inventoried_on is not None
+@then("it should have legacy_site_date (original AMPAPI SiteDate)")
+def step_then_has_site_date(context: Context):
+    """Assert legacy_site_date exists."""
+    assert context.retrieved_location.legacy_site_date is not None
 
 
 @then("all three timestamps should be independently queryable")
@@ -816,7 +816,7 @@ def step_then_all_queryable(context: Context):
     """Assert all fields are queryable."""
     assert hasattr(context.retrieved_location, "created_at")
     assert hasattr(context.retrieved_location, "legacy_date_created")
-    assert hasattr(context.retrieved_location, "inventoried_on")
+    assert hasattr(context.retrieved_location, "legacy_site_date")
 
 
 @then("created_at should be a recent timestamp")
@@ -843,10 +843,10 @@ def step_then_legacy_is(context: Context, expected_date: str):
     assert actual == expected, f"Expected {expected}, got {actual}"
 
 
-@then('inventoried_on should be "{expected_date}"')
-def step_then_inventory_is(context: Context, expected_date: str):
-    """Assert inventoried_on value."""
-    actual = context.retrieved_location.inventoried_on
+@then('legacy_site_date should be "{expected_date}"')
+def step_then_site_date_is(context: Context, expected_date: str):
+    """Assert legacy_site_date value."""
+    actual = context.retrieved_location.legacy_site_date
     expected = date.fromisoformat(expected_date)
     assert actual == expected, f"Expected {expected}, got {actual}"
 
@@ -880,10 +880,10 @@ def step_then_no_validation_errors(context: Context):
     pass
 
 
-@then("inventoried_on should be null")
-def step_then_inventory_null(context: Context):
-    """Assert inventoried_on is null."""
-    assert context.retrieved_location.inventoried_on is None
+@then("legacy_site_date should be null")
+def step_then_site_date_null(context: Context):
+    """Assert legacy_site_date is null."""
+    assert context.retrieved_location.legacy_site_date is None
 
 
 @then("the well should still be valid")
