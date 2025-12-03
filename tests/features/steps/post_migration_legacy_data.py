@@ -195,9 +195,7 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
 
         locations = (
             session.query(Location)
-            .filter(
-                Location.nma_site_date >= start, Location.nma_site_date <= end
-            )
+            .filter(Location.nma_site_date >= start, Location.nma_site_date <= end)
             .all()
         )
 

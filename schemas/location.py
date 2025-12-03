@@ -155,9 +155,7 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
         # populate AMPAPI date fields
-        data_dict["properties"]["nma_date_created"] = data_dict.get(
-            "nma_date_created"
-        )
+        data_dict["properties"]["nma_date_created"] = data_dict.get("nma_date_created")
         data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
 
         # populate UTM coordinates
