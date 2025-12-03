@@ -497,7 +497,7 @@ def add_geologic_formation(context, session, formation_code, well):
 def before_all(context):
     context.objects = {}
     rebuild = False
-    # rebuild = True
+    rebuild = True
     if rebuild:
         erase_and_rebuild_db()
 
@@ -539,7 +539,7 @@ def before_all(context):
 
         for well in (well_1, well_2, well_3):
             add_measuring_point_history(context, session, well=well)
-        for value, start, end in (
+        for value, start, end, reason in (
             (
                 "Active, pumping well",
                 datetime(2020, 1, 1),
@@ -560,7 +560,7 @@ def before_all(context):
                 status_value=value,
                 start_date=start,
                 end_date=end,
-                reason="Initial status",
+                reason=reason,
                 target_id=context.objects["wells"][0].id,
                 target_table="thing",
             )
