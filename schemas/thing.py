@@ -131,8 +131,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     )
     measuring_point_description: str | None
     notes: list[CreateNote] | None = None
-    # Active field: users can set this for new wells
-    well_completed_on: date | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -227,8 +225,6 @@ class WellResponse(BaseThingResponse):
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
-    # Active field: completion date for wells
-    well_completed_on: date | None = None
 
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
@@ -334,8 +330,6 @@ class UpdateWell(UpdateThing, ValidateWell):
     well_casing_diameter: float | None = None  # in inches
     well_casing_depth: float | None = None  # in feet
     well_casing_materials: list[str] | None = None
-    # Active field: users can update completion date
-    well_completed_on: date | None = None
 
 
 class UpdateSpring(UpdateThing):

@@ -19,7 +19,6 @@ Unit tests for legacy date field population during AMPAPI → NMSampleLocations 
 These tests verify that:
 1. Location.legacy_date_created is populated from CSV DateCreated
 2. Location.legacy_site_date is populated from CSV SiteDate (if not null)
-3. Thing.well_completed_on is populated from CSV CompletionDate (if not null)
 """
 import datetime
 from unittest.mock import Mock, patch, MagicMock
@@ -27,7 +26,6 @@ import pandas as pd
 import pytest
 
 from transfers.util import make_location
-from schemas.thing import CreateWell
 
 
 # ============================================================================
@@ -258,91 +256,6 @@ def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mappe
 
 
 # ============================================================================
-# WELL COMPLETION DATE TESTS
-# ============================================================================
-
-
-def test_create_well_schema_accepts_well_completed_on():
-    """Test that CreateWell schema accepts well_completed_on from CSV CompletionDate"""
-    # Simulate data from CSV transfer
-    well_data = {
-        "location_id": 1,
-        "name": "TEST-WELL-001",
-        "well_completed_on": datetime.date(2004, 8, 8),  # From CSV CompletionDate
-        "hole_depth": 100.0,
-        "well_depth": 95.0,
-        "measuring_point_height": 2.5,
-        "measuring_point_description": "top of casing",
-        "release_status": "public",
-    }
-
-    # Validate using CreateWell schema
-    schema = CreateWell(**well_data)
-
-    assert schema.well_completed_on == datetime.date(2004, 8, 8)
-
-
-def test_create_well_schema_well_completed_on_optional():
-    """Test that well_completed_on is optional (70% of wells don't have CompletionDate)"""
-    well_data = {
-        "location_id": 1,
-        "name": "TEST-WELL-002",
-        "hole_depth": 100.0,
-        "well_depth": 95.0,
-        "measuring_point_height": 2.5,
-        "measuring_point_description": "top of casing",
-        "release_status": "public",
-        # No well_completed_on provided
-    }
-
-    # Should not raise validation error
-    schema = CreateWell(**well_data)
-
-    # Field should be optional
-    assert hasattr(schema, "well_completed_on")
-    # Value should be None when not provided
-    assert schema.well_completed_on is None
-
-
-def test_create_well_with_very_old_completion_date():
-    """Test that very old completion dates (1936) are accepted"""
-    well_data = {
-        "location_id": 1,
-        "name": "HISTORICAL-WELL",
-        "well_completed_on": datetime.date(1936, 1, 1),  # Oldest well in dataset
-        "hole_depth": 100.0,
-        "well_depth": 95.0,
-        "measuring_point_height": 2.5,
-        "measuring_point_description": "top of casing",
-        "release_status": "public",
-    }
-
-    schema = CreateWell(**well_data)
-
-    assert schema.well_completed_on == datetime.date(1936, 1, 1)
-
-
-def test_create_well_completed_on_is_date_not_datetime():
-    """Test that well_completed_on is Date type (not DateTime)"""
-    well_data = {
-        "location_id": 1,
-        "name": "TEST-WELL-003",
-        "well_completed_on": datetime.date(2004, 8, 8),  # Date, not DateTime
-        "hole_depth": 100.0,
-        "well_depth": 95.0,
-        "measuring_point_height": 2.5,
-        "measuring_point_description": "top of casing",
-        "release_status": "public",
-    }
-
-    schema = CreateWell(**well_data)
-
-    # Should accept date type
-    assert isinstance(schema.well_completed_on, datetime.date)
-    assert not isinstance(schema.well_completed_on, datetime.datetime)
-
-
-# ============================================================================
 # DATA COVERAGE TESTS (Simulating Migration Statistics)
 # ============================================================================
 
@@ -408,44 +321,6 @@ def test_location_legacy_date_coverage_statistics(mock_lexicon_mapper):
     # Verify expected coverage
     assert locations_created == 100  # 100% should have legacy_date_created
     assert locations_with_site_date == 9  # 9% should have legacy_site_date
-
-
-def test_well_completion_date_coverage_statistics():
-    """Test that expected percentage of wells have completion dates"""
-    # Simulate 100 wells from CSV
-    wells_with_completion_date = 0
-
-    for i in range(100):
-        if i < 30:  # 30% have CompletionDate
-            well_data = {
-                "location_id": 1,
-                "name": f"WELL-{i:03d}",
-                "well_completed_on": datetime.date(2004, 8, 8),
-                "hole_depth": 100.0,
-                "well_depth": 95.0,
-                "measuring_point_height": 2.5,
-                "measuring_point_description": "top of casing",
-                "release_status": "public",
-            }
-        else:  # 70% don't have CompletionDate
-            well_data = {
-                "location_id": 1,
-                "name": f"WELL-{i:03d}",
-                "hole_depth": 100.0,
-                "well_depth": 95.0,
-                "measuring_point_height": 2.5,
-                "measuring_point_description": "top of casing",
-                "release_status": "public",
-                # No well_completed_on
-            }
-
-        schema = CreateWell(**well_data)
-
-        if schema.well_completed_on is not None:
-            wells_with_completion_date += 1
-
-    # Verify expected coverage
-    assert wells_with_completion_date == 30  # 30% should have completion dates
 
 
 # ============================================================================
