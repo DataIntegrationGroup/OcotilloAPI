@@ -125,26 +125,27 @@ def _extract_casing_materials(row) -> list[str]:
     return materials
 
 
-pattern = re.compile(
+PUMP_PATTERN = re.compile(
     r"\b(?P<term>jet|hand|submersible)\b|\b(?P<phrase>line[-\s]+shaft)\b", re.IGNORECASE
 )
 
 
 def first_matched_term(text: str):
-    m = pattern.search(text)
+    m = PUMP_PATTERN.search(text)
     if not m:
         return None
     return m.group("term") or m.group("phrase")
-
-
-PUMP_MAPPING = {"jet": "Jet", "hand": "Hand", "submersible": "Submersible"}
 
 
 def _extract_well_pump_type(row) -> str | None:
     if isna(row.ConstructionNotes):
         return None
     construction_notes = row.ConstructionNotes.lower()
-    return PUMP_MAPPING.get(first_matched_term(construction_notes), None)
+    pump = first_matched_term(construction_notes)
+    if pump:
+        return pump.capitalize()
+    else:
+        return None
 
 
 # Parse aquifer codes
