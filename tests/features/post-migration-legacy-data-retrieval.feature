@@ -33,16 +33,16 @@ Feature: Post-Migration AMPAPI Date Field Retrieval
   Scenario: List all locations includes AMPAPI date fields
     Given 5 locations exist with various AMPAPI dates
     When I GET /location to list all locations
-    Then each location should have a nma_date_created field
-    And each location should have a nma_site_date field
-    And some locations should have null nma_site_date
+    Then each location should have a date created field
+    And each location should have a site date field
+    And some locations should have null site date
 
   Scenario: Filter locations by AMPAPI site date range
     Given locations exist with nma_site_date ranging from 1950 to 2024
     When I filter locations where nma_site_date is between "2000-01-01" and "2010-12-31"
-    Then the response should only include locations with nma_site_date in that decade
-    And locations with nma_site_date before 2000 should not be included
-    And locations with nma_site_date after 2010 should not be included
+    Then the response should only include locations with site date in that decade
+    And locations with site date before 2000 should not be included
+    And locations with site date after 2010 should not be included
 
   Scenario: Query location by nma_date_created
     Given 3 locations exist with nma_date_created "2014-04-03"

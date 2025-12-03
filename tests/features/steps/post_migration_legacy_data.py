@@ -270,28 +270,28 @@ def step_then_time_gap_years(context: Context, years: str):
     ), f"Expected ~{expected_years} year gap, got {gap_years:.1f} years"
 
 
-@then("each location should have a nma_date_created field")
+@then("each location should have a date created field")
 def step_then_all_have_legacy_field(context: Context):
-    """Assert all locations have the field."""
+    """Assert all locations have the date created field."""
     items = context.locations_response.get("items", [])
     for item in items:
         assert "nma_date_created" in item, f"Location missing nma_date_created"
 
 
-@then("each location should have a nma_site_date field")
+@then("each location should have a site date field")
 def step_then_all_have_site_date_field(context: Context):
-    """Assert all locations have the field."""
+    """Assert all locations have the site date field."""
     items = context.locations_response.get("items", [])
     for item in items:
         assert "nma_site_date" in item, f"Location missing nma_site_date"
 
 
-@then("some locations should have null nma_site_date")
+@then("some locations should have null site date")
 def step_then_some_null_site_date(context: Context):
-    """Assert some locations have null."""
+    """Assert some locations have null site date."""
     items = context.locations_response.get("items", [])
     null_count = sum(1 for item in items if item.get("nma_site_date") is None)
-    assert null_count > 0, "Expected at least one location with null nma_site_date"
+    assert null_count > 0, "Expected at least one location with null site date"
 
 
 @then("the response should only include locations with site date in that decade")
