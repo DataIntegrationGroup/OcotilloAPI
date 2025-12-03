@@ -33,6 +33,8 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
     "Pressure transducer": "Pressure Transducer",
     "Acoustic sounder": "Acoustic Sounder",
     "Barometer": "Barometer",
+    "DiverLink": "DiverLink",
+    "Diver Cable": "Diver Cable",
 }
 
 
