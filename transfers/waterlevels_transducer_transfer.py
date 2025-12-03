@@ -195,12 +195,12 @@ class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
 
 
 def _find_deployment(ts, deployments):
+    date = ts.date()
     for d in deployments:
-        start = Timestamp(d.installation_date)
-        if start > ts:
+        if d.installation_date > date:
             break  # because sorted by start
-        end = Timestamp(d.removal_date) if d.removal_date else Timestamp.max
-        if end >= ts:
+        end = d.removal_date if d.removal_date else Timestamp.max.date()
+        if end >= date:
             return d
     return None
 
