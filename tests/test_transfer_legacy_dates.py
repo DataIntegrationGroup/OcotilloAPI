@@ -255,21 +255,23 @@ def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
 
     def create_test_row(i, has_site_date):
         """Helper to create test row with common fields"""
-        return pd.Series({
-            "PointID": f"TEST-{i:03d}",
-            "Easting": 350000 + i,
-            "Northing": 3880000 + i,
-            "DateCreated": "2014-04-03 00:00:00.000",
-            "SiteDate": "2002-12-10 00:00:00.000" if has_site_date else None,
-            "Altitude": 1558.8,
-            "AltDatum": "NAVD88",
-            "AltitudeMethod": "GPS",
-            "LocationId": i,
-            "PublicRelease": True,
-            "CoordinateNotes": None,
-            "LocationNotes": None,
-            "AltitudeAccuracy": None,
-        })
+        return pd.Series(
+            {
+                "PointID": f"TEST-{i:03d}",
+                "Easting": 350000 + i,
+                "Northing": 3880000 + i,
+                "DateCreated": "2014-04-03 00:00:00.000",
+                "SiteDate": "2002-12-10 00:00:00.000" if has_site_date else None,
+                "Altitude": 1558.8,
+                "AltDatum": "NAVD88",
+                "AltitudeMethod": "GPS",
+                "LocationId": i,
+                "PublicRelease": True,
+                "CoordinateNotes": None,
+                "LocationNotes": None,
+                "AltitudeAccuracy": None,
+            }
+        )
 
     # Simulate 100 location records from CSV (9% with SiteDate, 91% without)
     locations_created = 0
