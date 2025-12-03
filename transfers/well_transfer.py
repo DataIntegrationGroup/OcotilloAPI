@@ -532,7 +532,6 @@ class WellTransferer(Transferer):
 
         # Get or create the aquifer
         aquifer = get_or_create_aquifer_system(session, aquifer_name, primary_type)
-        logger.info(f"working with {aquifer}, {aquifer.id}")
         if aquifer:
             # Check if association already exists
             existing_assoc = (
