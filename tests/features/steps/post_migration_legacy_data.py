@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from behave import given, when, then, register_type
 from behave.runner import Context
 import parse
@@ -394,7 +394,7 @@ def step_then_all_queryable(context: Context):
 def step_then_created_at_recent(context: Context):
     """Assert created_at is recent."""
     created_at = context.retrieved_location.created_at.replace(tzinfo=None)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     diff_seconds = abs((now - created_at).total_seconds())
     assert diff_seconds < 3600, "created_at should be within last hour"
 
