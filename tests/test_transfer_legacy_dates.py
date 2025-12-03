@@ -250,6 +250,62 @@ def test_make_location_ampapi_dates_independent_of_created_at(mock_lexicon_mappe
 # ============================================================================
 
 
+def test_make_location_with_no_ampapi_dates(mock_lexicon_mapper):
+    """Test that make_location handles locations with no AMPAPI dates (both null)"""
+    row = pd.Series(
+        {
+            "PointID": "TEST-NODATES",
+            "Easting": 350000,
+            "Northing": 3880000,
+            "DateCreated": None,  # No DateCreated
+            "SiteDate": None,  # No SiteDate
+            "Altitude": 1558.8,
+            "AltDatum": "NAVD88",
+            "AltitudeMethod": "GPS",
+            "LocationId": 999,
+            "PublicRelease": True,
+            "CoordinateNotes": None,
+            "LocationNotes": None,
+            "AltitudeAccuracy": None,
+        }
+    )
+
+    elevations = {}
+    location, elevation_method = make_location(row, elevations)
+
+    # Both AMPAPI date fields should be null
+    assert location.nma_date_created is None
+    assert location.nma_site_date is None
+
+
+def test_make_location_with_empty_string_dates(mock_lexicon_mapper):
+    """Test that make_location handles empty string dates (CSV edge case)"""
+    row = pd.Series(
+        {
+            "PointID": "TEST-EMPTY",
+            "Easting": 350000,
+            "Northing": 3880000,
+            "DateCreated": "",  # Empty string
+            "SiteDate": "",  # Empty string
+            "Altitude": 1558.8,
+            "AltDatum": "NAVD88",
+            "AltitudeMethod": "GPS",
+            "LocationId": 998,
+            "PublicRelease": True,
+            "CoordinateNotes": None,
+            "LocationNotes": None,
+            "AltitudeAccuracy": None,
+        }
+    )
+
+    elevations = {}
+    location, elevation_method = make_location(row, elevations)
+
+    # Both AMPAPI date fields should be null (empty strings are falsy)
+    assert location.nma_date_created is None
+    assert location.nma_site_date is None
+
+
 def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
     """Test that migration preserves expected percentages of AMPAPI dates"""
 
