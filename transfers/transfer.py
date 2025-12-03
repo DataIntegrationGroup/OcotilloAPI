@@ -21,6 +21,7 @@ from db.engine import session_ctx
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
+from transfers.permissions_transfer import transfer_permissions
 
 load_dotenv()
 
@@ -108,6 +109,9 @@ def transfer_all(metrics, limit=100):
         message("TRANSFERRING CONTACTS")
         results = _execute_transfer(ContactTransfer, flags=flags)
         metrics.contact_metrics(*results)
+
+    with session_ctx() as session:
+        transfer_permissions(session)
 
     if transfer_waterlevels:
         message("TRANSFERRING WATER LEVELS")
