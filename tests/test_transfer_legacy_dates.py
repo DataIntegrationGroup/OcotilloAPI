@@ -29,15 +29,25 @@ from transfers.util import make_location
 
 
 # ============================================================================
+# FIXTURES
+# ============================================================================
+
+
+@pytest.fixture
+def mock_lexicon_mapper():
+    """Fixture to mock lexicon_mapper for all transfer tests"""
+    with patch("transfers.util.lexicon_mapper") as mock:
+        mock.map_value.return_value = "GPS"
+        yield mock
+
+
+# ============================================================================
 # LOCATION AMPAPI DATE TESTS (Read-Only Post-Migration)
 # ============================================================================
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_with_both_legacy_dates(mock_lexicon_mapper):
     """Test that make_location populates both nma_date_created and nma_site_date"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
 
     # Create a mock CSV row with both DateCreated and SiteDate
     row = pd.Series(
@@ -75,12 +85,8 @@ def test_make_location_with_both_legacy_dates(mock_lexicon_mapper):
     assert location.created_at is None
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_with_only_date_created(mock_lexicon_mapper):
     """Test that make_location handles locations with only DateCreated (no SiteDate)"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
     row = pd.Series(
         {
             "PointID": "TEST-002",
@@ -109,12 +115,8 @@ def test_make_location_with_only_date_created(mock_lexicon_mapper):
     assert location.nma_site_date is None
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mapper):
     """Test data anomaly: SiteDate is later than DateCreated (should still be accepted)"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
     row = pd.Series(
         {
             "PointID": "TEST-003",
@@ -141,12 +143,8 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     assert location.nma_site_date == datetime.date(2015, 6, 20)
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
     """Test that very old SiteDates (1950s) are preserved correctly"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
     row = pd.Series(
         {
             "PointID": "SM-0227",  # Real example from dataset
@@ -177,12 +175,8 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
     assert time_gap == 19751  # Approximately 54 years
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_legacy_dates_are_date_not_datetime(mock_lexicon_mapper):
-    """Test that legacy date fields are Date type (not DateTime)"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
+    """Test that AMPAPI date fields are Date type (not DateTime)"""
     row = pd.Series(
         {
             "PointID": "TEST-004",
@@ -216,12 +210,8 @@ def test_make_location_legacy_dates_are_date_not_datetime(mock_lexicon_mapper):
     assert location.nma_site_date == datetime.date(2002, 12, 10)
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mapper):
-    """Test that legacy dates don't affect created_at timestamp"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
+    """Test that AMPAPI dates don't affect created_at timestamp"""
     row = pd.Series(
         {
             "PointID": "TEST-005",
@@ -260,12 +250,8 @@ def test_make_location_legacy_dates_independent_of_created_at(mock_lexicon_mappe
 # ============================================================================
 
 
-@patch("transfers.util.lexicon_mapper")
 def test_location_legacy_date_coverage_statistics(mock_lexicon_mapper):
-    """Test that migration preserves expected percentages of legacy dates"""
-    # Mock lexicon mapper to avoid GCS calls
-    mock_lexicon_mapper.map_value.return_value = "GPS"
-
+    """Test that migration preserves expected percentages of AMPAPI dates"""
     # Simulate 100 location records from CSV
     locations_created = 0
     locations_with_site_date = 0
