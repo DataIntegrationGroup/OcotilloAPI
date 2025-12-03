@@ -221,6 +221,8 @@ def read_csv(
         if verbose:
             logger.info(f"Downloading csv: {name}")
 
+    # Fall back to GCS if local file doesn't exist
+    logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
     data = blob.download_as_bytes()
@@ -407,33 +409,6 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         point, source_srid=SRID_UTM_ZONE_13N, target_srid=SRID_WGS84
     )
 
-    """
-    Developer's notes
-
-    AMP folks said that the earlier date between DateCreated and SiteDate is when
-    the site was inventoried, whereas the later is when the record was made in
-    the database. This was because they were used interchangeably. 
-    """
-    if row.DateCreated and row.SiteDate:
-
-        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
-        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
-
-        if date_created > site_date:
-            created_at = date_created
-        else:
-            created_at = site_date
-    elif row.DateCreated and not row.SiteDate:
-        created_at = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f")
-    elif not row.DateCreated and row.SiteDate:
-        created_at = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f")
-    else:
-        created_at = None
-
-    # convert created_at from MST/MDT to UTC
-    if created_at is not None:
-        created_at = convert_mt_to_utc(created_at)
-
     z = row.Altitude
     if z:
         elevation_from_epqs = False
@@ -464,14 +439,26 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
             f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
         )
 
+    # Extract AMPAPI date fields (Date type, not DateTime)
+    nma_date_created = None
+    if row.DateCreated:
+        nma_date_created = datetime.strptime(
+            row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
+        ).date()
+
+    nma_site_date = None
+    if row.SiteDate:
+        nma_site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
+
     location = Location(
         nma_pk_location=row.LocationId,
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
-        created_at=created_at,
         nma_coordinate_notes=row.CoordinateNotes,
         nma_notes_location=row.LocationNotes,
+        nma_date_created=nma_date_created,
+        nma_site_date=nma_site_date,
     )
 
     return location, elevation_method
