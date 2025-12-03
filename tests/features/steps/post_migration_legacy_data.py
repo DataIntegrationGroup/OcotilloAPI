@@ -130,9 +130,7 @@ def step_given_multiple_locations(context: Context, count: int):
         legacy_date, site_date = test_data[i]
         location = create_test_location(
             legacy_date_created=date.fromisoformat(legacy_date),
-            legacy_site_date=(
-                date.fromisoformat(site_date) if site_date else None
-            ),
+            legacy_site_date=(date.fromisoformat(site_date) if site_date else None),
         )
         context.test_locations.append(location)
 
@@ -375,7 +373,9 @@ def step_when_filter_locations(context: Context, start_date: str, end_date: str)
 
         locations = (
             session.query(Location)
-            .filter(Location.legacy_site_date >= start, Location.legacy_site_date <= end)
+            .filter(
+                Location.legacy_site_date >= start, Location.legacy_site_date <= end
+            )
             .all()
         )
 
@@ -738,12 +738,8 @@ def step_then_temporal_sequence(context: Context):
     site_date = context.retrieved_location.legacy_site_date
     legacy_created = context.retrieved_location.legacy_date_created
 
-    assert (
-        well_completed < site_date
-    ), "Well should be completed before site date"
-    assert (
-        site_date < legacy_created
-    ), "Site date should be before DB record created"
+    assert well_completed < site_date, "Well should be completed before site date"
+    assert site_date < legacy_created, "Site date should be before DB record created"
 
 
 @then("the timeline should show: {year1:Number} → {year2:Number} → {year3:Number}")
