@@ -250,7 +250,7 @@ def test_new_location_has_null_legacy_fields():
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
-    # Legacy fields should be present in response but null (not set during creation)
+    # AMPAPI date fields should be present in response but null (not set during creation, read-only)
     assert "nma_date_created" in data
     assert "nma_site_date" in data
     assert data["nma_date_created"] is None
@@ -261,8 +261,8 @@ def test_new_location_has_null_legacy_fields():
 
 
 def test_legacy_fields_present_in_location_response():
-    """Test that legacy fields are included in location GET response"""
-    # Create a new location (without legacy fields)
+    """Test that AMPAPI date fields (read-only) are included in location GET response"""
+    # Create a new location (without AMPAPI date fields set - they're read-only)
     payload = {
         "point": "POINT (-106.607784 35.118924)",
         "elevation": 1558.8,
@@ -272,12 +272,12 @@ def test_legacy_fields_present_in_location_response():
     assert create_response.status_code == 201
     location_id = create_response.json()["id"]
 
-    # Retrieve the location and verify legacy fields are in the schema
+    # Retrieve the location and verify AMPAPI date fields are in the schema
     get_response = client.get(f"/location/{location_id}")
     assert get_response.status_code == 200
     data = get_response.json()
 
-    # Verify fields exist in response (even if null)
+    # Verify read-only fields exist in response (even if null)
     assert "nma_date_created" in data
     assert "nma_site_date" in data
     assert data["nma_date_created"] is None
@@ -288,7 +288,7 @@ def test_legacy_fields_present_in_location_response():
 
 
 def test_legacy_fields_independent_of_created_at():
-    """Test that created_at (system timestamp) is separate from legacy fields"""
+    """Test that created_at (system timestamp) is separate from AMPAPI date fields (read-only)"""
     payload = {
         "point": "POINT (-106.607784 35.118924)",
         "elevation": 1558.8,
@@ -303,7 +303,7 @@ def test_legacy_fields_independent_of_created_at():
     assert "created_at" in data
     assert data["created_at"] is not None
 
-    # nma_date_created is separate and null for new records
+    # nma_date_created is separate and null for new records (read-only, populated only during migration)
     assert "nma_date_created" in data
     assert data["nma_date_created"] is None
 

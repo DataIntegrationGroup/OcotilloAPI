@@ -32,7 +32,7 @@ register_type(Number=parse_number)
 
 
 def create_test_location(nma_date_created=None, nma_site_date=None):
-    """Helper to create a test location with legacy dates."""
+    """Helper to create a test location with AMPAPI date fields (read-only post-migration)."""
     with session_ctx() as session:
         location = Location(
             point="POINT(-106.607784 35.118924)",

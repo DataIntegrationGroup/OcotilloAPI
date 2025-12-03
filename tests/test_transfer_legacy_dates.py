@@ -14,11 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for legacy date field population during AMPAPI → NMSampleLocations migration.
+Unit tests for AMPAPI date field population during AMPAPI → NMSampleLocations migration.
 
 These tests verify that:
-1. Location.nma_date_created is populated from CSV DateCreated
-2. Location.nma_site_date is populated from CSV SiteDate (if not null)
+1. Location.nma_date_created is populated from CSV DateCreated (read-only post-migration)
+2. Location.nma_site_date is populated from CSV SiteDate if not null (read-only post-migration)
 """
 import datetime
 from unittest.mock import Mock, patch, MagicMock
@@ -29,7 +29,7 @@ from transfers.util import make_location
 
 
 # ============================================================================
-# LOCATION LEGACY DATE TESTS
+# LOCATION AMPAPI DATE TESTS (Read-Only Post-Migration)
 # ============================================================================
 
 

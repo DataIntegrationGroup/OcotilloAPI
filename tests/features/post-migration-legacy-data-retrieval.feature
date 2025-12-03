@@ -1,16 +1,16 @@
-Feature: Post-Migration Legacy Data Retrieval
+Feature: Post-Migration AMPAPI Date Field Retrieval
   As a data manager
   After migrating data from AMPAPI to NMSampleLocations
-  I want to verify that all legacy temporal information is preserved and queryable
+  I want to verify that all AMPAPI temporal information is preserved and queryable
   So that no historical context is lost
 
   Background:
     Given a functioning api
     And the AMPAPI data has been migrated to the database
 
-  # Location Legacy Date Lookups
+  # Location AMPAPI Date Lookups (Read-Only Fields)
 
-  Scenario: Retrieve location with both legacy dates via API
+  Scenario: Retrieve location with both AMPAPI date fields via API
     Given a location exists with:
       | field                | value      |
       | nma_date_created  | 2014-04-03 |
@@ -30,14 +30,14 @@ Feature: Post-Migration Legacy Data Retrieval
     And the response should include nma_site_date as "1954-05-01"
     And the time gap should be approximately 54 years
 
-  Scenario: List all locations includes legacy date fields
-    Given 5 locations exist with various legacy dates
+  Scenario: List all locations includes AMPAPI date fields
+    Given 5 locations exist with various AMPAPI dates
     When I GET /location to list all locations
     Then each location should have a nma_date_created field
     And each location should have a nma_site_date field
     And some locations should have null nma_site_date
 
-  Scenario: Filter locations by legacy site date range
+  Scenario: Filter locations by AMPAPI site date range
     Given locations exist with nma_site_date ranging from 1950 to 2024
     When I filter locations where nma_site_date is between "2000-01-01" and "2010-12-31"
     Then the response should only include locations with nma_site_date in that decade
@@ -53,7 +53,7 @@ Feature: Post-Migration Legacy Data Retrieval
 
   # Data Quality Validation
 
-  Scenario: Verify migration preserved expected percentage of legacy dates
+  Scenario: Verify migration preserved expected percentage of AMPAPI dates
     Given 100 locations were migrated
     And 9 of them had non-null SiteDate in AMPAPI
     When I query the migrated locations
@@ -62,8 +62,8 @@ Feature: Post-Migration Legacy Data Retrieval
 
   # Audit Trail Verification
 
-  Scenario: Legacy dates preserved alongside audit timestamps
-    Given a location was migrated with legacy dates
+  Scenario: AMPAPI dates preserved alongside audit timestamps
+    Given a location was migrated with AMPAPI dates
     When I retrieve that location
     Then it should have created_at (new system timestamp from migration)
     And it should have nma_date_created (original AMPAPI DateCreated)

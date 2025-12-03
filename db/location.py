@@ -66,10 +66,10 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     nma_date_created: Mapped[datetime.date] = mapped_column(
         Date,
         nullable=True,
-        comment="Original AMPAPI DateCreated (migration-only field)",
+        comment="Original AMPAPI DateCreated (read-only, populated only during migration)",
     )
     nma_site_date: Mapped[datetime.date] = mapped_column(
-        Date, nullable=True, comment="Original AMPAPI SiteDate (migration-only field)"
+        Date, nullable=True, comment="Original AMPAPI SiteDate (read-only, populated only during migration)"
     )
 
     # --- Relationship Definitions ---

@@ -107,7 +107,7 @@ class GeoJSONProperties(BaseModel):
         default_factory=GeoJSONUTMCoordinates
     )
     notes: list[NoteResponse] = []
-    # AMPAPI date fields (migration-only, read-only)
+    # AMPAPI date fields (read-only, populated only during migration)
     nma_date_created: date | None = None
     nma_site_date: date | None = None
 
@@ -190,7 +190,7 @@ class LocationResponse(BaseResponseModel):
     county: str | None
     quad_name: str | None
 
-    # AMPAPI date fields (migration-only, read-only post-migration)
+    # AMPAPI date fields (read-only, populated only during migration, not in Create/Update schemas)
     nma_date_created: date | None = None
     nma_site_date: date | None = None
 
@@ -231,10 +231,6 @@ class UpdateLocation(BaseUpdateModel, ValidateLocation):
     elevation_method: ElevationMethod | None = None
     coordinate_accuracy: float | None = None
     coordinate_method: CoordinateMethod | None = None
-
-    # AMPAPI date fields (migration-only, can be updated but not created)
-    nma_date_created: date | None = None
-    nma_site_date: date | None = None
 
 
 # ============= EOF =============================================
