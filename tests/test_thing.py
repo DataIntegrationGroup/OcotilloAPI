@@ -1130,6 +1130,3 @@ def test_delete_thing_id_link_404_not_found(second_thing_id_link):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
-
-
-# ============= EOF =============================================
