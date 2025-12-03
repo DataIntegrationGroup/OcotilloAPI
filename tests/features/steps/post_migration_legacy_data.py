@@ -401,8 +401,7 @@ def step_then_created_at_recent(context: Context):
     if created_at.tzinfo is None:
         raise AssertionError(
             "created_at is a naive datetime (no timezone info). "
-            "Ensure the database and ORM are configured to return timezone-aware datetimes in UTC. "
-            "AutoBaseMixin.created_at uses DateTime(timezone=True) with server_default=func.timezone('UTC', func.now())"
+            "Check ORM/database config for timezone-aware UTC datetimes (see AutoBaseMixin.created_at)."
         )
 
     diff_seconds = abs((now - created_at).total_seconds())
