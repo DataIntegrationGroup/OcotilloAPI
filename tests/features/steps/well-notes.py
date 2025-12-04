@@ -57,9 +57,9 @@ def step_impl(context):
 @then("the response should include general well notes (catch all notes field)")
 def step_impl(context):
     data = context.response.json()
-    assert "notes" in data, "Response does not include notes"
-    assert data["notes"] is not None, "Notes is null"
-    context.notes["general"] = data["notes"]
+    assert "general_notes" in data, "Response does not include notes"
+    assert data["general_notes"] is not None, "Notes is null"
+    context.notes["general"] = data["general_notes"]
 
 
 @then(
