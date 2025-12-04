@@ -195,13 +195,11 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationGeoJSONResponse
     first_visit_date: PastOrTodayDate | None
-    # The new relationship to the polymorphic Notes table
-    notes: List[NoteResponse] = []
-
     groups: list[GroupResponse] = []
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
     monitoring_frequencies: list[MonitoringFrequencyResponse] = []
+    general_notes: list[NoteResponse] | None = None
 
     @field_validator("monitoring_frequencies", mode="before")
     def remove_records_with_end_date(cls, monitoring_frequencies):
@@ -250,7 +248,7 @@ class WellResponse(BaseThingResponse):
     aquifers: list[dict] = []
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
-    general_notes: list[NoteResponse] | None = None
+
     construction_notes: list[NoteResponse] | None = None
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
