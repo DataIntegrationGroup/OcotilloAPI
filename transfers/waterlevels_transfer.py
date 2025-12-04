@@ -102,7 +102,6 @@ class WaterLevelTransferer(Transferer):
             pointid = index[0]
             thing = session.query(Thing).where(Thing.name == pointid).first()
 
-            objs = []
             for i, row in enumerate(group.itertuples()):
                 dt_utc = self._get_dt_utc(row)
                 if dt_utc is None:
@@ -137,7 +136,7 @@ class WaterLevelTransferer(Transferer):
                     else:
                         field_event_participant.participant_role = "Participant"
 
-                    objs.append(field_event_participant)
+                    session.add(field_event_participant)
 
                 if (
                     glv
@@ -156,18 +155,16 @@ class WaterLevelTransferer(Transferer):
                     activity_type="groundwater level",
                     release_status=release_status,
                 )
-                objs.append(field_activity)
+                session.add(field_activity)
 
                 # Sample
                 sample = self._make_sample(row, field_activity, dt_utc, sampler)
-                objs.append(sample)
+                session.add(sample)
 
                 # Observation
                 observation = self._make_observation(row, sample, dt_utc, glv)
-                objs.append(observation)
+                session.add(observation)
 
-            if objs:
-                session.bulk_save_objects(objs)
             session.commit()
 
     def _make_observation(
@@ -247,6 +244,9 @@ class WaterLevelTransferer(Transferer):
         if glv == "Water level not affected by status":
             glv = "Water level not affected"
         elif glv is None:
+            self._capture_error(
+                row.PointID, f"Unknown groundwater level reason: {glv}", "LevelStatus"
+            )
             raise ValueError(f"Unknown groundwater level reason: {glv}")
         return glv
 
