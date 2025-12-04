@@ -240,7 +240,7 @@ class WaterLevelTransferer(Transferer):
 
         # If the mapper returns the raw key, it means "not mapped"
         if mapped == lookup_key:
-            logger.warning(f"Unknown LevelStatus '{glv}', mapping to None")
+            logger.critical(f"Unknown LevelStatus '{glv}', mapping to None")
             return None
 
         if mapped == "Water level not affected by status":
