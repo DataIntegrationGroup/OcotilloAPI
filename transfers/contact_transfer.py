@@ -42,6 +42,13 @@ class ContactTransfer(ThingBasedTransferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
+
+        """
+        Developer's note
+
+        - company to organization mapping is stored in transfers/data/owners_organization_mapper.json
+        - the key is the value in NM_Aquifer and the value is the standardized organization name used in the lexicon
+        """
         co_to_org_mapper_path = get_transfers_data_path(
             "owners_organization_mapper.json"
         )
