@@ -382,7 +382,10 @@ def convert_mt_to_utc(dt_record: datetime) -> datetime:
     return dt_record
 
 
-def chunk_by_size(df: pd.DataFrame, chunk_size: int) -> pd.DataFrame:
+def chunk_by_size(df: pd.DataFrame | list, chunk_size: int) -> pd.DataFrame:
+    if isinstance(df, list):
+        df = pd.DataFrame(df)
+
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
 
