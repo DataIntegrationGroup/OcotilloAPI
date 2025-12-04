@@ -464,7 +464,7 @@ class WellTransferer(Transferer):
         else:
             purposes = []
             for cui in cu:
-                p = self._get_lexicon_value(f"LU_CurrentUse:{cui}")
+                p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
                 if p is not None:
                     purposes.append(p)
             return purposes
@@ -521,7 +521,9 @@ class WellTransferer(Transferer):
         # Map AqClass code to aquifer name using lexicon mapper
         if isna(row.AqClass):
             # No AqClass - use first code's mapped name as aquifer name
-            aquifer_name = self._get_lexicon_value(f"LU_AquiferType:{aquifer_codes[0]}")
+            aquifer_name = self._get_lexicon_value(
+                row, f"LU_AquiferType:{aquifer_codes[0]}"
+            )
         else:
             try:
                 aquifer_name = lexicon_mapper.map_value(
@@ -532,7 +534,7 @@ class WellTransferer(Transferer):
                     f"Unknown AqClass code '{row.AqClass}' for well {row.PointID}, using first type as name"
                 )
                 aquifer_name = self._get_lexicon_value(
-                    f"LU_AquiferType:{aquifer_codes[0]}"
+                    row, f"LU_AquiferType:{aquifer_codes[0]}"
                 )
 
         # Determine primary type
@@ -654,7 +656,7 @@ class WellTransferer(Transferer):
 
                 if notna(row[row_field]):
                     if "origin_type" in kw:
-                        ot = self._get_lexicon_value(kw["origin_type"])
+                        ot = self._get_lexicon_value(row, kw["origin_type"])
                         if ot is None:
                             continue
 
@@ -731,7 +733,7 @@ class WellTransferer(Transferer):
 
             if notna(row.Status):
 
-                status_value = self._get_lexicon_value(f"LU_Status:{row.Status}")
+                status_value = self._get_lexicon_value(row, f"LU_Status:{row.Status}")
                 if status_value is not None:
                     status_history = StatusHistory(
                         status_type="Well Status",
