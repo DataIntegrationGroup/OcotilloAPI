@@ -306,7 +306,7 @@ class WellTransferer(Transferer):
         try:
             location, elevation_method = make_location(row, self._cached_elevations)
             session.add(location)
-            session.commit()
+            # session.flush()
             self._added_locations[row.PointID] = elevation_method
         except Exception as e:
             self._capture_error(row.PointID, str(e), str(e), "Location")
@@ -333,11 +333,15 @@ class WellTransferer(Transferer):
                     row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
                 )
 
+            is_suitable_for_datalogger = False
+            if notna(row.OpenWellLoggerOK):
+                is_suitable_for_datalogger = bool(row.OpenWellLoggerOK)
+
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
 
             data = CreateWell(
-                location_id=location.id,
+                location_id=0,
                 name=row.PointID,
                 first_visit_date=first_visit_date,
                 hole_depth=row.HoleDepth,
@@ -357,11 +361,7 @@ class WellTransferer(Transferer):
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=(
-                    bool(row.OpenWellLoggerOK)
-                    if not isna(row.OpenWellLoggerOK)
-                    else None
-                ),
+                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -436,6 +436,7 @@ class WellTransferer(Transferer):
                     f"No AquiferType for {well.name}. Skipping aquifer association."
                 )
         else:
+            logger.info(f"Trying to associate aquifer for {well.name}")
             try:
                 self._add_aquifers(session, row, well)
             except Exception as e:
@@ -443,18 +444,18 @@ class WellTransferer(Transferer):
                     f"Error creating aquifer association for {well.name}: {e}"
                 )
 
-        if isna(row.FormationZone):
-            if self.verbose:
-                logger.info(
-                    f"No FormationZone for {well.name}. Skipping formation association."
-                )
-        else:
-            try:
-                self._add_formation_zone(session, row, well)
-            except Exception as e:
-                logger.critical(
-                    f"Error creating formation association for {well.name}: {e}"
-                )
+        # if isna(row.FormationZone):
+        #     if self.verbose:
+        #         logger.info(
+        #             f"No FormationZone for {well.name}. Skipping formation association."
+        #         )
+        # else:
+        #     try:
+        #         self._add_formation_zone(session, row, well)
+        #     except Exception as e:
+        #         logger.critical(
+        #             f"Error creating formation association for {well.name}: {e}"
+        #         )
 
     def _extract_well_purposes(self, row) -> list[str]:
         cu = row.CurrentUse
@@ -469,23 +470,16 @@ class WellTransferer(Transferer):
                     purposes.append(p)
             return purposes
 
-    def _add_formation_zone(self, session, row, well):
+    def _add_formation_zone(self, row, well, formations):
         # --- Set Formation Completion (NOT depth-based stratigraphy) ---
         # This simply records which formation the well was completed in.
         # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
 
         formation_code = row.FormationZone
 
-        # Validate formation exists
-        formation = (
-            session.query(GeologicFormation)
-            .filter(GeologicFormation.formation_code == formation_code)
-            .first()
-        )
-
-        if formation:
+        if formation_code in formations:
             # Formation exists: Set association
-            well.formation_completion_code = formation_code
+            well.formation_completion_code = formations[formation_code]
             if self.verbose:
                 logger.info(
                     f"Set completion formation for {well.name}: {formation_code}"
@@ -610,6 +604,10 @@ class WellTransferer(Transferer):
 
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
+
+        formations = session.query(GeologicFormation).all()
+        formations = {f.formation_code: f for f in formations}
+
         measuring_point_estimator = MeasuringPointEstimator()
         # add things thate need well id
         query = session.query(Thing).filter(Thing.thing_type == "water well")
@@ -619,6 +617,8 @@ class WellTransferer(Transferer):
             objs = []
             step_start_time = time.time()
             row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
+
+            self._add_formation_zone(row, well, formations)
             if notna(row.Notes):
                 note = well.add_note(row.Notes, "Other")
                 objs.append(note)
