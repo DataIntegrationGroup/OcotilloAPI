@@ -1,6 +1,7 @@
+from datetime import datetime
+
 from pandas import isna
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from db import Thing, PermissionHistory, Contact, ThingContactAssociation
 from transfers.util import read_csv, logger, replace_nans, chunk_by_size
@@ -84,3 +85,4 @@ def transfer_permissions(session: Session) -> None:
                 objs.append(permission)
 
         session.bulk_save_objects(objs)
+        session.commit()

@@ -110,6 +110,7 @@ def transfer_all(metrics, limit=100):
         results = _execute_transfer(ContactTransfer, flags=flags)
         metrics.contact_metrics(*results)
 
+    message("TRANSFERRING PERMISSIONS")
     with session_ctx() as session:
         transfer_permissions(session)
 

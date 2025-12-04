@@ -35,6 +35,7 @@ class Transferer(object):
     errors: list = None
     flags: dict = None
     source_table: str = None
+    verbose: bool = False
 
     def __init__(self, flags: dict = None):
         self.errors = []

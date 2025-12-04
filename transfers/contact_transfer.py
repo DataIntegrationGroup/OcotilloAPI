@@ -205,14 +205,15 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, org_mapper, added)
 def _get_organization(row, co_to_org_mapper, org_mapper):
     organization = co_to_org_mapper.get(row.Company, row.Company)
 
-    try:
-        Organization(organization)
-    except ValueError:
-        norganization = next(
-            (k for k, v in org_mapper.items() if v == organization), None
-        )
-        logger.warning(f"mapping {organization} to {norganization}")
-        organization = norganization
+    if organization is not None:
+        try:
+            Organization(organization)
+        except ValueError:
+            norganization = next(
+                (k for k, v in org_mapper.items() if v == organization), None
+            )
+            logger.warning(f"mapping {organization} to {norganization}")
+            organization = norganization
 
     return organization
 

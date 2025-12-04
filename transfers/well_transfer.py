@@ -302,7 +302,7 @@ class WellTransferer(Transferer):
 
         cleaned_df = get_transferable_wells(wdf)
         cleaned_df = filter_non_transferred_wells(cleaned_df)
-
+        cleaned_df = cleaned_df.sort_values(by=["PointID"])
         return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
@@ -352,8 +352,8 @@ class WellTransferer(Transferer):
                 ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
+                measuring_point_height=0,
+                measuring_point_description="",
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
@@ -441,9 +441,10 @@ class WellTransferer(Transferer):
         session.add(assoc)
 
         if isna(row.AquiferType):
-            logger.info(
-                f"No AquiferType for {well.name}. Skipping aquifer association."
-            )
+            if self.verbose:
+                logger.info(
+                    f"No AquiferType for {well.name}. Skipping aquifer association."
+                )
         else:
             try:
                 self._add_aquifers(session, row, well)
@@ -453,9 +454,10 @@ class WellTransferer(Transferer):
                 )
 
         if isna(row.FormationZone):
-            logger.info(
-                f"No FormationZone for {well.name}. Skipping formation association."
-            )
+            if self.verbose:
+                logger.info(
+                    f"No FormationZone for {well.name}. Skipping formation association."
+                )
         else:
             try:
                 self._add_formation_zone(session, row, well)
@@ -481,7 +483,10 @@ class WellTransferer(Transferer):
         if formation:
             # Formation exists: Set association
             well.formation_completion_code = formation_code
-            logger.info(f"Set completion formation for {well.name}: {formation_code}")
+            if self.verbose:
+                logger.info(
+                    f"Set completion formation for {well.name}: {formation_code}"
+                )
         else:
             # Formation does NOT exist: Do not create new formation. Flag and log for review
             logger.critical(
@@ -554,7 +559,7 @@ class WellTransferer(Transferer):
                     thing=well, aquifer_system=aquifer
                 )
                 session.add(aquifer_assoc)
-                session.flush()
+                # session.flush()
 
                 # Create AquiferType records for EACH characteristic
                 aquifer_type_names = []
@@ -584,6 +589,12 @@ class WellTransferer(Transferer):
                     f"Associated well {well.name} with aquifer {aquifer.name} "
                     f"(types: {', '.join(aquifer_type_names)})"
                 )
+            else:
+                logger.info(
+                    f"Well {well.name} already associated with aquifer {aquifer.name}"
+                )
+        else:
+            logger.info(f"Failed to create aquifer for well {well.name}")
 
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
@@ -718,6 +729,7 @@ class WellTransferer(Transferer):
                 logger.info(f"  Added well status for well {well.name}: {status_value}")
             try:
                 session.bulk_save_objects(objs)
+                session.commit()
             except DatabaseError as e:
                 session.rollback()
                 error_dict = e.orig.args[0]

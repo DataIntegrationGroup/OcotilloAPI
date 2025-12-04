@@ -17,6 +17,7 @@
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import Thing, Deployment, Sensor
@@ -122,12 +123,14 @@ class WaterLevelsContinuousTransferer(Transferer):
                 )
                 try:
                     session.commit()
-                except Exception as e:
-                    self.append({"pointid": pointid, "error": e})
+                except DatabaseError as e:
+                    session.rollback()
                     logger.critical(
                         f"Error committing water levels {release_status} block: {e}"
                     )
-                    session.rollback()
+                    self._capture_error(
+                        pointid, e.orig.args[0]["D"], e.orig.args[0]["t"]
+                    )
                     continue
 
         # convert nodeployments to errors
