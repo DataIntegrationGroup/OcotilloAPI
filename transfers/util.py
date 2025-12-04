@@ -594,9 +594,11 @@ class LexiconMapper:
     def __init__(self):
         self._mappers: dict[str, str] = None
 
-    def map_value(self, value) -> str:
+    def map_value(self, value, default=None) -> str:
         value = value.strip()
-        return self._make_lu_to_lexicon_mapper().get(value, value)
+        if default is None:
+            default = value
+        return self._make_lu_to_lexicon_mapper().get(value, default)
 
     def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
         """

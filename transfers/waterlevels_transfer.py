@@ -18,6 +18,7 @@ import uuid
 from datetime import datetime
 
 import pandas as pd
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import (
@@ -155,7 +156,17 @@ class WaterLevelTransferer(Transferer):
 
                 # Sample
                 sample = self._make_sample(row, field_activity, dt_utc, sampler)
-                session.add(sample)
+                try:
+                    session.add(sample)
+                except DatabaseError as e:
+                    session.rollback()
+                    logger.critical(
+                        f"Could not add Sample for WaterLevels record with GlobalID {row.GlobalID} because of the following: {str(e)}"
+                    )
+                    self._capture_error(
+                        pointid, e.orig.args[0]["D"], e.orig.args[0]["t"]
+                    )
+                    continue
 
                 # Observation
                 observation = self._make_observation(row, sample, dt_utc, glv)
@@ -213,9 +224,10 @@ class WaterLevelTransferer(Transferer):
             "null placeholder"
             if pd.isna(row.MeasurementMethod)
             else lexicon_mapper.map_value(
-                f"LU_MeasurementMethod:{row.MeasurementMethod}"
+                f"LU_MeasurementMethod:{row.MeasurementMethod}", "null placeholder"
             )
         )
+
         sample = Sample(
             nma_pk_waterlevels=row.GlobalID,
             field_activity=field_activity,
