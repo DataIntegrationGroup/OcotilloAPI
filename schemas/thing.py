@@ -234,7 +234,6 @@ class WellResponse(BaseThingResponse):
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
-    well_construction_notes: str | None = None
     well_completion_date: PastOrTodayDate | None
     well_completion_date_source: str | None
     well_driller_name: str | None
@@ -252,6 +251,7 @@ class WellResponse(BaseThingResponse):
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
     general_notes: list[NoteResponse] | None = None
+    construction_notes: list[NoteResponse] | None = None
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
 

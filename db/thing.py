@@ -15,7 +15,7 @@
 # ===============================================================================
 from typing import List, TYPE_CHECKING
 from datetime import date
-from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
+from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
@@ -116,8 +116,6 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
     )
-
-    well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
     well_completion_date: Mapped[date] = mapped_column(
         nullable=True, comment="the date the well was completed if known"
@@ -348,7 +346,7 @@ class Thing(
     )
 
     # Full-text search vector
-    search_vector = Column(TSVectorType("name", "well_construction_notes"))
+    search_vector = Column(TSVectorType("name"))
 
     @property
     def current_location(self):
@@ -377,6 +375,10 @@ class Thing(
     @property
     def measuring_notes(self):
         return self._get_notes("Measuring")
+
+    @property
+    def construction_notes(self):
+        return self._get_notes("Construction")
 
     @property
     def well_status(self) -> str | None:

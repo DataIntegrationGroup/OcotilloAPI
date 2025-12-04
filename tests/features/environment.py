@@ -92,7 +92,6 @@ def add_well(context, session, location, name_num):
         release_status="draft",
         well_depth=10,
         hole_depth=10,
-        well_construction_notes="Test well construction notes",
         well_casing_diameter=5.0,
         well_casing_depth=10.0,
         well_completion_date="2013-05-15",
@@ -117,6 +116,7 @@ def add_well(context, session, location, name_num):
         ("General", "well notes"),
         ("Water", "water notes"),
         ("Measuring", "measuring notes"),
+        ("Construction", "construction notes"),
     ):
         n = well.add_note(c, nt)
         session.add(n)
