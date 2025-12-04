@@ -1,3 +1,4 @@
+from pandas import isna
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -13,43 +14,34 @@ does not pertain to permissions.
 """
 
 
-def make_water_level_sample_permission(wdf, well, contact_id):
-    allow_water_level_samples = wdf.loc[wdf["PointID"] == well.name, "MonitorOK"].values
+def _make_permission(
+    wdf, well, contact_id, nma_field, permission_type
+) -> PermissionHistory | None:
 
-    # try:
-    permission_allowed = bool(allow_water_level_samples[0])
+    values = wdf.loc[wdf["PointID"] == well.name, nma_field].values
+    if len(values) == 0:
+        return None
+    elif isna(values[0]):
+        return None
+
+    permission_allowed = bool(values[0])
     permission = PermissionHistory(
         contact_id=contact_id,
-        permission_type="Water Level Sample",
+        permission_type=permission_type,
         permission_allowed=permission_allowed,
         start_date=datetime.today().date(),
         target_id=well.id,
         target_table="thing",
     )
+
     logger.info(
-        f"Transferred Water Level Sample permission for well {well.name}: {permission_allowed}."
+        f"Transferred {permission_type} permission for well {well.name}: {permission_allowed}."
     )
+
     return permission
 
 
-def make_chemistry_permission(wdf, well, contact_id):
-    allow_water_chemistry_samples = wdf.loc[
-        wdf["PointID"] == well.name, "SampleOK"
-    ].values
-
-    permission_allowed = bool(allow_water_chemistry_samples[0])
-    permission = PermissionHistory(
-        contact_id=contact_id,
-        permission_type="Water Chemistry Sample",
-        permission_allowed=permission_allowed,
-        start_date=datetime.today().date(),
-        target_id=well.id,
-        target_table="thing",
-    )
-    return permission
-
-
-def transfer_permissions(session: Session):
+def transfer_permissions(session: Session) -> None:
     """
     The transferred wells and contacts need to be transferred first
     - to access the auto-generated well IDs
@@ -79,10 +71,16 @@ def transfer_permissions(session: Session):
 
             visited.append(well.id)
 
-            permission = make_chemistry_permission(wdf, well, contact.id)
-            objs.append(permission)
+            permission = _make_permission(
+                wdf, well, contact.id, "SampleOK", "Water Chemistry Sample"
+            )
+            if permission:
+                objs.append(permission)
 
-            permission = make_water_level_sample_permission(wdf, well, contact.id)
-            objs.append(permission)
+            permission = _make_permission(
+                wdf, well, contact.id, "MonitorOK", "Water Level Sample"
+            )
+            if permission:
+                objs.append(permission)
 
         session.bulk_save_objects(objs)
