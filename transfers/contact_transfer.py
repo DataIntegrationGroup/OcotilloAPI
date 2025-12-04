@@ -212,8 +212,9 @@ def _get_organization(row, co_to_org_mapper, org_mapper):
             norganization = next(
                 (k for k, v in org_mapper.items() if v == organization), None
             )
-            logger.warning(f"mapping {organization} to {norganization}")
-            organization = norganization
+            if norganization is not None:
+                logger.warning(f"mapping {organization} to {norganization}")
+                organization = norganization
 
     return organization
 
