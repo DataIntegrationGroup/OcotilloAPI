@@ -370,7 +370,7 @@ class Thing(
 
     @property
     def general_notes(self):
-        return self._get_notes("Other")
+        return self._get_notes("General")
 
     @property
     def measuring_notes(self):
