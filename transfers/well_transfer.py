@@ -158,7 +158,7 @@ def _extract_aquifer_type_codes(aquifer_code: str) -> list[str]:
 
 # Get or create aquifer system
 def get_or_create_aquifer_system(
-    session: Session, aquifer_name: str, primary_type: str
+    session: Session, aquifers: list, aquifer_name: str, primary_type: str
 ) -> AquiferSystem | None:
     """
     Get existing aquifer or create new one if it doesn't exist.
@@ -172,10 +172,10 @@ def get_or_create_aquifer_system(
         primary_type: Primary aquifer type for the aquifer_type field
     """
     # Try to find existing aquifer by name
-    aquifer = (
-        session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
-    )
-
+    # aquifer = (
+    #     session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
+    # )
+    aquifer = next((a for a in aquifers if a.name == aquifer_name), None)
     if aquifer:
         return aquifer
 
@@ -191,9 +191,7 @@ def get_or_create_aquifer_system(
             geographic_scale=None,  # Default
         )
         session.add(aquifer)
-        session.commit()
-        # session.flush()  # Get the ID
-        # session.refresh(aquifer)
+        session.flush()  # Get the ID
         return aquifer
     except DatabaseError as e:
         session.rollback()
@@ -265,6 +263,7 @@ class WellTransferer(Transferer):
         super().__init__(*args, **kw)
         self._cached_elevations = get_cached_elevations()
         self._added_locations = {}
+        self._aquifers = None
 
     def _get_dfs(self):
         wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
@@ -545,8 +544,13 @@ class WellTransferer(Transferer):
             )
             primary_type = "Unknown"  # Creates aquifer with placeholder
 
+        if self._aquifers is None:
+            self._aquifers = session.query(AquiferSystem).all()
+
         # Get or create the aquifer
-        aquifer = get_or_create_aquifer_system(session, aquifer_name, primary_type)
+        aquifer = get_or_create_aquifer_system(
+            session, self._aquifers, aquifer_name, primary_type
+        )
         if aquifer:
             # Check if association already exists
             existing_assoc = (
