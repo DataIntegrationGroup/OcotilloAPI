@@ -128,9 +128,7 @@ class WaterLevelsContinuousTransferer(Transferer):
                     logger.critical(
                         f"Error committing water levels {release_status} block: {e}"
                     )
-                    self._capture_error(
-                        pointid, e.orig.args[0]["D"], e.orig.args[0]["t"]
-                    )
+                    self._capture_database_error(pointid, e)
                     continue
 
         # convert nodeployments to errors

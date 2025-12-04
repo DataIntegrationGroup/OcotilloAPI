@@ -17,6 +17,7 @@ import time
 
 import pandas as pd
 from pandas import DataFrame
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import Thing, Base
@@ -42,13 +43,17 @@ class Transferer(object):
         self.flags = flags if flags else {}
         self.manual_fixer = ManualFixer()
 
-    def transfer(self):
+    def transfer(self) -> None:
         with session_ctx() as session:
             self.input_df, self.cleaned_df = self._get_dfs()
             self._transfer_hook(session)
             session.commit()
 
-    def _capture_error(self, pointid, error, field, table=None):
+    def _capture_database_error(self, pointid: str, err: DatabaseError) -> None:
+        error_dict = err.orig.args[0]
+        self._capture_error(pointid, error_dict["D"], error_dict["t"])
+
+    def _capture_error(self, pointid: str, error: str, field: str, table=None) -> None:
         if table is None:
             table = self.source_table
 

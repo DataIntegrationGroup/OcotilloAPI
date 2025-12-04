@@ -630,30 +630,29 @@ class WellTransferer(Transferer):
             )
             objs.extend(data_provenances)
 
-            for row_field, kw in (
-                (
-                    "CompletionSource",
-                    dict(
-                        field_name="well_completion_date",
-                        origin_type=f"LU_Depth_CompletionSource:{row.CompletionSource}",
-                    ),
-                ),
-                (
-                    "DataSource",
-                    dict(
-                        field_name="well_construction_method",
-                        origin_source=row.DataSource,
-                    ),
-                ),
-                (
-                    "DepthSource",
-                    dict(
-                        field_name="well_depth",
-                        origin_type=f"LU_Depth_CompletionSource:{row.DepthSource}",
-                    ),
-                ),
-            ):
+            cs = (
+                "CompletionSource",
+                {
+                    "field_name": "well_completion_date",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
+                },
+            )
+            ds = (
+                "DataSource",
+                {
+                    "field_name": "well_construction_method",
+                    "origin_source": row.DataSource,
+                },
+            )
+            des = (
+                "DepthSource",
+                {
+                    "field_name": "well_depth",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
+                },
+            )
 
+            for row_field, kw in (cs, ds, des):
                 if notna(row[row_field]):
                     if "origin_type" in kw:
                         ot = self._get_lexicon_value(row, kw["origin_type"])
@@ -752,8 +751,7 @@ class WellTransferer(Transferer):
                 session.commit()
             except DatabaseError as e:
                 session.rollback()
-                error_dict = e.orig.args[0]
-                self._capture_error(well.name, error_dict["D"], error_dict["t"])
+                self._capture_database_error(well.name, e)
 
             logger.info(
                 f"After hook: {well.name} {i+1}/{count} took {time.time() - step_start_time:.2f}s"
