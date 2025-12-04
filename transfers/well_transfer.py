@@ -100,18 +100,6 @@ def _get_first_visit_date(row) -> datetime | None:
     return first_visit_date
 
 
-def _extract_well_purposes(row) -> list[str]:
-    cu = row.CurrentUse
-    purposes = (
-        []
-        if isna(cu)
-        else [lexicon_mapper.map_value(f"LU_CurrentUse:{cui}") for cui in cu]
-    )
-
-    # logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
-    return purposes
-
-
 def _extract_casing_materials(row) -> list[str]:
     materials = []
     if "pvc" in row.CasingDescription.lower():
@@ -331,11 +319,19 @@ class WellTransferer(Transferer):
 
         try:
             first_visit_date = _get_first_visit_date(row)
-            well_purposes = [] if isna(row.CurrentUse) else _extract_well_purposes(row)
+            well_purposes = (
+                [] if isna(row.CurrentUse) else self._extract_well_purposes(row)
+            )
             well_casing_materials = (
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
             well_pump_type = _extract_well_pump_type(row)
+
+            wcm = None
+            if notna(row.ConstructionMethod):
+                wcm = self._get_lexicon_value(
+                    row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
+                )
 
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
@@ -359,13 +355,7 @@ class WellTransferer(Transferer):
                 ),
                 well_completion_date=row.CompletionDate,
                 well_driller_name=row.DrillerName,
-                well_construction_method=(
-                    lexicon_mapper.map_value(
-                        f"LU_ConstructionMethod:{row.ConstructionMethod}"
-                    )
-                    if not isna(row.ConstructionMethod)
-                    else None
-                ),
+                well_construction_method=wcm,
                 well_pump_type=well_pump_type,
                 is_suitable_for_datalogger=(
                     bool(row.OpenWellLoggerOK)
@@ -466,6 +456,19 @@ class WellTransferer(Transferer):
                     f"Error creating formation association for {well.name}: {e}"
                 )
 
+    def _extract_well_purposes(self, row) -> list[str]:
+        cu = row.CurrentUse
+
+        if isna(cu):
+            return []
+        else:
+            purposes = []
+            for cui in cu:
+                p = self._get_lexicon_value(f"LU_CurrentUse:{cui}")
+                if p is not None:
+                    purposes.append(p)
+            return purposes
+
     def _add_formation_zone(self, session, row, well):
         # --- Set Formation Completion (NOT depth-based stratigraphy) ---
         # This simply records which formation the well was completed in.
@@ -496,6 +499,15 @@ class WellTransferer(Transferer):
                 row.PointID, f"Unknown formation: {formation_code}", "FormationZone"
             )
 
+    def _get_lexicon_value(self, row, value, default=None):
+        try:
+            return lexicon_mapper.map_value(value)
+        except KeyError:
+            self._capture_error(
+                row.PointID, f"Unknown lexicon value: {value}", "Unknown"
+            )
+            return default
+
     def _add_aquifers(self, session, row, well):
         # Parse codes (handles multi-character codes like "FC")
         aquifer_codes = _extract_aquifer_type_codes(row.AquiferType)
@@ -509,9 +521,7 @@ class WellTransferer(Transferer):
         # Map AqClass code to aquifer name using lexicon mapper
         if isna(row.AqClass):
             # No AqClass - use first code's mapped name as aquifer name
-            aquifer_name = lexicon_mapper.map_value(
-                f"LU_AquiferType:{aquifer_codes[0]}"
-            )
+            aquifer_name = self._get_lexicon_value(f"LU_AquiferType:{aquifer_codes[0]}")
         else:
             try:
                 aquifer_name = lexicon_mapper.map_value(
@@ -521,7 +531,7 @@ class WellTransferer(Transferer):
                 logger.warning(
                     f"Unknown AqClass code '{row.AqClass}' for well {row.PointID}, using first type as name"
                 )
-                aquifer_name = lexicon_mapper.map_value(
+                aquifer_name = self._get_lexicon_value(
                     f"LU_AquiferType:{aquifer_codes[0]}"
                 )
 
@@ -644,17 +654,11 @@ class WellTransferer(Transferer):
 
                 if notna(row[row_field]):
                     if "origin_type" in kw:
-                        try:
-                            kw["origin_type"] = lexicon_mapper.map_value(
-                                kw["origin_type"]
-                            )
-                        except KeyError:
-                            self._capture_error(
-                                well.name,
-                                f"Unknown origin type: {kw['origin_type']}",
-                                row_field,
-                            )
+                        ot = self._get_lexicon_value(kw["origin_type"])
+                        if ot is None:
                             continue
+
+                        kw["origin_type"] = ot
 
                     dp = DataProvenance(target_id=well.id, target_table="thing", **kw)
                     objs.append(dp)
@@ -726,17 +730,21 @@ class WellTransferer(Transferer):
                         )
 
             if notna(row.Status):
-                status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
-                status_history = StatusHistory(
-                    status_type="Well Status",
-                    status_value=status_value,
-                    reason=row.StatusUserNotes,
-                    start_date=datetime.now(tz=UTC),
-                    target_id=target_id,
-                    target_table=target_table,
-                )
-                objs.append(status_history)
-                logger.info(f"  Added well status for well {well.name}: {status_value}")
+
+                status_value = self._get_lexicon_value(f"LU_Status:{row.Status}")
+                if status_value is not None:
+                    status_history = StatusHistory(
+                        status_type="Well Status",
+                        status_value=status_value,
+                        reason=row.StatusUserNotes,
+                        start_date=datetime.now(tz=UTC),
+                        target_id=target_id,
+                        target_table=target_table,
+                    )
+                    objs.append(status_history)
+                    logger.info(
+                        f"  Added well status for well {well.name}: {status_value}"
+                    )
             try:
                 session.bulk_save_objects(objs)
                 session.commit()

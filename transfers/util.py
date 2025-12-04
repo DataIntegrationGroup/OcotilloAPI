@@ -438,9 +438,12 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     elif pd.isna(row.AltitudeMethod):
         elevation_method = None
     else:
-        elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
-        )
+        try:
+            elevation_method = lexicon_mapper.map_value(
+                f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}", None
+            )
+        except KeyError:
+            elevation_method = None
 
     # Extract AMPAPI date fields (Date type, not DateTime)
     nma_date_created = None
@@ -552,11 +555,14 @@ def make_location_data_provenance(
     #     minus_point_decimal_deg = Point(minus_longitude, minus_latitude)
 
     if row.CoordinateMethod or row.CoordinateAccuracy:
-        coordinate_method = (
-            lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
-            if not pd.isna(row.CoordinateMethod)
-            else None
-        )
+        try:
+            coordinate_method = (
+                lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
+                if not pd.isna(row.CoordinateMethod)
+                else None
+            )
+        except KeyError:
+            coordinate_method = None
 
         accuracy_value, accuracy_unit = NMA_COORDINATE_ACCURACY.get(
             row.CoordinateAccuracy, (None, None)
