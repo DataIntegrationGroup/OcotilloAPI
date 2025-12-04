@@ -18,7 +18,6 @@ import uuid
 from datetime import datetime
 
 import pandas as pd
-from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import (
@@ -103,9 +102,16 @@ class WaterLevelTransferer(Transferer):
             pointid = index[0]
             thing = session.query(Thing).where(Thing.name == pointid).first()
 
+            objs = []
             for i, row in enumerate(group.itertuples()):
                 dt_utc = self._get_dt_utc(row)
                 if dt_utc is None:
+                    continue
+
+                    # reasons
+                try:
+                    glv = self._get_groundwater_level_reason(row)
+                except ValueError as e:
                     continue
 
                 release_status = "public" if row.PublicRelease else "private"
@@ -131,10 +137,8 @@ class WaterLevelTransferer(Transferer):
                     else:
                         field_event_participant.participant_role = "Participant"
 
-                    session.add(field_event_participant)
+                    objs.append(field_event_participant)
 
-                # reasons
-                glv = self._get_groundwater_level_reason(row)
                 if (
                     glv
                     == "Well was destroyed (no subsequent water levels should be recorded)"
@@ -152,26 +156,18 @@ class WaterLevelTransferer(Transferer):
                     activity_type="groundwater level",
                     release_status=release_status,
                 )
-                session.add(field_activity)
+                objs.append(field_activity)
 
                 # Sample
                 sample = self._make_sample(row, field_activity, dt_utc, sampler)
-                try:
-                    session.add(sample)
-                except DatabaseError as e:
-                    session.rollback()
-                    logger.critical(
-                        f"Could not add Sample for WaterLevels record with GlobalID {row.GlobalID} because of the following: {str(e)}"
-                    )
-                    self._capture_error(
-                        pointid, e.orig.args[0]["D"], e.orig.args[0]["t"]
-                    )
-                    continue
+                objs.append(sample)
 
                 # Observation
                 observation = self._make_observation(row, sample, dt_utc, glv)
-                session.add(observation)
+                objs.append(observation)
 
+            if objs:
+                session.bulk_save_objects(objs)
             session.commit()
 
     def _make_observation(
@@ -247,9 +243,11 @@ class WaterLevelTransferer(Transferer):
         if pd.isna(glv):
             return None
 
-        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}")
+        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}", None)
         if glv == "Water level not affected by status":
             glv = "Water level not affected"
+        elif glv is None:
+            raise ValueError(f"Unknown groundwater level reason: {glv}")
         return glv
 
     def _get_field_event_participants(self, session, row, thing) -> list[Contact]:

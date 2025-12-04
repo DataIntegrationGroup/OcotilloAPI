@@ -603,6 +603,7 @@ class WellTransferer(Transferer):
         query = session.query(Thing).filter(Thing.thing_type == "water well")
         count = query.count()
         for i, well in enumerate(query.all()):
+            logger.info("Start after hook iteration")
             objs = []
             step_start_time = time.time()
             row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
