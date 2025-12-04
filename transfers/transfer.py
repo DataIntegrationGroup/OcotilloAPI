@@ -178,6 +178,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
+    # main()
+    c = ContactTransfer()
+    c.calculate_missing_organizations()
 # ============= EOF =============================================

@@ -57,6 +57,9 @@ class Transferer(object):
         if table is None:
             table = self.source_table
 
+        logger.critical(
+            f"Capture Error: PointID={pointid}, Error: {error}, {table}:{field}"
+        )
         self.errors.append(
             {
                 "pointid": pointid,

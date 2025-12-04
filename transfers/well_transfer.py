@@ -678,7 +678,6 @@ class WellTransferer(Transferer):
                     thing_id=well.id,
                     measuring_point_height=mph,
                     measuring_point_description=mph_desc,
-                    # start_date=datetime.now(tz=UTC),
                     start_date=start_date,
                     end_date=end_date,
                 )
@@ -750,15 +749,20 @@ class WellTransferer(Transferer):
                     logger.info(
                         f"  Added well status for well {well.name}: {status_value}"
                     )
+
+            save_time = time.time()
             try:
                 session.bulk_save_objects(objs)
                 session.commit()
             except DatabaseError as e:
                 session.rollback()
                 self._capture_database_error(well.name, e)
+            finally:
+                save_time = time.time() - save_time
 
             logger.info(
-                f"After hook: {well.name} {i+1}/{count} took {time.time() - step_start_time:.2f}s"
+                f"After hook: {well.name} {i+1}/{count} took {time.time() - step_start_time:.2f}s, "
+                f"n_objects={len(objs)}, save_time={save_time}"
             )
 
 

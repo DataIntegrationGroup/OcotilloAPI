@@ -71,6 +71,10 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     well_groups = cleaned_df.groupby("PointID")
 
     formations = session.query(GeologicFormation).all()
+    things = session.query(Thing).all()
+
+    formations = {f.formation_code: f for f in formations}
+    things = {t.name: t for t in things}
 
     for well_index, (pointid, strat_group) in enumerate(well_groups):
         # Check limit (on number of wells, not records)
@@ -95,7 +99,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 continue
 
         # 5. Get the well from database
-        thing = session.query(Thing).filter(Thing.name == pointid).first()
+        thing = things.get(pointid)
         if not thing:
             logger.warning(
                 f"Well {pointid} not found in database, skipping stratigraphy"
@@ -204,9 +208,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
             #     .first()
             # )
 
-            formation = next(
-                (f for f in formations if f.formation_code == formation_code)
-            )
+            formation = formations.get(formation_code)
             if not formation:
                 logger.info(f"Geologic formation not in lexicon: {formation_code}")
                 skipped_count += 1

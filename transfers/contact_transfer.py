@@ -58,6 +58,17 @@ class ContactTransfer(ThingBasedTransferer):
 
         self._added = []
 
+    def calculate_missing_organizations(self):
+        input_df, cleaned_df = self._get_dfs()
+
+        for row in replace_nans(input_df).itertuples():
+            if not row.Company:
+                continue
+            try:
+                _get_organization(row, self._co_to_org_mapper)
+            except ValueError as e:
+                logger.critical(f"Invalid Organization {e}")
+
     def _get_dfs(self):
         input_df = read_csv(self.source_table)
         odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
