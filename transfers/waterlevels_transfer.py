@@ -235,6 +235,8 @@ class WaterLevelTransferer(Transferer):
         if pd.isna(glv):
             return None
 
+        if glv == "X?":
+            glv = "X"
         glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}")
         if glv == "Water level not affected by status":
             glv = "Water level not affected"
