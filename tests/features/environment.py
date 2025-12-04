@@ -74,7 +74,7 @@ def add_location(context, session):
     session.add(loc)
     session.commit()
     session.refresh(loc)
-    n = loc.add_note("Test location", "Other")
+    n = loc.add_note("Test location", "General")
     session.add(n)
     session.commit()
     session.refresh(loc)
@@ -114,7 +114,7 @@ def add_well(context, session, location, name_num):
     session.refresh(well)
 
     for nt, c in (
-        ("Other", "well notes"),
+        ("General", "well notes"),
         ("Water", "water notes"),
         ("Measuring", "measuring notes"),
     ):
