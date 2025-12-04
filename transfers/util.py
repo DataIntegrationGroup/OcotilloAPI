@@ -596,9 +596,13 @@ class LexiconMapper:
 
     def map_value(self, value, default=None) -> str:
         value = value.strip()
-        if default is None:
-            default = value
-        return self._make_lu_to_lexicon_mapper().get(value, default)
+
+        try:
+            return self._make_lu_to_lexicon_mapper()[value]
+        except KeyError:
+            if default is not None:
+                return default
+            raise KeyError(f"No mapping found for {value}")
 
     def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
         """

@@ -623,9 +623,7 @@ class WellTransferer(Transferer):
                     "CompletionSource",
                     dict(
                         field_name="well_completion_date",
-                        origin_type=lexicon_mapper.map_value(
-                            f"LU_Depth_CompletionSource:{row.CompletionSource}"
-                        ),
+                        origin_type=f"LU_Depth_CompletionSource:{row.CompletionSource}",
                     ),
                 ),
                 (
@@ -639,14 +637,25 @@ class WellTransferer(Transferer):
                     "DepthSource",
                     dict(
                         field_name="well_depth",
-                        origin_type=lexicon_mapper.map_value(
-                            f"LU_Depth_CompletionSource:{row.DepthSource}"
-                        ),
+                        origin_type=f"LU_Depth_CompletionSource:{row.DepthSource}",
                     ),
                 ),
             ):
 
                 if notna(row[row_field]):
+                    if "origin_type" in kw:
+                        try:
+                            kw["origin_type"] = lexicon_mapper.map_value(
+                                kw["origin_type"]
+                            )
+                        except KeyError:
+                            self._capture_error(
+                                well.name,
+                                f"Unknown origin type: {kw['origin_type']}",
+                                row_field,
+                            )
+                            continue
+
                     dp = DataProvenance(target_id=well.id, target_table="thing", **kw)
                     objs.append(dp)
 
