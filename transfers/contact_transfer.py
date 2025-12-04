@@ -20,6 +20,7 @@ from pandas import DataFrame
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from core.enums import Organization
 from db import (
     Contact,
     ThingContactAssociation,
@@ -205,6 +206,10 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
 
 def _get_organization(row, co_to_org_mapper):
     organization = co_to_org_mapper.get(row.Company, row.Company)
+
+    # use Organization enum to catch validation errors
+    Organization(organization)
+
     return organization
 
 
