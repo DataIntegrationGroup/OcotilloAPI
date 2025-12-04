@@ -1179,6 +1179,7 @@
     {"categories": ["note_type"], "term": "General", "definition": "Other types of notes that do not fit into the predefined categories."},
     {"categories": ["note_type"], "term": "Water", "definition": "Water bearing zone information and other info from ose reports"},
     {"categories": ["note_type"], "term": "Measuring", "definition": "Notes about measuring/visiting the well, on Access form"},
+    {"categories": ["note_type"], "term": "Coordinate", "definition": "Notes about a location's coordinates"},
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},
     {"categories": ["well_pump_type"], "term": "Jet", "definition": "Jet Pump"},
     {"categories": ["well_pump_type"], "term": "Line Shaft", "definition": "Line Shaft"},
