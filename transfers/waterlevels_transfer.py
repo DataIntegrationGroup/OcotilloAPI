@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import json
+from typing import Optional
 import uuid
 from datetime import datetime
 
@@ -51,7 +52,6 @@ SPACE_6 = " " * 6
 def get_contacts_info(
     row, measured_by, measured_by_mapper
 ) -> list[tuple[str, str, str]]:
-
     # TODO: get help figuring out (AMP)
     if measured_by in measured_by_mapper:
         args = measured_by_mapper[measured_by]
@@ -230,15 +230,23 @@ class WaterLevelTransferer(Transferer):
         )
         return sample
 
-    def _get_groundwater_level_reason(self, row) -> str:
+    def _get_groundwater_level_reason(self, row) -> Optional[str]:
         glv = row.LevelStatus
         if pd.isna(glv):
             return None
 
-        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}")
-        if glv == "Water level not affected by status":
-            glv = "Water level not affected"
-        return glv
+        lookup_key = f"LU_LevelStatus:{glv}"
+        mapped = lexicon_mapper.map_value(lookup_key)
+
+        # If the mapper returns the raw key, it means "not mapped"
+        if mapped == lookup_key:
+            logger.warning(f"Unknown LevelStatus '{glv}', mapping to None")
+            return None
+
+        if mapped == "Water level not affected by status":
+            mapped = "Water level not affected"
+
+        return mapped
 
     def _get_field_event_participants(self, session, row, thing) -> list[Contact]:
         field_event_participants = []
