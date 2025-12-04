@@ -210,6 +210,7 @@ def _get_organization(row, co_to_org_mapper):
     # use Organization enum to catch validation errors
     Organization(organization)
 
+
     return organization
 
 

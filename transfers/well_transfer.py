@@ -100,18 +100,6 @@ def _get_first_visit_date(row) -> datetime | None:
     return first_visit_date
 
 
-def _extract_well_purposes(row) -> list[str]:
-    cu = row.CurrentUse
-    purposes = (
-        []
-        if isna(cu)
-        else [lexicon_mapper.map_value(f"LU_CurrentUse:{cui}") for cui in cu]
-    )
-
-    # logger.info(f"well {row.PointID},{cu} has purposes: {purposes}")
-    return purposes
-
-
 def _extract_casing_materials(row) -> list[str]:
     materials = []
     if "pvc" in row.CasingDescription.lower():
@@ -302,7 +290,7 @@ class WellTransferer(Transferer):
 
         cleaned_df = get_transferable_wells(wdf)
         cleaned_df = filter_non_transferred_wells(cleaned_df)
-
+        cleaned_df = cleaned_df.sort_values(by=["PointID"])
         return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
@@ -318,7 +306,7 @@ class WellTransferer(Transferer):
         try:
             location, elevation_method = make_location(row, self._cached_elevations)
             session.add(location)
-            session.commit()
+            # session.flush()
             self._added_locations[row.PointID] = elevation_method
         except Exception as e:
             self._capture_error(row.PointID, str(e), str(e), "Location")
@@ -331,17 +319,29 @@ class WellTransferer(Transferer):
 
         try:
             first_visit_date = _get_first_visit_date(row)
-            well_purposes = [] if isna(row.CurrentUse) else _extract_well_purposes(row)
+            well_purposes = (
+                [] if isna(row.CurrentUse) else self._extract_well_purposes(row)
+            )
             well_casing_materials = (
                 [] if isna(row.CasingDescription) else _extract_casing_materials(row)
             )
             well_pump_type = _extract_well_pump_type(row)
 
+            wcm = None
+            if notna(row.ConstructionMethod):
+                wcm = self._get_lexicon_value(
+                    row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
+                )
+
+            is_suitable_for_datalogger = False
+            if notna(row.OpenWellLoggerOK):
+                is_suitable_for_datalogger = bool(row.OpenWellLoggerOK)
+
             # manually add the well rather than add_well from services/thing_helper.py
             # so that effective_start can be set on the location assocation
 
             data = CreateWell(
-                location_id=location.id,
+                location_id=0,
                 name=row.PointID,
                 first_visit_date=first_visit_date,
                 hole_depth=row.HoleDepth,
@@ -352,26 +352,16 @@ class WellTransferer(Transferer):
                 ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
+                measuring_point_height=0,
+                measuring_point_description="",
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
                 well_completion_date=row.CompletionDate,
                 well_driller_name=row.DrillerName,
-                well_construction_method=(
-                    lexicon_mapper.map_value(
-                        f"LU_ConstructionMethod:{row.ConstructionMethod}"
-                    )
-                    if not isna(row.ConstructionMethod)
-                    else None
-                ),
+                well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=(
-                    bool(row.OpenWellLoggerOK)
-                    if not isna(row.OpenWellLoggerOK)
-                    else None
-                ),
+                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -441,10 +431,12 @@ class WellTransferer(Transferer):
         session.add(assoc)
 
         if isna(row.AquiferType):
-            logger.info(
-                f"No AquiferType for {well.name}. Skipping aquifer association."
-            )
+            if self.verbose:
+                logger.info(
+                    f"No AquiferType for {well.name}. Skipping aquifer association."
+                )
         else:
+            logger.info(f"Trying to associate aquifer for {well.name}")
             try:
                 self._add_aquifers(session, row, well)
             except Exception as e:
@@ -452,36 +444,46 @@ class WellTransferer(Transferer):
                     f"Error creating aquifer association for {well.name}: {e}"
                 )
 
-        if isna(row.FormationZone):
-            logger.info(
-                f"No FormationZone for {well.name}. Skipping formation association."
-            )
-        else:
-            try:
-                self._add_formation_zone(session, row, well)
-            except Exception as e:
-                logger.critical(
-                    f"Error creating formation association for {well.name}: {e}"
-                )
+        # if isna(row.FormationZone):
+        #     if self.verbose:
+        #         logger.info(
+        #             f"No FormationZone for {well.name}. Skipping formation association."
+        #         )
+        # else:
+        #     try:
+        #         self._add_formation_zone(session, row, well)
+        #     except Exception as e:
+        #         logger.critical(
+        #             f"Error creating formation association for {well.name}: {e}"
+        #         )
 
-    def _add_formation_zone(self, session, row, well):
+    def _extract_well_purposes(self, row) -> list[str]:
+        cu = row.CurrentUse
+
+        if isna(cu):
+            return []
+        else:
+            purposes = []
+            for cui in cu:
+                p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
+                if p is not None:
+                    purposes.append(p)
+            return purposes
+
+    def _add_formation_zone(self, row, well, formations):
         # --- Set Formation Completion (NOT depth-based stratigraphy) ---
         # This simply records which formation the well was completed in.
         # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
 
         formation_code = row.FormationZone
 
-        # Validate formation exists
-        formation = (
-            session.query(GeologicFormation)
-            .filter(GeologicFormation.formation_code == formation_code)
-            .first()
-        )
-
-        if formation:
+        if formation_code in formations:
             # Formation exists: Set association
-            well.formation_completion_code = formation_code
-            logger.info(f"Set completion formation for {well.name}: {formation_code}")
+            well.formation_completion_code = formations[formation_code]
+            if self.verbose:
+                logger.info(
+                    f"Set completion formation for {well.name}: {formation_code}"
+                )
         else:
             # Formation does NOT exist: Do not create new formation. Flag and log for review
             logger.critical(
@@ -490,6 +492,15 @@ class WellTransferer(Transferer):
             self._capture_error(
                 row.PointID, f"Unknown formation: {formation_code}", "FormationZone"
             )
+
+    def _get_lexicon_value(self, row, value, default=None):
+        try:
+            return lexicon_mapper.map_value(value)
+        except KeyError:
+            self._capture_error(
+                row.PointID, f"Unknown lexicon value: {value}", "Unknown"
+            )
+            return default
 
     def _add_aquifers(self, session, row, well):
         # Parse codes (handles multi-character codes like "FC")
@@ -504,8 +515,8 @@ class WellTransferer(Transferer):
         # Map AqClass code to aquifer name using lexicon mapper
         if isna(row.AqClass):
             # No AqClass - use first code's mapped name as aquifer name
-            aquifer_name = lexicon_mapper.map_value(
-                f"LU_AquiferType:{aquifer_codes[0]}"
+            aquifer_name = self._get_lexicon_value(
+                row, f"LU_AquiferType:{aquifer_codes[0]}"
             )
         else:
             try:
@@ -516,8 +527,8 @@ class WellTransferer(Transferer):
                 logger.warning(
                     f"Unknown AqClass code '{row.AqClass}' for well {row.PointID}, using first type as name"
                 )
-                aquifer_name = lexicon_mapper.map_value(
-                    f"LU_AquiferType:{aquifer_codes[0]}"
+                aquifer_name = self._get_lexicon_value(
+                    row, f"LU_AquiferType:{aquifer_codes[0]}"
                 )
 
         # Determine primary type
@@ -554,7 +565,7 @@ class WellTransferer(Transferer):
                     thing=well, aquifer_system=aquifer
                 )
                 session.add(aquifer_assoc)
-                session.flush()
+                # session.flush()
 
                 # Create AquiferType records for EACH characteristic
                 aquifer_type_names = []
@@ -584,17 +595,30 @@ class WellTransferer(Transferer):
                     f"Associated well {well.name} with aquifer {aquifer.name} "
                     f"(types: {', '.join(aquifer_type_names)})"
                 )
+            else:
+                logger.info(
+                    f"Well {well.name} already associated with aquifer {aquifer.name}"
+                )
+        else:
+            logger.info(f"Failed to create aquifer for well {well.name}")
 
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
+
+        formations = session.query(GeologicFormation).all()
+        formations = {f.formation_code: f for f in formations}
+
         measuring_point_estimator = MeasuringPointEstimator()
         # add things thate need well id
         query = session.query(Thing).filter(Thing.thing_type == "water well")
         count = query.count()
         for i, well in enumerate(query.all()):
+            logger.info("Start after hook iteration")
             objs = []
             step_start_time = time.time()
             row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
+
+            self._add_formation_zone(row, well, formations)
             if notna(row.Notes):
                 note = well.add_note(row.Notes, "Other")
                 objs.append(note)
@@ -606,35 +630,37 @@ class WellTransferer(Transferer):
             )
             objs.extend(data_provenances)
 
-            for row_field, kw in (
-                (
-                    "CompletionSource",
-                    dict(
-                        field_name="well_completion_date",
-                        origin_type=lexicon_mapper.map_value(
-                            f"LU_Depth_CompletionSource:{row.CompletionSource}"
-                        ),
-                    ),
-                ),
-                (
-                    "DataSource",
-                    dict(
-                        field_name="well_construction_method",
-                        origin_source=row.DataSource,
-                    ),
-                ),
-                (
-                    "DepthSource",
-                    dict(
-                        field_name="well_depth",
-                        origin_type=lexicon_mapper.map_value(
-                            f"LU_Depth_CompletionSource:{row.DepthSource}"
-                        ),
-                    ),
-                ),
-            ):
+            cs = (
+                "CompletionSource",
+                {
+                    "field_name": "well_completion_date",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
+                },
+            )
+            ds = (
+                "DataSource",
+                {
+                    "field_name": "well_construction_method",
+                    "origin_source": row.DataSource,
+                },
+            )
+            des = (
+                "DepthSource",
+                {
+                    "field_name": "well_depth",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
+                },
+            )
 
+            for row_field, kw in (cs, ds, des):
                 if notna(row[row_field]):
+                    if "origin_type" in kw:
+                        ot = self._get_lexicon_value(row, kw["origin_type"])
+                        if ot is None:
+                            continue
+
+                        kw["origin_type"] = ot
+
                     dp = DataProvenance(target_id=well.id, target_table="thing", **kw)
                     objs.append(dp)
 
@@ -705,23 +731,27 @@ class WellTransferer(Transferer):
                         )
 
             if notna(row.Status):
-                status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
-                status_history = StatusHistory(
-                    status_type="Well Status",
-                    status_value=status_value,
-                    reason=row.StatusUserNotes,
-                    start_date=datetime.now(tz=UTC),
-                    target_id=target_id,
-                    target_table=target_table,
-                )
-                objs.append(status_history)
-                logger.info(f"  Added well status for well {well.name}: {status_value}")
+
+                status_value = self._get_lexicon_value(row, f"LU_Status:{row.Status}")
+                if status_value is not None:
+                    status_history = StatusHistory(
+                        status_type="Well Status",
+                        status_value=status_value,
+                        reason=row.StatusUserNotes,
+                        start_date=datetime.now(tz=UTC),
+                        target_id=target_id,
+                        target_table=target_table,
+                    )
+                    objs.append(status_history)
+                    logger.info(
+                        f"  Added well status for well {well.name}: {status_value}"
+                    )
             try:
                 session.bulk_save_objects(objs)
+                session.commit()
             except DatabaseError as e:
                 session.rollback()
-                error_dict = e.orig.args[0]
-                self._capture_error(well.name, error_dict["D"], error_dict["t"])
+                self._capture_database_error(well.name, e)
 
             logger.info(
                 f"After hook: {well.name} {i+1}/{count} took {time.time() - step_start_time:.2f}s"

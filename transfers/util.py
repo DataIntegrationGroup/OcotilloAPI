@@ -382,7 +382,10 @@ def convert_mt_to_utc(dt_record: datetime) -> datetime:
     return dt_record
 
 
-def chunk_by_size(df: pd.DataFrame, chunk_size: int) -> pd.DataFrame:
+def chunk_by_size(df: pd.DataFrame | list, chunk_size: int) -> pd.DataFrame:
+    if isinstance(df, list):
+        df = pd.DataFrame(df)
+
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
 
@@ -435,9 +438,12 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     elif pd.isna(row.AltitudeMethod):
         elevation_method = None
     else:
-        elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
-        )
+        try:
+            elevation_method = lexicon_mapper.map_value(
+                f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}", None
+            )
+        except KeyError:
+            elevation_method = None
 
     # Extract AMPAPI date fields (Date type, not DateTime)
     nma_date_created = None
@@ -549,11 +555,14 @@ def make_location_data_provenance(
     #     minus_point_decimal_deg = Point(minus_longitude, minus_latitude)
 
     if row.CoordinateMethod or row.CoordinateAccuracy:
-        coordinate_method = (
-            lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
-            if not pd.isna(row.CoordinateMethod)
-            else None
-        )
+        try:
+            coordinate_method = (
+                lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
+                if not pd.isna(row.CoordinateMethod)
+                else None
+            )
+        except KeyError:
+            coordinate_method = None
 
         accuracy_value, accuracy_unit = NMA_COORDINATE_ACCURACY.get(
             row.CoordinateAccuracy, (None, None)
@@ -591,9 +600,15 @@ class LexiconMapper:
     def __init__(self):
         self._mappers: dict[str, str] = None
 
-    def map_value(self, value) -> str:
+    def map_value(self, value, default=None) -> str:
         value = value.strip()
-        return self._make_lu_to_lexicon_mapper().get(value, value)
+
+        try:
+            return self._make_lu_to_lexicon_mapper()[value]
+        except KeyError:
+            if default is not None:
+                return default
+            raise KeyError(f"No mapping found for {value}")
 
     def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
         """

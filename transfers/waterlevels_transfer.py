@@ -107,6 +107,12 @@ class WaterLevelTransferer(Transferer):
                 if dt_utc is None:
                     continue
 
+                    # reasons
+                try:
+                    glv = self._get_groundwater_level_reason(row)
+                except ValueError as e:
+                    continue
+
                 release_status = "public" if row.PublicRelease else "private"
 
                 # field event
@@ -132,8 +138,6 @@ class WaterLevelTransferer(Transferer):
 
                     session.add(field_event_participant)
 
-                # reasons
-                glv = self._get_groundwater_level_reason(row)
                 if (
                     glv
                     == "Well was destroyed (no subsequent water levels should be recorded)"
@@ -213,9 +217,10 @@ class WaterLevelTransferer(Transferer):
             "null placeholder"
             if pd.isna(row.MeasurementMethod)
             else lexicon_mapper.map_value(
-                f"LU_MeasurementMethod:{row.MeasurementMethod}"
+                f"LU_MeasurementMethod:{row.MeasurementMethod}", "null placeholder"
             )
         )
+
         sample = Sample(
             nma_pk_waterlevels=row.GlobalID,
             field_activity=field_activity,
@@ -235,9 +240,14 @@ class WaterLevelTransferer(Transferer):
         if pd.isna(glv):
             return None
 
-        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}")
+        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}", None)
         if glv == "Water level not affected by status":
             glv = "Water level not affected"
+        elif glv is None:
+            self._capture_error(
+                row.PointID, f"Unknown groundwater level reason: {glv}", "LevelStatus"
+            )
+            raise ValueError(f"Unknown groundwater level reason: {glv}")
         return glv
 
     def _get_field_event_participants(self, session, row, thing) -> list[Contact]:

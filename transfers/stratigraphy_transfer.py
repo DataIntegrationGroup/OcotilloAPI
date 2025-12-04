@@ -7,6 +7,7 @@ Stratigraphy.Lithology data.
 """
 
 import time
+
 from sqlalchemy.orm import Session
 
 from db import Thing, GeologicFormation, ThingGeologicFormationAssociation
@@ -49,7 +50,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     cleaned_df = replace_nans(input_df)
 
     # Step 2: Filter to only wells that exist in database
-    cleaned_df = filter_to_valid_point_ids(session, cleaned_df)
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
 
     n_records = len(cleaned_df)
     n_wells = len(cleaned_df["PointID"].unique())
