@@ -122,7 +122,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     hole_depth: float | None = Field(
         default=None, gt=0, description="Hole depth in feet"
     )
-    well_construction_notes: str | None = None
     well_casing_diameter: float | None = Field(
         default=None, gt=0, description="Well casing diameter in inches"
     )
