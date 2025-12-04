@@ -70,6 +70,8 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     # Step 4: Group by well for efficient processing
     well_groups = cleaned_df.groupby("PointID")
 
+    formations = session.query(GeologicFormation).all()
+
     for well_index, (pointid, strat_group) in enumerate(well_groups):
         # Check limit (on number of wells, not records)
         if limit and well_index >= limit:
@@ -196,13 +198,20 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 continue
 
             # 7. Get or create the formation
-            formation = (
-                session.query(GeologicFormation)
-                .filter(GeologicFormation.formation_code == formation_code)
-                .first()
-            )
+            # formation = (
+            #     session.query(GeologicFormation)
+            #     .filter(GeologicFormation.formation_code == formation_code)
+            #     .first()
+            # )
 
+            formation = next(
+                (f for f in formations if f.formation_code == formation_code)
+            )
             if not formation:
+                logger.info(f"Geologic formation not in lexicon: {formation_code}")
+                skipped_count += 1
+                continue
+
                 # Create new formation if it doesn't exist
                 logger.info(f"Creating new geologic formation: {formation_code}")
                 formation = GeologicFormation(

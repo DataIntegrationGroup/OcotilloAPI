@@ -117,7 +117,8 @@ def transfer_all(metrics, limit=100):
 
     message("TRANSFERRING STRATIGRAPY")
     with session_ctx() as session:
-        transfer_stratigraphy(session, limit=limit)
+        results = transfer_stratigraphy(session, limit=limit)
+        metrics.stratigraphy_metrics(*results)
 
     if transfer_waterlevels:
         message("TRANSFERRING WATER LEVELS")
