@@ -177,7 +177,7 @@ def get_or_create_aquifer_system(
     # )
     aquifer = next((a for a in aquifers if a.name == aquifer_name), None)
     if aquifer:
-        return aquifer
+        return aquifer, False
 
     # Create new aquifer
     try:
@@ -192,7 +192,7 @@ def get_or_create_aquifer_system(
         )
         session.add(aquifer)
         session.flush()  # Get the ID
-        return aquifer
+        return aquifer, True
     except DatabaseError as e:
         session.rollback()
         logger.critical(f"Error creating aquifer {aquifer_name}: {e}")
@@ -552,6 +552,10 @@ class WellTransferer(Transferer):
             session, self._aquifers, aquifer_name, primary_type
         )
         if aquifer:
+
+            aquifer, created = aquifer
+            if created:
+                self._aquifers.append(aquifer)
             # Check if association already exists
             existing_assoc = (
                 session.query(ThingAquiferAssociation)
