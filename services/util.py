@@ -12,12 +12,20 @@ TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
 
 
-def get_bool_env(name: str, default: bool = False) -> bool:
-    val = os.getenv(name)
-    if val is None:
-        return default
-    val = val.strip().lower()
-    return val in {"1", "true", "t", "yes", "y", "on"}
+def to_bool(value: str) -> bool | str:
+    """Convert a string to a boolean."""
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ("true", "1", "yes"):
+        return True
+    elif value.lower() in ("false", "0", "no"):
+        return False
+
+    return value
+
+
+def get_bool_env(key, default=False):
+    return to_bool(os.getenv(key, default))
 
 
 def transform_srid(geometry, source_srid, target_srid):
@@ -49,6 +57,13 @@ def convert_ft_to_m(feet: float | None) -> float | None:
     if feet is None:
         return None
     return round(feet / METERS_TO_FEET, 6)
+
+
+def convert_m_to_ft(meters: float | None) -> float | None:
+    """Convert a length from meters to feet."""
+    if meters is None:
+        return None
+    return round(meters * METERS_TO_FEET, 6)
 
 
 def get_tiger_data(
@@ -135,6 +150,7 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
     try:
         data = resp.json()
     except json.decoder.JSONDecodeError:
+        print(f"Error decoding JSON from EPQS: {resp.text}")
         return None
 
     return data["value"]
@@ -189,11 +205,10 @@ def retrieve_latest_polymorphic_history_table_record(
     DeclarativeBase | None
         The latest record from the specified polymorphic table with the defined type if it exists.
     """
-    if polymorphic_relationship == "permissions":
+    if polymorphic_relationship == "permission_history":
         type_field = "permission_type"
     elif polymorphic_relationship == "status_history":
         type_field = "status_type"
-
     polymorphic_records = getattr(target_record, polymorphic_relationship)
     type_polymorphic_records = [
         r

@@ -264,7 +264,35 @@ class WellInventoryRow(BaseModel):
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
         for jdx in (1, 2):
             key = f"contact_{jdx}"
+            # Check if any contact data is provided
+            name = getattr(self, f"{key}_name")
+            organization = getattr(self, f"{key}_organization")
+            has_contact_data = any(
+                [
+                    name,
+                    organization,
+                    getattr(self, f"{key}_role"),
+                    getattr(self, f"{key}_type"),
+                    *[getattr(self, f"{key}_email_{i}", None) for i in (1, 2)],
+                    *[getattr(self, f"{key}_phone_{i}", None) for i in (1, 2)],
+                    *[
+                        getattr(self, f"{key}_address_{i}_{a}", None)
+                        for i in (1, 2)
+                        for a in all_attrs
+                    ],
+                ]
+            )
 
+            # If any contact data is provided, both name and organization are required
+            if has_contact_data:
+                if not name:
+                    raise ValueError(
+                        f"{key}_name is required when other contact fields are provided"
+                    )
+                if not organization:
+                    raise ValueError(
+                        f"{key}_organization is required when other contact fields are provided"
+                    )
             for idx in (1, 2):
                 if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):
                     if not all(

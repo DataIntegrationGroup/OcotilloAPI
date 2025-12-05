@@ -22,7 +22,6 @@ from pandas import DataFrame
 from pydantic import ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.orm import Session
 
 from db import (
     Thing,
@@ -33,7 +32,10 @@ from db import (
     Parameter,
     Deployment,
     TransducerObservation,
+    Group,
+    Asset,
 )
+from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
 
 
@@ -77,9 +79,24 @@ class Metrics:
     def well_screen_metrics(self, *args, **kw) -> None:
         self._handle_metrics(WellScreen, *args, **kw)
 
-    def contact_metrics(self, sess, input_df, cleaned_df, errors) -> None:
+    def welldata_link_ids_metrics(self, input_df, cleaned_df, errors) -> None:
+        self._write_metrics("WellData Link IDs", len(input_df), input_df, cleaned_df)
+        self._write_errors(errors)
+
+    def location_link_ids_metrics(self, input_df, cleaned_df, errors) -> None:
+        self._write_metrics(
+            "LocationData Link IDs", len(input_df), input_df, cleaned_df
+        )
+        self._write_errors(errors)
+
+    def asset_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(Asset, *args, **kw)
+
+    def group_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(Group, *args, **kw)
+
+    def contact_metrics(self, input_df, cleaned_df, errors) -> None:
         count = self._get_count(
-            sess,
             Contact,
         )
 
@@ -90,14 +107,15 @@ class Metrics:
         self._writer.writerow(metrics)
         self._write_errors(errors)
 
-    def water_level_metrics(self, sess, input_df, cleaned_df, errors) -> None:
-        sql = (
-            select(func.count())
-            .select_from(Observation)
-            .join(Parameter)
-            .where(Parameter.parameter_name == "groundwater level")
-        )
-        count = sess.execute(sql).scalar_one()
+    def water_level_metrics(self, input_df, cleaned_df, errors) -> None:
+        with session_ctx() as sess:
+            sql = (
+                select(func.count())
+                .select_from(Observation)
+                .join(Parameter)
+                .where(Parameter.parameter_name == "groundwater level")
+            )
+            count = sess.execute(sql).scalar_one()
 
         metrics = self._make_metrics(
             "Manual Water Levels", len(input_df), len(cleaned_df), count
@@ -111,19 +129,18 @@ class Metrics:
     def pressure_metrics(self, *args, **kw) -> None:
         self._transducer_metrics("Pressure Transducer", *args, **kw)
 
-    def _transducer_metrics(
-        self, sensor_type, sess, input_df, cleaned_df, errors
-    ) -> None:
-        sql = (
-            select(func.count())
-            .select_from(TransducerObservation)
-            .join(Deployment)
-            .join(Sensor)
-            .join(Parameter)
-            .where(Sensor.sensor_type == sensor_type)
-            .where(Parameter.parameter_name == "groundwater level")
-        )
-        count = sess.execute(sql).scalar_one()
+    def _transducer_metrics(self, sensor_type, input_df, cleaned_df, errors) -> None:
+        with session_ctx() as sess:
+            sql = (
+                select(func.count())
+                .select_from(TransducerObservation)
+                .join(Deployment)
+                .join(Sensor)
+                .join(Parameter)
+                .where(Sensor.sensor_type == sensor_type)
+                .where(Parameter.parameter_name == "groundwater level")
+            )
+            count = sess.execute(sql).scalar_one()
         metrics = self._make_metrics(sensor_type, len(input_df), len(cleaned_df), count)
         self._writer.writerow(metrics)
         self._write_errors(errors)
@@ -133,9 +150,9 @@ class Metrics:
         return [name, input_n, cleaned_n, count, percent_issue]
 
     def _handle_metrics(
-        self, model, sess, input_df, cleaned_df, errors, where=None, name=None
+        self, model, input_df, cleaned_df, errors, where=None, name=None
     ) -> None:
-        count = self._get_count(sess, model, where=where)
+        count = self._get_count(model, where=where)
 
         if name is None:
             name = model.__name__
@@ -183,11 +200,12 @@ class Metrics:
         metrics = self._make_metrics(name, len(input_df), len(cleaned_df), count)
         self._writer.writerow(metrics)
 
-    def _get_count(self, sess: Session, model, where=None) -> int:
-        sql = select(func.count()).select_from(model)
-        if where:
-            sql = sql.where(where)
-        count = sess.execute(sql).scalar_one()
+    def _get_count(self, model, where=None) -> int:
+        with session_ctx() as sess:
+            sql = select(func.count()).select_from(model)
+            if where:
+                sql = sql.where(where)
+            count = sess.execute(sql).scalar_one()
         return count
 
 

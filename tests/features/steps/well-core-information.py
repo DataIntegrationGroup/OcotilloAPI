@@ -163,7 +163,7 @@ def step_impl(context):
         and r.target_table == "thing"
         and r.target_id == context.objects["wells"][0].id
     ]
-    well_depth_source = well_depth_source_records[0].origin_source
+    well_depth_source = well_depth_source_records[0].origin_type
 
     assert context.water_well_data["well_depth_source"] == well_depth_source
 

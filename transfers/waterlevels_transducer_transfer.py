@@ -13,149 +13,196 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pandas import to_datetime, Timestamp
+
+import pandas as pd
+from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
-from db import Parameter, Thing, Deployment, Sensor
+from db import Thing, Deployment, Sensor
 from db.transducer import TransducerObservation, TransducerObservationBlock
+from schemas.transducer import CreateTransducerObservation
 from transfers.logger import logger
-from transfers.util import read_csv, filter_to_valid_point_ids
+from transfers.transferer import Transferer
+from transfers.util import (
+    read_csv,
+    filter_to_valid_point_ids,
+    get_groundwater_parameter_id,
+)
 
 
-def transfer_water_levels_acoustic(session):
-    wd = read_csv("WaterLevelsContinuous_Acoustic")
-    return _transfer_water_levels_continuous(
-        session, wd, "PublicRelease", "Acoustic Sounder"
-    )
+class WaterLevelsContinuousTransferer(Transferer):
+    _partition_field: str
+    _sensor_types: tuple[str]
 
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.groundwater_parameter_id = get_groundwater_parameter_id()
+        if self._sensor_types is None:
+            raise ValueError("_sensor_types must be set")
+        if self._partition_field is None:
+            raise ValueError("_partition_field must be set")
 
-def transfer_water_levels_pressure(session):
-    wd = read_csv("WaterLevelsContinuous_Pressure")
-    return _transfer_water_levels_continuous(session, wd, "QCed", "Pressure Transducer")
-
-
-def _transfer_water_levels_continuous(session, input_df, partition_field, sensor_type):
-    from schemas.transducer import CreateTransducerObservation
-
-    groundwater_parameter_id = (
-        session.query(Parameter)
-        .filter(Parameter.parameter_name == "groundwater level")
-        .one()
-        .id
-    )
-    cleaned_df = filter_to_valid_point_ids(session, input_df)
-
-    # group by pointid
-    gwd = cleaned_df.groupby(["PointID"])
-    errors = []
-    for index, group in gwd:
-        pointid = index[0]
-        logger.info(f"Processing PointID: {pointid}")
-
-        deployments = (
-            session.query(Deployment)
-            .join(Thing)
-            .join(Sensor)
-            .where(Sensor.sensor_type == sensor_type)
-            .where(Thing.name == pointid)
-            .all()
-        )
+    def _get_dfs(self):
+        input_df = read_csv(self.source_table, parse_dates=["DateMeasured"])
+        cleaned_df = filter_to_valid_point_ids(input_df)
+        cleaned_df = cleaned_df.sort_values(by=["PointID"])
 
         # remove rows with no date measured
-        group = group[group.DateMeasured.notna()]
-        group["DateMeasured"] = to_datetime(group["DateMeasured"], errors="coerce")
+        cleaned_df = cleaned_df[cleaned_df.DateMeasured.notna()]
+        return input_df, cleaned_df
 
-        # sort rows by date measured
-        group = group.sort_values(by="DateMeasured")
-        field = getattr(group, partition_field)
+    def _transfer_hook(self, session: Session) -> None:
+        gwd = self.cleaned_df.groupby(["PointID"])
+        n = len(gwd)
+        nodeployments = {}
+        for i, (index, group) in enumerate(gwd):
+            pointid = index[0]
+            logger.info(
+                f"Processing PointID: {pointid}. {i + 1}/{n} ({100*(i+1)/n:0.2f}) completed."
+            )
 
-        qced = group[field == 1]
-        notqced = group[~(field == 1)]
+            deployments = (
+                session.query(Deployment)
+                .join(Thing)
+                .join(Sensor)
+                .where(Sensor.sensor_type.in_(self._sensor_types))
+                .where(Thing.name == pointid)
+                .all()
+            )
 
-        qced_block = TransducerObservationBlock(
-            parameter_id=groundwater_parameter_id, review_status="approved"
-        )
-        notqced_block = TransducerObservationBlock(
-            parameter_id=groundwater_parameter_id, review_status="not reviewed"
-        )
+            # sort rows by date measured
+            group = group.sort_values(by="DateMeasured")
+            field = getattr(group, self._partition_field)
 
-        for block, rows, release_status in (
-            (qced_block, qced, "public"),
-            (notqced_block, notqced, "private"),
-        ):
-            block.start_datetime = rows.DateMeasured.min()
-            block.end_datetime = rows.DateMeasured.max()
+            qced = group[field == 1]
+            notqced = group[~(field == 1)]
 
-            if not deployments:
-                logger.critical(
-                    f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
-                )
-                errors.append({"pointid": pointid, "error": "no deployments"})
-                continue
+            qced_block = TransducerObservationBlock(
+                parameter_id=self.groundwater_parameter_id, review_status="approved"
+            )
+            notqced_block = TransducerObservationBlock(
+                parameter_id=self.groundwater_parameter_id, review_status="not reviewed"
+            )
 
-            if rows.empty:
-                logger.info(f"no {release_status} records for pointid {pointid}")
-                continue
+            for block, rows, release_status in (
+                (qced_block, qced, "public"),
+                (notqced_block, notqced, "private"),
+            ):
+                block.start_datetime = rows.DateMeasured.min()
+                block.end_datetime = rows.DateMeasured.max()
 
-            observations = []
-            for row in rows.itertuples():
-                deployment = next(
-                    (
-                        d
-                        for d in deployments
-                        if Timestamp(d.installation_date) <= row.DateMeasured
-                        and (
-                            d.removal_date is None
-                            or Timestamp(d.removal_date) >= row.DateMeasured
-                        )
-                    ),
-                    None,
-                )
-
-                if deployment is None:
-                    errors.append(
-                        {
-                            "pointid": pointid,
-                            "error": f"no deployment at {row.DateMeasured}",
-                        }
-                    )
+                if not deployments:
                     logger.critical(
-                        f"No deployment found for PointID={pointid} at {row.DateMeasured}"
+                        f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
                     )
+                    self._capture_error(pointid, "no deployments", "DateMeasured")
                     continue
 
-                try:
-                    payload = dict(
-                        parameter_id=groundwater_parameter_id,
-                        deployment_id=deployment.id,
-                        observation_datetime=row.DateMeasured,
-                        value=row.DepthToWaterBGS,
-                        release_status=release_status,
-                    )
-                    obspayload = CreateTransducerObservation.model_validate(
-                        payload
-                    ).model_dump()
-                    observations.append(TransducerObservation(**obspayload))
-                except ValidationError as e:
-                    logger.critical(f"Observation validation error: {e.errors()}")
-                    errors.append({"pointid": pointid, "error": e.errors()})
+                if rows.empty:
+                    logger.info(f"no {release_status} records for pointid {pointid}")
+                    continue
 
-            session.bulk_save_objects(observations)
-            session.add(block)
-            logger.info(
-                f"Added {len(observations)} water levels {release_status} block"
-            )
-            try:
-                session.commit()
-            except Exception as e:
-                errors.append({"pointid": pointid, "error": e})
-                logger.critical(
-                    f"Error committing water levels {release_status} block: {e}"
+                deps_sorted = sorted(
+                    deployments, key=lambda d: Timestamp(d.installation_date)
                 )
-                session.rollback()
-                continue
 
-    return input_df, cleaned_df, errors
+                observations = [
+                    self._make_observation(
+                        pointid, row, release_status, deps_sorted, nodeployments
+                    )
+                    for row in rows.itertuples()
+                ]
+
+                observations = [obs for obs in observations if obs is not None]
+                session.bulk_save_objects(observations)
+                session.add(block)
+                logger.info(
+                    f"Added {len(observations)} water levels {release_status} block"
+                )
+                try:
+                    session.commit()
+                except Exception as e:
+                    self.append({"pointid": pointid, "error": e})
+                    logger.critical(
+                        f"Error committing water levels {release_status} block: {e}"
+                    )
+                    session.rollback()
+                    continue
+
+        # convert nodeployments to errors
+        for pointid, (min_date, max_date) in nodeployments.items():
+            self._capture_error(
+                pointid,
+                "DateMeasured",
+                f"no deployment between {min_date} and {max_date}",
+            )
+
+    def _make_observation(
+        self,
+        pointid: str,
+        row: pd.Series,
+        release_status: str,
+        deps_sorted: list,
+        nodeployments: dict,
+    ) -> TransducerObservation | None:
+        deployment = _find_deployment(row.DateMeasured, deps_sorted)
+
+        if deployment is None:
+            if pointid not in nodeployments:
+                nodeployments[pointid] = (row.DateMeasured, row.DateMeasured)
+            else:
+                min_date, max_date = nodeployments[pointid]
+                if row.DateMeasured < min_date:
+                    min_date = row.DateMeasured
+                elif row.DateMeasured > max_date:
+                    max_date = row.DateMeasured
+                nodeployments[pointid] = min_date, max_date
+
+            logger.critical(
+                f"No deployment found for PointID={pointid} at {row.DateMeasured}"
+            )
+            return None
+
+        try:
+            payload = dict(
+                parameter_id=self.groundwater_parameter_id,
+                deployment_id=deployment.id,
+                observation_datetime=row.DateMeasured,
+                value=row.DepthToWaterBGS,
+                release_status=release_status,
+            )
+            obspayload = CreateTransducerObservation.model_validate(
+                payload
+            ).model_dump()
+            return TransducerObservation(**obspayload)
+
+        except ValidationError as e:
+            logger.critical(f"Observation validation error: {e.errors()}")
+            self._capture_error(pointid, str(e), "DepthToWaterBGS")
+
+
+class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
+    source_table = "WaterLevelsContinuous_Pressure"
+    _partition_field = "QCed"
+    _sensor_types = ("Pressure Transducer", "Barometer", "DiverLink", "Diver Cable")
+
+
+class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
+    source_table = "WaterLevelsContinuous_Acoustic"
+    _partition_field = "PublicRelease"
+    _sensor_types = ("Acoustic Sounder",)
+
+
+def _find_deployment(ts, deployments):
+    date = ts.date()
+    for d in deployments:
+        if d.installation_date > date:
+            break  # because sorted by start
+        end = d.removal_date if d.removal_date else Timestamp.max.date()
+        if end >= date:
+            return d
+    return None
 
 
 # ============= EOF =============================================

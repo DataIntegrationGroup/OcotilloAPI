@@ -53,7 +53,7 @@ from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
-from services.thing_helper import add_thing, modify_well_descriptor_tables
+from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
 
 router = APIRouter(prefix="/well-inventory-csv")
@@ -93,34 +93,33 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     addresses = []
     name = getattr(model, f"contact_{idx}_name")
     if name:
-        for j in (1, 2):
-            for i in (1, 2):
-                email = getattr(model, f"contact_{j}_email_{i}")
-                etype = getattr(model, f"contact_{j}_email_{i}_type")
-                if email and etype:
-                    emails.append({"email": email, "email_type": etype})
-                phone = getattr(model, f"contact_{j}_phone_{i}")
-                ptype = getattr(model, f"contact_{j}_phone_{i}_type")
-                if phone and ptype:
-                    phones.append({"phone_number": phone, "phone_type": ptype})
+        for i in (1, 2):
+            email = getattr(model, f"contact_{idx}_email_{i}")
+            etype = getattr(model, f"contact_{idx}_email_{i}_type")
+            if email and etype:
+                emails.append({"email": email, "email_type": etype})
+            phone = getattr(model, f"contact_{idx}_phone_{i}")
+            ptype = getattr(model, f"contact_{idx}_phone_{i}_type")
+            if phone and ptype:
+                phones.append({"phone_number": phone, "phone_type": ptype})
 
-                address_line_1 = getattr(model, f"contact_{j}_address_{i}_line_1")
-                address_line_2 = getattr(model, f"contact_{j}_address_{i}_line_2")
-                city = getattr(model, f"contact_{j}_address_{i}_city")
-                state = getattr(model, f"contact_{j}_address_{i}_state")
-                postal_code = getattr(model, f"contact_{j}_address_{i}_postal_code")
-                address_type = getattr(model, f"contact_{j}_address_{i}_type")
-                if address_line_1 and city and state and postal_code and address_type:
-                    addresses.append(
-                        {
-                            "address_line_1": address_line_1,
-                            "address_line_2": address_line_2,
-                            "city": city,
-                            "state": state,
-                            "postal_code": postal_code,
-                            "address_type": address_type,
-                        }
-                    )
+            address_line_1 = getattr(model, f"contact_{idx}_address_{i}_line_1")
+            address_line_2 = getattr(model, f"contact_{idx}_address_{i}_line_2")
+            city = getattr(model, f"contact_{idx}_address_{i}_city")
+            state = getattr(model, f"contact_{idx}_address_{i}_state")
+            postal_code = getattr(model, f"contact_{idx}_address_{i}_postal_code")
+            address_type = getattr(model, f"contact_{idx}_address_{i}_type")
+            if address_line_1 and city and state and postal_code and address_type:
+                addresses.append(
+                    {
+                        "address_line_1": address_line_1,
+                        "address_line_2": address_line_2,
+                        "city": city,
+                        "state": state,
+                        "postal_code": postal_code,
+                        "address_type": address_type,
+                    }
+                )
 
         return {
             "thing_id": well.id,
@@ -439,7 +438,6 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     well = add_thing(
         session=session, data=well_data, user=user, thing_type="water well"
     )
-    modify_well_descriptor_tables(session, well, data, user)
     session.refresh(well)
 
     # add field event

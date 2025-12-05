@@ -25,18 +25,7 @@ from starlette.status import HTTP_404_NOT_FOUND
 
 from db import search as search_func
 from services.regex import QUERY_REGEX
-
-
-def to_bool(value: str) -> bool | str:
-    """Convert a string to a boolean."""
-    if isinstance(value, bool):
-        return value
-    if value.lower() in ("true", "1", "yes"):
-        return True
-    elif value.lower() in ("false", "0", "no"):
-        return False
-
-    return value
+from services.util import to_bool
 
 
 def make_where(col: Column, op: str, v: str) -> OperatorExpression:

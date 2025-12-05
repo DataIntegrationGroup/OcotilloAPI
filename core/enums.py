@@ -24,7 +24,9 @@ AnalysisMethodType: type[Enum] = build_enum_from_lexicon_category(
 )
 CasingMaterial: type[Enum] = build_enum_from_lexicon_category("casing_material")
 CollectionMethod: type[Enum] = build_enum_from_lexicon_category("collection_method")
-ConstructionMethod: type[Enum] = build_enum_from_lexicon_category("construction_method")
+WellConstructionMethod: type[Enum] = build_enum_from_lexicon_category(
+    "well_construction_method"
+)
 ContactType: type[Enum] = build_enum_from_lexicon_category("contact_type")
 CoordinateMethod: type[Enum] = build_enum_from_lexicon_category("coordinate_method")
 WellPurpose: type[Enum] = build_enum_from_lexicon_category("well_purpose")
@@ -68,8 +70,14 @@ Unit: type[Enum] = build_enum_from_lexicon_category("unit")
 Vertical_datum: type[Enum] = build_enum_from_lexicon_category("vertical_datum")
 ScreenType: type[Enum] = build_enum_from_lexicon_category("screen_type")
 SensorType: type[Enum] = build_enum_from_lexicon_category("sensor_type")
+WellPumpType: type[Enum] = build_enum_from_lexicon_category("well_pump_type")
+PermissionType: type[Enum] = build_enum_from_lexicon_category("permission_type")
 GroupType: type[Enum] = build_enum_from_lexicon_category("group_type")
 MonitoringFrequency: type[Enum] = build_enum_from_lexicon_category(
     "monitoring_frequency"
 )
+AquiferType: type[Enum] = build_enum_from_lexicon_category("aquifer_type")
+GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale")
+Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
+FormationCode: type[Enum] = build_enum_from_lexicon_category("formation_code")
 # ============= EOF =============================================

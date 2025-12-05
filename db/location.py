@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     DateTime,
+    Date,
     func,
     Text,
 )
@@ -60,6 +61,18 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     # notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
+
+    # --- AMPAPI Date Fields (Migration-Only, Read-Only Post-Migration) ---
+    nma_date_created: Mapped[datetime.date] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Original AMPAPI DateCreated (read-only, populated only during migration)",
+    )
+    nma_site_date: Mapped[datetime.date] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Original AMPAPI SiteDate (read-only, populated only during migration)",
+    )
 
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(

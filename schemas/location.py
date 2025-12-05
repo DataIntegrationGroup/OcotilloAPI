@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import Any
-from typing import List
+from datetime import date
+from typing import List, Any
 
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
@@ -106,6 +106,9 @@ class GeoJSONProperties(BaseModel):
         default_factory=GeoJSONUTMCoordinates
     )
     notes: list[NoteResponse] = []
+    # AMPAPI date fields (read-only, populated only during migration)
+    nma_date_created: date | None = None
+    nma_site_date: date | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -150,6 +153,9 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
+        # populate AMPAPI date fields
+        data_dict["properties"]["nma_date_created"] = data_dict.get("nma_date_created")
+        data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
 
         # populate UTM coordinates
         point_utm_zone_13n_wkt = transform_srid(
@@ -180,6 +186,10 @@ class LocationResponse(BaseResponseModel):
     state: str | None
     county: str | None
     quad_name: str | None
+
+    # AMPAPI date fields (read-only, populated only during migration, not in Create/Update schemas)
+    nma_date_created: date | None = None
+    nma_site_date: date | None = None
 
     @field_validator("point", mode="before")
     def point_to_wkt(cls, value):

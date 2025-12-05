@@ -7,26 +7,36 @@ Run with:
 
 import random
 from datetime import datetime, timedelta, timezone
+
 from faker import Faker
-from db.engine import session_ctx
-from sqlalchemy import select
 from geoalchemy2.elements import WKTElement
+from sqlalchemy import select
+
+from db.analysis_method import AnalysisMethod
 
 # Core models
-from db.contact import Contact, ThingContactAssociation
-from db.location import Location, LocationThingAssociation
-from db.thing import Thing, ThingIdLink
-from db.sensor import Sensor
+from db.contact import Contact, ThingContactAssociation, Email, Phone, Address
 from db.deployment import Deployment
-from db.field import FieldEvent, FieldActivity
-from db.sample import Sample
-from db.observation import Observation
-from db.parameter import Parameter
-from db.analysis_method import AnalysisMethod
+from db.engine import session_ctx
+from db.field import FieldEvent, FieldActivity, FieldEventParticipant
 from db.lexicon import (
     LexiconTerm,
     LexiconCategory,
     LexiconTermCategoryAssociation,
+)
+from db.location import Location, LocationThingAssociation
+from db.measuring_point_history import MeasuringPointHistory
+from db.notes import Notes
+from db.observation import Observation
+from db.parameter import Parameter
+from db.sample import Sample
+from db.sensor import Sensor
+from db.thing import (
+    Thing,
+    ThingIdLink,
+    WellPurpose,
+    WellCasingMaterial,
+    MonitoringFrequencyHistory,
 )
 
 fake = Faker()
@@ -74,8 +84,16 @@ def seed_all(n: int = 5):
         sample_method_terms = get_terms_by_category(s, "sample_method")
         activity_type_terms = get_terms_by_category(s, "activity_type")
         sensor_type_terms = get_terms_by_category(s, "sensor_type")
+        email_type_terms = get_terms_by_category(s, "email_type")
+        phone_type_terms = get_terms_by_category(s, "phone_type")
+        address_type_terms = get_terms_by_category(s, "address_type")
+        well_purpose_terms = get_terms_by_category(s, "well_purpose")
+        casing_material_terms = get_terms_by_category(s, "casing_material")
+        monitoring_frequency_terms = get_terms_by_category(s, "monitoring_frequency")
+        note_type_terms = get_terms_by_category(s, "note_type")
+        participant_role_terms = get_terms_by_category(s, "participant_role")
 
-        # 1. Contacts
+        # 1. Contacts with emails, phones, and addresses
         for _ in range(n):
             c = Contact(
                 name=fake.name(),
@@ -84,11 +102,47 @@ def seed_all(n: int = 5):
                 contact_type="Primary",
             )
             s.add(c)
+            s.flush()  # Need ID for related records
+
+            # Add email
+            email = Email(
+                contact_id=c.id,
+                email=fake.email(),
+                email_type=random.choice(email_type_terms).term,
+                release_status="public",
+            )
+            s.add(email)
+
+            # Add phone
+            phone = Phone(
+                contact_id=c.id,
+                phone_number=fake.numerify("##########")[:20],
+                phone_type=random.choice(phone_type_terms).term,
+                release_status="public",
+            )
+            s.add(phone)
+
+            # Add address
+            addr = Address(
+                contact_id=c.id,
+                address_line_1=fake.street_address(),
+                address_line_2=(
+                    fake.secondary_address() if random.random() > 0.5 else None
+                ),
+                city=fake.city(),
+                state="New Mexico",
+                postal_code=fake.zipcode(),
+                country="United States",
+                address_type=random.choice(address_type_terms).term,
+                release_status="public",
+            )
+            s.add(addr)
+
             contacts.append(c)
 
         # 2. Locations
         for _ in range(n):
-            # Generate coordinates roughly within New Mexico’s bounding box
+            # Generate coordinates roughly within New Mexico's bounding box
             base_lat, base_lon = random.choice(new_mexico_bounds)
             lat = round(base_lat + random.uniform(-0.3, 0.3), 6)
             lon = round(base_lon + random.uniform(-0.3, 0.3), 6)
@@ -96,12 +150,22 @@ def seed_all(n: int = 5):
             loc = Location(
                 point=WKTElement(f"POINT({lon} {lat})", srid=4326),
                 elevation=round(fake.random_number(digits=3), 2),
-                notes=fake.sentence(),
-                elevation_accuracy=random.uniform(0.1, 5.0),
-                coordinate_accuracy=random.uniform(0.1, 10.0),
                 release_status="public",
             )
             s.add(loc)
+            s.flush()  # Need ID for notes
+
+            # Add a note for the location
+            if note_type_terms:
+                note = Notes(
+                    target_id=loc.id,
+                    target_table="Location",
+                    note_type=random.choice(note_type_terms).term,
+                    content=fake.sentence(),
+                    release_status="public",
+                )
+                s.add(note)
+
             locations.append(loc)
 
         # 3. Retrieve existing Parameters & Methods
@@ -126,7 +190,7 @@ def seed_all(n: int = 5):
 
         s.flush()
 
-        # 4. Things (Water Wells) & ThingContactAssociation & LocationThingAssociation
+        # 4. Things (Water Wells) & related records
         for i in range(n):
             t = Thing(
                 name=f"WELL-{i + 1:04d}",
@@ -140,10 +204,76 @@ def seed_all(n: int = 5):
                 release_status="public",
             )
             s.add(t)
+            s.flush()  # Need ID for related records
+
+            # Add measuring point history (required for measuring_point_height/description)
+            mph = MeasuringPointHistory(
+                thing_id=t.id,
+                measuring_point_height=round(random.uniform(0.5, 3.0), 2),
+                measuring_point_description=fake.sentence(),
+                start_date=t.first_visit_date or fake.date_between("-2y", "today"),
+                end_date=None,
+                reason="Initial measuring point record",
+                release_status="public",
+            )
+            s.add(mph)
+
+            # Add monitoring frequency history
+            if monitoring_frequency_terms:
+                mfh = MonitoringFrequencyHistory(
+                    thing_id=t.id,
+                    monitoring_frequency=random.choice(monitoring_frequency_terms).term,
+                    start_date=t.first_visit_date or fake.date_between("-2y", "today"),
+                    end_date=None,
+                    release_status="public",
+                )
+                s.add(mfh)
+
+            # Add well purposes
+            if well_purpose_terms:
+                num_purposes = random.randint(1, 2)
+                selected_purposes = random.sample(
+                    well_purpose_terms, k=min(num_purposes, len(well_purpose_terms))
+                )
+                for purpose_term in selected_purposes:
+                    wp = WellPurpose(
+                        thing_id=t.id,
+                        purpose=purpose_term.term,
+                        release_status="public",
+                    )
+                    s.add(wp)
+
+            # Add well casing materials
+            if casing_material_terms:
+                num_materials = random.randint(1, 2)
+                selected_materials = random.sample(
+                    casing_material_terms,
+                    k=min(num_materials, len(casing_material_terms)),
+                )
+                for material_term in selected_materials:
+                    wcm = WellCasingMaterial(
+                        thing_id=t.id,
+                        material=material_term.term,
+                        release_status="public",
+                    )
+                    s.add(wcm)
+
+            # Add notes for the thing
+            if note_type_terms:
+                note = Notes(
+                    target_id=t.id,
+                    target_table="Thing",
+                    note_type=random.choice(note_type_terms).term,
+                    content=fake.sentence(),
+                    release_status="public",
+                )
+                s.add(note)
+
             things.append(t)
 
         s.flush()
 
+        # Associate contacts with things
         for t in things:
             assigned_contacts = random.sample(contacts, k=min(2, len(contacts)))
             for c in assigned_contacts:
@@ -153,17 +283,21 @@ def seed_all(n: int = 5):
                 )
                 s.add(assoc)
 
-        for loc in locations:
-            assigned_things = random.sample(things, k=min(2, len(things)))
-            for t in assigned_things:
-                assoc = LocationThingAssociation(
-                    location_id=loc.id,
-                    thing_id=t.id,
-                    effective_start=datetime.now(timezone.utc),
-                    effective_end=None,
-                )
-                s.add(assoc)
+        # Associate locations with things - ensure every thing has at least one location
+        # First, assign one location to each thing (required for current_location property)
+        for i, t in enumerate(things):
+            loc = locations[i % len(locations)]  # Cycle through locations
+            assoc = LocationThingAssociation(
+                location_id=loc.id,
+                thing_id=t.id,
+                effective_start=datetime.now(timezone.utc),
+                effective_end=None,
+            )
+            s.add(assoc)
 
+        s.flush()  # Need to flush to get associations loaded
+
+        # Add ThingIdLinks
         for t in things:
             for _ in range(random.randint(1, 3)):
                 chosen_org = random.choice(organization_terms)
@@ -176,7 +310,7 @@ def seed_all(n: int = 5):
                 )
                 s.add(link)
 
-        # 5. FieldEvent, FieldActivity, Sensors & Deployments
+        # 5. FieldEvent, FieldActivity, FieldEventParticipant, Sensors & Deployments
         for t in things:
             fe = FieldEvent(
                 thing_id=t.id,
@@ -186,6 +320,30 @@ def seed_all(n: int = 5):
             )
             s.add(fe)
             field_events.append(fe)
+
+        s.flush()
+
+        # Add field event participants (contacts who participated)
+        field_event_participants: list[FieldEventParticipant] = []
+        for fe in field_events:
+            # Add 1-2 participants per field event
+            num_participants = random.randint(1, 2)
+            selected_contacts = random.sample(
+                contacts, k=min(num_participants, len(contacts))
+            )
+            for contact in selected_contacts:
+                fep = FieldEventParticipant(
+                    field_event_id=fe.id,
+                    contact_id=contact.id,
+                    participant_role=(
+                        random.choice(participant_role_terms).term
+                        if participant_role_terms
+                        else "Participant"
+                    ),
+                    release_status="public",
+                )
+                s.add(fep)
+                field_event_participants.append(fep)
 
         s.flush()
 
@@ -201,16 +359,20 @@ def seed_all(n: int = 5):
 
         s.flush()
 
+        # Create sensors
         for i in range(n):
             sn = Sensor(
                 name=f"Sensor-{i + 1}",
                 sensor_type=random.choice(sensor_type_terms).term,
                 serial_no=fake.unique.bothify(text="SN-####"),
+                release_status="public",
             )
             sensors.append(sn)
             s.add(sn)
 
         s.flush()
+
+        # Create deployments
         deployments: list[Deployment] = []
         for t in things:
             sn = random.choice(sensors)
@@ -232,6 +394,11 @@ def seed_all(n: int = 5):
                 sample_matrix="water",
                 sample_method=random.choice(sample_method_terms).term,
                 sample_date=fake.date_time_this_year(),
+                field_event_participant_id=(
+                    random.choice(field_event_participants).id
+                    if field_event_participants
+                    else None
+                ),
             )
             t = random.choice(things)
             samp.thing_id = t.id
@@ -239,6 +406,8 @@ def seed_all(n: int = 5):
             s.add(samp)
 
         s.flush()
+
+        # Create observations
         for i in range(n * 2):
             obs = Observation(
                 sample=random.choice(samples),
@@ -248,16 +417,22 @@ def seed_all(n: int = 5):
                 observation_datetime=fake.date_time_this_month(),
                 value=round(random.uniform(0, 500), 2),
                 unit="mg/L",
+                release_status="public",
             )
             observations.append(obs)
             s.add(obs)
-        s.commit()
 
-        print(
-            f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
-            + f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
-            + f"{len(observations)} observations."
-        )
+        try:
+            s.commit()
+            print(
+                f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
+                + f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+                + f"{len(observations)} observations."
+            )
+        except Exception as e:
+            s.rollback()
+            print(f"Error committing seed data: {e}")
+            raise
 
 
 if __name__ == "__main__":

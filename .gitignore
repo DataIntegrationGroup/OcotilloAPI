@@ -6,6 +6,13 @@ dist/
 wheels/
 *.egg-info
 
+# Test coverage reports
+*.cover
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Virtual environments
 .venv
 requirements.txt
@@ -25,11 +32,11 @@ launcher.sh
 gcs_credentials.json
 transfers/data/assets*
 transfers/data/nma_csv_cache/*
+transfers/data/*.csv
 transfers/transfer*.log
 transfer*.log
 transfers/data/nma_csv_cache/*
 !transfers/data/nma_csv_cache/.gitkeep
-tests/features/*.feature
 transfers/metrics/*
 transfers/logs/*
 run_bdd-local.sh
