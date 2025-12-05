@@ -1,6 +1,7 @@
 import time
-from sqlalchemy.orm import Session
+
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from db import GeologicFormation
 from schemas.geologic_formation import CreateGeologicFormation
@@ -91,12 +92,12 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             CreateGeologicFormation.model_validate(data)
 
         except ValidationError as e:
+            skipped_count += 1
             errors.append({"code": formation_code, "errors": e.errors()})
-            logger.critical(
-                f"Validation error for row {i} with Code {formation_code}: {e.errors()}"
-            )
+            logger.critical(f"Validation error for row {i} with Code {formation_code}")
             continue
         except Exception as e:
+            skipped_count += 1
             errors.append({"code": formation_code, "errors": str(e)})
             logger.critical(f"Error preparing data for {formation_code}: {e}")
             continue

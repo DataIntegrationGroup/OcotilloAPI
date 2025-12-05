@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytz
+from pandas import notna
 from shapely import Point
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -86,14 +87,16 @@ class MeasuringPointEstimator:
                     mphi = m.DepthToWater - m.DepthToWaterBGS
                     start_date = m.DateMeasured
                     if mphi not in mphs:
-                        mphs.append(mphi)
-                        mph_descs.append(
-                            "Auto calculated from measurements at depth to water and depth to water below ground surface"
-                        )
-                        start_dates.append(start_date)
-                logger.info(
-                    f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
-                )
+                        if notna(mphi):
+                            mphs.append(mphi)
+                            mph_descs.append(
+                                "Auto calculated from measurements at depth to water and depth to water below ground surface"
+                            )
+                            start_dates.append(start_date)
+                if mphs:
+                    logger.info(
+                        f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
+                    )
         else:
             mphs = [mph]
             mph_descs = [mph_desc]
