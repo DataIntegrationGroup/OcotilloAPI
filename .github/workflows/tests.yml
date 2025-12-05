@@ -50,7 +50,7 @@ jobs:
       env:
         MODE: development
         POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
+        POSTGRES_PORT: 54321
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
