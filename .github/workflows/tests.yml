@@ -13,13 +13,19 @@ permissions:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 54321
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DB_DRIVER: postgres
+      BASE_URL: http://localhost:8000
+      AUTHENTIK_DISABLE_AUTHENTICATION: true
 
     services:
       postgis:
-        image: postgis/postgis:latest
+        image: postgis/postgis:17-3.5
         # image: postgis/postgis:17-3.5
-        env:
-          POSTGRES_PASSWORD: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -27,7 +33,7 @@ jobs:
           --health-retries 5
         ports:
           # Maps tcp port 5432 on service container to the host
-          - 5432:5432
+          - 54321:5432
 
     steps:
     - name: Check out source repository
@@ -49,11 +55,11 @@ jobs:
     - name: Run tests
       env:
         MODE: development
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 54321
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        DB_DRIVER: postgres
+#        POSTGRES_HOST: localhost
+#        POSTGRES_PORT: 54321
+#        POSTGRES_USER: postgres
+#        POSTGRES_PASSWORD: postgres
+#        DB_DRIVER: postgres
 
       run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
 
@@ -70,11 +76,11 @@ jobs:
 
     - name: Run BDD tests
       env:
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        DB_DRIVER: postgres
+#        POSTGRES_HOST: localhost
+#        POSTGRES_PORT: 5432
+#        POSTGRES_USER: postgres
+#        POSTGRES_PASSWORD: postgres
+#        DB_DRIVER: postgres
         BASE_URL: http://localhost:8000
       run: |
         uv run behave tests/features --tags="@backend and @production" --no-capture
