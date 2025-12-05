@@ -10,18 +10,18 @@ on:
 permissions:
   contents: read
 
+env:
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: 54321
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  DB_DRIVER: postgres
+  BASE_URL: http://localhost:8000
+  AUTHENTIK_DISABLE_AUTHENTICATION: true
+
 jobs:
   run-tests:
     runs-on: ubuntu-latest
-    env:
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 54321
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      DB_DRIVER: postgres
-      BASE_URL: http://localhost:8000
-      AUTHENTIK_DISABLE_AUTHENTICATION: true
-
     services:
       postgis:
         image: postgis/postgis:17-3.5
