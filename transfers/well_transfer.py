@@ -246,17 +246,25 @@ class WellTransferer(Transferer):
 
         cleaned_df = get_transferable_wells(wdf)
         cleaned_df = filter_non_transferred_wells(cleaned_df)
+
+        dupes = cleaned_df["PointID"].duplicated(keep=False)
+        if dupes.any():
+            dup_ids = set(cleaned_df.loc[dupes, "PointID"])
+            logger.critical(f"{len(dup_ids)} PointIDs have duplicates; will skip.")
+            logger.critical(f"Duplicate PointIDs: {dup_ids}")
+            cleaned_df = cleaned_df[~cleaned_df["PointID"].isin(dup_ids)]
+
         cleaned_df = cleaned_df.sort_values(by=["PointID"])
         return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
-        pointid = row.PointID
-        if df[df["PointID"] == pointid].shape[0] > 1:
-            logger.critical(
-                f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
-            )
-            self._capture_error(pointid, "duplicate records", "PointID")
-            return
+        # pointid = row.PointID
+        # if df[df["PointID"] == pointid].shape[0] > 1:
+        #     logger.critical(
+        #         f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
+        #     )
+        #     self._capture_error(pointid, "duplicate records", "PointID")
+        #     return
 
         location = None
         try:
@@ -545,10 +553,11 @@ class WellTransferer(Transferer):
                         "AquiferType",
                     )
 
-            logger.info(
-                f"Associated well {well.name} with aquifer {aquifer.name} "
-                f"(types: {', '.join(aquifer_type_names)})"
-            )
+            if self.verbose:
+                logger.info(
+                    f"Associated well {well.name} with aquifer {aquifer.name} "
+                    f"(types: {', '.join(aquifer_type_names)})"
+                )
             # else:
             #     logger.info(
             #         f"Well {well.name} already associated with aquifer {aquifer.name}"
@@ -604,6 +613,11 @@ class WellTransferer(Transferer):
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
 
+        self._row_by_pointid = {
+            pid: row
+            for pid, row in self.cleaned_df.set_index("PointID", drop=False).iterrows()
+        }
+
         formations = session.query(GeologicFormation).all()
         formations = {f.formation_code: f for f in formations}
 
@@ -636,21 +650,24 @@ class WellTransferer(Transferer):
                 save_time = time.time() - save_time
 
             logger.info(
-                f"After hook: {j*100+i+1}/{count} took {time.time() - step_start_time:.2f}s, "
+                f"After hook: {(j+1)*100}/{count} took {time.time() - step_start_time:.2f}s, "
                 f"n_objects={len(all_objects)}, save_time={save_time}"
             )
 
     def _after_hook_chunk(self, well, formations, measuring_point_estimator):
-        objs = []
-        row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
 
+        row = self._row_by_pointid.get(well.name)
+        if row is None:
+            return []
+
+        objs = []
         self._add_formation_zone(row, well, formations)
         if notna(row.Notes):
             note = well.add_note(row.Notes, "Other")
             objs.append(note)
 
         location = well.current_location
-        elevation_method = self._added_locations[row.PointID]
+        elevation_method = self._added_locations[well.name]
         data_provenances = make_location_data_provenance(
             row, location, elevation_method
         )

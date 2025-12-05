@@ -91,7 +91,7 @@ class WaterLevelTransferer(Transferer):
         self._created_contacts = {}
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table)
+        input_df = read_csv(self.source_table, dtype={"MeasuredBy": str})
         cleaned_df = filter_to_valid_point_ids(input_df)
         cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
         return input_df, cleaned_df
@@ -256,35 +256,37 @@ class WaterLevelTransferer(Transferer):
 
         if measured_by not in ["Owner", "Owner report", "Well owner"]:
             # --- Contact/FieldEventParticipant ---
-            contact_info = get_contacts_info(row, measured_by, self._measured_by_mapper)
+            if measured_by:
+                contact_info = get_contacts_info(
+                    row, measured_by, self._measured_by_mapper
+                )
+                for name, organization, role in contact_info:
+                    if (name, organization) in self._created_contacts:
+                        contact = self._created_contacts[(name, organization)]
+                    else:
+                        try:
+                            # create new contact if not already created
+                            contact = Contact(
+                                name=name,
+                                role=role,
+                                contact_type="Field Event Participant",
+                                organization=organization,
+                                nma_pk_waterlevels=row.GlobalID,
+                            )
+                            session.add(contact)
 
-            for name, organization, role in contact_info:
-                if (name, organization) in self._created_contacts:
-                    contact = self._created_contacts[(name, organization)]
-                else:
-                    try:
-                        # create new contact if not already created
-                        contact = Contact(
-                            name=name,
-                            role=role,
-                            contact_type="Field Event Participant",
-                            organization=organization,
-                            nma_pk_waterlevels=row.GlobalID,
-                        )
-                        session.add(contact)
+                            logger.info(
+                                f"{SPACE_2}Created contact: | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
+                            )
 
-                        logger.info(
-                            f"{SPACE_2}Created contact: | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
-                        )
+                            self._created_contacts[(name, organization)] = contact
+                        except Exception as e:
+                            logger.critical(
+                                f"Contact cannot be created: Name {name} | Role {role} | Organization {organization} because of the following: {str(e)}"
+                            )
+                            continue
 
-                        self._created_contacts[(name, organization)] = contact
-                    except Exception as e:
-                        logger.critical(
-                            f"Contact cannot be created: Name {name} | Role {role} | Organization {organization} because of the following: {str(e)}"
-                        )
-                        continue
-
-                field_event_participants.append(contact)
+                    field_event_participants.append(contact)
         else:
             contact = thing.contacts[0]
             field_event_participants.append(contact)

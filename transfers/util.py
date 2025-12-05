@@ -59,24 +59,28 @@ class MeasuringPointEstimator:
         df = read_csv("WaterLevels")
         df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
         self._df = df.dropna(subset=["DateMeasured"])
+        self.verbose = False
 
     def estimate_measuring_point_height(
         self, row
     ) -> tuple[float, str, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
+        print(row.keys())
         df = self._df[self._df["PointID"] == row.PointID]
         df = df.sort_values("DateMeasured")
         if mph is None:
-            logger.info(
-                f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
-            )
+            if self.verbose:
+                logger.info(
+                    f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
+                )
             mphs = []
             start_dates = []
             mph_descs = []
 
             if len(df) == 0:
-                logger.warning(f"No measurements found for PointID: {row.PointID}.")
+                if self.verbose:
+                    logger.warning(f"No measurements found for PointID: {row.PointID}.")
             else:
                 # try to estimate mpheight from measurements
                 for m in df.itertuples():
