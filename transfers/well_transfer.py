@@ -80,22 +80,22 @@ NMA_MONITORING_FREQUENCY = {
 
 def _get_first_visit_date(row) -> datetime | None:
     first_visit_date = None
+
+    def _extract_date(date_str: str) -> datetime:
+        return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S.%f").date()
+
     if row.DateCreated and row.SiteDate:
-        date_created = datetime.strptime(row.DateCreated, "%Y-%m-%d %H:%M:%S.%f").date()
-        site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
+        date_created = _extract_date(row.DateCreated)
+        site_date = _extract_date(row.SiteDate)
 
         if date_created < site_date:
             first_visit_date = date_created
         else:
             first_visit_date = site_date
     elif row.DateCreated and not row.SiteDate:
-        first_visit_date = datetime.strptime(
-            row.DateCreated, "%Y-%m-%d %H:%M:%S.%f"
-        ).date()
+        first_visit_date = _extract_date(row.DateCreated)
     elif not row.DateCreated and row.SiteDate:
-        first_visit_date = datetime.strptime(
-            row.SiteDate, "%Y-%m-%d %H:%M:%S.%f"
-        ).date()
+        first_visit_date = _extract_date(row.SiteDate)
 
     return first_visit_date
 
@@ -432,9 +432,6 @@ class WellTransferer(Transferer):
                     )
             else:
                 # Formation does NOT exist: Do not create new formation. Flag and log for review
-                logger.critical(
-                    f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
-                )
                 self._capture_error(
                     row.PointID, f"Unknown formation: {formation_code}", "FormationZone"
                 )
@@ -740,9 +737,10 @@ class WellTransferer(Transferer):
                 target_table=target_table,
             )
             objs.append(status_history)
-            logger.info(
-                f"  Added monitoring status for well {well.name}: {status_value}"
-            )
+            if self.verbose:
+                logger.info(
+                    f"  Added monitoring status for well {well.name}: {status_value}"
+                )
 
             for code in NMA_MONITORING_FREQUENCY.keys():
                 if code in row.MonitoringStatus:
@@ -755,9 +753,10 @@ class WellTransferer(Transferer):
                     )
 
                     objs.append(monitoring_frequency_history)
-                    logger.info(
-                        f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
-                    )
+                    if self.verbose:
+                        logger.info(
+                            f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
+                        )
 
         if notna(row.Status):
 
@@ -772,7 +771,10 @@ class WellTransferer(Transferer):
                     target_table=target_table,
                 )
                 objs.append(status_history)
-                logger.info(f"  Added well status for well {well.name}: {status_value}")
+                if self.verbose:
+                    logger.info(
+                        f"  Added well status for well {well.name}: {status_value}"
+                    )
         return objs
 
 

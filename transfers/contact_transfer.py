@@ -219,7 +219,10 @@ def _get_organization(row, co_to_org_mapper):
     organization = co_to_org_mapper.get(row.Company, row.Company)
 
     # use Organization enum to catch validation errors
-    Organization(organization)
+    try:
+        Organization(organization)
+    except ValueError:
+        return None
 
     return organization
 
@@ -239,7 +242,7 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
 
     organization = _get_organization(row, co_to_org_mapper)
     if (name, organization) in added:
-        return
+        return None
 
     added.append((name, organization))
 
