@@ -101,9 +101,13 @@ def get_feature_collection(
 
     things = get_thing_features(session, thing_type, group)
 
-    def make_feature_dict(thing, geometry, elevation, *other):
-        geometry = json.loads(geometry)
-        geometry["coordinates"].append(elevation)
+    def make_feature_dict(thing):
+        current_location = thing.current_location
+        x = current_location.latlon[1]
+        y = current_location.latlon[0]
+        elevation = current_location.elevation
+        coordinates = [x, y, elevation]
+
         return {
             "type": "Feature",
             "properties": {
@@ -112,10 +116,13 @@ def get_feature_collection(
                 "name": thing.name,
                 "group": group,
             },
-            "geometry": geometry,
+            "geometry": {
+                "type": "Point",
+                "coordinates": coordinates,
+            },
         }
 
-    features = [make_feature_dict(*item) for item in things]
+    features = [make_feature_dict(thing) for thing in things]
 
     return {
         "type": "FeatureCollection",
