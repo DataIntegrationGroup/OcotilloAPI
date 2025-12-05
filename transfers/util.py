@@ -66,7 +66,6 @@ class MeasuringPointEstimator:
     ) -> tuple[float, str, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
-        print(row.keys())
         df = self._df[self._df["PointID"] == row.PointID]
         df = df.sort_values("DateMeasured")
         if mph is None:
