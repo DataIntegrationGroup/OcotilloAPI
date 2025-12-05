@@ -440,7 +440,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     else:
         try:
             elevation_method = lexicon_mapper.map_value(
-                f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}", None
+                f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
             )
         except KeyError:
             elevation_method = None

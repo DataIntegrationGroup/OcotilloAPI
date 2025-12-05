@@ -110,7 +110,7 @@ class WaterLevelTransferer(Transferer):
                     # reasons
                 try:
                     glv = self._get_groundwater_level_reason(row)
-                except ValueError as e:
+                except KeyError as e:
                     continue
 
                 release_status = "public" if row.PublicRelease else "private"
@@ -240,7 +240,7 @@ class WaterLevelTransferer(Transferer):
         if pd.isna(glv):
             return None
 
-        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}", None)
+        glv = lexicon_mapper.map_value(f"LU_LevelStatus:{glv}")
         if glv == "Water level not affected by status":
             glv = "Water level not affected"
         elif glv is None:
