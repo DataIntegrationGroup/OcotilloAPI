@@ -156,52 +156,6 @@ def _extract_aquifer_type_codes(aquifer_code: str) -> list[str]:
     return individual_codes
 
 
-# Get or create aquifer system
-def get_or_create_aquifer_system(
-    session: Session, aquifers: list, aquifer_name: str, primary_type: str
-) -> AquiferSystem | None:
-    """
-    Get existing aquifer or create new one if it doesn't exist.
-
-    With the new AquiferType model, we create ONE aquifer record per named
-    aquifer (e.g., one "Santa Fe Group"), not multiple variants.
-
-    Args:
-        session: Database session
-        aquifer_name: Name of the aquifer (from AqClass or type name)
-        primary_type: Primary aquifer type for the aquifer_type field
-    """
-    # Try to find existing aquifer by name
-    # aquifer = (
-    #     session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
-    # )
-    if aquifer_name is None:
-        return None, False
-
-    aquifer = next((a for a in aquifers if a.name == aquifer_name), None)
-    if aquifer:
-        return aquifer, False
-
-    # Create new aquifer
-    try:
-        logger.info(
-            f"Creating new aquifer system: {aquifer_name} (primary type: {primary_type})"
-        )
-
-        aquifer = AquiferSystem(
-            name=aquifer_name,
-            primary_aquifer_type=primary_type,  # Primary type
-            geographic_scale=None,  # Default
-        )
-        session.add(aquifer)
-        session.flush()  # Get the ID
-        return aquifer, True
-    except DatabaseError as e:
-        session.rollback()
-        logger.critical(f"Error creating aquifer {aquifer_name}: {e}")
-        return None, False
-
-
 def get_or_create_geologic_formation(
     session: Session, formation_code: str
 ) -> GeologicFormation | None:
@@ -541,8 +495,8 @@ class WellTransferer(Transferer):
             self._aquifers = session.query(AquiferSystem).all()
 
         # Get or create the aquifer
-        aquifer = get_or_create_aquifer_system(
-            session, self._aquifers, aquifer_name, primary_type
+        aquifer = self._get_or_create_aquifer_system(
+            session, row, aquifer_name, primary_type
         )
         if aquifer:
 
@@ -554,61 +508,101 @@ class WellTransferer(Transferer):
                 self._aquifers.append(aquifer)
 
             # Check if association already exists
-            existing_assoc = (
-                session.query(ThingAquiferAssociation)
-                .filter(
-                    ThingAquiferAssociation.thing_id == well.id,
-                    ThingAquiferAssociation.aquifer_system_id == aquifer.id,
-                )
-                .first()
-            )
+            # existing_assoc = (
+            #     session.query(ThingAquiferAssociation)
+            #     .filter(
+            #         ThingAquiferAssociation.thing_id == well.id,
+            #         ThingAquiferAssociation.aquifer_system_id == aquifer.id,
+            #     )
+            #     .first()
+            # )
+            # if not existing_assoc:
+            # Create the association
+            if self.verbose:
+                logger.info(f"Associating well {well.name} with aquifer {aquifer.name}")
+            aquifer_assoc = ThingAquiferAssociation(thing=well, aquifer_system=aquifer)
+            session.add(aquifer_assoc)
+            # session.flush()
 
-            if not existing_assoc:
-                # Create the association
-                if self.verbose:
-                    logger.info(
-                        f"Associating well {well.name} with aquifer {aquifer.name}"
+            # Create AquiferType records for EACH characteristic
+            aquifer_type_names = []
+            for aquifer_code in aquifer_codes:
+                try:
+                    type_name = lexicon_mapper.map_value(
+                        f"LU_AquiferType:{aquifer_code}"
                     )
-                aquifer_assoc = ThingAquiferAssociation(
-                    thing=well, aquifer_system=aquifer
-                )
-                session.add(aquifer_assoc)
-                # session.flush()
+                    aquifer_type = AquiferType(
+                        thing_aquifer_association=aquifer_assoc,
+                        aquifer_type=type_name,
+                    )
+                    session.add(aquifer_type)
+                    aquifer_type_names.append(type_name)
+                except KeyError:
+                    logger.critical(
+                        f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
+                        f"for well {well.name}. Skipping this code."
+                    )
+                    self._capture_error(
+                        row.PointID,
+                        f"Unknown aquifer code: {aquifer_code}",
+                        "AquiferType",
+                    )
 
-                # Create AquiferType records for EACH characteristic
-                aquifer_type_names = []
-                for aquifer_code in aquifer_codes:
-                    try:
-                        type_name = lexicon_mapper.map_value(
-                            f"LU_AquiferType:{aquifer_code}"
-                        )
-                        aquifer_type = AquiferType(
-                            thing_aquifer_association=aquifer_assoc,
-                            aquifer_type=type_name,
-                        )
-                        session.add(aquifer_type)
-                        aquifer_type_names.append(type_name)
-                    except KeyError:
-                        logger.critical(
-                            f"Unknown aquifer code '{aquifer_code}' from AquiferType='{row.AquiferType}' "
-                            f"for well {well.name}. Skipping this code."
-                        )
-                        self._capture_error(
-                            row.PointID,
-                            f"Unknown aquifer code: {aquifer_code}",
-                            "AquiferType",
-                        )
-
-                logger.info(
-                    f"Associated well {well.name} with aquifer {aquifer.name} "
-                    f"(types: {', '.join(aquifer_type_names)})"
-                )
-            else:
-                logger.info(
-                    f"Well {well.name} already associated with aquifer {aquifer.name}"
-                )
+            logger.info(
+                f"Associated well {well.name} with aquifer {aquifer.name} "
+                f"(types: {', '.join(aquifer_type_names)})"
+            )
+            # else:
+            #     logger.info(
+            #         f"Well {well.name} already associated with aquifer {aquifer.name}"
+            #     )
         else:
             logger.info(f"Failed to create aquifer for well {well.name}")
+
+    # Get or create aquifer system
+    def _get_or_create_aquifer_system(
+        self, session: Session, row, aquifer_name: str, primary_type: str
+    ) -> AquiferSystem | None:
+        """
+        Get existing aquifer or create new one if it doesn't exist.
+
+        With the new AquiferType model, we create ONE aquifer record per named
+        aquifer (e.g., one "Santa Fe Group"), not multiple variants.
+
+        Args:
+            session: Database session
+            aquifer_name: Name of the aquifer (from AqClass or type name)
+            primary_type: Primary aquifer type for the aquifer_type field
+        """
+        # Try to find existing aquifer by name
+        # aquifer = (
+        #     session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
+        # )
+        if aquifer_name is None:
+            return None, False
+
+        aquifer = next((a for a in self._aquifers if a.name == aquifer_name), None)
+        if aquifer:
+            return aquifer, False
+
+        # Create new aquifer
+        try:
+            logger.info(
+                f"Creating new aquifer system: {aquifer_name} (primary type: {primary_type})"
+            )
+
+            aquifer = AquiferSystem(
+                name=aquifer_name,
+                primary_aquifer_type=primary_type,  # Primary type
+                geographic_scale=None,  # Default
+            )
+            session.add(aquifer)
+            session.flush()  # Get the ID
+            return aquifer, True
+        except DatabaseError as e:
+            session.rollback()
+            self._capture_database_error(row.PointID, e)
+            return None, False
 
     def _after_hook(self, session):
         dump_cached_elevations(self._cached_elevations)
