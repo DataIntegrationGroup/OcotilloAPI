@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, TYPE_CHECKING
 from datetime import date
+from typing import List, TYPE_CHECKING
+
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -27,11 +28,10 @@ from db.base import (
     Base,
     ReleaseMixin,
 )
-from db.permission_history import PermissionHistoryMixin
-from services.util import retrieve_latest_polymorphic_history_table_record
-from db.status_history import StatusHistoryMixin
-from db.measuring_point_history import MeasuringPointHistory
 from db.data_provenance import DataProvenanceMixin
+from db.measuring_point_history import MeasuringPointHistory
+from db.permission_history import PermissionHistoryMixin
+from db.status_history import StatusHistoryMixin
 from services.util import retrieve_latest_polymorphic_history_table_record
 
 if TYPE_CHECKING:
@@ -412,7 +412,7 @@ class Thing(
 
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        if self.thing_type == "water well":
+        if self.thing_type == "water well" and self.measuring_points:
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
@@ -428,7 +428,7 @@ class Thing(
 
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
-        if self.thing_type == "water well":
+        if self.thing_type == "water well" and self.measuring_points:
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
