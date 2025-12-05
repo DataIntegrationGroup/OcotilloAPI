@@ -475,22 +475,24 @@ class WellTransferer(Transferer):
         # For detailed depth-interval stratigraphy, see stratigraphy_transfer.py
 
         formation_code = row.FormationZone
-
-        if formation_code in formations:
-            # Formation exists: Set association
-            well.formation_completion_code = formations[formation_code]
-            if self.verbose:
-                logger.info(
-                    f"Set completion formation for {well.name}: {formation_code}"
+        if formation_code:
+            if formation_code in formations:
+                # Formation exists: Set association
+                well.formation_completion_code = formations[
+                    formation_code
+                ].formation_code
+                if self.verbose:
+                    logger.info(
+                        f"Set completion formation for {well.name}: {formation_code}"
+                    )
+            else:
+                # Formation does NOT exist: Do not create new formation. Flag and log for review
+                logger.critical(
+                    f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
                 )
-        else:
-            # Formation does NOT exist: Do not create new formation. Flag and log for review
-            logger.critical(
-                f"MISSING FORMATION: Formation '{formation_code}' not found for well {well.name}. Flagged for review."
-            )
-            self._capture_error(
-                row.PointID, f"Unknown formation: {formation_code}", "FormationZone"
-            )
+                self._capture_error(
+                    row.PointID, f"Unknown formation: {formation_code}", "FormationZone"
+                )
 
     def _get_lexicon_value(self, row, value, default=None):
         try:
