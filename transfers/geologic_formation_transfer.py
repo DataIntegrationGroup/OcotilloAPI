@@ -38,11 +38,6 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
 
     # 4. Process each row
     for i, row in enumerate(cleaned_df.itertuples()):
-        # check if limit is reached
-        if limit and i >= limit:
-            logger.info(f"Reached limit of {limit} rows. Stopping migration.")
-            break
-
         # Log progress every 'step' rows
         if i and not i % step:
             logger.info(
@@ -67,18 +62,18 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             continue
 
         # Check if this formation already exists
-        existing = (
-            session.query(GeologicFormation)
-            .filter(GeologicFormation.formation_code == formation_code)
-            .first()
-        )
-
-        if existing:
-            logger.info(
-                f"Skipping row {i}: Formation code {formation_code} already exists"
-            )
-            skipped_count += 1
-            continue
+        # existing = (
+        #     session.query(GeologicFormation)
+        #     .filter(GeologicFormation.formation_code == formation_code)
+        #     .first()
+        # )
+        #
+        # if existing:
+        #     logger.info(
+        #         f"Skipping row {i}: Formation code {formation_code} already exists"
+        #     )
+        #     skipped_count += 1
+        #     continue
 
         # 6. Prepare data for creation
         # Note: We only store the formation_code. Formation names will be mapped by the API using a
