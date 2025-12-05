@@ -293,9 +293,10 @@ class WellTransferer(Transferer):
                         mpheight = mphs[0][0]
                         mpheight_description = mphs[1][0]
                     except IndexError:
-                        logger.warning(
-                            f"Measuring point height estimation failed for well {row.PointID}, {mphs}"
-                        )
+                        if self.verbose:
+                            logger.warning(
+                                f"Measuring point height estimation failed for well {row.PointID}, {mphs}"
+                            )
 
             data = CreateWell(
                 location_id=0,
@@ -378,11 +379,16 @@ class WellTransferer(Transferer):
             return
 
         try:
-            location, elevation_method = make_location(row, self._cached_elevations)
+            location, elevation_method, notes = make_location(
+                row, self._cached_elevations
+            )
             session.add(location)
             # session.flush()
-            self._added_locations[row.PointID] = elevation_method
+            self._added_locations[row.PointID] = (elevation_method, notes)
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             self._capture_error(row.PointID, str(e), str(e), "Location")
             logger.critical(f"Error making location for {row.PointID}: {e}")
 
@@ -641,28 +647,7 @@ class WellTransferer(Transferer):
 
         def _process_chunk(chunk_index: int, wells_chunk: list[Thing]):
             step_start_time = time.time()
-            row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
-            if notna(row.Notes):
-                note = well.add_note(row.Notes, "General")
-                objs.append(note)
-            if row.ConstructionNotes:
-                note = well.add_note(row.ConstructionNotes, "Construction")
-                objs.append(note)
-            if row.WaterNotes:
-                note = well.add_note(row.WaterNotes, "Water")
-                objs.append(note)
 
-            location = well.current_location
-            elevation_method, location_notes = self._added_locations[row.PointID]
-            for note_type, note_content in location_notes.items():
-                if not isna(note_content):
-                    location_note = location.add_note(note_content, note_type)
-                    objs.append(location_note)
-                    logger.info(
-                        f"Added note of type {note_type} for current location of well {well.name}"
-                    )
-            data_provenances = make_location_data_provenance(
-                row, location, elevation_method
             all_objects = []
             for well in wells_chunk:
                 objs = self._after_hook_chunk(well, formations)
@@ -703,12 +688,28 @@ class WellTransferer(Transferer):
 
         objs = []
         self._add_formation_zone(row, well, formations)
+
         if notna(row.Notes):
-            note = well.add_note(row.Notes, "Other")
+            note = well.add_note(row.Notes, "General")
+            objs.append(note)
+        if row.ConstructionNotes:
+            note = well.add_note(row.ConstructionNotes, "Construction")
+            objs.append(note)
+        if row.WaterNotes:
+            note = well.add_note(row.WaterNotes, "Water")
             objs.append(note)
 
         location = well.current_location
-        elevation_method = self._added_locations[well.name]
+        elevation_method, location_notes = self._added_locations[row.PointID]
+        for note_type, note_content in location_notes.items():
+            if notna(note_content):
+                location_note = location.add_note(note_content, note_type)
+                objs.append(location_note)
+                if self.verbose:
+                    logger.info(
+                        f"Added note of type {note_type} for current location of well {well.name}"
+                    )
+
         data_provenances = make_location_data_provenance(
             row, location, elevation_method
         )

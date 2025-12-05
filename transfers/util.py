@@ -564,7 +564,7 @@ def make_location_data_provenance(
         try:
             coordinate_method = (
                 lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
-                if not pd.isna(row.CoordinateMethod)
+                if pd.notna(row.CoordinateMethod)
                 else None
             )
         except KeyError:
