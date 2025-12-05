@@ -17,6 +17,7 @@ import json
 import re
 import time
 from datetime import datetime, UTC
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from pandas import isna, notna
@@ -221,6 +222,7 @@ class WellTransferer(Transferer):
         self._cached_elevations = get_cached_elevations()
         self._added_locations = {}
         self._aquifers = None
+        self._measuring_point_estimator = MeasuringPointEstimator()
 
     def _get_dfs(self):
         wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
@@ -258,28 +260,6 @@ class WellTransferer(Transferer):
         return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
-        # pointid = row.PointID
-        # if df[df["PointID"] == pointid].shape[0] > 1:
-        #     logger.critical(
-        #         f"transfer_wells. PointID {pointid} has duplicate records. Skipping."
-        #     )
-        #     self._capture_error(pointid, "duplicate records", "PointID")
-        #     return
-
-        location = None
-        try:
-            location, elevation_method = make_location(row, self._cached_elevations)
-            session.add(location)
-            # session.flush()
-            self._added_locations[row.PointID] = elevation_method
-        except Exception as e:
-            self._capture_error(row.PointID, str(e), str(e), "Location")
-            logger.critical(f"Error making location for {row.PointID}: {e}")
-
-            if location is not None:
-                session.expunge(location)
-
-            return
 
         try:
             first_visit_date = _get_first_visit_date(row)
@@ -301,8 +281,21 @@ class WellTransferer(Transferer):
             if notna(row.OpenWellLoggerOK):
                 is_suitable_for_datalogger = bool(row.OpenWellLoggerOK)
 
-            # manually add the well rather than add_well from services/thing_helper.py
-            # so that effective_start can be set on the location assocation
+            mpheight = row.MPHeight
+            mpheight_description = row.MeasuringPoint
+            if mpheight is None:
+
+                mphs = self._measuring_point_estimator.estimate_measuring_point_height(
+                    row
+                )
+                if mphs:
+                    try:
+                        mpheight = mphs[0][0]
+                        mpheight_description = mphs[1][0]
+                    except IndexError:
+                        logger.warning(
+                            f"Measuring point height estimation failed for well {row.PointID}, {mphs}"
+                        )
 
             data = CreateWell(
                 location_id=0,
@@ -316,8 +309,8 @@ class WellTransferer(Transferer):
                 ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
-                measuring_point_height=row.MPHeight,
-                measuring_point_description=row.MeasuringPoint,
+                measuring_point_height=mpheight,
+                measuring_point_description=mpheight_description,
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
@@ -380,15 +373,25 @@ class WellTransferer(Transferer):
             if well is not None:
                 session.expunge(well)
 
-            if location is not None:
-                session.delete(location)
-
             self._capture_error(row.PointID, str(e), "UnknownField")
 
             logger.critical(f"Error creating well for {row.PointID}: {e}")
             return
 
-        assoc = LocationThingAssociation(effective_start=location.created_at)
+        try:
+            location, elevation_method = make_location(row, self._cached_elevations)
+            session.add(location)
+            # session.flush()
+            self._added_locations[row.PointID] = elevation_method
+        except Exception as e:
+            self._capture_error(row.PointID, str(e), str(e), "Location")
+            logger.critical(f"Error making location for {row.PointID}: {e}")
+
+            return
+
+        assoc = LocationThingAssociation(
+            effective_start=datetime.now(tz=ZoneInfo("UTC"))
+        )
 
         assoc.location = location
         assoc.thing = well
@@ -621,9 +624,17 @@ class WellTransferer(Transferer):
         formations = session.query(GeologicFormation).all()
         formations = {f.formation_code: f for f in formations}
 
-        measuring_point_estimator = MeasuringPointEstimator()
         # add things thate need well id
         query = session.query(Thing).filter(Thing.thing_type == "water well")
+        # query = (
+        #     session.query(Thing)
+        #     .options(
+        #         selectinload(Thing.location_associations).selectinload(
+        #             LocationThingAssociation.location
+        #         )
+        #     )
+        #     .filter(Thing.thing_type == "water well")
+        # )
         chunk_size = 500
         count = query.count()
         processed = 0
@@ -633,9 +644,7 @@ class WellTransferer(Transferer):
             step_start_time = time.time()
             all_objects = []
             for well in wells_chunk:
-                objs = self._after_hook_chunk(
-                    well, formations, measuring_point_estimator
-                )
+                objs = self._after_hook_chunk(well, formations)
                 if objs:
                     all_objects.extend(objs)
 
@@ -656,7 +665,7 @@ class WellTransferer(Transferer):
             )
             return processed_count
 
-        for well in query.yield_per(chunk_size):
+        for well in query.all():
             chunk.append(well)
             if len(chunk) == chunk_size:
                 processed = _process_chunk(processed // chunk_size, chunk)
@@ -665,7 +674,7 @@ class WellTransferer(Transferer):
         if chunk:
             _process_chunk(processed // chunk_size, chunk)
 
-    def _after_hook_chunk(self, well, formations, measuring_point_estimator):
+    def _after_hook_chunk(self, well, formations):
 
         row = self._row_by_pointid.get(well.name)
         if row is None:
@@ -719,12 +728,12 @@ class WellTransferer(Transferer):
                 objs.append(dp)
 
         start_time = time.time()
-        mphs = measuring_point_estimator.estimate_measuring_point_height(row)
+        mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
         if self.verbose:
             logger.info(
                 f"Estimated measuring point heights for {well.name}: {time.time() - start_time:.2f}s"
             )
-        for mph, mph_desc, start_date, end_date in mphs:
+        for mph, mph_desc, start_date, end_date in zip(*mphs):
             measuring_point_history = MeasuringPointHistory(
                 thing_id=well.id,
                 measuring_point_height=mph,

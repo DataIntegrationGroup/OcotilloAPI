@@ -63,7 +63,7 @@ class MeasuringPointEstimator:
 
     def estimate_measuring_point_height(
         self, row
-    ) -> tuple[float, str, datetime | None]:
+    ) -> tuple[float, str, datetime | None, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
         df = self._df[self._df["PointID"] == row.PointID]
@@ -108,7 +108,7 @@ class MeasuringPointEstimator:
             end_dates = [start_dates[i + 1] for i in range(len(start_dates) - 1)]
             end_dates.append(None)
 
-        return zip(mphs, mph_descs, start_dates, end_dates)
+        return mphs, mph_descs, start_dates, end_dates
 
 
 class SensorParameterEstimator:

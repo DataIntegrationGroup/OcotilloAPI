@@ -24,8 +24,6 @@ from core.enums import (
     ScreenType,
     Organization,
     MonitoringFrequency,
-    Organization,
-    MonitoringFrequency,
     WellConstructionMethod,
     WellPumpType,
     FormationCode,
@@ -36,6 +34,7 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
+
 # -------- VALIDATE ----------
 
 
@@ -43,7 +42,9 @@ class ValidateWell(BaseModel):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
-    measuring_point_height: float | None = None  # in feet
+    measuring_point_height: float | None = Field(
+        default=None, description="Measuring point height in feet"
+    )
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -130,9 +131,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
-    measuring_point_height: float = Field(
-        ge=0, description="Measuring point height in feet"
-    )
+
     measuring_point_description: str | None = None
     notes: list[CreateNote] | None = None
     well_completion_date: PastOrTodayDate | None = None
