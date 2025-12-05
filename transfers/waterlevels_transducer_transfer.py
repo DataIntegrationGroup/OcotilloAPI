@@ -51,6 +51,10 @@ class WaterLevelsContinuousTransferer(Transferer):
 
         # remove rows with no date measured
         cleaned_df = cleaned_df[cleaned_df.DateMeasured.notna()]
+
+        # remove duplicate rows
+        cleaned_df = cleaned_df.drop_duplicates(subset=["PointID", "DateMeasured"])
+
         return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:

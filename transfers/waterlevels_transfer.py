@@ -293,7 +293,8 @@ class WaterLevelTransferer(Transferer):
 
         if len(field_event_participants) == 0:
             logger.critical(
-                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}, therefore no field event, field activity, sample, and observation can be made. Skipping."
+                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}, "
+                f"therefore no field event, field activity, sample, and observation can be made. Skipping."
             )
 
         return field_event_participants

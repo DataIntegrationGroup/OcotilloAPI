@@ -75,7 +75,7 @@ class Transferer(object):
     def _get_df_to_iterate(self) -> pd.DataFrame:
         return self.cleaned_df
 
-    def _limit_iterator(self, session: Session, limit: int, step: int = 25):
+    def _limit_iterator(self, session: Session, limit: int, step: int = 100):
         df = self._get_df_to_iterate()
         n = len(df)
         start_time = time.time()
@@ -92,6 +92,7 @@ class Transferer(object):
                 start_time = time.time()
                 try:
                     session.commit()
+                    session.expunge_all()
                 except Exception as e:
                     logger.critical(f"Error committing wells. {e}")
                     session.rollback()
@@ -100,6 +101,7 @@ class Transferer(object):
             self._step(session, df, i, row)
 
         session.commit()
+        session.expunge_all()
         self._after_hook(session)
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: dict):

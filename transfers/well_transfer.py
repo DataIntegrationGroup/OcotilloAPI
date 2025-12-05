@@ -624,7 +624,7 @@ class WellTransferer(Transferer):
         measuring_point_estimator = MeasuringPointEstimator()
         # add things thate need well id
         query = session.query(Thing).filter(Thing.thing_type == "water well")
-        chunk_size = 100
+        chunk_size = 500
         count = query.count()
         processed = 0
         chunk = []
@@ -641,7 +641,7 @@ class WellTransferer(Transferer):
 
             save_time = time.time()
             try:
-                session.bulk_save_objects(all_objects)
+                session.bulk_save_objects(all_objects, return_defaults=False)
                 session.commit()
             except DatabaseError as e:
                 session.rollback()
