@@ -316,8 +316,8 @@ class WellTransferer(Transferer):
                 ),
                 well_casing_depth=row.CasingDepth,
                 release_status="public" if row.PublicRelease else "private",
-                measuring_point_height=0,
-                measuring_point_description="",
+                measuring_point_height=row.MPHeight,
+                measuring_point_description=row.MeasuringPoint,
                 notes=(
                     [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
                 ),
@@ -330,7 +330,7 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            self._capture_error(row.PointID, str(e), "UnknownField")
+            self._capture_validation_error(row.PointID, e)
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )

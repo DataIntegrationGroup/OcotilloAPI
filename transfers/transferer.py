@@ -17,6 +17,7 @@ import time
 
 import pandas as pd
 from pandas import DataFrame
+from pydantic import ValidationError
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
@@ -48,6 +49,10 @@ class Transferer(object):
             self.input_df, self.cleaned_df = self._get_dfs()
             self._transfer_hook(session)
             session.commit()
+
+    def _capture_validation_error(self, pointid: str, err: ValidationError) -> None:
+        logger.critical(f"Validation Error: PointID={pointid}, {err}")
+        self._capture_error(pointid, str(err.errors()), "UnknownField")
 
     def _capture_database_error(self, pointid: str, err: DatabaseError) -> None:
         error_dict = err.orig.args[0]
