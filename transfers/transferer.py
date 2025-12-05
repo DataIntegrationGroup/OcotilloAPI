@@ -138,6 +138,9 @@ class ChunkTransferer(Transferer):
                     continue
                 self._chunk_step(session, df, i, row, dbitem)
 
+            session.commit()
+            session.expunge_all()
+
     # def chunk_transfer(self):
     #     with session_ctx() as session:
     #         self.input_df, self.cleaned_df = self._get_dfs(session)

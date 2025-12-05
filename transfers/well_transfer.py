@@ -437,6 +437,7 @@ class WellTransferer(Transferer):
 
         formation_code = row.FormationZone
         if formation_code:
+            formation_code = formation_code.strip()
             if formation_code in formations:
                 # Formation exists: Set association
                 well.formation_completion_code = formations[
@@ -856,6 +857,7 @@ class WellChunkTransferer(ChunkTransferer):
         return input_df, cleaned_df
 
     def _get_df_chunk(self, session, chunk):
+        print("cc", chunk.PointID.tolist())
         things = (
             session.query(Thing).filter(Thing.name.in_(chunk.PointID.tolist())).all()
         )
