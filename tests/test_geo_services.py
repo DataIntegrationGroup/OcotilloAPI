@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import pytest
+
 from services.util import (
     get_state_from_point,
     get_county_from_point,
@@ -20,6 +22,7 @@ from services.util import (
 )
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_quad_name_from_point():
     x = -106.904107
     y = 34.068198
@@ -27,6 +30,7 @@ def test_quad_name_from_point():
     assert quad == "Socorro"
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_state_name_from_point():
     x = -100.904107
     y = 34.068198
@@ -34,6 +38,7 @@ def test_state_name_from_point():
     assert state == "Texas"
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_county_name_from_point():
     x = -106.904107
     y = 34.068198
@@ -41,6 +46,7 @@ def test_county_name_from_point():
     assert county == "Socorro"
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_quad_name_from_point_bad_point():
     x = 1.904107
     y = 34.068198
@@ -48,6 +54,7 @@ def test_quad_name_from_point_bad_point():
     assert quad is None
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_state_name_from_point_bad_point():
     x = 1.904107
     y = 34.068198
@@ -55,6 +62,7 @@ def test_state_name_from_point_bad_point():
     assert state is None
 
 
+@pytest.mark.xfail(reason="Relies on an outside service")
 def test_county_name_from_point_bad_point():
     x = 1.904107
     y = 34.068198

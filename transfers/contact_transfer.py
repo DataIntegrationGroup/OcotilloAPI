@@ -43,17 +43,31 @@ class ContactTransfer(ThingBasedTransferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
+
+        """
+        Developer's note
+
+        - company to organization mapping is stored in transfers/data/owners_organization_mapper.json
+        - the key is the value in NM_Aquifer and the value is the standardized organization name used in the lexicon
+        """
         co_to_org_mapper_path = get_transfers_data_path(
             "owners_organization_mapper.json"
         )
         with open(co_to_org_mapper_path, "r") as f:
             self._co_to_org_mapper = json.load(f)
 
-        organization_mapper_path = get_transfers_data_path("organization_mapping.json")
-        with open(organization_mapper_path, "r") as f:
-            self._organization_mapper = json.load(f)
-
         self._added = []
+
+    def calculate_missing_organizations(self):
+        input_df, cleaned_df = self._get_dfs()
+
+        for row in replace_nans(input_df).itertuples():
+            if not row.Company:
+                continue
+            try:
+                _get_organization(row, self._co_to_org_mapper)
+            except ValueError as e:
+                logger.critical(f"Invalid Organization {e}")
 
     def _get_dfs(self):
         input_df = read_csv(self.source_table)
@@ -84,7 +98,6 @@ class ContactTransfer(ThingBasedTransferer):
                     row,
                     db_item,
                     self._co_to_org_mapper,
-                    self._organization_mapper,
                     self._added,
                 ):
                     session.commit()
@@ -102,7 +115,7 @@ class ContactTransfer(ThingBasedTransferer):
                 self._capture_error(row.PointID, str(e), "UnknownError")
 
 
-def _add_first_contact(session, row, thing, co_to_org_mapper, org_mapper, added):
+def _add_first_contact(session, row, thing, co_to_org_mapper, added):
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
@@ -111,7 +124,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, org_mapper, added)
     name = _make_name(row.FirstName, row.LastName)
 
     # check if organization is in lexicon
-    organization = _get_organization(row, co_to_org_mapper, org_mapper)
+    organization = _get_organization(row, co_to_org_mapper)
     if (name, organization) in added:
         return None
     added.append((name, organization))
@@ -202,22 +215,19 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, org_mapper, added)
     return True
 
 
-def _get_organization(row, co_to_org_mapper, org_mapper):
+def _get_organization(row, co_to_org_mapper):
     organization = co_to_org_mapper.get(row.Company, row.Company)
 
+    # use Organization enum to catch validation errors
     try:
         Organization(organization)
     except ValueError:
-        norganization = next(
-            (k for k, v in org_mapper.items() if v == organization), None
-        )
-        logger.warning(f"mapping {organization} to {norganization}")
-        organization = norganization
+        return None
 
     return organization
 
 
-def _add_second_contact(session, row, thing, co_to_org_mapper, org_mapper, added):
+def _add_second_contact(session, row, thing, co_to_org_mapper, added):
     if all(
         [
             getattr(row, f"Second{f}") is None
@@ -230,9 +240,9 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, org_mapper, added
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
 
-    organization = _get_organization(row, co_to_org_mapper, org_mapper)
+    organization = _get_organization(row, co_to_org_mapper)
     if (name, organization) in added:
-        return
+        return None
 
     added.append((name, organization))
 
