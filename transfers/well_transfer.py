@@ -175,6 +175,9 @@ def get_or_create_aquifer_system(
     # aquifer = (
     #     session.query(AquiferSystem).filter(AquiferSystem.name == aquifer_name).first()
     # )
+    if aquifer_name is None:
+        return None, False
+
     aquifer = next((a for a in aquifers if a.name == aquifer_name), None)
     if aquifer:
         return aquifer, False
@@ -196,7 +199,7 @@ def get_or_create_aquifer_system(
     except DatabaseError as e:
         session.rollback()
         logger.critical(f"Error creating aquifer {aquifer_name}: {e}")
-        return None
+        return None, False
 
 
 def get_or_create_geologic_formation(
