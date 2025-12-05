@@ -303,7 +303,6 @@ class WellTransferer(Transferer):
                 first_visit_date=first_visit_date,
                 hole_depth=row.HoleDepth,
                 well_depth=row.WellDepth,
-                well_construction_notes=row.ConstructionNotes,
                 well_casing_diameter=(
                     row.CasingDiameter * 12 if row.CasingDiameter else None
                 ),
@@ -642,6 +641,28 @@ class WellTransferer(Transferer):
 
         def _process_chunk(chunk_index: int, wells_chunk: list[Thing]):
             step_start_time = time.time()
+            row = self.cleaned_df[self.cleaned_df["PointID"] == well.name].iloc[0]
+            if notna(row.Notes):
+                note = well.add_note(row.Notes, "General")
+                objs.append(note)
+            if row.ConstructionNotes:
+                note = well.add_note(row.ConstructionNotes, "Construction")
+                objs.append(note)
+            if row.WaterNotes:
+                note = well.add_note(row.WaterNotes, "Water")
+                objs.append(note)
+
+            location = well.current_location
+            elevation_method, location_notes = self._added_locations[row.PointID]
+            for note_type, note_content in location_notes.items():
+                if not isna(note_content):
+                    location_note = location.add_note(note_content, note_type)
+                    objs.append(location_note)
+                    logger.info(
+                        f"Added note of type {note_type} for current location of well {well.name}"
+                    )
+            data_provenances = make_location_data_provenance(
+                row, location, elevation_method
             all_objects = []
             for well in wells_chunk:
                 objs = self._after_hook_chunk(well, formations)

@@ -406,7 +406,7 @@ def get_groundwater_parameter_id() -> int:
 
 def make_location(row: pd.Series, elevations: dict) -> tuple:
     """
-    Returns a tuple of location data and the elevation method
+    Returns a tuple of location data, the elevation method, and notes
     """
     point = Point(row.Easting, row.Northing)
 
@@ -448,6 +448,11 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         except KeyError:
             elevation_method = None
 
+    notes = {
+        "Coordinate": row.CoordinateNotes,
+        "General": row.LocationNotes,
+    }
+
     # Extract AMPAPI date fields (Date type, not DateTime)
     nma_date_created = None
     if row.DateCreated:
@@ -464,13 +469,11 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
-        nma_coordinate_notes=row.CoordinateNotes,
-        nma_notes_location=row.LocationNotes,
         nma_date_created=nma_date_created,
         nma_site_date=nma_site_date,
     )
 
-    return location, elevation_method
+    return location, elevation_method, notes
 
 
 def make_location_data_provenance(

@@ -123,7 +123,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     hole_depth: float | None = Field(
         default=None, gt=0, description="Hole depth in feet"
     )
-    well_construction_notes: str | None = None
     well_casing_diameter: float | None = Field(
         default=None, gt=0, description="Well casing diameter in inches"
     )
@@ -194,13 +193,11 @@ class BaseThingResponse(BaseResponseModel):
     thing_type: str
     current_location: LocationGeoJSONResponse
     first_visit_date: PastOrTodayDate | None
-    # The new relationship to the polymorphic Notes table
-    notes: List[NoteResponse] = []
-
     groups: list[GroupResponse] = []
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
     monitoring_frequencies: list[MonitoringFrequencyResponse] = []
+    general_notes: list[NoteResponse] | None = None
 
     @field_validator("monitoring_frequencies", mode="before")
     def remove_records_with_end_date(cls, monitoring_frequencies):
@@ -233,7 +230,6 @@ class WellResponse(BaseThingResponse):
     well_casing_depth: float | None = None
     well_casing_depth_unit: str = "ft"
     well_casing_materials: list[CasingMaterial] = []
-    well_construction_notes: str | None = None
     well_completion_date: PastOrTodayDate | None
     well_completion_date_source: str | None
     well_driller_name: str | None
@@ -250,7 +246,8 @@ class WellResponse(BaseThingResponse):
     aquifers: list[dict] = []
     water_notes: list[NoteResponse] | None = None
     measuring_notes: list[NoteResponse] | None = None
-    general_notes: list[NoteResponse] | None = None
+
+    construction_notes: list[NoteResponse] | None = None
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
 
