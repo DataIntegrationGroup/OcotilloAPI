@@ -633,7 +633,9 @@ class WellTransferer(Transferer):
             step_start_time = time.time()
             all_objects = []
             for well in wells_chunk:
-                objs = self._after_hook_chunk(well, formations, measuring_point_estimator)
+                objs = self._after_hook_chunk(
+                    well, formations, measuring_point_estimator
+                )
                 if objs:
                     all_objects.extend(objs)
 
