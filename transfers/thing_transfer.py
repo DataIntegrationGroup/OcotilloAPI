@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import time
-
+from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -57,9 +57,16 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             session.commit()
 
         try:
-            location, elevation_method = make_location(row, cached_elevations)
+            location, elevation_method, location_notes = make_location(
+                row, cached_elevations
+            )
             session.add(location)
             session.flush()
+            for note_type, note_content in location_notes.items():
+                if not isna(note_content):
+                    location_note = location.add_note(note_content, note_type)
+                    session.add(location_note)
+
             data_provenances = make_location_data_provenance(
                 row, location, elevation_method
             )

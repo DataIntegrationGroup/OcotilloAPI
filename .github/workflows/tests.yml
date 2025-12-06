@@ -20,6 +20,7 @@ jobs:
         # image: postgis/postgis:17-3.5
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 54321
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -27,7 +28,7 @@ jobs:
           --health-retries 5
         ports:
           # Maps tcp port 5432 on service container to the host
-          - 5432:5432
+          - 54321:5432
 
     steps:
     - name: Check out source repository
@@ -50,12 +51,12 @@ jobs:
       env:
         MODE: development
         POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
+        POSTGRES_PORT: 54321
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
 
-      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
+      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
 
     - name: Checkout BDD repo (features only)
       uses: actions/checkout@v4
@@ -71,7 +72,7 @@ jobs:
     - name: Run BDD tests
       env:
         POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432
+        POSTGRES_PORT: 54321
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres

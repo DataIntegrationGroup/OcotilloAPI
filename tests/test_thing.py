@@ -27,9 +27,9 @@ from core.dependencies import (
 )
 from db import Thing, WellScreen, ThingIdLink
 from main import app
+from schemas import DT_FMT
 from schemas.location import LocationResponse
 from schemas.thing import ValidateWell
-from schemas import DT_FMT
 from tests import (
     client,
     override_authentication,
@@ -78,29 +78,30 @@ def test_validate_hole_depth_casing_depth():
         ValidateWell(hole_depth=100.0, well_casing_depth=110.0)
 
 
-def test_validate_mp_height_hole_depth():
-    with pytest.raises(
-        ValueError,
-        match="measuring point height must be less than hole depth",
-    ):
-        ValidateWell(hole_depth=100.0, measuring_point_height=110.0)
-
-
-def test_validate_mp_height_well_depth():
-    with pytest.raises(
-        ValueError,
-        match="measuring point height must be less than well depth",
-    ):
-        ValidateWell(well_depth=100.0, measuring_point_height=105.0)
-
-
-def test_validate_mp_height_well_casing_depth():
-    with pytest.raises(
-        ValueError,
-        match="measuring point height must be less than well casing depth",
-    ):
-        ValidateWell(well_casing_depth=100.0, measuring_point_height=105.0)
-
+# this is not a valid test because measuring_point_height is not related to hole_depth
+# def test_validate_mp_height_hole_depth():
+#     with pytest.raises(
+#         ValueError,
+#         match="measuring point height must be less than hole depth",
+#     ):
+#         ValidateWell(hole_depth=100.0, measuring_point_height=110.0)
+#
+#
+# def test_validate_mp_height_well_depth():
+#     with pytest.raises(
+#         ValueError,
+#         match="measuring point height must be less than well depth",
+#     ):
+#         ValidateWell(well_depth=100.0, measuring_point_height=105.0)
+#
+#
+# def test_validate_mp_height_well_casing_depth():
+#     with pytest.raises(
+#         ValueError,
+#         match="measuring point height must be less than well casing depth",
+#     ):
+#         ValidateWell(well_casing_depth=100.0, measuring_point_height=105.0)
+#
 
 # POST tests ===================================================================
 

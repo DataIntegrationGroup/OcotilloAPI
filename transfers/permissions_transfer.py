@@ -1,9 +1,10 @@
-from sqlalchemy.orm import Session
 from datetime import datetime
-from pandas import isna
 
-from db import Thing, PermissionHistory
-from transfers.util import read_csv, logger, replace_nans
+from pandas import isna
+from sqlalchemy.orm import Session
+
+from db import Thing, PermissionHistory, Contact, ThingContactAssociation
+from transfers.util import read_csv, logger, replace_nans, chunk_by_size
 
 """
 Developer's notes
@@ -14,7 +15,34 @@ does not pertain to permissions.
 """
 
 
-def transfer_permissions(session: Session):
+def _make_permission(
+    wdf, well, contact_id, nma_field, permission_type
+) -> PermissionHistory | None:
+
+    values = wdf.loc[wdf["PointID"] == well.name, nma_field].values
+    if len(values) == 0:
+        return None
+    elif isna(values[0]):
+        return None
+
+    permission_allowed = bool(values[0])
+    permission = PermissionHistory(
+        contact_id=contact_id,
+        permission_type=permission_type,
+        permission_allowed=permission_allowed,
+        start_date=datetime.today().date(),
+        target_id=well.id,
+        target_table="thing",
+    )
+
+    logger.info(
+        f"Transferred {permission_type} permission for well {well.name}: {permission_allowed}."
+    )
+
+    return permission
+
+
+def transfer_permissions(session: Session) -> None:
     """
     The transferred wells and contacts need to be transferred first
     - to access the auto-generated well IDs
@@ -25,71 +53,36 @@ def transfer_permissions(session: Session):
     wdf = replace_nans(wdf)
 
     transferred_wells = (
-        session.query(Thing).filter(Thing.thing_type == "water well").all()
+        session.query(Thing, Contact)
+        .select_from(Thing)
+        .join(ThingContactAssociation, ThingContactAssociation.thing_id == Thing.id)
+        .join(Contact, Contact.id == ThingContactAssociation.contact_id)
+        .filter(Thing.thing_type == "water well")
+        .order_by(Thing.name)
+        .all()
     )
+    visited = []
+    for chunk in chunk_by_size(transferred_wells, 100):
+        objs = []
+        for row in chunk.itertuples():
+            well = row.Thing
+            contact = row.Contact
+            if well.id in visited:
+                continue
 
-    for well in transferred_wells:
-        if len(well.contacts) == 0:
-            logger.critical(
-                f"Well {well.name} has no associated contacts; skipping permission transfer."
+            visited.append(well.id)
+
+            permission = _make_permission(
+                wdf, well, contact.id, "SampleOK", "Water Chemistry Sample"
             )
-            continue
-        else:
-            # Assuming the first contact is the relevant one
-            contact_id = well.contacts[0].id
+            if permission:
+                objs.append(permission)
 
-        allow_water_level_samples = wdf.loc[
-            wdf["PointID"] == well.name, "MonitorOK"
-        ].values
-        if len(allow_water_level_samples) == 0:
-            pass
-        elif isna(allow_water_level_samples[0]):
-            pass
-        else:
-            try:
-                permission_allowed = bool(allow_water_level_samples[0])
-                permission = PermissionHistory(
-                    contact_id=contact_id,
-                    permission_type="Water Level Sample",
-                    permission_allowed=permission_allowed,
-                    start_date=datetime.today().date(),
-                    target_id=well.id,
-                    target_table="thing",
-                )
-                session.add(permission)
-                logger.info(
-                    f"Transferred Water Level Sample permission for well {well.name}: {permission_allowed}."
-                )
-            except Exception as e:
-                logger.error(f"Error transferring permission for well {well.name}: {e}")
-                session.rollback()
-                pass
+            permission = _make_permission(
+                wdf, well, contact.id, "MonitorOK", "Water Level Sample"
+            )
+            if permission:
+                objs.append(permission)
 
-        allow_water_chemistry_samples = wdf.loc[
-            wdf["PointID"] == well.name, "SampleOK"
-        ].values
-        if len(allow_water_chemistry_samples) == 0:
-            pass
-        elif isna(allow_water_chemistry_samples[0]):
-            pass
-        else:
-            try:
-                permission_allowed = bool(allow_water_chemistry_samples[0])
-                permission = PermissionHistory(
-                    contact_id=contact_id,
-                    permission_type="Water Chemistry Sample",
-                    permission_allowed=permission_allowed,
-                    start_date=datetime.today().date(),
-                    target_id=well.id,
-                    target_table="thing",
-                )
-                session.add(permission)
-                logger.info(
-                    f"Transferred Water Chemistry Sample permission for well {well.name}: {permission_allowed}."
-                )
-            except Exception as e:
-                logger.error(f"Error transferring permission for well {well.name}: {e}")
-                session.rollback()
-                pass
-
-    session.commit()
+        session.bulk_save_objects(objs)
+        session.commit()
