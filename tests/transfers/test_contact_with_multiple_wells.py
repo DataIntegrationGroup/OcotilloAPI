@@ -13,17 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
 
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
-# for safety dont test on the production database port
-os.environ["POSTGRES_PORT"] = "54321"
-
-from core.initializers import erase_and_rebuild_db
+from db import ThingContactAssociation
+from db.engine import session_ctx
+from transfers.contact_transfer import ContactTransfer
+from transfers.well_transfer import WellTransferer
 
 
-erase_and_rebuild_db()
+def test_multiple_wells():
+    pointids = ["MG-022", "MG-030", "MG-043"]
+    wt = WellTransferer(pointids=pointids)
+    wt.transfer()
+
+    ct = ContactTransfer(pointids=pointids)
+    ct.transfer()
+
+    with session_ctx() as sess:
+        assert sess.query(ThingContactAssociation).count() == 6
+
+
 # ============= EOF =============================================

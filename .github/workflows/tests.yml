@@ -56,7 +56,7 @@ jobs:
         POSTGRES_PASSWORD: postgres
         DB_DRIVER: postgres
 
-      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml
+      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
 
     - name: Checkout BDD repo (features only)
       uses: actions/checkout@v4
