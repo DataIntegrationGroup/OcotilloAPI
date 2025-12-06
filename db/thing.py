@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, TYPE_CHECKING
 from datetime import date
+from typing import List, TYPE_CHECKING
+
 from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
@@ -27,11 +28,10 @@ from db.base import (
     Base,
     ReleaseMixin,
 )
-from db.permission_history import PermissionHistoryMixin
-from services.util import retrieve_latest_polymorphic_history_table_record
-from db.status_history import StatusHistoryMixin
-from db.measuring_point_history import MeasuringPointHistory
 from db.data_provenance import DataProvenanceMixin
+from db.measuring_point_history import MeasuringPointHistory
+from db.permission_history import PermissionHistoryMixin
+from db.status_history import StatusHistoryMixin
 from services.util import retrieve_latest_polymorphic_history_table_record
 
 if TYPE_CHECKING:
@@ -347,6 +347,9 @@ class Thing(
 
     # Full-text search vector
     search_vector = Column(TSVectorType("name"))
+
+    # for temporary backwards compatibility
+    well_construction_notes = mapped_column(String(1000), nullable=True)
 
     @property
     def current_location(self):

@@ -286,7 +286,6 @@ class WellTransferer(Transferer):
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
-
                 mphs = self._measuring_point_estimator.estimate_measuring_point_height(
                     row
                 )
@@ -326,9 +325,6 @@ class WellTransferer(Transferer):
             CreateWell.model_validate(data)
         except ValidationError as e:
             self._capture_validation_error(row.PointID, e)
-            logger.critical(
-                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
-            )
             return
 
         well = None

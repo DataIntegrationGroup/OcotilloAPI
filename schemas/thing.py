@@ -42,9 +42,7 @@ class ValidateWell(BaseModel):
     well_depth: float | None = None  # in feet
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
-    measuring_point_height: float | None = Field(
-        default=None, description="Measuring point height in feet"
-    )
+    measuring_point_height: float | None = None
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -61,24 +59,24 @@ class ValidateWell(BaseModel):
                     "well casing depth must be less than or equal to hole depth"
                 )
 
-        if self.measuring_point_height is not None:
-            if (
-                self.hole_depth is not None
-                and self.measuring_point_height >= self.hole_depth
-            ):
-                raise ValueError("measuring point height must be less than hole depth")
-            elif (
-                self.well_casing_depth is not None
-                and self.measuring_point_height >= self.well_casing_depth
-            ):
-                raise ValueError(
-                    "measuring point height must be less than well casing depth"
-                )
-            elif (
-                self.well_depth is not None
-                and self.measuring_point_height >= self.well_depth
-            ):
-                raise ValueError("measuring point height must be less than well depth")
+        # if self.measuring_point_height is not None:
+        #     if (
+        #         self.hole_depth is not None
+        #         and self.measuring_point_height >= self.hole_depth
+        #     ):
+        #         raise ValueError("measuring point height must be less than hole depth")
+        #     elif (
+        #         self.well_casing_depth is not None
+        #         and self.measuring_point_height >= self.well_casing_depth
+        #     ):
+        #         raise ValueError(
+        #             "measuring point height must be less than well casing depth"
+        #         )
+        #     elif (
+        #         self.well_depth is not None
+        #         and self.measuring_point_height >= self.well_depth
+        #     ):
+        #         raise ValueError("measuring point height must be less than well depth")
 
         return self
 
@@ -131,6 +129,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     )
     well_casing_materials: list[CasingMaterial] | None = None
 
+    measuring_point_height: float = Field(description="Measuring point height in feet")
     measuring_point_description: str | None = None
     notes: list[CreateNote] | None = None
     well_completion_date: PastOrTodayDate | None = None

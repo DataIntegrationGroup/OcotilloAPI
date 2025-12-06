@@ -52,8 +52,9 @@ class Transferer(object):
             session.commit()
 
     def _capture_validation_error(self, pointid: str, err: ValidationError) -> None:
-        logger.critical(f"Validation Error: PointID={pointid}, {err}")
-        self._capture_error(pointid, str(err.errors()), "UnknownField")
+        self._capture_error(
+            pointid, f"Validation Error: {err.errors()}", "UnknownField"
+        )
 
     def _capture_database_error(self, pointid: str, err: DatabaseError) -> None:
         error_dict = err.orig.args[0]
