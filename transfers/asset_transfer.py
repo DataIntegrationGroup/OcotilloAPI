@@ -55,10 +55,10 @@ class AssetTransferer(Transferer):
                 .filter(Thing.name == row.PointID, Thing.thing_type == "water well")
                 .one_or_none()
             )
-            self._step(session, i, well)
+            self._asset_step(session, i, well)
             session.commit()
 
-    def _step(self, session, i, db_item):
+    def _asset_step(self, session, i, db_item):
         df = self.cleaned_df
         photos = df[df["PointID"] == db_item.name]
         if photos.empty:
@@ -72,8 +72,8 @@ class AssetTransferer(Transferer):
             photo_path = row.OLEPath
             srcblob = self._bucket.get_blob(f"nma-photos/{photo_path}")
             if not srcblob:
-                logger.critical(
-                    f"No photo found for PointID: {db_item.name}, {photo_path}"
+                self._capture_error(
+                    db_item.name, f"No photo found for {photo_path}", "OLEPath"
                 )
                 continue
 
