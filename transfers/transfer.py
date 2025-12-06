@@ -158,7 +158,12 @@ def transfer_all(metrics, limit=100):
 
 
 def _execute_transfer(klass, flags: dict = None):
-    transferer = klass(flags=flags)
+
+    pointids = None
+    if os.getenv("TRANSFER_TEST_POINTIDS"):
+        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+
+    transferer = klass(flags=flags, pointids=pointids)
     transferer.transfer()
     return transferer.input_df, transferer.cleaned_df, transferer.errors
 

@@ -246,7 +246,7 @@ class WellTransferer(Transferer):
         #     #       for example, wells in the "Water Level Network" project
         #     cleaned_df = wdf
 
-        cleaned_df = get_transferable_wells(wdf)
+        cleaned_df = get_transferable_wells(wdf, self.pointids)
         cleaned_df = filter_non_transferred_wells(cleaned_df)
 
         dupes = cleaned_df["PointID"].duplicated(keep=False)
@@ -257,6 +257,8 @@ class WellTransferer(Transferer):
             cleaned_df = cleaned_df[~cleaned_df["PointID"].isin(dup_ids)]
 
         cleaned_df = cleaned_df.sort_values(by=["PointID"])
+        if self.pointids:
+            cleaned_df = cleaned_df[cleaned_df["PointID"].isin(self.pointids)]
         return input_df, cleaned_df
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):

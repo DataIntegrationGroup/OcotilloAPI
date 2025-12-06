@@ -363,8 +363,11 @@ def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 
-def filter_to_valid_point_ids(df: pd.DataFrame) -> pd.DataFrame:
+def filter_to_valid_point_ids(df: pd.DataFrame, pointids: list = None) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids()
+    if pointids:
+        valid_point_ids = list(set(valid_point_ids) & set(pointids))
+
     return df[df["PointID"].isin(valid_point_ids)]
 
 

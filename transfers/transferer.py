@@ -39,10 +39,11 @@ class Transferer(object):
     source_table: str = None
     verbose: bool = False
 
-    def __init__(self, flags: dict = None):
+    def __init__(self, flags: dict = None, pointids: list = None):
         self.errors = []
         self.flags = flags if flags else {}
         self.manual_fixer = ManualFixer()
+        self.pointids = pointids
 
     def transfer(self) -> None:
         with session_ctx() as session:

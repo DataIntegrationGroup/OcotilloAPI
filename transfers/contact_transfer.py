@@ -81,7 +81,7 @@ class ContactTransfer(ThingBasedTransferer):
 
         odf = replace_nans(odf)
 
-        odf = filter_to_valid_point_ids(odf)
+        odf = filter_to_valid_point_ids(odf, self.pointids)
         return input_df, odf
 
     def _get_prepped_group(self, group) -> DataFrame:
@@ -125,9 +125,6 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
 
     # check if organization is in lexicon
     organization = _get_organization(row, co_to_org_mapper)
-    if (name, organization) in added:
-        return None
-    added.append((name, organization))
 
     contact_data = {
         "thing_id": thing.id,
@@ -142,7 +139,12 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
         "phones": [],
     }
 
-    contact = _make_contact_and_assoc(session, contact_data, thing)
+    contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
+
+    if not new:
+        return True
+    else:
+        added.append((name, organization))
 
     if row.Email:
         email = _make_email(
@@ -241,10 +243,6 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
     name = _make_name(row.SecondFirstName, row.SecondLastName)
 
     organization = _get_organization(row, co_to_org_mapper)
-    if (name, organization) in added:
-        return None
-
-    added.append((name, organization))
 
     contact_data = {
         "thing_id": thing.id,
@@ -259,7 +257,11 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
         "phones": [],
     }
 
-    contact = _make_contact_and_assoc(session, contact_data, thing)
+    contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
+    if not new:
+        return True
+    else:
+        added.append((name, organization))
 
     if row.SecondCtctEmail:
         email = _make_email(
@@ -349,20 +351,31 @@ def _make_address(first_second, ownerkey, kind, **kw):
         )
 
 
-def _make_contact_and_assoc(session, data, thing):
-    from schemas.contact import CreateContact
+def _make_contact_and_assoc(session, data, thing, added):
+    new_contact = True
+    if (data["name"], data["organization"]) in added:
+        contact = (
+            session.query(Contact)
+            .filter_by(name=data["name"], organization=data["organization"])
+            .first()
+        )
+        new_contact = False
+    else:
 
-    contact = CreateContact(**data)
-    contact_data = contact.model_dump()
-    contact_data.pop("thing_id")
-    contact = Contact(**contact_data)
+        from schemas.contact import CreateContact
+
+        contact = CreateContact(**data)
+        contact_data = contact.model_dump()
+        contact_data.pop("thing_id")
+        contact = Contact(**contact_data)
+        session.add(contact)
 
     assoc = ThingContactAssociation()
     assoc.thing = thing
     assoc.contact = contact
     session.add(assoc)
-    session.add(contact)
-    return contact
+
+    return contact, new_contact
 
 
 # ============= EOF =============================================
