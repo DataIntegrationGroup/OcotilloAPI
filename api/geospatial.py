@@ -65,7 +65,7 @@ async def get_project_area(
     user: viewer_dependency, session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:
 
-    group = simple_get_by_id(session, Group, group_id)
+    group: Group = simple_get_by_id(session, Group, group_id)
 
     if not group.project_area:
         raise HTTPException(status_code=404, detail="Group has no project area")
@@ -99,8 +99,6 @@ def get_feature_collection(
     Endpoint to retrieve a GeoJSON FeatureCollection.
     """
 
-    things = get_thing_features(session, thing_type, group)
-
     def make_feature_dict(thing, geometry, elevation, *other):
         geometry = json.loads(geometry)
         geometry["coordinates"].append(elevation)
@@ -115,6 +113,7 @@ def get_feature_collection(
             "geometry": geometry,
         }
 
+    things = get_thing_features(session, thing_type, group)
     features = [make_feature_dict(*item) for item in things]
 
     return {

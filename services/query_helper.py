@@ -88,7 +88,7 @@ def simple_get_by_name(session, table, name) -> object | None:
 
 def simple_get_by_id(
     session: Session, table: DeclarativeBase, item_id: int
-) -> object | None:
+) -> DeclarativeBase | None:
     """
     Helper function to get a record by ID from the database.
     """
