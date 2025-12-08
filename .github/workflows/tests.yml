@@ -14,87 +14,68 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
 
+    # Set shared env vars ONCE here for all steps
+    env:
+      MODE: development
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 54321
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      DB_DRIVER: postgres
+      BASE_URL: http://localhost:8000
+
     services:
       postgis:
-        image: postgis/postgis:latest
-        # image: postgis/postgis:17-3.5
+        image: postgis/postgis:17-3.5
+        # don't test against latest. be explicit in version being tested to avoid breaking changes
+        # image: postgis/postgis:latest
+
+        # These env vars are ONLY for the service container itself
         env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_PORT: 54321
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_PORT: ${{ env.POSTGRES_PORT }}
+
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
         ports:
           # Maps tcp port 5432 on service container to the host
-          - 54321:5432
+          - ${{ env.POSTGRES_PASSWORD }}:5432
 
     steps:
-    - name: Check out source repository
-      uses: actions/checkout@v4
+      - name: Check out source repository
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version-file: "pyproject.toml"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
 
-    - name: Install the project
-      run: uv sync --locked --all-extras --dev
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
-    - name: Run tests
-      env:
-        MODE: development
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 54321
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        DB_DRIVER: postgres
+      - name: Run tests
+        run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
 
-      run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
+      - name: Run BDD tests
+        run: |
+          uv run behave tests/features --tags="@backend and @production" --no-capture
 
-    - name: Checkout BDD repo (features only)
-      uses: actions/checkout@v4
-      with:
-        repository: DataIntegrationGroup/OcotilloBDD
-        path: bdd
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: Copy BDD features into backend test directory
-      run: |
-        mkdir -p tests/features
-        cp -r bdd/features/backend/* tests/features/
-
-    - name: Run BDD tests
-      env:
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 54321
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-        DB_DRIVER: postgres
-        BASE_URL: http://localhost:8000
-      run: |
-        uv run behave tests/features --tags="@backend and @production" --no-capture
-#        uv run behave tests/features/transducer-data-response.feature \
-#             tests/features/thing-type-path-parameters.feature \
-#             tests/features/thing-query-parameters.feature \
-#             tests/features/well-notes.feature \
-#             tests/features/location-notes.feature \
-#             tests/features/geojson-response.feature
-#        use this when we have consensus on tag nomenclature
-#        uv run behave tests/features --tags="@backend and @production" --no-capture
-
-    - name: Upload results to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
