@@ -198,14 +198,13 @@ class AddressResponse(BaseItemResponse):
     address_type: AddressType
 
 
-class ThingResponseForContact(BaseModel):
+class ThingResponseForContact(BaseResponseModel):
     """
     Response schema for thing details related to a contact. All that is needed
     are the id and name
     """
 
-    id: int
-    name: str | None = None
+    name: str
 
 
 class ContactResponse(BaseResponseModel):
