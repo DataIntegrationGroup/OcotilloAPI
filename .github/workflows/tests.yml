@@ -43,7 +43,7 @@ jobs:
 
         ports:
           # Maps tcp port 5432 on service container to the host
-          - ${{ env.POSTGRES_PASSWORD }}:5432
+          - ${{ env.POSTGRES_PORT }}:5432
 
     steps:
       - name: Check out source repository
