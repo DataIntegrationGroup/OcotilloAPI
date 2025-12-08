@@ -94,7 +94,7 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
 
     # Many-To-One: An Observation measures one Parameter.
     parameter: Mapped["Parameter"] = relationship(
-        "Parameter", back_populates="observations", lazy="joined"
+        "Parameter", back_populates="observations", lazy="selectin"
     )
 
 
