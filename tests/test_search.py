@@ -75,6 +75,7 @@ def test_search_contact(contact):
 
         queried_contact = session.scalars(query).first()
         assert queried_contact is not None
+        assert queried_contact.id == contact.id
 
 
 def test_search_contact_no_results(contact):

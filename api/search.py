@@ -61,8 +61,7 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
                 "email": [e.email for e in c.emails],
                 "phone": [p.phone_number for p in c.phones],
                 "address": [a.address_line_1 for a in c.addresses],
-                # 'address': c.address,
-                # 'location_id': c.location_id
+                "id": c.id,
             },
         }
         for c in contacts
