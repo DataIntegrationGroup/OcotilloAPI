@@ -207,7 +207,6 @@ class Thing(
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="LocationThingAssociation.effective_start.desc()",
-        lazy="joined",
     )
 
     contact_associations = relationship(
@@ -254,7 +253,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     well_casing_materials: Mapped[List["WellCasingMaterial"]] = relationship(
@@ -262,7 +260,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     links: Mapped[List["ThingIdLink"]] = relationship(
@@ -270,7 +267,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # One-To-Many: A Thing (well) can have multiple measuring points over time.
@@ -279,7 +275,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
@@ -287,7 +282,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # One-To-Many: A Thing can be associated with many AquiferSystems via the ThingAquiferAssociation join table.
@@ -296,7 +290,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # Many-To-Many: A Thing can penetrate many GeologicFormations.
@@ -306,7 +299,6 @@ class Thing(
             back_populates="thing",
             cascade="all, delete-orphan",
             passive_deletes=True,
-            lazy="joined",
         )
     )
 
@@ -347,9 +339,6 @@ class Thing(
 
     # Full-text search vector
     search_vector = Column(TSVectorType("name"))
-
-    # for temporary backwards compatibility
-    well_construction_notes = mapped_column(String(1000), nullable=True)
 
     @property
     def current_location(self):
