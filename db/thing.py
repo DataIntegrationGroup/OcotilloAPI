@@ -340,9 +340,6 @@ class Thing(
     # Full-text search vector
     search_vector = Column(TSVectorType("name"))
 
-    # for temporary backwards compatibility
-    well_construction_notes = mapped_column(String(1000), nullable=True)
-
     @property
     def current_location(self):
         """
