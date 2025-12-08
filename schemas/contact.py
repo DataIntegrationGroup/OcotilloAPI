@@ -22,7 +22,6 @@ from pydantic import field_validator, BaseModel, model_validator
 
 from core.enums import Role, ContactType, PhoneType, EmailType, AddressType
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
-from schemas.thing import ThingResponse
 
 
 # -------- VALIDATORS ----------
@@ -199,6 +198,16 @@ class AddressResponse(BaseItemResponse):
     address_type: AddressType
 
 
+class ThingResponseForContact(BaseModel):
+    """
+    Response schema for thing details related to a contact. All that is needed
+    are the id and name
+    """
+
+    id: int
+    name: str | None = None
+
+
 class ContactResponse(BaseResponseModel):
     """
     Response schema for contact details.
@@ -212,7 +221,7 @@ class ContactResponse(BaseResponseModel):
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
-    things: List[ThingResponse] = []  # List of related things
+    things: List[ThingResponseForContact] = []
 
     @field_validator("incomplete_nma_phones", mode="before")
     def make_incomplete_nma_phone_str(cls, v: list) -> list:
