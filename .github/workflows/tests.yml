@@ -32,8 +32,8 @@ jobs:
 
         # These env vars are ONLY for the service container itself
         env:
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_PORT: ${{ env.POSTGRES_PORT }}
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 54321
 
         options: >-
           --health-cmd pg_isready
@@ -43,7 +43,7 @@ jobs:
 
         ports:
           # Maps tcp port 5432 on service container to the host
-          - ${{ env.POSTGRES_PORT }}:5432
+          - 54321:5432
 
     steps:
       - name: Check out source repository
