@@ -15,12 +15,14 @@ from geoalchemy2.elements import WKTElement
 # Core models
 from db.contact import Contact, ThingContactAssociation, Email, Phone, Address
 from db.location import Location, LocationThingAssociation
+from db.group import Group, GroupThingAssociation
 from db.thing import (
     Thing,
     ThingIdLink,
     WellPurpose,
     WellCasingMaterial,
     MonitoringFrequencyHistory,
+    WellScreen,
 )
 from db.measuring_point_history import MeasuringPointHistory
 from db.sensor import Sensor
@@ -74,6 +76,7 @@ def seed_all(n: int = 5):
         field_activities: list[FieldActivity] = []
         samples: list[Sample] = []
         observations: list[Observation] = []
+        groups: list[Group] = []
 
         # 0. Lexicons
         organization_terms = get_terms_by_category(s, "organization")
@@ -90,6 +93,12 @@ def seed_all(n: int = 5):
         monitoring_frequency_terms = get_terms_by_category(s, "monitoring_frequency")
         note_type_terms = get_terms_by_category(s, "note_type")
         participant_role_terms = get_terms_by_category(s, "participant_role")
+        group_type_terms = get_terms_by_category(s, "group_type")
+        well_construction_method_terms = get_terms_by_category(s, "well_construction_method")
+        well_pump_type_terms = get_terms_by_category(s, "well_pump_type")
+        formation_code_terms = get_terms_by_category(s, "formation_code")
+        screen_type_terms = get_terms_by_category(s, "screen_type")
+        spring_type_terms = get_terms_by_category(s, "spring_type")
 
         # 1. Contacts with emails, phones, and addresses
         for _ in range(n):
@@ -190,15 +199,42 @@ def seed_all(n: int = 5):
 
         # 4. Things (Water Wells) & related records
         for i in range(n):
+            well_completion_date = fake.date_between("-5y", "-1y") if random.random() > 0.3 else None
+            well_depth_val = random.uniform(50, 500)
+            hole_depth_val = random.uniform(well_depth_val, well_depth_val + 50)
+            casing_depth_val = random.uniform(10, min(50, well_depth_val))
+            
             t = Thing(
                 name=f"WELL-{i + 1:04d}",
                 thing_type="water well",
                 first_visit_date=fake.date_between("-2y", "today"),
-                well_depth=random.uniform(50, 500),
-                hole_depth=random.uniform(50, 500),
-                well_construction_notes=fake.sentence(),
+                well_depth=well_depth_val,
+                hole_depth=hole_depth_val,
                 well_casing_diameter=random.uniform(4, 8),
-                well_casing_depth=random.uniform(10, 50),
+                well_casing_depth=casing_depth_val,
+                well_completion_date=well_completion_date,
+                well_driller_name=fake.company() if random.random() > 0.4 else None,
+                well_construction_method=(
+                    random.choice(well_construction_method_terms).term
+                    if well_construction_method_terms and random.random() > 0.3
+                    else None
+                ),
+                well_pump_type=(
+                    random.choice(well_pump_type_terms).term
+                    if well_pump_type_terms and random.random() > 0.4
+                    else None
+                ),
+                well_pump_depth=(
+                    random.uniform(10, min(well_depth_val - 10, 200))
+                    if random.random() > 0.5
+                    else None
+                ),
+                formation_completion_code=(
+                    random.choice(formation_code_terms).term
+                    if formation_code_terms and random.random() > 0.5
+                    else None
+                ),
+                is_suitable_for_datalogger=random.choice([True, False, None]) if random.random() > 0.3 else None,
                 release_status="public",
             )
             s.add(t)
@@ -267,7 +303,74 @@ def seed_all(n: int = 5):
                 )
                 s.add(note)
 
+            # Add some well screens
+            if random.random() > 0.4: 
+                num_screens = random.randint(1, 3)
+                for screen_idx in range(num_screens):
+                    # Ensure screen depths are within well depth bounds
+                    max_top = max(10, well_depth_val - 20)
+                    screen_top = random.uniform(10, max_top)
+                    max_bottom = min(well_depth_val, screen_top + 50)
+                    screen_bottom = random.uniform(screen_top + 5, max_bottom)
+                    screen = WellScreen(
+                        thing_id=t.id,
+                        screen_depth_top=screen_top,
+                        screen_depth_bottom=screen_bottom,
+                        screen_type=(
+                            random.choice(screen_type_terms).term
+                            if screen_type_terms and random.random() > 0.5
+                            else None
+                        ),
+                        screen_description=(
+                            fake.sentence() if random.random() > 0.5 else None
+                        ),
+                        release_status="public",
+                    )
+                    s.add(screen)
+
             things.append(t)
+
+        s.flush()
+
+        # 4b. Create Springs
+        for i in range(5):
+            spring = Thing(
+                name=f"SPRING-{i + 1:04d}",
+                thing_type="spring",
+                first_visit_date=fake.date_between("-2y", "today"),
+                spring_type=(
+                    random.choice(spring_type_terms).term
+                    if spring_type_terms and random.random() > 0.3
+                    else None
+                ),
+                release_status="public",
+            )
+            s.add(spring)
+            s.flush() 
+
+            # Add monitoring frequency history
+            if monitoring_frequency_terms:
+                mfh = MonitoringFrequencyHistory(
+                    thing_id=spring.id,
+                    monitoring_frequency=random.choice(monitoring_frequency_terms).term,
+                    start_date=spring.first_visit_date or fake.date_between("-2y", "today"),
+                    end_date=None,
+                    release_status="public",
+                )
+                s.add(mfh)
+
+            # Add notes for the spring
+            if note_type_terms:
+                note = Notes(
+                    target_id=spring.id,
+                    target_table="Thing",
+                    note_type=random.choice(note_type_terms).term,
+                    content=fake.sentence(),
+                    release_status="public",
+                )
+                s.add(note)
+
+            things.append(spring)
 
         s.flush()
 
@@ -307,6 +410,38 @@ def seed_all(n: int = 5):
                     release_status="public",
                 )
                 s.add(link)
+
+        # Create groups and associate things with groups
+        num_groups = max(2, n // 2)  
+        for i in range(num_groups):
+            group = Group(
+                name=f"Group-{i + 1}",
+                description=fake.sentence(),
+                project_area=None,
+                group_type=(
+                    random.choice(group_type_terms).term
+                    if group_type_terms
+                    else None
+                ),
+                release_status="public",
+            )
+            s.add(group)
+            s.flush()
+            groups.append(group)
+
+        # Associate things with groups 
+        for t in things:
+            num_group_associations = random.randint(0, min(2, len(groups)))
+            if num_group_associations > 0 and groups:
+                selected_groups = random.sample(groups, k=num_group_associations)
+                for group in selected_groups:
+                    assoc = GroupThingAssociation(
+                        group_id=group.id,
+                        thing_id=t.id,
+                    )
+                    s.add(assoc)
+
+        s.flush()
 
         # 5. FieldEvent, FieldActivity, FieldEventParticipant, Sensors & Deployments
         for t in things:
@@ -424,7 +559,7 @@ def seed_all(n: int = 5):
             s.commit()
             print(
                 f"Seed complete: {len(contacts)} contacts, {len(locations)} locations, "
-                + f"{len(things)} things, {len(sensors)} sensors, {len(samples)} samples, "
+                + f"{len(things)} things, {len(groups)} groups, {len(sensors)} sensors, {len(samples)} samples, "
                 + f"{len(observations)} observations."
             )
         except Exception as e:
