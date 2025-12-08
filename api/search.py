@@ -17,7 +17,7 @@ from fastapi import APIRouter
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
 from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency, viewer_dependency
@@ -80,7 +80,11 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
         select(Thing)
         .outerjoin(WellCasingMaterial)
         .outerjoin(WellPurpose)
-        .where(Thing.thing_type == "water well"),
+        .where(Thing.thing_type == "water well")
+        .options(
+            selectinload(Thing.well_casing_materials),
+            selectinload(Thing.well_purposes),
+        ),
         q,
         vector=well_vector,
         limit=limit,
@@ -116,7 +120,7 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
             "Wells",
             thing,
             {
-                "well_purpose": thing.well_purpose,
+                "well_purposes": [wp.purpose for wp in thing.well_purposes],
                 "well_depth": thing.well_depth,
                 "hole_depth": thing.hole_depth,
             },

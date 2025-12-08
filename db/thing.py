@@ -100,10 +100,6 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
     )
-    well_purpose: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
-    )
     well_casing_diameter: Mapped[float] = mapped_column(
         Float,
         nullable=True,
