@@ -7,6 +7,7 @@ Stratigraphy.Lithology data.
 """
 
 import time
+
 from sqlalchemy.orm import Session
 
 from db import Thing, GeologicFormation, ThingGeologicFormationAssociation
@@ -49,7 +50,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     cleaned_df = replace_nans(input_df)
 
     # Step 2: Filter to only wells that exist in database
-    cleaned_df = filter_to_valid_point_ids(session, cleaned_df)
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
 
     n_records = len(cleaned_df)
     n_wells = len(cleaned_df["PointID"].unique())
@@ -68,6 +69,12 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
 
     # Step 4: Group by well for efficient processing
     well_groups = cleaned_df.groupby("PointID")
+
+    formations = session.query(GeologicFormation).all()
+    things = session.query(Thing).all()
+
+    formations = {f.formation_code: f for f in formations}
+    things = {t.name: t for t in things}
 
     for well_index, (pointid, strat_group) in enumerate(well_groups):
         # Check limit (on number of wells, not records)
@@ -92,7 +99,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 continue
 
         # 5. Get the well from database
-        thing = session.query(Thing).filter(Thing.name == pointid).first()
+        thing = things.get(pointid)
         if not thing:
             logger.warning(
                 f"Well {pointid} not found in database, skipping stratigraphy"
@@ -195,13 +202,18 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 continue
 
             # 7. Get or create the formation
-            formation = (
-                session.query(GeologicFormation)
-                .filter(GeologicFormation.formation_code == formation_code)
-                .first()
-            )
+            # formation = (
+            #     session.query(GeologicFormation)
+            #     .filter(GeologicFormation.formation_code == formation_code)
+            #     .first()
+            # )
 
+            formation = formations.get(formation_code)
             if not formation:
+                logger.info(f"Geologic formation not in lexicon: {formation_code}")
+                skipped_count += 1
+                continue
+
                 # Create new formation if it doesn't exist
                 logger.info(f"Creating new geologic formation: {formation_code}")
                 formation = GeologicFormation(

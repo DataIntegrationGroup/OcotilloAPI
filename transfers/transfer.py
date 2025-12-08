@@ -21,6 +21,8 @@ from db.engine import session_ctx
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
+from transfers.permissions_transfer import transfer_permissions
+from transfers.stratigraphy_transfer import transfer_stratigraphy
 
 load_dotenv()
 
@@ -109,6 +111,15 @@ def transfer_all(metrics, limit=100):
         results = _execute_transfer(ContactTransfer, flags=flags)
         metrics.contact_metrics(*results)
 
+    message("TRANSFERRING PERMISSIONS")
+    with session_ctx() as session:
+        transfer_permissions(session)
+
+    message("TRANSFERRING STRATIGRAPY")
+    with session_ctx() as session:
+        results = transfer_stratigraphy(session, limit=limit)
+        metrics.stratigraphy_metrics(*results)
+
     if transfer_waterlevels:
         message("TRANSFERRING WATER LEVELS")
         results = _execute_transfer(WaterLevelTransferer, flags=flags)
@@ -147,7 +158,12 @@ def transfer_all(metrics, limit=100):
 
 
 def _execute_transfer(klass, flags: dict = None):
-    transferer = klass(flags=flags)
+
+    pointids = None
+    if os.getenv("TRANSFER_TEST_POINTIDS"):
+        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+
+    transferer = klass(flags=flags, pointids=pointids)
     transferer.transfer()
     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
@@ -168,5 +184,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 # ============= EOF =============================================

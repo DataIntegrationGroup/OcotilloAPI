@@ -17,6 +17,8 @@ import time
 
 import pandas as pd
 from pandas import DataFrame
+from pydantic import ValidationError
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import Thing, Base
@@ -35,22 +37,36 @@ class Transferer(object):
     errors: list = None
     flags: dict = None
     source_table: str = None
+    verbose: bool = False
 
-    def __init__(self, flags: dict = None):
+    def __init__(self, flags: dict = None, pointids: list = None):
         self.errors = []
         self.flags = flags if flags else {}
         self.manual_fixer = ManualFixer()
+        self.pointids = pointids
 
-    def transfer(self):
+    def transfer(self) -> None:
         with session_ctx() as session:
             self.input_df, self.cleaned_df = self._get_dfs()
             self._transfer_hook(session)
             session.commit()
 
-    def _capture_error(self, pointid, error, field, table=None):
+    def _capture_validation_error(self, pointid: str, err: ValidationError) -> None:
+        self._capture_error(
+            pointid, f"Validation Error: {err.errors()}", "UnknownField"
+        )
+
+    def _capture_database_error(self, pointid: str, err: DatabaseError) -> None:
+        error_dict = err.orig.args[0]
+        self._capture_error(pointid, error_dict["D"], error_dict["t"])
+
+    def _capture_error(self, pointid: str, error: str, field: str, table=None) -> None:
         if table is None:
             table = self.source_table
 
+        logger.critical(
+            f"Capture Error: PointID={pointid}, Error: {error}, {table}:{field}"
+        )
         self.errors.append(
             {
                 "pointid": pointid,
@@ -66,7 +82,7 @@ class Transferer(object):
     def _get_df_to_iterate(self) -> pd.DataFrame:
         return self.cleaned_df
 
-    def _limit_iterator(self, session: Session, limit: int, step: int = 25):
+    def _limit_iterator(self, session: Session, limit: int, step: int = 100):
         df = self._get_df_to_iterate()
         n = len(df)
         start_time = time.time()
@@ -83,6 +99,7 @@ class Transferer(object):
                 start_time = time.time()
                 try:
                     session.commit()
+                    session.expunge_all()
                 except Exception as e:
                     logger.critical(f"Error committing wells. {e}")
                     session.rollback()
@@ -91,6 +108,7 @@ class Transferer(object):
             self._step(session, df, i, row)
 
         session.commit()
+        session.expunge_all()
         self._after_hook(session)
 
     def _step(self, session: Session, df: pd.DataFrame, i: int, row: dict):
@@ -121,6 +139,9 @@ class ChunkTransferer(Transferer):
                     self._missing_db_item_warning(row)
                     continue
                 self._chunk_step(session, df, i, row, dbitem)
+
+            session.commit()
+            session.expunge_all()
 
     # def chunk_transfer(self):
     #     with session_ctx() as session:

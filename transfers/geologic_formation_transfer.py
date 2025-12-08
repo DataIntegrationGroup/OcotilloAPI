@@ -1,6 +1,7 @@
 import time
-from sqlalchemy.orm import Session
+
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from db import GeologicFormation
 from schemas.geologic_formation import CreateGeologicFormation
@@ -38,11 +39,6 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
 
     # 4. Process each row
     for i, row in enumerate(cleaned_df.itertuples()):
-        # check if limit is reached
-        if limit and i >= limit:
-            logger.info(f"Reached limit of {limit} rows. Stopping migration.")
-            break
-
         # Log progress every 'step' rows
         if i and not i % step:
             logger.info(
@@ -67,18 +63,18 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             continue
 
         # Check if this formation already exists
-        existing = (
-            session.query(GeologicFormation)
-            .filter(GeologicFormation.formation_code == formation_code)
-            .first()
-        )
-
-        if existing:
-            logger.info(
-                f"Skipping row {i}: Formation code {formation_code} already exists"
-            )
-            skipped_count += 1
-            continue
+        # existing = (
+        #     session.query(GeologicFormation)
+        #     .filter(GeologicFormation.formation_code == formation_code)
+        #     .first()
+        # )
+        #
+        # if existing:
+        #     logger.info(
+        #         f"Skipping row {i}: Formation code {formation_code} already exists"
+        #     )
+        #     skipped_count += 1
+        #     continue
 
         # 6. Prepare data for creation
         # Note: We only store the formation_code. Formation names will be mapped by the API using a
@@ -96,12 +92,12 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             CreateGeologicFormation.model_validate(data)
 
         except ValidationError as e:
+            skipped_count += 1
             errors.append({"code": formation_code, "errors": e.errors()})
-            logger.critical(
-                f"Validation error for row {i} with Code {formation_code}: {e.errors()}"
-            )
+            logger.critical(f"Validation error for row {i} with Code {formation_code}")
             continue
         except Exception as e:
+            skipped_count += 1
             errors.append({"code": formation_code, "errors": str(e)})
             logger.critical(f"Error preparing data for {formation_code}: {e}")
             continue
