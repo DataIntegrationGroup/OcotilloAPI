@@ -43,6 +43,7 @@ from db import (
     DataProvenance,
     FieldEvent,
     FieldEventParticipant,
+    FieldActivity,
     Contact,
     PermissionHistory,
     Thing,
@@ -588,6 +589,14 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             continue
 
         _add_field_staff(session, fsi, fe, role, user)
+
+    # add field activity
+    fa = FieldActivity(
+        field_event=fe,
+        activity_type="well inventory",
+        notes="Well inventory conducted during field event.",
+    )
+    session.add(fa)
 
     # ------------------
     # Contacts
