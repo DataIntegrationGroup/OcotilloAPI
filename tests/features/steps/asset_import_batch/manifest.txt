@@ -1,0 +1,4 @@
+asset_file_name,thing_name,asset_type
+pump-001-front.jpg,PUMP-001-POINTID,asset_front
+pump-001-side.jpg,PUMP-001-POINTID,asset_side
+panel-123-name.png,PANEL-123,nameplate

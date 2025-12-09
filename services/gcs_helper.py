@@ -51,12 +51,14 @@ def get_storage_client() -> storage.Client:
     return client
 
 
-def get_storage_bucket(client=None) -> storage.Bucket:
+def get_storage_bucket(client=None, bucket: str = None) -> storage.Bucket:
     if client is None:
         client = get_storage_client()
 
-    bucket = client.bucket(GCS_BUCKET_NAME)
-    return bucket
+    if bucket is None:
+        bucket = GCS_BUCKET_NAME
+
+    return client.bucket(bucket)
 
 
 def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
