@@ -216,17 +216,17 @@ class WellInventoryRow(BaseModel):
     repeat_measurement_permission: OptionalBool = None
     sampling_permission: OptionalBool = None
     datalogger_installation_permission: OptionalBool = None
-    public_availability_acknowledgement: OptionalBool = None
+    public_availability_acknowledgement: OptionalBool = None  # TODO: needs a home
     special_requests: Optional[str] = None
     ose_well_record_id: Optional[str] = None
     date_drilled: OptionalDateTime = None
     completion_source: Optional[str] = None
     total_well_depth_ft: OptionalFloat = None
-    historic_depth_to_water_ft: OptionalFloat = None
+    historic_depth_to_water_ft: OptionalFloat = None  # TODO: needs a home
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
     well_pump_depth_ft: OptionalFloat = None
-    is_open: OptionalBool = None
+    is_open: OptionalBool = None  # TODO: needs a home
     datalogger_possible: OptionalBool = None
     casing_diameter_ft: OptionalFloat = None
     measuring_point_description: Optional[str] = None
@@ -235,11 +235,11 @@ class WellInventoryRow(BaseModel):
     well_hole_status: Optional[str] = None
     monitoring_frequency: MonitoryFrequencyField = None
 
-    result_communication_preference: Optional[str] = None
-    contact_special_requests_notes: Optional[str] = None
-    sampling_scenario_notes: Optional[str] = None
+    result_communication_preference: Optional[str] = None  # TODO: needs as home
+    contact_special_requests_notes: Optional[str] = None  # TODO: needs a home
+    sampling_scenario_notes: Optional[str] = None  # TODO: needs a home
     well_measuring_notes: Optional[str] = None
-    sample_possible: OptionalBool = None
+    sample_possible: OptionalBool = None  # TODO: needs a home
 
     @model_validator(mode="after")
     def validate_model(self):
