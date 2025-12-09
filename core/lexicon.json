@@ -284,6 +284,7 @@
     {"categories": ["relation"], "term": "OSEWellTagID", "definition": "NM OSE well tag ID"},
     {"categories": ["relation"], "term": "OSEPOD", "definition": "NM OSE 'Point of Diversion' ID"},
     {"categories": ["relation"], "term": "PLSS", "definition": "Public Land Survey System ID"},
+    {"categories": ["activity_type"], "term": "well inventory", "definition": "well inventory"},
     {"categories": ["activity_type"], "term": "groundwater level", "definition": "groundwater level"},
     {"categories": ["activity_type"], "term": "water chemistry", "definition": "water chemistry"},
     {"categories": ["participant_role"], "term": "Lead", "definition": "the leader of the field event"},
