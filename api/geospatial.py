@@ -14,16 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 import json
-from typing import Annotated, List, Union
+from typing import Annotated, List
 
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from geoalchemy2.shape import to_shape
 from shapely.io import to_geojson
+from starlette.responses import JSONResponse
 
-# from starlette.responses import FileResponse
-
-from core.dependencies import session_dependency
+from core.dependencies import session_dependency, viewer_dependency
 from db import Group
 from schemas.thing import FeatureCollectionResponse
 from services.geospatial_helper import create_shapefile, get_thing_features
@@ -34,6 +33,7 @@ router = APIRouter(prefix="/geospatial", tags=["geospatial"])
 
 @router.get("")
 async def get_geospatial(
+    user: viewer_dependency,
     session: session_dependency,
     thing_type: Annotated[List[str], Query(title="thing_type")] = None,
     group: Annotated[str | int, Query(title="group")] = None,
@@ -54,14 +54,15 @@ async def get_geospatial(
     """
 
     if format_ == "geojson":
-        return get_feature_collection(session, thing_type, group)
+        content = get_feature_collection(session, thing_type, group)
+        return JSONResponse(content=content, media_type="application/geo+json")
     else:
         return get_location_shapefile(session, thing_type, group)
 
 
 @router.get("/project-area/{group_id}", summary="Get project area for group")
 async def get_project_area(
-    session: session_dependency, group_id: int
+    user: viewer_dependency, session: session_dependency, group_id: int
 ) -> FeatureCollectionResponse:
 
     group = simple_get_by_id(session, Group, group_id)
@@ -100,7 +101,9 @@ def get_feature_collection(
 
     things = get_thing_features(session, thing_type, group)
 
-    def make_feature_dict(thing, geometry, *other):
+    def make_feature_dict(thing, geometry, elevation, *other):
+        geometry = json.loads(geometry)
+        geometry["coordinates"].append(elevation)
         return {
             "type": "Feature",
             "properties": {
@@ -109,7 +112,7 @@ def get_feature_collection(
                 "name": thing.name,
                 "group": group,
             },
-            "geometry": json.loads(geometry),
+            "geometry": geometry,
         }
 
     features = [make_feature_dict(*item) for item in things]

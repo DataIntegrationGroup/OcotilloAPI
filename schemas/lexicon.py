@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel, ConfigDict, AwareDatetime
 from typing import List
+
+from pydantic import BaseModel, ConfigDict
+
+from schemas import UTCAwareDatetime
 
 
 # -------- CREATE ----------
@@ -36,7 +39,7 @@ class CreateLexiconTerm(BaseModel):
 
     term: str
     definition: str
-    categories: list[CreateLexiconCategory]
+    categories: list[str]
 
 
 class CreateLexiconTriple(BaseModel):
@@ -74,7 +77,7 @@ class UpdateLexiconTriple(BaseModel):
 
 class BaseLexiconResponse(BaseModel):
     id: int
-    created_at: AwareDatetime
+    created_at: UTCAwareDatetime
 
     model_config = ConfigDict(
         from_attributes=True,

@@ -13,17 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db.engine import get_db_session
+import json
+from enum import Enum
+from pathlib import Path
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from db.lexicon import (
     LexiconCategory,
     LexiconTerm,
     LexiconTermCategoryAssociation,
     LexiconTriple,
 )
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-
 from services.audit_helper import audit_add
+
+
+def add_lexicon_category(
+    session: Session,
+    name: str,
+    description: str,
+):
+
+    category = LexiconCategory(name=name, description=description)
+    session.add(category)
+    session.commit()
+    return category
 
 
 def add_lexicon_term(
@@ -37,33 +52,6 @@ def add_lexicon_term(
     Add a term to the lexicon with its definition and category.
 
     """
-    db_categories = []
-    if isinstance(categories, list):
-
-        category_names = [c.get("name") for c in categories]
-
-        sql = select(LexiconCategory).where(LexiconCategory.name.in_(category_names))
-        associated_categories = session.scalars(sql).all()
-        associated_category_names = [c.name for c in associated_categories]
-
-        unassociated_categories = [
-            category
-            for category in categories
-            if category.get("name") not in associated_category_names
-        ]
-        for category in unassociated_categories:
-            # Create a new category if it does not exist
-            category = LexiconCategory(
-                name=category.get("name"), description=category.get("description")
-            )
-            audit_add(user, category)
-            session.add(category)
-            session.commit()
-            session.flush()
-
-            db_categories.append(category)
-
-        db_categories.extend(associated_categories)
 
     # Check if the term already exists
     sql = select(LexiconTerm).where(LexiconTerm.term == term)
@@ -73,14 +61,15 @@ def add_lexicon_term(
         audit_add(user, dbterm)
         session.add(dbterm)
 
-    if len(db_categories) > 0:
-        for category in db_categories:
-            link = LexiconTermCategoryAssociation()
+    for category in categories:
+        sql = select(LexiconCategory).where(LexiconCategory.name == category)
+        category = session.scalars(sql).one()
+        link = LexiconTermCategoryAssociation()
 
-            link.category = category
-            link.term = dbterm
-            audit_add(user, link)
-            session.add(link)
+        link.category = category
+        link.term = dbterm
+        audit_add(user, link)
+        session.add(link)
 
     session.commit()
 
@@ -128,16 +117,18 @@ def get_terms_by_category(category: str) -> list:
         list: A list of terms.
     """
 
-    with next(get_db_session()) as session:
+    # use the lexicon.json to read the terms
+    path = Path(__file__).parent.parent / "core" / "lexicon.json"
+    with open(path, "r") as rfile:
+        terms = json.load(rfile)["terms"]
+        terms = [t for t in terms if category in t["categories"]]
 
-        sql = select(LexiconTerm)
-        sql = sql.join(LexiconTermCategoryAssociation)
-        sql = sql.join(LexiconCategory)
-        sql = sql.filter(LexiconCategory.name == category)
+    return terms
 
-        categories = [lex.term for lex in session.scalars(sql).all()]
 
-    return categories
+def build_enum_from_lexicon_category(category: str) -> Enum:
+    terms = get_terms_by_category(category)
+    return Enum(category, {c["term"]: c["term"] for c in terms})
 
 
 # ============= EOF =============================================

@@ -14,22 +14,20 @@
 # limitations under the License.
 # ===============================================================================
 # import os
-from inspect import Signature, Parameter
+import os
 from typing import Optional, List, Union, cast, Callable
 
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, OAuth2AuthorizationCodeBearer
-from jwt.algorithms import RSAAlgorithm
-from starlette import status
-from starlette.requests import Request
-from starlette.responses import Response
-import os
-
+import httpx
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, OAuth2AuthorizationCodeBearer
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from jose.exceptions import JWTError
-import httpx
+from jwt.algorithms import RSAAlgorithm
+from starlette.requests import Request
+from starlette.responses import Response
+
+from core.settings import settings
 
 AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
 ALGORITHMS = ["RS256"]
@@ -86,6 +84,15 @@ def authenticated(
         This function should check if the user is authenticated and has the required permissions.
         If `optional` is True, it should allow unauthenticated access.
         """
+
+        if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
+            if settings.mode == "production":
+                raise HTTPException(
+                    status_code=status.HTTP_424_FAILED_DEPENDENCY,
+                    detail="Authentication is disabled in production mode. Set AUTHENTIK_DISABLE_AUTHENTICATION=0 to enable authentication.",
+                )
+            return True
+
         if optional and not token:
             return True
 
@@ -93,7 +100,9 @@ def authenticated(
         # and verify the user's permissions.
 
         if not token or not verify_token(token, scope, permissions):
-            response.status_code = status.HTTP_401_UNAUTHORIZED
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+            )
 
         # this is a placeholder for the actual authentication logic
         return _get_token_payload(token) if token else None

@@ -36,30 +36,29 @@ jobs:
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
           run: |
-            echo "service: ocotillo-api" > app.yaml
-            echo "runtime: python313" >> app.yaml
-            echo "entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app" >> app.yaml
-            echo "instance_class: F4" >> app.yaml
-            echo "inbound_services:" >> app.yaml
-            echo "  - warmup" >> app.yaml
-            echo "automatic_scaling:" >> app.yaml
-            echo "  min_instances: 0" >> app.yaml
-            echo "  max_instances: 10" >> app.yaml
-            echo "" >> app.yaml
-            echo "env_variables:" >> app.yaml
-            echo "  MODE: \"production\"" >> app.yaml
-            echo "  DB_DRIVER: \"cloudsql\"" >> app.yaml
-            echo "  CLOUD_SQL_INSTANCE_NAME: \"${{ secrets.CLOUD_SQL_INSTANCE_NAME }}\"" >> app.yaml
-            echo "  CLOUD_SQL_DATABASE: \"${{ vars.CLOUD_SQL_DATABASE }}\"" >> app.yaml
-            echo "  CLOUD_SQL_USER: \"${{ secrets.CLOUD_SQL_USER }}\"" >> app.yaml
-            echo "  CLOUD_SQL_PASSWORD: \"${{ secrets.CLOUD_SQL_PASSWORD }}\"" >> app.yaml
-            echo "  GCS_SERVICE_ACCOUNT_KEY: \"${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}\"" >> app.yaml
-            echo "  GCS_BUCKET_NAME: \"${{vars.GCS_BUCKET_NAME}}\"" >> app.yaml
-            echo "  AUTHENTIK_URL: \"${{vars.AUTHENTIK_URL}}\"" >> app.yaml
-            echo "  AUTHENTIK_CLIENT_ID: \"${{vars.AUTHENTIK_CLIENT_ID}}\"" >> app.yaml
-            echo "  AUTHENTIK_AUTHORIZE_URL: \"${{vars.AUTHENTIK_AUTHORIZE_URL}}\"" >> app.yaml
-            echo "  AUTHENTIK_TOKEN_URL: \"${{vars.AUTHENTIK_TOKEN_URL}}\"" >> app.yaml
-            echo "  SENTRY_DSN: \"${{vars.SENTRY_DSN}}\"" >> app.yaml
+            cat <<EOF > app.yaml
+            service: ocotillo-api
+            runtime: python313
+            entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+            instance_class: F4
+            handlers:
+              - url: /.*
+                secure: always
+                script: auto
+            env_variables:
+              MODE: "production"
+              DB_DRIVER: "cloudsql"
+              CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+              CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+              CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+              CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+              GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+              GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
+              AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
+              AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
+              AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
+              AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
+            EOF
 
         - name: Deploy to Google Cloud
           run: |

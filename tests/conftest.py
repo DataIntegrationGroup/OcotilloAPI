@@ -1,40 +1,43 @@
-import pytest
 import uuid
+
+import pytest
 
 from db import *
 from db.engine import session_ctx
+from tests import groundwater_level_parameter_id, pH_parameter_id
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def location():
     with session_ctx() as session:
         loc = Location(
-            name="first location",
-            notes="these are some test notes",
-            point="POINT(0 0 0)",
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
             release_status="draft",
-            elevation_accuracy=100,
-            elevation_method="Survey-grade GPS",
-            coordinate_accuracy=50,
-            coordinate_method="GPS, uncorrected",
-            state="New Mexico",
-            county="Socorro",
-            quad_name="some NM quad",
         )
+
         session.add(loc)
         session.commit()
         session.refresh(loc)
+
+        note = loc.add_note("these are some test notes", "Other")
+        session.add(note)
+        session.commit()
+        session.refresh(loc)
+
         yield loc
 
-        session.close()
+        session.delete(note)
+        session.delete(loc)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
 def second_location():
     with session_ctx() as session:
         location = Location(
-            name="second location",
-            point="POINT (10.2 10.2 0)",
+            point="POINT (10.2 10.2)",
+            elevation=0,
             release_status="draft",
         )
         session.add(location)
@@ -44,17 +47,18 @@ def second_location():
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def water_well_thing(location):
     with session_ctx() as session:
         water_well = Thing(
             name="Test Well",
+            first_visit_date="2023-03-03",
             thing_type="water well",
             release_status="draft",
-            well_type="Production",
             well_depth=10,
             hole_depth=10,
-            well_construction_notes="Test well construction notes",
+            well_casing_diameter=5.0,
+            well_casing_depth=10.0,
         )
         session.add(water_well)
         session.commit()
@@ -66,10 +70,88 @@ def water_well_thing(location):
         assoc.effective_start = "2025-02-01T00:00:00Z"
         session.add(assoc)
         session.commit()
+
+        measuring_point_history = MeasuringPointHistory(
+            thing_id=water_well.id,
+            measuring_point_height=2,
+            measuring_point_description="top of casing",
+            start_date="2023-01-01",
+            end_date=None,
+            reason="for fun",
+        )
+        session.add(measuring_point_history)
+        session.commit()
+
+        session.refresh(water_well)
+        session.refresh(assoc)
         yield water_well
+        session.delete(water_well)
+        session.delete(assoc)
+        session.delete(measuring_point_history)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
+def pvc_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="PVC",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def steel_well_casing_material(water_well_thing):
+    with session_ctx() as session:
+        casing_material = WellCasingMaterial(
+            thing_id=water_well_thing.id,
+            material="Steel",
+            release_status="draft",
+        )
+        session.add(casing_material)
+        session.commit()
+        yield casing_material
+        session.delete(casing_material)
+        session.commit()
+
+
+@pytest.fixture()
+def irrigation_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Irrigation",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
+        session.commit()
+
+
+@pytest.fixture()
+def domestic_well_purpose(water_well_thing):
+    with session_ctx() as session:
+        purpose = WellPurpose(
+            thing_id=water_well_thing.id,
+            purpose="Domestic",
+            release_status="draft",
+        )
+        session.add(purpose)
+        session.commit()
+        yield purpose
+        session.delete(purpose)
+        session.commit()
+
+
+@pytest.fixture()
 def well_screen(water_well_thing):
     with session_ctx() as session:
         screen = WellScreen(
@@ -83,6 +165,8 @@ def well_screen(water_well_thing):
         session.add(screen)
         session.commit()
         yield screen
+        session.delete(screen)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -103,7 +187,7 @@ def second_well_screen(water_well_thing):
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def thing_id_link(water_well_thing):
     with session_ctx() as session:
         id_link = ThingIdLink(
@@ -116,6 +200,8 @@ def thing_id_link(water_well_thing):
         session.add(id_link)
         session.commit()
         yield id_link
+        session.delete(id_link)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -135,32 +221,12 @@ def second_thing_id_link(water_well_thing):
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def spring_thing(location):
     with session_ctx() as session:
         spring = Thing(
             name="Test Spring",
-            thing_type="spring",
-            release_status="draft",
-            spring_type="Artesian",
-        )
-        session.add(spring)
-        session.commit()
-        session.refresh(spring)
-
-        assoc = LocationThingAssociation()
-        assoc.location_id = location.id
-        assoc.thing_id = spring.id
-        session.add(assoc)
-        session.commit()
-        yield spring
-
-
-@pytest.fixture(scope="function")
-def second_spring_thing(location):
-    with session_ctx() as session:
-        spring = Thing(
-            name="Second Test Spring",
+            first_visit_date="2023-03-03",
             thing_type="spring",
             release_status="draft",
             spring_type="Artesian",
@@ -176,37 +242,46 @@ def second_spring_thing(location):
         session.commit()
         yield spring
         session.delete(spring)
+        session.delete(assoc)
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
+def second_spring_thing(location):
+    with session_ctx() as session:
+        spring = Thing(
+            name="Second Test Spring",
+            first_visit_date="2023-03-03",
+            thing_type="spring",
+            release_status="draft",
+            spring_type="Artesian",
+        )
+        session.add(spring)
+        session.commit()
+        session.refresh(spring)
+
+        assoc = LocationThingAssociation()
+        assoc.location_id = location.id
+        assoc.thing_id = spring.id
+        session.add(assoc)
+        session.commit()
+        yield spring
+        session.delete(spring)
+        session.delete(assoc)
+        session.commit()
+
+
+@pytest.fixture()
 def sensor():
     with session_ctx() as session:
         sensor = Sensor(
             name=f"Test Sensor {uuid.uuid4()}",
+            sensor_type="Pressure Transducer",
             model="Model X",
             serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
-            notes="Test equipment",
-            release_status="draft",
-        )
-        session.add(sensor)
-        session.commit()
-        yield sensor
-
-
-@pytest.fixture(scope="function")
-def second_sensor():
-    with session_ctx() as session:
-        sensor = Sensor(
-            name="Test Sensor 2",
-            model="Model X",
-            serial_no="123456",
-            datetime_installed="2023-01-01T00:00:00Z",
-            datetime_removed="2023-01-02T00:00:00Z",
-            recording_interval=60,
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
             notes="Test equipment",
             release_status="draft",
         )
@@ -217,55 +292,50 @@ def second_sensor():
         session.commit()
 
 
-@pytest.fixture(scope="session")
-def sample(water_well_thing, sensor):
-    with session_ctx() as session:
-        sample = Sample(
-            sample_date="2025-01-01T00:00:00Z",
-            thing_id=water_well_thing.id,
-            sample_type="groundwater",
-            sampler_name="Test Sampler",
-            release_status="draft",
-            field_sample_id=f"FS-{uuid.uuid4()}",
-            qc_sample="Original",
-            sensor_id=sensor.id,
-            sample_matrix="water",
-            sample_method="manual",
-            duplicate_sample_number=0,
-            sample_top=None,
-            sample_bottom=None,
-        )
-        session.add(sample)
-        session.commit()
-        yield sample
-
-
 @pytest.fixture(scope="function")
-def second_sample(water_well_thing, sensor):
+def second_sensor():
     with session_ctx() as session:
-        sample = Sample(
-            thing_id=water_well_thing.id,
-            sample_type="groundwater",
-            field_sample_id="FS-9999999",
-            sample_date="2025-01-01T00:00:00Z",
+        sensor = Sensor(
+            name="Test Sensor 2",
+            sensor_type="Pressure Transducer",
+            model="Model X",
+            serial_no="123456",
+            pcn_number="PCN123456",
+            owner_agency="NMBGMR",
+            sensor_status="In Service",
+            notes="Test equipment",
             release_status="draft",
-            sampler_name="Test Sampler",
-            qc_sample="Duplicate",
-            sensor_id=sensor.id,
-            sample_matrix="water",
-            sample_method="manual",
-            duplicate_sample_number=3,
-            sample_top=2,
-            sample_bottom=3,
         )
-        session.add(sample)
+        session.add(sensor)
         session.commit()
-        yield sample
-        session.delete(sample)
+        yield sensor
+        session.delete(sensor)
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
+def sensor_to_water_well_thing_deployment(sensor, water_well_thing):
+    with session_ctx() as session:
+        deployment = Deployment(
+            sensor_id=sensor.id,
+            thing_id=water_well_thing.id,
+            installation_date="2023-01-01",
+            removal_date=None,
+            recording_interval=24,
+            recording_interval_units="hour",
+            hanging_cable_length=10,
+            hanging_point_height=0,
+            hanging_point_description="hang 10",
+            notes="deployment fixture",
+        )
+        session.add(deployment)
+        session.commit()
+        yield deployment
+        session.delete(deployment)
+        session.commit()
+
+
+@pytest.fixture()
 def contact(water_well_thing):
     with session_ctx() as session:
         contact = Contact(
@@ -273,7 +343,7 @@ def contact(water_well_thing):
             name="Test Contact",
             role="Owner",
             contact_type="Primary",
-            organization="Test Organization",
+            organization="NMBGMR",
         )
         session.add(contact)
         session.commit()
@@ -287,9 +357,42 @@ def contact(water_well_thing):
         session.refresh(association)
 
         yield contact
+        session.delete(contact)
+        session.delete(association)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
+def incomplete_nma_phone_1(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="9999999",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
+def incomplete_nma_phone_2(contact):
+    with session_ctx() as session:
+        nma_phone = IncompleteNMAPhone(
+            phone_number="8888888",
+            contact_id=contact.id,
+        )
+        session.add(nma_phone)
+        session.commit()
+        session.refresh(nma_phone)
+        yield nma_phone
+        session.delete(nma_phone)
+        session.commit()
+
+
+@pytest.fixture()
 def address(contact):
     with session_ctx() as session:
         address = Address(
@@ -307,9 +410,11 @@ def address(contact):
         session.commit()
         session.refresh(address)
         yield address
+        session.delete(address)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def email(contact):
     with session_ctx() as session:
         email = Email(
@@ -322,9 +427,11 @@ def email(contact):
         session.commit()
         session.refresh(email)
         yield email
+        session.delete(email)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def phone(contact):
     with session_ctx() as session:
         phone = Phone(
@@ -337,6 +444,8 @@ def phone(contact):
         session.commit()
         session.refresh(phone)
         yield phone
+        session.delete(phone)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -423,7 +532,7 @@ def third_contact():
             name=None,
             role="Owner",
             contact_type="Primary",
-            organization="Third Organization",
+            organization="NMBGMR",
         )
         session.add(contact)
         session.commit()
@@ -435,7 +544,7 @@ def third_contact():
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def asset():
     with session_ctx() as session:
         asset = Asset(
@@ -452,6 +561,8 @@ def asset():
         session.commit()
         session.refresh(asset)
         yield asset
+        session.delete(asset)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -504,33 +615,167 @@ def second_asset():
         session.commit()
 
 
-@pytest.fixture(scope="session")
-def groundwater_level_observation(sensor, sample):
+@pytest.fixture()
+def field_event(water_well_thing):
+    with session_ctx() as session:
+        field_event = FieldEvent(
+            thing_id=water_well_thing.id,
+            event_date="2025-01-01T00:00:00Z",
+            notes="field event fixture notes",
+            release_status="draft",
+        )
+        session.add(field_event)
+        session.commit()
+        yield field_event
+        session.delete(field_event)
+        session.commit()
+
+
+@pytest.fixture()
+def field_event_participant(field_event, contact):
+    with session_ctx() as session:
+        field_event_participant = FieldEventParticipant(
+            field_event_id=field_event.id,
+            contact_id=contact.id,
+            participant_role="Lead",
+        )
+        session.add(field_event_participant)
+        session.commit()
+        yield field_event_participant
+        session.delete(field_event_participant)
+        session.commit()
+
+
+@pytest.fixture()
+def groundwater_level_field_activity(field_event):
+    with session_ctx() as session:
+        field_activity = FieldActivity(
+            field_event_id=field_event.id,
+            activity_type="groundwater level",
+            notes="field activity fixture notes",
+            release_status="draft",
+        )
+        session.add(field_activity)
+        session.commit()
+        yield field_activity
+        session.delete(field_activity)
+        session.commit()
+
+
+@pytest.fixture()
+def water_chemistry_field_activity(field_event):
+    with session_ctx() as session:
+        field_activity = FieldActivity(
+            field_event_id=field_event.id,
+            activity_type="water chemistry",
+            notes="field activity fixture notes",
+            release_status="draft",
+        )
+        session.add(field_activity)
+        session.commit()
+        yield field_activity
+        session.delete(field_activity)
+        session.commit()
+
+
+@pytest.fixture()
+def groundwater_level_sample(groundwater_level_field_activity, field_event_participant):
+    with session_ctx() as session:
+        sample = Sample(
+            field_activity_id=groundwater_level_field_activity.id,
+            field_event_participant_id=field_event_participant.id,
+            sample_date="2025-01-01T12:00:00Z",
+            sample_name="groundwater level sample name",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+            depth_top=None,
+            depth_bottom=None,
+            notes="groundwater level sample fixture notes",
+            release_status="draft",
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
+
+
+@pytest.fixture()
+def water_chemistry_sample(water_chemistry_field_activity, field_event_participant):
+    with session_ctx() as session:
+        sample = Sample(
+            field_activity_id=water_chemistry_field_activity.id,
+            field_event_participant_id=field_event_participant.id,
+            sample_date="2025-01-01T13:00:00Z",
+            sample_name="water chemistry sample name",
+            sample_matrix="water",
+            sample_method="grab sample",
+            qc_type="Normal",
+            depth_top=None,
+            depth_bottom=None,
+            notes="water chemistry sample fixture notes",
+            release_status="draft",
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
+
+
+@pytest.fixture(scope="function")
+def sample_to_delete(water_chemistry_field_activity, field_event_participant):
+    with session_ctx() as session:
+        sample = Sample(
+            field_activity_id=water_chemistry_field_activity.id,
+            field_event_participant_id=field_event_participant.id,
+            sample_date="2025-01-01T13:00:00Z",
+            sample_name="sample to delete",
+            sample_matrix="water",
+            sample_method="grab sample",
+            qc_type="Normal",
+            depth_top=None,
+            depth_bottom=None,
+            notes="water chemistry sample fixture notes",
+            release_status="draft",
+        )
+        session.add(sample)
+        session.commit()
+        yield sample
+        session.delete(sample)
+        session.commit()
+
+
+@pytest.fixture()
+def groundwater_level_observation(sensor, groundwater_level_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:04:00Z",
-            sample_id=sample.id,
+            sample_id=groundwater_level_sample.id,
             sensor_id=sensor.id,
-            observed_property="groundwater level:groundwater level",
+            parameter_id=groundwater_level_parameter_id,
             release_status="draft",
             value=10.0,
             unit="ft",
             measuring_point_height=5.0,
-            level_status="Water level not affected by status",
+            groundwater_level_reason="Water level not affected",
         )
         session.add(observation)
         session.commit()
         yield observation
+        session.delete(observation)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
-def water_chemistry_observation(sensor, sample):
+@pytest.fixture()
+def water_chemistry_observation(sensor, water_chemistry_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:03:00Z",
-            sample_id=sample.id,
+            sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            observed_property="water chemistry:pH",
+            parameter_id=pH_parameter_id,
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -538,16 +783,18 @@ def water_chemistry_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
+        session.delete(observation)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
-def geothermal_observation(sensor, sample):
+@pytest.fixture()
+def geothermal_observation(sensor, geothermal_sample):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2025-01-01T00:02:00Z",
-            sample_id=sample.id,
+            sample_id=geothermal_sample.id,
             sensor_id=sensor.id,
-            observed_property="geothermal:temperature",
+            observed_property="temperature",
             release_status="draft",
             value=20.0,
             unit="deg C",
@@ -556,16 +803,18 @@ def geothermal_observation(sensor, sample):
         session.add(observation)
         session.commit()
         yield observation
+        session.delete(observation)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
-def observation_to_delete(sample, sensor):
+def observation_to_delete(water_chemistry_sample, sensor):
     with session_ctx() as session:
         observation = Observation(
             observation_datetime="2019-01-01T00:03:00Z",
-            sample_id=sample.id,
+            sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            observed_property="water chemistry:pH",
+            parameter_id=pH_parameter_id,
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -573,9 +822,53 @@ def observation_to_delete(sample, sensor):
         session.add(observation)
         session.commit()
         yield observation
+        session.delete(observation)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+# @pytest.fixture()
+# def parameter_water_chemistry():
+#     """
+#     Fixture to create a Parameter for testing.
+#     """
+#     with session_ctx() as session:
+#         parameter = Parameter(
+#             parameter_name="pH",
+#             parameter_type="Field Parameter",
+#             matrix="groundwater",
+#             cas_number="7440-38-2",
+#             default_unit="dimensionless",
+#             release_status="draft",
+#         )
+#         session.add(parameter)
+#         session.commit()
+#         yield parameter
+#         session.delete(parameter)
+#         session.commit()
+
+
+# @pytest.fixture()
+# def parameter_groundwater():
+#     """
+#     Fixture to create a Parameter for testing.
+#     """
+#     with session_ctx() as session:
+#         parameter = Parameter(
+#             parameter_name="groundwater level",
+#             parameter_type="Field Parameter",
+#             matrix="groundwater",
+#             cas_number=None,
+#             default_unit="ft",
+#             release_status="draft",
+#         )
+#         session.add(parameter)
+#         session.commit()
+#         yield parameter
+#         session.delete(parameter)
+#         session.commit()
+
+
+@pytest.fixture()
 def group(water_well_thing):
     with session_ctx() as session:
         group = Group(
@@ -597,6 +890,9 @@ def group(water_well_thing):
         session.refresh(group_thing_association)
 
         yield group
+        session.delete(group)
+        session.delete(group_thing_association)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -622,8 +918,12 @@ def second_group(water_well_thing):
 
         yield group
 
+        session.delete(group)
+        session.delete(group_thing_association)
+        session.commit()
 
-@pytest.fixture(scope="session")
+
+@pytest.fixture()
 def lexicon_category():
     with session_ctx() as session:
         category = LexiconCategory(
@@ -633,6 +933,8 @@ def lexicon_category():
         session.commit()
         session.refresh(category)
         yield category
+        session.delete(category)
+        session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -650,7 +952,7 @@ def second_lexicon_category():
         session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def lexicon_term(lexicon_category):
     with session_ctx() as session:
         term = LexiconTerm(
@@ -669,9 +971,12 @@ def lexicon_term(lexicon_category):
         session.refresh(term_category_association)
 
         yield term
+        session.delete(term)
+        session.delete(term_category_association)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def second_lexicon_term(lexicon_category):
     with session_ctx() as session:
         term = LexiconTerm(
@@ -691,8 +996,12 @@ def second_lexicon_term(lexicon_category):
 
         yield term
 
+        session.delete(term)
+        session.delete(term_category_association)
+        session.commit()
 
-@pytest.fixture(scope="session")
+
+@pytest.fixture()
 def third_lexicon_term(lexicon_category):
     with session_ctx() as session:
         term = LexiconTerm(
@@ -712,8 +1021,12 @@ def third_lexicon_term(lexicon_category):
 
         yield term
 
+        session.delete(term)
+        session.delete(term_category_association)
+        session.commit()
 
-@pytest.fixture(scope="session")
+
+@pytest.fixture()
 def fourth_lexicon_term(lexicon_category):
     with session_ctx() as session:
         term = LexiconTerm(
@@ -733,8 +1046,12 @@ def fourth_lexicon_term(lexicon_category):
 
         yield term
 
+        session.delete(term)
+        session.delete(term_category_association)
+        session.commit()
 
-@pytest.fixture(scope="session")
+
+@pytest.fixture()
 def lexicon_triple(lexicon_term, second_lexicon_term):
     with session_ctx() as session:
         triple = LexiconTriple(
@@ -746,9 +1063,11 @@ def lexicon_triple(lexicon_term, second_lexicon_term):
         session.commit()
         session.refresh(triple)
         yield triple
+        session.delete(triple)
+        session.commit()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
     with session_ctx() as session:
         triple = LexiconTriple(
@@ -760,3 +1079,5 @@ def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
         session.commit()
         session.refresh(triple)
         yield triple
+        session.delete(triple)
+        session.commit()

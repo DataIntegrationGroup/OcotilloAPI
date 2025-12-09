@@ -14,8 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from sqlalchemy import String, ForeignKey, Integer
-from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import mapped_column, relationship, Mapped
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
 from db.base import AutoBaseMixin, Base, lexicon_term
 
@@ -27,15 +27,17 @@ class LexiconTerm(Base, AutoBaseMixin):
     """
 
     __tablename__ = "lexicon_term"
-    term = mapped_column(String(100), unique=True, nullable=False)
-    definition = mapped_column(String(255), nullable=False)
+    term: Mapped[str] = mapped_column(unique=True, nullable=False)
+    definition: Mapped[str] = mapped_column(nullable=False)
 
     category_associations = relationship(
         "LexiconTermCategoryAssociation",
         back_populates="term",
         cascade="all, delete-orphan",
     )
-    categories = association_proxy("category_associations", "category")
+    categories: AssociationProxy[list["LexiconCategory"]] = association_proxy(
+        "category_associations", "category"
+    )
 
     def __repr__(self):
         return f"<LexiconTerm(term={self.term}, definition={self.definition})>"

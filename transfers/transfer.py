@@ -13,114 +13,175 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import os
+
 from dotenv import load_dotenv
+
+from db.engine import session_ctx
+from services.util import get_bool_env
+from transfers.aquifer_system_transfer import transfer_aquifer_systems
+from transfers.geologic_formation_transfer import transfer_geologic_formations
+from transfers.permissions_transfer import transfer_permissions
+from transfers.stratigraphy_transfer import transfer_stratigraphy
 
 load_dotenv()
 
-from sqlalchemy.orm import Session
-from core.initializers import init_lexicon
-from db import Base
-from db.engine import session_ctx
-from transfers.group_transfer import transfer_groups
-from transfers.link_ids_transfer import transfer_link_ids, transfer_link_ids_welldata
-from transfers.contact_transfer import transfer_contacts
-from transfers.sensor_transfer import init_sensor
-from transfers.waterlevels_transfer import transfer_water_levels
-
-from transfers.well_transfer import transfer_wells, transfer_wellscreens
-from transfers.thing_transfer import (
-    transfer_springs,
-    transfer_perennial_stream,
-    transfer_ephemeral_stream,
-    transfer_met,
+from transfers.waterlevels_transducer_transfer import (
+    WaterLevelsContinuousPressureTransferer,
+    WaterLevelsContinuousAcousticTransferer,
 )
-from transfers.util import logger
+
+from transfers.metrics import Metrics
+from core.initializers import erase_and_rebuild_db
+
+from transfers.group_transfer import ProjectGroupTransferer
+from transfers.link_ids_transfer import (
+    LinkIdsWellDataTransferer,
+    LinkIdsLocationDataTransferer,
+)
+from transfers.contact_transfer import ContactTransfer
+from transfers.sensor_transfer import SensorTransferer
+from transfers.waterlevels_transfer import WaterLevelTransferer
+from transfers.well_transfer import WellTransferer, WellScreenTransferer
+
+from transfers.asset_transfer import AssetTransferer
+from transfers.util import timeit
+from transfers.logger import logger, save_log_to_bucket
 
 
-def erase_and_initalize(session: Session) -> None:
-    Base.metadata.drop_all(session.bind)
-    Base.metadata.create_all(session.bind)
-
-    init_lexicon()
-    init_sensor(session)
-
-
-def message(msg, pad=10):
+def message(msg, pad=10, new_line_at_top=True):
     pad = "*" * pad
-    logger.info("")
+    if new_line_at_top:
+        logger.info("")
     logger.info(f"{pad} {msg} {pad}")
 
 
-def main_transfer():
-    logger.info("Starting transfer")
+@timeit
+def transfer_all(metrics, limit=100):
+    message("STARTING TRANSFER", new_line_at_top=False)
+    if get_bool_env("ERASE_AND_REBUILD", False):
+        logger.info("Erase and rebuilding database")
+        erase_and_rebuild_db()
 
-    init = True
+    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}  # not currently used
 
-    transfer_well_flag = False
-    transfer_spring_flag = False
-    transfer_perennial_stream_flag = False
-    transfer_ephemeral_stream_flag = False
-    transfer_met_flag = False
-    transfer_contacts_flag = False
-    transfer_waterlevels_flag = False
-    transfer_link_ids_flag = False
-    transfer_assets_flag = False
-    transfer_groups_flag = False
+    with session_ctx() as session:
+        transfer_aquifer_systems(session, limit=limit)
+        transfer_geologic_formations(session, limit=limit)
 
-    cleanup_wells_flag = False
+    message("TRANSFERRING WELLS")
+    results = _execute_transfer(WellTransferer, flags=flags)
+    metrics.well_metrics(*results)
 
-    limit = 500
-    with session_ctx() as sess:
-        if init:
-            erase_and_initalize(sess)
+    transfer_screens = get_bool_env("TRANSFER_WELL_SCREENS", True)
+    transfer_sensors = get_bool_env("TRANSFER_SENSORS", True)
+    transfer_contacts = get_bool_env("TRANSFER_CONTACTS", True)
+    transfer_waterlevels = get_bool_env("TRANSFER_WATERLEVELS", True)
+    transfer_pressure = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE", True)
+    transfer_acoustic = get_bool_env("TRANSFER_WATERLEVELS_ACOUSTIC", True)
+    transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
+    transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
+    transfer_assets = get_bool_env("TRANSFER_ASSETS", True)
 
-        if init or transfer_well_flag:
-            message("TRANSFERRING WELLS")
-            transfer_wells(sess, limit=limit)
-            transfer_wellscreens(sess)
-        #
-        if init or transfer_spring_flag:
-            message("TRANSFERRING SPRINGS")
-            transfer_springs(sess, limit)
+    if transfer_screens:
+        message("TRANSFERRING WELL SCREENS")
+        results = _execute_transfer(WellScreenTransferer, flags=flags)
+        metrics.well_screen_metrics(*results)
 
-        if init or transfer_perennial_stream_flag:
-            message("TRANSFERRING PERENNIAL STREAMS")
-            transfer_perennial_stream(sess, limit)
+    if transfer_sensors:
+        message("TRANSFERRING SENSORS")
+        results = _execute_transfer(SensorTransferer, flags=flags)
+        metrics.sensor_metrics(*results)
 
-        if init or transfer_ephemeral_stream_flag:
-            message("TRANSFERRING EPHEMERAL STREAMS")
-            transfer_ephemeral_stream(sess, limit)
+    # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
+    # message("TRANSFERRING SPRINGS")
+    # timeit_direct(transfer_springs, sess, limit=limit)
+    #
+    # message("TRANSFERRING PERENNIAL STREAMS")
+    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING EPHEMERAL STREAMS")
+    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
+    #
+    # message("TRANSFERRING METEOROLOGICAL")
+    # timeit_direct(transfer_met, sess, limit)
 
-        if init or transfer_met_flag:
-            message("TRANSFERRING METEOROLOGICAL")
-            transfer_met(sess, limit)
+    if transfer_contacts:
+        message("TRANSFERRING CONTACTS")
+        results = _execute_transfer(ContactTransfer, flags=flags)
+        metrics.contact_metrics(*results)
 
-        if init or transfer_contacts_flag:
-            message("TRANSFERRING CONTACTS")
-            transfer_contacts(sess)
+    message("TRANSFERRING PERMISSIONS")
+    with session_ctx() as session:
+        transfer_permissions(session)
 
-        if init or transfer_waterlevels_flag:
-            message("TRANSFERRING WATER LEVELS")
-            transfer_water_levels(sess)
+    message("TRANSFERRING STRATIGRAPY")
+    with session_ctx() as session:
+        results = transfer_stratigraphy(session, limit=limit)
+        metrics.stratigraphy_metrics(*results)
 
-        if init or transfer_link_ids_flag:
-            message("TRANSFERRING LINK IDS")
-            transfer_link_ids(sess)
-            transfer_link_ids_welldata(sess)
+    if transfer_waterlevels:
+        message("TRANSFERRING WATER LEVELS")
+        results = _execute_transfer(WaterLevelTransferer, flags=flags)
+        metrics.water_level_metrics(*results)
 
-        # if init or transfer_assets_flag:
-        #     message("TRANSFERRING ASSETS")
-        #     transfer_assets_testing(sess)
+    if transfer_pressure:
+        message("TRANSFERRING WATER LEVELS PRESSURE")
+        results = _execute_transfer(
+            WaterLevelsContinuousPressureTransferer, flags=flags
+        )
+        metrics.pressure_metrics(*results)
 
-        if init or transfer_groups_flag:
-            message("TRANSFERRING GROUPS")
-            transfer_groups(sess)
+    if transfer_acoustic:
+        message("TRANSFERRING WATER LEVELS ACOUSTIC")
+        results = _execute_transfer(
+            WaterLevelsContinuousAcousticTransferer, flags=flags
+        )
+        metrics.acoustic_metrics(*results)
 
-        # if init or cleanup_wells_flag:
-        #     cleanup_wells(sess)
+    if transfer_link_ids:
+        message("TRANSFERRING LINK IDS")
+        results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
+        metrics.welldata_link_ids_metrics(*results)
+        results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
+        metrics.location_link_ids_metrics(*results)
+
+    if transfer_groups:
+        message("TRANSFERRING GROUPS")
+        results = _execute_transfer(ProjectGroupTransferer, flags=flags)
+        metrics.group_metrics(*results)
+
+    if transfer_assets:
+        message("TRANSFERRING ASSETS")
+        results = _execute_transfer(AssetTransferer, flags=flags)
+        metrics.asset_metrics(*results)
+
+
+def _execute_transfer(klass, flags: dict = None):
+
+    pointids = None
+    if os.getenv("TRANSFER_TEST_POINTIDS"):
+        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+
+    transferer = klass(flags=flags, pointids=pointids)
+    transferer.transfer()
+    return transferer.input_df, transferer.cleaned_df, transferer.errors
+
+
+def main():
+    message("START--------------------------------------")
+    limit = int(os.getenv("TRANSFER_LIMIT", 1000))
+    metrics = Metrics()
+
+    transfer_all(metrics, limit=limit)
+
+    metrics.close()
+    metrics.save_to_storage_bucket()
+    # todo: move the log file to a storage bucket
+    save_log_to_bucket()
+    message("END--------------------------------------")
 
 
 if __name__ == "__main__":
-    main_transfer()
-
+    main()
 # ============= EOF =============================================

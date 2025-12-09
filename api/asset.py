@@ -23,9 +23,8 @@ from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT, HTTP_204_NO_CO
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
-    viewer_function,
+    viewer_dependency,
     admin_dependency,
-    admin_function,
     editor_dependency,
 )
 from db import Thing
@@ -43,9 +42,7 @@ from services.gcs_helper import (
 )
 from services.exceptions_helper import PydanticStyleException
 
-router = APIRouter(
-    prefix="/asset", tags=["asset"], dependencies=[Depends(viewer_function)]
-)
+router = APIRouter(prefix="/asset", tags=["asset"])
 
 
 def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
@@ -80,10 +77,11 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
 @router.post(
     "/upload",
     status_code=HTTP_201_CREATED,
-    dependencies=[Depends(admin_function)],
 )
 async def upload_asset(
-    bucket=Depends(get_storage_bucket), file: UploadFile = File(...)
+    user: admin_dependency,
+    bucket=Depends(get_storage_bucket),
+    file: UploadFile = File(...),
 ) -> dict:
     uri, blob_name = gcs_upload(file, bucket)
     return {
@@ -148,6 +146,7 @@ signed url is always generated when retrieving assets individually
 
 @router.get("")
 async def list_assets(
+    user: viewer_dependency,
     session: session_dependency,
     thing_id: int = None,
 ) -> CustomPage[AssetResponse]:
@@ -171,6 +170,7 @@ async def list_assets(
 
 @router.get("/{asset_id}")
 async def get_asset(
+    user: viewer_dependency,
     asset_id: int,
     session: session_dependency,
     bucket=Depends(get_storage_bucket),
@@ -213,9 +213,9 @@ async def delete_asset(
 @router.delete(
     "/{asset_id}/remove",
     status_code=HTTP_204_NO_CONTENT,
-    dependencies=[Depends(admin_function)],
 )
 async def remove_asset(
+    user: admin_dependency,
     asset_id: int,
     session: session_dependency,
     bucket=Depends(get_storage_bucket),

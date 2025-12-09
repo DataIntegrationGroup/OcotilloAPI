@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, DeclarativeBase
 from starlette.status import HTTP_204_NO_CONTENT
 
+from db.notes import NotesMixin
 from services.query_helper import simple_get_by_id
 
 
@@ -35,10 +36,23 @@ def model_adder(session, table, model, user=None, **kwargs):
         md["created_by_id"] = user["sub"]
         md["created_by_name"] = user["name"]
 
+    notes = None
+    if issubclass(table, NotesMixin):
+        notes = md.pop("notes", None)
+
     obj = table(**md)
+
     session.add(obj)
     session.commit()
     session.refresh(obj)
+
+    if notes:
+        for n in notes:
+            note = obj.add_note(**n)
+            session.add(note)
+
+        session.commit()
+        session.refresh(obj)
     return obj
 
 
@@ -52,8 +66,24 @@ def model_patcher(
     # simple_get_by_id raises HTTP_404_NOT_FOUND if the item is not found
     item = simple_get_by_id(session, model, item_id)
 
+    """
+    Developer's notes
+
+    exclude_unset ensures that fields that are not set in the payload do not
+    update record fields to None
+    """
+
     for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(item, key, value)
+        if isinstance(item, NotesMixin) and key == "notes":
+            # delete all notes and re-add
+            for note in item.notes:
+                session.delete(note)
+
+            for note in value:
+                note = item.add_note(**note)
+                session.add(note)
+        else:
+            setattr(item, key, value)
 
     if user:
         item.updated_by_id = user["sub"]

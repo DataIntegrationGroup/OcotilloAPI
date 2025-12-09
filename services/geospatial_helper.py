@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import json
-
 import shapefile
 from shapely.errors import GEOSException
-from geoalchemy2 import functions as geofunc
 from shapely.io import from_geojson
 
 import constants
@@ -28,6 +25,8 @@ from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
 from geoalchemy2.shape import to_shape
 from shapely.wkt import loads as wkt_loads
 from sqlalchemy import Select, select
+from sqlalchemy.orm import aliased
+from sqlalchemy import func
 
 
 def get_thing_features(
@@ -45,10 +44,30 @@ def get_thing_features(
     # elif thing_type == "spring":
     #     selection_args.append(SpringThing)
 
+    # Subquery: get the latest association for each thing (optionally only active)
+    lta_alias = aliased(LocationThingAssociation)
+
+    latest_assoc = (
+        select(
+            LocationThingAssociation.thing_id,
+            func.max(LocationThingAssociation.effective_start).label("max_start"),
+        )
+        .where(
+            LocationThingAssociation.effective_end == None
+        )  # Only active, remove if you want most recent regardless of end
+        .group_by(LocationThingAssociation.thing_id)
+        .subquery()
+    )
+
     sql = (
-        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"))
-        .join(LocationThingAssociation, Thing.id == LocationThingAssociation.thing_id)
-        .join(Location, LocationThingAssociation.location_id == Location.id)
+        select(Thing, ST_AsGeoJSON(Location.point).label("geojson"), Location.elevation)
+        .join(lta_alias, Thing.id == lta_alias.thing_id)
+        .join(Location, lta_alias.location_id == Location.id)
+        .join(
+            latest_assoc,
+            (latest_assoc.c.thing_id == lta_alias.thing_id)
+            & (latest_assoc.c.max_start == lta_alias.effective_start),
+        )
     )
 
     if thing_type:
@@ -68,7 +87,8 @@ def get_thing_features(
         else:
             sql = sql.where(Group.id == group)
 
-    return session.execute(sql).all()
+    # unique needs to be invoked to prevent duplicates from eager loading
+    return session.execute(sql).unique().all()
 
 
 def create_shapefile(things: list, filename: str = "things.shp") -> None:
@@ -77,7 +97,7 @@ def create_shapefile(things: list, filename: str = "things.shp") -> None:
         shp.field("id", "L")
         shp.field("name", "C")
 
-        for thing, point in things:
+        for thing, point, elevation in things:
             # Assume loc.point is WKT or a Shapely geometry or GeoJSON
             if isinstance(point, str):
                 try:
@@ -88,7 +108,7 @@ def create_shapefile(things: list, filename: str = "things.shp") -> None:
                 geom = to_shape(point)
 
             shp.point(geom.x, geom.y)
-            shp.record(thing.id, thing.name)
+            shp.record(thing.id, thing.name, elevation)
 
 
 def make_within_wkt(sql: Select, wkt: str) -> Select:

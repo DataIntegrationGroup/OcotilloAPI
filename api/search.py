@@ -14,24 +14,25 @@
 # limitations under the License.
 # ===============================================================================
 from fastapi import APIRouter
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from api.pagination import CustomPage
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
+from sqlalchemy import select, func, text
+from sqlalchemy.orm import Session
 
-from core.dependencies import session_dependency
+from api.pagination import CustomPage
+from core.dependencies import session_dependency, viewer_dependency
 from db import (
     Contact,
     Email,
     Phone,
     Address,
     Thing,
+    WellCasingMaterial,
+    WellPurpose,
     Asset,
     AssetThingAssociation,
     search,
 )
-
 
 disable_installed_extensions_check()
 router = APIRouter(prefix="/search", tags=["search"])
@@ -39,14 +40,14 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = (
-        Contact.search_vector
-        | Email.search_vector
-        | Phone.search_vector
-        | Address.search_vector
+        func.coalesce(Contact.search_vector, text("''::tsvector"))
+        .op("||")(func.coalesce(Email.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(Phone.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(Address.search_vector, text("''::tsvector")))
     )
 
     query = search(
-        select(Contact).join(Email).join(Phone).join(Address),
+        select(Contact).outerjoin(Email).outerjoin(Phone).outerjoin(Address),
         q,
         vector=vector,
         limit=limit,
@@ -66,24 +67,37 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
         }
         for c in contacts
     ]
-
     return results
 
 
 def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
-    vector = Thing.search_vector
-    water_well_query = search(
-        select(Thing).where(Thing.thing_type == "water well"),
-        q,
-        vector=vector,
-        limit=limit,
-    )
-    spring_well_query = search(
-        select(Thing).where(Thing.thing_type == "spring"), q, vector=vector, limit=limit
+    well_vector = (
+        func.coalesce(Thing.search_vector, text("''::tsvector"))
+        .op("||")(func.coalesce(WellCasingMaterial.search_vector, text("''::tsvector")))
+        .op("||")(func.coalesce(WellPurpose.search_vector, text("''::tsvector")))
     )
 
-    wells = session.scalars(water_well_query).all()
-    springs = session.scalars(spring_well_query).all()
+    water_well_query = search(
+        select(Thing)
+        .outerjoin(WellCasingMaterial)
+        .outerjoin(WellPurpose)
+        .where(Thing.thing_type == "water well"),
+        q,
+        vector=well_vector,
+        limit=limit,
+    )
+
+    spring_vector = Thing.search_vector
+    spring_well_query = search(
+        select(Thing).where(Thing.thing_type == "spring"),
+        q,
+        vector=spring_vector,
+        limit=limit,
+    )
+
+    # unique needs to be called because of eager loads
+    wells = session.scalars(water_well_query).unique().all()
+    springs = session.scalars(spring_well_query).unique().all()
 
     def _make_response(group: str, thing: Thing, properties: dict) -> dict:
 
@@ -103,7 +117,7 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
             "Wells",
             thing,
             {
-                "well_type": thing.well_type,
+                "well_purpose": thing.well_purpose,
                 "well_depth": thing.well_depth,
                 "hole_depth": thing.hole_depth,
             },
@@ -158,8 +172,10 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 @router.get("")
 async def search_api(
+    user: viewer_dependency,
     session: session_dependency,
     q: str,
+    size: int = 100,
     limit: int = 25,
 ) -> CustomPage[dict]:
     """

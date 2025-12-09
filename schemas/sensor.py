@@ -13,78 +13,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing_extensions import Annotated, Self
-from datetime import timezone
-from pydantic import (
-    BaseModel,
-    AwareDatetime,
-    PastDatetime,
-    model_validator,
-    field_validator,
-)
-
+# from typing_extensions import Annotated, Self
+# from datetime import timezone
+# from pydantic import (
+#     BaseModel,
+#     AwareDatetime,
+#     PastDatetime,
+#     model_validator,
+#     field_validator,
+# )
+from core.enums import SensorType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 # ------- VALIDATION ------
 
+# TODO: datetime_installed and datetime_removed were removed from the Sensor model, so this validation class may no longer be relevant.
 
-class ValidateSensor(BaseModel):
-
-    datetime_installed: AwareDatetime | None = None
-    datetime_removed: AwareDatetime | None = None
-
-    @field_validator("datetime_installed", "datetime_removed")
-    def convert_datetime_fields_to_utc(cls, field: AwareDatetime) -> AwareDatetime:
-        if field is not None and field.tzinfo != timezone.utc:
-            field = field.astimezone(timezone.utc)
-        return field
-
-    @model_validator(mode="after")
-    def check_datetime_values(self) -> Self:
-        if (
-            getattr(self, "datetime_removed", None) is not None
-            and getattr(self, "datetime_installed", None) is not None
-        ):
-            if self.datetime_removed <= self.datetime_installed:
-                raise ValueError("datetime removed must be after datetime installed")
-        return self
+# class ValidateSensor(BaseModel):
+#
+#     datetime_installed: AwareDatetime | None = None
+#     datetime_removed: AwareDatetime | None = None
+#
+#     @field_validator("datetime_installed", "datetime_removed")
+#     def convert_datetime_fields_to_utc(cls, field: AwareDatetime) -> AwareDatetime:
+#         if field is not None and field.tzinfo != timezone.utc:
+#             field = field.astimezone(timezone.utc)
+#         return field
+#
+#     @model_validator(mode="after")
+#     def check_datetime_values(self) -> Self:
+#         if (
+#             getattr(self, "datetime_removed", None) is not None
+#             and getattr(self, "datetime_installed", None) is not None
+#         ):
+#             if self.datetime_removed <= self.datetime_installed:
+#                 raise ValueError("datetime removed must be after datetime installed")
+#         return self
 
 
 # -------- CREATE ----------
-class CreateSensor(BaseCreateModel, ValidateSensor):
+class CreateSensor(BaseCreateModel):
     """
     Schema for creating a new sensor.
     """
 
     name: str
-    # equipment_type: str | None = None
+    sensor_type: SensorType
     model: str | None = None
     serial_no: str | None = None
-    datetime_installed: Annotated[AwareDatetime, PastDatetime()]
-    datetime_removed: AwareDatetime | None = None  # ISO format date string
-    recording_interval: int | None = None
+    pcn_number: str | None = None
+    owner_agency: str | None = None
+    sensor_status: str | None = None
     notes: str | None = None
 
 
 # -------- UPDATE ----------
-class UpdateSensor(BaseUpdateModel, ValidateSensor):
+class UpdateSensor(BaseUpdateModel):
     name: str | None = None
+    sensor_type: SensorType | None = None
     model: str | None = None
     serial_no: str | None = None
-    datetime_installed: AwareDatetime | None = None
-    datetime_removed: AwareDatetime | None = None
-    recording_interval: int | None = None
+    pcn_number: str | None = None
+    owner_agency: str | None = None
+    sensor_status: str | None = None
     notes: str | None = None
 
 
 # -------- RESPONSE ----------
 class SensorResponse(BaseResponseModel):
     name: str
+    sensor_type: SensorType
     model: str | None  # = Column(String(50))
     serial_no: str | None  # = Column(String(50))
-    datetime_installed: AwareDatetime
-    datetime_removed: AwareDatetime | None  # = Column(DateTime)
-    recording_interval: int | None  # = Column(Integer)
+    pcn_number: str | None
+    owner_agency: str | None  # = Column(String(50))
+    sensor_status: str | None  # = Column(String(50))
     notes: str | None  # = Column(String(50))
 
 

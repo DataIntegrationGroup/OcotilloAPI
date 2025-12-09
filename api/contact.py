@@ -27,7 +27,7 @@ from core.dependencies import (
     amp_editor_dependency,
     amp_viewer_dependency,
 )
-from db import ThingContactAssociation, Thing, Contact, Email, Phone, Address
+from db import Contact, Email, Phone, Address
 from schemas.contact import (
     CreateContact,
     CreateAddress,
@@ -43,14 +43,11 @@ from schemas.contact import (
     UpdateAddress,
 )
 from services.crud_helper import model_patcher, model_deleter, model_adder
-from services.contact_helper import (
-    add_contact,
-)
+from services.contact_helper import add_contact, get_db_contacts
 from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
-    order_sort_filter,
 )
 from services.exceptions_helper import PydanticStyleException
 
@@ -484,15 +481,7 @@ async def get_contacts(
     :param session:
     :return:
     """
-    if thing_id:
-        sql = select(Contact)
-        sql = sql.join(ThingContactAssociation).join(Thing)
-        sql = sql.where(Thing.id == thing_id)
-
-        sql = order_sort_filter(sql, Contact, sort=sort, order=order, filter_=filter_)
-        return paginate(query=sql, conn=session)
-    else:
-        return paginated_all_getter(session, Contact, sort, order, filter_)
+    return get_db_contacts(session, thing_id, sort, order, filter_)
 
 
 @router.get("/{contact_id}", summary="Get contact by ID")

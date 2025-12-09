@@ -69,20 +69,14 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
 
     head, extension = os.path.splitext(file.filename)
 
-    blob_name = f"uploads/{head}_{file_id}{extension}"
+    blob_name = f"{head}_{file_id}{extension}"
     eblob = bucket.get_blob(blob_name)
-    if eblob:
-        print("blob exists")
-        return (
-            f"{GCS_BUCKET_BASE_URL}/{blob_name}",
-            blob_name,
-        )
-
-    blob = bucket.blob(blob_name)
-
-    file.file.seek(0)
-    blob.upload_from_file(file.file, content_type=file.content_type)
     url = f"{GCS_BUCKET_BASE_URL}/{blob_name}"
+
+    if not eblob:
+        blob = bucket.blob(blob_name)
+        file.file.seek(0)
+        blob.upload_from_file(file.file, content_type=file.content_type)
     return url, blob_name
 
 

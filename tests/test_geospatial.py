@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from main import app
+from constants import SRID_WGS84
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -25,7 +26,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import Thing, Location, LocationThingAssociation, Group
+from db import Thing, Location, LocationThingAssociation, Group, MeasuringPointHistory
 from db.engine import session_ctx
 from tests import client, override_authentication
 from geoalchemy2 import functions as geofunc
@@ -74,13 +75,32 @@ def populate():
 
         session.commit()
 
+        mp_history_1 = MeasuringPointHistory(
+            thing_id=thing1.id,
+            measuring_point_height=5.0,
+            measuring_point_description="MP for Thing 1",
+            start_date="2023-01-01",
+            reason="Initial entry",
+        )
+        mp_history_2 = MeasuringPointHistory(
+            thing_id=thing2.id,
+            measuring_point_height=10.0,
+            measuring_point_description="MP for Thing 2",
+            start_date="2023-01-01",
+            reason="Initial entry",
+        )
+        session.add(mp_history_1)
+        session.add(mp_history_2)
+
         loc1 = Location(
-            name="Test Location 1",
-            point=geofunc.ST_GeomFromText("POINT(10.1 10.1 0)", srid=4326),
+            # name="Test Location 1",
+            point=geofunc.ST_GeomFromText("POINT(10.1 10.1)", srid=SRID_WGS84),
+            elevation=0,
         )
         loc2 = Location(
-            name="Test Location 2",
-            point=geofunc.ST_GeomFromText("POINT(20 20 0)", srid=4326),
+            # name="Test Location 2",
+            point=geofunc.ST_GeomFromText("POINT(20 20)", srid=SRID_WGS84),
+            elevation=0,
         )
         session.add(loc1)
         session.add(loc2)

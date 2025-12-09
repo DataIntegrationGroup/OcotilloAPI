@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from sqlalchemy.exc import ProgrammingError
@@ -27,9 +27,9 @@ from starlette.status import (
 from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
-    editor_dependency,
-    admin_dependency,
-    viewer_function,
+    viewer_dependency,
+    lexicon_editor_dependency,
+    lexicon_admin_dependency,
 )
 from db.lexicon import (
     LexiconCategory,
@@ -57,9 +57,7 @@ from services.query_helper import (
     simple_get_by_id,
 )
 
-router = APIRouter(
-    prefix="/lexicon", tags=["lexicon"], dependencies=[Depends(viewer_function)]
-)
+router = APIRouter(prefix="/lexicon", tags=["lexicon"])
 
 
 def database_error_handler(
@@ -95,17 +93,23 @@ def database_error_handler(
     raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
 
 
+def disabled_endpoint():
+    raise HTTPException(status_code=410, detail="Endpoint disabled")
+
+
 # POST =========================================================================
 
 
 @router.post(
     "/category",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_category(
     category_data: CreateLexiconCategory,
     session: session_dependency,
-    user: admin_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconCategoryResponse:
     """
     Endpoint to add a category to the lexicon.
@@ -117,9 +121,13 @@ async def add_category(
     "/term",
     summary="Add term",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_term(
-    term_data: CreateLexiconTerm, session: session_dependency, user: admin_dependency
+    term_data: CreateLexiconTerm,
+    session: session_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconTermResponse:
     """
     Endpoint to add a term to the lexicon.
@@ -134,11 +142,13 @@ async def add_term(
     "/triple",
     summary="Add triple",
     status_code=HTTP_201_CREATED,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def add_triple(
     triple_data: CreateLexiconTriple,
     session: session_dependency,
-    user: admin_dependency,
+    user: lexicon_admin_dependency,
 ) -> LexiconTripleResponse:
     triple_data = triple_data.model_dump()
     subject = triple_data["subject"]
@@ -150,35 +160,50 @@ async def add_triple(
 # PATCH ========================================================================
 
 
-@router.patch("/term/{term_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/term/{term_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_term(
     term_id: int,
     term_data: UpdateLexiconTerm,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconTermResponse:
 
     return model_patcher(session, LexiconTerm, term_id, term_data, user=user)
 
 
-@router.patch("/category/{category_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/category/{category_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_category(
     category_id: int,
     category_data: UpdateLexiconCategory,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconCategoryResponse:
     return model_patcher(
         session, LexiconCategory, category_id, category_data, user=user
     )
 
 
-@router.patch("/triple/{triple_id}", status_code=HTTP_200_OK)
+@router.patch(
+    "/triple/{triple_id}",
+    status_code=HTTP_200_OK,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
+)
 async def update_lexicon_triple(
     triple_id: int,
     triple_data: UpdateLexiconTriple,
     session: session_dependency,
-    user: editor_dependency,
+    user: lexicon_editor_dependency,
 ) -> LexiconTripleResponse:
     try:
         return model_patcher(session, LexiconTriple, triple_id, triple_data, user=user)
@@ -192,6 +217,7 @@ async def update_lexicon_triple(
 @router.get("/term", summary="Get lexicon terms", status_code=HTTP_200_OK)
 async def get_lexicon_terms(
     session: session_dependency,
+    user: viewer_dependency,
     category: str | None = None,
     term: str | None = None,
     sort: str = None,
@@ -227,7 +253,7 @@ async def get_lexicon_terms(
 
 @router.get("/term/{term_id}", status_code=HTTP_200_OK)
 async def get_lexicon_term(
-    term_id: int, session: session_dependency
+    term_id: int, session: session_dependency, user: viewer_dependency
 ) -> LexiconTermResponse:
     return simple_get_by_id(session, LexiconTerm, term_id)
 
@@ -235,6 +261,7 @@ async def get_lexicon_term(
 @router.get("/category")
 async def get_lexicon_categories(
     session: session_dependency,
+    user: viewer_dependency,
     sort: str = "name",
     order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
@@ -247,7 +274,7 @@ async def get_lexicon_categories(
 
 @router.get("/category/{category_id}")
 async def get_lexicon_category(
-    category_id: int, session: session_dependency
+    category_id: int, user: viewer_dependency, session: session_dependency
 ) -> LexiconCategoryResponse:
     return simple_get_by_id(session, LexiconCategory, category_id)
 
@@ -255,6 +282,7 @@ async def get_lexicon_category(
 @router.get("/triple", summary="Get lexicon triples", status_code=HTTP_200_OK)
 async def get_lexicon_triples(
     session: session_dependency,
+    user: viewer_dependency,
     sort: str = "subject",
     order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
@@ -267,7 +295,7 @@ async def get_lexicon_triples(
 
 @router.get("/triple/{triple_id}", status_code=HTTP_200_OK)
 async def get_lexicon_triple(
-    triple_id: int, session: session_dependency
+    triple_id: int, session: session_dependency, user: viewer_dependency
 ) -> LexiconTripleResponse:
     return simple_get_by_id(session, LexiconTriple, triple_id)
 
@@ -279,9 +307,11 @@ async def get_lexicon_triple(
     "/term/{term_id}",
     summary="Delete a lexicon term by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_term(
-    session: session_dependency, user: admin_dependency, term_id: int
+    session: session_dependency, user: lexicon_admin_dependency, term_id: int
 ):
     return model_deleter(session, LexiconTerm, term_id)
 
@@ -290,9 +320,11 @@ async def delete_lexicon_term(
     "/category/{category_id}",
     summary="Delete a lexicon category by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_category(
-    session: session_dependency, user: admin_dependency, category_id: int
+    session: session_dependency, user: lexicon_admin_dependency, category_id: int
 ):
     return model_deleter(session, LexiconCategory, category_id)
 
@@ -301,9 +333,11 @@ async def delete_lexicon_category(
     "/triple/{triple_id}",
     summary="Delete a lexicon triple by ID",
     status_code=HTTP_204_NO_CONTENT,
+    deprecated=True,
+    dependencies=[Depends(disabled_endpoint)],
 )
 async def delete_lexicon_triple(
-    session: session_dependency, user: admin_dependency, triple_id: int
+    session: session_dependency, user: lexicon_admin_dependency, triple_id: int
 ):
     return model_deleter(session, LexiconTriple, triple_id)
 

@@ -19,7 +19,24 @@ from sqlalchemy import select
 from db import search
 from db.contact import Contact, Phone, Email
 from db.engine import session_ctx
-from tests import client
+from main import app
+from core.dependencies import admin_function, editor_function, viewer_function
+from tests import client, override_authentication
+
+
+@pytest.fixture(scope="module", autouse=True)
+def override_dependencies_fixture():
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[viewer_function] = override_authentication()
+
+    yield
+
+    app.dependency_overrides = {}
 
 
 def test_search_api(water_well_thing, spring_thing, contact):
@@ -37,7 +54,6 @@ def test_search_api2():
     response = client.get("/search", params={"q": "riochama"})
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["label"] == "riochama.png"

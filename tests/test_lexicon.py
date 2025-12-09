@@ -13,22 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from db import LexiconTerm, LexiconCategory, LexiconTriple
-from tests import client, override_authentication, cleanup_post_test, cleanup_patch_test
-
-from core.dependencies import admin_function, viewer_function, editor_function
-from main import app
+from datetime import timezone
 
 import pytest
+
+from core.dependencies import (
+    viewer_function,
+    lexicon_admin_function,
+    lexicon_editor_function,
+)
+from db import LexiconTerm, LexiconCategory, LexiconTriple
+from main import app
+from schemas import DT_FMT
+from tests import (
+    client,
+    override_authentication,
+    cleanup_post_test,
+    cleanup_patch_test,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def override_authentication_dependency_fixture():
 
-    app.dependency_overrides[admin_function] = override_authentication(
+    app.dependency_overrides[viewer_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
-    app.dependency_overrides[editor_function] = override_authentication(
+
+    app.dependency_overrides[lexicon_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[lexicon_editor_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
     app.dependency_overrides[viewer_function] = override_authentication()
@@ -41,6 +56,7 @@ def override_authentication_dependency_fixture():
 # POST tests ===================================================================
 
 
+@pytest.mark.skip(reason="This is deprecated functionality. Category must exist")
 def test_add_lexicon_term_with_new_categories():
     payload = {
         "term": "test_term",
@@ -67,11 +83,14 @@ def test_add_lexicon_term_with_new_categories():
     cleanup_post_test(LexiconCategory, data["categories"][0]["id"])
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_add_lexicon_term_with_existing_categories():
     payload = {
         "term": "test_term_existing_categories",
         "definition": "This is a test definition.",
-        "categories": [{"name": "unit", "description": None}],
+        # if the category already exists, and the name is a pk, why would you have to provide the description?
+        # "categories": ["name": "unit", "description": None}],
+        "categories": ["unit"],
     }
     response = client.post(
         "/lexicon/term",
@@ -85,14 +104,12 @@ def test_add_lexicon_term_with_existing_categories():
     assert data["term"] == payload["term"]
     assert data["definition"] == payload["definition"]
     assert len(data["categories"]) == 1
-    assert data["categories"][0]["name"] == payload["categories"][0]["name"]
-    assert (
-        data["categories"][0]["description"] == payload["categories"][0]["description"]
-    )
+    assert data["categories"][0]["name"] == payload["categories"][0]
 
     cleanup_post_test(LexiconTerm, data["id"])
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_add_lexicon_category():
     payload = {"name": "test category name", "description": "test category description"}
     response = client.post("/lexicon/category", json=payload)
@@ -106,6 +123,9 @@ def test_add_lexicon_category():
     cleanup_post_test(LexiconCategory, data["id"])
 
 
+@pytest.mark.skip(
+    reason="Lexicon triple is not used and should be deprecated/removed if its not going to be used"
+)
 def test_add_lexicon_triple_new_terms():
     subject = {
         "term": "MG-030",
@@ -156,6 +176,9 @@ def test_add_lexicon_triple_new_terms():
     cleanup_post_test(LexiconCategory, data["items"][0]["categories"][0]["id"])
 
 
+@pytest.mark.skip(
+    reason="Lexicon triple is not used and should be deprecated/removed if its not going to be used"
+)
 def test_add_lexicon_triple_existing_terms(lexicon_term, second_lexicon_term):
     subject = {
         "term": lexicon_term.term,
@@ -202,6 +225,7 @@ def test_add_lexicon_triple_existing_terms(lexicon_term, second_lexicon_term):
 # PATCH tests ==================================================================
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_term(lexicon_term):
     payload = {"term": "patched term", "definition": "patched definition"}
     response = client.patch(f"/lexicon/term/{lexicon_term.id}", json=payload)
@@ -213,6 +237,7 @@ def test_patch_term(lexicon_term):
     cleanup_patch_test(LexiconTerm, payload, lexicon_term)
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_term_404_not_found(lexicon_term):
     bad_id = 99999
     payload = {"term": "patched term", "definition": "patched definition"}
@@ -222,6 +247,7 @@ def test_patch_term_404_not_found(lexicon_term):
     assert data["detail"] == f"LexiconTerm with ID {bad_id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_category(lexicon_category):
     payload = {"name": "patched name", "description": "patched description"}
     response = client.patch(f"/lexicon/category/{lexicon_category.id}", json=payload)
@@ -233,6 +259,7 @@ def test_patch_category(lexicon_category):
     cleanup_patch_test(LexiconCategory, payload, lexicon_category)
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_category_404_not_found(lexicon_category):
     bad_id = 99999
     payload = {"name": "patched name", "definition": "patched definition"}
@@ -242,6 +269,7 @@ def test_patch_category_404_not_found(lexicon_category):
     assert data["detail"] == f"LexiconCategory with ID {bad_id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_triple(lexicon_triple, third_lexicon_term, fourth_lexicon_term):
     payload = {
         "subject": third_lexicon_term.term,
@@ -258,6 +286,7 @@ def test_patch_triple(lexicon_triple, third_lexicon_term, fourth_lexicon_term):
     cleanup_patch_test(LexiconTriple, payload, lexicon_triple)
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_triple_404_not_found(
     lexicon_triple, third_lexicon_term, fourth_lexicon_term
 ):
@@ -273,6 +302,7 @@ def test_patch_triple_404_not_found(
     assert data["detail"] == f"LexiconTriple with ID {bad_id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_triple_409_bad_subject(lexicon_triple, third_lexicon_term):
     bad_subject = "nonexistent subject"
     payload = {
@@ -289,6 +319,7 @@ def test_patch_triple_409_bad_subject(lexicon_triple, third_lexicon_term):
     assert data["detail"][0]["input"] == {"subject": bad_subject}
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_patch_triple_409_bad_object(lexicon_triple, third_lexicon_term):
     bad_object = "nonexistent object"
     payload = {
@@ -328,16 +359,16 @@ def test_get_lexicon_term_by_id(lexicon_term):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_term.id
-    assert data["created_at"] == lexicon_term.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["created_at"] == lexicon_term.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     assert data["term"] == lexicon_term.term
     assert data["definition"] == lexicon_term.definition
     assert len(data["categories"]) == 1
     assert data["categories"][0]["id"] == lexicon_term.categories[0].id
     assert data["categories"][0]["created_at"] == lexicon_term.categories[
         0
-    ].created_at.isoformat().replace("+00:00", "Z")
+    ].created_at.astimezone(timezone.utc).strftime(DT_FMT)
     assert data["categories"][0]["name"] == lexicon_term.categories[0].name
     assert (
         data["categories"][0]["description"] == lexicon_term.categories[0].description
@@ -384,9 +415,9 @@ def test_get_lexicon_category_by_id(lexicon_category):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_category.id
-    assert data["created_at"] == lexicon_category.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["created_at"] == lexicon_category.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     assert data["name"] == lexicon_category.name
     assert data["description"] == lexicon_category.description
 
@@ -405,9 +436,9 @@ def test_get_lexicon_triples(lexicon_triple):
     data = response.json()
     assert data["total"] > 0
     assert data["items"][0]["id"] == lexicon_triple.id
-    assert data["items"][0][
-        "created_at"
-    ] == lexicon_triple.created_at.isoformat().replace("+00:00", "Z")
+    assert data["items"][0]["created_at"] == lexicon_triple.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     assert data["items"][0]["subject"] == lexicon_triple.subject
     assert data["items"][0]["predicate"] == lexicon_triple.predicate
     assert data["items"][0]["object_"] == lexicon_triple.object_
@@ -418,9 +449,9 @@ def test_get_lexicon_triple_by_id(lexicon_triple):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == lexicon_triple.id
-    assert data["created_at"] == lexicon_triple.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["created_at"] == lexicon_triple.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     assert data["subject"] == lexicon_triple.subject
     assert data["predicate"] == lexicon_triple.predicate
     assert data["object_"] == lexicon_triple.object_
@@ -437,6 +468,7 @@ def test_get_lexicon_triple_by_id_404_not_found(lexicon_triple):
 # DELETE tests =================================================================
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_term(second_lexicon_term):
     response = client.delete(f"/lexicon/term/{second_lexicon_term.id}")
     assert response.status_code == 204
@@ -448,6 +480,7 @@ def test_delete_lexicon_term(second_lexicon_term):
     assert data["detail"] == f"LexiconTerm with ID {second_lexicon_term.id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_term_404_not_found(second_lexicon_term):
     bad_id = 999999
     response = client.delete(f"/lexicon/term/{bad_id}")
@@ -456,6 +489,7 @@ def test_delete_lexicon_term_404_not_found(second_lexicon_term):
     assert data["detail"] == f"LexiconTerm with ID {bad_id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_category(second_lexicon_category):
     response = client.delete(f"/lexicon/category/{second_lexicon_category.id}")
     assert response.status_code == 204
@@ -470,6 +504,7 @@ def test_delete_lexicon_category(second_lexicon_category):
     )
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_category_404_not_found(second_lexicon_category):
     bad_id = 999999
     response = client.delete(f"/lexicon/category/{bad_id}")
@@ -478,6 +513,7 @@ def test_delete_lexicon_category_404_not_found(second_lexicon_category):
     assert data["detail"] == f"LexiconCategory with ID {bad_id} not found."
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_triple(second_lexicon_triple):
     response = client.delete(f"/lexicon/triple/{second_lexicon_triple.id}")
     assert response.status_code == 204
@@ -491,6 +527,7 @@ def test_delete_lexicon_triple(second_lexicon_triple):
     )
 
 
+@pytest.mark.skip(reason="Lexicon is readonly via API now")
 def test_delete_lexicon_triple_404_not_found(second_lexicon_triple):
     bad_id = 999999
     response = client.delete(f"/lexicon/triple/{bad_id}")

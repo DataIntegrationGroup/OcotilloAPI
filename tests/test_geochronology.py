@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-
+import pytest
 from tests import client
 
 
+@pytest.mark.skip(
+    reason="Not implemented and may be fully deprecated for the observation table/router"
+)
 def test_add_geochronology_age():
     response = client.post(
         "/geochronology/age",

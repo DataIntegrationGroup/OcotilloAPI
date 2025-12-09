@@ -13,35 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pydantic import BaseModel
+
+from db import ThingContactAssociation
+from db.engine import session_ctx
+from transfers.contact_transfer import ContactTransfer
+from transfers.well_transfer import WellTransferer
 
 
-# -------- CREATE ----------
-class CreateSeries(BaseModel):
-    """
-    Schema for creating a new series.
-    This schema can be extended with additional fields as needed.
-    """
+def test_multiple_wells():
+    pointids = ["MG-022", "MG-030", "MG-043"]
+    wt = WellTransferer(pointids=pointids)
+    wt.transfer()
 
-    name: str
-    description: str | None = None
-    thing_id: int
-    sensor_id: int
-    observed_property: str
-    unit: str
-    release_status: str | None = (
-        "draft"  # Default to 'draft', can be 'published' or 'archived'
-    )
+    ct = ContactTransfer(pointids=pointids)
+    ct.transfer()
 
+    with session_ctx() as sess:
+        assert sess.query(ThingContactAssociation).count() == 6
 
-# -------- RESPONSE --------
-class SeriesResponse(BaseModel):
-    id: int
-    name: str
-    observed_property: str
-    thing_id: int
-
-
-# -------- UPDATE ----------
 
 # ============= EOF =============================================

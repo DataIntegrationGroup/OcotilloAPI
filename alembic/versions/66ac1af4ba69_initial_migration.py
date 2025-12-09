@@ -204,7 +204,7 @@ def upgrade() -> None:
     # sa.Column('spring_type', sa.String(length=100), nullable=True),
     # sa.Column('well_depth', sa.Float(), nullable=True),
     # sa.Column('hole_depth', sa.Float(), nullable=True),
-    # sa.Column('well_type', sa.String(length=100), nullable=True),
+    # sa.Column('well_purpose', sa.String(length=100), nullable=True),
     # sa.Column('well_casing_diameter', sa.Float(), nullable=True),
     # sa.Column('well_casing_depth', sa.Float(), nullable=True),
     # sa.Column('well_casing_description', sa.String(length=50), nullable=True),
@@ -216,7 +216,7 @@ def upgrade() -> None:
     # sa.ForeignKeyConstraint(['release_status'], ['lexicon_term.term'], ),
     # sa.ForeignKeyConstraint(['spring_type'], ['lexicon_term.term'], ),
     # sa.ForeignKeyConstraint(['thing_type'], ['lexicon_term.term'], ),
-    # sa.ForeignKeyConstraint(['well_type'], ['lexicon_term.term'], ),
+    # sa.ForeignKeyConstraint(['well_purpose'], ['lexicon_term.term'], ),
     # sa.PrimaryKeyConstraint('id')
     # )
     # op.create_index('ix_thing_search_vector', 'thing', ['search_vector'], unique=False, postgresql_using='gin')

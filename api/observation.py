@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+
 from fastapi import APIRouter, Query, Request
 from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
@@ -21,32 +22,37 @@ from api.pagination import CustomPage
 from core.dependencies import (
     session_dependency,
     amp_admin_dependency,
-    admin_dependency,
+    amp_editor_dependency,
     amp_viewer_dependency,
-    viewer_dependency,
 )
-from db import Observation
+from db import Observation, Parameter
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
     CreateWaterChemistryObservation,
     WaterChemistryObservationResponse,
-    CreateGeothermalObservation,
-    GeothermalObservationResponse,
     ObservationResponse,
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
-    UpdateGeothermalObservation,
 )
+from schemas.transducer import TransducerObservationWithBlockResponse
 from services.crud_helper import model_deleter, model_adder
-from services.query_helper import simple_get_by_id
 from services.observation_helper import (
     get_observations,
     observation_model_patcher,
-    get_observation_of_an_observation_class_by_id,
+    get_observation_of_an_activity_type_by_id,
+    get_transducer_observations,
 )
+from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/observation", tags=["observation"])
+
+"""
+TODO
+
+- add validation that the sample_id exists in the database before creating observation
+- add validation that the activity_type of the sample corresponds with the endpoint where the observation is posted/patched
+"""
 
 
 # ============= Post =============================================
@@ -75,19 +81,6 @@ async def add_water_chemistry_observation(
     return model_adder(session, Observation, obs_data, user=user)
 
 
-@router.post("/geothermal", status_code=HTTP_201_CREATED)
-async def add_geothermal_observation(
-    obs_data: CreateGeothermalObservation,
-    session: session_dependency,
-    user: admin_dependency,
-) -> GeothermalObservationResponse:
-    """
-    Add a new geothermal observation to the database.
-    This endpoint is currently a placeholder and does not implement any functionality.
-    """
-    return model_adder(session, Observation, obs_data, user=user)
-
-
 # PATCH ========================================================================
 
 
@@ -96,7 +89,7 @@ async def update_groundwater_level_observation(
     observation_id: int,
     obs_data: UpdateGroundwaterLevelObservation,
     session: session_dependency,
-    user: amp_admin_dependency,
+    user: amp_editor_dependency,
     request: Request,
 ) -> GroundwaterLevelObservationResponse:
     """
@@ -110,7 +103,7 @@ async def update_water_chemistry_observation(
     observation_id: int,
     obs_data: UpdateWaterChemistryObservation,
     session: session_dependency,
-    user: amp_admin_dependency,
+    user: amp_editor_dependency,
     request: Request,
 ) -> WaterChemistryObservationResponse:
     """
@@ -119,21 +112,30 @@ async def update_water_chemistry_observation(
     return observation_model_patcher(session, request, observation_id, obs_data, user)
 
 
-@router.patch("/geothermal/{observation_id}", status_code=HTTP_200_OK)
-async def update_geothermal_observation(
-    observation_id: int,
-    obs_data: UpdateGeothermalObservation,
-    session: session_dependency,
-    user: admin_dependency,
-    request: Request,
-) -> GeothermalObservationResponse:
-    """
-    Update an existing geothermal observation in the database.
-    """
-    return observation_model_patcher(session, request, observation_id, obs_data, user)
-
-
 # ============= Get ==============================================
+@router.get(
+    "/transducer-groundwater-level",
+    summary="Get transducer groundwater level observations",
+)
+async def get_transducer_groundwater_level_observations(
+    request: Request,
+    session: session_dependency,
+    user: amp_viewer_dependency,
+    thing_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+) -> CustomPage[TransducerObservationWithBlockResponse]:
+
+    groundwater_parameter_id = (
+        session.query(Parameter)
+        .filter(Parameter.parameter_name == "groundwater level")
+        .one()
+        .id
+    )
+
+    return get_transducer_observations(
+        session, thing_id, groundwater_parameter_id, start_time, end_time
+    )
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")
@@ -177,7 +179,7 @@ async def get_groundwater_level_observation_by_id(
     user: amp_viewer_dependency,
     observation_id: int,
 ) -> GroundwaterLevelObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
+    return get_observation_of_an_activity_type_by_id(
         session=session,
         request=request,
         observation_id=observation_id,
@@ -224,53 +226,10 @@ async def get_water_chemistry_observation_by_id(
     user: amp_viewer_dependency,
     observation_id: int,
 ) -> WaterChemistryObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
+    return get_observation_of_an_activity_type_by_id(
         session=session,
         request=request,
         observation_id=observation_id,
-    )
-
-
-@router.get("/geothermal", summary="Get geothermal observations")
-async def get_geothermal_observations(
-    request: Request,
-    session: session_dependency,
-    user: viewer_dependency,
-    thing_id: int | None = None,
-    sensor_id: int | None = None,
-    sample_id: int | None = None,
-    start_time: datetime | None = None,
-    end_time: datetime | None = None,
-    sort: str | None = None,
-    order: str | None = None,
-    filter_: str = Query(alias="filter", default=None),
-) -> CustomPage[GeothermalObservationResponse]:
-    """
-    Retrieve all geothermal observations from the database.
-    """
-    return get_observations(
-        request=request,
-        session=session,
-        thing_id=thing_id,
-        sensor_id=sensor_id,
-        sample_id=sample_id,
-        start_time=start_time,
-        end_time=end_time,
-        sort=sort,
-        order=order,
-        filter_=filter_,
-    )
-
-
-@router.get("/geothermal/{observation_id}", summary="Get geothermal observation by ID")
-async def get_geothermal_observation_by_id(
-    session: session_dependency,
-    request: Request,
-    user: amp_viewer_dependency,
-    observation_id: int,
-) -> GeothermalObservationResponse:
-    return get_observation_of_an_observation_class_by_id(
-        session=session, request=request, observation_id=observation_id
     )
 
 
