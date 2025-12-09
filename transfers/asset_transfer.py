@@ -15,47 +15,65 @@
 # ===============================================================================
 import io
 
+from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
 
-from db import Asset, AssetThingAssociation
+from db import Asset, AssetThingAssociation, Thing
 from services.gcs_helper import (
     gcs_upload,
     get_storage_bucket,
     get_storage_client,
 )
 from transfers.logger import logger
+from transfers.transferer import Transferer
 from transfers.util import read_csv, filter_to_valid_point_ids
-from transfers.well_transfer import WellChunkTransferer
 
 
-class AssetTransferer(WellChunkTransferer):
+class AssetTransferer(Transferer):
     def __init__(self, *args, **kw):
         self.source_table = "WellPhotos"
         super().__init__(*args, **kw)
         self._client = get_storage_client()
         self._bucket = get_storage_bucket(self._client)
         logger.info(f"Using bucket {self._bucket.name}")
+        self.chunk_size = 20
 
     def _get_dfs(self):
         input_df = read_csv(self.source_table)
         cleaned_df = filter_to_valid_point_ids(input_df)
         return input_df, cleaned_df
 
-    def _chunk_step(self, session, df, i, row, db_item):
+    def _transfer_hook(self, session: Session):
+        added_pointid = []
+        for i, row in enumerate(self.cleaned_df.itertuples()):
+            if row.PointID in added_pointid:
+                continue
+
+            added_pointid.append(row.PointID)
+            well = (
+                session.query(Thing)
+                .filter(Thing.name == row.PointID, Thing.thing_type == "water well")
+                .one_or_none()
+            )
+            self._asset_step(session, i, well)
+            session.commit()
+
+    def _asset_step(self, session, i, db_item):
+        df = self.cleaned_df
         photos = df[df["PointID"] == db_item.name]
-        n = len(df)
         if photos.empty:
             photos = df[df["PointID"] == db_item.name.replace("-", "")]
             if photos.empty:
                 logger.info(f"No photos found for PointID: {db_item.name}")
                 return
 
+        n = len(photos)
         for j, row in enumerate(photos.itertuples()):
             photo_path = row.OLEPath
             srcblob = self._bucket.get_blob(f"nma-photos/{photo_path}")
             if not srcblob:
-                logger.critical(
-                    f"No photo found for PointID: {db_item.name}, {photo_path}"
+                self._capture_error(
+                    db_item.name, f"No photo found for {photo_path}", "OLEPath"
                 )
                 continue
 
@@ -78,7 +96,7 @@ class AssetTransferer(WellChunkTransferer):
             assoc.asset = asset
             session.add(assoc)
             session.add(asset)
-            session.commit()
+            # session.commit()
             logger.info(
                 f"Added asset {i}-{j}/{n} thing.id={db_item.id} thing={db_item.name} uri: {uri}"
             )

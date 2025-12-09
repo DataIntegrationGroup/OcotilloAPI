@@ -17,6 +17,7 @@
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
 from db import Thing, Deployment, Sensor
@@ -50,6 +51,10 @@ class WaterLevelsContinuousTransferer(Transferer):
 
         # remove rows with no date measured
         cleaned_df = cleaned_df[cleaned_df.DateMeasured.notna()]
+
+        # remove duplicate rows
+        cleaned_df = cleaned_df.drop_duplicates(subset=["PointID", "DateMeasured"])
+
         return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
@@ -122,12 +127,12 @@ class WaterLevelsContinuousTransferer(Transferer):
                 )
                 try:
                     session.commit()
-                except Exception as e:
-                    self.append({"pointid": pointid, "error": e})
+                except DatabaseError as e:
+                    session.rollback()
                     logger.critical(
                         f"Error committing water levels {release_status} block: {e}"
                     )
-                    session.rollback()
+                    self._capture_database_error(pointid, e)
                     continue
 
         # convert nodeployments to errors

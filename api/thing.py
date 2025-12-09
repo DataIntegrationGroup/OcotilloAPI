@@ -17,6 +17,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import selectinload
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
@@ -361,6 +362,7 @@ async def get_thing_deployments(
     """
     thing = simple_get_by_id(session, Thing, thing_id)
     sql = select(Deployment).where(Deployment.thing_id == thing.id)
+    sql = sql.options(selectinload(Deployment.sensor))
     return paginate(query=sql, conn=session)
 
 

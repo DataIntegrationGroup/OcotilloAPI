@@ -72,7 +72,7 @@ def test_make_location_with_both_ampapi_dates(mock_lexicon_mapper):
     elevations = {}
 
     # Call make_location
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Verify nma_date_created is set from DateCreated
     assert location.nma_date_created is not None
@@ -107,7 +107,7 @@ def test_make_location_with_only_date_created(mock_lexicon_mapper):
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Verify nma_date_created is set
     assert location.nma_date_created == datetime.date(2014, 4, 3)
@@ -137,7 +137,7 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Both dates should be preserved as-is, regardless of order
     assert location.nma_date_created == datetime.date(2010, 1, 15)
@@ -165,7 +165,7 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Verify very old date is preserved
     assert location.nma_site_date == datetime.date(1954, 5, 1)
@@ -197,7 +197,7 @@ def test_make_location_ampapi_dates_are_date_not_datetime(mock_lexicon_mapper):
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Verify they are date objects (not datetime)
     assert isinstance(location.nma_date_created, datetime.date)
@@ -232,7 +232,7 @@ def test_make_location_ampapi_dates_independent_of_created_at(mock_lexicon_mappe
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # created_at should be None during transfer (auto-set by AutoBaseMixin on save)
     assert location.created_at is None
@@ -272,7 +272,7 @@ def test_make_location_with_no_ampapi_dates(mock_lexicon_mapper):
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Both AMPAPI date fields should be null
     assert location.nma_date_created is None
@@ -300,7 +300,7 @@ def test_make_location_with_empty_string_dates(mock_lexicon_mapper):
     )
 
     elevations = {}
-    location, elevation_method = make_location(row, elevations)
+    location, elevation_method, location_notes = make_location(row, elevations)
 
     # Both AMPAPI date fields should be null (empty strings are falsy)
     assert location.nma_date_created is None
@@ -337,7 +337,7 @@ def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
 
     for i in range(100):
         row = create_test_row(i, has_site_date=(i < 9))
-        location, _ = make_location(row, elevations)
+        location, _, _ = make_location(row, elevations)
 
         # Count coverage
         if location.nma_date_created is not None:

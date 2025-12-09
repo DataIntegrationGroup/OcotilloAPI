@@ -33,12 +33,12 @@ class ThingAquiferAssociation(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationship Definitions ---
     # Many-To-One: This association links to one Thing.
     thing: Mapped["Thing"] = relationship(
-        "Thing", back_populates="aquifer_associations", lazy="joined"
+        "Thing", back_populates="aquifer_associations"
     )
 
     # Many-To-One: This association links to one AquiferSystem.
     aquifer_system: Mapped["AquiferSystem"] = relationship(
-        "AquiferSystem", back_populates="thing_associations", lazy="joined"
+        "AquiferSystem", back_populates="thing_associations"
     )
     # One-To-Many: An association can have multiple aquifer types.
     aquifer_types: Mapped[list["AquiferType"]] = relationship(
@@ -46,5 +46,4 @@ class ThingAquiferAssociation(Base, AutoBaseMixin, ReleaseMixin):
         back_populates="thing_aquifer_association",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )

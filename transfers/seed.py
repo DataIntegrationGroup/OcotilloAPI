@@ -12,16 +12,15 @@ from faker import Faker
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
 
-from db.analysis_method import AnalysisMethod
-
 # Core models
-from db.contact import Contact, ThingContactAssociation, Email, Phone, Address
+from db.analysis_method import AnalysisMethod
+from db.contact import Address, Contact, Email, Phone, ThingContactAssociation
 from db.deployment import Deployment
 from db.engine import session_ctx
-from db.field import FieldEvent, FieldActivity, FieldEventParticipant
+from db.field import FieldActivity, FieldEvent, FieldEventParticipant
 from db.lexicon import (
-    LexiconTerm,
     LexiconCategory,
+    LexiconTerm,
     LexiconTermCategoryAssociation,
 )
 from db.location import Location, LocationThingAssociation
@@ -32,11 +31,11 @@ from db.parameter import Parameter
 from db.sample import Sample
 from db.sensor import Sensor
 from db.thing import (
+    MonitoringFrequencyHistory,
     Thing,
     ThingIdLink,
-    WellPurpose,
     WellCasingMaterial,
-    MonitoringFrequencyHistory,
+    WellPurpose,
 )
 
 fake = Faker()
@@ -198,7 +197,7 @@ def seed_all(n: int = 5):
                 first_visit_date=fake.date_between("-2y", "today"),
                 well_depth=random.uniform(50, 500),
                 hole_depth=random.uniform(50, 500),
-                well_construction_notes=fake.sentence(),
+                well_driller_name=fake.name(),
                 well_casing_diameter=random.uniform(4, 8),
                 well_casing_depth=random.uniform(10, 50),
                 release_status="public",

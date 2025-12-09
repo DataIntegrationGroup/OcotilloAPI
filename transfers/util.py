@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytz
+from pandas import notna
 from shapely import Point
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -59,38 +60,43 @@ class MeasuringPointEstimator:
         df = read_csv("WaterLevels")
         df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
         self._df = df.dropna(subset=["DateMeasured"])
+        self.verbose = False
 
     def estimate_measuring_point_height(
         self, row
-    ) -> tuple[float, str, datetime | None]:
+    ) -> tuple[float, str, datetime | None, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
         df = self._df[self._df["PointID"] == row.PointID]
         df = df.sort_values("DateMeasured")
         if mph is None:
-            logger.info(
-                f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
-            )
+            if self.verbose:
+                logger.info(
+                    f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."
+                )
             mphs = []
             start_dates = []
             mph_descs = []
 
             if len(df) == 0:
-                logger.warning(f"No measurements found for PointID: {row.PointID}.")
+                if self.verbose:
+                    logger.warning(f"No measurements found for PointID: {row.PointID}.")
             else:
                 # try to estimate mpheight from measurements
                 for m in df.itertuples():
                     mphi = m.DepthToWater - m.DepthToWaterBGS
                     start_date = m.DateMeasured
                     if mphi not in mphs:
-                        mphs.append(mphi)
-                        mph_descs.append(
-                            "Auto calculated from measurements at depth to water and depth to water below ground surface"
-                        )
-                        start_dates.append(start_date)
-                logger.info(
-                    f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
-                )
+                        if notna(mphi):
+                            mphs.append(mphi)
+                            mph_descs.append(
+                                "Auto calculated from measurements at depth to water and depth to water below ground surface"
+                            )
+                            start_dates.append(start_date)
+                if mphs:
+                    logger.info(
+                        f"Estimated MPHeight: {mphs}, {start_dates} for PointID: {row.PointID}."
+                    )
         else:
             mphs = [mph]
             mph_descs = [mph_desc]
@@ -105,7 +111,7 @@ class MeasuringPointEstimator:
             end_dates = [start_dates[i + 1] for i in range(len(start_dates) - 1)]
             end_dates.append(None)
 
-        return zip(mphs, mph_descs, start_dates, end_dates)
+        return mphs, mph_descs, start_dates, end_dates
 
 
 class SensorParameterEstimator:
@@ -357,8 +363,11 @@ def filter_by_valid_measuring_agency(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["MeasuringAgency"].isin(valid_measuring_agencies)]
 
 
-def filter_to_valid_point_ids(df: pd.DataFrame) -> pd.DataFrame:
+def filter_to_valid_point_ids(df: pd.DataFrame, pointids: list = None) -> pd.DataFrame:
     valid_point_ids = get_valid_point_ids()
+    if pointids:
+        valid_point_ids = list(set(valid_point_ids) & set(pointids))
+
     return df[df["PointID"].isin(valid_point_ids)]
 
 
@@ -382,7 +391,10 @@ def convert_mt_to_utc(dt_record: datetime) -> datetime:
     return dt_record
 
 
-def chunk_by_size(df: pd.DataFrame, chunk_size: int) -> pd.DataFrame:
+def chunk_by_size(df: pd.DataFrame | list, chunk_size: int = 100) -> pd.DataFrame:
+    if isinstance(df, list):
+        df = pd.DataFrame(df)
+
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i : i + chunk_size]
 
@@ -400,7 +412,7 @@ def get_groundwater_parameter_id() -> int:
 
 def make_location(row: pd.Series, elevations: dict) -> tuple:
     """
-    Returns a tuple of location data and the elevation method
+    Returns a tuple of location data, the elevation method, and notes
     """
     point = Point(row.Easting, row.Northing)
 
@@ -435,9 +447,17 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     elif pd.isna(row.AltitudeMethod):
         elevation_method = None
     else:
-        elevation_method = lexicon_mapper.map_value(
-            f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
-        )
+        try:
+            elevation_method = lexicon_mapper.map_value(
+                f"LU_AltitudeMethod:{row.AltitudeMethod.strip()}"
+            )
+        except KeyError:
+            elevation_method = None
+
+    notes = {
+        "Coordinate": row.CoordinateNotes,
+        "General": row.LocationNotes,
+    }
 
     # Extract AMPAPI date fields (Date type, not DateTime)
     nma_date_created = None
@@ -455,13 +475,11 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
-        nma_coordinate_notes=row.CoordinateNotes,
-        nma_notes_location=row.LocationNotes,
         nma_date_created=nma_date_created,
         nma_site_date=nma_site_date,
     )
 
-    return location, elevation_method
+    return location, elevation_method, notes
 
 
 def make_location_data_provenance(
@@ -549,11 +567,14 @@ def make_location_data_provenance(
     #     minus_point_decimal_deg = Point(minus_longitude, minus_latitude)
 
     if row.CoordinateMethod or row.CoordinateAccuracy:
-        coordinate_method = (
-            lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
-            if not pd.isna(row.CoordinateMethod)
-            else None
-        )
+        try:
+            coordinate_method = (
+                lexicon_mapper.map_value(f"LU_CoordinateMethod:{row.CoordinateMethod}")
+                if pd.notna(row.CoordinateMethod)
+                else None
+            )
+        except KeyError:
+            coordinate_method = None
 
         accuracy_value, accuracy_unit = NMA_COORDINATE_ACCURACY.get(
             row.CoordinateAccuracy, (None, None)
@@ -591,9 +612,15 @@ class LexiconMapper:
     def __init__(self):
         self._mappers: dict[str, str] = None
 
-    def map_value(self, value) -> str:
+    def map_value(self, value, default=None) -> str:
         value = value.strip()
-        return self._make_lu_to_lexicon_mapper().get(value, value)
+
+        try:
+            return self._make_lu_to_lexicon_mapper()[value]
+        except KeyError:
+            if default is not None:
+                return default
+            raise KeyError(f"No mapping found for {value}")
 
     def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
         """
