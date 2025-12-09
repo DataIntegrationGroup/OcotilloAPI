@@ -240,6 +240,16 @@ def seed_all(n: int = 5):
             s.add(t)
             s.flush()  # Need ID for related records
 
+            # Add construction note
+            construction_note = Notes(
+                target_id=t.id,
+                target_table="Thing",
+                note_type="Construction",
+                content=fake.sentence(),
+                release_status="public",
+            )
+            s.add(construction_note)
+
             # Add measuring point history (required for measuring_point_height/description)
             mph = MeasuringPointHistory(
                 thing_id=t.id,
