@@ -26,6 +26,7 @@ from db import (
     Email,
     Phone,
     Address,
+    ThingContactAssociation,
     Thing,
     WellCasingMaterial,
     WellPurpose,
@@ -47,7 +48,18 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     )
 
     query = search(
-        select(Contact).outerjoin(Email).outerjoin(Phone).outerjoin(Address),
+        select(Contact)
+        .outerjoin(Email)
+        .outerjoin(Phone)
+        .outerjoin(Address)
+        .options(
+            selectinload(Contact.emails),
+            selectinload(Contact.phones),
+            selectinload(Contact.addresses),
+            selectinload(Contact.thing_associations).selectinload(
+                ThingContactAssociation.thing
+            ),
+        ),
         q,
         vector=vector,
         limit=limit,
@@ -61,6 +73,10 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
                 "email": [e.email for e in c.emails],
                 "phone": [p.phone_number for p in c.phones],
                 "address": [a.address_line_1 for a in c.addresses],
+                "things": [
+                    {"label": t.name, "id": t.id, "thing_type": t.thing_type}
+                    for t in c.things
+                ],
                 "id": c.id,
             },
         }
