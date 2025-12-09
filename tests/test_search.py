@@ -48,6 +48,20 @@ def test_search_api(water_well_thing, spring_thing, contact):
     assert isinstance(items, list)
     assert len(items) == 3
 
+    # Check the contacts returned
+    contact_items = [item for item in items if item["group"] == "Contacts"]
+    assert len(contact_items) == 1
+    contact_item = contact_items[0]
+    assert contact_item["label"] == contact.name
+    assert contact_item["properties"]["id"] == contact.id
+    assert contact_item["properties"]["things"] == [
+        {
+            "label": water_well_thing.name,
+            "id": water_well_thing.id,
+            "thing_type": water_well_thing.thing_type,
+        },
+    ]
+
 
 @pytest.mark.skip(reason="This test is not working .")
 def test_search_api2():

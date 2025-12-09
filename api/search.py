@@ -17,7 +17,7 @@ from fastapi import APIRouter
 from fastapi_pagination import paginate
 from fastapi_pagination.utils import disable_installed_extensions_check
 from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from api.pagination import CustomPage
 from core.dependencies import session_dependency, viewer_dependency
@@ -26,6 +26,7 @@ from db import (
     Email,
     Phone,
     Address,
+    ThingContactAssociation,
     Thing,
     WellCasingMaterial,
     WellPurpose,
@@ -47,7 +48,18 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
     )
 
     query = search(
-        select(Contact).outerjoin(Email).outerjoin(Phone).outerjoin(Address),
+        select(Contact)
+        .outerjoin(Email)
+        .outerjoin(Phone)
+        .outerjoin(Address)
+        .options(
+            selectinload(Contact.emails),
+            selectinload(Contact.phones),
+            selectinload(Contact.addresses),
+            selectinload(Contact.thing_associations).selectinload(
+                ThingContactAssociation.thing
+            ),
+        ),
         q,
         vector=vector,
         limit=limit,
@@ -61,8 +73,11 @@ def _get_contact_results(session: Session, q: str, limit: int) -> list[dict]:
                 "email": [e.email for e in c.emails],
                 "phone": [p.phone_number for p in c.phones],
                 "address": [a.address_line_1 for a in c.addresses],
-                # 'address': c.address,
-                # 'location_id': c.location_id
+                "things": [
+                    {"label": t.name, "id": t.id, "thing_type": t.thing_type}
+                    for t in c.things
+                ],
+                "id": c.id,
             },
         }
         for c in contacts
@@ -81,7 +96,11 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
         select(Thing)
         .outerjoin(WellCasingMaterial)
         .outerjoin(WellPurpose)
-        .where(Thing.thing_type == "water well"),
+        .where(Thing.thing_type == "water well")
+        .options(
+            selectinload(Thing.well_casing_materials),
+            selectinload(Thing.well_purposes),
+        ),
         q,
         vector=well_vector,
         limit=limit,
@@ -117,7 +136,7 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
             "Wells",
             thing,
             {
-                "well_purpose": thing.well_purpose,
+                "well_purposes": [wp.purpose for wp in thing.well_purposes],
                 "well_depth": thing.well_depth,
                 "hole_depth": thing.hole_depth,
             },
