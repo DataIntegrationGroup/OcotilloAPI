@@ -16,7 +16,7 @@
 from datetime import date
 from typing import List, TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
+from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
@@ -117,8 +117,6 @@ class Thing(
         comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
     )
 
-    well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
-
     well_completion_date: Mapped[date] = mapped_column(
         nullable=True, comment="the date the well was completed if known"
     )
@@ -209,7 +207,6 @@ class Thing(
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="LocationThingAssociation.effective_start.desc()",
-        lazy="joined",
     )
 
     contact_associations = relationship(
@@ -256,7 +253,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     well_casing_materials: Mapped[List["WellCasingMaterial"]] = relationship(
@@ -264,7 +260,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     links: Mapped[List["ThingIdLink"]] = relationship(
@@ -272,7 +267,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # One-To-Many: A Thing (well) can have multiple measuring points over time.
@@ -281,7 +275,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
@@ -289,7 +282,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # One-To-Many: A Thing can be associated with many AquiferSystems via the ThingAquiferAssociation join table.
@@ -298,7 +290,6 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     # Many-To-Many: A Thing can penetrate many GeologicFormations.
@@ -308,7 +299,6 @@ class Thing(
             back_populates="thing",
             cascade="all, delete-orphan",
             passive_deletes=True,
-            lazy="joined",
         )
     )
 
@@ -348,7 +338,7 @@ class Thing(
     )
 
     # Full-text search vector
-    search_vector = Column(TSVectorType("name", "well_construction_notes"))
+    search_vector = Column(TSVectorType("name"))
 
     @property
     def current_location(self):
@@ -372,11 +362,15 @@ class Thing(
 
     @property
     def general_notes(self):
-        return self._get_notes("Other")
+        return self._get_notes("General")
 
     @property
     def measuring_notes(self):
         return self._get_notes("Measuring")
+
+    @property
+    def construction_notes(self):
+        return self._get_notes("Construction")
 
     @property
     def well_status(self) -> str | None:

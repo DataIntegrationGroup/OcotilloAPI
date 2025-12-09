@@ -34,6 +34,8 @@ from db import (
     TransducerObservation,
     Group,
     Asset,
+    PermissionHistory,
+    ThingGeologicFormationAssociation,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -94,6 +96,12 @@ class Metrics:
 
     def group_metrics(self, *args, **kw) -> None:
         self._handle_metrics(Group, *args, **kw)
+
+    def permissions_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(PermissionHistory, *args, **kw)
+
+    def stratigraphy_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
 
     def contact_metrics(self, input_df, cleaned_df, errors) -> None:
         count = self._get_count(

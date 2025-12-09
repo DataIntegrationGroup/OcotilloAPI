@@ -16,13 +16,13 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
 from shapely import wkb
 from shapely.geometry import mapping
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, selectinload
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 from db import (
@@ -32,9 +32,11 @@ from db import (
     WellScreen,
     WellPurpose,
     WellCasingMaterial,
+    ThingAquiferAssociation,
+    GroupThingAssociation,
+    MeasuringPointHistory,
 )
-from db.group import GroupThingAssociation
-from db.measuring_point_history import MeasuringPointHistory
+
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
@@ -45,6 +47,22 @@ WELL_DESCRIPTOR_MODEL_MAP = {
     "well_purposes": (WellPurpose, "purpose"),
     "well_casing_materials": (WellCasingMaterial, "material"),
 }
+
+WELL_LOADER_OPTIONS = [
+    selectinload(Thing.location_associations).selectinload(
+        LocationThingAssociation.location
+    ),
+    selectinload(Thing.well_purposes),
+    selectinload(Thing.well_casing_materials),
+    selectinload(Thing.links),
+    selectinload(Thing.measuring_points),
+    selectinload(Thing.monitoring_frequencies),
+    selectinload(Thing.aquifer_associations).selectinload(
+        ThingAquiferAssociation.aquifer_system
+    ),
+]
+
+WELL_THING_TYPE = "water well"
 
 
 def wkb_to_geojson(wkb_element):
@@ -72,6 +90,12 @@ def get_db_things(
 
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
+
+        if thing_type == WELL_THING_TYPE:
+            sql = sql.options(*WELL_LOADER_OPTIONS)
+    else:
+        # add all eager loads for generic thing query until/unless GET /thing is deprecated
+        sql = sql.options(*WELL_LOADER_OPTIONS)
 
     if name:
         sql = sql.where(Thing.name == name)
@@ -117,8 +141,7 @@ def get_thing_type_from_request(request: Request) -> str:
     return thing_type
 
 
-def verify_thing_type_correspondence(thing: Thing, request: Request):
-    thing_type = get_thing_type_from_request(request)
+def verify_thing_type_correspondence(thing: Thing, thing_type: str):
     if thing.thing_type != thing_type:
         raise PydanticStyleException(
             status_code=HTTP_404_NOT_FOUND,
@@ -134,9 +157,21 @@ def verify_thing_type_correspondence(thing: Thing, request: Request):
 
 
 def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id: int):
-    thing = simple_get_by_id(session, Thing, thing_id)
+    thing_type = get_thing_type_from_request(request)
+    sql = select(Thing).where(Thing.id == thing_id)
 
-    verify_thing_type_correspondence(thing, request)
+    if thing_type == WELL_THING_TYPE:
+        sql = sql.options(*WELL_LOADER_OPTIONS)
+
+    thing = session.execute(sql).scalar_one_or_none()
+
+    if not thing:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail=f"Thing with ID {thing_id} not found.",
+        )
+
+    verify_thing_type_correspondence(thing, thing_type)
 
     return thing
 
@@ -260,7 +295,8 @@ def patch_thing(
 ):
     thing = simple_get_by_id(session, Thing, thing_id)
 
-    verify_thing_type_correspondence(thing, request)
+    thing_type = get_thing_type_from_request(request)
+    verify_thing_type_correspondence(thing, thing_type)
 
     thing = model_patcher(session, Thing, thing_id, payload, user)
     return thing

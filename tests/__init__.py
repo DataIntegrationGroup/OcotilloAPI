@@ -15,9 +15,14 @@
 # ===============================================================================
 # Load .env file BEFORE importing anything else
 # Use override=True to override conflicting shell environment variables
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
+
+# for safety dont test on the production database port
+os.environ["POSTGRES_PORT"] = "54321"
 
 # this should not be needed since all Pydantic serializes all datetimes as UTC
 # furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility

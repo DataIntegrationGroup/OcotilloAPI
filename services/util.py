@@ -81,7 +81,7 @@ def get_tiger_data(
         "returnGeometry": "false",
     }
     try:
-        resp = httpx.get(url, params=params, timeout=30)
+        resp = httpx.get(url, params=params, timeout=5)
     except Exception as e:
         print(f"Error getting TIGER data for POINT ({lon} {lat}) {e}")
         return None
