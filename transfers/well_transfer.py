@@ -339,12 +339,18 @@ class WellTransferer(Transferer):
                     "measuring_point_description",
                     "well_completion_date_source",
                     "well_construction_method_source",
+                    "well_depth_source",
+                    "alternate_ids",
+                    "monitoring_frequencies",
+                    "notes",
+                    "well_depth_source",
+                    "well_completion_date_source",
+                    "well_construction_method_source",
                 ]
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
 
-            well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
 

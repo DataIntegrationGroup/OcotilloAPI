@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+from datetime import date
 import logging
 import re
 from collections import Counter
@@ -38,17 +39,15 @@ from constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from core.dependencies import session_dependency, amp_editor_dependency
 from db import (
     Group,
-    ThingIdLink,
-    GroupThingAssociation,
     Location,
-    LocationThingAssociation,
-    MeasuringPointHistory,
     DataProvenance,
     FieldEvent,
     FieldEventParticipant,
+    FieldActivity,
     Contact,
+    PermissionHistory,
+    Thing,
 )
-from db.thing import Thing, WellPurpose, MonitoringFrequencyHistory
 from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
@@ -59,7 +58,7 @@ from services.util import transform_srid, convert_ft_to_m
 router = APIRouter(prefix="/well-inventory-csv")
 
 
-def _add_location(model, well) -> Location:
+def _make_location(model) -> Location:
     point = Point(model.utm_easting, model.utm_northing)
 
     # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
@@ -79,11 +78,8 @@ def _add_location(model, well) -> Location:
         point=transformed_point.wkt,
         elevation=elevation_m,
     )
-    date_time = model.date_time
-    assoc = LocationThingAssociation(location=loc, thing=well)
-    assoc.effective_start = date_time
 
-    return loc, assoc
+    return loc
 
 
 def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
@@ -131,6 +127,43 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
             "phones": phones,
             "addresses": addresses,
         }
+
+
+def _make_well_permission(
+    well: Thing,
+    contact: Contact | None,
+    permission_type: str,
+    permission_allowed: bool,
+    start_date: date,
+) -> PermissionHistory:
+    """
+    Makes a PermissionHistory record for the given well and contact.
+    If the contact has not been provided, but a permission is to be created,
+    no PermissionHistory record is created and a 400 error is raised.
+    """
+    if contact is None:
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "At least one contact required for permission",
+                    "type": "Contact required for permission",
+                    "input": None,
+                }
+            ],
+        )
+
+    permission = PermissionHistory(
+        target_table="thing",
+        target_id=well.id,
+        contact=contact,
+        permission_type=permission_type,
+        permission_allowed=permission_allowed,
+        start_date=start_date,
+        end_date=None,
+    )
+    return permission
 
 
 AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
@@ -414,31 +447,129 @@ def _add_field_staff(
 def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) -> str:
     name = model.well_name_point_id
     date_time = model.date_time
-    site_name = model.site_name
+
+    # --------------------
+    # Location and associated tables
+    # --------------------
+
+    # add Location
+    loc = _make_location(model)
+    session.add(loc)
+    session.flush()
+
+    # add location notes
+    if model.directions_to_site:
+        directions_note = loc.add_note(
+            content=model.directions_to_site, note_type="Directions"
+        )
+        session.add(directions_note)
+
+    # add data provenance records
+    dp = DataProvenance(
+        target_id=loc.id,
+        target_table="location",
+        field_name="elevation",
+        collection_method=model.elevation_method,
+    )
+    session.add(dp)
+
+    # --------------------
+    # Thing and associated tables
+    # --------------------
 
     # add Thing
+    well_notes = []
+    for note_content, note_type in (
+        (model.specific_location_of_well, "Access"),
+        (model.special_requests, "General"),
+        (model.well_measuring_notes, "Measuring"),
+    ):
+        if note_content is not None:
+            well_notes.append({"content": note_content, "note_type": note_type})
+
+    alternate_ids = []
+    for alternate_id, alternate_organization in (
+        (model.site_name, "NMBGMR"),
+        (model.ose_well_record_id, "NMOSE"),
+    ):
+        if alternate_id is not None:
+            alternate_ids.append(
+                {
+                    "alternate_id": alternate_id,
+                    "alternate_organization": alternate_organization,
+                    "relation": "same_as",
+                }
+            )
+
+    well_purposes = []
+    if model.well_purpose:
+        well_purposes.append(model.well_purpose)
+    if model.well_purpose_2:
+        well_purposes.append(model.well_purpose_2)
+
+    monitoring_frequencies = []
+    if model.monitoring_frequency:
+        monitoring_frequencies.append(
+            {
+                "monitoring_frequency": model.monitoring_frequency,
+                "start_date": date_time.date(),
+            }
+        )
+
     data = CreateWell(
+        location_id=loc.id,
+        group_id=group.id,
         name=name,
         first_visit_date=date_time.date(),
         well_depth=model.total_well_depth_ft,
+        well_depth_source=model.depth_source,
         well_casing_diameter=model.casing_diameter_ft,
         measuring_point_height=model.measuring_point_height_ft,
         measuring_point_description=model.measuring_point_description,
+        well_completion_date=model.date_drilled,
+        well_completion_date_source=model.completion_source,
+        well_pump_type=model.well_pump_type,
+        well_pump_depth=model.well_pump_depth_ft,
+        is_suitable_for_datalogger=model.datalogger_possible,
+        notes=well_notes,
+        well_purposes=well_purposes,
     )
     well_data = data.model_dump(
         exclude=[
-            "location_id",
-            "group_id",
             "well_purposes",
             "well_casing_materials",
-            "measuring_point_height",
-            "measuring_point_description",
         ]
     )
+
+    """
+    Developer's notes
+
+    the add_thing function also handles:
+    - MeasuringPointHistory
+    - GroupThingAssociation
+    - LocationThingAssociation
+    - DataProvenance for well_completion_date
+    - DataProvenance for well_construction_method
+    - DataProvenance for well_depth
+    - Notes
+    - WellPurpose
+    - MonitoringFrequencyHistory
+    """
     well = add_thing(
         session=session, data=well_data, user=user, thing_type="water well"
     )
     session.refresh(well)
+
+    # ------------------
+    # Field Events and related tables
+    # ------------------
+    """
+    Developer's notes
+
+    These tables are not handled in add_thing because they are only relevant if
+    the well has been inventoried in the field, not if the well is added from
+    another source like a report, database, or map.
+    """
 
     # add field event
     fe = FieldEvent(
@@ -459,64 +590,48 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
 
         _add_field_staff(session, fsi, fe, role, user)
 
-    # add MonitoringFrequency
-    if model.monitoring_frequency:
-        mfh = MonitoringFrequencyHistory(
-            thing=well,
-            monitoring_frequency=model.monitoring_frequency,
-            start_date=date_time.date(),
-        )
-        session.add(mfh)
-
-    # add WellPurpose
-    for p in (model.well_purpose, model.well_purpose_2):
-        if not p:
-            continue
-        wp = WellPurpose(purpose=p, thing=well)
-        session.add(wp)
-
-    # BDMS-221 adds MeasuringPointHistory model
-    measuring_point_height_ft = model.measuring_point_height_ft
-    if measuring_point_height_ft:
-        mph = MeasuringPointHistory(
-            thing=well,
-            measuring_point_height=measuring_point_height_ft,
-            measuring_point_description=model.measuring_point_description,
-            start_date=date_time.date(),
-        )
-        session.add(mph)
-
-    # add Location
-    loc, assoc = _add_location(model, well)
-    session.add(loc)
-    session.add(assoc)
-    session.flush()
-
-    dp = DataProvenance(
-        target_id=loc.id,
-        target_table="location",
-        field_name="elevation",
-        collection_method=model.elevation_method,
+    # add field activity
+    fa = FieldActivity(
+        field_event=fe,
+        activity_type="well inventory",
+        notes="Well inventory conducted during field event.",
     )
-    session.add(dp)
+    session.add(fa)
 
-    gta = GroupThingAssociation(group=group, thing=well)
-    session.add(gta)
-    group.thing_associations.append(gta)
+    # ------------------
+    # Contacts
+    # ------------------
 
-    # add alternate ids
-    well.links.append(
-        ThingIdLink(
-            alternate_id=site_name,
-            alternate_organization="NMBGMR",
-            relation="same_as",
-        )
-    )
-
+    # add contacts
+    contact_for_permissions = None
     for idx in (1, 2):
-        contact = _make_contact(model, well, idx)
-        if contact:
-            add_contact(session, contact, user=user)
+        contact_dict = _make_contact(model, well, idx)
+        if contact_dict:
+            contact = add_contact(session, contact_dict, user=user)
+
+            # Use the first created contact for permissions if available
+            if contact_for_permissions is None:
+                contact_for_permissions = contact
+
+    # ------------------
+    # Permissions
+    # ------------------
+
+    # add permissions
+    for permission_type, permission_allowed in (
+        ("Water Level Sample", model.repeat_measurement_permission),
+        ("Water Chemistry Sample", model.sampling_permission),
+        ("Datalogger Installation", model.datalogger_installation_permission),
+    ):
+        if permission_allowed is not None:
+            permission = _make_well_permission(
+                well=well,
+                contact=contact_for_permissions,
+                permission_type=permission_type,
+                permission_allowed=permission_allowed,
+                start_date=model.date_time.date(),
+            )
+            session.add(permission)
 
     return model.well_name_point_id
 

@@ -22,6 +22,7 @@ These tests verify that:
 """
 import datetime
 from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
