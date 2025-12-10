@@ -222,7 +222,7 @@ class WellInventoryRow(BaseModel):
     date_drilled: OptionalDateTime = None
     completion_source: Optional[str] = None
     total_well_depth_ft: OptionalFloat = None
-    historic_depth_to_water_ft: OptionalFloat = None  # TODO: needs a home
+    historic_depth_to_water_ft: OptionalFloat = None
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
     well_pump_depth_ft: OptionalFloat = None
