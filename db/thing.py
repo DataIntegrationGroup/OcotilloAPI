@@ -361,8 +361,8 @@ class Thing(
         return self._get_notes("General")
 
     @property
-    def measuring_notes(self):
-        return self._get_notes("Measuring")
+    def sampling_procedure_notes(self):
+        return self._get_notes("Sampling Procedure")
 
     @property
     def construction_notes(self):
