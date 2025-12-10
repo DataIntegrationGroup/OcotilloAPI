@@ -8,16 +8,16 @@ Feature: Associate assets with things based on a manifest file
   Background:
     Given a local directory named "asset_import_batch"
     And the directory contains a manifest file named "manifest.txt"
-    And the manifest file is a 3-column CSV with headers asset_file_name, thing_name and asset_type
+    And the manifest file is a 2-column CSV with headers asset_file_name and thing_name
     And the directory contains a set of asset files referenced in the manifest
 
   @happy_path
   Scenario Outline: Successfully upload and associate assets from a valid manifest
-    Given the manifest contains a row for "<asset_file_name>" with thing "<thing_name>" and asset type "<asset_type>"
+    Given the manifest contains a row for "<asset_file_name>" with thing "<thing_name>"
     And the directory contains a asset file named "<asset_file_name>"
     When I run the "associate_assets" command on the directory
     Then the app should upload "<asset_file_name>" to Google Cloud Storage
-#    And the app should create an association between the uploaded asset and thing "<thing_name>"
+    And the app should create an association between the uploaded asset and thing "<thing_name>"
 #    And the association should record:
 #      | field        | value            |
 #      | thing_name   | <thing_name>     |
@@ -27,10 +27,10 @@ Feature: Associate assets with things based on a manifest file
 #    And the command should exit with a success status
 
     Examples:
-      | asset_file_name    | thing_name       | asset_type  |
-      | pump-001-front.jpg | PUMP-001-POINTID | asset_front |
-      | pump-001-side.jpg  | PUMP-001-POINTID | asset_side  |
-      | panel-123-name.png | PANEL-123        | nameplate   |
+      | asset_file_name    | thing_name |
+      | AR0001_1.JPG | AR0001 |
+      | AR0001_2.JPG  | AR0001 |
+
 
 #  @multiple_rows @idempotent
 #  Scenario: Upload and associate multiple assets in a single run

@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import csv
+import io
 import mimetypes
 from pathlib import Path
 
@@ -79,31 +80,35 @@ def associate_assets(source_directory: Path) -> list[str]:
 
     bucket = get_storage_bucket()
     m = source_directory / "manifest.txt"
-    with open(m, "r") as rf:
-        reader = csv.DictReader(rf)
 
-    blobs = []
+    uris = []
     with session_ctx() as sess:
-        for row in reader:
-            # save file to gcs
-            path = row["asset_file_name"]
+        with open(m, "r") as rf:
+            reader = csv.DictReader(rf)
+            for row in reader:
+                # save file to gcs
+                path = row["asset_file_name"].strip()
 
-            with open(source_directory / path, "rb") as fp:
-                file = UploadFile(fp)
+                with open(source_directory / path, "rb") as fp:
+                    file = UploadFile(
+                        io.BytesIO(fp.read()), filename=path, size=len(fp.read())
+                    )
 
-            sql = select(Thing).where(Thing.name == row["thing_name"])
-            thing = sess.scalars(sql).one_or_none()
-            if thing:
-                # get mime_type from file
-                mime_type, encoding = mimetypes.guess_type(path)
-                uri, blob_name = upload_and_associate(
-                    sess, file, bucket, thing, path, **{"mime_type": mime_type}
-                )
-                blobs.append(blob_name)
+                sql = select(Thing).where(Thing.name == row["thing_name"].strip())
+                thing = sess.scalars(sql).one_or_none()
+                if thing:
+                    # get mime_type from file
+                    mime_type, encoding = mimetypes.guess_type(path)
+                    uri, blob_name = upload_and_associate(
+                        sess, file, bucket, thing, path, **{"mime_type": mime_type}
+                    )
+                    uris.append(uri)
 
-            else:
-                pass
-    return blobs
+                else:
+                    pass
+        sess.commit()
+
+    return uris
 
 
 if __name__ == "__main__":

@@ -86,7 +86,7 @@ def add_location(context, session):
 @add_context_object_container("wells")
 def add_well(context, session, location, name_num):
     well = Thing(
-        name=f"WL-{name_num:04d}",
+        name=f"AR{name_num:04d}",
         first_visit_date="2023-03-03",
         thing_type="water well",
         release_status="draft",
@@ -496,10 +496,9 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
-    return
 
     rebuild = False
-    rebuild = True
+    # rebuild = True
     if rebuild:
         erase_and_rebuild_db()
 
@@ -513,6 +512,10 @@ def before_all(context):
         well_1 = add_well(context, session, loc_1, name_num=1)
         well_2 = add_well(context, session, loc_2, name_num=2)
         well_3 = add_well(context, session, loc_3, name_num=3)
+        session.commit()
+        print("asdf", well_1, well_1.name)
+        return
+
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
