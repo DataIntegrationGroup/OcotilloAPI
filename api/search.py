@@ -164,7 +164,10 @@ def _get_thing_results(session: Session, q: str, limit: int) -> list[dict]:
 def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
     vector = Asset.search_vector
     query = search(
-        select(Asset).join(AssetThingAssociation).join(Thing),
+        select(Asset)
+        .join(AssetThingAssociation)
+        .join(Thing)
+        .options(selectinload(Asset.things)),
         q,
         vector=vector,
         limit=limit,
@@ -176,7 +179,11 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
             "label": a.name,
             "group": "Assets",
             "properties": {
-                "things": [t.name for t in a.things],
+                "id": a.id,
+                "things": [
+                    {"label": t.name, "id": t.id, "thing_type": t.thing_type}
+                    for t in a.things
+                ],
                 "storage_service": a.storage_service,
                 "storage_path": a.storage_path,
                 "mime_type": a.mime_type,
