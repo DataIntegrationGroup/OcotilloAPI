@@ -18,7 +18,6 @@ import io
 import mimetypes
 from pathlib import Path
 
-from dotenv import load_dotenv
 from fastapi import UploadFile
 from sqlalchemy import select
 
@@ -27,45 +26,18 @@ from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket, make_blob_name_and_uri
 from services.validation.asset_helper import upload_and_associate
 
-load_dotenv()
 
-import click
-from core.initializers import init_lexicon
-
-
-@click.group()
-def cli():
-    """Command line interface for managing the application."""
-    pass
+def well_inventory_csv(source_file: Path | str):
+    if isinstance(source_file, str):
+        source_file = Path(source_file)
 
 
-@cli.command()
-def initialize_lexicon():
-    init_lexicon()
+def water_level_csv(source_file: Path | str):
+    if isinstance(source_file, str):
+        source_file = Path(source_file)
 
 
-@cli.command()
-def associate_assets_command():
-    associate_assets()
-
-
-@cli.command()
-def well_inventory_csv():
-    """
-    parse and upload a csv to database
-    """
-    # TODO: use the same helper function used by api to parse and upload a WI csv
-
-
-@cli.command()
-def waterlevels_csv():
-    """
-    parse and upload a csv
-    """
-    # TODO: use the same helper function used by api to parse and upload a WL csv
-
-
-def associate_assets(source_directory: Path) -> list[str]:
+def associate_assets(source_directory: Path | str) -> list[str]:
     """
     given a directory
     and the directory contains a manifest file
@@ -77,10 +49,11 @@ def associate_assets(source_directory: Path) -> list[str]:
     and associate each uploaded photo with the corresponding thing
 
     """
-
-    bucket = get_storage_bucket()
+    if isinstance(source_directory, str):
+        source_directory = Path(source_directory)
     m = source_directory / "manifest.txt"
 
+    bucket = get_storage_bucket()
     uris = []
     with session_ctx() as sess:
         with open(m, "r") as rf:
@@ -115,8 +88,5 @@ def associate_assets(source_directory: Path) -> list[str]:
 
     return uris
 
-
-if __name__ == "__main__":
-    cli()
 
 # ============= EOF =============================================
