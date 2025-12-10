@@ -244,7 +244,7 @@ class WellResponse(BaseThingResponse):
     measuring_point_description: str | None
     aquifers: list[dict] = []
     water_notes: list[NoteResponse] | None = None
-    measuring_notes: list[NoteResponse] | None = None
+    sampling_procedure_notes: list[NoteResponse] | None = None
 
     construction_notes: list[NoteResponse] | None = None
     permissions: list[PermissionHistoryResponse]
