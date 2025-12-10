@@ -15,6 +15,7 @@
 # ===============================================================================
 import csv
 import mimetypes
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import UploadFile
@@ -43,42 +44,8 @@ def initialize_lexicon():
 
 
 @cli.command()
-def associate_assets():
-    """
-    given a directory
-    and the directory contains a manifest file
-    and the manifest file is a 3-column csv (asset_file_name, thing_name aka pointid, asset_type)
-    and the directory contains a set of photos
-
-    then when i run the associate photos command
-    the app should save the photos to gcs
-    and associate each uploaded photo with the corresponding thing
-
-    """
-
-    bucket = get_storage_bucket()
-    m = "manifest.txt"
-    with open(m, "r") as rf:
-        reader = csv.DictReader(rf)
-
-    with session_ctx() as sess:
-        for row in reader:
-            # save file to gcs
-            path = row["asset_file_name"]
-
-            with open(path, "rb") as fp:
-                file = UploadFile(fp)
-
-            sql = select(Thing).where(Thing.name == row["thing_name"])
-            thing = sess.scalars(sql).one_or_none()
-            if thing:
-                # get mime_type from file
-                mime_type, encoding = mimetypes.guess_type(path)
-                upload_and_associate(
-                    sess, file, bucket, thing, path, **{"mime_type": mime_type}
-                )
-            else:
-                pass
+def associate_assets_command():
+    associate_assets()
 
 
 @cli.command()
@@ -95,6 +62,48 @@ def waterlevels_csv():
     parse and upload a csv
     """
     # TODO: use the same helper function used by api to parse and upload a WL csv
+
+
+def associate_assets(source_directory: Path) -> list[str]:
+    """
+    given a directory
+    and the directory contains a manifest file
+    and the manifest file is a 3-column csv (asset_file_name, thing_name aka pointid, asset_type)
+    and the directory contains a set of photos
+
+    then when i run the associate photos command
+    the app should save the photos to gcs
+    and associate each uploaded photo with the corresponding thing
+
+    """
+
+    bucket = get_storage_bucket()
+    m = source_directory / "manifest.txt"
+    with open(m, "r") as rf:
+        reader = csv.DictReader(rf)
+
+    blobs = []
+    with session_ctx() as sess:
+        for row in reader:
+            # save file to gcs
+            path = row["asset_file_name"]
+
+            with open(source_directory / path, "rb") as fp:
+                file = UploadFile(fp)
+
+            sql = select(Thing).where(Thing.name == row["thing_name"])
+            thing = sess.scalars(sql).one_or_none()
+            if thing:
+                # get mime_type from file
+                mime_type, encoding = mimetypes.guess_type(path)
+                uri, blob_name = upload_and_associate(
+                    sess, file, bucket, thing, path, **{"mime_type": mime_type}
+                )
+                blobs.append(blob_name)
+
+            else:
+                pass
+    return blobs
 
 
 if __name__ == "__main__":

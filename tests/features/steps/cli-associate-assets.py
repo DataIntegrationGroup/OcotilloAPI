@@ -9,8 +9,11 @@ import csv
 import mimetypes
 from pathlib import Path
 
-from behave import given
+from behave import given, when, then
 from behave.runner import Context
+
+from manage import associate_assets
+from services.gcs_helper import get_storage_bucket
 
 
 @given('a local directory named "asset_import_batch"')
@@ -70,6 +73,26 @@ def step_impl(context: Context, asset_file_name):
             break
     else:
         raise Exception(f"{asset_file_name} not found in directory")
+
+
+@when('I run the "associate_assets" command on the directory')
+def step_impl(context: Context):
+    uploaded_blobs = associate_assets(context.source_directory)
+    context.upload_blobs = uploaded_blobs
+
+
+@then('the app should upload "<asset_file_name>" to Google Cloud Storage')
+def step_impl(context: Context, asset_file_name):
+    bucket = get_storage_bucket()
+    head, ext = asset_file_name.split(".")
+    for blob in context.uploaded_blobs:
+        if blob.startswith(head):
+            if bucket.get_blob(blob):
+                break
+            else:
+                raise Exception(f"{blob} not found in gcs")
+    else:
+        raise Exception(f"{blob} not uploaded")
 
 
 # ============= EOF =============================================

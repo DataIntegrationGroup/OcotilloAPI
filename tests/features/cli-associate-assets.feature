@@ -15,9 +15,8 @@ Feature: Associate assets with things based on a manifest file
   Scenario Outline: Successfully upload and associate assets from a valid manifest
     Given the manifest contains a row for "<asset_file_name>" with thing "<thing_name>" and asset type "<asset_type>"
     And the directory contains a asset file named "<asset_file_name>"
-#    When I run the "associate assets" command on the directory
-#    Then the app should upload "<asset_file_name>" to Google Cloud Storage
-#    And the uploaded asset should be stored under the expected GCS bucket and path for "<asset_type>"
+    When I run the "associate_assets" command on the directory
+    Then the app should upload "<asset_file_name>" to Google Cloud Storage
 #    And the app should create an association between the uploaded asset and thing "<thing_name>"
 #    And the association should record:
 #      | field        | value            |

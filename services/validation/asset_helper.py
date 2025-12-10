@@ -21,7 +21,7 @@ def upload_and_associate(
     thing: Thing,
     name: str,
     **asset_args,
-) -> str:
+) -> tuple[str, str]:
     uri, blob_name = gcs_upload(ff, bucket)
     asset = Asset(
         name=name,
@@ -38,7 +38,7 @@ def upload_and_associate(
     assoc.asset = asset
     session.add(assoc)
     session.add(asset)
-    return uri
+    return uri, blob_name
 
 
 # ============= EOF =============================================
