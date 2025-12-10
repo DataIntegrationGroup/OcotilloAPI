@@ -14,13 +14,15 @@
 # limitations under the License.
 # ===============================================================================
 import base64
+import datetime
 import json
 import os
-import datetime
 from hashlib import md5
+
 from fastapi import UploadFile
 from google.oauth2 import service_account
 from sqlalchemy import select
+
 from core.settings import settings
 from db import Asset, AssetThingAssociation
 
@@ -61,25 +63,30 @@ def get_storage_bucket(client=None, bucket: str = None) -> storage.Bucket:
     return client.bucket(bucket)
 
 
+def make_blob_name_and_uri(file):
+    head, extension = os.path.splitext(file.filename)
+    file_id = md5(file.file.read()).hexdigest()
+
+    blob_name = f"{head}_{file_id}{extension}"
+    uri = f"{GCS_BUCKET_BASE_URL}/{blob_name}"
+    return blob_name, uri
+
+
 def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     if bucket is None:
         bucket = get_storage_bucket()
 
     # make file id from hash of file contents
     file.file.seek(0)
-    file_id = md5(file.file.read()).hexdigest()
 
-    head, extension = os.path.splitext(file.filename)
-
-    blob_name = f"{head}_{file_id}{extension}"
+    blob_name, uri = make_blob_name_and_uri(file)
     eblob = bucket.get_blob(blob_name)
-    url = f"{GCS_BUCKET_BASE_URL}/{blob_name}"
 
     if not eblob:
         blob = bucket.blob(blob_name)
         file.file.seek(0)
         blob.upload_from_file(file.file, content_type=file.content_type)
-    return url, blob_name
+    return uri, blob_name
 
 
 def gcs_remove(uri: str, bucket: storage.Bucket):

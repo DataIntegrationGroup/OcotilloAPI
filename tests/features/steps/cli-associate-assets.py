@@ -13,7 +13,7 @@ from behave import given, when, then
 from behave.runner import Context
 from sqlalchemy import select
 
-from db import Thing
+from db import Thing, Asset
 from db.engine import session_ctx
 from manage import associate_assets
 from services.gcs_helper import get_storage_bucket
@@ -22,7 +22,7 @@ from services.gcs_helper import get_storage_bucket
 @given('a local directory named "asset_import_batch"')
 def step_impl(context: Context):
     context.source_directory = (
-        Path("tests") / "features" / "steps" / "asset_import_batch"
+        Path("tests") / "features" / "data" / "asset_import_batch"
     )
     assert context.source_directory.exists()
     assert context.source_directory.is_dir()
@@ -120,6 +120,48 @@ def step_impl(context: Context, thing_name):
                 raise Exception(f"No asset associated with uri {uri}")
         else:
             raise Exception(f"No asset associated with thing {thing_name}")
+
+
+@given(
+    'the manifest contains a row for "missing-asset.jpg" with a valid thing_name and asset_type'
+)
+def step_impl(context: Context):
+    context.manifest_file = context.source_directory / "manifest-missing-asset.txt"
+    assert context.manifest_file.exists()
+
+
+@given('the directory does not contain a file named "missing-asset.jpg"')
+def step_impl(context: Context):
+    assert not (context.source_directory / "missing-asset.jpg").exists()
+
+
+@then("each photo listed in the manifest should be uploaded exactly once to GCS")
+def step_impl(context: Context):
+    bucket = get_storage_bucket()
+    for uri in context.uris:
+        blob = uri.split("/")[-1]
+        assert bucket.get_blob(blob) is not None, f"{uri} not uploaded exactly once"
+
+
+@then(
+    "each uploaded photo should be associated exactly once to its corresponding thing"
+)
+def step_impl(context: Context):
+    with session_ctx() as session:
+        for uri in context.uris:
+            sql = select(Asset).where(Asset.uri == uri)
+            a = session.scalars(sql).one_or_none()
+            assert (
+                len(a.things) == 1
+            ), f"{uri} associated with multiple things {[t.name for t in a.things]}"
+
+
+@when(
+    'I run the "associate photos" command on the same directory again with the same manifest'
+)
+def step_impl(context: Context):
+    uris = associate_assets(context.source_directory)
+    context.uris = uris
 
 
 # ============= EOF =============================================

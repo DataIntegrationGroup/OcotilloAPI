@@ -22,9 +22,9 @@ from dotenv import load_dotenv
 from fastapi import UploadFile
 from sqlalchemy import select
 
-from db import Thing
+from db import Thing, Asset
 from db.engine import session_ctx
-from services.gcs_helper import get_storage_bucket
+from services.gcs_helper import get_storage_bucket, make_blob_name_and_uri
 from services.validation.asset_helper import upload_and_associate
 
 load_dotenv()
@@ -99,6 +99,11 @@ def associate_assets(source_directory: Path) -> list[str]:
                 if thing:
                     # get mime_type from file
                     mime_type, encoding = mimetypes.guess_type(path)
+                    blob_name, uri = make_blob_name_and_uri(file)
+                    sql = select(Asset).where(Asset.uri == uri)
+                    existing_asset = sess.scalars(sql).one_or_none()
+                    if existing_asset:
+                        continue
                     uri, blob_name = upload_and_associate(
                         sess, file, bucket, thing, path, **{"mime_type": mime_type}
                     )

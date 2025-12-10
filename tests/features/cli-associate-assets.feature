@@ -31,7 +31,14 @@ Feature: Associate assets with things based on a manifest file
       | AR0001_1.JPG | AR0001 |
       | AR0001_2.JPG  | AR0001 |
 
-
+  @idempotent @multiple_runs
+  Scenario: Idempotent behavior when running associate photos multiple times with the same manifest
+    When I run the "associate_assets" command on the directory
+    Then each photo listed in the manifest should be uploaded exactly once to GCS
+    And each uploaded photo should be associated exactly once to its corresponding thing
+    When I run the "associate photos" command on the same directory again with the same manifest
+    Then each uploaded photo should be associated exactly once to its corresponding thing
+#
 #  @multiple_rows @idempotent
 #  Scenario: Upload and associate multiple assets in a single run
 #    Given the manifest contains rows for multiple asset_file_name values for the same thing_name
@@ -45,7 +52,7 @@ Feature: Associate assets with things based on a manifest file
 #  Scenario: Manifest references a asset that does not exist in the directory
 #    Given the manifest contains a row for "missing-asset.jpg" with a valid thing_name and asset_type
 #    And the directory does not contain a file named "missing-asset.jpg"
-#    When I run the "associate assets" command on the directory
+#    When I run the "associate_assets" command on the directory
 #    Then the app should not attempt to upload "missing-asset.jpg"
 #    And the app should log an error indicating the missing file
 #    And the app should report at least one failure in the run summary

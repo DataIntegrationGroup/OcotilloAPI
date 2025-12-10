@@ -16,6 +16,8 @@
 import random
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
+
 from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
@@ -42,6 +44,8 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
+    Base,
+    Asset,
 )
 from db.engine import session_ctx
 
@@ -499,8 +503,19 @@ def before_all(context):
 
     rebuild = False
     # rebuild = True
+    erase_data = True
     if rebuild:
         erase_and_rebuild_db()
+    elif erase_data:
+        with session_ctx() as session:
+            for table in reversed(Base.metadata.sorted_tables):
+                if table.name in ("alembic_version", "parameter"):
+                    continue
+                elif table.name.startswith("lexicon"):
+                    continue
+
+                session.execute(table.delete())
+            session.commit()
 
     with session_ctx() as session:
 
@@ -512,10 +527,6 @@ def before_all(context):
         well_1 = add_well(context, session, loc_1, name_num=1)
         well_2 = add_well(context, session, loc_2, name_num=2)
         well_3 = add_well(context, session, loc_3, name_num=3)
-        session.commit()
-        print("asdf", well_1, well_1.name)
-        return
-
         spring_4 = add_spring(context, session, loc_4, name_num=4)
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
@@ -682,6 +693,27 @@ def after_all(context):
                 if obj:
                     session.delete(obj)
         session.commit()
+
+
+def before_scenario(context, scenario):
+    # runs before EVERY scenario
+    # e.g. reset test data, open browser, etc.
+    pass
+
+
+def after_scenario(context, scenario):
+    # runs after EVERY scenario
+    # e.g. clean up temp files, close db sessions
+    if scenario.name.startswith(
+        "Successfully upload and associate assets from a valid manifest"
+    ):
+        # delete all the assets uploaded for this scenario
+        with session_ctx() as session:
+            for uri in context.uris:
+                sql = select(Asset).where(Asset.uri == uri)
+                asset = session.scalars(sql).one()
+                session.delete(asset)
+            session.commit()
 
 
 # ============= EOF =============================================
