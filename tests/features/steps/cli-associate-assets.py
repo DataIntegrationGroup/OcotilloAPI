@@ -13,9 +13,9 @@ from behave import given, when, then
 from behave.runner import Context
 from sqlalchemy import select
 
+from cli.service_adapter import associate_assets
 from db import Thing, Asset
 from db.engine import session_ctx
-from manage import associate_assets
 from services.gcs_helper import get_storage_bucket
 
 
