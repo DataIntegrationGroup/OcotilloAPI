@@ -492,6 +492,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         (model.specific_location_of_well, "Access"),
         (model.special_requests, "General"),
         (model.well_measuring_notes, "Sampling Procedure"),
+        (model.sampling_scenario_notes, "Sampling Procedure"),
     ):
         if note_content is not None:
             well_notes.append({"content": note_content, "note_type": note_type})
