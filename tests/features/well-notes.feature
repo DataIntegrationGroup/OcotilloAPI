@@ -17,7 +17,7 @@ Feature: Retrieve well notes by well ID
     And the response should include location notes (i.e. driving directions and geographic well location notes)
     And the response should include construction notes (i.e. pump notes and other construction notes)
     And the response should include general well notes (catch all notes field)
-    And the response should include measuring notes (notes about measuring/visiting the well, on Access form)
+    And the response should include sampling procedure notes (notes about sampling procedures for all sample types, like water levels and water chemistry)
     And the response should include water notes (i.e. water bearing zone information and other info from ose reports)
     And the notes should be a non-empty string
 
