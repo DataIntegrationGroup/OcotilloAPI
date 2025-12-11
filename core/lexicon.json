@@ -1168,7 +1168,7 @@
     {"categories": ["note_type"], "term": "Historical", "definition": "Historical information or context about the well or location."},
     {"categories": ["note_type"], "term": "General", "definition": "Other types of notes that do not fit into the predefined categories."},
     {"categories": ["note_type"], "term": "Water", "definition": "Water bearing zone information and other info from ose reports"},
-    {"categories": ["note_type"], "term": "Measuring", "definition": "Notes about measuring/visiting the well, on Access form"},
+    {"categories": ["note_type"], "term": "Sampling Procedure", "definition": "Notes about sampling procedures for all sample types, like water levels and water chemistry"},
     {"categories": ["note_type"], "term": "Coordinate", "definition": "Notes about a location's coordinates"},
     {"categories": ["note_type"], "term": "Communication", "definition": "Notes about communication preferences/requests for a contact"},
     {"categories": ["well_pump_type"], "term": "Submersible", "definition": "Submersible"},

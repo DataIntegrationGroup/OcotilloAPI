@@ -63,13 +63,17 @@ def step_impl(context):
 
 
 @then(
-    "the response should include measuring notes (notes about measuring/visiting the well, on Access form)"
+    "the response should include sampling procedure notes (notes about sampling procedures for all sample types, like water levels and water chemistry)"
 )
 def step_impl(context):
     data = context.response.json()
-    assert "measuring_notes" in data, "Response does not include measuring notes"
-    assert data["measuring_notes"] is not None, "Measuring notes is null"
-    context.notes["measuring"] = data["measuring_notes"]
+    assert (
+        "sampling_procedure_notes" in data
+    ), "Response does not include sampling procedure notes"
+    assert (
+        data["sampling_procedure_notes"] is not None
+    ), "Sampling Procedure notes is null"
+    context.notes["sampling_procedure"] = data["sampling_procedure_notes"]
 
 
 @then(
