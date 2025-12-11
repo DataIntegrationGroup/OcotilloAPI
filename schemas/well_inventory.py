@@ -241,10 +241,36 @@ class WellInventoryRow(BaseModel):
     well_measuring_notes: Optional[str] = None
     sample_possible: OptionalBool = None  # TODO: needs a home
 
+    # water levels
+    sampler: Optional[str] = None
+    sample_method: Optional[str] = None
+    measurement_date_time: Optional[str] = None
+    mp_height: Optional[str] = None
+    level_status: Optional[str] = None
+    depth_to_water_ft: Optional[str] = None
+    data_quality: Optional[str] = None
+    water_level_notes: Optional[str] = None
+
     @model_validator(mode="after")
     def validate_model(self):
-        # verify utm in NM
 
+        optional_wl = (
+            "sampler",
+            "sample_method",
+            "measurement_date_time",
+            "mp_height",
+            "level_status",
+            "depth_to_water_ft",
+            "data_quality",
+            "water_level_notes",
+        )
+
+        wl_fields = [getattr(self, a) for a in optional_wl]
+        if any(wl_fields):
+            if not all(wl_fields):
+                raise ValueError("All water level fields must be provided")
+
+        # verify utm in NM
         zone = int(self.utm_zone[:-1])
         northern = self.utm_zone[-1]
         if northern.upper() not in ("S", "N"):

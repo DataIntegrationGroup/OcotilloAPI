@@ -312,4 +312,11 @@ def step_impl(context: Context):
     _set_content_from_df(context, df)
 
 
+@given(
+    "my csv file contains a row where some but not all water level entry fields are filled"
+)
+def step_impl(context):
+    _set_file_content(context, "well-inventory-missing-wl-fields.csv")
+
+
 # ============= EOF =============================================
