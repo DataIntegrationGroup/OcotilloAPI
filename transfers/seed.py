@@ -38,6 +38,7 @@ from db.thing import (
     WellCasingMaterial,
     MonitoringFrequencyHistory,
     WellScreen,
+    WellPurpose,
 )
 from db.measuring_point_history import MeasuringPointHistory
 from db.sensor import Sensor
@@ -229,7 +230,6 @@ def seed_all(n: int = 5):
                 first_visit_date=fake.date_between("-2y", "today"),
                 well_depth=random.uniform(50, 500),
                 hole_depth=random.uniform(50, 500),
-                well_driller_name=fake.name(),
                 well_casing_diameter=random.uniform(4, 8),
                 well_casing_depth=casing_depth_val,
                 well_completion_date=well_completion_date,
