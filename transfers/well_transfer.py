@@ -313,7 +313,9 @@ class WellTransferer(Transferer):
                 measuring_point_height=mpheight,
                 measuring_point_description=mpheight_description,
                 notes=(
-                    [{"content": row.Notes, "note_type": "Other"}] if row.Notes else []
+                    [{"content": row.Notes, "note_type": "General"}]
+                    if row.Notes
+                    else []
                 ),
                 well_completion_date=row.CompletionDate,
                 well_driller_name=row.DrillerName,
