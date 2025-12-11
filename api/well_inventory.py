@@ -487,10 +487,19 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     # --------------------
 
     # add Thing
+    """
+    Developer's note
+
+    Laila said that the depth source is almost always the source for the historic depth to water.
+    She indicated that it would be acceptable to use the depth source for the historic depth to water source.
+    """
+    if model.depth_source:
+        historic_depth_to_water_source = model.depth_source.lower()
+    else:
+        historic_depth_to_water_source = "unknown"
+
     if model.historic_depth_to_water_ft is not None:
-        historic_depth_note = (
-            f"Historic depth to water: {model.historic_depth_to_water_ft} ft"
-        )
+        historic_depth_note = f"historic depth to water: {model.historic_depth_to_water_ft} ft - source: {historic_depth_to_water_source}."
     else:
         historic_depth_note = None
 
