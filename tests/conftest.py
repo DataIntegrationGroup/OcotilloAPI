@@ -20,7 +20,7 @@ def location():
         session.commit()
         session.refresh(loc)
 
-        note = loc.add_note("these are some test notes", "Other")
+        note = loc.add_note("these are some test notes", "General")
         session.add(note)
         session.commit()
         session.refresh(loc)
