@@ -14,12 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 import re
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Annotated, TypeAlias
+from schemas import past_or_today_validator
 
 import phonenumbers
 import utm
-from pydantic import BaseModel, model_validator, BeforeValidator, validate_email
+from pydantic import (
+    BaseModel,
+    model_validator,
+    BeforeValidator,
+    validate_email,
+    AfterValidator,
+)
 
 from constants import STATE_CODES
 from core.enums import (
@@ -137,8 +144,15 @@ EmailField: TypeAlias = Annotated[
 ]
 
 OptionalBool: TypeAlias = Annotated[Optional[bool], BeforeValidator(empty_str_to_none)]
-OptionalDateTime: TypeAlias = Annotated[
-    Optional[datetime], BeforeValidator(empty_str_to_none)
+OptionalPastOrTodayDateTime: TypeAlias = Annotated[
+    Optional[datetime],
+    BeforeValidator(empty_str_to_none),
+    AfterValidator(past_or_today_validator),
+]
+OptionalPastOrTodayDate: TypeAlias = Annotated[
+    Optional[date],
+    BeforeValidator(empty_str_to_none),
+    AfterValidator(past_or_today_validator),
 ]
 
 
@@ -148,7 +162,7 @@ class WellInventoryRow(BaseModel):
     project: str
     well_name_point_id: str
     site_name: str
-    date_time: datetime
+    date_time: OptionalPastOrTodayDateTime
     field_staff: str
     utm_easting: float
     utm_northing: float
@@ -219,7 +233,7 @@ class WellInventoryRow(BaseModel):
     public_availability_acknowledgement: OptionalBool = None  # TODO: needs a home
     special_requests: Optional[str] = None
     ose_well_record_id: Optional[str] = None
-    date_drilled: OptionalDateTime = None
+    date_drilled: OptionalPastOrTodayDate = None
     completion_source: Optional[str] = None
     total_well_depth_ft: OptionalFloat = None
     historic_depth_to_water_ft: OptionalFloat = None
@@ -244,12 +258,12 @@ class WellInventoryRow(BaseModel):
     # water levels
     sampler: Optional[str] = None
     sample_method: Optional[str] = None
-    measurement_date_time: Optional[str] = None
+    measurement_date_time: OptionalPastOrTodayDateTime = None
     mp_height: Optional[str] = None
     level_status: Optional[str] = None
     depth_to_water_ft: Optional[str] = None
     data_quality: Optional[str] = None
-    water_level_notes: Optional[str] = None
+    water_level_notes: Optional[str] = None  # TODO: needs a home
 
     @model_validator(mode="after")
     def validate_model(self):
