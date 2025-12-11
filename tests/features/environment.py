@@ -30,7 +30,6 @@ from db import (
     TransducerObservationBlock,
     WellCasingMaterial,
     PermissionHistory,
-    Contact,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
@@ -42,8 +41,10 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
+    Contact,
 )
 from db.engine import session_ctx
+from services.util import get_bool_env
 
 
 def add_context_object_container(name):
@@ -496,9 +497,8 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
-    rebuild = False
-    rebuild = True
-    if rebuild:
+
+    if get_bool_env("REBUILD_DB", False):
         erase_and_rebuild_db()
 
     with session_ctx() as session:
@@ -515,6 +515,8 @@ def before_all(context):
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
+        for well in [well_1, well_2, well_3]:
+            add_measuring_point_history(context, session, well=well)
         add_well_casing_material(context, session, well_1)
 
         contact = add_contact(context, session)

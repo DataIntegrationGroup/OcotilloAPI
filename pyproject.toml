@@ -96,6 +96,7 @@ dependencies = [
   "typing-inspection==0.4.1",
   "tzdata==2025.2",
   "urllib3==2.5.0",
+  "utm>=0.8.1",
   "uvicorn==0.38.0",
   "yarl==1.20.1",
 ]

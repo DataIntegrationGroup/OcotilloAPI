@@ -1,0 +1,5 @@
+well_name_point_id,site_name,date_time,field_staff,contact_role,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method
+,Site Alpha,2025-02-15T10:30:00-08:00,Jane Doe,Owner,250000,4000000,13N,5120.5,GPS
+WELL003,Site Beta,invalid-date,John Smith,Manager,250000,4000000,13N,5130.7,Survey
+WELL004,Site Gamma,2025-04-10T11:00:00-08:00,,Technician,250000,4000000,13N,5140.2,GPS
+WELL004,Site Delta,2025-05-12T12:45:00-08:00,Emily Clark,Supervisor,250000,4000000,13N,5150.3,Survey

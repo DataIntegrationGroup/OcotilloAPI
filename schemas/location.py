@@ -14,19 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import date
-from typing import List
+from typing import List, Any
 
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
-from typing import Any
 
 from constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse, CreateNote, UpdateNote
-from services.validation.geospatial import validate_wkt_geometry
 from services.util import convert_m_to_ft, transform_srid
+from services.validation.geospatial import validate_wkt_geometry
 
 
 # -------- VALIDATE --------
@@ -89,7 +88,7 @@ class GeoJSONGeometry(BaseModel):
 class GeoJSONUTMCoordinates(BaseModel):
     easting: float
     northing: float
-    utm_zone: int = 13
+    utm_zone: str = "13N"
     horizontal_datum: str = "NAD83"
 
     model_config = ConfigDict(

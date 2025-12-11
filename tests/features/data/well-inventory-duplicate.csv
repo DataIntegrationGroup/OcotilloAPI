@@ -1,0 +1,3 @@
+project,measuring_point_height_ft,well_name_point_id,site_name,date_time,field_staff,contact_role,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method
+foo,10,WELL001,Site Alpha,2025-02-15T10:30:00-08:00,Jane Doe,Owner,250000,4000000,13N,5120.5,LiDAR DEM
+foob,10,WELL001,Site Beta,2025-03-20T09:15:00-08:00,John Smith,Manager,250000,4000000,13N,5130.7,LiDAR DEM

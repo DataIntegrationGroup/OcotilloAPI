@@ -13,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy.orm import Session, joinedload
+
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
 from schemas.contact import (
     CreateContact,
 )
-from services.query_helper import order_sort_filter
 from services.audit_helper import audit_add
-
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy.orm import Session, joinedload
+from services.query_helper import order_sort_filter
 
 
 def get_db_contacts(
@@ -97,12 +97,12 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
         session.add(contact)
         session.flush()
         session.refresh(contact)
+        if thing_id is not None:
+            location_contact_association = ThingContactAssociation()
+            location_contact_association.thing_id = thing_id
+            location_contact_association.contact_id = contact.id
 
-        location_contact_association = ThingContactAssociation()
-        location_contact_association.thing_id = thing_id
-        location_contact_association.contact_id = contact.id
-
-        audit_add(user, location_contact_association)
+            audit_add(user, location_contact_association)
 
         session.add(location_contact_association)
 

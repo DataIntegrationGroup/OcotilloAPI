@@ -16,20 +16,35 @@
 
 # import all models from db package so that Alembic can discover them
 
-from db.base import *
-from db.base import Base
+from sqlalchemy import (
+    desc,
+    cast,
+)
+from sqlalchemy.dialects.postgresql import REGCONFIG
+from sqlalchemy.orm import configure_mappers
+from sqlalchemy_searchable import (
+    inspect_search_vectors,
+    search_manager,
+)
 
 from db.analysis_method import *
+from db.aquifer_system import *
+from db.aquifer_type import *
 from db.asset import *
+from db.base import *
+from db.base import Base
 from db.collabnet import *
 from db.contact import *
+from db.data_provenance import *
 from db.deployment import *
-from db.geochronology import *
-from db.geothermal import *
 from db.field import *
+from db.geochronology import *
+from db.geologic_formation import *
+from db.geothermal import *
 from db.group import *
 from db.lexicon import *
 from db.location import *
+from db.measuring_point_history import *
 from db.notes import *
 from db.observation import *
 from db.parameter import *
@@ -40,27 +55,9 @@ from db.sample import *
 from db.sensor import *
 from db.status_history import *
 from db.thing import *
-from db.transducer import *
-from db.measuring_point_history import *
-from db.data_provenance import *
-from db.aquifer_system import *
-from db.geologic_formation import *
 from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
-from db.aquifer_type import *
-
-from sqlalchemy import (
-    func,
-    desc,
-    cast,
-    Text,
-)
-from sqlalchemy.dialects.postgresql import REGCONFIG
-from sqlalchemy_searchable import (
-    inspect_search_vectors,
-    search_manager,
-)
-from sqlalchemy.orm import configure_mappers
+from db.transducer import *
 
 configure_mappers()
 

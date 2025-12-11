@@ -5,6 +5,7 @@ May consider expansion for other domain models in the future.
 """
 
 from pydantic import model_validator, field_validator, BaseModel, Field
+
 from services.validation.geospatial import validate_wkt_geometry
 
 

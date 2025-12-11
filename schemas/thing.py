@@ -27,6 +27,7 @@ from core.enums import (
     WellConstructionMethod,
     WellPumpType,
     FormationCode,
+    OriginType,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
@@ -43,6 +44,7 @@ class ValidateWell(BaseModel):
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
     measuring_point_height: float | None = None
+    well_pump_depth: float | None = None  # in feet
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -58,6 +60,12 @@ class ValidateWell(BaseModel):
                 raise ValueError(
                     "well casing depth must be less than or equal to hole depth"
                 )
+
+        if self.well_pump_depth is not None:
+            if self.well_depth is not None and self.well_pump_depth > self.well_depth:
+                raise ValueError("well pump depth must be less than well depth")
+            elif self.hole_depth is not None and self.well_pump_depth > self.hole_depth:
+                raise ValueError("well pump depth must be less than hole depth")
 
         # if self.measuring_point_height is not None:
         #     if (
@@ -103,10 +111,25 @@ class CreateBaseThing(BaseCreateModel):
     e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
     """
 
-    location_id: int | None
+    location_id: int | None = None
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
     first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
+    notes: list[CreateNote] | None = None
+    alternate_ids: list[CreateThingIdLink] | None = None
+    monitoring_frequencies: list[MonitoringFrequency] | None = None
+
+    @field_validator("alternate_ids", mode="before")
+    def use_dummy_values(cls, v):
+        """
+        When alternate IDs are provided they are assumed to be the same as
+        the thing being created. This gets handled in the function services/thing_helper.py::add_thing.
+        By using dummy values here we can avoid validation errors and then use the
+        thing's id when creating the actual links.
+        """
+        for alternate_id in v:
+            alternate_id.thing_id = -1  # dummy value
+        return v
 
 
 class CreateWell(CreateBaseThing, ValidateWell):
@@ -118,6 +141,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
     )
+    well_depth_source: OriginType | None = None
     hole_depth: float | None = Field(
         default=None, gt=0, description="Hole depth in feet"
     )
@@ -128,16 +152,15 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
-
     measuring_point_height: float = Field(description="Measuring point height in feet")
     measuring_point_description: str | None = None
-    notes: list[CreateNote] | None = None
     well_completion_date: PastOrTodayDate | None = None
     well_completion_date_source: str | None = None
     well_driller_name: str | None = None
     well_construction_method: WellConstructionMethod | None = None
     well_construction_method_source: str | None = None
     well_pump_type: WellPumpType | None = None
+    well_pump_depth: float | None = None
     is_suitable_for_datalogger: bool | None
     formation_completion_code: FormationCode | None = None
 

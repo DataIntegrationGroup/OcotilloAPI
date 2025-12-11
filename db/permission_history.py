@@ -7,13 +7,13 @@ Its purpose is to track who granted permission, what activities they authorized,
 which entity the permission applies to, and for what period of time.
 """
 
-from typing import TYPE_CHECKING
 from datetime import date
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Integer, ForeignKey, String, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, foreign
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-
 
 if TYPE_CHECKING:
     from db.contact import Contact
