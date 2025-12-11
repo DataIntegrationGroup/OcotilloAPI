@@ -20,7 +20,7 @@ def location():
         session.commit()
         session.refresh(loc)
 
-        note = loc.add_note("these are some test notes", "Other")
+        note = loc.add_note("these are some test notes", "General")
         session.add(note)
         session.commit()
         session.refresh(loc)
@@ -355,6 +355,14 @@ def contact(water_well_thing):
         session.add(association)
         session.commit()
         session.refresh(association)
+
+        for content, note_type in [
+            ("Communication note", "Communication"),
+            ("General note", "General"),
+        ]:
+            note = contact.add_note(content, note_type)
+            session.add(note)
+        session.commit()
 
         yield contact
         session.delete(contact)

@@ -62,6 +62,7 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
     phone_data = data.pop("phones", [])
     address_data = data.pop("addresses", [])
     thing_id = data.pop("thing_id", None)
+    notes_data = data.pop("notes", None)
     contact_data = data
 
     """
@@ -104,12 +105,21 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
         audit_add(user, location_contact_association)
 
         session.add(location_contact_association)
-        # owner_contact_association = OwnerContactAssociation()
-        # owner_contact_association.owner_id = owner.id
-        # owner_contact_association.contact_id = contact.id
-        # session.add(owner_contact_association)
+
         session.flush()
         session.commit()
+
+        if notes_data is not None:
+            for n in notes_data:
+                note = contact.add_note(n["content"], n["note_type"])
+                session.add(note)
+
+        session.commit()
+        session.refresh(contact)
+
+        for note in contact.notes:
+            session.refresh(note)
+
     except Exception as e:
         session.rollback()
         raise e

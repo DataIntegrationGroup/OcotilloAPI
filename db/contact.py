@@ -21,6 +21,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr
 from sqlalchemy_utils import TSVectorType
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
+from db.notes import NotesMixin
 
 if TYPE_CHECKING:
     from db.field import FieldEventParticipant, FieldEvent
@@ -45,7 +46,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
     )
 
 
-class Contact(Base, AutoBaseMixin, ReleaseMixin):
+class Contact(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=True)
     organization: Mapped[str] = lexicon_term(nullable=True)
     role: Mapped[str] = lexicon_term(nullable=False)
@@ -123,6 +124,14 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin):
     __table_args__ = (
         UniqueConstraint("name", "organization", name="uq_contact_name_organization"),
     )
+
+    @property
+    def communication_notes(self):
+        return self._get_notes("Communication")
+
+    @property
+    def general_notes(self):
+        return self._get_notes("General")
 
 
 class IncompleteNMAPhone(Base, AutoBaseMixin):
