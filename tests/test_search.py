@@ -39,14 +39,16 @@ def override_dependencies_fixture():
     app.dependency_overrides = {}
 
 
-def test_search_api(water_well_thing, spring_thing, contact):
+def test_search_api(
+    water_well_thing, spring_thing, contact, asset_with_associated_thing
+):
     response = client.get("/search", params={"q": "Test"})
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)
     items = data.get("items")
     assert isinstance(items, list)
-    assert len(items) == 3
+    assert len(items) == 4
 
     # Check the contacts returned
     contact_items = [item for item in items if item["group"] == "Contacts"]
@@ -55,6 +57,20 @@ def test_search_api(water_well_thing, spring_thing, contact):
     assert contact_item["label"] == contact.name
     assert contact_item["properties"]["id"] == contact.id
     assert contact_item["properties"]["things"] == [
+        {
+            "label": water_well_thing.name,
+            "id": water_well_thing.id,
+            "thing_type": water_well_thing.thing_type,
+        },
+    ]
+
+    # Check the assets returned
+    asset_items = [item for item in items if item["group"] == "Assets"]
+    assert len(asset_items) == 1
+    asset_item = asset_items[0]
+    assert asset_item["label"] == asset_with_associated_thing.name
+    assert asset_item["properties"]["id"] == asset_with_associated_thing.id
+    assert asset_item["properties"]["things"] == [
         {
             "label": water_well_thing.name,
             "id": water_well_thing.id,

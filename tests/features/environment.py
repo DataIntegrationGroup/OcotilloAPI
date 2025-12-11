@@ -119,7 +119,7 @@ def add_well(context, session, location, name_num):
     for nt, c in (
         ("General", "well notes"),
         ("Water", "water notes"),
-        ("Measuring", "measuring notes"),
+        ("Sampling Procedure", "sampling procedure notes"),
         ("Construction", "construction notes"),
     ):
         n = well.add_note(c, nt)
