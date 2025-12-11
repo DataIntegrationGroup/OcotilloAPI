@@ -84,6 +84,14 @@ def _make_location(model) -> Location:
 
 def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     # add contact
+    notes = []
+    for content, note_type in (
+        (model.result_communication_preference, "Communication"),
+        (model.contact_special_instructions, "General"),
+    ):
+        if content is not None:
+            notes.append({"content": content, "note_type": note_type})
+
     emails = []
     phones = []
     addresses = []
@@ -126,6 +134,7 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
             "emails": emails,
             "phones": phones,
             "addresses": addresses,
+            "notes": notes,
         }
 
 
@@ -482,7 +491,8 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     for note_content, note_type in (
         (model.specific_location_of_well, "Access"),
         (model.special_requests, "General"),
-        (model.well_measuring_notes, "Measuring"),
+        (model.well_measuring_notes, "Sampling Procedure"),
+        (model.sampling_scenario_notes, "Sampling Procedure"),
     ):
         if note_content is not None:
             well_notes.append({"content": note_content, "note_type": note_type})

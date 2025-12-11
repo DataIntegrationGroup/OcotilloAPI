@@ -355,6 +355,9 @@ def add_thing(
         session.commit()
         session.refresh(thing)
 
+        for note in thing.notes:
+            session.refresh(note)
+
     except Exception as e:
         session.rollback()
         raise e
