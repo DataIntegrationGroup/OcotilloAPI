@@ -21,6 +21,7 @@ from behave.runner import Context
 def _handle_validation_error(context, expected_errors):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
+    print(validation_errors)
     n = len(validation_errors)
     assert len(validation_errors) == n, f"Expected {n} validation error"
     for v, e in zip(validation_errors, expected_errors):
@@ -184,6 +185,23 @@ def step_impl(context: Context):
             "field": "is_open",
             "error": "Input should be a valid boolean, unable to interpret input",
         }
+    ]
+    _handle_validation_error(context, expected_errors)
+
+
+@then(
+    "the response includes validation errors for each missing water level entry field"
+)
+def step_impl(context):
+    expected_errors = [
+        {
+            "field": "composite field error",
+            "error": "Value error, All water level fields must be provided",
+        },
+        {
+            "field": "composite field error",
+            "error": "Value error, All water level fields must be provided",
+        },
     ]
     _handle_validation_error(context, expected_errors)
 

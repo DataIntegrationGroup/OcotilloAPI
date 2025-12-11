@@ -20,6 +20,9 @@ Feature: Bulk upload well inventory from CSV
       | well_purpose          |
       | well_hole_status      |
       | monitoring_frequency  |
+      | sample_method         |
+      | level_status          |
+      | data_quality          |
 
   @positive @happy_path @BDMS-TBD
   Scenario: Uploading a valid well inventory CSV containing required and optional fields
@@ -120,6 +123,16 @@ Feature: Bulk upload well inventory from CSV
       | sampling_scenario_notes           |
       | well_measuring_notes              |
       | sample_possible                   |
+     And the csv includes optional water level entry fields when available:
+      | water_level_entry fields          |
+      | sampler                           |
+      | sample_method                     |
+      | measurement_date_time             |
+      | mp_height                         |
+      | level_status                      |
+      | depth_to_water_ft                 |
+      | data_quality                      |  
+      | water_level_notes                 |
 #    And all optional lexicon fields contain valid lexicon values when provided
 #    And all optional numeric fields contain valid numeric values when provided
 #    And all optional date fields contain valid ISO 8601 timestamps when provided
@@ -450,3 +463,17 @@ Feature: Bulk upload well inventory from CSV
 #    And the system should return a response in JSON format
 #    And the response includes a validation error indicating an invalid numeric format for "utm_easting"
 #    And no wells are imported
+
+###########################################################################
+  # WATER LEVEL ENTRY VALIDATIION
+###########################################################################
+
+ # if one water level entry field is filled, then all are required
+  @negative @validation @BDMS-TBD
+  Scenario: Water level entry fields are all required if any are filled
+    Given my csv file contains a row where some but not all water level entry fields are filled
+    When I upload the file to the bulk upload endpoint
+    Then the system returns a 422 Unprocessable Entity status code
+    And the system should return a response in JSON format
+    And the response includes validation errors for each missing water level entry field
+    And no wells are imported
