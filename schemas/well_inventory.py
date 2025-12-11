@@ -235,8 +235,8 @@ class WellInventoryRow(BaseModel):
     well_hole_status: Optional[str] = None
     monitoring_frequency: MonitoryFrequencyField = None
 
-    result_communication_preference: Optional[str] = None  # TODO: needs as home
-    contact_special_requests_notes: Optional[str] = None  # TODO: needs a home
+    result_communication_preference: Optional[str] = None
+    contact_special_requests_notes: Optional[str] = None
     sampling_scenario_notes: Optional[str] = None  # TODO: needs a home
     well_measuring_notes: Optional[str] = None
     sample_possible: OptionalBool = None  # TODO: needs a home
