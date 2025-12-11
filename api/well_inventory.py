@@ -87,7 +87,7 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     notes = []
     for content, note_type in (
         (model.result_communication_preference, "Communication"),
-        (model.contact_special_instructions, "General"),
+        (model.contact_special_requests_notes, "General"),
     ):
         if content is not None:
             notes.append({"content": content, "note_type": note_type})
@@ -546,7 +546,6 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     )
     well_data = data.model_dump(
         exclude=[
-            "well_purposes",
             "well_casing_materials",
         ]
     )

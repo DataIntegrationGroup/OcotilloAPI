@@ -98,13 +98,12 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
         session.flush()
         session.refresh(contact)
         if thing_id is not None:
-            location_contact_association = ThingContactAssociation()
-            location_contact_association.thing_id = thing_id
-            location_contact_association.contact_id = contact.id
+            thing_contact_association = ThingContactAssociation()
+            thing_contact_association.thing_id = thing_id
+            thing_contact_association.contact_id = contact.id
 
-            audit_add(user, location_contact_association)
-
-        session.add(location_contact_association)
+            audit_add(user, thing_contact_association)
+            session.add(thing_contact_association)
 
         session.flush()
         session.commit()
