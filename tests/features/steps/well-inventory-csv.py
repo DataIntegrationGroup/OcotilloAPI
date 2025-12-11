@@ -57,6 +57,12 @@ def step_impl(context: Context):
             assert key in optional_fields, f"Unexpected field found: {key}"
 
 
+@given("the csv includes optional water level entry fields when available:")
+def step_impl(context: Context):
+    optional_fields = [row[0] for row in context.table]
+    context.water_level_optional_fields = optional_fields
+
+
 @when("I upload the file to the bulk upload endpoint")
 def step_impl(context: Context):
     context.response = context.client.post(
