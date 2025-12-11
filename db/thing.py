@@ -100,10 +100,6 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
     )
-    well_purpose: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
-    )
     well_casing_diameter: Mapped[float] = mapped_column(
         Float,
         nullable=True,
@@ -365,8 +361,8 @@ class Thing(
         return self._get_notes("General")
 
     @property
-    def measuring_notes(self):
-        return self._get_notes("Measuring")
+    def sampling_procedure_notes(self):
+        return self._get_notes("Sampling Procedure")
 
     @property
     def construction_notes(self):

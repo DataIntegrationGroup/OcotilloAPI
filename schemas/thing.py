@@ -196,7 +196,8 @@ class BaseThingResponse(BaseResponseModel):
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
     monitoring_frequencies: list[MonitoringFrequencyResponse] = []
-    general_notes: list[NoteResponse] | None = None
+    general_notes: list[NoteResponse] = []
+    sampling_procedure_notes: list[NoteResponse] = []
 
     @field_validator("monitoring_frequencies", mode="before")
     def remove_records_with_end_date(cls, monitoring_frequencies):
@@ -243,10 +244,8 @@ class WellResponse(BaseThingResponse):
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []
-    water_notes: list[NoteResponse] | None = None
-    measuring_notes: list[NoteResponse] | None = None
-
-    construction_notes: list[NoteResponse] | None = None
+    water_notes: list[NoteResponse] = []
+    construction_notes: list[NoteResponse] = []
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
 

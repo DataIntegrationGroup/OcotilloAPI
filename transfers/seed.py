@@ -7,19 +7,34 @@ Run with:
 
 import random
 from datetime import datetime, timedelta, timezone
+
 from faker import Faker
-from db.engine import session_ctx
-from sqlalchemy import select
 from geoalchemy2.elements import WKTElement
+from sqlalchemy import select
 
 # Core models
-from db.contact import Contact, ThingContactAssociation, Email, Phone, Address
+from db.analysis_method import AnalysisMethod
+from db.contact import Address, Contact, Email, Phone, ThingContactAssociation
+from db.deployment import Deployment
+from db.engine import session_ctx
+from db.field import FieldActivity, FieldEvent, FieldEventParticipant
+from db.lexicon import (
+    LexiconCategory,
+    LexiconTerm,
+    LexiconTermCategoryAssociation,
+)
 from db.location import Location, LocationThingAssociation
+from db.measuring_point_history import MeasuringPointHistory
+from db.notes import Notes
+from db.observation import Observation
+from db.parameter import Parameter
+from db.sample import Sample
+from db.sensor import Sensor
 from db.group import Group, GroupThingAssociation
 from db.thing import (
+    MonitoringFrequencyHistory,
     Thing,
     ThingIdLink,
-    WellPurpose,
     WellCasingMaterial,
     MonitoringFrequencyHistory,
     WellScreen,
@@ -212,8 +227,9 @@ def seed_all(n: int = 5):
                 name=f"WELL-{i + 1:04d}",
                 thing_type="water well",
                 first_visit_date=fake.date_between("-2y", "today"),
-                well_depth=well_depth_val,
-                hole_depth=hole_depth_val,
+                well_depth=random.uniform(50, 500),
+                hole_depth=random.uniform(50, 500),
+                well_driller_name=fake.name(),
                 well_casing_diameter=random.uniform(4, 8),
                 well_casing_depth=casing_depth_val,
                 well_completion_date=well_completion_date,
