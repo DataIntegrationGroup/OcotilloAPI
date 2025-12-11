@@ -16,7 +16,7 @@
 import re
 from datetime import datetime, date
 from typing import Optional, Annotated, TypeAlias
-from schemas import past_or_today_validator
+from schemas import past_or_today_validator, PastOrTodayDatetime
 
 import phonenumbers
 import utm
@@ -162,7 +162,7 @@ class WellInventoryRow(BaseModel):
     project: str
     well_name_point_id: str
     site_name: str
-    date_time: OptionalPastOrTodayDateTime
+    date_time: PastOrTodayDatetime
     field_staff: str
     utm_easting: float
     utm_northing: float
