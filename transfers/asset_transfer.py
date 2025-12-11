@@ -19,11 +19,11 @@ from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
 
 from db import Thing
+from services.asset_helper import upload_and_associate
 from services.gcs_helper import (
     get_storage_bucket,
     get_storage_client,
 )
-from services.validation.asset_helper import upload_and_associate
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv, filter_to_valid_point_ids

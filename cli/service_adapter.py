@@ -23,8 +23,8 @@ from sqlalchemy import select
 
 from db import Thing, Asset
 from db.engine import session_ctx
+from services.asset_helper import upload_and_associate
 from services.gcs_helper import get_storage_bucket, make_blob_name_and_uri
-from services.validation.asset_helper import upload_and_associate
 
 
 def well_inventory_csv(source_file: Path | str):
@@ -83,7 +83,7 @@ def associate_assets(source_directory: Path | str) -> list[str]:
                     uris.append(uri)
 
                 else:
-                    pass
+                    print(f"no thing with name={row['thing_name']} found in db")
         sess.commit()
 
     return uris
