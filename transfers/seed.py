@@ -94,7 +94,9 @@ def seed_all(n: int = 5):
         note_type_terms = get_terms_by_category(s, "note_type")
         participant_role_terms = get_terms_by_category(s, "participant_role")
         group_type_terms = get_terms_by_category(s, "group_type")
-        well_construction_method_terms = get_terms_by_category(s, "well_construction_method")
+        well_construction_method_terms = get_terms_by_category(
+            s, "well_construction_method"
+        )
         well_pump_type_terms = get_terms_by_category(s, "well_pump_type")
         formation_code_terms = get_terms_by_category(s, "formation_code")
         screen_type_terms = get_terms_by_category(s, "screen_type")
@@ -199,11 +201,13 @@ def seed_all(n: int = 5):
 
         # 4. Things (Water Wells) & related records
         for i in range(n):
-            well_completion_date = fake.date_between("-5y", "-1y") if random.random() > 0.3 else None
+            well_completion_date = (
+                fake.date_between("-5y", "-1y") if random.random() > 0.3 else None
+            )
             well_depth_val = random.uniform(50, 500)
             hole_depth_val = random.uniform(well_depth_val, well_depth_val + 50)
             casing_depth_val = random.uniform(10, min(50, well_depth_val))
-            
+
             t = Thing(
                 name=f"WELL-{i + 1:04d}",
                 thing_type="water well",
@@ -234,7 +238,11 @@ def seed_all(n: int = 5):
                     if formation_code_terms and random.random() > 0.5
                     else None
                 ),
-                is_suitable_for_datalogger=random.choice([True, False, None]) if random.random() > 0.3 else None,
+                is_suitable_for_datalogger=(
+                    random.choice([True, False, None])
+                    if random.random() > 0.3
+                    else None
+                ),
                 release_status="public",
             )
             s.add(t)
@@ -314,7 +322,7 @@ def seed_all(n: int = 5):
                 s.add(note)
 
             # Add some well screens
-            if random.random() > 0.4: 
+            if random.random() > 0.4:
                 num_screens = random.randint(1, 3)
                 for screen_idx in range(num_screens):
                     # Ensure screen depths are within well depth bounds
@@ -356,14 +364,15 @@ def seed_all(n: int = 5):
                 release_status="public",
             )
             s.add(spring)
-            s.flush() 
+            s.flush()
 
             # Add monitoring frequency history
             if monitoring_frequency_terms:
                 mfh = MonitoringFrequencyHistory(
                     thing_id=spring.id,
                     monitoring_frequency=random.choice(monitoring_frequency_terms).term,
-                    start_date=spring.first_visit_date or fake.date_between("-2y", "today"),
+                    start_date=spring.first_visit_date
+                    or fake.date_between("-2y", "today"),
                     end_date=None,
                     release_status="public",
                 )
@@ -422,16 +431,14 @@ def seed_all(n: int = 5):
                 s.add(link)
 
         # Create groups and associate things with groups
-        num_groups = max(2, n // 2)  
+        num_groups = max(2, n // 2)
         for i in range(num_groups):
             group = Group(
                 name=f"Group-{i + 1}",
                 description=fake.sentence(),
                 project_area=None,
                 group_type=(
-                    random.choice(group_type_terms).term
-                    if group_type_terms
-                    else None
+                    random.choice(group_type_terms).term if group_type_terms else None
                 ),
                 release_status="public",
             )
@@ -439,7 +446,7 @@ def seed_all(n: int = 5):
             s.flush()
             groups.append(group)
 
-        # Associate things with groups 
+        # Associate things with groups
         for t in things:
             num_group_associations = random.randint(0, min(2, len(groups)))
             if num_group_associations > 0 and groups:
