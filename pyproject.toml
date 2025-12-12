@@ -1,7 +1,7 @@
 [project]
-name = "nmsamplelocations"
+name = "OcotilloAPI"
 version = "0.1.0"
-description = "Add your description here"
+description = "FastAPI backend and CLI for managing Ocotillo groundwater locations, wells, assets, and bulk water-level data transfers."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -99,6 +99,10 @@ dependencies = [
   "uvicorn==0.38.0",
   "yarl==1.20.1",
 ]
+
+[project.scripts]
+oco = "cli.cli:cli"
+
 [tool.alembic]
 
 # path to migration scripts.

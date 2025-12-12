@@ -44,7 +44,7 @@ Feature: Bulk upload water level entries from CSV via CLI
       | water_level_notes  |
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv --output json
+      oco water-levels bulk-upload --file ./water_levels.csv --output json
       """
     Then the command exits with code 0
     And stdout should be valid JSON
@@ -71,7 +71,7 @@ Feature: Bulk upload water level entries from CSV via CLI
       | data_quality          |
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with code 0
     And all water level entries are imported
@@ -82,7 +82,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains extra columns but is otherwise valid
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with code 0
     And all water level entries are imported
@@ -97,7 +97,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain a validation error for the row missing "well_name_point_id"
@@ -108,7 +108,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains a row missing the required "<required_field>" field
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain a validation error for the "<required_field>" field
@@ -130,7 +130,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains invalid ISO 8601 date values in the "measurement_date_time" field
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain validation errors identifying the invalid field and row
@@ -141,7 +141,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "mp_height" or "depth_to_water_ft"
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain validation errors identifying the invalid field and row
@@ -152,7 +152,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains invalid lexicon values for "sampler", "sample_method", "level_status", or "data_quality"
     When I run the CLI command:
       """
-      bdms water-levels bulk-upload --file ./water_levels.csv
+      oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain validation errors identifying the invalid field and row
