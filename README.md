@@ -1,4 +1,4 @@
-# NMSampleLocations
+# NMSampleLocations aka OcotilloAPI
 
 [![Code Format](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/format_code.yml/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/format_code.yml)
 [![Dependabot Updates](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates)
@@ -9,7 +9,8 @@
 **Geospatial Sample Data Management System**  
 _New Mexico Bureau of Geology and Mineral Resources_
 
-NMSampleLocations is a FastAPI-based backend service designed to manage geospatial sample location data across New Mexico. It supports research, field operations, and public data delivery for the Bureau of Geology and Mineral Resources.
+OcotilloAPI is a FastAPI-based backend service designed to manage geospatial sample location data across New Mexico. It 
+supports research, field operations, and public data delivery for the Bureau of Geology and Mineral Resources.
 
 ---
 
@@ -197,4 +198,39 @@ Notes:
 - All `Update` schema fields are optional and default to `None`
 - All `Response` schema fields are defined as `<type>` if non-nullable and `<type> | None` if nullable
 - All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
-- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file
+- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file---
+
+## 📦 Ocotillo CLI
+
+The `oco` command exposes project automation and bulk data utilities.
+
+```bash
+# Display available commands
+oco --help
+
+# Bulk import water level data from a CSV
+oco water-levels bulk-upload --file water_levels.csv --output json
+```
+
+The bulk upload command parses and validates each row, creates the corresponding field events/samples/observations, and prints a JSON summary (matching the API response shape) so the workflow can be automated or scripted.
+## 🧪 Testing
+
+```bash
+# Run unit tests
+pytest
+
+# Run Behave BDD specs
+behave tests/features
+```
+
+> Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
+
+## 🔄 Data Transfers
+
+Legacy or staging datasets can be imported using the transfer utilities:
+
+```bash
+python -m transfers.transfer
+```
+
+Configure the `.env` file with the appropriate credentials before running transfers.

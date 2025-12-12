@@ -16,6 +16,8 @@
 import random
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
+
 from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
@@ -41,6 +43,8 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
+    Base,
+    Asset,
     Contact,
 )
 from db.engine import session_ctx
@@ -87,7 +91,7 @@ def add_location(context, session):
 @add_context_object_container("wells")
 def add_well(context, session, location, name_num):
     well = Thing(
-        name=f"WL-{name_num:04d}",
+        name=f"AR{name_num:04d}",
         first_visit_date="2023-03-03",
         thing_type="water well",
         release_status="draft",
@@ -497,9 +501,18 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
-
     if get_bool_env("REBUILD_DB", False):
         erase_and_rebuild_db()
+    elif get_bool_env("ERASE_DATA", False):
+        with session_ctx() as session:
+            for table in reversed(Base.metadata.sorted_tables):
+                if table.name in ("alembic_version", "parameter"):
+                    continue
+                elif table.name.startswith("lexicon"):
+                    continue
+
+                session.execute(table.delete())
+            session.commit()
 
     with session_ctx() as session:
 
@@ -679,6 +692,27 @@ def after_all(context):
                 if obj:
                     session.delete(obj)
         session.commit()
+
+
+def before_scenario(context, scenario):
+    # runs before EVERY scenario
+    # e.g. reset test data, open browser, etc.
+    pass
+
+
+def after_scenario(context, scenario):
+    # runs after EVERY scenario
+    # e.g. clean up temp files, close db sessions
+    if scenario.name.startswith(
+        "Successfully upload and associate assets from a valid manifest"
+    ):
+        # delete all the assets uploaded for this scenario
+        with session_ctx() as session:
+            for uri in context.uris:
+                sql = select(Asset).where(Asset.uri == uri)
+                asset = session.scalars(sql).one()
+                session.delete(asset)
+            session.commit()
 
 
 # ============= EOF =============================================

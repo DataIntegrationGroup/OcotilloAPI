@@ -15,8 +15,13 @@
 # ===============================================================================
 from datetime import datetime
 
-from fastapi import APIRouter, Query, Request
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from fastapi import APIRouter, Query, Request, UploadFile, File, HTTPException
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -36,6 +41,7 @@ from schemas.observation import (
     UpdateWaterChemistryObservation,
 )
 from schemas.transducer import TransducerObservationWithBlockResponse
+from schemas.water_level_csv import WaterLevelBulkUploadResponse
 from services.crud_helper import model_deleter, model_adder
 from services.observation_helper import (
     get_observations,
@@ -44,6 +50,7 @@ from services.observation_helper import (
     get_transducer_observations,
 )
 from services.query_helper import simple_get_by_id
+from services.water_level_csv import bulk_upload_water_levels
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -79,6 +86,30 @@ async def add_water_chemistry_observation(
     This endpoint is currently a placeholder and does not implement any functionality.
     """
     return model_adder(session, Observation, obs_data, user=user)
+
+
+@router.post(
+    "/groundwater-level/bulk-upload",
+    response_model=WaterLevelBulkUploadResponse,
+    status_code=HTTP_200_OK,
+)
+async def bulk_upload_groundwater_levels(
+    user: amp_admin_dependency,
+    file: UploadFile = File(...),
+):
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
+
+    result = bulk_upload_water_levels(contents)
+
+    if result.exit_code != 0:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=result.payload)
+
+    return result.payload
 
 
 # PATCH ========================================================================

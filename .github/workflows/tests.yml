@@ -67,7 +67,7 @@ jobs:
 
       - name: Run BDD tests
         run: |
-          uv run behave tests/features --tags="@backend and @production" --no-capture
+          uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4
