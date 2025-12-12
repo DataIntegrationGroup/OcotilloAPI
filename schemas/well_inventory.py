@@ -259,9 +259,9 @@ class WellInventoryRow(BaseModel):
     sampler: Optional[str] = None
     sample_method: Optional[str] = None
     measurement_date_time: OptionalPastOrTodayDateTime = None
-    mp_height: Optional[str] = None
+    mp_height: Optional[float] = None
     level_status: Optional[str] = None
-    depth_to_water_ft: Optional[str] = None
+    depth_to_water_ft: Optional[float] = None
     data_quality: Optional[str] = None
     water_level_notes: Optional[str] = None  # TODO: needs a home
 
