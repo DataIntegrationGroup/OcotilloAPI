@@ -336,7 +336,7 @@
     {"categories": ["status_type"], "term": "Monitoring Status", "definition": "Defines the well's current monitoring status by NMBGMR."},
     {"categories": ["status_type"], "term": "Access Status", "definition": "Defines the well's access status for field personnel."},
     {"categories": ["status_type"], "term": "Open Status", "definition": "Defines if the well is open or closed"},
-    {"categories": ["status_type"], "term": "Datalogger Installation Status", "definition": "Defines if a datalogger can or cannot be installed at the well"},
+    {"categories": ["status_type"], "term": "Datalogger Suitability Status", "definition": "Defines if a datalogger can or cannot be installed at the well"},
     {"categories": ["status_value"], "term": "Abandoned", "definition": "The well has been properly decommissioned."},
     {"categories": ["status_value"], "term": "Active, pumping well", "definition": "This well is in use."},
     {"categories": ["status_value"], "term": "Destroyed, exists but not usable", "definition": "The well structure is physically present but is damaged, collapsed, or otherwise compromised to the point that it is non-functional."},
