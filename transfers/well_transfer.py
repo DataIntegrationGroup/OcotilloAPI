@@ -420,6 +420,9 @@ class WellTransferer(Transferer):
         else:
             purposes = []
             for cui in cu:
+                if cui == "A":
+                    # skip "Open, unequipped well" as that gets mapped to the status_history table
+                    continue
                 p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
                 if p is not None:
                     purposes.append(p)
@@ -849,6 +852,19 @@ class WellTransferer(Transferer):
                 logger.info(
                     f"  Added datalogger suitability status for well {well.name}: {status_value}"
                 )
+
+        if notna(row.CurrentUse) and "A" in row.CurrentUse:
+            status_history = StatusHistory(
+                status_type="Open Status",
+                status_value="Open",
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            objs.append(status_history)
+            if self.verbose:
+                logger.info(f"  Added open open status for well {well.name}")
 
         return objs
 
