@@ -64,14 +64,14 @@ def well_inventory_csv(file_path: str):
     "file_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-def waterlevels_csv(file_path: str):
+def water_levels_csv(file_path: str):
     """
     parse and upload a csv
     """
     # TODO: use the same helper function used by api to parse and upload a WL csv
-    from cli.service_adapter import water_level_csv
+    from cli.service_adapter import water_levels_csv
 
-    water_level_csv(file_path)
+    water_levels_csv(file_path)
 
 
 if __name__ == "__main__":

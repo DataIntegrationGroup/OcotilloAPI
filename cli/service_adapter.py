@@ -32,7 +32,7 @@ def well_inventory_csv(source_file: Path | str):
         source_file = Path(source_file)
 
 
-def water_level_csv(source_file: Path | str):
+def water_levels_csv(source_file: Path | str):
     if isinstance(source_file, str):
         source_file = Path(source_file)
 
