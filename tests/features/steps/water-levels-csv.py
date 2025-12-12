@@ -121,12 +121,6 @@ def step_impl(context: Context):
     _set_rows(context, rows)
 
 
-@given("my CSV file is encoded in UTF-8 and uses commas as separators")
-def step_impl(context: Context):
-    assert context.csv_raw_text.encode("utf-8").decode("utf-8") == context.csv_raw_text
-    assert "," in context.csv_raw_text.splitlines()[0]
-
-
 @given("my CSV file contains multiple rows of water level entry data")
 def step_impl(context: Context):
     assert len(context.csv_rows) >= 2

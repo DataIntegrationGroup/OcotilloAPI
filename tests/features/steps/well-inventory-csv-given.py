@@ -112,9 +112,8 @@ def step_impl_csv_file_contains_multiple_rows(context: Context):
 
 @given("my CSV file is encoded in UTF-8 and uses commas as separators")
 def step_impl_csv_file_is_encoded_utf8(context: Context):
-    """Sets the CSV file encoding to UTF-8 and sets the CSV separator to commas."""
-    # context.csv_file.encoding = 'utf-8'
-    # context.csv_file.separator = ','
+    assert context.file_content.encode("utf-8").decode("utf-8") == context.file_content
+
     # determine the separator from the file content
     sample = context.file_content[:1024]
     dialect = csv.Sniffer().sniff(sample)
