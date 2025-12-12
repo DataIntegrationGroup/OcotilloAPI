@@ -16,12 +16,13 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable, List
+from typing import Any, BinaryIO, Iterable, List
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from sqlalchemy import select
@@ -65,6 +66,7 @@ class BulkUploadResult:
     exit_code: int
     stdout: str
     stderr: str
+    payload: dict[str, Any]
 
 
 @dataclass
@@ -163,18 +165,17 @@ class WaterLevelCsvRow(BaseModel):
 
 
 def bulk_upload_water_levels(
-    source_file: str | Path, *, pretty_json: bool = False
+    source_file: str | Path | bytes | BinaryIO, *, pretty_json: bool = False
 ) -> BulkUploadResult:
     """Parse a CSV of water-level measurements and write database rows."""
 
     try:
-        path = Path(source_file)
-        headers, csv_rows = _read_csv(path)
+        headers, csv_rows = _read_csv(source_file)
     except FileNotFoundError:
         msg = f"File not found: {source_file}"
         payload = _build_payload([], [], 0, 0, [msg])
         stdout = _serialize_payload(payload, pretty_json)
-        return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg)
+        return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg, payload=payload)
 
     validation_errors: list[str] = []
     created_rows: list[dict[str, Any]] = []
@@ -212,7 +213,9 @@ def bulk_upload_water_levels(
     stdout = _serialize_payload(payload, pretty_json)
     stderr = "\n".join(validation_errors)
     exit_code = 0 if not validation_errors else 1
-    return BulkUploadResult(exit_code=exit_code, stdout=stdout, stderr=stderr)
+    return BulkUploadResult(
+        exit_code=exit_code, stdout=stdout, stderr=stderr, payload=payload
+    )
 
 
 def _serialize_payload(payload: dict[str, Any], pretty: bool) -> str:
@@ -239,17 +242,33 @@ def _build_payload(
     }
 
 
-def _read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    with path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        rows = [
-            {
-                k.strip(): (v.strip() if isinstance(v, str) else v or "")
-                for k, v in row.items()
-            }
-            for row in reader
-        ]
-        headers = [h.strip() for h in reader.fieldnames or []]
+def _read_csv(
+    source: str | Path | bytes | BinaryIO,
+) -> tuple[list[str], list[dict[str, str]]]:
+    if isinstance(source, (str, Path)):
+        path = Path(source)
+        text = path.read_text(encoding="utf-8")
+    elif isinstance(source, bytes):
+        text = source.decode("utf-8")
+    elif hasattr(source, "read"):
+        data = source.read()
+        if isinstance(data, bytes):
+            text = data.decode("utf-8")
+        else:
+            text = str(data)
+    else:
+        raise TypeError("Unsupported CSV source type")
+
+    stream = io.StringIO(text)
+    reader = csv.DictReader(stream)
+    rows = [
+        {
+            k.strip(): (v.strip() if isinstance(v, str) else v or "")
+            for k, v in row.items()
+        }
+        for row in reader
+    ]
+    headers = [h.strip() for h in reader.fieldnames or []]
     return headers, rows
 
 
