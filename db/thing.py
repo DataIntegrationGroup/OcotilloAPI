@@ -395,6 +395,32 @@ class Thing(
         return latest_status.status_value if latest_status else None
 
     @property
+    def open_status(self) -> str | None:
+        """
+        Returns the open status from the most recent status history entry
+        where status_type is "Open Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Open Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def datalogger_suitability_status(self) -> str | None:
+        """
+        Returns the datalogger installation status from the most recent status history entry
+        where status_type is "Datalogger Suitability Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Datalogger Suitability Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
     def measuring_point_height(self) -> int | None:
         """
         Returns the most recent measuring point height from the measuring point history

@@ -501,9 +501,9 @@ def add_geologic_formation(context, session, formation_code, well):
 def before_all(context):
     context.objects = {}
 
-    rebuild = False
+    rebuild = True
     # rebuild = True
-    erase_data = True
+    erase_data = False
     if rebuild:
         erase_and_rebuild_db()
     elif erase_data:
@@ -581,14 +581,31 @@ def before_all(context):
                 target_table="thing",
             )
 
-        for value, start, end in (
-            ("Currently monitored", datetime(2020, 1, 1), datetime(2021, 1, 1)),
-            ("Not currently monitored", datetime(2021, 1, 1), None),
+        for value, status_type, start, end in (
+            (
+                "Currently monitored",
+                "Monitoring Status",
+                datetime(2020, 1, 1),
+                datetime(2021, 1, 1),
+            ),
+            (
+                "Not currently monitored",
+                "Monitoring Status",
+                datetime(2021, 1, 1),
+                None,
+            ),
+            ("Open", "Open Status", datetime(2020, 1, 1), None),
+            (
+                "Datalogger can be installed",
+                "Datalogger Suitability Status",
+                datetime(2020, 1, 1),
+                None,
+            ),
         ):
             add_status_history(
                 context,
                 session,
-                status_type="Monitoring Status",
+                status_type=status_type,
                 status_value=value,
                 start_date=start,
                 end_date=end,
