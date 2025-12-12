@@ -25,7 +25,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given a valid CSV file for bulk water level entry upload
     And my CSV file is encoded in UTF-8 and uses commas as separators
     And my CSV file contains multiple rows of water level entry data
-    And the CSV includes required fields:
+    And the water level CSV includes required fields:
       | required field name   |
       | field_staff           |
       | well_name_point_id    |
@@ -58,7 +58,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @positive @validation @column_order @BDMS-TBD
   Scenario: Upload succeeds when required columns are present but in a different order
-    Given my CSV file contains all required headers but in a different column order
+    Given my water level CSV file contains all required headers but in a different column order
     And the CSV includes required fields:
       | required field name   |
       | well_name_point_id    |
@@ -79,7 +79,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @positive @validation @extra_columns @BDMS-TBD
   Scenario: Upload succeeds when CSV contains extra, unknown columns
-    Given my CSV file contains extra columns but is otherwise valid
+    Given my water level CSV file contains extra columns but is otherwise valid
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
@@ -94,7 +94,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @BDMS-TBD
   Scenario: No water level entries are imported when any row fails validation
-    Given my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"
+    Given my water level CSV contains 3 rows with 2 valid rows and 1 row missing the required "well_name_point_id"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
@@ -105,7 +105,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @required_fields @BDMS-TBD
   Scenario Outline: Upload fails when a required field is missing
-    Given my CSV file contains a row missing the required "<required_field>" field
+    Given my water level CSV file contains a row missing the required "<required_field>" field
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
