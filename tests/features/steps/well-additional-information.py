@@ -78,7 +78,7 @@ def step_impl(context):
     "the response should include whether datalogger installation permission is granted for the well"
 )
 def step_impl(context):
-    permission_type = "Datalogger Suitability"
+    permission_type = "Datalogger Installation"
     assert "permissions" in context.water_well_data
 
     permission_record = retrieve_latest_polymorphic_history_table_record(
