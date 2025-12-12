@@ -13,37 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from dotenv import load_dotenv
-
-load_dotenv()
-
-import click
-from core.initializers import init_lexicon
+from pydantic import BaseModel
 
 
-# from migration.migration2 import migrate_wells, migrate_water_levels
-#
-#
-# def wells():
-#     with session_ctx() as sess:
-#         migrate_wells(sess, 1000)
-#
-#
-# def waterlevels():
-#     with session_ctx() as sess:
-#         migrate_water_levels(sess, 800)
-@click.group()
-def cli():
-    """Command line interface for managing the application."""
-    pass
+class WaterLevelBulkUploadSummary(BaseModel):
+    total_rows_processed: int
+    total_rows_imported: int
+    validation_errors_or_warnings: int
 
 
-@cli.command()
-def initialize_lexicon():
-    init_lexicon()
+class WaterLevelBulkUploadRow(BaseModel):
+    well_name_point_id: str
+    field_event_id: int
+    field_activity_id: int
+    sample_id: int
+    observation_id: int
+    measurement_date_time: str
+    level_status: str
+    data_quality: str
 
 
-if __name__ == "__main__":
-    cli()
+class WaterLevelBulkUploadResponse(BaseModel):
+    summary: WaterLevelBulkUploadSummary
+    water_levels: list[WaterLevelBulkUploadRow]
+    validation_errors: list[str]
+
 
 # ============= EOF =============================================

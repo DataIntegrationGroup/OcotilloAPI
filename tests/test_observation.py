@@ -25,7 +25,8 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
-from db import Observation
+from db import Observation, FieldEvent, FieldActivity, Sample
+from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
 from tests import (
@@ -116,6 +117,71 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     )
 
     cleanup_post_test(Observation, data["id"])
+
+
+def test_bulk_upload_groundwater_levels_api(water_well_thing):
+    csv_content = ",".join(
+        [
+            "field_staff",
+            "well_name_point_id",
+            "field_event_date_time",
+            "measurement_date_time",
+            "sampler",
+            "sample_method",
+            "mp_height",
+            "level_status",
+            "depth_to_water_ft",
+            "data_quality",
+            "water_level_notes",
+        ]
+    )
+    csv_content += "\n"
+    csv_content += ",".join(
+        [
+            "A Lopez",
+            water_well_thing.name,
+            "2025-02-15T08:00:00-07:00",
+            "2025-02-15T10:30:00-07:00",
+            "Groundwater Team",
+            "electric tape",
+            "1.5",
+            "stable",
+            "45.2",
+            "approved",
+            "Initial measurement",
+        ]
+    )
+
+    files = {
+        "file": ("water_levels.csv", csv_content, "text/csv"),
+    }
+
+    response = client.post("/observation/groundwater-level/bulk-upload", files=files)
+    data = response.json()
+    assert response.status_code == 200
+    assert data["summary"]["total_rows_imported"] == 1
+    assert data["summary"]["total_rows_processed"] == 1
+    assert data["summary"]["validation_errors_or_warnings"] == 0
+    assert data["validation_errors"] == []
+    row = data["water_levels"][0]
+    assert row["well_name_point_id"] == water_well_thing.name
+
+    with session_ctx() as session:
+        observation = session.get(Observation, row["observation_id"])
+        assert observation is not None
+        # cleanup in reverse dependency order
+        if observation:
+            session.delete(observation)
+        sample = session.get(Sample, row["sample_id"])
+        if sample:
+            session.delete(sample)
+        field_activity = session.get(FieldActivity, row["field_activity_id"])
+        if field_activity:
+            session.delete(field_activity)
+        field_event = session.get(FieldEvent, row["field_event_id"])
+        if field_event:
+            session.delete(field_event)
+        session.commit()
 
 
 # PATCH tests ==================================================================

@@ -18,9 +18,9 @@ import io
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
 
-from db import Asset, AssetThingAssociation, Thing
+from db import Thing
+from services.asset_helper import upload_and_associate
 from services.gcs_helper import (
-    gcs_upload,
     get_storage_bucket,
     get_storage_client,
 )
@@ -81,22 +81,15 @@ class AssetTransferer(Transferer):
             f = srcblob.download_as_bytes()
             ff = UploadFile(file=io.BytesIO(f), filename=filename, size=len(f))
 
-            uri, blob_name = gcs_upload(ff, self._bucket)
-            asset = Asset(
-                name=filename,
-                label=filename,
-                storage_path=blob_name,
-                storage_service="gcs",
-                mime_type="image/png",
-                size=ff.size,
-                uri=uri,
+            uri = upload_and_associate(
+                session,
+                ff,
+                self._bucket,
+                db_item,
+                filename,
+                **{"label": filename, "mime_type": "image/png"},
             )
-            assoc = AssetThingAssociation()
-            assoc.thing = db_item
-            assoc.asset = asset
-            session.add(assoc)
-            session.add(asset)
-            # session.commit()
+
             logger.info(
                 f"Added asset {i}-{j}/{n} thing.id={db_item.id} thing={db_item.name} uri: {uri}"
             )
