@@ -64,14 +64,22 @@ def well_inventory_csv(file_path: str):
     "file_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-def water_levels_csv(file_path: str):
+@click.option(
+    "--output",
+    "output_format",
+    type=click.Choice(["json"], case_sensitive=False),
+    default=None,
+    help="Optional output format",
+)
+def water_levels_csv(file_path: str, output_format: str | None):
     """
     parse and upload a csv
     """
     # TODO: use the same helper function used by api to parse and upload a WL csv
     from cli.service_adapter import water_levels_csv
 
-    water_levels_csv(file_path)
+    pretty_json = (output_format or "").lower() == "json"
+    water_levels_csv(file_path, pretty_json=pretty_json)
 
 
 if __name__ == "__main__":
