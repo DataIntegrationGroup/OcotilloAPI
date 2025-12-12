@@ -657,7 +657,6 @@ class WellTransferer(Transferer):
             try:
                 session.bulk_save_objects(all_objects, return_defaults=False)
                 session.commit()
-                print("ADDED AFTER HOOK OBJECTS TO DATABASE")
             except DatabaseError as e:
                 session.rollback()
                 self._capture_database_error("MultiplePointIDs", e)
