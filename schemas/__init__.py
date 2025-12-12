@@ -53,13 +53,19 @@ class BaseUpdateModel(BaseCreateModel):
     release_status: ReleaseStatus | None = None
 
 
-def past_or_today_validator(value: date) -> date:
-    if value > date.today():
+def past_or_today_validator(value: date | datetime) -> date | datetime:
+    if isinstance(value, datetime):
+        if value > datetime.now(timezone.utc):
+            raise ValueError("Datetime must be in the past or present.")
+    elif value > date.today():
         raise ValueError("Date must be today or in the past.")
     return value
 
 
 PastOrTodayDate: type[date] = Annotated[date, AfterValidator(past_or_today_validator)]
+PastOrTodayDatetime: type[datetime] = Annotated[
+    datetime, AfterValidator(past_or_today_validator)
+]
 
 
 # Custom type for UTC datetime serialization
