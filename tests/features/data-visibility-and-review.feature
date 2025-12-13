@@ -26,7 +26,7 @@ Feature: Manage data visibility separately from review and approval in the backe
 
   Scenario Outline: Require visibility and review status when creating a new record
     When I create a new <model> without specifying visibility or review_status
-    Then the system should return a validation error status code (such as 400)
+    Then the system should return a 422 status code
     And the system should not persist the new dataset
     And the error response should indicate that visibility is required
     And the error response should indicate that review_status is required
