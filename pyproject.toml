@@ -105,7 +105,6 @@ package = true
 
 [tool.setuptools]
 packages = ["alembic", "cli", "core", "db", "schemas", "services"]
-modules = ["constants"]
 
 [project.scripts]
 oco = "cli.cli:cli"
