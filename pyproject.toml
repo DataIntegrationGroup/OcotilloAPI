@@ -38,7 +38,7 @@ dependencies = [
     "google-cloud-core==2.4.3",
     "google-cloud-storage==3.4.1",
     "google-crc32c==1.7.1",
-    "google-resumable-media==2.7.2",
+    "google-resumable-media==2.8.0",
     "googleapis-common-protos==1.70.0",
     "greenlet==3.2.4",
     "gunicorn==23.0.0",
