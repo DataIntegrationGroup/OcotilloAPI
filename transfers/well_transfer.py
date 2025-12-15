@@ -279,10 +279,6 @@ class WellTransferer(Transferer):
                     row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
                 )
 
-            is_suitable_for_datalogger = False
-            if notna(row.OpenWellLoggerOK):
-                is_suitable_for_datalogger = bool(row.OpenWellLoggerOK)
-
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
@@ -321,7 +317,6 @@ class WellTransferer(Transferer):
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -431,6 +426,9 @@ class WellTransferer(Transferer):
         else:
             purposes = []
             for cui in cu:
+                if cui == "A":
+                    # skip "Open, unequipped well" as that gets mapped to the status_history table
+                    continue
                 p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
                 if p is not None:
                     purposes.append(p)
@@ -825,7 +823,6 @@ class WellTransferer(Transferer):
                         )
 
         if notna(row.Status):
-
             status_value = self._get_lexicon_value(row, f"LU_Status:{row.Status}")
             if status_value is not None:
                 status_history = StatusHistory(
@@ -841,6 +838,39 @@ class WellTransferer(Transferer):
                     logger.info(
                         f"  Added well status for well {well.name}: {status_value}"
                     )
+
+        if notna(row.OpenWellLoggerOK):
+            if bool(row.OpenWellLoggerOK):
+                status_value = "Datalogger can be installed"
+            else:
+                status_value = "Datalogger cannot be installed"
+            status_history = StatusHistory(
+                status_type="Datalogger Suitability Status",
+                status_value=status_value,
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            objs.append(status_history)
+            if self.verbose:
+                logger.info(
+                    f"  Added datalogger suitability status for well {well.name}: {status_value}"
+                )
+
+        if notna(row.CurrentUse) and "A" in row.CurrentUse:
+            status_history = StatusHistory(
+                status_type="Open Status",
+                status_value="Open",
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            objs.append(status_history)
+            if self.verbose:
+                logger.info(f"  Added open open status for well {well.name}")
+
         return objs
 
 

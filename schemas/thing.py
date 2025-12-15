@@ -261,8 +261,9 @@ class WellResponse(BaseThingResponse):
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
-    is_suitable_for_datalogger: bool | None
     well_status: str | None
+    open_status: str | None
+    datalogger_suitability_status: str | None
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
