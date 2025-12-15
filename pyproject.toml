@@ -29,7 +29,7 @@ dependencies = [
     "dnspython==2.7.0",
     "dotenv>=0.9.9",
     "email-validator==2.2.0",
-    "fastapi==0.116.1",
+    "fastapi==0.124.4",
     "fastapi-pagination==0.14.0",
     "frozenlist==1.7.0",
     "geoalchemy2==0.18.0",
