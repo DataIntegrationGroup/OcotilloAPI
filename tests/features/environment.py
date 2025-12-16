@@ -503,8 +503,6 @@ def before_all(context):
     context.objects = {}
 
     rebuild = True
-    # rebuild = True
-    erase_data = False
     if rebuild:
         erase_and_rebuild_db()
     elif get_bool_env("ERASE_DATA", False):
