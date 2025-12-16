@@ -32,6 +32,7 @@ from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
 from db.engine import session_ctx
 
 # Required CSV columns for the bulk upload
+# TODO: use the Pydantic model to track this information
 REQUIRED_FIELDS: List[str] = [
     "field_staff",
     "well_name_point_id",
@@ -46,9 +47,19 @@ REQUIRED_FIELDS: List[str] = [
 ]
 
 # Allow-list values for validation. These represent early MVP lexicon values.
-VALID_LEVEL_STATUSES = {"stable", "rising", "falling"}
-VALID_DATA_QUALITIES = {"approved", "provisional"}
-VALID_SAMPLERS = {"groundwater team", "consultant"}
+VALID_LEVEL_STATUSES = {
+    "stable",
+    "rising",
+    "falling",
+}  # TODO: use groundwater_level_reasons from lexicon and make new field in db/schema/transfers
+VALID_DATA_QUALITIES = {
+    "approved",
+    "provisional",
+}  # TODO: use data_quality from lexicon and make new field in db/schema/transfers
+VALID_SAMPLERS = {
+    "groundwater team",
+    "consultant",
+}  # TODO: map samplers to a field event participant from the field event
 
 # Mapping between human-friendly sample methods provided in CSV uploads and
 # their canonical lexicon terms stored in the database.
@@ -77,8 +88,8 @@ class _ValidatedRow:
     field_staff: str
     sampler: str
     sample_method_term: str
-    field_event_dt: datetime
-    measurement_dt: datetime
+    field_event_dt: datetime  # TODO: make PastOrTodayDateTime
+    measurement_dt: datetime  # TODO: make PastOrTodayDateTime
     mp_height: float
     depth_to_water_ft: float
     level_status: str
@@ -86,19 +97,20 @@ class _ValidatedRow:
     water_level_notes: str | None
 
 
+# TODO: move to schemas/
 class WaterLevelCsvRow(BaseModel):
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
     field_staff: str
     well_name_point_id: str
-    field_event_date_time: datetime
-    measurement_date_time: datetime
+    field_event_date_time: datetime  # TODO: make PastOrTodayDateTime
+    measurement_date_time: datetime  # TODO: make PastOrTodayDateTime
     sampler: str
     sample_method: str
     mp_height: float
-    level_status: str
+    level_status: str  # TODO: make GroundwaterLevelReason enum
     depth_to_water_ft: float
-    data_quality: str
+    data_quality: str  # TODO: make DataQuality enum
     water_level_notes: str | None = None
 
     @field_validator(
@@ -354,8 +366,8 @@ def _create_records(
         sample = Sample(
             field_activity=field_activity,
             sample_date=row.measurement_dt,
-            sample_name=f"wl-{uuid.uuid4()}",
-            sample_matrix="water",
+            sample_name=f"wl-{uuid.uuid4()}",  # TODO: improve sample naming convention, perhaps use the PointID and date
+            sample_matrix="water",  # TODO: conver with Kelsey - why do we have water and groundwater?
             sample_method=row.sample_method_term,
             qc_type="Normal",
             notes=row.water_level_notes,
@@ -367,7 +379,7 @@ def _create_records(
             value=row.depth_to_water_ft,
             unit="ft",
             measuring_point_height=row.mp_height,
-            groundwater_level_reason=None,
+            groundwater_level_reason=None,  # TODO: map from row.level_status
             notes=_build_observation_notes(row),
         )
         session.add(field_event)
