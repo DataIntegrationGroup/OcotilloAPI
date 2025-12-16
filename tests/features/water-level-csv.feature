@@ -15,7 +15,6 @@ Feature: Bulk upload water level entries from CSV via CLI
 #    And I have a valid CLI configuration for the target environment
 #    And valid lexicon values exist for:
 #      | lexicon category |
-#      | sampler          |
 #      | sample_method    |
 #      | level_status     |
 #      | data_quality     |
@@ -30,8 +29,8 @@ Feature: Bulk upload water level entries from CSV via CLI
       | field_staff           |
       | well_name_point_id    |
       | field_event_date_time |
-      | measurement_date_time |
-      | sampler               |
+      | water_level_date_time |
+      | measuring_person      |
       | sample_method         |
       | mp_height             |
       | level_status          |
@@ -41,7 +40,9 @@ Feature: Bulk upload water level entries from CSV via CLI
     And "measurement_date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")
     And the CSV includes optional fields when available:
       | optional field name |
-      | water_level_notes  |
+      | field_staff_2       |
+      | field_staff_3       |
+      | water_level_notes   |
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv --output json
