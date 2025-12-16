@@ -394,7 +394,6 @@ def add_thing(
             session.refresh(note)
 
     except Exception as e:
-        print(e)
         session.rollback()
         raise e
 
