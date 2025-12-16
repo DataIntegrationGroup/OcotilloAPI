@@ -397,7 +397,6 @@ def add_thing(
         session.rollback()
         raise e
 
-    print("returning thing")
     return thing
 
 
