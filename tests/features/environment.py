@@ -48,7 +48,6 @@ from db import (
     Contact,
 )
 from db.engine import session_ctx
-from services.util import get_bool_env
 
 
 def add_context_object_container(name):
@@ -505,7 +504,7 @@ def before_all(context):
     rebuild = True
     if rebuild:
         erase_and_rebuild_db()
-    elif get_bool_env("ERASE_DATA", False):
+    elif erase_data:
         with session_ctx() as session:
             for table in reversed(Base.metadata.sorted_tables):
                 if table.name in ("alembic_version", "parameter"):
