@@ -43,7 +43,6 @@ Feature: Bulk upload well inventory from CSV
       | elevation_method        |
       | measuring_point_height_ft |
     And each "well_name_point_id" value is unique per row
-    And "date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")
     And the CSV includes optional fields when available:
       | optional field name               |
       | field_staff_2                     |
@@ -133,12 +132,17 @@ Feature: Bulk upload well inventory from CSV
       | depth_to_water_ft                 |
       | data_quality                      |  
       | water_level_notes                 |
+     And the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
+     And the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided
+
 #    And all optional lexicon fields contain valid lexicon values when provided
 #    And all optional numeric fields contain valid numeric values when provided
 #    And all optional date fields contain valid ISO 8601 timestamps when provided
 
     When I upload the file to the bulk upload endpoint
-    Then the system returns a 201 Created status code
+    # assumes users are entering datetimes as Mountain Time becuase location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value.
+    And the system returns a 201 Created status code
     And the system should return a response in JSON format
 #    And null values in the response are represented as JSON null
     And the response includes a summary containing:
