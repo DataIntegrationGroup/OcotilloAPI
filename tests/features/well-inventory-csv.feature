@@ -125,9 +125,9 @@ Feature: Bulk upload well inventory from CSV
       | sample_possible                   |
      And the csv includes optional water level entry fields when available:
       | water_level_entry fields          |
-      | sampler                           |
+      | measuring_person                  |
       | sample_method                     |
-      | measurement_date_time             |
+      | water_level_date_time             |
       | mp_height                         |
       | level_status                      |
       | depth_to_water_ft                 |
