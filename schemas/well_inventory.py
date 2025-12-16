@@ -240,7 +240,7 @@ class WellInventoryRow(BaseModel):
     depth_source: Optional[str] = None
     well_pump_type: Optional[str] = None
     well_pump_depth_ft: OptionalFloat = None
-    is_open: OptionalBool = None  # TODO: needs a home
+    is_open: OptionalBool = None
     datalogger_possible: OptionalBool = None
     casing_diameter_ft: OptionalFloat = None
     measuring_point_description: Optional[str] = None

@@ -38,6 +38,7 @@ from db import (
     DataProvenance,
     ThingIdLink,
     MonitoringFrequencyHistory,
+    StatusHistory,
 )
 
 from services.audit_helper import audit_add
@@ -201,6 +202,8 @@ def add_thing(
     effective_start = data.get("first_visit_date")
     group_id = data.pop("group_id", None)
     monitoring_frequencies = data.pop("monitoring_frequencies", None)
+    datalogger_suitability_status = data.pop("is_suitable_for_datalogger", None)
+    open_status = data.pop("is_open", None)
 
     # ----------
     # END UNIVERSAL THING RELATED TABLES
@@ -296,6 +299,38 @@ def add_thing(
                     wcm = WellCasingMaterial(thing_id=thing.id, material=material)
                     audit_add(user, wcm)
                     session.add(wcm)
+
+            if datalogger_suitability_status is not None:
+                if datalogger_suitability_status is True:
+                    status_value = "Datalogger can be installed"
+                else:
+                    status_value = "Datalogger cannot be installed"
+                dlss = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=status_value,
+                    status_type="Datalogger Suitability Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, dlss)
+                session.add(dlss)
+
+            if open_status is not None:
+                if open_status is True:
+                    status_value = "Open"
+                else:
+                    status_value = "Closed"
+                os_status = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=status_value,
+                    status_type="Open Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, os_status)
+                session.add(os_status)
 
         # ----------
         # END WATER WELL SPECIFIC LOGIC
