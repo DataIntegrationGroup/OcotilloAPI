@@ -63,8 +63,8 @@ Feature: Bulk upload water level entries from CSV via CLI
     And the CSV includes required fields:
       | required field name   |
       | well_name_point_id    |
-      | measurement_date_time |
-      | sampler               |
+      | water_level_date_time |
+      | measuring_person      |
       | sample_method         |
       | mp_height             |
       | level_status          |
@@ -118,8 +118,8 @@ Feature: Bulk upload water level entries from CSV via CLI
     Examples:
       | required_field        |
       | well_name_point_id    |
-      | measurement_date_time |
-      | sampler               |
+      | water_level_date_time |
+      | measuring_person      |
       | sample_method         |
       | mp_height             |
       | level_status          |
@@ -128,7 +128,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @date_formats @BDMS-TBD
   Scenario: Upload fails due to invalid date formats
-    Given my CSV file contains invalid ISO 8601 date values in the "measurement_date_time" field
+    Given my CSV file contains invalid ISO 8601 date values in the "water_level_date_time" field
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
@@ -150,7 +150,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @lexicon_values @BDMS-TBD
   Scenario: Upload fails due to invalid lexicon values
-    Given my CSV file contains invalid lexicon values for "sampler", "sample_method", "level_status", or "data_quality"
+    Given my CSV file contains invalid lexicon values for "measuring_person", "sample_method", "level_status", or "data_quality"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
