@@ -81,10 +81,11 @@ From refactored scenarios in `public_release.feature`:
 
 ## File Status
 
-- **`public_release.feature`** - Refactored from AMPAPI, 16 scenarios adapted to NMSampleLocations
+- **`release_status.feature`** - Refactored from AMPAPI, 16 scenarios adapted to NMSampleLocations
   - Uses business language (public/private) instead of technical fields
   - Maps AMPAPI `PublicRelease` Boolean → NMSampleLocations `release_status` values
   - Updated terminology: AMPAPI concepts → NMSampleLocations concepts
+  - Implemented as non-passing integration tests (requires filtering implementation)
 - **`data-visibility-and-review.feature`** - Proposed two-field design, 3 active scenarios
 - Other .feature files - Existing NMSampleLocations integration tests (unrelated to visibility)
 
