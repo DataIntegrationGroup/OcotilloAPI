@@ -669,6 +669,33 @@ def before_all(context):
         session.refresh(loc_1)
 
 
+def before_scenario(context, scenario):
+    """
+    Clean up test data created by previous scenarios.
+
+    Preserves fixture data created in before_all (stored in context.objects),
+    but removes any ad-hoc test data created during scenario steps.
+
+    This ensures test isolation - each scenario starts with a clean slate.
+    """
+    # Get IDs of fixture objects that should be preserved
+    fixture_location_ids = {loc.id for loc in context.objects.get("locations", [])}
+    fixture_thing_ids = {thing.id for thing in context.objects.get("wells", []) + context.objects.get("springs", [])}
+
+    with session_ctx() as session:
+        # Delete locations not in fixtures
+        for loc in session.query(Location).all():
+            if loc.id not in fixture_location_ids:
+                session.delete(loc)
+
+        # Delete things (wells/springs) not in fixtures
+        for thing in session.query(Thing).all():
+            if thing.id not in fixture_thing_ids:
+                session.delete(thing)
+
+        session.commit()
+
+
 def after_all(context):
     with session_ctx() as session:
         for table in context.objects.values():
