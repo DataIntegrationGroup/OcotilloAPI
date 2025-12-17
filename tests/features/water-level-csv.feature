@@ -37,7 +37,7 @@ Feature: Bulk upload water level entries from CSV via CLI
       | depth_to_water_ft     |
       | data_quality          |
     And each "well_name_point_id" value matches an existing well
-    And "measurement_date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")
+    And "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
     And the CSV includes optional fields when available:
       | optional field name |
       | field_staff_2       |
@@ -74,7 +74,9 @@ Feature: Bulk upload water level entries from CSV via CLI
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    Then the command exits with code 0
+    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
+    And the command exits with code 0
     And all water level entries are imported
     And stderr should be empty
 
