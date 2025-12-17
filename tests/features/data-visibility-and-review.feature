@@ -2,9 +2,9 @@
 # file: tests/features/data_visibility_and_review_backend.feature
 
 @backend @BDMS-XXX
-Feature: Manage data visibility separately from review and approval in the backend
+Feature: Manage data visibility separately from review in the backend
   As an Ocotillo data manager
-  I want visibility/privacy and review/approval to be stored as two separate backend attributes
+  I want visibility and review to be stored as two separate backend attributes
   So that the system can independently control who can see the data and which data is reviewed
 
   # Business rules:
@@ -13,110 +13,190 @@ Feature: Manage data visibility separately from review and approval in the backe
   # - visibility and review_status are REQUIRED when creating new data
   # - new data must use visibility and review_status (no new use of legacy fields)
   # - legacy combined values will be migrated into visibility and review_status using a documented mapping
+  # - visibility and review must cover previous release_status business logic
 
   Background:
     Given a functioning api
-    And all database models have a visibility field that supports "internal" and "public"
-    And all database models have a review_status field that supports "provisional" and "approved"
+    And all database models have a visibility field that supports internal and public
+    And all database models have a review_status field that supports provisional and approved
     And visibility and review_status are required fields when creating new records
-    # hard to test?
     And new records must use visibility and review_status as the source of truth
     And legacy combined visibility/review fields are deprecated
 
+  # ---------------------------------------------------------------------------
+  # PUBLIC ACCESS
+  # ---------------------------------------------------------------------------
 
-  Scenario Outline: Require visibility and review status when creating a new record
-    When I create a new <model> without specifying visibility or review_status
-    Then the system should return a 422 status code
-    And the system should not persist the new dataset
+  @public_access @visibility
+  Scenario Outline: Public users can only access public data
+    Given I am a public API consumer
+    And there is <data_type> data stored with visibility public or internal
+    When I request <data_type> data through unauthenticated endpoints
+    Then I should only see records that are marked visibility public
+    And records marked internal should not be returned
+    And the response should include the review_status for each public record
+
+    Examples:
+      | data_type    |
+      | locations    |
+      | samples      |
+      | observations |
+
+  # might not be relevant yet in NMSampleLocations
+  @public_access @reports
+  Scenario: Public reports include review status disclaimers
+    Given there are public observations with review_status provisional and approved
+    When a public user generates a report
+    Then all returned observations should have visibility public
+    And provisional observations should include a disclaimer derived from review_status
+    And approved observations should indicate that they are fully reviewed
+
+  # might not be relevant yet in NMSampleLocations
+  @public_access @data_download
+  Scenario: Public data downloads exclude internal datasets
+    Given a public user requests a CSV export
+    And the dataset contains public and internal records with different review_status values
+    When the download is prepared
+    Then only the public records should be included
+    And the download should list the review_status for each record
+
+  # ---------------------------------------------------------------------------
+  # AUTHENTICATED STAFF ACCESS
+  # ---------------------------------------------------------------------------
+
+  @staff_access @visibility
+  Scenario Outline: Staff can access all data and its review status
+    Given I am an authenticated staff member
+    When I view <data_type> data through internal endpoints
+    Then I should see visibility internal and public records
+    And I should see whether each record is provisional or approved
+
+    Examples:
+      | data_type    |
+      | things       |
+      | locations    |
+      | samples      |
+      | observations |
+
+  @staff_access @management
+  Scenario: Staff can change visibility without affecting review status
+    Given data is stored with visibility internal and review_status provisional
+    When an authenticated staff member updates the visibility to public
+    Then the data visibility should be persisted as public
+    And the review_status should remain provisional
+    And retrieving the data should show the updated visibility and original review_status
+
+  @staff_access @review_status
+  Scenario: Staff can approve data without changing visibility
+    Given data is stored with visibility public and review_status provisional
+    When an authenticated staff member updates the review_status to approved
+    Then the data should remain visible to the public
+    And the review_status should be persisted as approved
+    And the API response should immediately show the approved status
+
+  # ---------------------------------------------------------------------------
+  # DATA SUBMISSION AND WORKFLOW
+  # ---------------------------------------------------------------------------
+
+  @workflow @validation
+  Scenario Outline: New records require explicit visibility and review status
+    When I attempt to create a new <data_type> without both visibility and review_status
+    Then the request should be rejected with a 422 status code
     And the error response should indicate that visibility is required
     And the error response should indicate that review_status is required
 
-    # Given Require visibility and review status when creating a new record. no default for visibility and review
-      # status will be defined so this is impossible to test
-    And the error response should not include default values for visibility or review_status
-
     Examples:
-    |model|
-    |Well |
-    |Contact|
-    |Observation|
+      | data_type    |
+      | thing        |
+      | contact     |
+      | observation |
 
-  Scenario Outline: Migrate legacy combined visibility/review values to separate fields
-    Given the system has legacy records with a combined visibility/review field for <legacy_table>
-    And there is a documented mapping from each legacy value to a visibility and review_status pair
-    When the migration job runs to populate visibility and review_status for <legacy_table> records
-    Then the system should set visibility according to the documented mapping
-    And the system should set review_status according to the documented mapping
-    # hard to test?
-    And the system should stop using the legacy combined field as the source of truth
-    And subsequent updates to migrated records should modify visibility and review_status fields only
+  @workflow @defaults
+  Scenario: Safe defaults when both attributes are provided
+    Given data is being submitted to the system with visibility internal and review_status provisional
+    When the record is created
+    Then the system should persist those explicit values as provided
 
-    Examples:
-    |legacy_table|
-    |Location    |
-    |WaterLevels |
-    |WaterLevelsContinuous_Acoustic|
-    |WaterLevelsContinuous_Pressure|
+  @workflow @privacy_protection
+  Scenario: Private contact data is protected by default
+    Given private contact data is being submitted
+    When the data is entered into the system
+    Then the data should default to be stored with visibility internal
+    And the data should have review_status provisional
+  
+  # may need to work this out more
+  # should we include the legacy table examples?
+  @workflow @migration
+  Scenario: Legacy combined values are migrated into separate attributes
+    Given legacy records exist with a combined visibility/review field
+    And a documented mapping defines visibility and review_status for each legacy value
+    When the data transfer migration job runs
+    Then each record should have visibility populated according to the mapping
+    And each record should have review_status populated according to the mapping
 
-  Scenario: Spot-check migrated legacy records against the documented mapping
-    Given the migration job has completed
-    And the tester selects a sample of migrated records with known legacy values
-    When the tester retrieves each sampled record via the api
-    Then the visibility value for each sampled record should match the expected mapped visibility
-    And the review_status value for each sampled record should match the expected mapped review_status
+  # ---------------------------------------------------------------------------
+  # VISIBILITY AND REVIEW MANAGEMENT
+  # ---------------------------------------------------------------------------
 
-#
-#  @skip
-#  @patch
-#  Scenario: Update visibility for a new dataset without changing review status
-#    Given the system has a new dataset with visibility "internal" and review_status "provisional"
-#    When the user updates the dataset visibility to "public" via the api
-#    Then the system should persist the dataset with visibility "public"
-#    And the system should preserve the review_status as "provisional"
-#    And retrieving the dataset via the api should return visibility "public" and review_status "provisional"
-#
-#  @skip
-#  @patch
-#  Scenario: Update review status for a new dataset without changing visibility
-#    Given the system has a new dataset with visibility "internal" and review_status "provisional"
-#    When an authorized reviewer updates the dataset review_status to "approved" via the api
-#    Then the system should persist the dataset with review_status "approved"
-#    And the system should preserve the visibility as "internal"
-#    And retrieving the dataset via the api should return visibility "internal" and review_status "approved"
-#
-#  @skip
-#  @authorization
-#  Scenario: Allow all datasets for internal users
-#    Given the system has datasets with combinations of:
-#      | visibility | review_status |
-#      | internal   | provisional   |
-#      | internal   | approved      |
-#      | public     | provisional   |
-#      | public     | approved      |
-#    And the caller is identified as an internal staff user
-#    When the internal staff user requests those datasets via the api
-#    Then the system should return all of those datasets in the response
-#
-#  @skip @authorization
-#  Scenario: Reject unauthorized changes to visibility or review status
-#    Given the system has a dataset with visibility "internal" and review_status "provisional"
-#    And the caller is authenticated without permission to change visibility or review_status
-#    When the caller attempts to update the visibility to "public" via the api
-#    And the caller attempts to update the review_status to "approved" via the api
-#    Then the system should return an authorization error for these updates
-#    And the dataset should remain persisted with visibility "internal" and review_status "provisional"
-#
-#  @skip
-#  @disclaimer
-#  Scenario: Include disclaimer information based on review status
-#    Given the system has a dataset with visibility "public" and review_status "provisional"
-#    When any authorized caller retrieves the dataset via the api
-#    Then the system should return a response in JSON format
-#    And the response should include a disclaimer field derived from the review_status
-#    And the disclaimer should indicate that the data is provisional
-#
-#    And the system has a dataset with visibility "internal" and review_status "approved"
-#    When any authorized caller retrieves that dataset via the api
-#    Then the response should include a disclaimer field derived from the review_status
-#    And the disclaimer should indicate that the data is approved
-#
+  @management @status_change
+  Scenario: Making internal data public without re-review
+    Given a thing is currently visibility internal and review_status approved
+    And appropriate authorization has been obtained
+    When staff changes the visibility to public
+    Then the thing should become visible in public endpoints
+    And the review_status should remain approved
+    And associated observations should also reflect the new visibility
+
+  @management @status_change
+  Scenario: Moving public data back to internal without changing review status
+    Given a thing is currently visibility public and review_status approved
+    And a data owner requests privacy
+    When staff changes the visibility to internal
+    Then the thing should disappear from public endpoints
+    And the review_status should continue to show approved
+    And all associated data should remain approved but hidden
+
+  @management @bulk_operations
+  Scenario: Bulk updates keep visibility and review_status in sync
+    Given a project has 50 things with visibility internal and review_status provisional
+    And the project has completed internal review
+    When staff performs a bulk change to set visibility public and review_status approved
+    Then all 50 things should become publicly visible
+    And all 50 things should show review_status approved
+
+  # ---------------------------------------------------------------------------
+  # DATA INTEGRITY AND CONSISTENCY
+  # ---------------------------------------------------------------------------
+
+  @integrity @cascading
+  Scenario: Visibility restrictions cascade to associated data
+    Given an internal thing has observations and samples
+    When a public user queries for data
+    Then all data associated with that thing should be hidden
+    And no review_status values for those internal records should be exposed
+
+  @integrity @mixed_status
+  Scenario: Handling different review statuses for public data
+    Given a thing is visibility public
+    And individual observations at the thing have review_status provisional and approved
+    When a public user views the thing data
+    Then only observations with visibility public should appear
+    And each observation should clearly display whether it is provisional or approved
+
+  # ---------------------------------------------------------------------------
+  # SPECIAL DATA REPRESENTATION
+  # ---------------------------------------------------------------------------
+
+  @special_cases @defaults
+  Scenario: Certain data types default to public and provisional
+    Given certain categories of data are configured to default to visibility public and review_status provisional
+    When new data of these types is collected
+    Then the data should be automatically marked as public
+    And the review_status should be set to provisional until staff approval
+
+  @special_cases @representation
+  Scenario: Visibility and review status are consistently represented
+    Given a record has visibility and review_status set
+    When the data is viewed through any interface
+    Then both fields should be clearly indicated
+    And the public/private and provisional/approved statuses should be unambiguous
