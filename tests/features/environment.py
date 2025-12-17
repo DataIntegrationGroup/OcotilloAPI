@@ -680,7 +680,11 @@ def before_scenario(context, scenario):
     """
     # Get IDs of fixture objects that should be preserved
     fixture_location_ids = {loc.id for loc in context.objects.get("locations", [])}
-    fixture_thing_ids = {thing.id for thing in context.objects.get("wells", []) + context.objects.get("springs", [])}
+    fixture_thing_ids = {
+        thing.id
+        for thing in context.objects.get("wells", [])
+        + context.objects.get("springs", [])
+    }
 
     with session_ctx() as session:
         # Delete locations not in fixtures

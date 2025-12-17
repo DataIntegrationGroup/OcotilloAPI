@@ -38,10 +38,11 @@ def step_system_operational(context):
     """System is operational - delegates to common.py 'a functioning api' step"""
     # Import the step from common.py to set up the test client
     from tests.features.steps.common import step_given_api_is_running
+
     step_given_api_is_running(context)
 
     # Initialize objects container for test data
-    if not hasattr(context, 'objects'):
+    if not hasattr(context, "objects"):
         context.objects = {}
 
     # Override the optional_viewer_dependency to respect context.authenticated flag
@@ -50,7 +51,7 @@ def step_system_operational(context):
 
     def test_optional_viewer():
         """Test override that checks context.authenticated"""
-        if hasattr(context, 'authenticated') and not context.authenticated:
+        if hasattr(context, "authenticated") and not context.authenticated:
             # Public user - return None
             return None
         else:
@@ -127,14 +128,14 @@ def step_data_exists(context, data_type):
 def step_some_records_public(context, record_type):
     """Verify public records exist (already created in previous steps)"""
     # This is an assertion-style Given - confirms the state
-    assert hasattr(context, 'public_count'), "Public records should exist"
+    assert hasattr(context, "public_count"), "Public records should exist"
     assert context.public_count > 0, "Should have at least one public record"
 
 
 @given("some {record_type} are private")
 def step_some_records_private(context, record_type):
     """Verify private records exist (already created in previous steps)"""
-    assert hasattr(context, 'private_count'), "Private records should exist"
+    assert hasattr(context, "private_count"), "Private records should exist"
     assert context.private_count > 0, "Should have at least one private record"
 
 
@@ -183,7 +184,7 @@ def step_public_user_requests_bulk(context):
 def step_dataset_mixed_visibility(context):
     """Dataset has mixed visibility - create if not already set up"""
     # If data hasn't been created yet, create it now
-    if not hasattr(context, 'public_count'):
+    if not hasattr(context, "public_count"):
         # Create test locations with mixed visibility
         with session_ctx() as session:
             public_loc = Location(
@@ -307,7 +308,7 @@ def step_generate_report(context):
 def step_download_prepared(context):
     """Prepare bulk download"""
     # Ensure context is set to public user if this is a public request
-    if not hasattr(context, 'authenticated'):
+    if not hasattr(context, "authenticated"):
         context.authenticated = False
         context.user_role = "public"
 
@@ -340,17 +341,19 @@ def step_only_see_public_data(context):
         items = data if isinstance(data, list) else [data]
 
     # Get expected count with default
-    expected_count = getattr(context, 'public_count', 0)
+    expected_count = getattr(context, "public_count", 0)
 
     # Verify all returned records are public
     for item in items:
-        assert item.get("release_status") == "public", \
-            f"Found non-public record: {item.get('release_status')}"
+        assert (
+            item.get("release_status") == "public"
+        ), f"Found non-public record: {item.get('release_status')}"
 
     # Verify we got at least the expected number of public records
     if expected_count > 0:
-        assert len(items) >= expected_count, \
-            f"Expected at least {expected_count} public records, got {len(items)}"
+        assert (
+            len(items) >= expected_count
+        ), f"Expected at least {expected_count} public records, got {len(items)}"
 
 
 @then("I should not see private data")
@@ -365,8 +368,9 @@ def step_should_not_see_private_data(context):
 
     # THIS WILL FAIL until filtering is implemented
     for item in items:
-        assert item.get("release_status") != "private", \
-            "Found private record in public response"
+        assert (
+            item.get("release_status") != "private"
+        ), "Found private record in public response"
 
 
 @then("I should not see draft data")
@@ -381,8 +385,9 @@ def step_should_not_see_draft_data(context):
 
     # THIS WILL FAIL until filtering is implemented
     for item in items:
-        assert item.get("release_status") != "draft", \
-            "Found draft record in public response"
+        assert (
+            item.get("release_status") != "draft"
+        ), "Found draft record in public response"
 
 
 @then("I should see all data including public and private datasets")
@@ -398,12 +403,13 @@ def step_see_all_data(context):
         total = len(items)
 
     # Get expected count with default
-    expected_total = getattr(context, 'total_count', 0)
+    expected_total = getattr(context, "total_count", 0)
 
     # Staff should see ALL records regardless of release_status
     if expected_total > 0:
-        assert total == expected_total, \
-            f"Expected staff to see {expected_total} records, got {total}"
+        assert (
+            total == expected_total
+        ), f"Expected staff to see {expected_total} records, got {total}"
 
 
 @then("each record should clearly indicate whether it is public or private")
@@ -416,12 +422,21 @@ def step_records_indicate_visibility(context):
     else:
         items = data if isinstance(data, list) else [data]
 
-    valid_statuses = ["public", "private", "draft", "provisional", "final", "published", "archived"]
+    valid_statuses = [
+        "public",
+        "private",
+        "draft",
+        "provisional",
+        "final",
+        "published",
+        "archived",
+    ]
 
     for item in items:
         assert "release_status" in item, "release_status field missing from response"
-        assert item["release_status"] in valid_statuses, \
-            f"Invalid release_status: {item['release_status']}"
+        assert (
+            item["release_status"] in valid_statuses
+        ), f"Invalid release_status: {item['release_status']}"
 
 
 @then("only public {record_type} should appear")
@@ -436,8 +451,9 @@ def step_only_public_appear(context, record_type):
 
     # THIS WILL FAIL until filtering is implemented
     for item in items:
-        assert item.get("release_status") == "public", \
-            f"Expected only public {record_type}, found {item.get('release_status')}"
+        assert (
+            item.get("release_status") == "public"
+        ), f"Expected only public {record_type}, found {item.get('release_status')}"
 
 
 @then("only public locations should be displayed")
@@ -540,15 +556,16 @@ def step_new_record_created(context):
 def step_safe_default_applied(context):
     """Verify default is safe (not public)"""
     # Default should be "draft" or "private", never "public"
-    assert context.new_record_status in ["draft", "private"], \
-        f"Unsafe default: {context.new_record_status}"
+    assert context.new_record_status in [
+        "draft",
+        "private",
+    ], f"Unsafe default: {context.new_record_status}"
 
 
 @then("the default should protect sensitive data")
 def step_default_protects_data(context):
     """Verify default is protective"""
-    assert context.new_record_status != "public", \
-        "Default should not be public"
+    assert context.new_record_status != "public", "Default should not be public"
 
 
 # ---------------------------------------------------------------------------
@@ -583,16 +600,19 @@ def step_data_entered(context):
 @then("the data should be private by default")
 def step_data_private_by_default(context):
     """Verify data defaults to private or draft"""
-    assert context.created_record_status in ["private", "draft"], \
-        f"Expected private or draft, got {context.created_record_status}"
+    assert context.created_record_status in [
+        "private",
+        "draft",
+    ], f"Expected private or draft, got {context.created_record_status}"
 
 
 @then("the data should only be visible to staff")
 def step_only_visible_to_staff(context):
     """Verify data is not visible to public"""
     # The record should not be public
-    assert context.created_record_status != "public", \
-        "Data should not be public by default"
+    assert (
+        context.created_record_status != "public"
+    ), "Data should not be public by default"
 
 
 @then("it remains private until the owner grants permission for public release")

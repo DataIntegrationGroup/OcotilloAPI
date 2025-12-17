@@ -76,7 +76,9 @@ try:
             ):
                 parameter_map[(param.parameter_name, param.parameter_type)] = param.id
 
-    groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
+    groundwater_level_parameter_id = parameter_map[
+        ("groundwater level", "Field Parameter")
+    ]
     pH_parameter_id = parameter_map[("pH", "Field Parameter")]
 
     _INTEGRATION_TEST_DEPS_AVAILABLE = True
@@ -84,7 +86,10 @@ except Exception as e:
     # Database not available - this is okay for unit tests
     # Unit tests will use mocks instead
     import warnings
-    warnings.warn(f"Integration test dependencies not available: {e}. Unit tests will run with mocks.")
+
+    warnings.warn(
+        f"Integration test dependencies not available: {e}. Unit tests will run with mocks."
+    )
 
     # Set dummy values for unit tests
     client = None

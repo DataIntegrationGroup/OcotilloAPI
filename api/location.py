@@ -191,9 +191,9 @@ async def get_location_by_id(
     # Check visibility for public users
     if user is None and location.release_status != "public":
         from fastapi import HTTPException
+
         raise HTTPException(
-            status_code=404,
-            detail="Location not found or not publicly accessible"
+            status_code=404, detail="Location not found or not publicly accessible"
         )
 
     return location
