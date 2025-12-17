@@ -38,41 +38,60 @@ from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import (
-    register_routes,
-    erase_and_rebuild_db,
-)
-from db import Base, Parameter
-from db.engine import session_ctx
 from core.app import app
 
-erase_and_rebuild_db()
-register_routes(app)
+# Initialize integration test dependencies (database, etc.)
+# These are only needed for integration tests, not unit tests
+_INTEGRATION_TEST_DEPS_AVAILABLE = False
+try:
+    from core.initializers import (
+        register_routes,
+        erase_and_rebuild_db,
+    )
+    from db import Base, Parameter
+    from db.engine import session_ctx
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    erase_and_rebuild_db()
+    register_routes(app)
 
-add_pagination(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allows all origins, adjust as needed for security
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-client = TestClient(app)
+    add_pagination(app)
 
-# map (name, type) to id for easy lookup in tests
-parameter_map = {}
-with session_ctx() as session:
-    for param in session.query(Parameter).all():
-        if (
-            param.parameter_name in ["groundwater level", "pH"]
-            and param.parameter_type == "Field Parameter"
-        ):
-            parameter_map[(param.parameter_name, param.parameter_type)] = param.id
+    client = TestClient(app)
 
-groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
-pH_parameter_id = parameter_map[("pH", "Field Parameter")]
+    # map (name, type) to id for easy lookup in tests
+    parameter_map = {}
+    with session_ctx() as session:
+        for param in session.query(Parameter).all():
+            if (
+                param.parameter_name in ["groundwater level", "pH"]
+                and param.parameter_type == "Field Parameter"
+            ):
+                parameter_map[(param.parameter_name, param.parameter_type)] = param.id
+
+    groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
+    pH_parameter_id = parameter_map[("pH", "Field Parameter")]
+
+    _INTEGRATION_TEST_DEPS_AVAILABLE = True
+except Exception as e:
+    # Database not available - this is okay for unit tests
+    # Unit tests will use mocks instead
+    import warnings
+    warnings.warn(f"Integration test dependencies not available: {e}. Unit tests will run with mocks.")
+
+    # Set dummy values for unit tests
+    client = None
+    parameter_map = {}
+    groundwater_level_parameter_id = None
+    pH_parameter_id = None
+    Base = None
 
 
 def override_authentication(default=True):
