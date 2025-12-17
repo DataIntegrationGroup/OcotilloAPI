@@ -24,6 +24,7 @@ from core.dependencies import (
     admin_dependency,
     editor_dependency,
     viewer_dependency,
+    optional_viewer_dependency,
 )
 from db.location import Location
 from schemas.location import CreateLocation, LocationResponse, UpdateLocation
@@ -133,7 +134,7 @@ async def update_location(
 )
 async def get_location(
     session: session_dependency,
-    user: viewer_dependency,
+    user: optional_viewer_dependency,
     nearby_point: str = None,
     nearby_distance_km: float = 1,
     within: str = None,
@@ -143,9 +144,17 @@ async def get_location(
     filter_: str = Query(alias="filter", default=None),
 ) -> CustomPage[LocationResponse]:
     """
-    Retrieve all wells from the database.
+    Retrieve all locations from the database.
+
+    Public users (unauthenticated) see only locations with release_status = "public".
+    Authenticated users see all locations regardless of release_status.
     """
     sql = select(Location)
+
+    # Apply visibility filtering based on authentication
+    if user is None:
+        # Public/unauthenticated user - only show public data
+        sql = sql.where(Location.release_status == "public")
 
     if query:
         sql = sql.where(make_query(Location, query))
@@ -169,12 +178,24 @@ async def get_location(
     summary="Get location by ID",
 )
 async def get_location_by_id(
-    location_id: int, session: session_dependency, user: viewer_dependency
+    location_id: int, session: session_dependency, user: optional_viewer_dependency
 ) -> LocationResponse:
     """
     Retrieve a sample location by ID from the database.
+
+    Public users (unauthenticated) can only access locations with release_status = "public".
+    Authenticated users can access all locations regardless of release_status.
     """
     location = simple_get_by_id(session, Location, location_id)
+
+    # Check visibility for public users
+    if user is None and location.release_status != "public":
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=404,
+            detail="Location not found or not publicly accessible"
+        )
+
     return location
 
 

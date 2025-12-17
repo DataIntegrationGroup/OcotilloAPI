@@ -44,6 +44,21 @@ def step_system_operational(context):
     if not hasattr(context, 'objects'):
         context.objects = {}
 
+    # Override the optional_viewer_dependency to respect context.authenticated flag
+    from core.app import app
+    from core.dependencies import optional_viewer_function
+
+    def test_optional_viewer():
+        """Test override that checks context.authenticated"""
+        if hasattr(context, 'authenticated') and not context.authenticated:
+            # Public user - return None
+            return None
+        else:
+            # Authenticated user - return test user
+            return {"name": "test-staff", "sub": "test-123"}
+
+    app.dependency_overrides[optional_viewer_function] = test_optional_viewer
+
 
 # ---------------------------------------------------------------------------
 # DATA SETUP STEPS - Creating test data with different visibility
@@ -140,16 +155,20 @@ def step_sample_locations_exist(context):
         session.add_all([public_loc, private_loc])
         session.commit()
 
-        context.public_locations = 1
-        context.private_locations = 1
+        # Use standard count variable names for assertion steps
+        context.public_count = 1
+        context.private_count = 1
+        context.total_count = 2
 
 
 @given("there are observations for various locations")
 def step_observations_exist(context):
     """Create observations with mixed visibility"""
     # For now, just set up context - observations would be created similarly
-    context.public_observations = 1
-    context.private_observations = 1
+    # Use standard count variable names for assertion steps
+    context.public_count = 1
+    context.private_count = 1
+    context.total_count = 2
 
 
 @given("a public user requests bulk data")
@@ -265,6 +284,10 @@ def step_view_through_authenticated_endpoints(context, data_type):
 @when("a public user views the interactive web map")
 def step_view_web_map(context):
     """Request location data for map display (GeoJSON or similar)"""
+    # Ensure context is set to public user
+    context.authenticated = False
+    context.user_role = "public"
+
     context.response = context.client.get("/location")
     context.response_data = context.response.json()
 
@@ -272,6 +295,10 @@ def step_view_web_map(context):
 @when("a public user generates a report")
 def step_generate_report(context):
     """Request data for report generation"""
+    # Ensure context is set to public user
+    context.authenticated = False
+    context.user_role = "public"
+
     context.response = context.client.get("/observation")
     context.response_data = context.response.json()
 
@@ -279,6 +306,11 @@ def step_generate_report(context):
 @when("the download is prepared")
 def step_download_prepared(context):
     """Prepare bulk download"""
+    # Ensure context is set to public user if this is a public request
+    if not hasattr(context, 'authenticated'):
+        context.authenticated = False
+        context.user_role = "public"
+
     # For now, this is the same as making a GET request
     context.response = context.client.get("/location")
     context.response_data = context.response.json()

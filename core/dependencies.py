@@ -75,4 +75,26 @@ amp_editor_dependency: type[dict] = Annotated[dict, Depends(amp_editor_function)
 amp_viewer_dependency: type[dict] = Annotated[dict, Depends(amp_viewer_function)]
 
 no_permission_dependency: type[dict] = Annotated[dict, Depends(no_permission_function)]
+
+
+# Optional Authentication for Public Endpoints --------------------------------
+from typing import Optional
+
+
+def optional_viewer_function():
+    """
+    Optional authentication for public endpoints.
+    Returns None if not authenticated, user dict if authenticated.
+    """
+    try:
+        return viewer_function()
+    except Exception:
+        # Not authenticated - this is a public user
+        return None
+
+
+optional_viewer_dependency: type[Optional[dict]] = Annotated[
+    Optional[dict], Depends(optional_viewer_function)
+]
+
 # ============= EOF =============================================
