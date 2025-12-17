@@ -28,7 +28,18 @@ This directory contains feature files documenting data visibility and access con
 
 **Adopt the two-field approach** - separates "who can see" from "data quality"
 
-### Migration Mapping
+### Current Implementation Mapping
+
+**AMPAPI → NMSampleLocations (implemented in transfers/):**
+```
+PublicRelease Boolean → release_status
+--------------------|------------------
+True                → "public"
+False/NULL          → "private"
+(new records)       → "draft" (default)
+```
+
+**Proposed Two-Field Design:**
 ```
 Current release_status → (visibility, review_status)
 ----------------------------------------------------
@@ -41,13 +52,21 @@ private        → (internal, approved)
 archived       → (internal, approved)
 ```
 
+**Business Concepts (from `public_release.feature`):**
+- "public data" = data visible to unauthenticated users
+- "private data" = data visible only to authenticated staff
+- "draft data" = work in progress, staff only
+
 ### Key Business Rules to Implement
-From AMPAPI scenarios:
-- Public users see only `visibility="public"` data
-- Internal/staff users see ALL data regardless of visibility
-- New data defaults to `internal + provisional` (safe default)
-- Status changes tracked in audit log
-- Filtering consistent across all endpoints (GET, GeoJSON, reports)
+
+From refactored scenarios in `public_release.feature`:
+- Public users see only public data
+- Staff see ALL data (public, private, draft)
+- New data defaults to safe visibility (private or draft)
+- Data can be changed from private to public (and vice versa)
+- Visibility filtering is consistent across all endpoints (API, GeoJSON, maps, reports)
+- Associated data inherits visibility from parent location
+- Bulk visibility changes supported for projects
 
 ### Implementation Status
 - [x] Schema design documented
@@ -62,8 +81,11 @@ From AMPAPI scenarios:
 
 ## File Status
 
-- **`public_release.feature`** - AMPAPI reference, 21 scenarios to adapt
-- **`data-visibility-and-review.feature`** - Proposed design, 3 active scenarios
+- **`public_release.feature`** - Refactored from AMPAPI, 16 scenarios adapted to NMSampleLocations
+  - Uses business language (public/private) instead of technical fields
+  - Maps AMPAPI `PublicRelease` Boolean → NMSampleLocations `release_status` values
+  - Updated terminology: AMPAPI concepts → NMSampleLocations concepts
+- **`data-visibility-and-review.feature`** - Proposed two-field design, 3 active scenarios
 - Other .feature files - Existing NMSampleLocations integration tests (unrelated to visibility)
 
 ## Next Steps
