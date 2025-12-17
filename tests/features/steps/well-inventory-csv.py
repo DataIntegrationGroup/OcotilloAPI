@@ -131,9 +131,18 @@ def step_impl(context: Context):
                 wl_date_time_naive, "America/Denver"
             )
             row["water_level_date_time"] = wl_date_time_aware.isoformat()
-            assert (
-                wl_date_time_aware.tzinfo.tzname() == "America/Denver"
-            ), "water_level_date_time timezone is not America/Denver"
+
+            if wl_date_time_aware.dst():
+                # MDT, offset -06:00
+                assert wl_date_time_aware.utcoffset() == timedelta(
+                    hours=-6
+                ), "water_level_date_time offset is not -06:00"
+            else:
+                # MST, offset -07:00
+                assert wl_date_time_aware.utcoffset() == timedelta(
+                    hours=-7
+                ), "water_level_date_time offset is not -07:00"
+
             assert (
                 wl_date_time_aware.replace(tzinfo=None) == wl_date_time_naive
             ), "water_level_date_time value was changed during timezone assignment"
