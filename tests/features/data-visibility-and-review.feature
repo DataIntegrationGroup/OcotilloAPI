@@ -17,9 +17,9 @@ Feature: Manage data visibility separately from review in the backend
 
   Background:
     Given a functioning api
-    And all database models have a visibility field that can or cannot be viewed by the public
+    And all database models have a visibility field that determines if a record can or cannot be viewed by the public
     And the only possible values for the visibility field are internal and public
-    And all database models have a review_status field that supports determines if a record is provisional or approved
+    And all database models have a review_status field that determines if a record is provisional or approved
     And the only possible values for the review_status field are provisional and approved
     And visibility and review_status are required fields when creating new records
     And new records must use visibility and review_status as the source of truth
@@ -33,7 +33,7 @@ Feature: Manage data visibility separately from review in the backend
   Scenario Outline: Public users can only access public data
     Given I am a public API consumer
     And there is <data_type> data stored with a visibility field that evaluates to either public or internal
-    When I request <data_type> data through unauthenticated endpoints
+    When I request <data_type> data through API endpoints
     Then I should only see records where the visibility field is set to public
     And records whose visibility field is set to internal should not be returned
     And the response should include the review_status for each public record
@@ -47,8 +47,9 @@ Feature: Manage data visibility separately from review in the backend
   # might not be relevant yet in NMSampleLocations
   @public_access @reports
   Scenario: Public reports include review status disclaimers
-    Given there are public observations with review_status provisional and approved
-    When a public user generates a report
+    Given a am a public API consumer
+    And data is stored with visibility public and review_status provisional or approved
+    When I request a report of observations
     Then all returned observations should have visibility public
     And provisional observations should include a disclaimer derived from review_status
     And approved observations should indicate that they are fully reviewed
@@ -56,9 +57,9 @@ Feature: Manage data visibility separately from review in the backend
   # might not be relevant yet in NMSampleLocations
   @public_access @data_download
   Scenario: Public data downloads exclude internal datasets
-    Given a public user requests a CSV export
-    And the dataset contains public and internal records with different review_status values
-    When the download is prepared
+    Given I am a public API consumer
+    And the data contains public and internal records with different review_status values
+    When I requests a CSV export
     Then only the public records should be included
     And the download should list the review_status for each record
 
@@ -69,7 +70,8 @@ Feature: Manage data visibility separately from review in the backend
   @staff_access @visibility
   Scenario Outline: Staff can access all data and its review status
     Given I am an authenticated staff member
-    When I view <data_type> data through endpoints while authenticated
+    And I have permission to view internal data
+    When I view <data_type> data through API endpoints
     Then I should see visibility internal and public records
     And I should see whether each record is provisional or approved
 
@@ -82,16 +84,20 @@ Feature: Manage data visibility separately from review in the backend
 
   @staff_access @management
   Scenario: Staff can change visibility without affecting review status
-    Given data is stored with visibility internal and review_status provisional
-    When an authenticated staff member updates the visibility to public
+    Given I am an authenticated staff member
+    And I have permission to modify data visibility
+    And data is stored with visibility internal and review_status provisional
+    When I update the visibility to public
     Then the data visibility should be persisted as public
     And the review_status should remain provisional
     And retrieving the data should show the updated visibility and original review_status
 
   @staff_access @review_status
   Scenario: Staff can approve data without changing visibility
+    Given I am an authenticated staff member
+    And I have permission to modify data review status
     Given data is stored with visibility public and review_status provisional
-    When an authenticated staff member updates the review_status to approved
+    When I update the review_status to approved
     Then the data should remain visible to the public
     And the review_status should be persisted as approved
     And the API response should immediately show the approved status
@@ -114,7 +120,7 @@ Feature: Manage data visibility separately from review in the backend
       | observation |
 
   @workflow @defaults
-  Scenario: Safe defaults when both attributes are provided
+  Scenario: Safe defaults when both attributes are omitted
     Given data is being submitted to the system with visibility and review_status omitted
     When the record is created
     Then the system should persist visibility internal and review_status provisional by default
@@ -145,7 +151,7 @@ Feature: Manage data visibility separately from review in the backend
     Given a <data_type> is currently visibility internal and review_status approved
     And appropriate authorization has been obtained
     When staff changes the visibility to public
-    Then the <data_type> should become visible by unauthenticated users
+    Then the <data_type> should become visible to unauthenticated users
     And the review_status should remain approved
     And associated observations should also reflect the new visibility
 
