@@ -197,7 +197,17 @@ class WaterLevelTransferer(Transferer):
         else:
             value = row.DepthToWater
 
-            # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
+        if not pd.isna(row.DataQuality):
+            groundwater_level_accuracy = lexicon_mapper.map_value(
+                f"LU_DataQuality:{row.DataQuality}"
+            )
+        else:
+            groundwater_level_accuracy = None
+        print(
+            f"Setting groundwater_level_accuracy to {groundwater_level_accuracy} for WaterLevels record with GlobalID {row.GlobalID}"
+        )
+
+        # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
         observation = Observation(
             nma_pk_waterlevels=row.GlobalID,
             sample=sample,
@@ -209,6 +219,7 @@ class WaterLevelTransferer(Transferer):
             unit="ft",
             measuring_point_height=measuring_point_height,
             groundwater_level_reason=glv,
+            groundwater_level_accuracy=groundwater_level_accuracy,
         )
         return observation
 
