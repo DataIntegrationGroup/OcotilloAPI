@@ -32,10 +32,10 @@ Feature: Manage data visibility separately from review in the backend
   @public_access @visibility
   Scenario Outline: Public users can only access public data
     Given I am a public API consumer
-    And there is <data_type> data stored with visibility public or internal
+    And there is <data_type> data stored with a visibility field that evaluates to either public or internal
     When I request <data_type> data through unauthenticated endpoints
-    Then I should only see records that are marked visibility public
-    And records marked internal should not be returned
+    Then I should only see records where the visibility field is set to public
+    And records whose visibility field is set to internal should not be returned
     And the response should include the review_status for each public record
 
     Examples:
@@ -69,7 +69,7 @@ Feature: Manage data visibility separately from review in the backend
   @staff_access @visibility
   Scenario Outline: Staff can access all data and its review status
     Given I am an authenticated staff member
-    When I view <data_type> data through internal endpoints
+    When I view <data_type> data through endpoints while authenticated
     Then I should see visibility internal and public records
     And I should see whether each record is provisional or approved
 
@@ -115,16 +115,16 @@ Feature: Manage data visibility separately from review in the backend
 
   @workflow @defaults
   Scenario: Safe defaults when both attributes are provided
-    Given data is being submitted to the system with visibility internal and review_status provisional
+    Given data is being submitted to the system with visibility and review_status omitted
     When the record is created
-    Then the system should persist those explicit values as provided
+    Then the system should persist visibility internal and review_status provisional by default
 
   @workflow @privacy_protection
-  Scenario: Private contact data is protected by default
+  Scenario: Contact data is private and protected by default
     Given private contact data is being submitted
     When the data is entered into the system
     Then the data should default to be stored with visibility internal
-    And the data should have review_status provisional
+    And the data should default to be stored with review_status provisional
   
   # may need to work this out more
   # should we include the legacy table examples?
@@ -142,12 +142,18 @@ Feature: Manage data visibility separately from review in the backend
 
   @management @status_change
   Scenario: Making internal data public without re-review
-    Given a thing is currently visibility internal and review_status approved
+    Given a <data_type> is currently visibility internal and review_status approved
     And appropriate authorization has been obtained
     When staff changes the visibility to public
-    Then the thing should become visible in public endpoints
+    Then the <data_type> should become visible by unauthenticated users
     And the review_status should remain approved
     And associated observations should also reflect the new visibility
+
+    Examples:
+      | data_type    |
+      | thing        |
+      | location     |
+      | sample       |
 
   @management @status_change
   Scenario: Moving public data back to internal without changing review status
