@@ -26,6 +26,7 @@ from pydantic import (
     BeforeValidator,
     validate_email,
     AfterValidator,
+    field_validator,
 )
 
 from constants import STATE_CODES
@@ -39,6 +40,7 @@ from core.enums import (
     WellPurpose as WellPurposeEnum,
     MonitoringFrequency,
 )
+from services.util import convert_dt_tz_naive_to_tz_aware
 
 
 def empty_str_to_none(v):
@@ -264,6 +266,21 @@ class WellInventoryRow(BaseModel):
     depth_to_water_ft: Optional[float] = None
     data_quality: Optional[str] = None
     water_level_notes: Optional[str] = None  # TODO: needs a home
+
+    @field_validator("date_time", mode="before")
+    def make_date_time_tz_aware(cls, v):
+        if isinstance(v, str):
+            dt = datetime.fromisoformat(v)
+        elif isinstance(v, datetime):
+            dt = v
+        else:
+            raise ValueError("date_time must be a datetime or ISO format string")
+
+        if dt.tzinfo is None:
+            aware_dt = convert_dt_tz_naive_to_tz_aware(dt, "America/Denver")
+            return aware_dt
+        else:
+            raise ValueError("date_time must be a timezone-naive datetime")
 
     @model_validator(mode="after")
     def validate_model(self):
