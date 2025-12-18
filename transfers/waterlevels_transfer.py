@@ -203,9 +203,6 @@ class WaterLevelTransferer(Transferer):
             )
         else:
             groundwater_level_accuracy = None
-        print(
-            f"Setting groundwater_level_accuracy to {groundwater_level_accuracy} for WaterLevels record with GlobalID {row.GlobalID}"
-        )
 
         # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
         observation = Observation(
