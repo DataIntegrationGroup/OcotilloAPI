@@ -30,7 +30,9 @@ WellConstructionMethod: type[Enum] = build_enum_from_lexicon_category(
 ContactType: type[Enum] = build_enum_from_lexicon_category("contact_type")
 CoordinateMethod: type[Enum] = build_enum_from_lexicon_category("coordinate_method")
 WellPurpose: type[Enum] = build_enum_from_lexicon_category("well_purpose")
-DataQuality: type[Enum] = build_enum_from_lexicon_category("data_quality")
+GroundwaterLevelAccuracy: type[Enum] = build_enum_from_lexicon_category(
+    "groundwater_level_accuracy"
+)
 DataSource: type[Enum] = build_enum_from_lexicon_category("data_source")
 DepthCompletionSource: type[Enum] = build_enum_from_lexicon_category(
     "depth_completion_source"

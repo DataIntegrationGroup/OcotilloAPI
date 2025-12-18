@@ -760,6 +760,7 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             unit="ft",
             measuring_point_height=5.0,
             groundwater_level_reason="Water level not affected",
+            groundwater_level_accuracy="Water level accurate to within two hundreths of a foot",
         )
         session.add(observation)
         session.commit()
