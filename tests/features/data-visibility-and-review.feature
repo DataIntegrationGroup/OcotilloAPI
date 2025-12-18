@@ -4,7 +4,7 @@
 @backend @BDMS-XXX
 Feature: Manage data visibility separately from review in the backend
   As an Ocotillo data manager
-  I want visibility and review to be stored as two separate backend attributes
+  I want visibility and review status to be stored as two separate backend attributes
   So that the system can independently control who can see the data and which data is reviewed
 
   # Business rules:
@@ -17,8 +17,10 @@ Feature: Manage data visibility separately from review in the backend
 
   Background:
     Given a functioning api
-    And all database models have a visibility field that supports internal and public
-    And all database models have a review_status field that supports provisional and approved
+    And all database models have a visibility field that can or cannot be viewed by the public
+    And the only possible values for the visibility field are internal and public
+    And all database models have a review_status field that supports determines if a record is provisional or approved
+    And the only possible values for the review_status field are provisional and approved
     And visibility and review_status are required fields when creating new records
     And new records must use visibility and review_status as the source of truth
     And legacy combined visibility/review fields are deprecated
