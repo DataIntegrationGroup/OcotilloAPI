@@ -149,7 +149,7 @@ Feature: Manage data visibility separately from review in the backend
   @management @status_change
   Scenario: Making internal data public without re-review
     Given a <data_type> is currently visibility internal and review_status approved
-    And appropriate authorization has been obtained
+    And staff has the correct permissions to change visibility
     When staff changes the visibility to public
     Then the <data_type> should become visible to unauthenticated users
     And the review_status should remain approved
