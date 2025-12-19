@@ -47,7 +47,7 @@ Feature: Manage data visibility separately from review in the backend
   # might not be relevant yet in NMSampleLocations
   @public_access @reports
   Scenario: Public reports include review status disclaimers
-    Given a am a public API consumer
+    Given I am a public API consumer
     And data is stored with visibility public and review_status provisional or approved
     When I request a report of observations
     Then all returned observations should have visibility public
