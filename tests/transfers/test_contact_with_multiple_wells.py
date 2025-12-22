@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from db import ThingContactAssociation
+from db import ThingContactAssociation, Thing, Contact, Location
 from db.engine import session_ctx
 from transfers.contact_transfer import ContactTransfer
 from transfers.well_transfer import WellTransferer
@@ -30,6 +30,13 @@ def test_multiple_wells():
 
     with session_ctx() as sess:
         assert sess.query(ThingContactAssociation).count() == 6
+
+        # cleanup
+        sess.query(Contact).delete()
+        sess.query(ThingContactAssociation).delete()
+        sess.query(Location).delete()
+        sess.query(Thing).delete()
+        sess.commit()
 
 
 # ============= EOF =============================================
