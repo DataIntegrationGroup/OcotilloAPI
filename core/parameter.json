@@ -1,14 +1,14 @@
 [
     {
         "parameter_name": "groundwater level",
-        "matrix": "groundwater",
+        "matrix": "water",
         "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "ft"
     },
     {
         "parameter_name": "pH",
-        "matrix": "groundwater",
+        "matrix": "water",
         "parameter_type": "Field Parameter",
         "cas_number": null,
         "default_unit": "dimensionless"

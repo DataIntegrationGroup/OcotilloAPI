@@ -291,7 +291,6 @@
     {"categories": ["participant_role"], "term": "Observer", "definition": "a person observing the field event"},
     {"categories": ["participant_role"], "term": "Visitor", "definition": "a person visiting the field event"},
     {"categories": ["sample_matrix"], "term": "water", "definition": "water"},
-    {"categories": ["sample_matrix"], "term": "groundwater", "definition": "groundwater"},
     {"categories": ["sample_matrix"], "term": "soil", "definition": "soil"},
     {"categories": ["thing_type"], "term": "observation well", "definition": "a well used to monitor groundwater levels"},
     {"categories": ["thing_type"], "term": "piezometer", "definition": "a type of observation well that measures pressure head in the aquifer"},
