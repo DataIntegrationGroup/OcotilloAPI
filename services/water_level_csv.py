@@ -19,163 +19,58 @@ import csv
 import io
 import json
 import uuid
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Any, BinaryIO, Iterable, List
+from typing import Any, BinaryIO
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
+from db import (
+    Thing,
+    FieldEvent,
+    FieldActivity,
+    Sample,
+    Observation,
+    Parameter,
+    Contact,
+    FieldEventParticipant,
+)
 from db.engine import session_ctx
+from schemas.water_level_csv import (
+    WaterLevelCsvRow,
+    WaterLevelBulkUploadRow,
+    WaterLevelBulkUploadResponse,
+    WaterLevelCreatedRow,
+    WaterLevelBulkUploadSummary,
+    WaterLevelBulkUploadPayload,
+)
 
-# Required CSV columns for the bulk upload
-REQUIRED_FIELDS: List[str] = [
-    "field_staff",
-    "well_name_point_id",
-    "field_event_date_time",
-    "measurement_date_time",
-    "sampler",
-    "sample_method",
-    "mp_height",
-    "level_status",
-    "depth_to_water_ft",
-    "data_quality",
+REQUIRED_FIELDS = [
+    key
+    for key in WaterLevelCsvRow.model_fields.keys()
+    if WaterLevelCsvRow.model_fields[key].default is not None
 ]
-
-# Allow-list values for validation. These represent early MVP lexicon values.
-VALID_LEVEL_STATUSES = {"stable", "rising", "falling"}
-VALID_DATA_QUALITIES = {"approved", "provisional"}
-VALID_SAMPLERS = {"groundwater team", "consultant"}
-
-# Mapping between human-friendly sample methods provided in CSV uploads and
-# their canonical lexicon terms stored in the database.
-SAMPLE_METHOD_ALIASES = {
-    "electric tape": "Electric tape measurement (E-probe)",
-    "steel tape": "Steel-tape measurement",
-}
-SAMPLE_METHOD_CANONICAL = {
-    value.lower(): value for value in SAMPLE_METHOD_ALIASES.values()
-}
-
-
-@dataclass
-class BulkUploadResult:
-    exit_code: int
-    stdout: str
-    stderr: str
-    payload: dict[str, Any]
-
-
-@dataclass
-class _ValidatedRow:
-    row_index: int
-    raw: dict[str, str]
-    well: Thing
-    field_staff: str
-    sampler: str
-    sample_method_term: str
-    field_event_dt: datetime
-    measurement_dt: datetime
-    mp_height: float
-    depth_to_water_ft: float
-    level_status: str
-    data_quality: str
-    water_level_notes: str | None
-
-
-class WaterLevelCsvRow(BaseModel):
-    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
-
-    field_staff: str
-    well_name_point_id: str
-    field_event_date_time: datetime
-    measurement_date_time: datetime
-    sampler: str
-    sample_method: str
-    mp_height: float
-    level_status: str
-    depth_to_water_ft: float
-    data_quality: str
-    water_level_notes: str | None = None
-
-    @field_validator(
-        "field_staff",
-        "well_name_point_id",
-        "sampler",
-        "sample_method",
-        "level_status",
-        "data_quality",
-    )
-    @classmethod
-    def _require_value(cls, value: str) -> str:
-        if value is None or value == "":
-            raise ValueError("value is required")
-        return value
-
-    @field_validator("sampler")
-    @classmethod
-    def _validate_sampler(cls, value: str) -> str:
-        if value.lower() not in VALID_SAMPLERS:
-            raise ValueError(
-                f"Invalid sampler '{value}'. Expected one of: {sorted(VALID_SAMPLERS)}"
-            )
-        return value
-
-    @field_validator("level_status")
-    @classmethod
-    def _validate_level_status(cls, value: str) -> str:
-        if value.lower() not in VALID_LEVEL_STATUSES:
-            raise ValueError(
-                f"Invalid level_status '{value}'. Expected one of: {sorted(VALID_LEVEL_STATUSES)}"
-            )
-        return value
-
-    @field_validator("data_quality")
-    @classmethod
-    def _validate_data_quality(cls, value: str) -> str:
-        if value.lower() not in VALID_DATA_QUALITIES:
-            raise ValueError(
-                f"Invalid data_quality '{value}'. Expected one of: {sorted(VALID_DATA_QUALITIES)}"
-            )
-        return value
-
-    @field_validator("sample_method")
-    @classmethod
-    def _normalize_sample_method(cls, value: str) -> str:
-        normalized = value.lower()
-        if normalized in SAMPLE_METHOD_ALIASES:
-            return SAMPLE_METHOD_ALIASES[normalized]
-        if normalized in SAMPLE_METHOD_CANONICAL:
-            return SAMPLE_METHOD_CANONICAL[normalized]
-        raise ValueError(
-            f"Invalid sample_method '{value}'. Expected one of: {sorted(SAMPLE_METHOD_ALIASES.keys())}"
-        )
-
-    @field_validator("water_level_notes", mode="before")
-    @classmethod
-    def _empty_to_none(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, str) and value.strip() == "":
-            return None
-        return value
 
 
 def bulk_upload_water_levels(
     source_file: str | Path | bytes | BinaryIO, *, pretty_json: bool = False
-) -> BulkUploadResult:
+) -> WaterLevelBulkUploadResponse:
     """Parse a CSV of water-level measurements and write database rows."""
 
     try:
         headers, csv_rows = _read_csv(source_file)
     except FileNotFoundError:
         msg = f"File not found: {source_file}"
-        payload = _build_payload([], [], 0, 0, [msg])
+        payload = WaterLevelBulkUploadPayload(
+            summary=WaterLevelBulkUploadSummary(0, 0, 0),
+            water_levels=[],
+            validation_errors=[],
+        )
         stdout = _serialize_payload(payload, pretty_json)
-        return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg, payload=payload)
+        return WaterLevelBulkUploadResponse(
+            exit_code=1, stdout=stdout, stderr=msg, payload=payload
+        )
 
     validation_errors: list[str] = []
     created_rows: list[dict[str, Any]] = []
@@ -202,44 +97,28 @@ def bulk_upload_water_levels(
         if validation_errors:
             session.rollback()
 
-    summary = {
-        "total_rows_processed": len(csv_rows),
-        "total_rows_imported": len(created_rows) if not validation_errors else 0,
-        "validation_errors_or_warnings": len(validation_errors),
-    }
-    payload = _build_payload(
-        csv_rows, created_rows, **summary, errors=validation_errors
+    summary = WaterLevelBulkUploadSummary(
+        total_rows_processed=len(csv_rows),
+        total_rows_imported=len(created_rows) if not validation_errors else 0,
+        total_validation_errors_or_warnings=len(validation_errors),
     )
+
+    payload = WaterLevelBulkUploadPayload(
+        summary=summary,
+        water_levels=created_rows,
+        validation_errors=validation_errors,
+    )
+
     stdout = _serialize_payload(payload, pretty_json)
     stderr = "\n".join(validation_errors)
     exit_code = 0 if not validation_errors else 1
-    return BulkUploadResult(
+    return WaterLevelBulkUploadResponse(
         exit_code=exit_code, stdout=stdout, stderr=stderr, payload=payload
     )
 
 
-def _serialize_payload(payload: dict[str, Any], pretty: bool) -> str:
-    return json.dumps(payload, indent=2 if pretty else None)
-
-
-def _build_payload(
-    csv_rows: Iterable[dict[str, Any]],
-    created_rows: list[dict[str, Any]],
-    total_rows_processed: int,
-    total_rows_imported: int,
-    validation_errors_or_warnings: int,
-    *,
-    errors: list[str],
-) -> dict[str, Any]:
-    return {
-        "summary": {
-            "total_rows_processed": total_rows_processed,
-            "total_rows_imported": total_rows_imported,
-            "validation_errors_or_warnings": validation_errors_or_warnings,
-        },
-        "water_levels": created_rows,
-        "validation_errors": errors,
-    }
+def _serialize_payload(payload: WaterLevelBulkUploadPayload, pretty: bool) -> str:
+    return json.dumps(payload.model_dump(), indent=2 if pretty else None)
 
 
 def _read_csv(
@@ -279,24 +158,28 @@ def _validate_headers(headers: list[str]) -> list[str]:
 
 def _validate_rows(
     session: Session, rows: list[dict[str, str]]
-) -> tuple[list[_ValidatedRow], list[str]]:
-    valid_rows: list[_ValidatedRow] = []
+) -> tuple[list[WaterLevelBulkUploadRow], list[str]]:
+    # Caches to avoid repeated DB lookups
+    contacts_by_name_cache: dict[str, Contact] = {}
+    wells_by_name_cache: dict[str, Thing] = {}
+
+    valid_rows: list[WaterLevelBulkUploadRow] = []
     errors: list[str] = []
-
-    wells_by_name: dict[str, Thing] = {}
-
     for idx, raw_row in enumerate(rows, start=1):
-        normalized = {k: (v or "").strip() for k, v in raw_row.items() if k is not None}
+        # Normalize whitespace in all fields
+        normalized_row = {k: (v or "").strip() for k, v in raw_row.items()}
 
-        missing = [field for field in REQUIRED_FIELDS if not normalized.get(field)]
-        if missing:
-            errors.extend(
-                [f"Row {idx}: Missing required field '{field}'" for field in missing]
-            )
-            continue
+        """
+        Developer's note
 
+        Pydantic handles all of the validation logic, including type 
+        conversions and required field checks. If a field is missing or has an
+        invalid value, Pydantic will raise a ValidationError, which we catch
+        and convert into a user-friendly error message.
+        """
         try:
-            model = WaterLevelCsvRow(**normalized)
+            model = WaterLevelCsvRow(**normalized_row)
+            WaterLevelCsvRow.model_validate(model)
         except ValidationError as exc:
             for err in exc.errors():
                 location = ".".join(str(part) for part in err["loc"])
@@ -304,106 +187,191 @@ def _validate_rows(
                 errors.append(f"Row {idx}: {location} - {message}")
             continue
 
+        # Verify that the well exists in the database
         well_name = model.well_name_point_id
-        well = wells_by_name.get(well_name)
+        well = wells_by_name_cache.get(well_name, None)
         if well is None:
             sql = select(Thing).where(Thing.name == well_name)
             well = session.scalars(sql).one_or_none()
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
                 continue
-            wells_by_name[well_name] = well
+            wells_by_name_cache[well_name] = well
 
-        valid_rows.append(
-            _ValidatedRow(
-                row_index=idx,
-                raw={**normalized},
-                well=well,
-                field_staff=model.field_staff,
-                sampler=model.sampler,
-                sample_method_term=model.sample_method,
-                field_event_dt=model.field_event_date_time,
-                measurement_dt=model.measurement_date_time,
-                mp_height=model.mp_height,
-                depth_to_water_ft=model.depth_to_water_ft,
-                level_status=model.level_status,
-                data_quality=model.data_quality,
-                water_level_notes=model.water_level_notes,
+        # verify that the well depth is greater than the water level depth bgs
+        if well.well_depth <= model.depth_to_water_ft - model.mp_height:
+            errors.append(
+                f"Row {idx}: well_depth ({well.well_depth} ft) must be greater than depth_to_water_ft ({model.depth_to_water_ft} ft) minus mp_height ({model.mp_height} ft)"
             )
+            continue
+
+        # Verify that the field staff are in the database
+        """
+        Developer's note
+
+        This has to be repeated for each field staff person not in a for loop because field_staff_2 and _3 can be None
+        """
+        field_staff_name = model.field_staff
+        field_staff_contact = contacts_by_name_cache.get(field_staff_name, None)
+        if field_staff_contact is None:
+            sql = select(Contact).where(Contact.name == field_staff_name)
+            field_staff_contact = session.scalars(sql).one_or_none()
+            if field_staff_contact is None:
+                errors.append(f"Row {idx}: Unknown field_staff '{field_staff_name}'")
+                continue
+            contacts_by_name_cache[field_staff_name] = field_staff_contact
+
+        if model.field_staff_2:
+            field_staff_2_name = model.field_staff_2
+            field_staff_2_contact = contacts_by_name_cache.get(field_staff_2_name, None)
+            if field_staff_2_contact is None:
+                sql = select(Contact).where(Contact.name == field_staff_2_name)
+                field_staff_2_contact = session.scalars(sql).one_or_none()
+                if field_staff_2_contact is None:
+                    errors.append(
+                        f"Row {idx}: Unknown field_staff_2 '{field_staff_2_name}'"
+                    )
+                    continue
+                contacts_by_name_cache[field_staff_2_name] = field_staff_2_contact
+        else:
+            field_staff_2_contact = None
+
+        if model.field_staff_3:
+            field_staff_3_name = model.field_staff_3
+            field_staff_3_contact = contacts_by_name_cache.get(field_staff_3_name, None)
+            if field_staff_3_contact is None:
+                sql = select(Contact).where(Contact.name == field_staff_3_name)
+                field_staff_3_contact = session.scalars(sql).one_or_none()
+                if field_staff_3_contact is None:
+                    errors.append(
+                        f"Row {idx}: Unknown field_staff_3 '{field_staff_3_name}'"
+                    )
+                    continue
+                contacts_by_name_cache[field_staff_3_name] = field_staff_3_contact
+        else:
+            field_staff_3_contact = None
+
+        # The Pydantic schema ensures that measuring_person is one of the field staff
+        if model.measuring_person == model.field_staff:
+            measuring_person_field_staff_index = 1
+        elif model.measuring_person == model.field_staff_2:
+            measuring_person_field_staff_index = 2
+        else:
+            measuring_person_field_staff_index = 3
+
+        valid_model = WaterLevelBulkUploadRow(
+            **model.model_dump(),
+            well=well,
+            field_staff_contact=field_staff_contact,
+            field_staff_2_contact=field_staff_2_contact,
+            field_staff_3_contact=field_staff_3_contact,
+            measuring_person_field_staff_index=measuring_person_field_staff_index,
         )
+
+        valid_rows.append(valid_model)
 
     return valid_rows, errors
 
 
 def _create_records(
-    session: Session, parameter_id: int, rows: list[_ValidatedRow]
+    session: Session, parameter_id: int, rows: list[WaterLevelBulkUploadRow]
 ) -> list[dict[str, Any]]:
     created: list[dict[str, Any]] = []
 
     for row in rows:
+        # FieldEvent
         field_event = FieldEvent(
             thing=row.well,
-            event_date=row.field_event_dt,
-            notes=_build_field_event_notes(row),
+            event_date=row.field_event_date_time,
         )
+        session.add(field_event)
+
+        # FieldActivity, FieldEventParticipant, Sample, Observation
         field_activity = FieldActivity(
             field_event=field_event,
             activity_type="groundwater level",
-            notes=f"Sampler: {row.sampler}",
         )
+        session.add(field_activity)
+
+        # FieldEventParticipants
+        field_event_participant_1 = FieldEventParticipant(
+            field_event=field_event,
+            participant=row.field_staff_contact,
+            participant_role="Lead",
+        )
+        if row.field_staff_2_contact:
+            field_event_participant_2 = FieldEventParticipant(
+                field_event=field_event,
+                participant=row.field_staff_2_contact,
+                participant_role="Participant",
+            )
+            session.add(field_event_participant_2)
+        else:
+            field_event_participant_2 = None
+        if row.field_staff_3_contact:
+            field_event_participant_3 = FieldEventParticipant(
+                field_event=field_event,
+                participant=row.field_staff_3_contact,
+                participant_role="Participant",
+            )
+            session.add(field_event_participant_3)
+        else:
+            field_event_participant_3 = None
+
+        # Sample
+        if row.measuring_person_field_staff_index == 1:
+            sample_field_event_participant = field_event_participant_1
+        elif row.measuring_person_field_staff_index == 2:
+            sample_field_event_participant = field_event_participant_2
+        else:
+            sample_field_event_participant = field_event_participant_3
+
         sample = Sample(
             field_activity=field_activity,
-            sample_date=row.measurement_dt,
+            field_event_participant=sample_field_event_participant,
+            sample_date=row.water_level_date_time,
             sample_name=f"wl-{uuid.uuid4()}",
             sample_matrix="water",
-            sample_method=row.sample_method_term,
+            sample_method=row.sample_method,
             qc_type="Normal",
-            notes=row.water_level_notes,
         )
+        session.add(sample)
+
+        # Observation
         observation = Observation(
             sample=sample,
-            observation_datetime=row.measurement_dt,
+            observation_datetime=row.water_level_date_time,
             parameter_id=parameter_id,
             value=row.depth_to_water_ft,
             unit="ft",
             measuring_point_height=row.mp_height,
-            groundwater_level_reason=None,
-            notes=_build_observation_notes(row),
+            groundwater_level_reason=row.level_status,
+            groundwater_level_accuracy=row.data_quality,
+            notes=row.water_level_notes,
         )
-        session.add(field_event)
-        session.add(field_activity)
-        session.add(sample)
         session.add(observation)
         session.flush()
 
         created.append(
-            {
-                "well_name_point_id": row.raw["well_name_point_id"],
-                "field_event_id": field_event.id,
-                "field_activity_id": field_activity.id,
-                "sample_id": sample.id,
-                "observation_id": observation.id,
-                "measurement_date_time": row.raw["measurement_date_time"],
-                "level_status": row.level_status,
-                "data_quality": row.data_quality,
-            }
+            WaterLevelCreatedRow(
+                well_name_point_id=row.well_name_point_id,
+                field_event_id=field_event.id,
+                field_activity_id=field_activity.id,
+                field_event_participant_1_id=field_event_participant_1.id,
+                field_event_participant_2_id=(
+                    field_event_participant_2.id if field_event_participant_2 else None
+                ),
+                field_event_participant_3_id=(
+                    field_event_participant_3.id if field_event_participant_3 else None
+                ),
+                sample_id=sample.id,
+                observation_id=observation.id,
+                groundwater_level_reason=row.level_status,
+                groundwater_level_accuracy=row.data_quality,
+            )
         )
 
     return created
-
-
-def _build_field_event_notes(row: _ValidatedRow) -> str | None:
-    parts = [f"Field staff: {row.field_staff}"]
-    if row.water_level_notes:
-        parts.append(row.water_level_notes)
-    notes = " | ".join(part for part in parts if part)
-    return notes or None
-
-
-def _build_observation_notes(row: _ValidatedRow) -> str | None:
-    parts = [f"Level status: {row.level_status}", f"Data quality: {row.data_quality}"]
-    notes = " | ".join(parts)
-    return notes or None
 
 
 def _get_groundwater_level_parameter_id(session: Session) -> int:

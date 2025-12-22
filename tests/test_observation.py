@@ -25,7 +25,7 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
-from db import Observation, FieldEvent, FieldActivity, Sample
+from db import Observation, FieldEvent, FieldActivity, Sample, FieldEventParticipant
 from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
@@ -121,38 +121,11 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     cleanup_post_test(Observation, data["id"])
 
 
-def test_bulk_upload_groundwater_levels_api(water_well_thing, contact):
-    csv_content = ",".join(
-        [
-            "field_staff",
-            "well_name_point_id",
-            "field_event_date_time",
-            "measurement_date_time",
-            "sampler",
-            "sample_method",
-            "mp_height",
-            "level_status",
-            "depth_to_water_ft",
-            "data_quality",
-            "water_level_notes",
-        ]
-    )
-    csv_content += "\n"
-    csv_content += ",".join(
-        [
-            contact.name,
-            water_well_thing.name,
-            "2025-02-15T08:00:00",
-            "2025-02-15T10:30:00",
-            "Groundwater Team",
-            "electric tape",
-            "1.5",
-            "stable",
-            "45.2",
-            "approved",
-            "Initial measurement",
-        ]
-    )
+def test_bulk_upload_groundwater_levels_api(water_level_bulk_upload_data):
+    csv_headers = list(water_level_bulk_upload_data.keys())
+    csv_values = list(water_level_bulk_upload_data.values())
+
+    csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
 
     files = {
         "file": ("water_levels.csv", csv_content, "text/csv"),
@@ -160,26 +133,50 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing, contact):
 
     response = client.post("/observation/groundwater-level/bulk-upload", files=files)
     data = response.json()
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert data["summary"]["total_rows_imported"] == 1
     assert data["summary"]["total_rows_processed"] == 1
-    assert data["summary"]["validation_errors_or_warnings"] == 0
+    assert data["summary"]["total_validation_errors_or_warnings"] == 0
     assert data["validation_errors"] == []
     row = data["water_levels"][0]
-    assert row["well_name_point_id"] == water_well_thing.name
+    assert (
+        row["well_name_point_id"] == water_level_bulk_upload_data["well_name_point_id"]
+    )
 
     with session_ctx() as session:
-        observation = session.get(Observation, row["observation_id"])
-        assert observation is not None
         # cleanup in reverse dependency order
+        observation = session.get(Observation, row["observation_id"])
         if observation:
             session.delete(observation)
+
         sample = session.get(Sample, row["sample_id"])
         if sample:
             session.delete(sample)
+
+        field_event_participant_1 = session.get(
+            FieldEventParticipant, row["field_event_participant_1_id"]
+        )
+        if field_event_participant_1:
+            session.delete(field_event_participant_1)
+
+        if row["field_event_participant_2_id"]:
+            field_event_participant_2 = session.get(
+                FieldEventParticipant, row["field_event_participant_2_id"]
+            )
+            if field_event_participant_2:
+                session.delete(field_event_participant_2)
+
+        if row["field_event_participant_3_id"]:
+            field_event_participant_3 = session.get(
+                FieldEventParticipant, row["field_event_participant_3_id"]
+            )
+            if field_event_participant_3:
+                session.delete(field_event_participant_3)
+
         field_activity = session.get(FieldActivity, row["field_activity_id"])
         if field_activity:
             session.delete(field_activity)
+
         field_event = session.get(FieldEvent, row["field_event_id"])
         if field_event:
             session.delete(field_event)
