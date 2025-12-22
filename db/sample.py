@@ -47,7 +47,7 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
 
     # --- Foreign Key Definitions ---
     field_activity_id: Mapped[int] = mapped_column(
-        ForeignKey("field_activity.id"), nullable=False
+        ForeignKey("field_activity.id", ondelete="CASCADE"), nullable=False
     )
 
     field_event_participant_id: Mapped[str] = mapped_column(
