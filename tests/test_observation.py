@@ -121,7 +121,7 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
     cleanup_post_test(Observation, data["id"])
 
 
-def test_bulk_upload_groundwater_levels_api(water_well_thing):
+def test_bulk_upload_groundwater_levels_api(water_well_thing, contact):
     csv_content = ",".join(
         [
             "field_staff",
@@ -140,10 +140,10 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
     csv_content += "\n"
     csv_content += ",".join(
         [
-            "A Lopez",
+            contact.name,
             water_well_thing.name,
-            "2025-02-15T08:00:00-07:00",
-            "2025-02-15T10:30:00-07:00",
+            "2025-02-15T08:00:00",
+            "2025-02-15T10:30:00",
             "Groundwater Team",
             "electric tape",
             "1.5",
