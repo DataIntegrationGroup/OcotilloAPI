@@ -46,6 +46,7 @@ from db import (
     ThingGeologicFormationAssociation,
     Base,
     Asset,
+    Sample,
 )
 from db.engine import session_ctx
 
@@ -687,12 +688,16 @@ def before_all(context):
 
 def after_all(context):
     with session_ctx() as session:
-        for table in context.objects.values():
-            for record in table:
-                obj = session.get(record.__class__, record.id)
-                if obj:
-                    session.delete(obj)
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name in ("alembic_version", "parameter"):
+                continue
+            elif table.name.startswith("lexicon"):
+                continue
+            elif table.name == "sample":
+                continue
+            session.execute(table.delete())
         session.commit()
+    context.objects.clear()
 
 
 def before_scenario(context, scenario):
@@ -713,6 +718,13 @@ def after_scenario(context, scenario):
                 sql = select(Asset).where(Asset.uri == uri)
                 asset = session.scalars(sql).one()
                 session.delete(asset)
+            session.commit()
+    elif "cleanup_samples" in scenario.tags:
+        # delete all samples created during happy path tests
+        with session_ctx() as session:
+            samples = session.query(Sample).all()
+            for sample in samples:
+                session.delete(sample)
             session.commit()
 
 

@@ -14,19 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 import shapefile
-from shapely.errors import GEOSException
-from shapely.io import from_geojson
-
-import constants
-from db.thing import Thing
-from db.group import GroupThingAssociation, Group
-from db.location import Location, LocationThingAssociation
 from geoalchemy2.functions import ST_GeomFromText, ST_Within, ST_AsGeoJSON
 from geoalchemy2.shape import to_shape
+from shapely.errors import GEOSException
+from shapely.io import from_geojson
 from shapely.wkt import loads as wkt_loads
 from sqlalchemy import Select, select
-from sqlalchemy.orm import aliased
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
+
+from core import constants
+from db.group import GroupThingAssociation, Group
+from db.location import Location, LocationThingAssociation
+from db.thing import Thing
 
 
 def get_thing_features(

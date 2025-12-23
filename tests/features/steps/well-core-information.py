@@ -1,12 +1,12 @@
-from constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from behave import then
+from geoalchemy2.shape import to_shape
+
+from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from services.util import (
     transform_srid,
     convert_m_to_ft,
     retrieve_latest_polymorphic_history_table_record,
 )
-
-from behave import then
-from geoalchemy2.shape import to_shape
 
 
 @then("the response should be in JSON format")

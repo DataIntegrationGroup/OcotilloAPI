@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi import APIRouter
 from fastapi import Query, Response
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select, func
 from starlette import status
+
 from api.pagination import CustomPage
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 from core.dependencies import (
     session_dependency,
     admin_dependency,
@@ -27,12 +29,10 @@ from core.dependencies import (
 )
 from db.location import Location
 from schemas.location import CreateLocation, LocationResponse, UpdateLocation
-from services.geospatial_helper import make_within_wkt
-from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 from services.crud_helper import model_patcher, model_deleter, model_adder
+from services.geospatial_helper import make_within_wkt
 from services.location_helper import set_geographic_attributes
-
-from fastapi import APIRouter
+from services.query_helper import make_query, order_sort_filter, simple_get_by_id
 
 router = APIRouter(prefix="/location", tags=["location"])
 
