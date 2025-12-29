@@ -94,7 +94,7 @@ dependencies = [
     "sqlalchemy-utils==0.42.0",
     "starlette==0.47.3",
     "typing-extensions==4.15.0",
-    "typing-inspection==0.4.1",
+    "typing-inspection==0.4.2",
     "tzdata==2025.2",
     "urllib3==2.5.0",
     "uvicorn==0.35.0",
