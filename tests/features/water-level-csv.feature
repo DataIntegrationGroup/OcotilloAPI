@@ -3,7 +3,6 @@
 @cli
 @backend
 @BDMS-TBD
-@production
 Feature: Bulk upload water level entries from CSV via CLI
   As a hydrogeologist or data specialist
   I want to upload a CSV file containing water level entry data for multiple wells using a CLI command
