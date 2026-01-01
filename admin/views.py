@@ -369,5 +369,5 @@ class LocationAdmin(ModelView):
     # TODO: Future bulk actions
     # - Export as GeoJSON
     # - Export as Shapefile
-    # - Bulk coordinate conversion (UTM ’ WGS84)
+    # - Bulk coordinate conversion (UTM  WGS84)
     # - Validate coordinates (check if in New Mexico)
