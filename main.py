@@ -31,6 +31,14 @@ from core.app import app
 
 register_routes(app)
 
+# ========== Starlette Admin Interface ==========
+# Mount admin interface at /admin
+# This provides a web-based UI for managing database records (replaces MS Access)
+from admin import create_admin
+
+create_admin(app)
+# ==============================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins, adjust as needed for security
