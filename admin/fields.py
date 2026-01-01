@@ -68,7 +68,9 @@ class WKTField(StringField):
             # If conversion fails, return string representation
             return str(value)
 
-    async def parse_form_data(self, request: Request, form_data: dict, action: str) -> Any:
+    async def parse_form_data(
+        self, request: Request, form_data: dict, action: str
+    ) -> Any:
         """
         Convert WKT string from form input to WKTElement for database storage.
 
@@ -94,6 +96,7 @@ class WKTField(StringField):
         try:
             # Parse and validate WKT string
             from shapely.wkt import loads as wkt_loads
+
             shape = wkt_loads(wkt_string.strip())
 
             # Convert to WKTElement with SRID (spatial reference identifier)

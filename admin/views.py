@@ -117,7 +117,6 @@ class LocationAdmin(ModelView):
     fields = [
         # Basic Information Section
         "description",
-
         # Geographic Information Section
         CoordinateHelpField(
             "point",
@@ -128,11 +127,9 @@ class LocationAdmin(ModelView):
         "county",
         "state",
         "quad_name",
-
         # Notes Section
         "nma_notes_location",
         "nma_coordinate_notes",
-
         # Release Status
         "release_status",
     ]
@@ -313,6 +310,7 @@ class LocationAdmin(ModelView):
 
         # Update records
         from db.engine import session_ctx
+
         with session_ctx() as session:
             result = session.execute(
                 update(Location)
@@ -323,8 +321,7 @@ class LocationAdmin(ModelView):
             updated_count = result.rowcount
 
         return Response(
-            f"Successfully published {updated_count} location(s)",
-            status_code=200
+            f"Successfully published {updated_count} location(s)", status_code=200
         )
 
     @action(
@@ -352,6 +349,7 @@ class LocationAdmin(ModelView):
 
         # Update records
         from db.engine import session_ctx
+
         with session_ctx() as session:
             result = session.execute(
                 update(Location)
@@ -363,7 +361,7 @@ class LocationAdmin(ModelView):
 
         return Response(
             f"Successfully unpublished {updated_count} location(s) (set to draft)",
-            status_code=200
+            status_code=200,
         )
 
     # TODO: Future bulk actions

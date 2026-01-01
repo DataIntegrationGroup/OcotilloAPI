@@ -55,6 +55,7 @@ class NMSampleLocationsAuthProvider(AuthProvider):
         # Check if authentication is disabled (development mode only)
         if int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0)):
             from core.settings import settings
+
             if settings.mode != "production":
                 # Allow unauthenticated access in development mode
                 request.state.user = AdminUser(username="dev_user", roles=["admin"])
@@ -70,7 +71,11 @@ class NMSampleLocationsAuthProvider(AuthProvider):
                     return False
             else:
                 # Extract token from "Bearer <token>" format
-                token = authorization.split(" ")[1] if " " in authorization else authorization
+                token = (
+                    authorization.split(" ")[1]
+                    if " " in authorization
+                    else authorization
+                )
 
             # Verify token using existing authentication system
             is_valid = verify_token(token, scope=None, permissions=None)
@@ -98,7 +103,11 @@ class NMSampleLocationsAuthProvider(AuthProvider):
             payload = _get_token_payload(token)
 
             # Extract user information from JWT claims
-            username = payload.get("preferred_username") or payload.get("email") or payload.get("sub")
+            username = (
+                payload.get("preferred_username")
+                or payload.get("email")
+                or payload.get("sub")
+            )
             email = payload.get("email")
             groups = payload.get("groups", [])
 
@@ -130,7 +139,7 @@ class NMSampleLocationsAuthProvider(AuthProvider):
             return AdminUser(
                 username=username,
                 photo_url=None,  # Could add user avatar URL from OIDC if available
-                roles=roles
+                roles=roles,
             )
         except Exception:
             return None
@@ -157,7 +166,11 @@ class NMSampleLocationsAuthProvider(AuthProvider):
                 if not token:
                     return None
             else:
-                token = authorization.split(" ")[1] if " " in authorization else authorization
+                token = (
+                    authorization.split(" ")[1]
+                    if " " in authorization
+                    else authorization
+                )
 
             # Create AdminUser from token
             admin_user = self._create_admin_user_from_token(token)
@@ -195,7 +208,9 @@ class NMSampleLocationsAuthProvider(AuthProvider):
         # Redirect to Authentik OAuth authorization endpoint
         authentik_authorize_url = os.environ.get("AUTHENTIK_AUTHORIZE_URL")
         if not authentik_authorize_url:
-            raise LoginFailed("Authentik authentication is not configured. Please set AUTHENTIK_AUTHORIZE_URL environment variable.")
+            raise LoginFailed(
+                "Authentik authentication is not configured. Please set AUTHENTIK_AUTHORIZE_URL environment variable."
+            )
 
         # Store original URL to redirect back after login
         original_url = str(request.url_for("admin:index"))
