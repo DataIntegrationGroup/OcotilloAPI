@@ -83,11 +83,26 @@ class WaterLevelsContinuousTransferer(Transferer):
             qced = group[field == 1]
             notqced = group[~(field == 1)]
 
+            # Check for deployments first to get thing_id
+            if not deployments:
+                logger.critical(
+                    f"Thing with PointID={pointid} has no deployments. Skipping all water levels"
+                )
+                self._capture_error(pointid, "no deployments", "DateMeasured")
+                continue
+
+            # Get thing_id from the first deployment
+            thing_id = deployments[0].thing_id
+
             qced_block = TransducerObservationBlock(
-                parameter_id=self.groundwater_parameter_id, review_status="approved"
+                thing_id=thing_id,
+                parameter_id=self.groundwater_parameter_id,
+                review_status="approved",
             )
             notqced_block = TransducerObservationBlock(
-                parameter_id=self.groundwater_parameter_id, review_status="not reviewed"
+                thing_id=thing_id,
+                parameter_id=self.groundwater_parameter_id,
+                review_status="not reviewed",
             )
 
             for block, rows, release_status in (
@@ -96,13 +111,6 @@ class WaterLevelsContinuousTransferer(Transferer):
             ):
                 block.start_datetime = rows.DateMeasured.min()
                 block.end_datetime = rows.DateMeasured.max()
-
-                if not deployments:
-                    logger.critical(
-                        f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
-                    )
-                    self._capture_error(pointid, "no deployments", "DateMeasured")
-                    continue
 
                 if rows.empty:
                     logger.info(f"no {release_status} records for pointid {pointid}")
