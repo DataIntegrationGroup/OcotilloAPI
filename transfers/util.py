@@ -472,6 +472,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
 
     location = Location(
         nma_pk_location=row.LocationId,
+        description=row.PointID,  # Use PointID as location description
         point=transformed_point.wkt,
         elevation=z,
         release_status="public" if row.PublicRelease else "private",
