@@ -22,12 +22,26 @@ existing Authentik-based authentication system used by the NMSampleLocations API
 import os
 from typing import Optional
 
+from dataclasses import dataclass
+from typing import List
+
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette_admin.auth import AdminUser, AuthProvider
 from starlette_admin.exceptions import LoginFailed
 
 from core.permissions import _get_token_payload, verify_token
+
+
+@dataclass
+class AdminUserWithRoles(AdminUser):
+    """Extended AdminUser with roles for RBAC."""
+
+    roles: List[str] = None
+
+    def __post_init__(self):
+        if self.roles is None:
+            self.roles = []
 
 
 class NMSampleLocationsAuthProvider(AuthProvider):
@@ -58,7 +72,9 @@ class NMSampleLocationsAuthProvider(AuthProvider):
 
             if settings.mode != "production":
                 # Allow unauthenticated access in development mode
-                request.state.user = AdminUser(username="dev_user", roles=["admin"])
+                request.state.user = AdminUserWithRoles(
+                    username="dev_user", roles=["admin"]
+                )
                 return True
 
         try:
@@ -136,7 +152,7 @@ class NMSampleLocationsAuthProvider(AuthProvider):
             if "LexiconEditor" in groups:
                 roles.append("lexicon_editor")
 
-            return AdminUser(
+            return AdminUserWithRoles(
                 username=username,
                 photo_url=None,  # Could add user avatar URL from OIDC if available
                 roles=roles,
