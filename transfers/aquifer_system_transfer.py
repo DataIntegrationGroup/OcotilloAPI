@@ -42,7 +42,7 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
     # 4. Process each row
     for i, row in enumerate(cleaned_df.itertuples()):
         # check if limit is reached
-        if limit and i >= limit:
+        if limit is not None and limit > 0 and i >= limit:
             logger.info(f"Reached limit of {limit} rows. Stopping migration.")
             break
 

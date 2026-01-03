@@ -88,7 +88,7 @@ class Transferer(object):
         start_time = time.time()
         logger.info(f"Starting transfer of {n} [limit={limit}] rows")
         for i, row in enumerate(df.itertuples()):
-            if limit and i >= limit:
+            if limit > 0 and i >= limit:
                 logger.info(f"Reached limit of {limit} rows. Stopping migration.")
                 break
 
