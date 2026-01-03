@@ -14,16 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 """
-Admin views for NMSampleLocations.
+LocationAdmin view for NMSampleLocations.
 
-Provides MS Access-like interface for CRUD operations on database models.
-
-For MS Access users: This interface provides familiar functionality:
-    - List View = MS Access Datasheet View (grid of records with sorting/filtering)
-    - Create/Edit Forms = MS Access Form View (enter/edit data)
-    - Search = MS Access "Find" feature (Ctrl+F)
-    - Filters = MS Access "Filter by Selection"
-    - Export = MS Access "Export to Excel"
+Provides MS Access-like interface for CRUD operations on Location model.
 """
 from starlette.requests import Request
 from starlette.responses import Response
@@ -49,15 +42,12 @@ class LocationAdmin(ModelView):
 
     # ========== Basic Configuration ==========
 
-    model = Location
     name = "Locations"
     label = "Locations"
     icon = "fa fa-map-marker"
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    # Columns to display in list view (table grid)
-    # Ordered by importance/frequency of use (mimicking Access datasheet)
     column_list = [
         "id",
         "description",
@@ -70,7 +60,6 @@ class LocationAdmin(ModelView):
         "updated_by_name",
     ]
 
-    # Columns that can be sorted (like clicking column headers in Access)
     column_sortable_list = [
         "id",
         "description",
@@ -82,10 +71,8 @@ class LocationAdmin(ModelView):
         "created_at",
     ]
 
-    # Default sort (newest first)
     column_default_sort = ("created_at", True)  # True = descending
 
-    # Searchable fields (like MS Access "Find" feature - Ctrl+F)
     search_fields = [
         "description",
         "county",
@@ -93,7 +80,6 @@ class LocationAdmin(ModelView):
         "quad_name",
     ]
 
-    # Filterable columns (like MS Access "Filter" dropdown)
     column_filters = [
         "county",
         "state",
@@ -102,22 +88,17 @@ class LocationAdmin(ModelView):
         "created_at",
     ]
 
-    # Enable export (like MS Access "Export to Excel")
     can_export = True
     export_types = ["csv", "excel"]
 
-    # Number of rows per page (like MS Access datasheet pagination)
     page_size = 50
     page_size_options = [25, 50, 100, 200]
 
     # ========== Form View (MS Access Form View Equivalent) ==========
 
-    # Fields to display in create/edit form
-    # Grouped logically like MS Access form sections
     fields = [
-        # Basic Information Section
+        "id",
         "description",
-        # Geographic Information Section
         CoordinateHelpField(
             "point",
             label="Coordinates (WKT)",
@@ -127,17 +108,21 @@ class LocationAdmin(ModelView):
         "county",
         "state",
         "quad_name",
-        # Notes Section
         "nma_notes_location",
         "nma_coordinate_notes",
-        # Release Status
         "release_status",
+        "created_at",
+        "created_by_id",
+        "created_by_name",
+        "updated_by_id",
+        "updated_by_name",
+        "nma_pk_location",
+        "nma_date_created",
+        "nma_site_date",
     ]
 
-    # Fields to show in detail view (read-only display)
     fields_default_sort = ["description", "point", "elevation", "county", "state"]
 
-    # Fields excluded from create form (auto-populated or computed)
     exclude_fields_from_create = [
         "id",
         "created_at",
@@ -145,25 +130,23 @@ class LocationAdmin(ModelView):
         "created_by_name",
         "updated_by_id",
         "updated_by_name",
-        "nma_pk_location",  # Only populated during migration from AMPAPI
-        "nma_date_created",  # Only populated during migration
-        "nma_site_date",  # Only populated during migration
+        "nma_pk_location",
+        "nma_date_created",
+        "nma_site_date",
     ]
 
-    # Fields excluded from edit form
     exclude_fields_from_edit = [
         "id",
         "created_at",
         "created_by_id",
         "created_by_name",
-        "nma_pk_location",  # Migration-only, read-only
-        "nma_date_created",  # Migration-only, read-only
-        "nma_site_date",  # Migration-only, read-only
+        "nma_pk_location",
+        "nma_date_created",
+        "nma_site_date",
     ]
 
     # ========== Field Labels and Help Text ==========
 
-    # Field display customization (MS Access form labels)
     labels = {
         "id": "Location ID",
         "description": "Description",
@@ -183,7 +166,6 @@ class LocationAdmin(ModelView):
         "updated_by_name": "Updated By",
     }
 
-    # Field help text (tooltips - like Access field descriptions)
     help_texts = {
         "description": "Brief description of this location (e.g., 'Well near Albuquerque')",
         "elevation": "Elevation in meters. Vertical datum: NAVD88. Will be displayed in feet in reports.",
@@ -198,24 +180,12 @@ class LocationAdmin(ModelView):
     # ========== Permissions (RBAC) ==========
 
     def can_create(self, request: Request) -> bool:
-        """
-        Only admins can create new locations.
-
-        Returns:
-            bool: True if user has 'admin' role
-        """
         user = getattr(request.state, "user", None)
         if user is None:
             return False
         return "admin" in getattr(user, "roles", [])
 
     def can_edit(self, request: Request) -> bool:
-        """
-        Admins and editors can edit locations.
-
-        Returns:
-            bool: True if user has 'admin' or 'editor' role
-        """
         user = getattr(request.state, "user", None)
         if user is None:
             return False
@@ -223,59 +193,28 @@ class LocationAdmin(ModelView):
         return "admin" in roles or "editor" in roles
 
     def can_delete(self, request: Request) -> bool:
-        """
-        Only admins can delete locations.
-
-        Deletion is a high-impact operation that should be restricted.
-
-        Returns:
-            bool: True if user has 'admin' role
-        """
         user = getattr(request.state, "user", None)
         if user is None:
             return False
         return "admin" in getattr(user, "roles", [])
 
     def can_view_details(self, request: Request) -> bool:
-        """
-        All authenticated users can view location details.
-
-        Returns:
-            bool: True if user is authenticated
-        """
         user = getattr(request.state, "user", None)
         return user is not None
 
     # ========== Data Visibility (Release Status Filter) ==========
 
     async def get_list_query(self, request: Request):
-        """
-        Override list query to filter by release_status based on user role.
-
-        Access control:
-            - Admin/Editor: See all records (draft + published)
-            - Viewer: See only published records
-            - Anonymous: No access (redirected to login)
-
-        This replicates MS Access security where certain users could only see
-        specific records based on field values.
-
-        Returns:
-            SQLAlchemy select query with appropriate filters
-        """
         query = select(self.model)
 
         user = getattr(request.state, "user", None)
         if user is None:
-            # No access for anonymous users (should be redirected to login)
-            return query.where(self.model.id == -1)  # Return empty set
+            return query.where(self.model.id == -1)
 
         roles = getattr(user, "roles", [])
         if "admin" in roles or "editor" in roles:
-            # Admins and editors see all records
             return query
         else:
-            # Viewers only see published records
             return query.where(self.model.release_status == "published")
 
     # ========== Custom Actions (MS Access "Macros" Equivalent) ==========
@@ -288,27 +227,10 @@ class LocationAdmin(ModelView):
         submit_btn_class="btn btn-success",
     )
     async def publish_selected(self, request: Request, pks: list[int]) -> Response:
-        """
-        Bulk action to publish selected locations.
-
-        Similar to MS Access "Update Query" or VBA macro that changes field values
-        for multiple records at once.
-
-        This changes release_status from 'draft' to 'published' for selected locations.
-
-        Args:
-            request: Starlette request object
-            pks: List of primary keys (location IDs) to publish
-
-        Returns:
-            Response with success message
-        """
-        # Check permissions - only admins can publish
         user = getattr(request.state, "user", None)
         if "admin" not in getattr(user, "roles", []):
             return Response("Only admins can publish locations", status_code=403)
 
-        # Update records
         from db.engine import session_ctx
 
         with session_ctx() as session:
@@ -332,22 +254,10 @@ class LocationAdmin(ModelView):
         submit_btn_class="btn btn-warning",
     )
     async def unpublish_selected(self, request: Request, pks: list[int]) -> Response:
-        """
-        Bulk action to unpublish selected locations (set to draft).
-
-        Args:
-            request: Starlette request object
-            pks: List of primary keys (location IDs) to unpublish
-
-        Returns:
-            Response with success message
-        """
-        # Check permissions - only admins can unpublish
         user = getattr(request.state, "user", None)
         if "admin" not in getattr(user, "roles", []):
             return Response("Only admins can unpublish locations", status_code=403)
 
-        # Update records
         from db.engine import session_ctx
 
         with session_ctx() as session:
@@ -363,9 +273,3 @@ class LocationAdmin(ModelView):
             f"Successfully unpublished {updated_count} location(s) (set to draft)",
             status_code=200,
         )
-
-    # TODO: Future bulk actions
-    # - Export as GeoJSON
-    # - Export as Shapefile
-    # - Bulk coordinate conversion (UTM  WGS84)
-    # - Validate coordinates (check if in New Mexico)

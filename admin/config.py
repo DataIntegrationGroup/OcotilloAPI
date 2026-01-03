@@ -21,8 +21,21 @@ This module creates and configures the admin interface for NMSampleLocations.
 from starlette_admin.contrib.sqla import Admin
 
 from admin.auth import NMSampleLocationsAuthProvider
-from admin.views import LocationAdmin
+from admin.views import (
+    LocationAdmin,
+    ThingAdmin,
+    ObservationAdmin,
+    ContactAdmin,
+    SensorAdmin,
+    DeploymentAdmin,
+)
 from db.engine import engine
+from db.location import Location
+from db.thing import Thing
+from db.observation import Observation
+from db.contact import Contact
+from db.sensor import Sensor
+from db.deployment import Deployment
 
 
 def create_admin(app):
@@ -53,17 +66,25 @@ def create_admin(app):
     )
 
     # Register model views
-    # Start with Location (most fundamental model)
-    admin.add_view(LocationAdmin)
+    # Geography
+    admin.add_view(LocationAdmin(Location))
+
+    # Things (Wells, Springs, etc.)
+    admin.add_view(ThingAdmin(Thing))
+
+    # Observations (Water Levels)
+    admin.add_view(ObservationAdmin(Observation))
+
+    # Contacts (Owners)
+    admin.add_view(ContactAdmin(Contact))
+
+    # Equipment
+    admin.add_view(SensorAdmin(Sensor))
+    admin.add_view(DeploymentAdmin(Deployment))
 
     # Future: Add more views here as they are implemented
-    # admin.add_view(ThingAdmin)
     # admin.add_view(SampleAdmin)
-    # admin.add_view(ObservationAdmin)
-    # admin.add_view(ContactAdmin)
     # admin.add_view(GroupAdmin)
-    # admin.add_view(SensorAdmin)
-    # admin.add_view(DeploymentAdmin)
 
     # Mount admin to app
     admin.mount_to(app)
