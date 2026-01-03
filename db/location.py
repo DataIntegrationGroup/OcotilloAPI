@@ -43,7 +43,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True)
-    description: Mapped[str] = mapped_column
+    description: Mapped[str] = mapped_column()
     # name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=SRID_WGS84, spatial_index=True)
