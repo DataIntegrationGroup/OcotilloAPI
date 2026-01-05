@@ -212,7 +212,7 @@ def step_impl(context: Context):
     with session_ctx() as session:
         for row in rows:
             assert "well_name_point_id" in row
-            assert "measurement_date_time" in row
+            assert "water_level_date_time" in row
             obs = session.get(Observation, row["observation_id"])
             assert obs is not None, "Observation missing from database"
 

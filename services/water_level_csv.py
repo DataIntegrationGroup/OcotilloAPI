@@ -381,6 +381,7 @@ def _create_records(
                 ),
                 sample_id=sample.id,
                 observation_id=observation.id,
+                water_level_date_time=row.water_level_date_time.isoformat(),
                 groundwater_level_reason=row.level_status,
                 groundwater_level_accuracy=row.data_quality,
             )

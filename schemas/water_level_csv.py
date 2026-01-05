@@ -125,6 +125,7 @@ class WaterLevelCreatedRow(BaseModel):
     field_event_participant_3_id: int | None
     sample_id: int
     observation_id: int
+    water_level_date_time: str
     groundwater_level_reason: str
     groundwater_level_accuracy: str
 
