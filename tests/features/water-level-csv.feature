@@ -150,7 +150,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @lexicon_values @BDMS-TBD
   Scenario: Upload fails due to invalid lexicon values
-    Given my CSV file contains invalid lexicon values for "measuring_person", "sample_method", "level_status", or "data_quality"
+    Given my CSV file contains invalid lexicon values for "sample_method", "level_status", or "data_quality"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
