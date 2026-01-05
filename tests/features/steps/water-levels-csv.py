@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+from datetime import datetime
 import json
 import tempfile
 from pathlib import Path
@@ -23,25 +24,8 @@ from behave.runner import Context
 
 from db import Observation
 from db.engine import session_ctx
+from schemas.water_level_csv import WaterLevelCsvRow
 from services.water_level_csv import bulk_upload_water_levels
-
-REQUIRED_FIELDS: List[str] = [
-    "field_staff",
-    "well_name_point_id",
-    "field_event_date_time",
-    "measurement_date_time",
-    "sampler",
-    "sample_method",
-    "mp_height",
-    "level_status",
-    "depth_to_water_ft",
-    "data_quality",
-]
-OPTIONAL_FIELDS = ["water_level_notes"]
-VALID_SAMPLERS = ["Groundwater Team", "Consultant"]
-VALID_SAMPLE_METHODS = ["electric tape", "steel tape"]
-VALID_LEVEL_STATUSES = ["stable", "rising", "falling"]
-VALID_DATA_QUALITIES = ["approved", "provisional"]
 
 
 def _available_well_names(context: Context) -> list[str]:
@@ -50,21 +34,33 @@ def _available_well_names(context: Context) -> list[str]:
     return context.well_names
 
 
+def _available_field_staff(context: Context) -> list[str]:
+    if not hasattr(context, "contact_names"):
+        context.contact_names = [
+            contact.name for contact in context.objects["contacts"]
+        ]
+    return context.contact_names
+
+
 def _base_row(context: Context, index: int) -> Dict[str, str]:
     well_names = _available_well_names(context)
     well_name = well_names[(index - 1) % len(well_names)]
+
+    contact_names = _available_field_staff(context)
     measurement_day = 14 + index
     return {
-        "field_staff": "A Lopez" if index == 1 else "B Chen",
         "well_name_point_id": well_name,
-        "field_event_date_time": f"2025-02-{measurement_day:02d}T08:00:00-07:00",
-        "measurement_date_time": f"2025-02-{measurement_day:02d}T10:30:00-07:00",
-        "sampler": VALID_SAMPLERS[(index - 1) % len(VALID_SAMPLERS)],
-        "sample_method": VALID_SAMPLE_METHODS[(index - 1) % len(VALID_SAMPLE_METHODS)],
+        "field_event_date_time": f"2025-02-{measurement_day:02d}T08:00:00",
+        "field_staff": contact_names[(index - 1) % len(contact_names)],
+        "field_staff_2": contact_names[(index - 2) % len(contact_names)],
+        "field_staff_3": contact_names[(index - 3) % len(contact_names)],
+        "water_level_date_time": f"2025-02-{measurement_day:02d}T10:30:00",
+        "measuring_person": contact_names[(index - 1) % len(contact_names)],
+        "sample_method": "Steel-tape measurement",  # lexicon value
         "mp_height": "1.5" if index == 1 else "1.8",
-        "level_status": VALID_LEVEL_STATUSES[(index - 1) % len(VALID_LEVEL_STATUSES)],
-        "depth_to_water_ft": "45.2" if index == 1 else "47.0",
-        "data_quality": VALID_DATA_QUALITIES[(index - 1) % len(VALID_DATA_QUALITIES)],
+        "level_status": "Water level not affected",  # maps to groundwater_level_reason
+        "depth_to_water_ft": "9" if index == 1 else "8",
+        "data_quality": "Water level accurate to within two hundreths of a foot",  # maps to groundwater_level_accuracy
         "water_level_notes": "Initial measurement" if index == 1 else "Follow-up",
     }
 
@@ -101,7 +97,7 @@ def _set_rows(
     elif rows:
         context.csv_headers = list(rows[0].keys())
     else:
-        context.csv_headers = list(REQUIRED_FIELDS)
+        context.csv_headers = [field for field in WaterLevelCsvRow.model_fields.keys()]
     _write_csv_to_context(context)
     context.stdout_json = None
 
@@ -151,12 +147,16 @@ def step_impl(context: Context):
 
 
 @given(
-    '"measurement_date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")'
+    '"water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")'
 )
 def step_impl(context: Context):
     for row in context.csv_rows:
-        assert row["measurement_date_time"].startswith("2025-02")
-        assert "T" in row["measurement_date_time"]
+        assert row["water_level_date_time"].startswith("2025-02")
+        assert "T" in row["water_level_date_time"]
+        dt_naive = datetime.strptime(row["water_level_date_time"], "%Y-%m-%dT%H:%M:%S")
+        assert (
+            dt_naive.tzinfo is None
+        ), f"Expected timezone-naive datetime but got {row['water_level_date_time']}"
 
 
 @given("the CSV includes optional fields when available:")
