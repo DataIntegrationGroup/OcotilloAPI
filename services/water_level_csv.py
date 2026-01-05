@@ -63,7 +63,11 @@ def bulk_upload_water_levels(
     except FileNotFoundError:
         msg = f"File not found: {source_file}"
         payload = WaterLevelBulkUploadPayload(
-            summary=WaterLevelBulkUploadSummary(0, 0, 0),
+            summary=WaterLevelBulkUploadSummary(
+                total_rows_processed=0,
+                total_rows_imported=0,
+                total_validation_errors_or_warnings=0,
+            ),
             water_levels=[],
             validation_errors=[],
         )

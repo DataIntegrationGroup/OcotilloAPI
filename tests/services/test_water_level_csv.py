@@ -8,6 +8,10 @@ from db import (
     Sample,
     Observation,
 )
+from schemas.water_level_csv import (
+    WaterLevelBulkUploadSummary,
+    WaterLevelBulkUploadPayload,
+)
 from services.water_level_csv import bulk_upload_water_levels
 
 
@@ -143,3 +147,26 @@ def test_bulk_upload(
             session.delete(field_event_participant_2)
             session.delete(field_event)
             session.commit()
+
+
+def test_bulk_upload_file_not_found():
+    """
+    Test the bulk upload function with a non-existent file path.
+    """
+
+    results = bulk_upload_water_levels("non_existent_file.csv")
+
+    assert results.exit_code == 1
+    assert (
+        results.stdout
+        == '{"summary": {"total_rows_processed": 0, "total_rows_imported": 0, "total_validation_errors_or_warnings": 0}, "water_levels": [], "validation_errors": []}'
+    )
+    assert results.stderr == "File not found: non_existent_file.csv"
+    assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+    assert results.payload.summary == WaterLevelBulkUploadSummary(
+        total_rows_processed=0,
+        total_rows_imported=0,
+        total_validation_errors_or_warnings=0,
+    )
+    assert results.payload.water_levels == []
+    assert results.payload.validation_errors == []
