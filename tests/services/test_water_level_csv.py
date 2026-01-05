@@ -237,9 +237,22 @@ def test_bulk_upload_bad_dtw_bgs(water_level_bulk_upload_data, water_well_thing)
             results.stdout
             == f"{{\"summary\": {{\"total_rows_processed\": 1, \"total_rows_imported\": 0, \"total_validation_errors_or_warnings\": 1}}, \"water_levels\": [], \"validation_errors\": [\"Row 1: well_depth ({water_well_thing.well_depth} ft) must be greater than depth_to_water_ft ({bad_water_level_bulk_upload_data['depth_to_water_ft']} ft) minus mp_height ({bad_water_level_bulk_upload_data['mp_height']} ft)\"]}}"
         )
+        assert (
+            results.stderr
+            == f"Row 1: well_depth ({water_well_thing.well_depth} ft) must be greater than depth_to_water_ft ({bad_water_level_bulk_upload_data['depth_to_water_ft']} ft) minus mp_height ({bad_water_level_bulk_upload_data['mp_height']} ft)"
+        )
+        assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+        assert isinstance(results.payload.summary, WaterLevelBulkUploadSummary)
+        assert results.payload.summary.total_rows_imported == 0
+        assert results.payload.summary.total_rows_processed == 1
+        assert results.payload.summary.total_validation_errors_or_warnings == 1
+        assert results.payload.water_levels == []
+        assert results.payload.validation_errors == [
+            f"Row 1: well_depth ({water_well_thing.well_depth} ft) must be greater than depth_to_water_ft ({bad_water_level_bulk_upload_data['depth_to_water_ft']} ft) minus mp_height ({bad_water_level_bulk_upload_data['mp_height']} ft)"
+        ]
 
 
-def test_bulk_upload_bad_field_staff(water_level_bulk_upload_data, water_well_thing):
+def test_bulk_upload_bad_field_staff(water_level_bulk_upload_data):
     """
     Test the bulk upload function with a non-existent field staff name.
     """
