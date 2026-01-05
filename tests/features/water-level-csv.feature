@@ -158,3 +158,14 @@ Feature: Bulk upload water level entries from CSV via CLI
     Then the command exits with a non-zero exit code
     And stderr should contain validation errors identifying the invalid field and row
     And no water level entries are imported
+
+  @negative @validation @well_references @BDMS-TBD
+  Scenario: Upload fails when "measuring_person" does not match "field_staff," "field_staff_2," or "field_staff_3"
+    Given my CSV file contains a "measuring_person" value that does not match any of the provided "field_staff" values
+    When I run the CLI command:
+      """
+      oco water-levels bulk-upload --file ./water_levels.csv
+      """
+    Then the command exits with a non-zero exit code
+    And stderr should contain a validation error for the "measuring_person" field
+    And no water level entries are imported
