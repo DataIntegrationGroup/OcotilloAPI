@@ -26,7 +26,11 @@ jobs:
 
         - name: Generate requirements.txt
           run: |
-            uv export -o requirements.txt
+            uv export \
+              --format requirements-txt \
+              --no-emit-project \
+              --no-dev \
+              --output-file requirements.txt
 
         - name: Authenticate to Google Cloud
           uses: 'google-github-actions/auth@v2'

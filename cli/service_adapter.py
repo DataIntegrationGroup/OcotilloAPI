@@ -39,7 +39,6 @@ def water_levels_csv(source_file: Path | str, *, pretty_json: bool = False):
         source_file = Path(source_file)
 
     result = bulk_upload_water_levels(source_file, pretty_json=pretty_json)
-    print(result.stdout)
     if result.stderr:
         print(result.stderr, file=sys.stderr)
     return result.exit_code

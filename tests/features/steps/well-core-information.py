@@ -1,7 +1,7 @@
 from behave import then
 from geoalchemy2.shape import to_shape
 
-from constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from services.util import (
     transform_srid,
     convert_m_to_ft,

@@ -7,7 +7,7 @@ import pyproj
 from shapely.ops import transform
 from sqlalchemy.orm import DeclarativeBase
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
@@ -46,13 +46,6 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
-def convert_m_to_ft(meters: float | None) -> float | None:
-    """Convert a length from meters to feet."""
-    if meters is None:
-        return None
-    return round(meters * METERS_TO_FEET, 6)
-
-
 def convert_dt_tz_naive_to_tz_aware(
     dt_naive: datetime, iana_timezone: str = "America/Denver"
 ):
@@ -70,18 +63,18 @@ def convert_dt_tz_naive_to_tz_aware(
     return dt_aware
 
 
-def convert_ft_to_m(feet: float | None) -> float | None:
+def convert_ft_to_m(feet: float | None, ndigits: int = 6) -> float | None:
     """Convert a length from feet to meters."""
     if feet is None:
         return None
-    return round(feet / METERS_TO_FEET, 6)
+    return round(feet / METERS_TO_FEET, ndigits)
 
 
-def convert_m_to_ft(meters: float | None) -> float | None:
+def convert_m_to_ft(meters: float | None, ndigits: int = 6) -> float | None:
     """Convert a length from meters to feet."""
     if meters is None:
         return None
-    return round(meters * METERS_TO_FEET, 6)
+    return round(meters * METERS_TO_FEET, ndigits)
 
 
 def get_tiger_data(

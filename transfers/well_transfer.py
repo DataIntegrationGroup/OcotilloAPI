@@ -343,6 +343,8 @@ class WellTransferer(Transferer):
                     "well_depth_source",
                     "well_completion_date_source",
                     "well_construction_method_source",
+                    "is_suitable_for_datalogger",
+                    "is_open",
                 ]
             )
             well_data["thing_type"] = "water well"

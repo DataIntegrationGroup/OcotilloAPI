@@ -133,11 +133,6 @@ class Thing(
         "This indicates the target formation for the well, not the full stratigraphic column. "
         "For detailed depth-interval stratigraphy, see formation_associations.",
     )
-    # TODO: should this be required for every well in the database? AMMP review
-    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
-        nullable=True,
-        comment="Indicates if the well is suitable for datalogger installation.",
-    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(

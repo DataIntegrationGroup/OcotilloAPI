@@ -35,7 +35,7 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
 )
 
-from constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
+from core.constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from core.dependencies import session_dependency, amp_editor_dependency
 from db import (
     Group,

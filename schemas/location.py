@@ -20,7 +20,7 @@ from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
 
-from constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse, CreateNote, UpdateNote
