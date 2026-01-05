@@ -213,27 +213,30 @@ def test_bulk_upload_bad_dtw_bgs(water_level_bulk_upload_data, water_well_thing)
     """
     Test the bulk upload function with a non-numeric depth to water below ground surface.
     """
-    pass
-    # # Update the depth_to_water_ft to a non-numeric value
-    # water_level_bulk_upload_data["depth_to_water_ft"] = "not_a_number"
+    bad_water_level_bulk_upload_data = water_level_bulk_upload_data.copy()
+    bad_water_level_bulk_upload_data["depth_to_water_ft"] = (
+        f"{water_well_thing.well_depth+200}"
+    )
 
-    # # write to a CSV file in memory then delete it after processing
-    # csv_headers = list(water_level_bulk_upload_data.keys())
-    # csv_values = list(water_level_bulk_upload_data.values())
+    # write to a CSV file in memory then delete it after processing
+    csv_headers = list(bad_water_level_bulk_upload_data.keys())
+    csv_values = list(bad_water_level_bulk_upload_data.values())
 
-    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+    csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
 
-    # with tempfile.NamedTemporaryFile(
-    #     mode="w+", encoding="utf-8", delete_on_close=True
-    # ) as temp_csv:
-    #     temp_csv.write(csv_content)
-    #     temp_csv.flush()
+    with tempfile.NamedTemporaryFile(
+        mode="w+", encoding="utf-8", delete_on_close=True
+    ) as temp_csv:
+        temp_csv.write(csv_content)
+        temp_csv.flush()
 
-    #     results = bulk_upload_water_levels(temp_csv.name)
+        results = bulk_upload_water_levels(temp_csv.name)
 
-    #     assert results.exit_code == 1
-    #     assert "Invalid depth_to_water_ft value: not_a_number" in results.stderr
-    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+        assert results.exit_code == 1
+        assert (
+            results.stdout
+            == f"{{\"summary\": {{\"total_rows_processed\": 1, \"total_rows_imported\": 0, \"total_validation_errors_or_warnings\": 1}}, \"water_levels\": [], \"validation_errors\": [\"Row 1: well_depth ({water_well_thing.well_depth} ft) must be greater than depth_to_water_ft ({bad_water_level_bulk_upload_data['depth_to_water_ft']} ft) minus mp_height ({bad_water_level_bulk_upload_data['mp_height']} ft)\"]}}"
+        )
 
 
 def test_bulk_upload_bad_field_staff(water_level_bulk_upload_data, water_well_thing):
