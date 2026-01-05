@@ -192,7 +192,8 @@ def _validate_rows(
                 location = ".".join(str(part) for part in err["loc"])
                 message = err["msg"]
                 errors.append(f"Row {idx}: {location} - {message}")
-            error_in_row = True
+            # the model needs valid data to be serialized and processed/validated against the database, so we skip to the next row if there are validation errors from Pydantic
+            continue
 
         # Verify that the well exists in the database
         well_name = model.well_name_point_id
