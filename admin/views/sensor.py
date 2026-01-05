@@ -260,9 +260,7 @@ class SensorAdmin(ModelView):
 
         with session_ctx() as session:
             result = session.execute(
-                update(Sensor)
-                .where(Sensor.id.in_(pks))
-                .values(release_status="draft")
+                update(Sensor).where(Sensor.id.in_(pks)).values(release_status="draft")
             )
             session.commit()
             updated_count = result.rowcount

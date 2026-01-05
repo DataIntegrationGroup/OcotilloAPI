@@ -70,7 +70,10 @@ class DeploymentAdmin(ModelView):
         "created_at",
     ]
 
-    column_default_sort = ("installation_date", True)  # True = descending (newest first)
+    column_default_sort = (
+        "installation_date",
+        True,
+    )  # True = descending (newest first)
 
     search_fields = [
         "hanging_point_description",

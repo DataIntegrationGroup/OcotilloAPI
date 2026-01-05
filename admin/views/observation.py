@@ -68,7 +68,10 @@ class ObservationAdmin(ModelView):
         "created_at",
     ]
 
-    column_default_sort = ("observation_datetime", True)  # True = descending (newest first)
+    column_default_sort = (
+        "observation_datetime",
+        True,
+    )  # True = descending (newest first)
 
     search_fields = [
         "groundwater_level_reason",

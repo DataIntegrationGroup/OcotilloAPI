@@ -142,7 +142,9 @@ def transfer_all(metrics, limit=100):
             name = futures[future]
             try:
                 result_name, result, elapsed = future.result()
-                logger.info(f"Foundational transfer {result_name} completed in {elapsed:.2f}s")
+                logger.info(
+                    f"Foundational transfer {result_name} completed in {elapsed:.2f}s"
+                )
             except Exception as e:
                 logger.critical(f"Foundational transfer {name} failed: {e}")
                 raise  # Fail fast - foundational transfers must succeed
@@ -172,25 +174,49 @@ def transfer_all(metrics, limit=100):
 
     if use_parallel:
         _transfer_parallel(
-            metrics, flags, limit,
-            transfer_screens, transfer_sensors, transfer_contacts,
-            transfer_waterlevels, transfer_pressure, transfer_acoustic,
-            transfer_link_ids, transfer_groups, transfer_assets
+            metrics,
+            flags,
+            limit,
+            transfer_screens,
+            transfer_sensors,
+            transfer_contacts,
+            transfer_waterlevels,
+            transfer_pressure,
+            transfer_acoustic,
+            transfer_link_ids,
+            transfer_groups,
+            transfer_assets,
         )
     else:
         _transfer_sequential(
-            metrics, flags, limit,
-            transfer_screens, transfer_sensors, transfer_contacts,
-            transfer_waterlevels, transfer_pressure, transfer_acoustic,
-            transfer_link_ids, transfer_groups, transfer_assets
+            metrics,
+            flags,
+            limit,
+            transfer_screens,
+            transfer_sensors,
+            transfer_contacts,
+            transfer_waterlevels,
+            transfer_pressure,
+            transfer_acoustic,
+            transfer_link_ids,
+            transfer_groups,
+            transfer_assets,
         )
 
 
 def _transfer_parallel(
-    metrics, flags, limit,
-    transfer_screens, transfer_sensors, transfer_contacts,
-    transfer_waterlevels, transfer_pressure, transfer_acoustic,
-    transfer_link_ids, transfer_groups, transfer_assets
+    metrics,
+    flags,
+    limit,
+    transfer_screens,
+    transfer_sensors,
+    transfer_contacts,
+    transfer_waterlevels,
+    transfer_pressure,
+    transfer_acoustic,
+    transfer_link_ids,
+    transfer_groups,
+    transfer_assets,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -208,7 +234,9 @@ def _transfer_parallel(
         parallel_tasks_1.append(("WaterLevels", WaterLevelTransferer, flags))
     if transfer_link_ids:
         parallel_tasks_1.append(("LinkIdsWellData", LinkIdsWellDataTransferer, flags))
-        parallel_tasks_1.append(("LinkIdsLocation", LinkIdsLocationDataTransferer, flags))
+        parallel_tasks_1.append(
+            ("LinkIdsLocation", LinkIdsLocationDataTransferer, flags)
+        )
     if transfer_groups:
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
     if transfer_assets:
@@ -223,12 +251,17 @@ def _transfer_parallel(
 
         # Submit class-based transfers
         for name, klass, task_flags in parallel_tasks_1:
-            future = executor.submit(_execute_transfer_with_timing, name, klass, task_flags)
+            future = executor.submit(
+                _execute_transfer_with_timing, name, klass, task_flags
+            )
             futures[future] = name
 
         # Submit session-based transfers
         future = executor.submit(
-            _execute_session_transfer_with_timing, "Stratigraphy", transfer_stratigraphy, limit
+            _execute_session_transfer_with_timing,
+            "Stratigraphy",
+            transfer_stratigraphy,
+            limit,
         )
         futures[future] = "Stratigraphy"
 
@@ -279,14 +312,20 @@ def _transfer_parallel(
 
         parallel_tasks_2 = []
         if transfer_pressure:
-            parallel_tasks_2.append(("Pressure", WaterLevelsContinuousPressureTransferer, flags))
+            parallel_tasks_2.append(
+                ("Pressure", WaterLevelsContinuousPressureTransferer, flags)
+            )
         if transfer_acoustic:
-            parallel_tasks_2.append(("Acoustic", WaterLevelsContinuousAcousticTransferer, flags))
+            parallel_tasks_2.append(
+                ("Acoustic", WaterLevelsContinuousAcousticTransferer, flags)
+            )
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {}
             for name, klass, task_flags in parallel_tasks_2:
-                future = executor.submit(_execute_transfer_with_timing, name, klass, task_flags)
+                future = executor.submit(
+                    _execute_transfer_with_timing, name, klass, task_flags
+                )
                 futures[future] = name
 
             for future in as_completed(futures):
@@ -294,7 +333,9 @@ def _transfer_parallel(
                 try:
                     result_name, result, elapsed = future.result()
                     results_map[result_name] = result
-                    logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
+                    logger.info(
+                        f"Parallel task {result_name} completed in {elapsed:.2f}s"
+                    )
                 except Exception as e:
                     logger.critical(f"Parallel task {name} failed: {e}")
 
@@ -305,10 +346,18 @@ def _transfer_parallel(
 
 
 def _transfer_sequential(
-    metrics, flags, limit,
-    transfer_screens, transfer_sensors, transfer_contacts,
-    transfer_waterlevels, transfer_pressure, transfer_acoustic,
-    transfer_link_ids, transfer_groups, transfer_assets
+    metrics,
+    flags,
+    limit,
+    transfer_screens,
+    transfer_sensors,
+    transfer_contacts,
+    transfer_waterlevels,
+    transfer_pressure,
+    transfer_acoustic,
+    transfer_link_ids,
+    transfer_groups,
+    transfer_assets,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:

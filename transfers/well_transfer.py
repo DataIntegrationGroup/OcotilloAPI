@@ -862,7 +862,7 @@ class WellTransferer(Transferer):
 
         # Calculate batch size
         batch_size = max(100, n // num_workers)
-        batches = [df.iloc[i:i + batch_size] for i in range(0, n, batch_size)]
+        batches = [df.iloc[i : i + batch_size] for i in range(0, n, batch_size)]
 
         logger.info(
             f"Starting parallel transfer of {n} wells with {num_workers} workers, "
@@ -897,17 +897,24 @@ class WellTransferer(Transferer):
                         try:
                             # Process single well with all dependent objects
                             self._step_parallel_complete(
-                                session, batch_df, i, row,
-                                local_aquifers, local_formations, batch_errors,
-                                aquifers_lock
+                                session,
+                                batch_df,
+                                i,
+                                row,
+                                local_aquifers,
+                                local_formations,
+                                batch_errors,
+                                aquifers_lock,
                             )
                         except Exception as e:
-                            batch_errors.append({
-                                "pointid": getattr(row, "PointID", "Unknown"),
-                                "error": str(e),
-                                "table": "WellData",
-                                "field": "Unknown"
-                            })
+                            batch_errors.append(
+                                {
+                                    "pointid": getattr(row, "PointID", "Unknown"),
+                                    "error": str(e),
+                                    "table": "WellData",
+                                    "field": "Unknown",
+                                }
+                            )
 
                         # Commit periodically
                         if i > 0 and i % 100 == 0:
@@ -921,7 +928,9 @@ class WellTransferer(Transferer):
                                     for f in session.query(GeologicFormation).all()
                                 }
                             except Exception as e:
-                                logger.critical(f"Batch {batch_idx}: Error committing: {e}")
+                                logger.critical(
+                                    f"Batch {batch_idx}: Error committing: {e}"
+                                )
                                 session.rollback()
 
                     # Final commit for this batch
@@ -929,12 +938,14 @@ class WellTransferer(Transferer):
 
             except Exception as e:
                 logger.critical(f"Batch {batch_idx} failed: {e}")
-                batch_errors.append({
-                    "pointid": "Batch",
-                    "error": str(e),
-                    "table": "WellData",
-                    "field": "BatchProcessing"
-                })
+                batch_errors.append(
+                    {
+                        "pointid": "Batch",
+                        "error": str(e),
+                        "table": "WellData",
+                        "field": "BatchProcessing",
+                    }
+                )
 
             elapsed = time.time() - batch_start
             logger.info(
@@ -960,27 +971,33 @@ class WellTransferer(Transferer):
                 except Exception as e:
                     logger.critical(f"Batch {batch_idx} raised exception: {e}")
                     with errors_lock:
-                        all_errors.append({
-                            "pointid": f"Batch-{batch_idx}",
-                            "error": str(e),
-                            "table": "WellData",
-                            "field": "ThreadException"
-                        })
+                        all_errors.append(
+                            {
+                                "pointid": f"Batch-{batch_idx}",
+                                "error": str(e),
+                                "table": "WellData",
+                                "field": "ThreadException",
+                            }
+                        )
 
         # Store merged results
         self.errors = all_errors
 
-        logger.info(
-            f"Parallel transfer complete: {n} wells, {len(all_errors)} errors"
-        )
+        logger.info(f"Parallel transfer complete: {n} wells, {len(all_errors)} errors")
 
         # Dump cached elevations (minimal after-processing)
         dump_cached_elevations(self._cached_elevations)
 
     def _step_parallel(
-        self, session: Session, df: pd.DataFrame, i: int, row,
-        local_aquifers: list, batch_locations: dict, batch_errors: list,
-        aquifers_lock: threading.Lock
+        self,
+        session: Session,
+        df: pd.DataFrame,
+        i: int,
+        row,
+        local_aquifers: list,
+        batch_locations: dict,
+        batch_errors: list,
+        aquifers_lock: threading.Lock,
     ):
         """
         Process a single well row in parallel mode.
@@ -999,8 +1016,10 @@ class WellTransferer(Transferer):
             wcm = None
             if notna(row.ConstructionMethod):
                 wcm = self._get_lexicon_value_safe(
-                    row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown",
-                    batch_errors
+                    row,
+                    f"LU_ConstructionMethod:{row.ConstructionMethod}",
+                    "Unknown",
+                    batch_errors,
                 )
 
             is_suitable_for_datalogger = False
@@ -1010,7 +1029,9 @@ class WellTransferer(Transferer):
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
-                mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+                mphs = self._measuring_point_estimator.estimate_measuring_point_height(
+                    row
+                )
                 if mphs:
                     try:
                         mpheight = mphs[0][0]
@@ -1045,12 +1066,14 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": f"Validation Error: {e.errors()}",
-                "table": "WellData",
-                "field": "UnknownField"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": f"Validation Error: {e.errors()}",
+                    "table": "WellData",
+                    "field": "UnknownField",
+                }
+            )
             return
 
         well = None
@@ -1088,12 +1111,14 @@ class WellTransferer(Transferer):
         except Exception as e:
             if well is not None:
                 session.expunge(well)
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": str(e),
-                "table": "WellData",
-                "field": "UnknownField"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": str(e),
+                    "table": "WellData",
+                    "field": "UnknownField",
+                }
+            )
             return
 
         try:
@@ -1103,12 +1128,14 @@ class WellTransferer(Transferer):
             session.add(location)
             batch_locations[row.PointID] = (elevation_method, notes)
         except Exception as e:
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": str(e),
-                "table": "WellData",
-                "field": "Location"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": str(e),
+                    "table": "WellData",
+                    "field": "Location",
+                }
+            )
             return
 
         assoc = LocationThingAssociation(
@@ -1127,9 +1154,15 @@ class WellTransferer(Transferer):
                 logger.warning(f"Error adding aquifer for {well.name}: {e}")
 
     def _step_parallel_complete(
-        self, session: Session, df: pd.DataFrame, i: int, row,
-        local_aquifers: list, local_formations: dict, batch_errors: list,
-        aquifers_lock: threading.Lock
+        self,
+        session: Session,
+        df: pd.DataFrame,
+        i: int,
+        row,
+        local_aquifers: list,
+        local_formations: dict,
+        batch_errors: list,
+        aquifers_lock: threading.Lock,
     ):
         """
         Process a single well with ALL dependent objects in one pass.
@@ -1148,8 +1181,10 @@ class WellTransferer(Transferer):
             wcm = None
             if notna(row.ConstructionMethod):
                 wcm = self._get_lexicon_value_safe(
-                    row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown",
-                    batch_errors
+                    row,
+                    f"LU_ConstructionMethod:{row.ConstructionMethod}",
+                    "Unknown",
+                    batch_errors,
                 )
 
             is_suitable_for_datalogger = False
@@ -1159,7 +1194,9 @@ class WellTransferer(Transferer):
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
-                mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+                mphs = self._measuring_point_estimator.estimate_measuring_point_height(
+                    row
+                )
                 if mphs:
                     try:
                         mpheight = mphs[0][0]
@@ -1194,12 +1231,14 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": f"Validation Error: {e.errors()}",
-                "table": "WellData",
-                "field": "UnknownField"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": f"Validation Error: {e.errors()}",
+                    "table": "WellData",
+                    "field": "UnknownField",
+                }
+            )
             return
 
         well = None
@@ -1237,12 +1276,14 @@ class WellTransferer(Transferer):
         except Exception as e:
             if well is not None:
                 session.expunge(well)
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": str(e),
-                "table": "WellData",
-                "field": "UnknownField"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": str(e),
+                    "table": "WellData",
+                    "field": "UnknownField",
+                }
+            )
             return
 
         try:
@@ -1251,12 +1292,14 @@ class WellTransferer(Transferer):
             )
             session.add(location)
         except Exception as e:
-            batch_errors.append({
-                "pointid": row.PointID,
-                "error": str(e),
-                "table": "WellData",
-                "field": "Location"
-            })
+            batch_errors.append(
+                {
+                    "pointid": row.PointID,
+                    "error": str(e),
+                    "table": "WellData",
+                    "field": "Location",
+                }
+            )
             return
 
         assoc = LocationThingAssociation(
@@ -1281,19 +1324,23 @@ class WellTransferer(Transferer):
                 logger.warning(f"Error adding aquifer for {well.name}: {e}")
 
         # Formation zone
-        formation_code = row.FormationZone if hasattr(row, 'FormationZone') else None
+        formation_code = row.FormationZone if hasattr(row, "FormationZone") else None
         if formation_code:
             formation_code = formation_code.strip() if formation_code else None
             if formation_code:
                 if formation_code in local_formations:
-                    well.formation_completion_code = local_formations[formation_code].formation_code
+                    well.formation_completion_code = local_formations[
+                        formation_code
+                    ].formation_code
                 else:
-                    batch_errors.append({
-                        "pointid": row.PointID,
-                        "error": f"Unknown formation: {formation_code}",
-                        "table": "WellData",
-                        "field": "FormationZone"
-                    })
+                    batch_errors.append(
+                        {
+                            "pointid": row.PointID,
+                            "error": f"Unknown formation: {formation_code}",
+                            "table": "WellData",
+                            "field": "FormationZone",
+                        }
+                    )
 
         # Well notes
         if notna(row.Notes):
@@ -1313,14 +1360,31 @@ class WellTransferer(Transferer):
                 session.add(location_note)
 
         # Data provenances
-        data_provenances = make_location_data_provenance(row, location, elevation_method)
+        data_provenances = make_location_data_provenance(
+            row, location, elevation_method
+        )
         for dp in data_provenances:
             session.add(dp)
 
         # Well data provenances
-        cs = ("CompletionSource", {"field_name": "well_completion_date", "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}"})
-        ds = ("DataSource", {"field_name": "well_construction_method", "origin_source": row.DataSource})
-        des = ("DepthSource", {"field_name": "well_depth", "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}"})
+        cs = (
+            "CompletionSource",
+            {
+                "field_name": "well_completion_date",
+                "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
+            },
+        )
+        ds = (
+            "DataSource",
+            {"field_name": "well_construction_method", "origin_source": row.DataSource},
+        )
+        des = (
+            "DepthSource",
+            {
+                "field_name": "well_depth",
+                "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
+            },
+        )
 
         for row_field, kw in (cs, ds, des):
             if notna(row[row_field]):
@@ -1349,7 +1413,11 @@ class WellTransferer(Transferer):
         target_id = well.id
         target_table = "thing"
         if notna(row.MonitoringStatus):
-            if "X" in row.MonitoringStatus or "I" in row.MonitoringStatus or "C" in row.MonitoringStatus:
+            if (
+                "X" in row.MonitoringStatus
+                or "I" in row.MonitoringStatus
+                or "C" in row.MonitoringStatus
+            ):
                 status_value = "Not currently monitored"
             else:
                 status_value = "Currently monitored"
@@ -1388,29 +1456,31 @@ class WellTransferer(Transferer):
                 )
                 session.add(status_history)
             except KeyError:
-                batch_errors.append({
-                    "pointid": row.PointID,
-                    "error": f"Unknown lexicon value: LU_Status:{row.Status}",
-                    "table": "WellData",
-                    "field": "Status"
-                })
+                batch_errors.append(
+                    {
+                        "pointid": row.PointID,
+                        "error": f"Unknown lexicon value: LU_Status:{row.Status}",
+                        "table": "WellData",
+                        "field": "Status",
+                    }
+                )
 
     def _get_lexicon_value_safe(self, row, value, default, errors_list):
         """Thread-safe version of _get_lexicon_value."""
         try:
             return lexicon_mapper.map_value(value)
         except KeyError:
-            errors_list.append({
-                "pointid": row.PointID,
-                "error": f"Unknown lexicon value: {value}",
-                "table": "WellData",
-                "field": "Unknown"
-            })
+            errors_list.append(
+                {
+                    "pointid": row.PointID,
+                    "error": f"Unknown lexicon value: {value}",
+                    "table": "WellData",
+                    "field": "Unknown",
+                }
+            )
             return default
 
-    def _add_aquifers_parallel(
-        self, session, row, well, local_aquifers, aquifers_lock
-    ):
+    def _add_aquifers_parallel(self, session, row, well, local_aquifers, aquifers_lock):
         """Thread-safe version of _add_aquifers."""
         aquifer_codes = _extract_aquifer_type_codes(row.AquiferType)
         if not aquifer_codes:
@@ -1478,7 +1548,9 @@ class WellTransferer(Transferer):
                     # Update local cache under lock
                     with aquifers_lock:
                         # Check again to avoid duplicates
-                        existing = next((a for a in local_aquifers if a.name == aquifer_name), None)
+                        existing = next(
+                            (a for a in local_aquifers if a.name == aquifer_name), None
+                        )
                         if not existing:
                             local_aquifers.append(aquifer)
                 except Exception as e:
