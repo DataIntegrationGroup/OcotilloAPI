@@ -173,6 +173,9 @@ def _validate_rows(
         # Normalize whitespace in all fields
         normalized_row = {k: (v or "").strip() for k, v in raw_row.items()}
 
+        # allow all errors for a row to be logged at once instead of just the first one encountered
+        error_in_row = False
+
         """
         Developer's note
 
@@ -189,7 +192,7 @@ def _validate_rows(
                 location = ".".join(str(part) for part in err["loc"])
                 message = err["msg"]
                 errors.append(f"Row {idx}: {location} - {message}")
-            continue
+            error_in_row = True
 
         # Verify that the well exists in the database
         well_name = model.well_name_point_id
@@ -199,15 +202,16 @@ def _validate_rows(
             well = session.scalars(sql).one_or_none()
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
-                continue
-            wells_by_name_cache[well_name] = well
+                error_in_row = True
+            else:
+                wells_by_name_cache[well_name] = well
 
         # verify that the well depth is greater than the water level depth bgs
-        if well.well_depth <= model.depth_to_water_ft - model.mp_height:
+        if well and well.well_depth <= model.depth_to_water_ft - model.mp_height:
             errors.append(
                 f"Row {idx}: well_depth ({well.well_depth} ft) must be greater than depth_to_water_ft ({model.depth_to_water_ft} ft) minus mp_height ({model.mp_height} ft)"
             )
-            continue
+            error_in_row = True
 
         # Verify that the field staff are in the database
         """
@@ -222,8 +226,9 @@ def _validate_rows(
             field_staff_contact = session.scalars(sql).one_or_none()
             if field_staff_contact is None:
                 errors.append(f"Row {idx}: Unknown field_staff '{field_staff_name}'")
-                continue
-            contacts_by_name_cache[field_staff_name] = field_staff_contact
+                error_in_row = True
+            else:
+                contacts_by_name_cache[field_staff_name] = field_staff_contact
 
         if model.field_staff_2:
             field_staff_2_name = model.field_staff_2
@@ -235,8 +240,9 @@ def _validate_rows(
                     errors.append(
                         f"Row {idx}: Unknown field_staff_2 '{field_staff_2_name}'"
                     )
-                    continue
-                contacts_by_name_cache[field_staff_2_name] = field_staff_2_contact
+                    error_in_row = True
+                else:
+                    contacts_by_name_cache[field_staff_2_name] = field_staff_2_contact
         else:
             field_staff_2_contact = None
 
@@ -250,10 +256,14 @@ def _validate_rows(
                     errors.append(
                         f"Row {idx}: Unknown field_staff_3 '{field_staff_3_name}'"
                     )
-                    continue
-                contacts_by_name_cache[field_staff_3_name] = field_staff_3_contact
+                    error_in_row = True
+                else:
+                    contacts_by_name_cache[field_staff_3_name] = field_staff_3_contact
         else:
             field_staff_3_contact = None
+
+        if error_in_row:
+            continue
 
         # The Pydantic schema ensures that measuring_person is one of the field staff
         if model.measuring_person == model.field_staff:
