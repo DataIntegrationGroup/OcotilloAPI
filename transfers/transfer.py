@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 
@@ -56,6 +58,60 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
+def _execute_transfer(klass, flags: dict = None):
+    """Execute a single transfer class. Thread-safe since each creates its own session."""
+    pointids = None
+    if os.getenv("TRANSFER_TEST_POINTIDS"):
+        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+
+    transferer = klass(flags=flags, pointids=pointids)
+    transferer.transfer()
+    return transferer.input_df, transferer.cleaned_df, transferer.errors
+
+
+def _execute_transfer_with_timing(name: str, klass, flags: dict = None):
+    """Execute transfer and return timing info."""
+    start = time.time()
+    logger.info(f"Starting parallel transfer: {name}")
+    result = _execute_transfer(klass, flags)
+    elapsed = time.time() - start
+    logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
+    return name, result, elapsed
+
+
+def _execute_session_transfer_with_timing(name: str, transfer_func, limit: int):
+    """Execute a session-based transfer function and return timing info."""
+    start = time.time()
+    logger.info(f"Starting parallel transfer: {name}")
+    with session_ctx() as session:
+        result = transfer_func(session, limit=limit)
+    elapsed = time.time() - start
+    logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
+    return name, result, elapsed
+
+
+def _execute_permissions_with_timing(name: str):
+    """Execute permissions transfer and return timing info."""
+    start = time.time()
+    logger.info(f"Starting parallel transfer: {name}")
+    with session_ctx() as session:
+        transfer_permissions(session)
+    elapsed = time.time() - start
+    logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
+    return name, None, elapsed
+
+
+def _execute_foundational_transfer_with_timing(name: str, transfer_func, limit: int):
+    """Execute a foundational transfer (aquifer systems, formations) with its own session."""
+    start = time.time()
+    logger.info(f"Starting parallel foundational transfer: {name}")
+    with session_ctx() as session:
+        result = transfer_func(session, limit=limit)
+    elapsed = time.time() - start
+    logger.info(f"Completed parallel foundational transfer: {name} in {elapsed:.2f}s")
+    return name, result, elapsed
+
+
 @timeit
 def transfer_all(metrics, limit=100):
     message("STARTING TRANSFER", new_line_at_top=False)
@@ -63,16 +119,46 @@ def transfer_all(metrics, limit=100):
         logger.info("Erase and rebuilding database")
         erase_and_rebuild_db()
 
-    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}  # not currently used
+    flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
 
-    with session_ctx() as session:
-        transfer_aquifer_systems(session, limit=limit)
-        transfer_geologic_formations(session, limit=limit)
+    # =========================================================================
+    # PHASE 1: Foundation (Parallel - these are independent of each other)
+    # =========================================================================
+    message("PHASE 1: FOUNDATIONAL TRANSFERS (PARALLEL)")
+    foundational_tasks = [
+        ("AquiferSystems", transfer_aquifer_systems),
+        ("GeologicFormations", transfer_geologic_formations),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(
+                _execute_foundational_transfer_with_timing, name, func, limit
+            ): name
+            for name, func in foundational_tasks
+        }
+
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result_name, result, elapsed = future.result()
+                logger.info(f"Foundational transfer {result_name} completed in {elapsed:.2f}s")
+            except Exception as e:
+                logger.critical(f"Foundational transfer {name} failed: {e}")
+                raise  # Fail fast - foundational transfers must succeed
 
     message("TRANSFERRING WELLS")
-    results = _execute_transfer(WellTransferer, flags=flags)
+    use_parallel_wells = get_bool_env("TRANSFER_PARALLEL_WELLS", False)
+    if use_parallel_wells:
+        logger.info("Using PARALLEL wells transfer")
+        transferer = WellTransferer(flags=flags)
+        transferer.transfer_parallel()
+        results = (transferer.input_df, transferer.cleaned_df, transferer.errors)
+    else:
+        results = _execute_transfer(WellTransferer, flags=flags)
     metrics.well_metrics(*results)
 
+    # Get transfer flags
     transfer_screens = get_bool_env("TRANSFER_WELL_SCREENS", True)
     transfer_sensors = get_bool_env("TRANSFER_SENSORS", True)
     transfer_contacts = get_bool_env("TRANSFER_CONTACTS", True)
@@ -82,7 +168,149 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", True)
+    use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
+    if use_parallel:
+        _transfer_parallel(
+            metrics, flags, limit,
+            transfer_screens, transfer_sensors, transfer_contacts,
+            transfer_waterlevels, transfer_pressure, transfer_acoustic,
+            transfer_link_ids, transfer_groups, transfer_assets
+        )
+    else:
+        _transfer_sequential(
+            metrics, flags, limit,
+            transfer_screens, transfer_sensors, transfer_contacts,
+            transfer_waterlevels, transfer_pressure, transfer_acoustic,
+            transfer_link_ids, transfer_groups, transfer_assets
+        )
+
+
+def _transfer_parallel(
+    metrics, flags, limit,
+    transfer_screens, transfer_sensors, transfer_contacts,
+    transfer_waterlevels, transfer_pressure, transfer_acoustic,
+    transfer_link_ids, transfer_groups, transfer_assets
+):
+    """Execute transfers in parallel where possible."""
+    message("PARALLEL TRANSFER GROUP 1")
+
+    # =========================================================================
+    # PHASE 2: Parallel Group 1 (Independent transfers after wells)
+    # =========================================================================
+    parallel_tasks_1 = []
+
+    if transfer_screens:
+        parallel_tasks_1.append(("WellScreens", WellScreenTransferer, flags))
+    if transfer_contacts:
+        parallel_tasks_1.append(("Contacts", ContactTransfer, flags))
+    if transfer_waterlevels:
+        parallel_tasks_1.append(("WaterLevels", WaterLevelTransferer, flags))
+    if transfer_link_ids:
+        parallel_tasks_1.append(("LinkIdsWellData", LinkIdsWellDataTransferer, flags))
+        parallel_tasks_1.append(("LinkIdsLocation", LinkIdsLocationDataTransferer, flags))
+    if transfer_groups:
+        parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
+    if transfer_assets:
+        parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+
+    # Track results for metrics
+    results_map = {}
+
+    # Execute parallel group 1
+    with ThreadPoolExecutor(max_workers=min(8, len(parallel_tasks_1) + 2)) as executor:
+        futures = {}
+
+        # Submit class-based transfers
+        for name, klass, task_flags in parallel_tasks_1:
+            future = executor.submit(_execute_transfer_with_timing, name, klass, task_flags)
+            futures[future] = name
+
+        # Submit session-based transfers
+        future = executor.submit(
+            _execute_session_transfer_with_timing, "Stratigraphy", transfer_stratigraphy, limit
+        )
+        futures[future] = "Stratigraphy"
+
+        future = executor.submit(_execute_permissions_with_timing, "Permissions")
+        futures[future] = "Permissions"
+
+        # Collect results
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result_name, result, elapsed = future.result()
+                results_map[result_name] = result
+                logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
+            except Exception as e:
+                logger.critical(f"Parallel task {name} failed: {e}")
+
+    # Record metrics for parallel group 1
+    if "WellScreens" in results_map and results_map["WellScreens"]:
+        metrics.well_screen_metrics(*results_map["WellScreens"])
+    if "Contacts" in results_map and results_map["Contacts"]:
+        metrics.contact_metrics(*results_map["Contacts"])
+    if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
+        metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
+    if "WaterLevels" in results_map and results_map["WaterLevels"]:
+        metrics.water_level_metrics(*results_map["WaterLevels"])
+    if "LinkIdsWellData" in results_map and results_map["LinkIdsWellData"]:
+        metrics.welldata_link_ids_metrics(*results_map["LinkIdsWellData"])
+    if "LinkIdsLocation" in results_map and results_map["LinkIdsLocation"]:
+        metrics.location_link_ids_metrics(*results_map["LinkIdsLocation"])
+    if "Groups" in results_map and results_map["Groups"]:
+        metrics.group_metrics(*results_map["Groups"])
+    if "Assets" in results_map and results_map["Assets"]:
+        metrics.asset_metrics(*results_map["Assets"])
+
+    # =========================================================================
+    # PHASE 3: Sensors (Sequential - required before continuous water levels)
+    # =========================================================================
+    if transfer_sensors:
+        message("TRANSFERRING SENSORS")
+        results = _execute_transfer(SensorTransferer, flags=flags)
+        metrics.sensor_metrics(*results)
+
+    # =========================================================================
+    # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
+    # =========================================================================
+    if transfer_pressure or transfer_acoustic:
+        message("PARALLEL TRANSFER GROUP 2 (Continuous Water Levels)")
+
+        parallel_tasks_2 = []
+        if transfer_pressure:
+            parallel_tasks_2.append(("Pressure", WaterLevelsContinuousPressureTransferer, flags))
+        if transfer_acoustic:
+            parallel_tasks_2.append(("Acoustic", WaterLevelsContinuousAcousticTransferer, flags))
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {}
+            for name, klass, task_flags in parallel_tasks_2:
+                future = executor.submit(_execute_transfer_with_timing, name, klass, task_flags)
+                futures[future] = name
+
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    result_name, result, elapsed = future.result()
+                    results_map[result_name] = result
+                    logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
+                except Exception as e:
+                    logger.critical(f"Parallel task {name} failed: {e}")
+
+        if "Pressure" in results_map and results_map["Pressure"]:
+            metrics.pressure_metrics(*results_map["Pressure"])
+        if "Acoustic" in results_map and results_map["Acoustic"]:
+            metrics.acoustic_metrics(*results_map["Acoustic"])
+
+
+def _transfer_sequential(
+    metrics, flags, limit,
+    transfer_screens, transfer_sensors, transfer_contacts,
+    transfer_waterlevels, transfer_pressure, transfer_acoustic,
+    transfer_link_ids, transfer_groups, transfer_assets
+):
+    """Original sequential transfer logic."""
     if transfer_screens:
         message("TRANSFERRING WELL SCREENS")
         results = _execute_transfer(WellScreenTransferer, flags=flags)
@@ -93,19 +321,6 @@ def transfer_all(metrics, limit=100):
         results = _execute_transfer(SensorTransferer, flags=flags)
         metrics.sensor_metrics(*results)
 
-    # Developer's notes all the metadata for these Things are not defined in the models/schemas yet'
-    # message("TRANSFERRING SPRINGS")
-    # timeit_direct(transfer_springs, sess, limit=limit)
-    #
-    # message("TRANSFERRING PERENNIAL STREAMS")
-    # timeit_direct(transfer_perennial_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING EPHEMERAL STREAMS")
-    # timeit_direct(transfer_ephemeral_stream, sess, limit=limit)
-    #
-    # message("TRANSFERRING METEOROLOGICAL")
-    # timeit_direct(transfer_met, sess, limit)
-
     if transfer_contacts:
         message("TRANSFERRING CONTACTS")
         results = _execute_transfer(ContactTransfer, flags=flags)
@@ -115,7 +330,7 @@ def transfer_all(metrics, limit=100):
     with session_ctx() as session:
         transfer_permissions(session)
 
-    message("TRANSFERRING STRATIGRAPY")
+    message("TRANSFERRING STRATIGRAPHY")
     with session_ctx() as session:
         results = transfer_stratigraphy(session, limit=limit)
         metrics.stratigraphy_metrics(*results)
@@ -157,17 +372,6 @@ def transfer_all(metrics, limit=100):
         metrics.asset_metrics(*results)
 
 
-def _execute_transfer(klass, flags: dict = None):
-
-    pointids = None
-    if os.getenv("TRANSFER_TEST_POINTIDS"):
-        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
-
-    transferer = klass(flags=flags, pointids=pointids)
-    transferer.transfer()
-    return transferer.input_df, transferer.cleaned_df, transferer.errors
-
-
 def main():
     message("START--------------------------------------")
     limit = int(os.getenv("TRANSFER_LIMIT", 1000))
@@ -177,7 +381,6 @@ def main():
 
     metrics.close()
     metrics.save_to_storage_bucket()
-    # todo: move the log file to a storage bucket
     save_log_to_bucket()
     message("END--------------------------------------")
 
