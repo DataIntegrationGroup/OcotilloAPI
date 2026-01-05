@@ -254,80 +254,47 @@ def test_bulk_upload_bad_dtw_bgs(water_level_bulk_upload_data, water_well_thing)
 
 def test_bulk_upload_bad_field_staff(water_level_bulk_upload_data):
     """
-    Test the bulk upload function with a non-existent field staff name.
+    Test the bulk upload function with nonexistent field staff names.
     """
-    pass
-    # # Update the field_staff_1 to a non-existent contact name
-    # water_level_bulk_upload_data["field_staff_1"] = "NonExistentContact"
+    bad_water_level_bulk_upload_data = water_level_bulk_upload_data.copy()
+    bad_water_level_bulk_upload_data["field_staff"] = "NonExistentContact"
+    bad_water_level_bulk_upload_data["field_staff_2"] = "NonExistentContact2"
+    bad_water_level_bulk_upload_data["field_staff_3"] = "NonExistentContact3"
+    bad_water_level_bulk_upload_data["measuring_person"] = (
+        bad_water_level_bulk_upload_data["field_staff"]
+    )
 
-    # # write to a CSV file in memory then delete it after processing
-    # csv_headers = list(water_level_bulk_upload_data.keys())
-    # csv_values = list(water_level_bulk_upload_data.values())
+    # write to a CSV file in memory then delete it after processing
+    csv_headers = list(bad_water_level_bulk_upload_data.keys())
+    csv_values = list(bad_water_level_bulk_upload_data.values())
 
-    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+    csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
 
-    # with tempfile.NamedTemporaryFile(
-    #     mode="w+", encoding="utf-8", delete_on_close=True
-    # ) as temp_csv:
-    #     temp_csv.write(csv_content)
-    #     temp_csv.flush()
+    with tempfile.NamedTemporaryFile(
+        mode="w+", encoding="utf-8", delete_on_close=True
+    ) as temp_csv:
+        temp_csv.write(csv_content)
+        temp_csv.flush()
 
-    #     results = bulk_upload_water_levels(temp_csv.name)
+        results = bulk_upload_water_levels(temp_csv.name)
 
-    #     assert results.exit_code == 1
-    #     assert "Field staff not found: NonExistentContact" in results.stderr
-    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
-
-
-def test_bulk_upload_bad_field_staff_2(water_level_bulk_upload_data, water_well_thing):
-    """
-    Test the bulk upload function with a non-existent second field staff name.
-    """
-    pass
-    # # Update the field_staff_2 to a non-existent contact name
-    # water_level_bulk_upload_data["field_staff_2"] = "NonExistentContact2"
-
-    # # write to a CSV file in memory then delete it after processing
-    # csv_headers = list(water_level_bulk_upload_data.keys())
-    # csv_values = list(water_level_bulk_upload_data.values())
-
-    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
-
-    # with tempfile.NamedTemporaryFile(
-    #     mode="w+", encoding="utf-8", delete_on_close=True
-    # ) as temp_csv:
-    #     temp_csv.write(csv_content)
-    #     temp_csv.flush()
-
-    #     results = bulk_upload_water_levels(temp_csv.name)
-
-    #     assert results.exit_code == 1
-    #     assert "Field staff not found: NonExistentContact2" in results.stderr
-    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload
-
-
-def test_bulk_upload_bad_field_staff_3(water_level_bulk_upload_data, water_well_thing):
-    """
-    Test the bulk upload function with a non-existent third field staff name.
-    """
-    pass
-    # # Update the field_staff_3 to a non-existent contact name
-    # water_level_bulk_upload_data["field_staff_3"] = "NonExistentContact3"
-
-    # # write to a CSV file in memory then delete it after processing
-    # csv_headers = list(water_level_bulk_upload_data.keys())
-    # csv_values = list(water_level_bulk_upload_data.values())
-
-    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
-
-    # with tempfile.NamedTemporaryFile(
-    #     mode="w+", encoding="utf-8", delete_on_close=True
-    # ) as temp_csv:
-    #     temp_csv.write(csv_content)
-    #     temp_csv.flush()
-
-    #     results = bulk_upload_water_levels(temp_csv.name)
-
-    #     assert results.exit_code == 1
-    #     assert "Field staff not found: NonExistentContact3" in results.stderr
-    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+        assert results.exit_code == 1
+        assert (
+            results.stdout
+            == '{"summary": {"total_rows_processed": 1, "total_rows_imported": 0, "total_validation_errors_or_warnings": 3}, "water_levels": [], "validation_errors": ["Row 1: Unknown field_staff \'NonExistentContact\'", "Row 1: Unknown field_staff_2 \'NonExistentContact2\'", "Row 1: Unknown field_staff_3 \'NonExistentContact3\'"]}'
+        )
+        assert (
+            results.stderr
+            == "Row 1: Unknown field_staff 'NonExistentContact'\nRow 1: Unknown field_staff_2 'NonExistentContact2'\nRow 1: Unknown field_staff_3 'NonExistentContact3'"
+        )
+        assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+        assert isinstance(results.payload.summary, WaterLevelBulkUploadSummary)
+        assert results.payload.summary.total_rows_imported == 0
+        assert results.payload.summary.total_rows_processed == 1
+        assert results.payload.summary.total_validation_errors_or_warnings == 3
+        assert results.payload.water_levels == []
+        assert results.payload.validation_errors == [
+            "Row 1: Unknown field_staff 'NonExistentContact'",
+            "Row 1: Unknown field_staff_2 'NonExistentContact2'",
+            "Row 1: Unknown field_staff_3 'NonExistentContact3'",
+        ]
