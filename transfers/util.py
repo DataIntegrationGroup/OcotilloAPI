@@ -30,7 +30,7 @@ from shapely import Point
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from db import Thing, Location, DataProvenance, Parameter
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket

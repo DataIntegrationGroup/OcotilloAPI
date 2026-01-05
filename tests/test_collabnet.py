@@ -15,10 +15,9 @@
 # ===============================================================================
 import pytest
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 from db import Location
 from db.engine import session_ctx
-
 from services.thing_helper import add_thing
 from tests import client
 

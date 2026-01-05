@@ -6,7 +6,7 @@ import pyproj
 from shapely.ops import transform
 from sqlalchemy.orm import DeclarativeBase
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
