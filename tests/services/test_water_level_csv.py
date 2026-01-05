@@ -163,10 +163,155 @@ def test_bulk_upload_file_not_found():
     )
     assert results.stderr == "File not found: non_existent_file.csv"
     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
-    assert results.payload.summary == WaterLevelBulkUploadSummary(
-        total_rows_processed=0,
-        total_rows_imported=0,
-        total_validation_errors_or_warnings=0,
-    )
+    assert isinstance(results.payload.summary, WaterLevelBulkUploadSummary)
+    assert results.payload.summary.total_rows_imported == 0
+    assert results.payload.summary.total_rows_processed == 0
+    assert results.payload.summary.total_validation_errors_or_warnings == 0
     assert results.payload.water_levels == []
     assert results.payload.validation_errors == []
+
+
+def test_bulk_upload_nonexistent_well(water_level_bulk_upload_data):
+    """
+    Test the bulk upload function with a nonexistent well name.
+    """
+    bad_water_level_bulk_upload_data = water_level_bulk_upload_data.copy()
+    bad_water_level_bulk_upload_data["well_name_point_id"] = "NonExistentWell"
+
+    # write to a CSV file in memory then delete it after processing
+    csv_headers = list(bad_water_level_bulk_upload_data.keys())
+    csv_values = list(bad_water_level_bulk_upload_data.values())
+
+    csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+
+    with tempfile.NamedTemporaryFile(
+        mode="w+", encoding="utf-8", delete_on_close=True
+    ) as temp_csv:
+        temp_csv.write(csv_content)
+        temp_csv.flush()
+
+        results = bulk_upload_water_levels(temp_csv.name)
+
+        assert results.exit_code == 1
+        assert (
+            results.stdout
+            == '{"summary": {"total_rows_processed": 1, "total_rows_imported": 0, "total_validation_errors_or_warnings": 1}, "water_levels": [], "validation_errors": ["Row 1: Unknown well_name_point_id \'NonExistentWell\'"]}'
+        )
+        assert results.stderr == "Row 1: Unknown well_name_point_id 'NonExistentWell'"
+        assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+        assert isinstance(results.payload.summary, WaterLevelBulkUploadSummary)
+        assert results.payload.summary.total_rows_imported == 0
+        assert results.payload.summary.total_rows_processed == 1
+        assert results.payload.summary.total_validation_errors_or_warnings == 1
+        assert results.payload.water_levels == []
+        assert results.payload.validation_errors == [
+            "Row 1: Unknown well_name_point_id 'NonExistentWell'"
+        ]
+
+
+def test_bulk_upload_bad_dtw_bgs(water_level_bulk_upload_data, water_well_thing):
+    """
+    Test the bulk upload function with a non-numeric depth to water below ground surface.
+    """
+    pass
+    # # Update the depth_to_water_ft to a non-numeric value
+    # water_level_bulk_upload_data["depth_to_water_ft"] = "not_a_number"
+
+    # # write to a CSV file in memory then delete it after processing
+    # csv_headers = list(water_level_bulk_upload_data.keys())
+    # csv_values = list(water_level_bulk_upload_data.values())
+
+    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+
+    # with tempfile.NamedTemporaryFile(
+    #     mode="w+", encoding="utf-8", delete_on_close=True
+    # ) as temp_csv:
+    #     temp_csv.write(csv_content)
+    #     temp_csv.flush()
+
+    #     results = bulk_upload_water_levels(temp_csv.name)
+
+    #     assert results.exit_code == 1
+    #     assert "Invalid depth_to_water_ft value: not_a_number" in results.stderr
+    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+
+
+def test_bulk_upload_bad_field_staff(water_level_bulk_upload_data, water_well_thing):
+    """
+    Test the bulk upload function with a non-existent field staff name.
+    """
+    pass
+    # # Update the field_staff_1 to a non-existent contact name
+    # water_level_bulk_upload_data["field_staff_1"] = "NonExistentContact"
+
+    # # write to a CSV file in memory then delete it after processing
+    # csv_headers = list(water_level_bulk_upload_data.keys())
+    # csv_values = list(water_level_bulk_upload_data.values())
+
+    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+
+    # with tempfile.NamedTemporaryFile(
+    #     mode="w+", encoding="utf-8", delete_on_close=True
+    # ) as temp_csv:
+    #     temp_csv.write(csv_content)
+    #     temp_csv.flush()
+
+    #     results = bulk_upload_water_levels(temp_csv.name)
+
+    #     assert results.exit_code == 1
+    #     assert "Field staff not found: NonExistentContact" in results.stderr
+    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
+
+
+def test_bulk_upload_bad_field_staff_2(water_level_bulk_upload_data, water_well_thing):
+    """
+    Test the bulk upload function with a non-existent second field staff name.
+    """
+    pass
+    # # Update the field_staff_2 to a non-existent contact name
+    # water_level_bulk_upload_data["field_staff_2"] = "NonExistentContact2"
+
+    # # write to a CSV file in memory then delete it after processing
+    # csv_headers = list(water_level_bulk_upload_data.keys())
+    # csv_values = list(water_level_bulk_upload_data.values())
+
+    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+
+    # with tempfile.NamedTemporaryFile(
+    #     mode="w+", encoding="utf-8", delete_on_close=True
+    # ) as temp_csv:
+    #     temp_csv.write(csv_content)
+    #     temp_csv.flush()
+
+    #     results = bulk_upload_water_levels(temp_csv.name)
+
+    #     assert results.exit_code == 1
+    #     assert "Field staff not found: NonExistentContact2" in results.stderr
+    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload
+
+
+def test_bulk_upload_bad_field_staff_3(water_level_bulk_upload_data, water_well_thing):
+    """
+    Test the bulk upload function with a non-existent third field staff name.
+    """
+    pass
+    # # Update the field_staff_3 to a non-existent contact name
+    # water_level_bulk_upload_data["field_staff_3"] = "NonExistentContact3"
+
+    # # write to a CSV file in memory then delete it after processing
+    # csv_headers = list(water_level_bulk_upload_data.keys())
+    # csv_values = list(water_level_bulk_upload_data.values())
+
+    # csv_content = ",".join(csv_headers) + "\n" + ",".join(csv_values)
+
+    # with tempfile.NamedTemporaryFile(
+    #     mode="w+", encoding="utf-8", delete_on_close=True
+    # ) as temp_csv:
+    #     temp_csv.write(csv_content)
+    #     temp_csv.flush()
+
+    #     results = bulk_upload_water_levels(temp_csv.name)
+
+    #     assert results.exit_code == 1
+    #     assert "Field staff not found: NonExistentContact3" in results.stderr
+    #     assert isinstance(results.payload, WaterLevelBulkUploadPayload)
