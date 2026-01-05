@@ -1,10 +1,8 @@
 # features/cli/bulk_upload_water_levels.feature
 
-@skip
 @cli
 @backend
 @BDMS-TBD
-@production
 Feature: Bulk upload water level entries from CSV via CLI
   As a hydrogeologist or data specialist
   I want to upload a CSV file containing water level entry data for multiple wells using a CLI command
@@ -19,7 +17,7 @@ Feature: Bulk upload water level entries from CSV via CLI
 #      | level_status     |
 #      | data_quality     |
 
-  @positive @happy_path @BDMS-TBD
+  @positive @happy_path @BDMS-TBD @cleanup_samples
   Scenario: Uploading a valid water level entry CSV containing required and optional fields
     Given a valid CSV file for bulk water level entry upload
     And my CSV file is encoded in UTF-8 and uses commas as separators
@@ -57,7 +55,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     And stdout includes an array of created water level entry objects
     And stderr should be empty
 
-  @positive @validation @column_order @BDMS-TBD
+  @positive @validation @column_order @BDMS-TBD @cleanup_samples
   Scenario: Upload succeeds when required columns are present but in a different order
     Given my CSV file contains all required headers but in a different column order
     And the CSV includes required fields:
@@ -80,7 +78,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     And all water level entries are imported
     And stderr should be empty
 
-  @positive @validation @extra_columns @BDMS-TBD
+  @positive @validation @extra_columns @BDMS-TBD @cleanup_samples
   Scenario: Upload succeeds when CSV contains extra, unknown columns
     Given my CSV file contains extra columns but is otherwise valid
     When I run the CLI command:

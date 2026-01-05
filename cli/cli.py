@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import click
 from dotenv import load_dotenv
 
 load_dotenv()
-
-import click
 
 
 @click.group()
@@ -59,10 +58,19 @@ def well_inventory_csv(file_path: str):
     well_inventory_csv(file_path)
 
 
-@cli.command()
-@click.argument(
+@cli.group()
+def water_levels():
+    """Water-level utilities"""
+    pass
+
+
+@water_levels.command("bulk-upload")
+@click.option(
+    "--file",
     "file_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    required=True,
+    help="Path to CSV file containing water level rows",
 )
 @click.option(
     "--output",
@@ -71,7 +79,7 @@ def well_inventory_csv(file_path: str):
     default=None,
     help="Optional output format",
 )
-def water_levels_csv(file_path: str, output_format: str | None):
+def water_levels_bulk_upload(file_path: str, output_format: str | None):
     """
     parse and upload a csv
     """
