@@ -51,7 +51,7 @@ Feature: Bulk upload water level entries from CSV via CLI
       | summary_field                 | value |
       | total_rows_processed          | 2     |
       | total_rows_imported           | 2     |
-      | validation_errors_or_warnings | 0     |
+      | total_validation_errors_or_warnings | 0     |
     And stdout includes an array of created water level entry objects
     And stderr should be empty
 
