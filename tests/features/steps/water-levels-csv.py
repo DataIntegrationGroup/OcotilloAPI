@@ -48,21 +48,21 @@ def _base_row(context: Context, index: int) -> Dict[str, str]:
 
     contact_names = _available_field_staff(context)
     measurement_day = 14 + index
-    return {
-        "well_name_point_id": well_name,
-        "field_event_date_time": f"2025-02-{measurement_day:02d}T08:00:00",
-        "field_staff": contact_names[(index - 1) % len(contact_names)],
-        "field_staff_2": contact_names[(index - 2) % len(contact_names)],
-        "field_staff_3": contact_names[(index - 3) % len(contact_names)],
-        "water_level_date_time": f"2025-02-{measurement_day:02d}T10:30:00",
-        "measuring_person": contact_names[(index - 1) % len(contact_names)],
-        "sample_method": "Steel-tape measurement",  # lexicon value
-        "mp_height": "1.5" if index == 1 else "1.8",
-        "level_status": "Water level not affected",  # maps to groundwater_level_reason
-        "depth_to_water_ft": "9" if index == 1 else "8",
-        "data_quality": "Water level accurate to within two hundreths of a foot",  # maps to groundwater_level_accuracy
-        "water_level_notes": "Initial measurement" if index == 1 else "Follow-up",
-    }
+    row = WaterLevelCsvRow(
+        well_name_point_id=well_name,
+        field_event_date_time=f"2025-02-{measurement_day:02d}T08:00:00",
+        field_staff=contact_names[(index - 1) % len(contact_names)],
+        field_staff_2=contact_names[(index - 2) % len(contact_names)],
+        field_staff_3=contact_names[(index - 3) % len(contact_names)],
+        water_level_date_time=f"2025-02-{measurement_day:02d}T10:30:00",
+        measuring_person=contact_names[(index - 1) % len(contact_names)],
+        sample_method="Steel-tape measurement",
+        mp_height=1.5 if index == 1 else 1.8,
+        level_status="Water level not affected",
+        depth_to_water_ft=9 if index == 1 else 8,
+        data_quality="Water level accurate to within two hundreths of a foot",
+    )
+    return row.model_dump(mode="json")
 
 
 def _build_valid_rows(context: Context, count: int = 2) -> List[Dict[str, str]]:
