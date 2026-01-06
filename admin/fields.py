@@ -42,7 +42,7 @@ class WKTField(StringField):
     Note: Longitude comes first, then latitude (POINT(lon lat), not POINT(lat lon))
     """
 
-    def serialize_value(self, request: Request, value: Any, action: str) -> str:
+    async def serialize_value(self, request: Request, value: Any, action: str) -> str:
         """
         Convert WKBElement (PostGIS geometry) to WKT string for display in form.
 

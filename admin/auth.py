@@ -199,13 +199,7 @@ class NMSampleLocationsAuthProvider(AuthProvider):
         except Exception:
             return None
 
-    async def login(
-        self,
-        username: str,
-        password: str,
-        remember_me: bool,
-        request: Request,
-    ) -> RedirectResponse:
+    async def login(self, *args, **kwargs) -> RedirectResponse:
         """
         Redirect to Authentik OIDC login page.
 
@@ -213,14 +207,26 @@ class NMSampleLocationsAuthProvider(AuthProvider):
         and redirect to Authentik OAuth flow instead.
 
         Args:
-            username: Ignored (OIDC handles authentication)
-            password: Ignored (OIDC handles authentication)
-            remember_me: Ignored
-            request: Starlette request object
+            request: Starlette request object (extracted from args/kwargs)
+            *args/**kwargs: Ignored, kept for compatibility with different
+            Starlette Admin login call signatures
 
         Returns:
             RedirectResponse to Authentik authorization endpoint
         """
+        # Starlette Admin has changed the AuthProvider.login signature across versions.
+        # Accept *args/**kwargs and extract the Request to stay compatible whether
+        # it calls login(request, data, ...) or login(username, password, remember_me, request).
+        request: Optional[Request] = kwargs.get("request")
+        if request is None:
+            for arg in args:
+                if isinstance(arg, Request):
+                    request = arg
+                    break
+
+        if request is None:
+            raise LoginFailed("Unable to determine login request context.")
+
         # Redirect to Authentik OAuth authorization endpoint
         authentik_authorize_url = os.environ.get("AUTHENTIK_AUTHORIZE_URL")
         if not authentik_authorize_url:
