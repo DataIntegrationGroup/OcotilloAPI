@@ -45,7 +45,9 @@ Feature: Bulk upload water level entries from CSV via CLI
       """
       oco water-levels bulk-upload --file ./water_levels.csv --output json
       """
-    Then the command exits with code 0
+    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
+    And the command exits with code 0
     And stdout should be valid JSON
     And stdout includes a summary containing:
       | summary_field                 | value |
@@ -60,7 +62,9 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my CSV file contains all required headers but in a different column order
     And the CSV includes required fields:
       | required field name   |
+      | field_staff           |
       | well_name_point_id    |
+      | field_event_date_time |
       | water_level_date_time |
       | measuring_person      |
       | sample_method         |
@@ -85,7 +89,9 @@ Feature: Bulk upload water level entries from CSV via CLI
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    Then the command exits with code 0
+    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
+    And the command exits with code 0
     And all water level entries are imported
     And stderr should be empty
 
