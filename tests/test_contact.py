@@ -108,6 +108,12 @@ def test_add_contact(spring_thing):
                 "address_type": "Primary",
             }
         ],
+        "notes": [
+            {
+                "note_type": "General",
+                "content": "This is a general note for the contact.",
+            }
+        ],
     }
     response = client.post("/contact", json=payload)
     data = response.json()
@@ -157,6 +163,12 @@ def test_add_contact(spring_thing):
         data["addresses"][0]["address_type"] == payload["addresses"][0]["address_type"]
     )
     assert data["release_status"] == payload["release_status"]
+
+    assert data["general_notes"][0]["note_type"] == "General"
+    assert (
+        data["general_notes"][0]["content"] == "This is a general note for the contact."
+    )
+    assert len(data["communication_notes"]) == 0
 
     cleanup_post_test(Contact, data["id"])
 
@@ -429,6 +441,11 @@ def test_get_contacts(
     assert data["items"][0]["addresses"][0]["address_type"] == address.address_type
     assert data["items"][0]["addresses"][0]["release_status"] == address.release_status
 
+    assert data["items"][0]["general_notes"][0]["note_type"] == "General"
+    assert data["items"][0]["general_notes"][0]["content"] == "General note"
+    assert data["items"][0]["communication_notes"][0]["note_type"] == "Communication"
+    assert data["items"][0]["communication_notes"][0]["content"] == "Communication note"
+
 
 def test_get_contacts_by_thing_id(contact, second_contact, water_well_thing):
     response = client.get(f"/contact?thing_id={water_well_thing.id}")
@@ -494,6 +511,11 @@ def test_get_contact_by_id(
     assert data["addresses"][0]["country"] == address.country
     assert data["addresses"][0]["address_type"] == address.address_type
     assert data["addresses"][0]["release_status"] == address.release_status
+
+    assert data["general_notes"][0]["note_type"] == "General"
+    assert data["general_notes"][0]["content"] == "General note"
+    assert data["communication_notes"][0]["note_type"] == "Communication"
+    assert data["communication_notes"][0]["content"] == "Communication note"
 
 
 def test_get_contact_by_id_404_not_found(contact):

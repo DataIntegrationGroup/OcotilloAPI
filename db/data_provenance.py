@@ -19,9 +19,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, Index, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, foreign
 
-from db.base import Base, AutoBaseMixin, ReleaseMixin
-
 from db import lexicon_term
+from db.base import Base, AutoBaseMixin, ReleaseMixin
 
 if TYPE_CHECKING:
     from db.thing import Thing

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-from schemas import PastOrTodayDate
 
 from core.enums import PermissionType
+from schemas import PastOrTodayDate
 
 
 # ------ RESPONSE ----------

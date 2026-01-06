@@ -2,6 +2,9 @@
 Pydantic models for the Notes table.
 """
 
+from core.enums import NoteType
+
+from pydantic import BaseModel
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 # -------- BASE SCHEMA: ----------
@@ -10,8 +13,8 @@ Defines the core, shared attributes of a Note for reuse.
 """
 
 
-class BaseNote:
-    note_type: str
+class BaseNote(BaseModel):
+    note_type: NoteType
     content: str
 
 

@@ -123,7 +123,9 @@ def register_routes(app):
     from api.asset import router as asset_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
+    from api.well_inventory import router as well_inventory_router
 
+    app.include_router(well_inventory_router)
     app.include_router(asset_router)
     app.include_router(author_router)
     app.include_router(contact_router)

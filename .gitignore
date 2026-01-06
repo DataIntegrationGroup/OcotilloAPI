@@ -22,6 +22,9 @@ requirements.txt
 
 # VS Code
 
+# macOS
+.DS_Store
+
 # local development files
 development.db
 .env

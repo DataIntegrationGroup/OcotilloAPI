@@ -1,6 +1,7 @@
 import json
 import os
-
+from zoneinfo import ZoneInfo
+from datetime import datetime
 import httpx
 import pyproj
 from shapely.ops import transform
@@ -43,6 +44,23 @@ def transform_srid(geometry, source_srid, target_srid):
     else:
         transformer = TRANSFORMERS[transformer_key]
     return transform(transformer.transform, geometry)
+
+
+def convert_dt_tz_naive_to_tz_aware(
+    dt_naive: datetime, iana_timezone: str = "America/Denver"
+):
+    """
+    Adds a timezone to a timezone-naive datetime object using
+    the specified ZoneInfo string. Since the input datetime is naive,
+    it is assumed to already be in the specified timezone. This function
+    does not perform any conversion of the datetime value itself.
+    """
+    if dt_naive.tzinfo is not None:
+        raise ValueError("Input datetime must be timezone-naive.")
+
+    tz = ZoneInfo(iana_timezone)
+    dt_aware = dt_naive.replace(tzinfo=tz)
+    return dt_aware
 
 
 def convert_ft_to_m(feet: float | None, ndigits: int = 6) -> float | None:
