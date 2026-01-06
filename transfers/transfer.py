@@ -169,7 +169,7 @@ def transfer_all(metrics, limit=100):
     transfer_acoustic = get_bool_env("TRANSFER_WATERLEVELS_ACOUSTIC", True)
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
-    transfer_assets = get_bool_env("TRANSFER_ASSETS", True)
+    transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
