@@ -33,9 +33,21 @@ jobs:
               --output-file requirements.txt
 
         - name: Authenticate to Google Cloud
+          id: gcloud-auth
           uses: 'google-github-actions/auth@v2'
           with:
             credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
+
+        - name: Run Alembic migrations on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+            GOOGLE_APPLICATION_CREDENTIALS: "${{ steps.gcloud-auth.outputs.credentials_file_path }}"
+          run: |
+            uv run alembic upgrade head
 
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
