@@ -33,7 +33,9 @@ from core.app import app
 register_routes(app)
 
 # Session middleware is required for the admin auth flow (request.session access).
-SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY") or os.environ.get("SECRET_KEY")
+SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY") or os.environ.get(
+    "SECRET_KEY"
+)
 if not SESSION_SECRET_KEY:
     # Fallback primarily for local development; production should set the env var.
     SESSION_SECRET_KEY = "dev-session-secret-key"
