@@ -342,17 +342,15 @@ def step_impl(context: Context):
 # Scenario: Upload fails due to invalid lexicon values
 # ============================================================================
 @given(
-    'my CSV file contains invalid lexicon values for "sampler", "sample_method", "level_status", or "data_quality"'
+    'my CSV file contains invalid lexicon values for "sample_method", "level_status", or "data_quality"'
 )
 def step_impl(context: Context):
     rows = _build_valid_rows(context, count=1)
-    rows[0]["sampler"] = "Unknown Team"
     rows[0]["sample_method"] = "mystery"
     rows[0]["level_status"] = "supercharged"
     rows[0]["data_quality"] = "bad"
     _set_rows(context, rows)
     context.invalid_fields = [
-        "sampler",
         "sample_method",
         "level_status",
         "data_quality",
