@@ -306,13 +306,13 @@ def step_impl(context: Context, required_field: str):
 # Scenario: Upload fails due to invalid date formats
 # ============================================================================
 @given(
-    'my CSV file contains invalid ISO 8601 date values in the "measurement_date_time" field'
+    'my CSV file contains invalid ISO 8601 date values in the "water_level_date_time" field'
 )
 def step_impl(context: Context):
     rows = _build_valid_rows(context, count=1)
-    rows[0]["measurement_date_time"] = "02/15/2025 10:30"
+    rows[0]["water_level_date_time"] = "02/15/2025 10:30"
     _set_rows(context, rows)
-    context.invalid_fields = ["measurement_date_time"]
+    context.invalid_fields = ["water_level_date_time"]
 
 
 @then("stderr should contain validation errors identifying the invalid field and row")
