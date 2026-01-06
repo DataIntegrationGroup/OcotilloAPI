@@ -16,15 +16,6 @@ def step_impl_valid_lexicon_values(context: Context):
         assert response.status_code == 200, f"Invalid lexicon category: {row[0]}"
 
 
-@given("the CSV includes required fields:")
-def step_impl_csv_includes_required_fields(context: Context):
-    """Sets up the CSV file with multiple rows of well inventory data."""
-    context.required_fields = [row[0] for row in context.table]
-    keys = context.rows[0].keys()
-    for field in context.required_fields:
-        assert field in keys, f"Missing required field: {field}"
-
-
 @given('each "well_name_point_id" value is unique per row')
 def step_impl(context: Context):
     """Verifies that each "well_name_point_id" value is unique per row."""
@@ -35,16 +26,6 @@ def step_impl(context: Context):
                 f"Duplicate well_name_point_id: {row['well_name_point_id']}"
             )
         seen_ids.add(row["well_name_point_id"])
-
-
-@given("the CSV includes optional fields when available:")
-def step_impl(context: Context):
-    optional_fields = [row[0] for row in context.table]
-    keys = context.rows[0].keys()
-
-    for key in keys:
-        if key not in context.required_fields:
-            assert key in optional_fields, f"Unexpected field found: {key}"
 
 
 @given("the csv includes optional water level entry fields when available:")

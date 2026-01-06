@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from behave import then, given, when
+from behave.runner import Context
 from starlette.testclient import TestClient
 
 from core.dependencies import (
@@ -150,6 +151,25 @@ def step_impl(context):
     assert len(data["items"]) == 0, f'Unexpected items {data["items"]}'
     assert data["total"] == 0, f'Unexpected total {data["total"]}'
     assert data["page"] == 1, f'Unexpected page {data["page"]}'
+
+
+@given("the CSV includes required fields:")
+def step_impl_csv_includes_required_fields(context: Context):
+    """Sets up the CSV file with multiple rows of well inventory data."""
+    context.required_fields = [row[0] for row in context.table]
+    keys = context.rows[0].keys()
+    for field in context.required_fields:
+        assert field in keys, f"Missing required field: {field}"
+
+
+@given("the CSV includes optional fields when available:")
+def step_impl(context: Context):
+    optional_fields = [row[0] for row in context.table]
+    keys = context.rows[0].keys()
+
+    for key in keys:
+        if key not in context.required_fields:
+            assert key in optional_fields, f"Unexpected field found: {key}"
 
 
 # ============= EOF =============================================

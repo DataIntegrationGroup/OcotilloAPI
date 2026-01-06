@@ -13,16 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
+from zoneinfo import ZoneInfo
 
 from behave import given, when, then
 from behave.runner import Context
 
-from db import Observation
+from db import Observation, FieldEvent, Sample
 from db.engine import session_ctx
 from schemas.water_level_csv import WaterLevelCsvRow
 from services.water_level_csv import bulk_upload_water_levels
@@ -86,6 +87,7 @@ def _write_csv_to_context(context: Context) -> None:
     temp_file.close()
     context.csv_file = str(Path(temp_file.name))
     context.csv_raw_text = csv_text
+    context.file_content = csv_text  # file_context needs to be set for shared given
 
 
 def _set_rows(
@@ -100,6 +102,9 @@ def _set_rows(
         context.csv_headers = [field for field in WaterLevelCsvRow.model_fields.keys()]
     _write_csv_to_context(context)
     context.stdout_json = None
+
+    # set context.rows to be all rows and the header for optional step
+    context.rows = rows
 
 
 def _ensure_stdout_json(context: Context) -> Dict[str, Any]:
@@ -130,6 +135,8 @@ def step_impl(context: Context):
     missing = [field for field in expected_fields if field not in headers]
     assert not missing, f"Missing required headers: {missing}"
 
+    context.required_fields = expected_fields
+
 
 @given('each "well_name_point_id" value matches an existing well')
 def step_impl(context: Context):
@@ -153,13 +160,13 @@ def step_impl(context: Context):
         ), f"Expected timezone-naive datetime but got {row['water_level_date_time']}"
 
 
-# @given("the water level CSV includes optional fields when available:")
-# def step_impl(context: Context):
-#     field_name = context.table.headings[0]
-#     optional_fields = [row[field_name].strip() for row in context.table]
-#     headers = set(context.csv_headers)
-#     missing = [field for field in optional_fields if field not in headers]
-#     assert not missing, f"Missing optional headers: {missing}"
+@given("the water level CSV includes optional fields when available:")
+def step_impl(context: Context):
+    field_name = context.table.headings[0]
+    optional_fields = [row[field_name].strip() for row in context.table]
+    headers = set(context.csv_headers)
+    missing = [field for field in optional_fields if field not in headers]
+    assert not missing, f"Missing optional headers: {missing}"
 
 
 @when("I run the CLI command:")
@@ -172,6 +179,49 @@ def step_impl(context: Context):
         context.csv_file, pretty_json=output_json
     )
     context.stdout_json = None
+
+
+@then(
+    "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. "
+)
+def step_impl(context: Context):
+    with session_ctx() as session:
+        for field in ["field_event_date_time", "water_level_date_time"]:
+            for i, row in enumerate(context.csv_rows):
+                dt_str = row[field]
+                dt_naive = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
+                tz = ZoneInfo("America/Denver")
+                dt_aware = dt_naive.replace(tzinfo=tz)
+
+                if field == "field_event_date_time":
+                    field_event = session.query(FieldEvent).one_or_none(
+                        FieldEvent.id
+                        == context.cli_result.payload.water_levels[i].field_event_id
+                    )
+                    assert (
+                        field_event.event_date == dt_aware
+                    ), f"Expected {dt_aware} but got {field_event.event_date} for row {i+1}"
+                    assert field_event.utcoffset() == timedelta(hours=-7)
+                else:
+                    observation = session.query(Observation).one_or_none(
+                        Observation.id
+                        == context.cli_result.payload.water_levels[i].observation_id
+                    )
+                    assert (
+                        observation.observation_datetime == dt_aware
+                    ), f"Expected {dt_aware} but got {observation.observation_datetime} for row {i+1}"
+                    assert observation.observation_datetime.utcoffset() == timedelta(
+                        hours=-7
+                    )
+
+                    sample = session.query(Sample).one_or_none(
+                        Sample.id
+                        == context.cli_result.payload.water_levels[i].sample_id
+                    )
+                    assert (
+                        sample.sample_date == dt_aware
+                    ), f"Expected {dt_aware} but got {sample.sample_date} for row {i+1}"
+                    assert sample.sample_date.utcoffset() == timedelta(hours=-7)
 
 
 @then("the command exits with code 0")
