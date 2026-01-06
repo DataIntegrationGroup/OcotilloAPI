@@ -58,7 +58,7 @@ def create_admin(app):
     # Create admin instance
     admin = Admin(
         engine=engine,
-        title="NM Sample Locations Admin",
+        title="Ocotillod Admin",
         base_url="/admin",
         logo_url=None,  # TODO: Add NMBGMR logo
         auth_provider=NMSampleLocationsAuthProvider(),

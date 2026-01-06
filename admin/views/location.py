@@ -204,7 +204,7 @@ class LocationAdmin(ModelView):
 
     # ========== Data Visibility (Release Status Filter) ==========
 
-    async def get_list_query(self, request: Request):
+    def get_list_query(self, request: Request):
         query = select(self.model)
 
         user = getattr(request.state, "user", None)
