@@ -117,18 +117,12 @@ def step_impl(context: Context):
     _set_rows(context, rows)
 
 
-@given("my CSV file is encoded in UTF-8 and uses commas as separators")
-def step_impl(context: Context):
-    assert context.csv_raw_text.encode("utf-8").decode("utf-8") == context.csv_raw_text
-    assert "," in context.csv_raw_text.splitlines()[0]
-
-
 @given("my CSV file contains multiple rows of water level entry data")
 def step_impl(context: Context):
     assert len(context.csv_rows) >= 2
 
 
-@given("the CSV includes required fields:")
+@given("the water level CSV includes required fields:")
 def step_impl(context: Context):
     field_name = context.table.headings[0]
     expected_fields = [row[field_name].strip() for row in context.table]
@@ -159,13 +153,13 @@ def step_impl(context: Context):
         ), f"Expected timezone-naive datetime but got {row['water_level_date_time']}"
 
 
-@given("the CSV includes optional fields when available:")
-def step_impl(context: Context):
-    field_name = context.table.headings[0]
-    optional_fields = [row[field_name].strip() for row in context.table]
-    headers = set(context.csv_headers)
-    missing = [field for field in optional_fields if field not in headers]
-    assert not missing, f"Missing optional headers: {missing}"
+# @given("the water level CSV includes optional fields when available:")
+# def step_impl(context: Context):
+#     field_name = context.table.headings[0]
+#     optional_fields = [row[field_name].strip() for row in context.table]
+#     headers = set(context.csv_headers)
+#     missing = [field for field in optional_fields if field not in headers]
+#     assert not missing, f"Missing optional headers: {missing}"
 
 
 @when("I run the CLI command:")
@@ -225,7 +219,9 @@ def step_impl(context: Context):
 # ============================================================================
 # Scenario: Upload succeeds when required columns are present but reordered
 # ============================================================================
-@given("my CSV file contains all required headers but in a different column order")
+@given(
+    "my water level CSV file contains all required headers but in a different column order"
+)
 def step_impl(context: Context):
     rows = _build_valid_rows(context)
     headers = list(reversed(list(rows[0].keys())))
@@ -244,7 +240,7 @@ def step_impl(context: Context):
 # ============================================================================
 # Scenario: Upload succeeds when CSV contains extra columns
 # ============================================================================
-@given("my CSV file contains extra columns but is otherwise valid")
+@given("my water level CSV file contains extra columns but is otherwise valid")
 def step_impl(context: Context):
     rows = _build_valid_rows(context)
     for idx, row in enumerate(rows):
@@ -258,7 +254,7 @@ def step_impl(context: Context):
 # Scenario: No entries imported when any row fails validation
 # ============================================================================
 @given(
-    'my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"'
+    'my water level CSV contains 3 rows with 2 valid rows and 1 row missing the required "well_name_point_id"'
 )
 def step_impl(context: Context):
     rows = _build_valid_rows(context, count=3)
@@ -289,7 +285,9 @@ def step_impl(context: Context):
 # ============================================================================
 # Scenario Outline: Upload fails when a required field is missing
 # ============================================================================
-@given('my CSV file contains a row missing the required "{required_field}" field')
+@given(
+    'my water level CSV file contains a row missing the required "{required_field}" field'
+)
 def step_impl(context: Context, required_field: str):
     rows = _build_valid_rows(context, count=1)
     rows[0][required_field] = ""

@@ -13,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy.orm import Session, joinedload
+
 from db.contact import Contact, Email, Phone, Address, ThingContactAssociation
 from schemas.contact import (
     CreateContact,
 )
-from services.query_helper import order_sort_filter
 from services.audit_helper import audit_add
-
-from fastapi_pagination.ext.sqlalchemy import paginate
-from sqlalchemy.orm import Session, joinedload
+from services.query_helper import order_sort_filter
 
 
 def get_db_contacts(
@@ -62,6 +62,7 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
     phone_data = data.pop("phones", [])
     address_data = data.pop("addresses", [])
     thing_id = data.pop("thing_id", None)
+    notes_data = data.pop("notes", None)
     contact_data = data
 
     """
@@ -96,20 +97,28 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
         session.add(contact)
         session.flush()
         session.refresh(contact)
+        if thing_id is not None:
+            thing_contact_association = ThingContactAssociation()
+            thing_contact_association.thing_id = thing_id
+            thing_contact_association.contact_id = contact.id
 
-        location_contact_association = ThingContactAssociation()
-        location_contact_association.thing_id = thing_id
-        location_contact_association.contact_id = contact.id
+            audit_add(user, thing_contact_association)
+            session.add(thing_contact_association)
 
-        audit_add(user, location_contact_association)
-
-        session.add(location_contact_association)
-        # owner_contact_association = OwnerContactAssociation()
-        # owner_contact_association.owner_id = owner.id
-        # owner_contact_association.contact_id = contact.id
-        # session.add(owner_contact_association)
         session.flush()
         session.commit()
+
+        if notes_data is not None:
+            for n in notes_data:
+                note = contact.add_note(n["content"], n["note_type"])
+                session.add(note)
+
+        session.commit()
+        session.refresh(contact)
+
+        for note in contact.notes:
+            session.refresh(note)
+
     except Exception as e:
         session.rollback()
         raise e

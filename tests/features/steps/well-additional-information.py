@@ -221,10 +221,15 @@ def step_impl(context):
     "the response should include whether the well is open and suitable for a datalogger"
 )
 def step_impl(context):
-    assert "is_suitable_for_datalogger" in context.water_well_data
+    assert "datalogger_installation_status" in context.water_well_data
+    assert "open_status" in context.water_well_data
     assert (
-        context.water_well_data["is_suitable_for_datalogger"]
-        == context.objects["wells"][0].is_suitable_for_datalogger
+        context.water_well_data["datalogger_installation_status"]
+        == context.objects["wells"][0].datalogger_installation_status
+    )
+    assert (
+        context.water_well_data["open_status"]
+        == context.objects["wells"][0].open_status
     )
 
 

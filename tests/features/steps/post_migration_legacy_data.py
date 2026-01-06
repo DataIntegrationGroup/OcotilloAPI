@@ -14,11 +14,12 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import date, datetime, timezone
+
+import parse
 from behave import given, when, then, register_type
 from behave.runner import Context
-import parse
 
-from db import Location, Thing, LocationThingAssociation
+from db import Location
 from db.engine import session_ctx
 
 
@@ -275,7 +276,7 @@ def step_then_all_have_date_created_field(context: Context):
     """Assert all locations have the date created field."""
     items = context.locations_response.get("items", [])
     for item in items:
-        assert "nma_date_created" in item, f"Location missing nma_date_created"
+        assert "nma_date_created" in item, "Location missing nma_date_created"
 
 
 @then("each location should have a site date field")
@@ -283,7 +284,7 @@ def step_then_all_have_site_date_field(context: Context):
     """Assert all locations have the site date field."""
     items = context.locations_response.get("items", [])
     for item in items:
-        assert "nma_site_date" in item, f"Location missing nma_site_date"
+        assert "nma_site_date" in item, "Location missing nma_site_date"
 
 
 @then("some locations should have null site date")
