@@ -23,6 +23,7 @@ jobs:
       POSTGRES_PASSWORD: postgres
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
+      SESSION_SECRET_KEY: supersecretkeyforunittests
 
     services:
       postgis:

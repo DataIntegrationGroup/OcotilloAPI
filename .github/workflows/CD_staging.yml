@@ -74,6 +74,7 @@ jobs:
               AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
               AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
               AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
+              SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
             EOF
 
         - name: Deploy to Google Cloud
