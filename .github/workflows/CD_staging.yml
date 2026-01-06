@@ -45,7 +45,6 @@ jobs:
             CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
             CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
             CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
-            GOOGLE_APPLICATION_CREDENTIALS: "${{ steps.gcloud-auth.outputs.credentials_file_path }}"
           run: |
             uv run alembic upgrade head
 
