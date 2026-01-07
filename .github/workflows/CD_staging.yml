@@ -36,6 +36,33 @@ jobs:
           id: gcloud-auth
           uses: 'google-github-actions/auth@v2'
           with:
+            credentials_json: ${{ secrets.CLOUD_SQL_SERVICE_ACCOUNT_KEY }}
+
+        - name: Run Alembic migrations on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+          run: |
+            uv run alembic upgrade head
+
+        - name: Run backfill script on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+            GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+            GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
+          run: |
+            uv run python -m transfers.backfill.staging
+
+        - name: Authenticate to Google Cloud
+          uses: 'google-github-actions/auth@v2'
+          with:
             credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
         - name: Run Alembic migrations on staging database
