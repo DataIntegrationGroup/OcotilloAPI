@@ -47,6 +47,16 @@ jobs:
           run: |
             uv run alembic upgrade head
 
+        - name: Run backfill script on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+          run: |
+            uv run python transfers/backfill/staging.py
+
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
           run: |

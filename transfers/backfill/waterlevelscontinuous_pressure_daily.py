@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 import pandas as pd
+from sqlalchemy import insert, text
 from sqlalchemy.orm import Session
 
 from db import NMAWaterLevelsContinuousPressureDaily
@@ -52,52 +53,71 @@ class NMAWaterLevelsContinuousPressureDailyBackfill(Transferer):
         return input_df, input_df
 
     def _transfer_hook(self, session: Session) -> None:
-        records: list[NMAWaterLevelsContinuousPressureDaily] = []
+        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
 
-        for i, row in enumerate(self.cleaned_df.to_dict("records")):
-            records.append(self._make_model(row))
+        insert_stmt = insert(NMAWaterLevelsContinuousPressureDaily)
+        excluded = insert_stmt.excluded
 
-            if len(records) >= self.batch_size:
-                logger.info(f"Inserting batch ending at row {i} ({len(records)} rows)")
-                session.bulk_save_objects(records)
-                session.commit()
-                session.expunge_all()
-                records.clear()
-
-        if records:
-            logger.info(f"Inserting final batch of {len(records)} rows")
-            session.bulk_save_objects(records)
+        for i in range(0, len(rows), self.batch_size):
+            chunk = rows[i : i + self.batch_size]
+            logger.info(
+                f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into NMA_WaterLevelsContinuous_Pressure_Daily"
+            )
+            stmt = insert_stmt.values(chunk).on_conflict_do_update(
+                index_elements=["GlobalID"],
+                set_={
+                    "OBJECTID": excluded.OBJECTID,
+                    "WellID": excluded.WellID,
+                    "PointID": excluded.PointID,
+                    "DateMeasured": excluded.DateMeasured,
+                    "TemperatureWater": excluded.TemperatureWater,
+                    "WaterHead": excluded.WaterHead,
+                    "WaterHeadAdjusted": excluded.WaterHeadAdjusted,
+                    "DepthToWaterBGS": excluded.DepthToWaterBGS,
+                    "MeasurementMethod": excluded.MeasurementMethod,
+                    "DataSource": excluded.DataSource,
+                    "MeasuringAgency": excluded.MeasuringAgency,
+                    "QCed": excluded.QCed,
+                    "Notes": excluded.Notes,
+                    "Created": excluded.Created,
+                    "Updated": excluded.Updated,
+                    "ProcessedBy": excluded.ProcessedBy,
+                    "CheckedBy": excluded.CheckedBy,
+                    "CONDDL (mS/cm)": excluded["CONDDL (mS/cm)"],
+                },
+            )
+            session.execute(stmt)
             session.commit()
             session.expunge_all()
 
-    def _make_model(self, row: dict[str, Any]) -> NMAWaterLevelsContinuousPressureDaily:
+    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
                 return None
             return v
 
-        return NMAWaterLevelsContinuousPressureDaily(
-            global_id=val("GlobalID"),
-            object_id=val("OBJECTID"),
-            well_id=val("WellID"),
-            point_id=val("PointID"),
-            date_measured=val("DateMeasured"),
-            temperature_water=val("TemperatureWater"),
-            water_head=val("WaterHead"),
-            water_head_adjusted=val("WaterHeadAdjusted"),
-            depth_to_water_bgs=val("DepthToWaterBGS"),
-            measurement_method=val("MeasurementMethod"),
-            data_source=val("DataSource"),
-            measuring_agency=val("MeasuringAgency"),
-            qced=val("QCed"),
-            notes=val("Notes"),
-            created=val("Created"),
-            updated=val("Updated"),
-            processed_by=val("ProcessedBy"),
-            checked_by=val("CheckedBy"),
-            cond_dl_ms_cm=val("CONDDL (mS/cm)"),
-        )
+        return {
+            "GlobalID": val("GlobalID"),
+            "OBJECTID": val("OBJECTID"),
+            "WellID": val("WellID"),
+            "PointID": val("PointID"),
+            "DateMeasured": val("DateMeasured"),
+            "TemperatureWater": val("TemperatureWater"),
+            "WaterHead": val("WaterHead"),
+            "WaterHeadAdjusted": val("WaterHeadAdjusted"),
+            "DepthToWaterBGS": val("DepthToWaterBGS"),
+            "MeasurementMethod": val("MeasurementMethod"),
+            "DataSource": val("DataSource"),
+            "MeasuringAgency": val("MeasuringAgency"),
+            "QCed": val("QCed"),
+            "Notes": val("Notes"),
+            "Created": val("Created"),
+            "Updated": val("Updated"),
+            "ProcessedBy": val("ProcessedBy"),
+            "CheckedBy": val("CheckedBy"),
+            "CONDDL (mS/cm)": val("CONDDL (mS/cm)"),
+        }
 
 
 def run(batch_size: int = 1000) -> None:

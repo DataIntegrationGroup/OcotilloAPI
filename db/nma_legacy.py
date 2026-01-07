@@ -16,11 +16,12 @@
 
 """Legacy NM Aquifer models copied from AMPAPI."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Float,
     Integer,
@@ -75,6 +76,76 @@ class NMAWaterLevelsContinuousPressureDaily(Base):
     processed_by: Mapped[Optional[str]] = mapped_column("ProcessedBy", String(4))
     checked_by: Mapped[Optional[str]] = mapped_column("CheckedBy", String(4))
     cond_dl_ms_cm: Mapped[Optional[float]] = mapped_column("CONDDL (mS/cm)", Float)
+
+
+class ViewNGWMNWellConstruction(Base):
+    """
+    Legacy NGWMN well construction view.
+
+    A surrogate primary key is used so rows with missing depth values can still
+    be represented faithfully from the legacy view.
+    """
+
+    __tablename__ = "NMA_view_NGWMN_WellConstruction"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    point_id: Mapped[str] = mapped_column("PointID", String(50))
+    casing_top: Mapped[Optional[float]] = mapped_column("CasingTop", Float)
+    casing_bottom: Mapped[Optional[float]] = mapped_column("CasingBottom", Float)
+    casing_depth_units: Mapped[Optional[str]] = mapped_column(
+        "CasingDepthUnits", String(20)
+    )
+    screen_top: Mapped[Optional[float]] = mapped_column("ScreenTop", Float)
+    screen_bottom: Mapped[Optional[float]] = mapped_column("ScreenBottom", Float)
+    screen_bottom_unit: Mapped[Optional[str]] = mapped_column(
+        "ScreenBottomUnit", String(20)
+    )
+    screen_description: Mapped[Optional[str]] = mapped_column(
+        "ScreenDescription", String(250)
+    )
+    casing_description: Mapped[Optional[str]] = mapped_column(
+        "CasingDescription", String(250)
+    )
+
+
+class ViewNGWMNWaterLevels(Base):
+    """
+    Legacy NGWMN water levels view.
+    """
+
+    __tablename__ = "NMA_view_NGWMN_WaterLevels"
+
+    point_id: Mapped[str] = mapped_column("PointID", String(50), primary_key=True)
+    date_measured: Mapped[date] = mapped_column("DateMeasured", Date, primary_key=True)
+    depth_to_water_bgs: Mapped[Optional[float]] = mapped_column(
+        "DepthToWaterBGS", Float
+    )
+    wl_units: Mapped[Optional[str]] = mapped_column("WLUnits", String(10))
+    measurement_method: Mapped[Optional[str]] = mapped_column(
+        "MeasurementMethod", String(50)
+    )
+    wl_accuracy: Mapped[Optional[float]] = mapped_column("WLAccuracy", Float)
+    public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
+
+
+class ViewNGWMNLithology(Base):
+    """
+    Legacy NGWMN lithology view.
+    """
+
+    __tablename__ = "NMA_view_NGWMN_Lithology"
+
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+    point_id: Mapped[str] = mapped_column("PointID", String(50))
+    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(50))
+    term: Mapped[Optional[str]] = mapped_column("TERM", String(100))
+    strat_source: Mapped[Optional[str]] = mapped_column("StratSource", String(100))
+    strat_top: Mapped[Optional[float]] = mapped_column("StratTop", Float)
+    strat_top_unit: Mapped[Optional[str]] = mapped_column("StratTopUnit", String(20))
+    strat_bottom: Mapped[Optional[float]] = mapped_column("StratBottom", Float)
+    strat_bottom_unit: Mapped[Optional[str]] = mapped_column(
+        "StratBottomUnit", String(20)
+    )
 
 
 # ============= EOF =============================================

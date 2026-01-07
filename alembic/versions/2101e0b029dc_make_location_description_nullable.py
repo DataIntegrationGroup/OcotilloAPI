@@ -14,6 +14,12 @@ import sqlalchemy as sa
 import sqlalchemy_utils
 
 
+def _column_exists(bind, table: str, column: str) -> bool:
+    inspector = sa.inspect(bind)
+    cols = [c["name"] for c in inspector.get_columns(table)]
+    return column in cols
+
+
 # revision identifiers, used by Alembic.
 revision: str = "2101e0b029dc"
 down_revision: Union[str, Sequence[str], None] = "66ac1af4ba69"
@@ -27,11 +33,20 @@ def upgrade() -> None:
     Makes the location.description column nullable to accommodate
     legacy data from MS Access that may not have descriptions.
     """
-    op.alter_column("location", "description", existing_type=sa.String(), nullable=True)
+    bind = op.get_bind()
+    if _column_exists(bind, "location", "description"):
+        op.alter_column(
+            "location", "description", existing_type=sa.String(), nullable=True
+        )
+    else:
+        # If the column is absent (non-standard schema), skip the alteration.
+        pass
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.alter_column(
-        "location", "description", existing_type=sa.String(), nullable=False
-    )
+    bind = op.get_bind()
+    if _column_exists(bind, "location", "description"):
+        op.alter_column(
+            "location", "description", existing_type=sa.String(), nullable=False
+        )

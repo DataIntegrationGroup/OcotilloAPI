@@ -123,6 +123,7 @@ def register_routes(app):
     from api.asset import router as asset_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
+    from api.ngwmn import router as ngwmn_router
 
     app.include_router(asset_router)
     app.include_router(author_router)
@@ -137,6 +138,7 @@ def register_routes(app):
     app.include_router(sensor_router)
     app.include_router(search_router)
     app.include_router(thing_router)
+    app.include_router(ngwmn_router)
     add_pagination(app)
 
 
