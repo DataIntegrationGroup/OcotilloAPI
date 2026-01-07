@@ -54,6 +54,8 @@ jobs:
             CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
             CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
             CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+            GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+            GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
           run: |
             uv run python -m transfers.backfill.staging
 

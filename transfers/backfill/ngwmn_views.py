@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 import pandas as pd
-from sqlalchemy import insert, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from db import (
@@ -49,24 +49,26 @@ class _BaseNGWMNBackfill(Transferer):
         return df, df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        rows = self._dedupe_rows(
+            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        )
 
-    for i in range(0, len(rows), self.batch_size):
-        chunk = rows[i : i + self.batch_size]
-        logger.info(
-            f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into {self.model.__tablename__}"
-        )
-        stmt = (
-            insert(self.model)
-            .values(chunk)
-            .on_conflict_do_update(
-                index_elements=self._conflict_columns(),
-                set_=self._upsert_set_clause(),
+        for i in range(0, len(rows), self.batch_size):
+            chunk = rows[i : i + self.batch_size]
+            logger.info(
+                f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into {self.model.__tablename__}"
             )
-        )
-        session.execute(stmt)
-        session.commit()
-        session.expunge_all()
+            stmt = (
+                insert(self.model)
+                .values(chunk)
+                .on_conflict_do_update(
+                    index_elements=self._conflict_columns(),
+                    set_=self._upsert_set_clause(),
+                )
+            )
+            session.execute(stmt)
+            session.commit()
+            session.expunge_all()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         raise NotImplementedError("_row_dict must be implemented in subclasses")
@@ -78,11 +80,47 @@ class _BaseNGWMNBackfill(Transferer):
             return None
         return v
 
+    @staticmethod
+    def _float_or_none(v: Any) -> Optional[float]:
+        if v is None or pd.isna(v):
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            import re
+
+            match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", v)
+            if match:
+                try:
+                    return float(match.group(0))
+                except ValueError:
+                    return None
+        return None
+
     def _conflict_columns(self) -> list[str]:
         raise NotImplementedError("_conflict_columns must be implemented")
 
     def _upsert_set_clause(self) -> dict[str, Any]:
         raise NotImplementedError("_upsert_set_clause must be implemented")
+
+    def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Deduplicate rows within a batch on conflict columns to avoid ON CONFLICT loops.
+        Later rows win.
+        """
+        keys = self._conflict_columns()
+        deduped: dict[tuple, dict[str, Any]] = {}
+        passthrough: list[dict[str, Any]] = []
+
+        for row in rows:
+            key_tuple = tuple(row.get(k) for k in keys)
+            # If any part of the conflict key is missing, don't dedupe—let it pass through.
+            if any(k is None for k in key_tuple):
+                passthrough.append(row)
+            else:
+                deduped[key_tuple] = row
+
+        return list(deduped.values()) + passthrough
 
 
 class NGWMNWellConstructionBackfill(_BaseNGWMNBackfill):
@@ -91,13 +129,14 @@ class NGWMNWellConstructionBackfill(_BaseNGWMNBackfill):
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         val = self._val
+        f = self._float_or_none
         return {
             "PointID": val(row, "PointID"),
-            "CasingTop": val(row, "CasingTop"),
-            "CasingBottom": val(row, "CasingBottom"),
+            "CasingTop": f(val(row, "CasingTop")),
+            "CasingBottom": f(val(row, "CasingBottom")),
             "CasingDepthUnits": val(row, "CasingDepthUnits"),
-            "ScreenTop": val(row, "ScreenTop"),
-            "ScreenBottom": val(row, "ScreenBottom"),
+            "ScreenTop": f(val(row, "ScreenTop")),
+            "ScreenBottom": f(val(row, "ScreenBottom")),
             "ScreenBottomUnit": val(row, "ScreenBottomUnit"),
             "ScreenDescription": val(row, "ScreenDescription"),
             "CasingDescription": val(row, "CasingDescription"),
@@ -125,16 +164,17 @@ class NGWMNWaterLevelsBackfill(_BaseNGWMNBackfill):
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         val = self._val
+        f = self._float_or_none
         dm = val(row, "DateMeasured")
         if hasattr(dm, "date"):
             dm = dm.date()
         return {
             "PointID": val(row, "PointID"),
             "DateMeasured": dm,
-            "DepthToWaterBGS": val(row, "DepthToWaterBGS"),
+            "DepthToWaterBGS": f(val(row, "DepthToWaterBGS")),
             "WLUnits": val(row, "WLUnits"),
             "MeasurementMethod": val(row, "MeasurementMethod"),
-            "WLAccuracy": val(row, "WLAccuracy"),
+            "WLAccuracy": f(val(row, "WLAccuracy")),
             "PublicRelease": val(row, "PublicRelease"),
         }
 
@@ -158,15 +198,16 @@ class NGWMNLithologyBackfill(_BaseNGWMNBackfill):
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         val = self._val
+        f = self._float_or_none
         return {
             "OBJECTID": val(row, "OBJECTID"),
             "PointID": val(row, "PointID"),
             "Lithology": val(row, "Lithology"),
             "TERM": val(row, "TERM"),
             "StratSource": val(row, "StratSource"),
-            "StratTop": val(row, "StratTop"),
+            "StratTop": f(val(row, "StratTop")),
             "StratTopUnit": val(row, "StratTopUnit"),
-            "StratBottom": val(row, "StratBottom"),
+            "StratBottom": f(val(row, "StratBottom")),
             "StratBottomUnit": val(row, "StratBottomUnit"),
         }
 
