@@ -55,7 +55,7 @@ jobs:
             CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
             CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
           run: |
-            uv run python transfers/backfill/staging.py
+            uv run python -m transfers.backfill.staging
 
         - name: Authenticate to Google Cloud
           uses: 'google-github-actions/auth@v2'

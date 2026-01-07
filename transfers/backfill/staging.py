@@ -16,12 +16,18 @@
 """
 Orchestrates all backfills used in the staging CD pipeline.
 
-Run with:
+Preferred usage (avoids import path issues):
     python -m transfers.backfill.staging --batch-size 1000
 """
 
 import argparse
 import sys
+from pathlib import Path
+
+# Ensure repository root on sys.path when run as a script (e.g., in CI).
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 from transfers.backfill.ngwmn_views import run as run_ngwmn_views
 from transfers.backfill.waterlevelscontinuous_pressure_daily import (
     run as run_pressure_daily,
