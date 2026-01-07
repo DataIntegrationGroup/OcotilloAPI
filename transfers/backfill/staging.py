@@ -32,6 +32,7 @@ from transfers.backfill.ngwmn_views import run as run_ngwmn_views
 from transfers.backfill.waterlevelscontinuous_pressure_daily import (
     run as run_pressure_daily,
 )
+from transfers.backfill.chemistry_sampleinfo import run as run_chemistry_sampleinfo
 from transfers.logger import logger
 
 
@@ -41,6 +42,7 @@ def run(batch_size: int = 1000) -> None:
     """
     steps = (
         ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
+        ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
         ("NGWMN views", run_ngwmn_views),
     )
 
