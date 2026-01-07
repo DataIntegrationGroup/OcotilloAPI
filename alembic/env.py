@@ -1,9 +1,9 @@
+import os
+from logging.config import fileConfig
+
 from alembic import context
 from dotenv import load_dotenv
-from logging.config import fileConfig
-from os import environ
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool, create_engine
 
 
 # this is the Alembic Config object, which provides
@@ -33,15 +33,33 @@ model_tables = set(target_metadata.tables.keys())
 
 load_dotenv()
 
-# Fallback to environment variables for PostgreSQL connection
-user = environ.get("POSTGRES_USER", None)
-password = environ.get("POSTGRES_PASSWORD", None)
-db = environ.get("POSTGRES_DB", None)
-host = environ.get("POSTGRES_HOST", "localhost")
-port = environ.get("POSTGRES_PORT", 5432)
-SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
 
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+def build_database_url():
+    """
+    Build a SQLAlchemy URL based on driver/env vars.
+    For cloudsql we still return a pg8000 URL (hostless) so Alembic can render
+    offline migrations; the actual connection uses a Connector creator in
+    run_migrations_online.
+    """
+    db_driver = os.environ.get("DB_DRIVER", "").lower()
+    if db_driver == "cloudsql":
+        user = os.environ.get("CLOUD_SQL_USER", "")
+        password = os.environ.get("CLOUD_SQL_PASSWORD", "")
+        database = os.environ.get("CLOUD_SQL_DATABASE", "")
+        # Host is provided by connector, so leave blank.
+        return f"postgresql+pg8000://{user}:{password}@/{database}"
+
+    # Default/Postgres
+    user = os.environ.get("POSTGRES_USER", "")
+    password = os.environ.get("POSTGRES_PASSWORD", "")
+    db = os.environ.get("POSTGRES_DB", "")
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    port = os.environ.get("POSTGRES_PORT", 5432)
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+
+
+url = build_database_url()
+config.set_main_option("sqlalchemy.url", url)
 
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -73,11 +91,41 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    db_driver = os.environ.get("DB_DRIVER", "").lower()
+
+    if db_driver == "cloudsql":
+        # Use the Cloud SQL Python Connector for direct Cloud SQL access.
+        from google.cloud.sql.connector import Connector
+
+        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
+        user = os.environ.get("CLOUD_SQL_USER")
+        password = os.environ.get("CLOUD_SQL_PASSWORD")
+        database = os.environ.get("CLOUD_SQL_DATABASE")
+
+        connector = Connector()
+
+        def getconn():
+            return connector.connect(
+                instance_name,
+                "pg8000",
+                user=user,
+                password=password,
+                db=database,
+                ip_type="public",
+            )
+
+        connectable = create_engine(
+            "postgresql+pg8000://",
+            creator=getconn,
+            pool_pre_ping=True,
+            poolclass=pool.NullPool,
+        )
+    else:
+        connectable = engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
 
     with connectable.connect() as connection:
         context.configure(
