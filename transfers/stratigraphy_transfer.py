@@ -78,7 +78,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
 
     for well_index, (pointid, strat_group) in enumerate(well_groups):
         # Check limit (on number of wells, not records)
-        if limit and well_index >= limit:
+        if limit is not None and limit > 0 and well_index >= limit:
             logger.info(f"Reached limit of {limit} wells. Stopping.")
             break
 

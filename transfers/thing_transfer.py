@@ -46,7 +46,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             logger.critical(f"PointID {pointid} has duplicate records. Skipping.")
             continue
 
-        if limit and i >= limit:
+        if limit is not None and limit > 0 and i >= limit:
             logger.warning(f"Reached limit of {limit} rows. Stopping migration.")
             break
 

@@ -33,12 +33,18 @@ from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 if TYPE_CHECKING:
     from db.parameter import Parameter
     from db.contact import Contact
+    from db.thing import Thing
 
 
 class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     """
     Represents a contiguous block of transducer observations that share a QC status.
+    Each block is associated with a specific Thing (well) to ensure uniqueness.
     """
+
+    thing_id: Mapped[int] = mapped_column(
+        ForeignKey("thing.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     parameter_id: Mapped[int] = mapped_column(
         ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
@@ -60,16 +66,18 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
         comment="Foreign key to the Contact table",
     )
 
+    thing: Mapped["Thing"] = relationship("Thing")
     parameter: Mapped["Parameter"] = relationship("Parameter")
     reviewer: Mapped["Contact"] = relationship("Contact")
 
     __table_args__ = (
         UniqueConstraint(
+            "thing_id",
             "review_status",
             "parameter_id",
             "start_datetime",
             "end_datetime",
-            name="uq_transducer_block_status_parameter_time",
+            name="uq_transducer_block_thing_status_parameter_time",
         ),
         CheckConstraint(
             "end_datetime > start_datetime", name="check_transuder_block_time_order"

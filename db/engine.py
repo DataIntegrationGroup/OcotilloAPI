@@ -90,10 +90,17 @@ if driver == "cloudsql":
             )
             return conn
 
+        # Configure connection pool for parallel transfers
+        pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
+        max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
+
         engine = create_engine(
             "postgresql+pg8000://",
             creator=getconn,
             echo=False,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_pre_ping=True,
         )
         return engine
 
@@ -120,10 +127,19 @@ else:
     # else:
     #     url = "sqlite:///./development.db"
 
+    # Configure connection pool for parallel transfers
+    # pool_size: number of persistent connections
+    # max_overflow: additional connections during peak usage
+    pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
+    max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
+
     engine = create_engine(
         url,
         # echo=True,
         plugins=["geoalchemy2"],
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        pool_pre_ping=True,  # Verify connections before use
     )
 
     async_engine = create_async_engine(
