@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 import pandas as pd
-from sqlalchemy import insert, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from db import NMAWaterLevelsContinuousPressureDaily
@@ -53,7 +53,10 @@ class NMAWaterLevelsContinuousPressureDailyBackfill(Transferer):
         return input_df, input_df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        rows = self._dedupe_rows(
+            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
+            key="GlobalID",
+        )
 
         insert_stmt = insert(NMAWaterLevelsContinuousPressureDaily)
         excluded = insert_stmt.excluded
@@ -118,6 +121,21 @@ class NMAWaterLevelsContinuousPressureDailyBackfill(Transferer):
             "CheckedBy": val("CheckedBy"),
             "CONDDL (mS/cm)": val("CONDDL (mS/cm)"),
         }
+
+    def _dedupe_rows(
+        self, rows: list[dict[str, Any]], key: str
+    ) -> list[dict[str, Any]]:
+        """
+        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
+        Later rows win.
+        """
+        deduped = {}
+        for row in rows:
+            gid = row.get(key)
+            if gid is None:
+                continue
+            deduped[gid] = row
+        return list(deduped.values())
 
 
 def run(batch_size: int = 1000) -> None:

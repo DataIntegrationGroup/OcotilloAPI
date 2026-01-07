@@ -40,13 +40,13 @@ def run(batch_size: int = 1000) -> None:
     Execute all backfill steps in a deterministic order.
     """
     steps = (
-        ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
-        ("NGWMN views", lambda: run_ngwmn_views(batch_size=batch_size)),
+        # ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
+        ("NGWMN views", run_ngwmn_views),
     )
 
     for name, fn in steps:
         logger.info(f"Starting backfill: {name}")
-        fn(batch_size=batch_size)
+        fn(batch_size)
         logger.info(f"Completed backfill: {name}")
 
 
