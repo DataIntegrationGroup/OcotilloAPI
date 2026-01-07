@@ -17,7 +17,11 @@ from fastapi import APIRouter
 from starlette.responses import Response
 
 from core.dependencies import session_dependency
-from services.ngwmn_helper import make_waterlevels_response, make_well_construction_response, make_lithology_response
+from services.ngwmn_helper import (
+    make_waterlevels_response,
+    make_well_construction_response,
+    make_lithology_response,
+)
 
 router = APIRouter(prefix="/ngwmn", tags=["NGWMN"])
 

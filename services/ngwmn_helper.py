@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 # NSMAP = dict(xsi="http://www.w3.org/2001/XMLSchema-instance", xsd="http://www.w3.org/2001/XMLSchema")
 
+
 def make_xml_response(db, sql, point_id, func):
     if not isinstance(sql, (tuple, list)):
         sql = (sql,)
@@ -42,10 +43,13 @@ def make_well_construction_response(point_id, db):
 
 def make_waterlevels_response(point_id, db):
     sql = "select * from dbo.view_NGWMN_WaterLevels where PointID=:point_id order by DateMeasured"
-    sql2 = ("select * from NMAWaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
-            "DateMeasured")
+    sql2 = (
+        "select * from NMAWaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
+        "DateMeasured"
+    )
 
     return make_xml_response(db, (sql, sql2), point_id, water_levels_xml2)
+
 
 # ==================== make xml =======================
 def continuous_water_levels_xml(records):
