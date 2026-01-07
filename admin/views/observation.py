@@ -18,16 +18,10 @@ ObservationAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Observation (Water Levels) model.
 """
-from starlette.requests import Request
-from starlette.responses import Response
-from starlette_admin import action
-from starlette_admin.contrib.sqla import ModelView
-from sqlalchemy import select, update
-
-from db.observation import Observation
+from admin.views.base import OcotilloModelView
 
 
-class ObservationAdmin(ModelView):
+class ObservationAdmin(OcotilloModelView):
     """
     Admin view for Observation model (Water Levels).
 
@@ -181,100 +175,3 @@ class ObservationAdmin(ModelView):
         "parameter_id": "The parameter being measured (e.g., 'Depth to Water')",
         "release_status": "'draft' (internal only) or 'published' (public)",
     }
-
-    # ========== Permissions (RBAC) ==========
-
-    def can_create(self, request: Request) -> bool:
-        user = getattr(request.state, "user", None)
-        if user is None:
-            return False
-        return "admin" in getattr(user, "roles", [])
-
-    def can_edit(self, request: Request) -> bool:
-        user = getattr(request.state, "user", None)
-        if user is None:
-            return False
-        roles = getattr(user, "roles", [])
-        return "admin" in roles or "editor" in roles
-
-    def can_delete(self, request: Request) -> bool:
-        user = getattr(request.state, "user", None)
-        if user is None:
-            return False
-        return "admin" in getattr(user, "roles", [])
-
-    def can_view_details(self, request: Request) -> bool:
-        user = getattr(request.state, "user", None)
-        return user is not None
-
-    # ========== Data Visibility (Release Status Filter) ==========
-
-    def get_list_query(self, request: Request):
-        query = select(self.model)
-
-        user = getattr(request.state, "user", None)
-        if user is None:
-            return query.where(self.model.id == -1)
-
-        roles = getattr(user, "roles", [])
-        if "admin" in roles or "editor" in roles:
-            return query
-        else:
-            return query.where(self.model.release_status == "published")
-
-    # ========== Custom Actions ==========
-
-    @action(
-        name="publish_selected",
-        text="Publish Selected",
-        confirmation="Are you sure you want to publish the selected observations? This will make them visible to the public.",
-        submit_btn_text="Yes, publish",
-        submit_btn_class="btn btn-success",
-    )
-    async def publish_selected(self, request: Request, pks: list[int]) -> Response:
-        user = getattr(request.state, "user", None)
-        if "admin" not in getattr(user, "roles", []):
-            return Response("Only admins can publish observations", status_code=403)
-
-        from db.engine import session_ctx
-
-        with session_ctx() as session:
-            result = session.execute(
-                update(Observation)
-                .where(Observation.id.in_(pks))
-                .values(release_status="published")
-            )
-            session.commit()
-            updated_count = result.rowcount
-
-        return Response(
-            f"Successfully published {updated_count} observation(s)", status_code=200
-        )
-
-    @action(
-        name="unpublish_selected",
-        text="Unpublish Selected (set to draft)",
-        confirmation="Are you sure you want to unpublish the selected observations? They will no longer be visible to the public.",
-        submit_btn_text="Yes, unpublish",
-        submit_btn_class="btn btn-warning",
-    )
-    async def unpublish_selected(self, request: Request, pks: list[int]) -> Response:
-        user = getattr(request.state, "user", None)
-        if "admin" not in getattr(user, "roles", []):
-            return Response("Only admins can unpublish observations", status_code=403)
-
-        from db.engine import session_ctx
-
-        with session_ctx() as session:
-            result = session.execute(
-                update(Observation)
-                .where(Observation.id.in_(pks))
-                .values(release_status="draft")
-            )
-            session.commit()
-            updated_count = result.rowcount
-
-        return Response(
-            f"Successfully unpublished {updated_count} observation(s) (set to draft)",
-            status_code=200,
-        )

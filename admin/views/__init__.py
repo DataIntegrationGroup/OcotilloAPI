@@ -24,6 +24,21 @@ from admin.views.observation import ObservationAdmin
 from admin.views.contact import ContactAdmin
 from admin.views.sensor import SensorAdmin
 from admin.views.deployment import DeploymentAdmin
+from admin.views.lexicon import LexiconTermAdmin, LexiconCategoryAdmin
+from admin.views.asset import AssetAdmin
+from admin.views.aquifer_type import AquiferTypeAdmin
+from admin.views.aquifer_system import AquiferSystemAdmin
+from admin.views.group import GroupAdmin
+from admin.views.notes import NotesAdmin
+from admin.views.sample import SampleAdmin
+from admin.views.geologic_formation import GeologicFormationAdmin
+from admin.views.data_provenance import DataProvenanceAdmin
+from admin.views.field import (
+    FieldEventAdmin,
+    FieldActivityAdmin,
+    FieldEventParticipantAdmin,
+)
+from admin.views.parameter import ParameterAdmin
 
 __all__ = [
     "LocationAdmin",
@@ -32,4 +47,18 @@ __all__ = [
     "ContactAdmin",
     "SensorAdmin",
     "DeploymentAdmin",
+    "LexiconTermAdmin",
+    "LexiconCategoryAdmin",
+    "AssetAdmin",
+    "AquiferTypeAdmin",
+    "AquiferSystemAdmin",
+    "GroupAdmin",
+    "NotesAdmin",
+    "SampleAdmin",
+    "GeologicFormationAdmin",
+    "DataProvenanceAdmin",
+    "FieldEventAdmin",
+    "FieldActivityAdmin",
+    "FieldEventParticipantAdmin",
+    "ParameterAdmin",
 ]

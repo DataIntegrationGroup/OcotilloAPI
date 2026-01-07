@@ -28,6 +28,20 @@ from admin.views import (
     ContactAdmin,
     SensorAdmin,
     DeploymentAdmin,
+    LexiconTermAdmin,
+    LexiconCategoryAdmin,
+    AssetAdmin,
+    AquiferTypeAdmin,
+    AquiferSystemAdmin,
+    GroupAdmin,
+    NotesAdmin,
+    SampleAdmin,
+    GeologicFormationAdmin,
+    DataProvenanceAdmin,
+    FieldEventAdmin,
+    FieldActivityAdmin,
+    FieldEventParticipantAdmin,
+    ParameterAdmin,
 )
 from db.engine import engine
 from db.location import Location
@@ -36,6 +50,21 @@ from db.observation import Observation
 from db.contact import Contact
 from db.sensor import Sensor
 from db.deployment import Deployment
+from db.lexicon import (
+    LexiconTerm,
+    LexiconCategory,
+)
+from db.asset import Asset
+from db.aquifer_type import AquiferType
+from db.aquifer_system import AquiferSystem
+from db.group import Group
+from db.notes import Notes
+from db.sample import Sample
+from db.geologic_formation import GeologicFormation
+from db.data_provenance import DataProvenance
+from db.field import FieldEvent, FieldActivity, FieldEventParticipant
+from db.permission_history import PermissionHistory
+from db.parameter import Parameter
 
 
 def create_admin(app):
@@ -81,6 +110,39 @@ def create_admin(app):
     # Equipment
     admin.add_view(SensorAdmin(Sensor))
     admin.add_view(DeploymentAdmin(Deployment))
+
+    # Assets
+    admin.add_view(AssetAdmin(Asset))
+
+    # Aquifer
+    admin.add_view(AquiferSystemAdmin(AquiferSystem))
+    admin.add_view(AquiferTypeAdmin(AquiferType))
+
+    # Groups
+    admin.add_view(GroupAdmin(Group))
+
+    # Notes
+    admin.add_view(NotesAdmin(Notes))
+
+    # Samples
+    admin.add_view(SampleAdmin(Sample))
+
+    # Field
+    admin.add_view(FieldEventAdmin(FieldEvent))
+    admin.add_view(FieldActivityAdmin(FieldActivity))
+
+    # Parameters
+    admin.add_view(ParameterAdmin(Parameter))
+
+    # Geology
+    admin.add_view(GeologicFormationAdmin(GeologicFormation))
+
+    # Data provenance
+    admin.add_view(DataProvenanceAdmin(DataProvenance))
+
+    # Lexicon
+    admin.add_view(LexiconTermAdmin(LexiconTerm))
+    admin.add_view(LexiconCategoryAdmin(LexiconCategory))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)
