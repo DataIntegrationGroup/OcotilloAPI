@@ -32,11 +32,6 @@ jobs:
               --no-dev \
               --output-file requirements.txt
 
-        - name: Authenticate to Google Cloud
-          uses: 'google-github-actions/auth@v2'
-          with:
-            credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
-
         - name: Run Alembic migrations on staging database
           env:
             DB_DRIVER: "cloudsql"
@@ -56,6 +51,11 @@ jobs:
             CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
           run: |
             uv run python transfers/backfill/staging.py
+
+        - name: Authenticate to Google Cloud
+          uses: 'google-github-actions/auth@v2'
+          with:
+            credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
