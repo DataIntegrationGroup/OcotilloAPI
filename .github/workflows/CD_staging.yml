@@ -32,6 +32,11 @@ jobs:
               --no-dev \
               --output-file requirements.txt
 
+        - name: Authenticate to Google Cloud
+          uses: 'google-github-actions/auth@v2'
+          with:
+            credentials_json: ${{ secrets.CLOUD_SQL_SERVICE_ACCOUNT_KEY }}
+
         - name: Run Alembic migrations on staging database
           env:
             DB_DRIVER: "cloudsql"
