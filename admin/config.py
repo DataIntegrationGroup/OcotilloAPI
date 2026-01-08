@@ -40,7 +40,6 @@ from admin.views import (
     DataProvenanceAdmin,
     FieldEventAdmin,
     FieldActivityAdmin,
-    FieldEventParticipantAdmin,
     ParameterAdmin,
 )
 from db.engine import engine
@@ -62,8 +61,7 @@ from db.notes import Notes
 from db.sample import Sample
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
-from db.field import FieldEvent, FieldActivity, FieldEventParticipant
-from db.permission_history import PermissionHistory
+from db.field import FieldEvent, FieldActivity
 from db.parameter import Parameter
 
 
