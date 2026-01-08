@@ -24,9 +24,9 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "NMA_SurfaceWaterData",
-        sa.Column("SurfaceID", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("SurfaceID", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("PointID", sa.String(length=10), nullable=False),
-        sa.Column("OBJECTID", sa.Integer(), nullable=True),
+        sa.Column("OBJECTID", sa.Integer(), primary_key=True),
         sa.Column("Discharge", sa.String(length=50), nullable=True),
         sa.Column("DischargeMethod", sa.String(length=50), nullable=True),
         sa.Column("DischargeRate", sa.Float(), nullable=True),

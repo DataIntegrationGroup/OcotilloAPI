@@ -201,10 +201,10 @@ class SurfaceWaterData(Base):
     __tablename__ = "NMA_SurfaceWaterData"
 
     surface_id: Mapped[uuid.UUID] = mapped_column(
-        "SurfaceID", UUID(as_uuid=True), primary_key=True
+        "SurfaceID", UUID(as_uuid=True), nullable=False
     )
     point_id: Mapped[str] = mapped_column("PointID", String(10))
-    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer)
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
     discharge: Mapped[Optional[str]] = mapped_column("Discharge", String(50))
     discharge_method: Mapped[Optional[str]] = mapped_column(
