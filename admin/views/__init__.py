@@ -31,6 +31,7 @@ from admin.views.aquifer_system import AquiferSystemAdmin
 from admin.views.group import GroupAdmin
 from admin.views.notes import NotesAdmin
 from admin.views.sample import SampleAdmin
+from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
 from admin.views.geologic_formation import GeologicFormationAdmin
 from admin.views.data_provenance import DataProvenanceAdmin
 from admin.views.field import (
@@ -55,6 +56,7 @@ __all__ = [
     "GroupAdmin",
     "NotesAdmin",
     "SampleAdmin",
+    "ChemistrySampleInfoAdmin",
     "GeologicFormationAdmin",
     "DataProvenanceAdmin",
     "FieldEventAdmin",
