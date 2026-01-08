@@ -18,9 +18,11 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     ForeignKey,
     Float,
     DateTime,
+    String,
     Text,
     CheckConstraint,
     Index,
@@ -118,6 +120,48 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
         DateTime(timezone=True), nullable=False, index=True
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
+    nma_waterlevelscontinuous_pressure_conddl_ms_cm: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_checked_by: Mapped[str] = mapped_column(
+        String(4), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_data_source: Mapped[str] = mapped_column(
+        String(5), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_global_id: Mapped[str] = mapped_column(
+        String(40), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_measurement_method: Mapped[str] = mapped_column(
+        String(2), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_measuring_agency: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_notes: Mapped[str] = mapped_column(
+        String(100), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_processed_by: Mapped[str] = mapped_column(
+        String(4), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_qced: Mapped[bool] = mapped_column(
+        Boolean, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_temperature_water: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_updated: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_water_head: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_water_head_adjusted: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
 
     # qc_block_id: Mapped[Optional[int]] = mapped_column(
     #     ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True

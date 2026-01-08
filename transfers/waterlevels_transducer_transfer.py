@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
+import keyword
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
@@ -39,6 +40,8 @@ class WaterLevelsContinuousTransferer(Transferer):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.groundwater_parameter_id = get_groundwater_parameter_id()
+        self._itertuples_field_map = {}
+        self._df_columns = set()
         if self._sensor_types is None:
             raise ValueError("_sensor_types must be set")
         if self._partition_field is None:
@@ -54,6 +57,11 @@ class WaterLevelsContinuousTransferer(Transferer):
 
         # remove duplicate rows
         cleaned_df = cleaned_df.drop_duplicates(subset=["PointID", "DateMeasured"])
+
+        self._df_columns = set(cleaned_df.columns)
+        self._itertuples_field_map = self._build_itertuples_field_map(
+            cleaned_df.columns
+        )
 
         return input_df, cleaned_df
 
@@ -188,11 +196,63 @@ class WaterLevelsContinuousTransferer(Transferer):
             obspayload = CreateTransducerObservation.model_validate(
                 payload
             ).model_dump()
-            return TransducerObservation(**obspayload)
+            legacy_payload = self._legacy_payload(row)
+            return TransducerObservation(**obspayload, **legacy_payload)
 
         except ValidationError as e:
             logger.critical(f"Observation validation error: {e.errors()}")
             self._capture_error(pointid, str(e), "DepthToWaterBGS")
+
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        def val(key: str):
+            if key not in self._df_columns:
+                return None
+            field = self._itertuples_field_map.get(key, key)
+            v = getattr(row, field, None)
+            if pd.isna(v):
+                return None
+            return v
+
+        return {
+            "nma_waterlevelscontinuous_pressure_conddl_ms_cm": val("CONDDL (mS/cm)"),
+            "nma_waterlevelscontinuous_pressure_checked_by": val("CheckedBy"),
+            "nma_waterlevelscontinuous_pressure_created": val("Created"),
+            "nma_waterlevelscontinuous_pressure_data_source": val("DataSource"),
+            "nma_waterlevelscontinuous_pressure_global_id": val("GlobalID"),
+            "nma_waterlevelscontinuous_pressure_measurement_method": val(
+                "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_pressure_measuring_agency": val(
+                "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_pressure_notes": val("Notes"),
+            "nma_waterlevelscontinuous_pressure_processed_by": val("ProcessedBy"),
+            "nma_waterlevelscontinuous_pressure_qced": val("QCed"),
+            "nma_waterlevelscontinuous_pressure_temperature_water": val(
+                "TemperatureWater"
+            ),
+            "nma_waterlevelscontinuous_pressure_updated": val("Updated"),
+            "nma_waterlevelscontinuous_pressure_water_head": val("WaterHead"),
+            "nma_waterlevelscontinuous_pressure_water_head_adjusted": val(
+                "WaterHeadAdjusted"
+            ),
+        }
+
+    @staticmethod
+    def _build_itertuples_field_map(columns: list[str]) -> dict[str, str]:
+        """
+        Map original column names to itertuples field names for invalid identifiers.
+        """
+        invalid_count = 0
+        mapping: dict[str, str] = {}
+        for col in columns:
+            if not isinstance(col, str):
+                continue
+            if col.isidentifier() and not keyword.iskeyword(col):
+                continue
+            invalid_count += 1
+            mapping[col] = f"_{invalid_count}"
+        return mapping
 
 
 class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
