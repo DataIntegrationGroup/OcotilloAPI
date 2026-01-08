@@ -47,7 +47,7 @@ class SurfaceWaterDataBackfill(Transferer):
     def _transfer_hook(self, session: Session) -> None:
         rows = self._dedupe_rows(
             [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
-            key="SurfaceID",
+            key="OBJECTID",
         )
 
         insert_stmt = insert(SurfaceWaterData)
@@ -59,7 +59,7 @@ class SurfaceWaterDataBackfill(Transferer):
                 f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into SurfaceWaterData"
             )
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                index_elements=["SurfaceID"],
+                index_elements=["OBJECTID"],
                 set_={
                     "PointID": excluded.PointID,
                     "OBJECTID": excluded.OBJECTID,
