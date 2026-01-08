@@ -34,6 +34,7 @@ from transfers.backfill.waterlevelscontinuous_pressure_daily import (
     run as run_pressure_daily,
 )
 from transfers.backfill.chemistry_sampleinfo import run as run_chemistry_sampleinfo
+from services.util import get_bool_env
 from transfers.logger import logger
 
 
@@ -42,13 +43,24 @@ def run(batch_size: int = 1000) -> None:
     Execute all backfill steps in a deterministic order.
     """
     steps = (
-        ("SurfaceWaterData", run_surface_water_data),
-        # ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
-        # ("NGWMN views", run_ngwmn_views),
-        # ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
+        ("SurfaceWaterData", run_surface_water_data, "BACKFILL_SURFACE_WATER_DATA"),
+        (
+            "Chemistry_SampleInfo",
+            run_chemistry_sampleinfo,
+            "BACKFILL_CHEMISTRY_SAMPLEINFO",
+        ),
+        ("NGWMN views", run_ngwmn_views, "BACKFILL_NGWMN_VIEWS"),
+        (
+            "WaterLevelsContinuous_Pressure_Daily",
+            run_pressure_daily,
+            "BACKFILL_WATERLEVELS_PRESSURE_DAILY",
+        ),
     )
 
-    for name, fn in steps:
+    for name, fn, flag in steps:
+        if not get_bool_env(flag, True):
+            logger.info(f"Skipping backfill: {name} ({flag}=false)")
+            continue
         logger.info(f"Starting backfill: {name}")
         fn(batch_size)
         logger.info(f"Completed backfill: {name}")
