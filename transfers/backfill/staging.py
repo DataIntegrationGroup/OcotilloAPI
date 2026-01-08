@@ -41,9 +41,9 @@ def run(batch_size: int = 1000) -> None:
     Execute all backfill steps in a deterministic order.
     """
     steps = (
-        # ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
+        ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
         ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
-        # ("NGWMN views", run_ngwmn_views),
+        ("NGWMN views", run_ngwmn_views),
     )
 
     for name, fn in steps:
