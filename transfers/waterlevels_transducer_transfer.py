@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Any
 
 import pandas as pd
 from pandas import Timestamp
@@ -201,65 +202,16 @@ class WaterLevelsContinuousTransferer(Transferer):
             self._capture_error(pointid, str(e), "DepthToWaterBGS")
 
     def _legacy_payload(self, row: pd.Series) -> dict:
-        def val(key: str):
-            if key not in self._df_columns:
-                return None
-            field = self._itertuples_field_map.get(key, key)
-            v = getattr(row, field, None)
-            if pd.isna(v):
-                return None
-            return v
+        return {}
 
-        return {
-            "nma_waterlevelscontinuous_pressure_conddl_ms_cm": val("CONDDL (mS/cm)"),
-            "nma_waterlevelscontinuous_pressure_checked_by": val("CheckedBy"),
-            "nma_waterlevelscontinuous_pressure_created": val("Created"),
-            "nma_waterlevelscontinuous_pressure_data_source": val("DataSource"),
-            "nma_waterlevelscontinuous_pressure_global_id": val("GlobalID"),
-            "nma_waterlevelscontinuous_pressure_measurement_method": val(
-                "MeasurementMethod"
-            ),
-            "nma_waterlevelscontinuous_pressure_measuring_agency": val(
-                "MeasuringAgency"
-            ),
-            "nma_waterlevelscontinuous_pressure_notes": val("Notes"),
-            "nma_waterlevelscontinuous_pressure_processed_by": val("ProcessedBy"),
-            "nma_waterlevelscontinuous_pressure_qced": val("QCed"),
-            "nma_waterlevelscontinuous_pressure_temperature_water": val(
-                "TemperatureWater"
-            ),
-            "nma_waterlevelscontinuous_pressure_updated": val("Updated"),
-            "nma_waterlevelscontinuous_pressure_water_head": val("WaterHead"),
-            "nma_waterlevelscontinuous_pressure_water_head_adjusted": val(
-                "WaterHeadAdjusted"
-            ),
-            "nma_waterlevelscontinuous_acoustic_created": val("Created"),
-            "nma_waterlevelscontinuous_acoustic_data_source": val("DataSource"),
-            "nma_waterlevelscontinuous_acoustic_global_id": val("GlobalID"),
-            "nma_waterlevelscontinuous_acoustic_measurement_method": val(
-                "MeasurementMethod"
-            ),
-            "nma_waterlevelscontinuous_acoustic_measuring_agency": val(
-                "MeasuringAgency"
-            ),
-            "nma_waterlevelscontinuous_acoustic_notes": val("Notes"),
-            "nma_waterlevelscontinuous_acoustic_point_id": val("PointID"),
-            "nma_waterlevelscontinuous_acoustic_pre_process_data_field": val(
-                "PreProcessDataField"
-            ),
-            "nma_waterlevelscontinuous_acoustic_public_release": val("PublicRelease"),
-            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp": val(
-                "SensorHgtAboveMP"
-            ),
-            "nma_waterlevelscontinuous_acoustic_serial_no": val("SerialNo"),
-            "nma_waterlevelscontinuous_acoustic_server_receipt_date": val(
-                "ServerReceiptDate"
-            ),
-            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length": val(
-                "SpeakerToMicLength"
-            ),
-            "nma_waterlevelscontinuous_acoustic_temperature_air": val("TemperatureAir"),
-        }
+    def _legacy_val(self, row: pd.Series, key: str) -> Any:
+        if key not in self._df_columns:
+            return None
+        field = self._itertuples_field_map.get(key, key)
+        v = getattr(row, field, None)
+        if pd.isna(v):
+            return None
+        return v
 
     @staticmethod
     def _build_itertuples_field_map(df: pd.DataFrame) -> dict[str, str]:
@@ -285,11 +237,75 @@ class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
     _partition_field = "QCed"
     _sensor_types = ("Pressure Transducer", "Barometer", "DiverLink", "Diver Cable")
 
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        val = self._legacy_val
+        return {
+            "nma_waterlevelscontinuous_pressure_conddl_ms_cm": val(
+                row, "CONDDL (mS/cm)"
+            ),
+            "nma_waterlevelscontinuous_pressure_checked_by": val(row, "CheckedBy"),
+            "nma_waterlevelscontinuous_pressure_created": val(row, "Created"),
+            "nma_waterlevelscontinuous_pressure_data_source": val(row, "DataSource"),
+            "nma_waterlevelscontinuous_pressure_global_id": val(row, "GlobalID"),
+            "nma_waterlevelscontinuous_pressure_measurement_method": val(
+                row, "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_pressure_measuring_agency": val(
+                row, "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_pressure_notes": val(row, "Notes"),
+            "nma_waterlevelscontinuous_pressure_processed_by": val(row, "ProcessedBy"),
+            "nma_waterlevelscontinuous_pressure_qced": val(row, "QCed"),
+            "nma_waterlevelscontinuous_pressure_temperature_water": val(
+                row, "TemperatureWater"
+            ),
+            "nma_waterlevelscontinuous_pressure_updated": val(row, "Updated"),
+            "nma_waterlevelscontinuous_pressure_water_head": val(row, "WaterHead"),
+            "nma_waterlevelscontinuous_pressure_water_head_adjusted": val(
+                row, "WaterHeadAdjusted"
+            ),
+        }
+
 
 class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
     source_table = "WaterLevelsContinuous_Acoustic"
     _partition_field = "PublicRelease"
     _sensor_types = ("Acoustic Sounder",)
+
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        val = self._legacy_val
+        return {
+            "nma_waterlevelscontinuous_acoustic_created": val(row, "Created"),
+            "nma_waterlevelscontinuous_acoustic_data_source": val(row, "DataSource"),
+            "nma_waterlevelscontinuous_acoustic_global_id": val(row, "GlobalID"),
+            "nma_waterlevelscontinuous_acoustic_measurement_method": val(
+                row, "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_acoustic_measuring_agency": val(
+                row, "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_acoustic_notes": val(row, "Notes"),
+            "nma_waterlevelscontinuous_acoustic_point_id": val(row, "PointID"),
+            "nma_waterlevelscontinuous_acoustic_pre_process_data_field": val(
+                row, "PreProcessDataField"
+            ),
+            "nma_waterlevelscontinuous_acoustic_public_release": val(
+                row, "PublicRelease"
+            ),
+            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp": val(
+                row, "SensorHgtAboveMP"
+            ),
+            "nma_waterlevelscontinuous_acoustic_serial_no": val(row, "SerialNo"),
+            "nma_waterlevelscontinuous_acoustic_server_receipt_date": val(
+                row, "ServerReceiptDate"
+            ),
+            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length": val(
+                row, "SpeakerToMicLength"
+            ),
+            "nma_waterlevelscontinuous_acoustic_temperature_air": val(
+                row, "TemperatureAir"
+            ),
+        }
 
 
 def _find_deployment(ts, deployments):
