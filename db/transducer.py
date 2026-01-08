@@ -162,6 +162,48 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
     nma_waterlevelscontinuous_pressure_water_head_adjusted: Mapped[float] = (
         mapped_column(Float, nullable=True)
     )
+    nma_waterlevelscontinuous_acoustic_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_data_source: Mapped[str] = mapped_column(
+        String(5), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_global_id: Mapped[str] = mapped_column(
+        String(40), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_measurement_method: Mapped[str] = mapped_column(
+        String(2), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_measuring_agency: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_notes: Mapped[str] = mapped_column(
+        String(200), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_point_id: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_pre_process_data_field: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_public_release: Mapped[bool] = mapped_column(
+        Boolean, nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_serial_no: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_server_receipt_date: Mapped[datetime] = (
+        mapped_column(DateTime(timezone=True), nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_speaker_to_mic_length: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_temperature_air: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
 
     # qc_block_id: Mapped[Optional[int]] = mapped_column(
     #     ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True
