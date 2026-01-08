@@ -29,6 +29,8 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.util import await_only
 
+from services.util import get_bool_env
+
 load_dotenv()
 driver = os.environ.get("DB_DRIVER", "")
 
@@ -48,14 +50,19 @@ async def get_async_engine():
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
-        connection = connector.connect_async(
-            instance_name,
-            "asyncpg",
-            db=database,
-            password=password,
-            user=user,
-        )
+        connect_kwargs = {
+            "db": database,
+            "user": user,
+            "enable_iam_auth": use_iam_auth,
+            "ip_type": ip_type,
+        }
+        if not use_iam_auth:
+            connect_kwargs["password"] = password
+
+        connection = connector.connect_async(instance_name, "asyncpg", **connect_kwargs)
 
         return AsyncAdapt_asyncpg_connection(
             engine.dialect.dbapi,
@@ -78,15 +85,23 @@ if driver == "cloudsql":
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         def getconn():
+            connect_kwargs = {
+                "user": user,
+                "db": database,
+                "ip_type": ip_type,
+                "enable_iam_auth": use_iam_auth,
+            }
+            if not use_iam_auth:
+                connect_kwargs["password"] = password
+
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
                 "pg8000",
-                user=user,
-                password=password,
-                db=database,
-                ip_type="public",
+                **connect_kwargs,
             )
             return conn
 
