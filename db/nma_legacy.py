@@ -20,6 +20,15 @@ from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Float, Integer, SmallInteger, String
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
@@ -177,6 +186,47 @@ class NMAHydraulicsData(Base):
     hydraulic_remarks: Mapped[Optional[str]] = mapped_column(
         "Hydraulic Remarks", String(200)
     )
+
+
+class ChemistrySampleInfo(Base):
+    """
+    Legacy Chemistry SampleInfo table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_Chemistry_SampleInfo"
+
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(50))
+    sample_pt_id: Mapped[Optional[str]] = mapped_column("SamplePtID", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(50))
+
+    collection_date: Mapped[Optional[date]] = mapped_column("CollectionDate", Date)
+    collection_method: Mapped[Optional[str]] = mapped_column(
+        "CollectionMethod", String(100)
+    )
+    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(100))
+    analyses_agency: Mapped[Optional[str]] = mapped_column(
+        "AnalysesAgency", String(100)
+    )
+
+    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(100))
+    sample_material_not_h2o: Mapped[Optional[bool]] = mapped_column(
+        "SampleMaterialNotH2O", Boolean
+    )
+    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(100))
+    study_sample: Mapped[Optional[bool]] = mapped_column("StudySample", Boolean)
+
+    data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(100))
+    data_quality: Mapped[Optional[str]] = mapped_column("DataQuality", String(100))
+    public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
+
+    added_day_to_date: Mapped[Optional[str]] = mapped_column(
+        "AddedDaytoDate", String(10)
+    )
+    added_month_day_to_date: Mapped[Optional[str]] = mapped_column(
+        "AddedMonthDaytoDate", String(10)
+    )
+    sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
 
 
 # ============= EOF =============================================
