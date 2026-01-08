@@ -38,9 +38,9 @@ from admin.views import (
     SampleAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
+    TransducerObservationAdmin,
     FieldEventAdmin,
     FieldActivityAdmin,
-    FieldEventParticipantAdmin,
     ParameterAdmin,
 )
 from db.engine import engine
@@ -62,8 +62,8 @@ from db.notes import Notes
 from db.sample import Sample
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
-from db.field import FieldEvent, FieldActivity, FieldEventParticipant
-from db.permission_history import PermissionHistory
+from db.transducer import TransducerObservation
+from db.field import FieldEvent, FieldActivity
 from db.parameter import Parameter
 
 
@@ -139,6 +139,9 @@ def create_admin(app):
 
     # Data provenance
     admin.add_view(DataProvenanceAdmin(DataProvenance))
+
+    # Transducer observations
+    admin.add_view(TransducerObservationAdmin(TransducerObservation))
 
     # Lexicon
     admin.add_view(LexiconTermAdmin(LexiconTerm))
