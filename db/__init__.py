@@ -49,6 +49,7 @@ from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
 from db.aquifer_type import *
 from db.nma_legacy import *
+from db.minor_trace_chemistry import *
 
 from sqlalchemy import (
     func,
