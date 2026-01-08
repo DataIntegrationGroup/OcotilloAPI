@@ -233,6 +233,32 @@ class WaterLevelsContinuousTransferer(Transferer):
             "nma_waterlevelscontinuous_pressure_water_head_adjusted": val(
                 "WaterHeadAdjusted"
             ),
+            "nma_waterlevelscontinuous_acoustic_created": val("Created"),
+            "nma_waterlevelscontinuous_acoustic_data_source": val("DataSource"),
+            "nma_waterlevelscontinuous_acoustic_global_id": val("GlobalID"),
+            "nma_waterlevelscontinuous_acoustic_measurement_method": val(
+                "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_acoustic_measuring_agency": val(
+                "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_acoustic_notes": val("Notes"),
+            "nma_waterlevelscontinuous_acoustic_point_id": val("PointID"),
+            "nma_waterlevelscontinuous_acoustic_pre_process_data_field": val(
+                "PreProcessDataField"
+            ),
+            "nma_waterlevelscontinuous_acoustic_public_release": val("PublicRelease"),
+            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp": val(
+                "SensorHgtAboveMP"
+            ),
+            "nma_waterlevelscontinuous_acoustic_serial_no": val("SerialNo"),
+            "nma_waterlevelscontinuous_acoustic_server_receipt_date": val(
+                "ServerReceiptDate"
+            ),
+            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length": val(
+                "SpeakerToMicLength"
+            ),
+            "nma_waterlevelscontinuous_acoustic_temperature_air": val("TemperatureAir"),
         }
 
     @staticmethod
