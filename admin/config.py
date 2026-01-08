@@ -36,11 +36,11 @@ from admin.views import (
     GroupAdmin,
     NotesAdmin,
     SampleAdmin,
+    HydraulicsDataAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
     FieldEventAdmin,
     FieldActivityAdmin,
-    FieldEventParticipantAdmin,
     ParameterAdmin,
 )
 from db.engine import engine
@@ -60,10 +60,10 @@ from db.aquifer_system import AquiferSystem
 from db.group import Group
 from db.notes import Notes
 from db.sample import Sample
+from db.nma_legacy import NMAHydraulicsData
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
-from db.field import FieldEvent, FieldActivity, FieldEventParticipant
-from db.permission_history import PermissionHistory
+from db.field import FieldEvent, FieldActivity
 from db.parameter import Parameter
 
 
@@ -126,6 +126,9 @@ def create_admin(app):
 
     # Samples
     admin.add_view(SampleAdmin(Sample))
+
+    # Hydraulics
+    admin.add_view(HydraulicsDataAdmin(NMAHydraulicsData))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))
