@@ -22,9 +22,9 @@ def upgrade() -> None:
     """Create the legacy chemistry sample info table used for backfill."""
     bind = op.get_bind()
     inspector = inspect(bind)
-    if not inspector.has_table("Chemistry_SampleInfo"):
+    if not inspector.has_table("NMA_Chemistry_SampleInfo"):
         op.create_table(
-            "Chemistry_SampleInfo",
+            "NMA_Chemistry_SampleInfo",
             sa.Column("OBJECTID", sa.Integer(), primary_key=True),
             sa.Column("SamplePointID", sa.String(length=50), nullable=True),
             sa.Column("SamplePtID", sa.String(length=50), nullable=True),
@@ -50,5 +50,5 @@ def downgrade() -> None:
     """Drop the legacy chemistry sample info table."""
     bind = op.get_bind()
     inspector = inspect(bind)
-    if inspector.has_table("Chemistry_SampleInfo"):
-        op.drop_table("Chemistry_SampleInfo")
+    if inspector.has_table("NMA_Chemistry_SampleInfo"):
+        op.drop_table("NMA_Chemistry_SampleInfo")
