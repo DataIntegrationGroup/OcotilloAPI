@@ -39,6 +39,7 @@ from admin.views import (
     ChemistrySampleInfoAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
+    TransducerObservationAdmin,
     FieldEventAdmin,
     FieldActivityAdmin,
     ParameterAdmin,
@@ -64,6 +65,7 @@ from db.sample import Sample
 from db.nma_legacy import ChemistrySampleInfo
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
+from db.transducer import TransducerObservation
 from db.field import FieldEvent, FieldActivity
 from db.parameter import Parameter
 
@@ -141,6 +143,9 @@ def create_admin(app):
 
     # Data provenance
     admin.add_view(DataProvenanceAdmin(DataProvenance))
+
+    # Transducer observations
+    admin.add_view(TransducerObservationAdmin(TransducerObservation))
 
     # Lexicon
     admin.add_view(LexiconTermAdmin(LexiconTerm))
