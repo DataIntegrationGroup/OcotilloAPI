@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 
-import keyword
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
@@ -59,9 +58,7 @@ class WaterLevelsContinuousTransferer(Transferer):
         cleaned_df = cleaned_df.drop_duplicates(subset=["PointID", "DateMeasured"])
 
         self._df_columns = set(cleaned_df.columns)
-        self._itertuples_field_map = self._build_itertuples_field_map(
-            cleaned_df.columns
-        )
+        self._itertuples_field_map = self._build_itertuples_field_map(cleaned_df)
 
         return input_df, cleaned_df
 
@@ -239,19 +236,21 @@ class WaterLevelsContinuousTransferer(Transferer):
         }
 
     @staticmethod
-    def _build_itertuples_field_map(columns: list[str]) -> dict[str, str]:
+    def _build_itertuples_field_map(df: pd.DataFrame) -> dict[str, str]:
         """
-        Map original column names to itertuples field names for invalid identifiers.
+        Map original column names to itertuples field names using pandas' rename logic.
         """
-        invalid_count = 0
         mapping: dict[str, str] = {}
-        for col in columns:
-            if not isinstance(col, str):
-                continue
-            if col.isidentifier() and not keyword.iskeyword(col):
-                continue
-            invalid_count += 1
-            mapping[col] = f"_{invalid_count}"
+        iterator = df.itertuples()
+        first_row = next(iterator, None)
+        if first_row is None:
+            return mapping
+
+        fields = first_row._fields
+        for idx, col in enumerate(df.columns):
+            field = fields[idx + 1]
+            if field != col:
+                mapping[col] = field
         return mapping
 
 
