@@ -16,6 +16,8 @@
 
 """Legacy NM Aquifer models copied from AMPAPI."""
 
+import uuid
+
 from datetime import date, datetime
 from typing import Optional
 
@@ -28,6 +30,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db.base import Base
@@ -188,6 +191,39 @@ class ChemistrySampleInfo(Base):
         "AddedMonthDaytoDate", String(10)
     )
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
+
+
+class SurfaceWaterData(Base):
+    """
+    Legacy SurfaceWaterData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_SurfaceWaterData"
+
+    surface_id: Mapped[uuid.UUID] = mapped_column(
+        "SurfaceID", UUID(as_uuid=True), nullable=False
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    discharge: Mapped[Optional[str]] = mapped_column("Discharge", String(50))
+    discharge_method: Mapped[Optional[str]] = mapped_column(
+        "DischargeMethod", String(50)
+    )
+    discharge_rate: Mapped[Optional[float]] = mapped_column("DischargeRate", Float)
+    discharge_units: Mapped[Optional[str]] = mapped_column("DischargeUnits", String(3))
+    date_measured: Mapped[Optional[datetime]] = mapped_column("DateMeasured", DateTime)
+    discharge_source: Mapped[Optional[str]] = mapped_column(
+        "DischargeSource", String(50)
+    )
+    site_notes: Mapped[Optional[str]] = mapped_column("SiteNotes", String(200))
+    field_method_notes: Mapped[Optional[str]] = mapped_column(
+        "FieldMethodNotes", String(200)
+    )
+    formation_zone: Mapped[Optional[str]] = mapped_column("FormationZone", String(15))
+    aq_class: Mapped[Optional[str]] = mapped_column("AqClass", String(50))
+    source_notes: Mapped[Optional[str]] = mapped_column("SourceNotes", String(200))
+    data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
 
 # ============= EOF =============================================
