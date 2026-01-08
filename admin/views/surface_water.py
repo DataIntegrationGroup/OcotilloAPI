@@ -1,0 +1,118 @@
+# ===============================================================================
+# Copyright 2025
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============================================================================
+"""
+SurfaceWaterDataAdmin view for NMSampleLocations.
+"""
+from admin.views.base import OcotilloModelView
+
+
+class SurfaceWaterDataAdmin(OcotilloModelView):
+    """
+    Admin view for SurfaceWaterData legacy model.
+    """
+
+    name = "Surface Water"
+    label = "Surface Water"
+    icon = "fa fa-water"
+    enable_publish_actions = False
+
+    column_list = [
+        "surface_id",
+        "point_id",
+        "date_measured",
+        "discharge",
+        "discharge_units",
+        "discharge_method",
+        "discharge_source",
+        "formation_zone",
+        "aq_class",
+        "data_source",
+    ]
+
+    column_sortable_list = [
+        "surface_id",
+        "point_id",
+        "date_measured",
+        "discharge",
+        "discharge_units",
+        "discharge_method",
+        "discharge_source",
+        "formation_zone",
+        "aq_class",
+    ]
+
+    column_default_sort = ("date_measured", True)
+
+    search_fields = [
+        "point_id",
+        "discharge",
+        "formation_zone",
+        "aq_class",
+        "data_source",
+    ]
+
+    column_filters = [
+        "discharge_units",
+        "discharge_method",
+        "discharge_source",
+        "formation_zone",
+        "aq_class",
+    ]
+
+    can_export = True
+    export_types = ["csv", "excel"]
+
+    page_size = 50
+    page_size_options = [25, 50, 100, 200]
+
+    fields = [
+        "surface_id",
+        "point_id",
+        "object_id",
+        "date_measured",
+        "discharge",
+        "discharge_rate",
+        "discharge_units",
+        "discharge_method",
+        "discharge_source",
+        "formation_zone",
+        "aq_class",
+        "site_notes",
+        "field_method_notes",
+        "source_notes",
+        "data_source",
+    ]
+
+    labels = {
+        "surface_id": "Surface ID",
+        "point_id": "Point ID",
+        "object_id": "Object ID",
+        "date_measured": "Date Measured",
+        "discharge": "Discharge",
+        "discharge_rate": "Discharge Rate",
+        "discharge_units": "Discharge Units",
+        "discharge_method": "Discharge Method",
+        "discharge_source": "Discharge Source",
+        "formation_zone": "Formation Zone",
+        "aq_class": "Aquifer Class",
+        "site_notes": "Site Notes",
+        "field_method_notes": "Field Method Notes",
+        "source_notes": "Source Notes",
+        "data_source": "Data Source",
+    }
+
+
+# ============= EOF =============================================

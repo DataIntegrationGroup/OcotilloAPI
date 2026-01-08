@@ -41,6 +41,7 @@ from admin.views.field import (
     FieldEventParticipantAdmin,
 )
 from admin.views.parameter import ParameterAdmin
+from admin.views.surface_water import SurfaceWaterDataAdmin
 
 __all__ = [
     "LocationAdmin",
@@ -65,4 +66,5 @@ __all__ = [
     "FieldActivityAdmin",
     "FieldEventParticipantAdmin",
     "ParameterAdmin",
+    "SurfaceWaterDataAdmin",
 ]

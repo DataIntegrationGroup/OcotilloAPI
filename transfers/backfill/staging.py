@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from transfers.backfill.ngwmn_views import run as run_ngwmn_views
+from transfers.backfill.surface_water_data import run as run_surface_water_data
 from transfers.backfill.waterlevelscontinuous_pressure_daily import (
     run as run_pressure_daily,
 )
@@ -41,9 +42,10 @@ def run(batch_size: int = 1000) -> None:
     Execute all backfill steps in a deterministic order.
     """
     steps = (
-        ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
-        ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
-        ("NGWMN views", run_ngwmn_views),
+        ("SurfaceWaterData", run_surface_water_data),
+        # ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
+        # ("NGWMN views", run_ngwmn_views),
+        # ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
     )
 
     for name, fn in steps:
