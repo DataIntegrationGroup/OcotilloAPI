@@ -92,6 +92,22 @@ class ChemistrySampleInfoBackfill(Transferer):
                 return None
             return v
 
+        def bool_val(key: str) -> Optional[bool]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, (int, float)):
+                return bool(int(v))
+            if isinstance(v, str):
+                normalized = v.strip().lower()
+                if normalized in {"y", "yes", "true", "t", "1"}:
+                    return True
+                if normalized in {"n", "no", "false", "f", "0"}:
+                    return False
+            return None
+
         collection_date = val("CollectionDate")
         if hasattr(collection_date, "date"):
             collection_date = collection_date.date()
@@ -106,12 +122,12 @@ class ChemistrySampleInfoBackfill(Transferer):
             "CollectedBy": val("CollectedBy"),
             "AnalysesAgency": val("AnalysesAgency"),
             "SampleType": val("SampleType"),
-            "SampleMaterialNotH2O": val("SampleMaterialNotH2O"),
+            "SampleMaterialNotH2O": bool_val("SampleMaterialNotH2O"),
             "WaterType": val("WaterType"),
-            "StudySample": val("StudySample"),
+            "StudySample": bool_val("StudySample"),
             "DataSource": val("DataSource"),
             "DataQuality": val("DataQuality"),
-            "PublicRelease": val("PublicRelease"),
+            "PublicRelease": bool_val("PublicRelease"),
             "AddedDaytoDate": val("AddedDaytoDate"),
             "AddedMonthDaytoDate": val("AddedMonthDaytoDate"),
             "SampleNotes": val("SampleNotes"),

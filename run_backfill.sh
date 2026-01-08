@@ -16,5 +16,7 @@ set -a
 source "$ENV_FILE"
 set +a
 
+uv run alembic upgrade head
+
 # Forward any args (e.g., --batch-size 500)
 python -m transfers.backfill.staging "$@"
