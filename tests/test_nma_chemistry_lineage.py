@@ -463,7 +463,11 @@ def test_reverse_lineage_navigation(shared_well):
         session.refresh(well)
 
         # Reverse navigation - filter to just this sample_info
-        matching = [si for si in well.chemistry_sample_infos if si.object_id == sample_info.object_id]
+        matching = [
+            si
+            for si in well.chemistry_sample_infos
+            if si.object_id == sample_info.object_id
+        ]
         assert len(matching) == 1
         assert len(matching[0].minor_trace_chemistries) == 1
         assert matching[0].minor_trace_chemistries[0] == mtc

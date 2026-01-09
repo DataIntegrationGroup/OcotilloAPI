@@ -218,7 +218,9 @@ class ChemistrySampleInfo(Base):
     def validate_thing_id(self, key, value):
         """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
         if value is None:
-            raise ValueError("ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)")
+            raise ValueError(
+                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
+            )
         return value
 
 
@@ -312,7 +314,9 @@ class NMAMinorTraceChemistry(Base):
     def validate_chemistry_sample_info_id(self, key, value):
         """Prevent orphan NMAMinorTraceChemistry - must have a parent ChemistrySampleInfo."""
         if value is None:
-            raise ValueError("NMAMinorTraceChemistry requires a parent ChemistrySampleInfo")
+            raise ValueError(
+                "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
+            )
         return value
 
 

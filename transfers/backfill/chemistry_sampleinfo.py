@@ -44,7 +44,7 @@ class ChemistrySampleInfoBackfill(Transferer):
         # Cache Thing lookups to prevent N+1 queries
         self._thing_id_cache = {}
         self._build_thing_id_cache()
-    
+
     def _build_thing_id_cache(self):
         """Build cache of Thing.name -> thing.id to prevent orphan records."""
         with session_ctx() as session:
@@ -57,29 +57,29 @@ class ChemistrySampleInfoBackfill(Transferer):
         # Filter to only include rows where Thing exists (prevent orphan records)
         cleaned_df = self._filter_to_valid_things(input_df)
         return input_df, cleaned_df
-    
+
     def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Filter to only include rows where SamplePointID matches an existing Thing.
         Prevents orphan ChemistrySampleInfo records.
-        
+
         Uses cached Thing lookups for performance.
         """
         # Use cached Thing names (keys of thing_id_cache)
         valid_point_ids = set(self._thing_id_cache.keys())
-        
+
         # Filter to rows where SamplePointID exists as a Thing.name
         before_count = len(df)
         filtered_df = df[df["SamplePointID"].isin(valid_point_ids)].copy()
         after_count = len(filtered_df)
-        
+
         if before_count > after_count:
             skipped = before_count - after_count
             logger.warning(
                 f"Filtered out {skipped} ChemistrySampleInfo records without matching Things "
                 f"({after_count} valid, {skipped} orphan records prevented)"
             )
-        
+
         return filtered_df
 
     def _transfer_hook(self, session: Session) -> None:
@@ -97,13 +97,13 @@ class ChemistrySampleInfoBackfill(Transferer):
                 )
                 continue
             row_dicts.append(row_dict)
-        
+
         if skipped_count > 0:
             logger.warning(
                 f"Skipped {skipped_count} ChemistrySampleInfo records without valid Thing "
                 f"(orphan prevention)"
             )
-        
+
         rows = self._dedupe_rows(row_dicts, key="OBJECTID")
 
         insert_stmt = insert(ChemistrySampleInfo)
