@@ -19,4 +19,4 @@ set +a
 uv run alembic upgrade head
 
 # Forward any args (e.g., --batch-size 500)
-python -m transfers.backfill.staging "$@"
+python -m transfers.backfill.backfill "$@"

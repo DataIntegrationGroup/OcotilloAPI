@@ -57,7 +57,7 @@ jobs:
             GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
             GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
           run: |
-            uv run python -m transfers.backfill.staging
+            uv run python -m transfers.backfill.backfill
 
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
@@ -66,6 +66,7 @@ jobs:
             service: ocotillo-api-staging
             runtime: python313
             entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+            service_account: "${{ secrets.CLOUD_SQL_USER }}.gserviceaccount.com"
             instance_class: F4
             handlers:
               - url: /.*

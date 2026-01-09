@@ -14,10 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 """
-Orchestrates all backfills used in the staging CD pipeline.
+Orchestrates the backfill pipeline used in CD workflows.
 
 Preferred usage (avoids import path issues):
-    python -m transfers.backfill.staging --batch-size 1000
+    python -m transfers.backfill.backfill --batch-size 1000
 """
 
 import argparse
@@ -67,7 +67,7 @@ def run(batch_size: int = 1000) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run staging backfills.")
+    parser = argparse.ArgumentParser(description="Run backfill pipeline.")
     parser.add_argument(
         "--batch-size",
         type=int,
