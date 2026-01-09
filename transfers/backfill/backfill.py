@@ -30,6 +30,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from transfers.backfill.ngwmn_views import run as run_ngwmn_views
 from transfers.backfill.surface_water_data import run as run_surface_water_data
+from transfers.backfill.weather_data import run as run_weather_data
 from transfers.backfill.waterlevelscontinuous_pressure_daily import (
     run as run_pressure_daily,
 )
@@ -44,6 +45,7 @@ def run(batch_size: int = 1000) -> None:
     """
     steps = (
         ("SurfaceWaterData", run_surface_water_data, "BACKFILL_SURFACE_WATER_DATA"),
+        ("WeatherData", run_weather_data, "BACKFILL_WEATHER_DATA"),
         (
             "Chemistry_SampleInfo",
             run_chemistry_sampleinfo,
