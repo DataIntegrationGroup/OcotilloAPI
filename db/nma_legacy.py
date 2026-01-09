@@ -226,4 +226,21 @@ class SurfaceWaterData(Base):
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
 
+class WeatherData(Base):
+    """
+    Legacy WeatherData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_WeatherData"
+
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
+    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WeatherID", UUID(as_uuid=True)
+    )
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+
 # ============= EOF =============================================
