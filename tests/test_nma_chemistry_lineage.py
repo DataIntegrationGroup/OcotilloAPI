@@ -67,8 +67,8 @@ def test_nma_minor_trace_chemistry_columns():
     from db.nma_legacy import NMAMinorTraceChemistry
 
     expected_columns = [
-        "id",                         # new PK
-        "chemistry_sample_info_id",   # new FK (integer, not string)
+        "id",  # new PK
+        "chemistry_sample_info_id",  # new FK (integer, not string)
         # from legacy
         "analyte",
         "sample_value",
@@ -416,8 +416,12 @@ def test_reverse_lineage_navigation(water_well_thing):
 
         # Reverse navigation
         assert len(water_well_thing.chemistry_sample_infos) == 1
-        assert len(water_well_thing.chemistry_sample_infos[0].minor_trace_chemistries) == 1
-        assert water_well_thing.chemistry_sample_infos[0].minor_trace_chemistries[0] == mtc
+        assert (
+            len(water_well_thing.chemistry_sample_infos[0].minor_trace_chemistries) == 1
+        )
+        assert (
+            water_well_thing.chemistry_sample_infos[0].minor_trace_chemistries[0] == mtc
+        )
 
         session.delete(sample_info)
         session.commit()
@@ -451,18 +455,24 @@ def test_cascade_delete_sample_info_deletes_mtc():
         session.commit()
 
         sample_info_id = sample_info.object_id
-        assert session.query(NMAMinorTraceChemistry).filter_by(
-            chemistry_sample_info_id=sample_info_id
-        ).count() == 4
+        assert (
+            session.query(NMAMinorTraceChemistry)
+            .filter_by(chemistry_sample_info_id=sample_info_id)
+            .count()
+            == 4
+        )
 
         # Delete parent
         session.delete(sample_info)
         session.commit()
 
         # Children should be gone
-        assert session.query(NMAMinorTraceChemistry).filter_by(
-            chemistry_sample_info_id=sample_info_id
-        ).count() == 0
+        assert (
+            session.query(NMAMinorTraceChemistry)
+            .filter_by(chemistry_sample_info_id=sample_info_id)
+            .count()
+            == 0
+        )
 
 
 def test_cascade_delete_thing_deletes_sample_infos(water_well_thing):
