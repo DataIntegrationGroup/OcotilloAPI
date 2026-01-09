@@ -26,15 +26,13 @@ Migrated columns (excluding SSMA_TimeStamp):
 
 from uuid import uuid4
 
-from sqlalchemy import func
-
 from db.engine import session_ctx
 from db.nma_legacy import WeatherData
 
 
-def _next_object_id(session) -> int:
-    max_id = session.query(func.max(WeatherData.object_id)).scalar()
-    return (max_id or 0) + 1
+def _next_object_id() -> int:
+    # Use a negative value to avoid collisions with existing legacy OBJECTIDs.
+    return -(uuid4().int % 2_000_000_000)
 
 
 # ===================== CREATE tests ==========================
@@ -42,7 +40,7 @@ def test_create_weather_data_all_fields():
     """Test creating a weather data record with all migrated fields."""
     with session_ctx() as session:
         record = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             location_id=uuid4(),
             point_id="WX-1001",
             weather_id=uuid4(),
@@ -64,7 +62,7 @@ def test_create_weather_data_minimal():
     """Test creating a weather data record with minimal fields."""
     with session_ctx() as session:
         record = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1002",
         )
         session.add(record)
@@ -85,7 +83,7 @@ def test_read_weather_data_by_object_id():
     """Test reading a specific weather data record by OBJECTID."""
     with session_ctx() as session:
         record = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1003",
         )
         session.add(record)
@@ -104,11 +102,11 @@ def test_query_weather_data_by_point_id():
     """Test querying weather data by point_id."""
     with session_ctx() as session:
         record1 = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1004",
         )
         record2 = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1005",
         )
         session.add_all([record1, record2])
@@ -130,7 +128,7 @@ def test_update_weather_data():
     """Test updating a weather data record."""
     with session_ctx() as session:
         record = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1006",
         )
         session.add(record)
@@ -155,7 +153,7 @@ def test_delete_weather_data():
     """Test deleting a weather data record."""
     with session_ctx() as session:
         record = WeatherData(
-            object_id=_next_object_id(session),
+            object_id=_next_object_id(),
             point_id="WX-1007",
         )
         session.add(record)
