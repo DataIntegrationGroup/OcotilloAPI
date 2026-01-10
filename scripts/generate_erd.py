@@ -38,7 +38,12 @@ def _column_label(column) -> str:
         prefix += "* "
     if column.foreign_keys:
         prefix += "+ "
-    return f"{prefix}{column.name}\\l"
+    col_type = str(column.type)
+    nullable = "nullable" if column.nullable else "not null"
+    default = ""
+    if column.server_default is not None:
+        default = f" default={column.server_default.arg}"
+    return f"{prefix}{column.name}: {col_type} ({nullable}){default}\\l"
 
 
 def _table_label(table: Table) -> str:
@@ -52,7 +57,7 @@ def _write_dot(path: Path) -> None:
 
     lines = [
         "digraph ERD {",
-        "  graph [rankdir=LR];",
+        "  graph [rankdir=LR, splines=ortho];",
         '  node [shape=record, fontname="Helvetica"];',
         '  edge [fontname="Helvetica"];',
         "",
@@ -71,21 +76,21 @@ def _write_dot(path: Path) -> None:
                 target_column = fk.column.name
                 lines.append(
                     f'  "{table.name}" -> "{target_table}" '
-                    f'[label="{column.name} -> {target_column}"];'
+                    f'[xlabel="{column.name} -> {target_column}"];'
                 )
 
     lines.append("}")
     path.write_text("\n".join(lines))
 
 
-def _render_png(dot_path: Path, png_path: Path) -> None:
+def _render_output(dot_path: Path, output_path: Path, fmt: str) -> None:
     dot = shutil.which("dot")
     if not dot:
         raise SystemExit("Graphviz 'dot' not found on PATH.")
     import subprocess
 
     subprocess.run(
-        [dot, "-Tpng", str(dot_path), "-o", str(png_path)],
+        [dot, f"-T{fmt}", str(dot_path), "-o", str(output_path)],
         check=True,
     )
 
@@ -99,16 +104,22 @@ def main() -> None:
         help="Path to write DOT output.",
     )
     parser.add_argument(
-        "--png",
+        "--output",
         type=Path,
         default=None,
-        help="Optional path to write PNG output (requires Graphviz).",
+        help="Optional path to write rendered output (requires Graphviz).",
+    )
+    parser.add_argument(
+        "--format",
+        choices=("png", "svg", "pdf"),
+        default="png",
+        help="Output format when --output is provided.",
     )
     args = parser.parse_args()
 
     _write_dot(args.dot)
-    if args.png:
-        _render_png(args.dot, args.png)
+    if args.output:
+        _render_output(args.dot, args.output, args.format)
 
 
 if __name__ == "__main__":
