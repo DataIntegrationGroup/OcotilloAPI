@@ -125,9 +125,7 @@ class MinorTraceChemistryTransferer(Transferer):
 
         for i in range(0, len(rows), self.batch_size):
             chunk = rows[i : i + self.batch_size]
-            logger.info(
-                f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows)"
-            )
+            logger.info(f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows)")
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 constraint="uq_minor_trace_chemistry_sample_analyte",
                 set_={

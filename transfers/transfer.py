@@ -171,7 +171,9 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
-    transfer_minor_trace_chemistry = get_bool_env("TRANSFER_MINOR_TRACE_CHEMISTRY", True)
+    transfer_minor_trace_chemistry = get_bool_env(
+        "TRANSFER_MINOR_TRACE_CHEMISTRY", True
+    )
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -247,7 +249,9 @@ def _transfer_parallel(
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
     if transfer_minor_trace_chemistry:
-        parallel_tasks_1.append(("MinorTraceChemistry", MinorTraceChemistryTransferer, flags))
+        parallel_tasks_1.append(
+            ("MinorTraceChemistry", MinorTraceChemistryTransferer, flags)
+        )
 
     # Track results for metrics
     results_map = {}
