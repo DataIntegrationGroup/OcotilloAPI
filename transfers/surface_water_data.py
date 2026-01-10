@@ -29,9 +29,9 @@ from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class SurfaceWaterDataBackfill(Transferer):
+class SurfaceWaterDataTransferer(Transferer):
     """
-    Backfill for the legacy SurfaceWaterData table.
+    Transfer for the legacy SurfaceWaterData table.
     """
 
     source_table = "SurfaceWaterData"
@@ -138,13 +138,13 @@ class SurfaceWaterDataBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = SurfaceWaterDataBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = SurfaceWaterDataTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.surface_water_data`
+    # Allow running via `python -m transfers.surface_water_data`
     run()
 
 # ============= EOF =============================================

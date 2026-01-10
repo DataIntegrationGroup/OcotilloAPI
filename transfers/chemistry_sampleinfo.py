@@ -28,11 +28,11 @@ from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class ChemistrySampleInfoBackfill(Transferer):
+class ChemistrySampleInfoTransferer(Transferer):
     """
-    Backfill for the legacy Chemistry_SampleInfo table.
+    Transfer for the legacy Chemistry_SampleInfo table.
 
-    Loads the CSV and upserts into the legacy table for backfill workflows.
+    Loads the CSV and upserts into the legacy table.
     """
 
     source_table = "Chemistry_SampleInfo"
@@ -150,13 +150,13 @@ class ChemistrySampleInfoBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = ChemistrySampleInfoBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = ChemistrySampleInfoTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.chemistry_sampleinfo`
+    # Allow running via `python -m transfers.chemistry_sampleinfo`
     run()
 
 # ============= EOF =============================================

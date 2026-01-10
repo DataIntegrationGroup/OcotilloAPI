@@ -43,18 +43,6 @@ jobs:
           run: |
             uv run alembic upgrade head
 
-        - name: Run backfill script on production database
-          env:
-            DB_DRIVER: "cloudsql"
-            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-            CLOUD_SQL_IAM_AUTH: true
-            GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
-            GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
-          run: |
-            uv run python -m transfers.backfill.backfill
-
         - name: Create app.yaml
           run: |
             cat <<EOF > app.yaml

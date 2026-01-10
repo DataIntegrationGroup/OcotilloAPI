@@ -2,6 +2,20 @@
 # Load environment variables from .env and run the staging backfill.
 # Usage: ./run_backfill.sh [--batch-size N]
 
+# github workflow equivalent: for reference only
+#- name: Run backfill script on staging database
+#  env:
+#    DB_DRIVER: "cloudsql"
+#    CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+#    CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+#    CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+#    CLOUD_SQL_IAM_AUTH: true
+#    GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+#    GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
+#  run: |
+#    uv run python -m transfers.backfill.backfill
+
+
 set -euo pipefail
 
 ENV_FILE=".env"

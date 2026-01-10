@@ -36,6 +36,13 @@ from db import (
     Asset,
     PermissionHistory,
     ThingGeologicFormationAssociation,
+    ChemistrySampleInfo,
+    SurfaceWaterData,
+    NMAWaterLevelsContinuousPressureDaily,
+    ViewNGWMNWellConstruction,
+    ViewNGWMNWaterLevels,
+    ViewNGWMNLithology,
+    WeatherData,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -96,6 +103,38 @@ class Metrics:
 
     def group_metrics(self, *args, **kw) -> None:
         self._handle_metrics(Group, *args, **kw)
+
+    def surface_water_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(SurfaceWaterData, *args, **kw)
+
+    def chemistry_sampleinfo_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            ChemistrySampleInfo, name="Chemistry_SampleInfo", *args, **kw
+        )
+
+    def ngwmn_well_construction_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            ViewNGWMNWellConstruction, name="NGWMN WellConstruction", *args, **kw
+        )
+
+    def ngwmn_water_levels_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            ViewNGWMNWaterLevels, name="NGWMN WaterLevels", *args, **kw
+        )
+
+    def ngwmn_lithology_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(ViewNGWMNLithology, name="NGWMN Lithology", *args, **kw)
+
+    def waterlevels_pressure_daily_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMAWaterLevelsContinuousPressureDaily,
+            name="WaterLevelsContinuous_Pressure_Daily",
+            *args,
+            **kw,
+        )
+
+    def weather_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(WeatherData, name="WeatherData", *args, **kw)
 
     def permissions_metrics(self, *args, **kw) -> None:
         self._handle_metrics(PermissionHistory, *args, **kw)
