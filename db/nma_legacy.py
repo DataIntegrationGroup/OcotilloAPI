@@ -30,6 +30,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
@@ -282,6 +283,13 @@ class NMAMinorTraceChemistry(Base):
     """
 
     __tablename__ = "NMA_MinorTraceChemistry"
+    __table_args__ = (
+        UniqueConstraint(
+            "chemistry_sample_info_id",
+            "analyte",
+            name="uq_minor_trace_chemistry_sample_analyte",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
