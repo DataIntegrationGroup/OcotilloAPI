@@ -195,9 +195,7 @@ def convert_ngvd29_to_navd88(
     }
     data = _get_json(url, params=params)
     if data is None:
-        _log_warning(
-            "Error converting NGVD29 to NAVD88 for requested point"
-        )
+        _log_warning("Error converting NGVD29 to NAVD88 for requested point")
         return None
 
     return data.get("destOrthoht")
