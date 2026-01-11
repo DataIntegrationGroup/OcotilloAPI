@@ -15,12 +15,14 @@
 # ===============================================================================
 import csv
 import io
+import json
 import math
 import os
 import re
 import time
 from datetime import datetime, timezone, timedelta, UTC
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -231,11 +233,74 @@ def read_csv(
     logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
-    data = blob.download_as_bytes()
+    if not blob.exists():
+        raise FileNotFoundError(f"GCS CSV not found: nma_csv/{name}.csv")
+    data = _download_blob_bytes(blob)
     with open(p, "wb") as f:
         f.write(data)
 
     return pd.read_csv(io.BytesIO(data), dtype=dtype)
+
+
+def _download_blob_bytes(blob, attempts: int = 3, base_sleep: float = 1.0) -> bytes:
+    for attempt in range(1, attempts + 1):
+        try:
+            return blob.download_as_bytes()
+        except Exception as exc:
+            if attempt == attempts:
+                raise RuntimeError(
+                    f"Failed to download {blob.name} after {attempts} attempts."
+                )
+            sleep_for = base_sleep * attempt
+            logger.warning(
+                f"GCS download failed for {blob.name} (attempt {attempt}/{attempts}): {exc}. "
+                f"Retrying in {sleep_for:.1f}s."
+            )
+            time.sleep(sleep_for)
+
+
+def _upload_blob_bytes(
+    blob, data: bytes, attempts: int = 3, base_sleep: float = 1.0
+) -> None:
+    for attempt in range(1, attempts + 1):
+        try:
+            blob.upload_from_string(data)
+            return
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+            sleep_for = base_sleep * attempt
+            logger.warning(
+                f"GCS upload failed for {blob.name} (attempt {attempt}/{attempts}): {exc}. "
+                f"Retrying in {sleep_for:.1f}s."
+            )
+            time.sleep(sleep_for)
+
+
+def download_blob_json(blob, default: Any | None = None, attempts: int = 3) -> Any:
+    if not blob.exists():
+        if default is not None:
+            return default
+        return {}
+
+    data = _download_blob_bytes(blob, attempts=attempts)
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError as exc:
+        logger.critical(f"Invalid JSON in {blob.name}: {exc}")
+        if default is not None:
+            return default
+        else:
+            return {}
+
+
+def upload_blob_json(
+    blob, payload: Any, attempts: int = 3, base_sleep: float = 1.0
+) -> None:
+    data = json.dumps(payload, ensure_ascii=False)
+    _upload_blob_bytes(
+        blob, data.encode("utf-8"), attempts=attempts, base_sleep=base_sleep
+    )
 
 
 def get_valid_point_ids(thing_type: str = "water well") -> list[str]:

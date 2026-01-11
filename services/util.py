@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import httpx
 import pyproj
@@ -10,6 +11,38 @@ from core.constants import SRID_WGS84
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
+DEFAULT_HTTP_TIMEOUT = 10.0
+DEFAULT_HTTP_RETRIES = 3
+DEFAULT_HTTP_BACKOFF = 0.5
+
+
+def _log_warning(message: str) -> None:
+    print(message)
+
+
+def _get_json(
+    url: str,
+    params: dict | None = None,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,
+    retries: int = DEFAULT_HTTP_RETRIES,
+    backoff: float = DEFAULT_HTTP_BACKOFF,
+) -> dict | None:
+    for attempt in range(1, retries + 1):
+        try:
+            resp = httpx.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if attempt == retries:
+                _log_warning(f"HTTP request failed for {url}: {exc}")
+                return None
+        except json.JSONDecodeError as exc:
+            if attempt == retries:
+                _log_warning(f"Invalid JSON response from {url}: {exc}")
+                return None
+        if attempt < retries:
+            time.sleep(backoff * attempt)
+    return None
 
 
 def to_bool(value: str) -> bool | str:
@@ -73,13 +106,11 @@ def get_tiger_data(
         "outFields": outfields,
         "returnGeometry": "false",
     }
-    try:
-        resp = httpx.get(url, params=params, timeout=5)
-    except Exception as e:
-        print(f"Error getting TIGER data for POINT ({lon} {lat}) {e}")
+    data = _get_json(url, params=params, timeout=5)
+    if data is None:
+        _log_warning(f"Error getting TIGER data for POINT ({lon} {lat})")
         return None
 
-    data = resp.json()
     if not data.get("features"):
         return None
 
@@ -114,18 +145,16 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "outFields": "CELL_NAME,CELL_MAPCODE",
         "returnGeometry": "false",
     }
-    try:
-        resp = httpx.get(url, params=params, timeout=30)
-        data = resp.json()
-    except Exception as e:
-        print(f"Error getting quad name for POINT ({lon} {lat}) {e}")
+    data = _get_json(url, params=params, timeout=30)
+    if data is None:
+        _log_warning(f"Error getting quad name for POINT ({lon} {lat})")
         return None
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        print(f"No quad name found for POINT ({lon} {lat})")
+        _log_warning(f"No quad name found for POINT ({lon} {lat})")
         return None
 
 
@@ -139,19 +168,21 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
         "includeDate": False,
     }
 
-    resp = httpx.get(url, params=params)
-    try:
-        data = resp.json()
-    except json.decoder.JSONDecodeError:
-        print(f"Error decoding JSON from EPQS: {resp.text}")
+    data = _get_json(url, params=params)
+    if data is None:
+        _log_warning(f"Error getting EPQS elevation for POINT ({lon} {lat})")
         return None
 
-    return data["value"]
+    value = data.get("value")
+    if value is None:
+        _log_warning(f"No EPQS elevation value for POINT ({lon} {lat})")
+        return None
+    return value
 
 
 def convert_ngvd29_to_navd88(
     elevation_ngvd29: float, longitude: float, latitude: float
-) -> float:
+) -> float | None:
     url = "https://geodesy.noaa.gov/api/ncat/llh"
     params = {
         "lat": latitude,
@@ -162,11 +193,14 @@ def convert_ngvd29_to_navd88(
         "outVertDatum": "navd88",
         "orthoHt": elevation_ngvd29,
     }
-    response = httpx.get(url, params=params)
-    data = response.json()
+    data = _get_json(url, params=params)
+    if data is None:
+        _log_warning(
+            f"Error converting NGVD29 to NAVD88 for POINT ({longitude} {latitude})"
+        )
+        return None
 
-    elevation_navd88 = data.get("destOrthoht")
-    return elevation_navd88
+    return data.get("destOrthoht")
 
 
 def retrieve_latest_polymorphic_history_table_record(
