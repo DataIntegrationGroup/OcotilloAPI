@@ -24,7 +24,10 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect, text
+from sqlalchemy_searchable import sync_trigger
+from sqlalchemy_utils import TSVectorType
 
+from core.initializers import init_lexicon, init_parameter
 from db.base import Base
 import db  # noqa: F401  # Register models for metadata.
 from db.engine import session_ctx
@@ -45,6 +48,21 @@ def _alembic_config() -> Config:
     return cfg
 
 
+def _sync_search_vectors() -> None:
+    with session_ctx() as session:
+        conn = session.connection()
+        for table in Base.metadata.tables.values():
+            for column in table.columns:
+                if isinstance(column.type, TSVectorType):
+                    sync_trigger(
+                        conn,
+                        table.name,
+                        column.name,
+                        list(column.type.columns),
+                    )
+        session.commit()
+
+
 def test_migrations_upgrade_to_head():
     _reset_schema()
     command.upgrade(_alembic_config(), "head")
@@ -61,3 +79,7 @@ def test_migrations_upgrade_to_head():
         columns = {col["name"]: col for col in inspector.get_columns("location")}
         assert "description" in columns
         assert columns["description"]["nullable"] is True
+
+    _sync_search_vectors()
+    init_lexicon()
+    init_parameter()

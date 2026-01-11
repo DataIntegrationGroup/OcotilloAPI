@@ -1067,34 +1067,6 @@ TABLE_DDL = [
 	deployment_id INTEGER NOT NULL, 
 	observation_datetime TIMESTAMP WITH TIME ZONE NOT NULL, 
 	value FLOAT NOT NULL, 
-	nma_waterlevelscontinuous_pressure_conddl_ms_cm FLOAT, 
-	nma_waterlevelscontinuous_pressure_checked_by VARCHAR(4), 
-	nma_waterlevelscontinuous_pressure_created TIMESTAMP WITH TIME ZONE, 
-	nma_waterlevelscontinuous_pressure_data_source VARCHAR(5), 
-	nma_waterlevelscontinuous_pressure_global_id VARCHAR(40), 
-	nma_waterlevelscontinuous_pressure_measurement_method VARCHAR(2), 
-	nma_waterlevelscontinuous_pressure_measuring_agency VARCHAR(50), 
-	nma_waterlevelscontinuous_pressure_notes VARCHAR(100), 
-	nma_waterlevelscontinuous_pressure_processed_by VARCHAR(4), 
-	nma_waterlevelscontinuous_pressure_qced BOOLEAN, 
-	nma_waterlevelscontinuous_pressure_temperature_water FLOAT, 
-	nma_waterlevelscontinuous_pressure_updated TIMESTAMP WITH TIME ZONE, 
-	nma_waterlevelscontinuous_pressure_water_head FLOAT, 
-	nma_waterlevelscontinuous_pressure_water_head_adjusted FLOAT, 
-	nma_waterlevelscontinuous_acoustic_created TIMESTAMP WITH TIME ZONE, 
-	nma_waterlevelscontinuous_acoustic_data_source VARCHAR(5), 
-	nma_waterlevelscontinuous_acoustic_global_id VARCHAR(40), 
-	nma_waterlevelscontinuous_acoustic_measurement_method VARCHAR(2), 
-	nma_waterlevelscontinuous_acoustic_measuring_agency VARCHAR(50), 
-	nma_waterlevelscontinuous_acoustic_notes VARCHAR(200), 
-	nma_waterlevelscontinuous_acoustic_point_id VARCHAR(50), 
-	nma_waterlevelscontinuous_acoustic_pre_process_data_field FLOAT, 
-	nma_waterlevelscontinuous_acoustic_public_release BOOLEAN, 
-	nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp FLOAT, 
-	nma_waterlevelscontinuous_acoustic_serial_no VARCHAR(50), 
-	nma_waterlevelscontinuous_acoustic_server_receipt_date TIMESTAMP WITH TIME ZONE, 
-	nma_waterlevelscontinuous_acoustic_speaker_to_mic_length FLOAT, 
-	nma_waterlevelscontinuous_acoustic_temperature_air FLOAT, 
 	id SERIAL NOT NULL, 
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
 	created_by_name VARCHAR(255), 
@@ -1164,6 +1136,39 @@ TABLE_DDL = [
 )""",
 ]
 
+SEQUENCE_DDL = [
+    """CREATE SEQUENCE transaction_id_seq""",
+    """ALTER TABLE transaction ALTER COLUMN id SET DEFAULT nextval('transaction_id_seq')""",
+]
+
+FUNCTION_DDL = [
+    """CREATE OR REPLACE FUNCTION parse_websearch(config regconfig, search_query text)
+RETURNS tsquery AS $$
+SELECT
+    string_agg(
+        (
+            CASE
+                WHEN position('''' IN words.word) > 0 THEN CONCAT(words.word, ':*')
+                ELSE words.word
+            END
+        ),
+        ' '
+    )::tsquery
+FROM (
+    SELECT trim(
+        regexp_split_to_table(
+            websearch_to_tsquery(config, lower(search_query))::text,
+            ' '
+        )
+    ) AS word
+) AS words
+$$ LANGUAGE SQL IMMUTABLE""",
+    """CREATE OR REPLACE FUNCTION parse_websearch(search_query text)
+RETURNS tsquery AS $$
+SELECT parse_websearch('pg_catalog.simple', search_query);
+$$ LANGUAGE SQL IMMUTABLE""",
+]
+
 INDEX_DDL = [
     """CREATE INDEX idx_aquifer_system_version_boundary ON aquifer_system_version USING gist (boundary)""",
     """CREATE INDEX ix_aquifer_system_version_end_transaction_id ON aquifer_system_version (end_transaction_id)""",
@@ -1223,6 +1228,10 @@ def upgrade() -> None:
     """Upgrade schema."""
     for ddl in TABLE_DDL:
         op.execute(ddl)
+    for ddl in SEQUENCE_DDL:
+        op.execute(ddl)
+    for ddl in FUNCTION_DDL:
+        op.execute(ddl)
     for ddl in INDEX_DDL:
         op.execute(ddl)
     # ### end Alembic commands ###
@@ -1232,4 +1241,7 @@ def downgrade() -> None:
     """Downgrade schema."""
     for table_name in reversed(TABLE_NAMES):
         op.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+    op.execute("DROP FUNCTION IF EXISTS parse_websearch(text)")
+    op.execute("DROP FUNCTION IF EXISTS parse_websearch(regconfig, text)")
+    op.execute("DROP SEQUENCE IF EXISTS transaction_id_seq")
     # ### end Alembic commands ###

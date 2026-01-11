@@ -38,15 +38,53 @@ from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import (
-    register_routes,
-    erase_and_rebuild_db,
-)
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import text
+from sqlalchemy_utils import TSVectorType
+from sqlalchemy_searchable import sync_trigger
+
+from core.initializers import register_routes, init_lexicon, init_parameter
 from db import Base, Parameter
 from db.engine import session_ctx
 from core.app import app
 
-erase_and_rebuild_db()
+
+def _alembic_config() -> Config:
+    root = os.path.dirname(os.path.dirname(__file__))
+    cfg = Config(os.path.join(root, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+    return cfg
+
+
+def _reset_schema() -> None:
+    with session_ctx() as session:
+        session.execute(text("DROP SCHEMA public CASCADE"))
+        session.execute(text("CREATE SCHEMA public"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        session.commit()
+
+
+def _sync_search_vectors() -> None:
+    with session_ctx() as session:
+        conn = session.connection()
+        for table in Base.metadata.tables.values():
+            for column in table.columns:
+                if isinstance(column.type, TSVectorType):
+                    sync_trigger(
+                        conn,
+                        table.name,
+                        column.name,
+                        list(column.type.columns),
+                    )
+        session.commit()
+
+
+_reset_schema()
+command.upgrade(_alembic_config(), "head")
+_sync_search_vectors()
+init_lexicon()
+init_parameter()
 register_routes(app)
 
 app.add_middleware(

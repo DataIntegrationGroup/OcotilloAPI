@@ -233,8 +233,6 @@ def read_csv(
     logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
-    if not blob.exists():
-        raise FileNotFoundError(f"GCS CSV not found: nma_csv/{name}.csv")
     data = _download_blob_bytes(blob)
     with open(p, "wb") as f:
         f.write(data)
@@ -243,6 +241,8 @@ def read_csv(
 
 
 def _download_blob_bytes(blob, attempts: int = 3, base_sleep: float = 1.0) -> bytes:
+    if not blob.exists():
+        raise FileNotFoundError(f"GCS blob not found: {blob.name}")
     for attempt in range(1, attempts + 1):
         try:
             return blob.download_as_bytes()
