@@ -250,7 +250,7 @@ def _download_blob_bytes(blob, attempts: int = 3, base_sleep: float = 1.0) -> by
             if attempt == attempts:
                 raise RuntimeError(
                     f"Failed to download {blob.name} after {attempts} attempts."
-                )
+                ) from exc
             sleep_for = base_sleep * attempt
             logger.warning(
                 f"GCS download failed for {blob.name} (attempt {attempt}/{attempts}): {exc}. "
