@@ -147,14 +147,14 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
     }
     data = _get_json(url, params=params, timeout=30)
     if data is None:
-        _log_warning(f"Error getting quad name for POINT ({lon} {lat})")
+        _log_warning("Error getting quad name for requested point")
         return None
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        _log_warning(f"No quad name found for POINT ({lon} {lat})")
+        _log_warning("No quad name found for requested point")
         return None
 
 
@@ -170,12 +170,12 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
 
     data = _get_json(url, params=params)
     if data is None:
-        _log_warning(f"Error getting EPQS elevation for POINT ({lon} {lat})")
+        _log_warning("Error getting EPQS elevation for requested point")
         return None
 
     value = data.get("value")
     if value is None:
-        _log_warning(f"No EPQS elevation value for POINT ({lon} {lat})")
+        _log_warning("No EPQS elevation value for requested point")
         return None
     return value
 
@@ -196,7 +196,7 @@ def convert_ngvd29_to_navd88(
     data = _get_json(url, params=params)
     if data is None:
         _log_warning(
-            f"Error converting NGVD29 to NAVD88 for POINT ({longitude} {latitude})"
+            "Error converting NGVD29 to NAVD88 for requested point"
         )
         return None
 
