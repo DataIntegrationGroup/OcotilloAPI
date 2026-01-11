@@ -278,20 +278,17 @@ def _upload_blob_bytes(
 
 
 def download_blob_json(blob, default: Any | None = None, attempts: int = 3) -> Any:
+    if default is None:
+        default = {}
     if not blob.exists():
-        if default is not None:
-            return default
-        return {}
+        return default
 
     data = _download_blob_bytes(blob, attempts=attempts)
     try:
         return json.loads(data)
     except json.JSONDecodeError as exc:
         logger.critical(f"Invalid JSON in {blob.name}: {exc}")
-        if default is not None:
-            return default
-        else:
-            return {}
+        return default
 
 
 def upload_blob_json(
@@ -490,6 +487,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     if z:
         elevation_from_epqs = False
         z = convert_ft_to_m(z)
+        z_original = z
 
         if row.AltDatum == "NGVD29":
             key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
@@ -499,6 +497,22 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
                 z = convert_ngvd29_to_navd88(
                     z, transformed_point.x, transformed_point.y
                 )
+                if z is None:
+                    logger.warning(
+                        f"Failed NGVD29->NAVD88 conversion for {row.PointID}; "
+                        "falling back to EPQS."
+                    )
+                    z = get_epqs_elevation_from_point(
+                        transformed_point.x, transformed_point.y
+                    )
+                    if z is None:
+                        logger.warning(
+                            f"EPQS fallback failed for {row.PointID}; "
+                            "using original altitude."
+                        )
+                        z = z_original
+                    else:
+                        elevation_from_epqs = True
             elevations[key] = z
     else:
         elevation_from_epqs = True
