@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+
+# This script is used to run the backfill process on the staging database.
+# backfill is different from transfer. Transfer refers to moving the legacy data from NM_Aquifer into ocotillo
+# (ideally with minimal transformation). Backfill refers to populating additional fields in ocotillo that were not part of the original data transfer,
+# e.g. state, county, quad_name,etc. It will also be used to handle data refactors/corrections in the future.
+
 # Load environment variables from .env and run the staging backfill.
 # Usage: ./run_backfill.sh [--batch-size N]
 
