@@ -60,10 +60,10 @@ class ChemistrySampleInfoBackfill(Transferer):
                 f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into Chemistry_SampleInfo"
             )
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                index_elements=["OBJECTID"],
+                index_elements=["SamplePtID"],
                 set_={
                     "SamplePointID": excluded.SamplePointID,
-                    "SamplePtID": excluded.SamplePtID,
+                    "OBJECTID": excluded.OBJECTID,
                     "WCLab_ID": excluded.WCLab_ID,
                     "CollectionDate": excluded.CollectionDate,
                     "CollectionMethod": excluded.CollectionMethod,

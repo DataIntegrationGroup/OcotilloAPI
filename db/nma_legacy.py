@@ -159,9 +159,12 @@ class ChemistrySampleInfo(Base):
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
 
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID", UUID(as_uuid=True), nullable=False, primary_key=True
+    )
+
+    object_id: Mapped[int] = mapped_column("OBJECTID", nullable=True)
     sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(50))
-    sample_pt_id: Mapped[Optional[str]] = mapped_column("SamplePtID", String(50))
     wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(50))
 
     collection_date: Mapped[Optional[date]] = mapped_column("CollectionDate", Date)
