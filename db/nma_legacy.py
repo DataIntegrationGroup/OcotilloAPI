@@ -173,9 +173,9 @@ class ChemistrySampleInfo(Base):
         "SamplePointID", String(10), nullable=False
     )
 
-    # FK to Thing - required (no orphans)
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    # FK to Thing - nullable for legacy orphans
+    thing_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=True
     )
 
     collection_date: Mapped[Optional[datetime]] = mapped_column(

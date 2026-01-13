@@ -29,10 +29,10 @@ def upgrade() -> None:
     inspector = inspect(bind)
     columns = {col["name"] for col in inspector.get_columns("NMA_Chemistry_SampleInfo")}
     if "thing_id" not in columns:
-        # Add thing_id FK to NMA_Chemistry_SampleInfo (NOT NULL - no orphans)
+        # Add thing_id FK to NMA_Chemistry_SampleInfo (nullable to allow legacy orphans)
         op.add_column(
             "NMA_Chemistry_SampleInfo",
-            sa.Column("thing_id", sa.Integer(), nullable=False),
+            sa.Column("thing_id", sa.Integer(), nullable=True),
         )
 
     existing_fks = {
