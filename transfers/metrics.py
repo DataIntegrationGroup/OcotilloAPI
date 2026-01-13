@@ -43,6 +43,7 @@ from db import (
     ViewNGWMNWaterLevels,
     ViewNGWMNLithology,
     WeatherData,
+    NMAMinorTraceChemistry,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -141,6 +142,11 @@ class Metrics:
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+
+    def minor_trace_chemistry_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMAMinorTraceChemistry, name="MinorTraceChemistry", *args, **kw
+        )
 
     def contact_metrics(self, input_df, cleaned_df, errors) -> None:
         count = self._get_count(

@@ -19,22 +19,27 @@
 import uuid
 
 from datetime import date, datetime
-from typing import Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     String,
     Text,
     text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from db.base import Base
+
+if TYPE_CHECKING:
+    from db.thing import Thing
 
 
 class NMAWaterLevelsContinuousPressureDaily(Base):
@@ -168,6 +173,11 @@ class ChemistrySampleInfo(Base):
         "SamplePointID", String(10), nullable=False, unique=True
     )
 
+    # FK to Thing - required (no orphans)
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
     collection_date: Mapped[Optional[datetime]] = mapped_column(
         "CollectionDate", DateTime
     )
@@ -200,6 +210,27 @@ class ChemistrySampleInfo(Base):
     location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "LocationId", UUID(as_uuid=True)
     )
+
+    # --- Relationships ---
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="chemistry_sample_infos"
+    )
+
+    minor_trace_chemistries: Mapped[List["NMAMinorTraceChemistry"]] = relationship(
+        "NMAMinorTraceChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class SurfaceWaterData(Base):
@@ -250,6 +281,59 @@ class WeatherData(Base):
         "WeatherID", UUID(as_uuid=True)
     )
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+
+class NMAMinorTraceChemistry(Base):
+    """
+    Legacy MinorandTraceChemistry table from AMPAPI.
+
+    Stores minor and trace element chemistry results linked to a ChemistrySampleInfo.
+    """
+
+    __tablename__ = "NMA_MinorTraceChemistry"
+    __table_args__ = (
+        UniqueConstraint(
+            "chemistry_sample_info_id",
+            "analyte",
+            name="uq_minor_trace_chemistry_sample_analyte",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # FK to ChemistrySampleInfo - required (no orphans)
+    chemistry_sample_info_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("NMA_Chemistry_SampleInfo.OBJECTID", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # Legacy columns
+    analyte: Mapped[Optional[str]] = mapped_column(String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(Float)
+    units: Mapped[Optional[str]] = mapped_column(String(20))
+    symbol: Mapped[Optional[str]] = mapped_column(String(10))
+    analysis_method: Mapped[Optional[str]] = mapped_column(String(100))
+    analysis_date: Mapped[Optional[date]] = mapped_column(Date)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    analyses_agency: Mapped[Optional[str]] = mapped_column(String(100))
+    uncertainty: Mapped[Optional[float]] = mapped_column(Float)
+    volume: Mapped[Optional[float]] = mapped_column(Float)
+    volume_unit: Mapped[Optional[str]] = mapped_column(String(20))
+
+    # --- Relationships ---
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="minor_trace_chemistries"
+    )
+
+    @validates("chemistry_sample_info_id")
+    def validate_chemistry_sample_info_id(self, key, value):
+        """Prevent orphan NMAMinorTraceChemistry - must have a parent ChemistrySampleInfo."""
+        if value is None:
+            raise ValueError(
+                "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
+            )
+        return value
 
 
 # ============= EOF =============================================

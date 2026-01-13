@@ -45,6 +45,7 @@ from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import WellTransferer, WellScreenTransferer
+from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
 from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
@@ -186,6 +187,9 @@ def transfer_all(metrics, limit=100):
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
     transfer_weather_data = get_bool_env("TRANSFER_WEATHER_DATA", True)
+    transfer_minor_trace_chemistry = get_bool_env(
+        "TRANSFER_MINOR_TRACE_CHEMISTRY", True
+    )
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -207,6 +211,7 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_minor_trace_chemistry,
         )
     else:
         _transfer_sequential(
@@ -227,6 +232,7 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_minor_trace_chemistry,
         )
 
 
@@ -248,6 +254,7 @@ def _transfer_parallel(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_minor_trace_chemistry,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -294,6 +301,10 @@ def _transfer_parallel(
         )
     if transfer_weather_data:
         parallel_tasks_1.append(("WeatherData", WeatherDataTransferer, flags))
+    if transfer_minor_trace_chemistry:
+        parallel_tasks_1.append(
+            ("MinorTraceChemistry", MinorTraceChemistryTransferer, flags)
+        )
 
     # Track results for metrics
     results_map = {}
@@ -367,6 +378,8 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
+    if "MinorTraceChemistry" in results_map and results_map["MinorTraceChemistry"]:
+        metrics.minor_trace_chemistry_metrics(*results_map["MinorTraceChemistry"])
 
     # =========================================================================
     # PHASE 3: Sensors (Sequential - required before continuous water levels)
@@ -435,6 +448,7 @@ def _transfer_sequential(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_minor_trace_chemistry,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -529,6 +543,11 @@ def _transfer_sequential(
         message("TRANSFERRING WEATHER DATA")
         results = _execute_transfer(WeatherDataTransferer, flags=flags)
         metrics.weather_data_metrics(*results)
+
+    if transfer_minor_trace_chemistry:
+        message("TRANSFERRING MINOR TRACE CHEMISTRY")
+        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
+        metrics.minor_trace_chemistry_metrics(*results)
 
 
 def main():
