@@ -20,8 +20,17 @@ logger = logging.getLogger(__name__)
 
 
 def _log_warning(message: str) -> None:
-    redacted = re.sub(r"https?://\\S+", "[redacted_url]", message)
-    redacted = re.sub(r"POINT \\([^\\)]+\\)", "POINT ([redacted])", redacted)
+    # First, ensure that any TIGER error messages containing POINT coordinates
+    # do not log raw longitude/latitude values.
+    redacted = re.sub(
+        r"Error getting TIGER data for POINT \([^)]*\)",
+        "Error getting TIGER data for POINT ([redacted])",
+        message,
+    )
+    # Redact URLs.
+    redacted = re.sub(r"https?://\S+", "[redacted_url]", redacted)
+    # Redact any remaining WKT POINT coordinate contents.
+    redacted = re.sub(r"POINT \([^)]*\)", "POINT ([redacted])", redacted)
     logger.warning(redacted)
 
 
