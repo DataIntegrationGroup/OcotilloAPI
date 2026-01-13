@@ -31,6 +31,12 @@ def upgrade() -> None:
             sa.Column(
                 "SamplePointID", sa.String(length=10), nullable=False, unique=True
             ),
+            sa.Column(
+                "thing_id",
+                sa.Integer(),
+                sa.ForeignKey("thing.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("AnalysesAgency", sa.String(length=50), nullable=True),
             sa.Column("StudySample", sa.Text(), nullable=True),
             sa.Column(
