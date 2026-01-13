@@ -173,7 +173,7 @@ class ChemistrySampleInfo(Base):
         "SamplePointID", String(10), nullable=False
     )
 
-    # FK to Thing - required (no orphans)
+    # FK to Thing - required for all ChemistrySampleInfo records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
