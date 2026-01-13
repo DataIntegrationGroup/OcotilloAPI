@@ -21,15 +21,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    Float,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -194,6 +186,46 @@ class ChemistrySampleInfo(Base):
         "AddedMonthDaytoDate", String(10)
     )
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
+
+
+class MajorChemistry(Base):
+    """
+    Legacy MajorChemistry table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_MajorChemistry"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), nullable=False, primary_key=True
+    )
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_point_id: Mapped[str] = mapped_column(
+        "SamplePointID", String(10), nullable=True
+    )
+    analyte: Mapped[str] = mapped_column("Analyte", String(50), nullable=True)
+    symbol: Mapped[str] = mapped_column("Symbol", String(20), nullable=True)
+    sample_value: Mapped[float] = mapped_column("SampleValue", nullable=True, default=0)
+    units: Mapped[str] = mapped_column("Units", String(50), nullable=True)
+    uncertainty: Mapped[float] = mapped_column("Uncertainty", nullable=True)
+    analysis_method: Mapped[str] = mapped_column(
+        "AnalysisMethod", String(255), nullable=True
+    )
+    analysis_date: Mapped[datetime] = mapped_column(
+        "AnalysisDate", DateTime, nullable=True
+    )
+    notes: Mapped[str] = mapped_column("Notes", String(255), nullable=True)
+    volume: Mapped[float] = mapped_column("Volume", nullable=True, default=0)
+    object_id: Mapped[int] = mapped_column(
+        "OBJECTID", Integer, nullable=False, unique=True
+    )
+
+    analyses_agency: Mapped[str] = mapped_column(
+        "AnalysesAgency", String(50), nullable=True
+    )
+    wc_lab_id: Mapped[str] = mapped_column("WCLab_ID", String(25), nullable=True)
 
 
 class SurfaceWaterData(Base):
