@@ -43,7 +43,7 @@ git clone https://github.com/DataIntegrationGroup/OcotilloAPI.git
 cd OcotilloAPI
 ```
 
-#### 2. Set up virtual environment and install depdencies
+#### 2. Set up virtual environment and install dependencies
 
 
 <table>
@@ -92,8 +92,10 @@ cp .env.example .env
 ```
 Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
-* PostgreSQL port is 54321 (default is 5432). Update your postgresql.conf to `port = 54321`
-
+* PostgreSQL port is 54321 (default is 5432). Update your `postgresql.conf` to `port = 54321`.  
+  - On many systems, `postgresql.conf` is in the PostgreSQL data directory (for example: `/etc/postgresql/<version>/main/postgresql.conf` on Debian/Ubuntu, `/var/lib/pgsql/data/postgresql.conf` on many RPM-based distros, or `/usr/local/var/postgres/postgresql.conf` for Homebrew on macOS).  
+  - You can find the exact location from `psql` with: `SHOW config_file;`  
+  - After changing the port, restart PostgreSQL so the new port takes effect.
 
 In development set `MODE=development` to allow lexicon enums to be populated.
 
