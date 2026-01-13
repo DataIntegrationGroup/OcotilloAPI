@@ -63,7 +63,7 @@ def test_create_chemistry_sampleinfo_all_fields():
             wclab_id="LAB-123",
             collection_date=datetime(2024, 1, 1, 10, 30, 0),
             collection_method="Grab",
-            collected_by="Tech A",
+            collected_by="Tech",
             analyses_agency="Agency A",
             sample_type="Water",
             sample_material_not_h2o="Yes",
