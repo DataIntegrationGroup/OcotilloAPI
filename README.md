@@ -92,7 +92,7 @@ cp .env.example .env
 ```
 Notes:
 * Create file gcs_credentials.json, and get contents from a teammate and place it in the root directory of the project.
-* Postgresql port is 54321 (default is 5432). Update your postgresql.conf to `port = 54321`
+* PostgreSQL port is 54321 (default is 5432). Update your postgresql.conf to `port = 54321`
 
 
 In development set `MODE=development` to allow lexicon enums to be populated.
