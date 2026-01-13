@@ -13,6 +13,8 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "95d8b982cd5d"
@@ -23,24 +25,40 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add thing_id FK to NMA_Chemistry_SampleInfo (NOT NULL - no orphans)
-    op.add_column(
-        "NMA_Chemistry_SampleInfo", sa.Column("thing_id", sa.Integer(), nullable=False)
-    )
-    op.create_foreign_key(
-        "fk_chemistry_sample_info_thing",
-        "NMA_Chemistry_SampleInfo",
-        "thing",
-        ["thing_id"],
-        ["id"],
-        ondelete="CASCADE",
-    )
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {col["name"] for col in inspector.get_columns("NMA_Chemistry_SampleInfo")}
+    if "thing_id" not in columns:
+        # Add thing_id FK to NMA_Chemistry_SampleInfo (NOT NULL - no orphans)
+        op.add_column(
+            "NMA_Chemistry_SampleInfo",
+            sa.Column("thing_id", sa.Integer(), nullable=False),
+        )
+
+    existing_fks = {
+        fk["name"]
+        for fk in inspector.get_foreign_keys("NMA_Chemistry_SampleInfo")
+        if fk.get("name")
+    }
+    if "fk_chemistry_sample_info_thing" not in existing_fks:
+        op.create_foreign_key(
+            "fk_chemistry_sample_info_thing",
+            "NMA_Chemistry_SampleInfo",
+            "thing",
+            ["thing_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
 
     # Create NMA_MinorTraceChemistry table
     op.create_table(
         "NMA_MinorTraceChemistry",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("chemistry_sample_info_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "chemistry_sample_info_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
         sa.Column("analyte", sa.String(50), nullable=True),
         sa.Column("sample_value", sa.Float(), nullable=True),
         sa.Column("units", sa.String(20), nullable=True),
@@ -55,7 +73,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["chemistry_sample_info_id"],
-            ["NMA_Chemistry_SampleInfo.OBJECTID"],
+            ["NMA_Chemistry_SampleInfo.SamplePtID"],
             ondelete="CASCADE",
         ),
     )
@@ -64,7 +82,19 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_table("NMA_MinorTraceChemistry")
-    op.drop_constraint(
-        "fk_chemistry_sample_info_thing", "NMA_Chemistry_SampleInfo", type_="foreignkey"
-    )
-    op.drop_column("NMA_Chemistry_SampleInfo", "thing_id")
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    existing_fks = {
+        fk["name"]
+        for fk in inspector.get_foreign_keys("NMA_Chemistry_SampleInfo")
+        if fk.get("name")
+    }
+    if "fk_chemistry_sample_info_thing" in existing_fks:
+        op.drop_constraint(
+            "fk_chemistry_sample_info_thing",
+            "NMA_Chemistry_SampleInfo",
+            type_="foreignkey",
+        )
+    columns = {col["name"] for col in inspector.get_columns("NMA_Chemistry_SampleInfo")}
+    if "thing_id" in columns:
+        op.drop_column("NMA_Chemistry_SampleInfo", "thing_id")

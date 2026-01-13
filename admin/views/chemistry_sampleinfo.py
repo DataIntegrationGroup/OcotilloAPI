@@ -32,10 +32,10 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    sortable_fields = [
+        "sample_pt_id",
         "object_id",
         "sample_point_id",
-        "sample_pt_id",
         "wclab_id",
         "collection_date",
         "sample_type",
@@ -44,30 +44,15 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "public_release",
     ]
 
-    column_sortable_list = [
-        "object_id",
-        "sample_point_id",
-        "sample_pt_id",
-        "wclab_id",
-        "collection_date",
-        "sample_type",
-        "data_source",
-        "data_quality",
-        "public_release",
-    ]
+    fields_default_sort = [("collection_date", True)]
 
-    column_default_sort = ("collection_date", True)
-
-    search_fields = [
+    searchable_fields = [
         "sample_point_id",
         "sample_pt_id",
         "wclab_id",
         "collected_by",
         "analyses_agency",
         "sample_notes",
-    ]
-
-    column_filters = [
         "collection_date",
         "sample_type",
         "sample_material_not_h2o",
@@ -78,18 +63,15 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "public_release",
     ]
 
-    can_export = True
-    export_types = ["csv", "excel"]
-
     page_size = 50
     page_size_options = [25, 50, 100, 200]
 
     # ========== Form View ==========
 
     fields = [
-        "object_id",
-        "sample_point_id",
         "sample_pt_id",
+        "sample_point_id",
+        "object_id",
         "wclab_id",
         "collection_date",
         "collection_method",
@@ -114,27 +96,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     exclude_fields_from_edit = [
         "object_id",
     ]
-
-    labels = {
-        "object_id": "OBJECTID",
-        "sample_point_id": "SamplePointID",
-        "sample_pt_id": "SamplePtID",
-        "wclab_id": "WCLab ID",
-        "collection_date": "Collection Date",
-        "collection_method": "Collection Method",
-        "collected_by": "Collected By",
-        "analyses_agency": "Analyses Agency",
-        "sample_type": "Sample Type",
-        "sample_material_not_h2o": "Sample Material Not H2O",
-        "water_type": "Water Type",
-        "study_sample": "Study Sample",
-        "data_source": "Data Source",
-        "data_quality": "Data Quality",
-        "public_release": "Public Release",
-        "added_day_to_date": "Added Day to Date",
-        "added_month_day_to_date": "Added Month Day to Date",
-        "sample_notes": "Sample Notes",
-    }
 
 
 # ============= EOF =============================================

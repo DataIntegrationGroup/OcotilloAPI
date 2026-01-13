@@ -32,18 +32,7 @@ class NotesAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
-        "id",
-        "target_table",
-        "target_id",
-        "note_type",
-        "content",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "target_table",
         "target_id",
@@ -52,23 +41,15 @@ class NotesAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)
+    fields_default_sort = [("created_at", True)]
 
-    search_fields = [
+    searchable_fields = [
         "target_table",
         "note_type",
         "content",
-    ]
-
-    column_filters = [
-        "target_table",
-        "note_type",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -104,18 +85,6 @@ class NotesAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    labels = {
-        "id": "Note ID",
-        "target_table": "Target Table",
-        "target_id": "Target ID",
-        "note_type": "Note Type",
-        "content": "Content",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

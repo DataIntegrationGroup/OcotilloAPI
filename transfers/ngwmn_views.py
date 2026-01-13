@@ -32,9 +32,9 @@ from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class _BaseNGWMNBackfill(Transferer):
+class _BaseNGWMNTransferer(Transferer):
     """
-    Base class for backfilling legacy NGWMN view tables from CSVs in GCS.
+    Base class for transferring legacy NGWMN view tables from CSVs in GCS.
     """
 
     model = None
@@ -123,7 +123,7 @@ class _BaseNGWMNBackfill(Transferer):
         return list(deduped.values()) + passthrough
 
 
-class NGWMNWellConstructionBackfill(_BaseNGWMNBackfill):
+class NGWMNWellConstructionTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_WellConstruction"
     model = ViewNGWMNWellConstruction
 
@@ -157,7 +157,7 @@ class NGWMNWellConstructionBackfill(_BaseNGWMNBackfill):
         }
 
 
-class NGWMNWaterLevelsBackfill(_BaseNGWMNBackfill):
+class NGWMNWaterLevelsTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_WaterLevels"
     model = ViewNGWMNWaterLevels
     parse_dates = ["DateMeasured"]
@@ -192,7 +192,7 @@ class NGWMNWaterLevelsBackfill(_BaseNGWMNBackfill):
         }
 
 
-class NGWMNLithologyBackfill(_BaseNGWMNBackfill):
+class NGWMNLithologyTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_Lithology"
     model = ViewNGWMNLithology
 
@@ -230,20 +230,20 @@ class NGWMNLithologyBackfill(_BaseNGWMNBackfill):
 
 def run(batch_size: int = 1000) -> None:
     """
-    Entrypoint to backfill all NGWMN view tables.
+    Entrypoint to transfer all NGWMN view tables.
 
     Tables are processed sequentially to keep memory use bounded.
     """
 
-    for backfill_cls in (
-        NGWMNWellConstructionBackfill,
-        NGWMNWaterLevelsBackfill,
-        NGWMNLithologyBackfill,
+    for transfer_cls in (
+        NGWMNWellConstructionTransferer,
+        NGWMNWaterLevelsTransferer,
+        NGWMNLithologyTransferer,
     ):
-        logger.info(f"Starting {backfill_cls.__name__}")
-        backfill = backfill_cls(batch_size=batch_size)
-        backfill.transfer()
-        logger.info(f"Finished {backfill_cls.__name__}")
+        logger.info(f"Starting {transfer_cls.__name__}")
+        transferer = transfer_cls(batch_size=batch_size)
+        transferer.transfer()
+        logger.info(f"Finished {transfer_cls.__name__}")
 
 
 if __name__ == "__main__":

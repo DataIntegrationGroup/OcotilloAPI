@@ -29,9 +29,9 @@ from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class WeatherDataBackfill(Transferer):
+class WeatherDataTransferer(Transferer):
     """
-    Backfill for the legacy WeatherData table.
+    Transfer for the legacy WeatherData table.
     """
 
     source_table = "WeatherData"
@@ -113,13 +113,13 @@ class WeatherDataBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = WeatherDataBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = WeatherDataTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.weather_data`
+    # Allow running via `python -m transfers.weather_data`
     run()
 
 # ============= EOF =============================================

@@ -41,18 +41,7 @@ class ObservationAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
-        "id",
-        "observation_datetime",
-        "value",
-        "unit",
-        "measuring_point_height",
-        "groundwater_level_reason",
-        "release_status",
-        "created_at",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -62,26 +51,19 @@ class ObservationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = (
-        "observation_datetime",
-        True,
-    )  # True = descending (newest first)
+    fields_default_sort = [
+        ("observation_datetime", True)
+    ]  # True = descending (newest first)
 
-    search_fields = [
+    searchable_fields = [
         "groundwater_level_reason",
         "notes",
-    ]
-
-    column_filters = [
         "observation_datetime",
         "unit",
         "groundwater_level_reason",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200, 500]
@@ -143,35 +125,3 @@ class ObservationAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    labels = {
-        "id": "Observation ID",
-        "observation_datetime": "Date/Time Measured",
-        "value": "Depth to Water (ft)",
-        "unit": "Unit",
-        "measuring_point_height": "MP Height (ft)",
-        "groundwater_level_reason": "Level Status/Reason",
-        "notes": "Notes",
-        "sample_id": "Sample",
-        "sensor_id": "Sensor/Equipment",
-        "parameter_id": "Parameter",
-        "analysis_method_id": "Analysis Method",
-        "release_status": "Release Status",
-        "nma_pk_waterlevels": "AMPAPI WaterLevels ID (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    help_texts = {
-        "observation_datetime": "Date and time of the water level measurement (UTC)",
-        "value": "Depth to water from measuring point (feet)",
-        "unit": "Unit of measurement (typically 'ft' for feet)",
-        "measuring_point_height": "Height of measuring point above ground surface (feet)",
-        "groundwater_level_reason": "Reason/status: obstruction, dry well, equipment failure, etc. Leave blank if normal measurement.",
-        "notes": "Additional notes about this observation",
-        "sample_id": "Associated sample record",
-        "sensor_id": "Equipment used to take measurement (if automated)",
-        "parameter_id": "The parameter being measured (e.g., 'Depth to Water')",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

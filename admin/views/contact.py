@@ -41,18 +41,7 @@ class ContactAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
-        "id",
-        "name",
-        "organization",
-        "role",
-        "contact_type",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "name",
         "organization",
@@ -62,24 +51,16 @@ class ContactAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("name", False)  # Alphabetical by name
+    fields_default_sort = [("name", False)]  # Alphabetical by name
 
-    search_fields = [
+    searchable_fields = [
         "name",
-        "organization",
-        "role",
-    ]
-
-    column_filters = [
         "organization",
         "role",
         "contact_type",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -145,25 +126,3 @@ class ContactAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    labels = {
-        "id": "Contact ID",
-        "name": "Name",
-        "organization": "Organization",
-        "role": "Role",
-        "contact_type": "Contact Type",
-        "release_status": "Release Status",
-        "nma_pk_owners": "AMPAPI Owners ID (Legacy)",
-        "nma_pk_waterlevels": "AMPAPI WaterLevels ID (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    help_texts = {
-        "name": "Full name of the contact (First Last)",
-        "organization": "Organization or agency the contact is affiliated with",
-        "role": "Role of the contact (e.g., 'Owner', 'Measurer', 'Manager')",
-        "contact_type": "Type of contact (e.g., 'Primary', 'Secondary')",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

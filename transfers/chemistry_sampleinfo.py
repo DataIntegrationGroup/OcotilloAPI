@@ -16,7 +16,9 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
+from uuid import UUID
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -29,11 +31,11 @@ from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class ChemistrySampleInfoBackfill(Transferer):
+class ChemistrySampleInfoTransferer(Transferer):
     """
-    Backfill for the legacy Chemistry_SampleInfo table.
+    Transfer for the legacy Chemistry_SampleInfo table.
 
-    Loads the CSV and upserts into the legacy table for backfill workflows.
+    Loads the CSV and upserts into the legacy table.
     """
 
     source_table = "Chemistry_SampleInfo"
@@ -56,6 +58,7 @@ class ChemistrySampleInfoBackfill(Transferer):
         input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])
         # Filter to only include rows where Thing exists (prevent orphan records)
         cleaned_df = self._filter_to_valid_things(input_df)
+        cleaned_df = self._filter_to_valid_sample_pt_ids(cleaned_df)
         return input_df, cleaned_df
 
     def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -68,9 +71,12 @@ class ChemistrySampleInfoBackfill(Transferer):
         # Use cached Thing names (keys of thing_id_cache)
         valid_point_ids = set(self._thing_id_cache.keys())
 
+        # Normalize SamplePointID to handle suffixed sample counts (e.g. AB-0002A -> AB-0002).
+        normalized_ids = df["SamplePointID"].apply(self._normalize_sample_point_id)
+
         # Filter to rows where SamplePointID exists as a Thing.name
         before_count = len(df)
-        filtered_df = df[df["SamplePointID"].isin(valid_point_ids)].copy()
+        filtered_df = df[normalized_ids.isin(valid_point_ids)].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
@@ -82,15 +88,70 @@ class ChemistrySampleInfoBackfill(Transferer):
 
         return filtered_df
 
+    @staticmethod
+    def _normalize_sample_point_id(value: Any) -> Optional[str]:
+        """
+        Normalize SamplePointID for Thing matching by removing trailing alpha suffixes
+        used to denote multiple samples (e.g. AB-0002A -> AB-0002).
+        """
+        if pd.isna(value):
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        match = re.match(r"^(?P<base>.*\d)[A-Za-z]+$", text)
+        if match:
+            return match.group("base")
+        return text
+
+    def _filter_to_valid_sample_pt_ids(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter to rows with a valid SamplePtID UUID (required for idempotent upserts)."""
+
+        def _is_valid_uuid(value: Any) -> bool:
+            if pd.isna(value):
+                return False
+            if isinstance(value, UUID):
+                return True
+            if isinstance(value, str):
+                try:
+                    UUID(value)
+                    return True
+                except ValueError:
+                    return False
+            return False
+
+        before_count = len(df)
+        filtered_df = df[df["SamplePtID"].apply(_is_valid_uuid)].copy()
+        after_count = len(filtered_df)
+
+        if before_count > after_count:
+            skipped = before_count - after_count
+            logger.warning(
+                f"Filtered out {skipped} ChemistrySampleInfo records without valid SamplePtID "
+                f"({after_count} valid, {skipped} invalid SamplePtID values)"
+            )
+
+        return filtered_df
+
     def _transfer_hook(self, session: Session) -> None:
         # Convert rows to dicts and filter out any without valid thing_id
         row_dicts = []
-        skipped_count = 0
+        skipped_orphan_count = 0
+        skipped_sample_pt_id_count = 0
         for row in self.cleaned_df.to_dict("records"):
             row_dict = self._row_dict(row)
+            if row_dict.get("SamplePtID") is None:
+                skipped_sample_pt_id_count += 1
+                logger.warning(
+                    "Skipping ChemistrySampleInfo OBJECTID=%s SamplePointID=%s - "
+                    "SamplePtID missing or invalid",
+                    row_dict.get("OBJECTID"),
+                    row_dict.get("SamplePointID"),
+                )
+                continue
             # Skip rows without valid thing_id (orphan prevention)
             if row_dict.get("thing_id") is None:
-                skipped_count += 1
+                skipped_orphan_count += 1
                 logger.warning(
                     f"Skipping ChemistrySampleInfo OBJECTID={row_dict.get('OBJECTID')} "
                     f"SamplePointID={row_dict.get('SamplePointID')} - Thing not found"
@@ -98,9 +159,14 @@ class ChemistrySampleInfoBackfill(Transferer):
                 continue
             row_dicts.append(row_dict)
 
-        if skipped_count > 0:
+        if skipped_sample_pt_id_count > 0:
             logger.warning(
-                f"Skipped {skipped_count} ChemistrySampleInfo records without valid Thing "
+                "Skipped %s ChemistrySampleInfo records without valid SamplePtID",
+                skipped_sample_pt_id_count,
+            )
+        if skipped_orphan_count > 0:
+            logger.warning(
+                f"Skipped {skipped_orphan_count} ChemistrySampleInfo records without valid Thing "
                 f"(orphan prevention)"
             )
 
@@ -115,11 +181,10 @@ class ChemistrySampleInfoBackfill(Transferer):
                 f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into Chemistry_SampleInfo"
             )
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                index_elements=["OBJECTID"],
+                index_elements=["SamplePtID"],
                 set_={
                     "thing_id": excluded.thing_id,  # Required FK - prevent orphans
                     "SamplePointID": excluded.SamplePointID,
-                    "SamplePtID": excluded.SamplePtID,
                     "WCLab_ID": excluded.WCLab_ID,
                     "CollectionDate": excluded.CollectionDate,
                     "CollectionMethod": excluded.CollectionMethod,
@@ -134,6 +199,8 @@ class ChemistrySampleInfoBackfill(Transferer):
                     "PublicRelease": excluded.PublicRelease,
                     "AddedDaytoDate": excluded.AddedDaytoDate,
                     "AddedMonthDaytoDate": excluded.AddedMonthDaytoDate,
+                    "LocationId": excluded.LocationId,
+                    "OBJECTID": excluded.OBJECTID,
                     "SampleNotes": excluded.SampleNotes,
                 },
             )
@@ -147,6 +214,27 @@ class ChemistrySampleInfoBackfill(Transferer):
             if pd.isna(v):
                 return None
             return v
+
+        def str_val(key: str) -> Optional[str]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return v
+            return str(v)
+
+        def uuid_val(key: str) -> Optional[UUID]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, UUID):
+                return v
+            if isinstance(v, str):
+                try:
+                    return UUID(v)
+                except ValueError:
+                    return None
+            return None
 
         def bool_val(key: str) -> Optional[bool]:
             v = val(key)
@@ -164,37 +252,42 @@ class ChemistrySampleInfoBackfill(Transferer):
                     return False
             return None
 
+        # Convert pandas Timestamp to datetime; native datetime stays unchanged.
         collection_date = val("CollectionDate")
-        if hasattr(collection_date, "date"):
-            collection_date = collection_date.date()
+        if hasattr(collection_date, "to_pydatetime"):
+            collection_date = collection_date.to_pydatetime()
 
         # Look up Thing by SamplePointID to prevent orphan records
         sample_point_id = val("SamplePointID")
+        normalized_sample_point_id = self._normalize_sample_point_id(sample_point_id)
         thing_id = None
-        if sample_point_id and sample_point_id in self._thing_id_cache:
-            thing_id = self._thing_id_cache[sample_point_id]
+        if (
+            normalized_sample_point_id
+            and normalized_sample_point_id in self._thing_id_cache
+        ):
+            thing_id = self._thing_id_cache[normalized_sample_point_id]
         # If Thing not found, thing_id remains None and will be filtered out
 
         return {
-            "OBJECTID": val("OBJECTID"),
-            "thing_id": thing_id,  # Required FK - prevents orphan records
-            "SamplePointID": val("SamplePointID"),
-            "SamplePtID": val("SamplePtID"),
-            "WCLab_ID": val("WCLab_ID"),
+            "SamplePtID": uuid_val("SamplePtID"),
+            "WCLab_ID": str_val("WCLab_ID"),
+            "SamplePointID": str_val("SamplePointID"),
             "CollectionDate": collection_date,
-            "CollectionMethod": val("CollectionMethod"),
-            "CollectedBy": val("CollectedBy"),
-            "AnalysesAgency": val("AnalysesAgency"),
-            "SampleType": val("SampleType"),
-            "SampleMaterialNotH2O": bool_val("SampleMaterialNotH2O"),
-            "WaterType": val("WaterType"),
-            "StudySample": bool_val("StudySample"),
-            "DataSource": val("DataSource"),
-            "DataQuality": val("DataQuality"),
+            "CollectionMethod": str_val("CollectionMethod"),
+            "CollectedBy": str_val("CollectedBy"),
+            "AnalysesAgency": str_val("AnalysesAgency"),
+            "SampleType": str_val("SampleType"),
+            "SampleMaterialNotH2O": str_val("SampleMaterialNotH2O"),
+            "WaterType": str_val("WaterType"),
+            "StudySample": str_val("StudySample"),
+            "DataSource": str_val("DataSource"),
+            "DataQuality": bool_val("DataQuality"),
             "PublicRelease": bool_val("PublicRelease"),
-            "AddedDaytoDate": val("AddedDaytoDate"),
-            "AddedMonthDaytoDate": val("AddedMonthDaytoDate"),
-            "SampleNotes": val("SampleNotes"),
+            "AddedDaytoDate": bool_val("AddedDaytoDate"),
+            "AddedMonthDaytoDate": bool_val("AddedMonthDaytoDate"),
+            "SampleNotes": str_val("SampleNotes"),
+            "LocationId": uuid_val("LocationId"),
+            "OBJECTID": val("OBJECTID"),
         }
 
     def _dedupe_rows(
@@ -214,13 +307,13 @@ class ChemistrySampleInfoBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = ChemistrySampleInfoBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = ChemistrySampleInfoTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.chemistry_sampleinfo`
+    # Allow running via `python -m transfers.chemistry_sampleinfo`
     run()
 
 # ============= EOF =============================================
