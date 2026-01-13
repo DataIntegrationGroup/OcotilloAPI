@@ -41,7 +41,7 @@ class SensorAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "name",
         "sensor_type",
@@ -54,7 +54,7 @@ class SensorAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "name",
         "sensor_type",
@@ -66,25 +66,19 @@ class SensorAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)  # True = descending
+    fields_default_sort = [("created_at", True)]  # True = descending
 
-    search_fields = [
+    searchable_fields = [
         "name",
         "serial_no",
         "model",
         "pcn_number",
-    ]
-
-    column_filters = [
         "sensor_type",
         "owner_agency",
         "sensor_status",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -140,7 +134,7 @@ class SensorAdmin(OcotilloModelView):
 
     # ========== Field Labels and Help Text ==========
 
-    labels = {
+    field_labels = {
         "id": "Sensor ID",
         "name": "Name",
         "sensor_type": "Type",
@@ -157,7 +151,7 @@ class SensorAdmin(OcotilloModelView):
         "updated_by_name": "Updated By",
     }
 
-    help_texts = {
+    field_help_texts = {
         "name": "Name or identifier for this sensor/equipment",
         "sensor_type": "Type of equipment: 'Pressure Transducer', 'Acoustic Sounder', 'Data Logger', etc.",
         "model": "Manufacturer model number",

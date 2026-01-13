@@ -38,16 +38,19 @@ Migrated columns:
 - SampleNotes -> sample_notes
 """
 
-from datetime import date
+from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
 from db.nma_legacy import ChemistrySampleInfo
 
 
-def _next_object_id() -> int:
-    # Use a negative value to avoid collisions with existing legacy OBJECTIDs.
-    return -(uuid4().int % 2_000_000_000)
+def _next_sample_point_id() -> str:
+    return f"SP-{uuid4().hex[:7]}"
+
+
+def _next_sample_pt_id():
+    return uuid4()
 
 
 # ===================== CREATE tests ==========================
@@ -55,35 +58,34 @@ def test_create_chemistry_sampleinfo_all_fields():
     """Test creating a chemistry sample info record with all fields."""
     with session_ctx() as session:
         record = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_point_id="CS-1001",
-            sample_pt_id="CS-ALT-1",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             wclab_id="LAB-123",
-            collection_date=date(2024, 1, 1),
+            collection_date=datetime(2024, 1, 1, 10, 30, 0),
             collection_method="Grab",
             collected_by="Tech A",
             analyses_agency="Agency A",
             sample_type="Water",
-            sample_material_not_h2o=False,
+            sample_material_not_h2o="Yes",
             water_type="Fresh",
-            study_sample=True,
+            study_sample="Yes",
             data_source="SRC",
-            data_quality="A",
+            data_quality=True,
             public_release=True,
-            added_day_to_date="01",
-            added_month_day_to_date="01-01",
+            added_day_to_date=False,
+            added_month_day_to_date=False,
             sample_notes="Notes",
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.object_id is not None
-        assert record.sample_point_id == "CS-1001"
-        assert record.sample_pt_id == "CS-ALT-1"
+        assert record.sample_pt_id is not None
+        assert record.sample_point_id is not None
         assert record.wclab_id == "LAB-123"
-        assert record.collection_date == date(2024, 1, 1)
-        assert record.study_sample is True
+        assert record.collection_date == datetime(2024, 1, 1, 10, 30, 0)
+        assert record.sample_material_not_h2o == "Yes"
+        assert record.study_sample == "Yes"
 
         session.delete(record)
         session.commit()
@@ -93,14 +95,15 @@ def test_create_chemistry_sampleinfo_minimal():
     """Test creating a chemistry sample info record with minimal fields."""
     with session_ctx() as session:
         record = ChemistrySampleInfo(
-            object_id=_next_object_id(),
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.object_id is not None
-        assert record.sample_point_id is None
+        assert record.sample_pt_id is not None
+        assert record.sample_point_id is not None
         assert record.collection_date is None
 
         session.delete(record)
@@ -112,16 +115,16 @@ def test_read_chemistry_sampleinfo_by_object_id():
     """Test reading a chemistry sample info record by OBJECTID."""
     with session_ctx() as session:
         record = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_point_id="CS-1002",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(ChemistrySampleInfo, record.object_id)
+        fetched = session.get(ChemistrySampleInfo, record.sample_pt_id)
         assert fetched is not None
-        assert fetched.object_id == record.object_id
-        assert fetched.sample_point_id == "CS-1002"
+        assert fetched.sample_pt_id == record.sample_pt_id
+        assert fetched.sample_point_id == record.sample_point_id
 
         session.delete(record)
         session.commit()
@@ -132,8 +135,8 @@ def test_update_chemistry_sampleinfo():
     """Test updating a chemistry sample info record."""
     with session_ctx() as session:
         record = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_point_id="CS-1003",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
         )
         session.add(record)
         session.commit()
@@ -155,8 +158,8 @@ def test_delete_chemistry_sampleinfo():
     """Test deleting a chemistry sample info record."""
     with session_ctx() as session:
         record = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_point_id="CS-1004",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
         )
         session.add(record)
         session.commit()
@@ -164,7 +167,7 @@ def test_delete_chemistry_sampleinfo():
         session.delete(record)
         session.commit()
 
-        fetched = session.get(ChemistrySampleInfo, record.object_id)
+        fetched = session.get(ChemistrySampleInfo, record.sample_pt_id)
         assert fetched is None
 
 
@@ -172,7 +175,6 @@ def test_delete_chemistry_sampleinfo():
 def test_chemistry_sampleinfo_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
-        "object_id",
         "sample_point_id",
         "sample_pt_id",
         "wclab_id",
@@ -190,6 +192,8 @@ def test_chemistry_sampleinfo_has_all_migrated_columns():
         "added_day_to_date",
         "added_month_day_to_date",
         "sample_notes",
+        "object_id",
+        "location_id",
     ]
 
     for column in expected_columns:

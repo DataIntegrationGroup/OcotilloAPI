@@ -43,7 +43,7 @@ class LocationAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "description",
         "county",
@@ -55,7 +55,7 @@ class LocationAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "description",
         "elevation",
@@ -66,25 +66,17 @@ class LocationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)  # True = descending
+    fields_default_sort = [("created_at", True)]  # True = descending
 
-    search_fields = [
+    searchable_fields = [
         "description",
         "county",
         "state",
         "quad_name",
-    ]
-
-    column_filters = [
-        "county",
-        "state",
         "release_status",
         "elevation",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -116,8 +108,6 @@ class LocationAdmin(OcotilloModelView):
         "nma_site_date",
     ]
 
-    fields_default_sort = ["description", "point", "elevation", "county", "state"]
-
     exclude_fields_from_create = [
         "id",
         "created_at",
@@ -142,7 +132,7 @@ class LocationAdmin(OcotilloModelView):
 
     # ========== Field Labels and Help Text ==========
 
-    labels = {
+    field_labels = {
         "id": "Location ID",
         "description": "Description",
         "point": "Coordinates (WKT)",
@@ -161,7 +151,7 @@ class LocationAdmin(OcotilloModelView):
         "updated_by_name": "Updated By",
     }
 
-    help_texts = {
+    field_help_texts = {
         "description": "Brief description of this location (e.g., 'Well near Albuquerque')",
         "elevation": "Elevation in meters. Vertical datum: NAVD88. Will be displayed in feet in reports.",
         "release_status": "Data release status: 'draft' (internal only) or 'published' (public)",

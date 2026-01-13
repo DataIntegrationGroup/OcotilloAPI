@@ -32,7 +32,7 @@ class SampleAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "sample_name",
         "sample_date",
@@ -44,7 +44,7 @@ class SampleAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "sample_name",
         "sample_date",
@@ -55,24 +55,18 @@ class SampleAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("sample_date", True)
+    fields_default_sort = [("sample_date", True)]
 
-    search_fields = [
+    searchable_fields = [
         "sample_name",
         "notes",
         "nma_pk_waterlevels",
-    ]
-
-    column_filters = [
         "sample_matrix",
         "sample_method",
         "qc_type",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -116,7 +110,7 @@ class SampleAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Sample ID",
         "field_activity_id": "Field Activity",
         "field_event_participant_id": "Field Event Participant",

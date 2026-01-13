@@ -33,7 +33,7 @@ class AquiferSystemAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "name",
         "primary_aquifer_type",
@@ -43,7 +43,7 @@ class AquiferSystemAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "name",
         "primary_aquifer_type",
@@ -52,22 +52,16 @@ class AquiferSystemAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("name", False)
+    fields_default_sort = [("name", False)]
 
-    search_fields = [
+    searchable_fields = [
         "name",
         "description",
-    ]
-
-    column_filters = [
         "primary_aquifer_type",
         "geographic_scale",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -105,7 +99,7 @@ class AquiferSystemAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Aquifer System ID",
         "name": "Name",
         "description": "Description",

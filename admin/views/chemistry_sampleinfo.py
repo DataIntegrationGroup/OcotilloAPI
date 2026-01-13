@@ -32,7 +32,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "object_id",
         "sample_point_id",
         "sample_pt_id",
@@ -44,7 +44,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "public_release",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "object_id",
         "sample_point_id",
         "sample_pt_id",
@@ -56,18 +56,15 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "public_release",
     ]
 
-    column_default_sort = ("collection_date", True)
+    fields_default_sort = [("collection_date", True)]
 
-    search_fields = [
+    searchable_fields = [
         "sample_point_id",
         "sample_pt_id",
         "wclab_id",
         "collected_by",
         "analyses_agency",
         "sample_notes",
-    ]
-
-    column_filters = [
         "collection_date",
         "sample_type",
         "sample_material_not_h2o",
@@ -77,9 +74,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "data_quality",
         "public_release",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -115,7 +109,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "object_id",
     ]
 
-    labels = {
+    field_labels = {
         "object_id": "OBJECTID",
         "sample_point_id": "SamplePointID",
         "sample_pt_id": "SamplePtID",

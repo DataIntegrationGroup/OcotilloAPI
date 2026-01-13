@@ -159,38 +159,44 @@ class ChemistrySampleInfo(Base):
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
 
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
-    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(50))
-    sample_pt_id: Mapped[Optional[str]] = mapped_column("SamplePtID", String(50))
-    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(50))
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID", UUID(as_uuid=True), primary_key=True
+    )
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(18))
+    sample_point_id: Mapped[str] = mapped_column(
+        "SamplePointID", String(10), nullable=False, unique=True
+    )
 
-    collection_date: Mapped[Optional[date]] = mapped_column("CollectionDate", Date)
+    collection_date: Mapped[Optional[datetime]] = mapped_column(
+        "CollectionDate", DateTime
+    )
     collection_method: Mapped[Optional[str]] = mapped_column(
-        "CollectionMethod", String(100)
+        "CollectionMethod", String(50)
     )
-    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(100))
-    analyses_agency: Mapped[Optional[str]] = mapped_column(
-        "AnalysesAgency", String(100)
-    )
+    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(5))
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
 
-    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(100))
-    sample_material_not_h2o: Mapped[Optional[bool]] = mapped_column(
-        "SampleMaterialNotH2O", Boolean
+    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(50))
+    sample_material_not_h2o: Mapped[Optional[str]] = mapped_column(
+        "SampleMaterialNotH2O", String(100)
     )
-    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(100))
-    study_sample: Mapped[Optional[bool]] = mapped_column("StudySample", Boolean)
+    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(50))
+    study_sample: Mapped[Optional[str]] = mapped_column("StudySample", Text)
 
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(100))
-    data_quality: Mapped[Optional[str]] = mapped_column("DataQuality", String(100))
+    data_quality: Mapped[Optional[bool]] = mapped_column("DataQuality", Boolean)
     public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
 
-    added_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedDaytoDate", String(10)
-    )
-    added_month_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedMonthDaytoDate", String(10)
+    added_day_to_date: Mapped[Optional[bool]] = mapped_column("AddedDaytoDate", Boolean)
+    added_month_day_to_date: Mapped[Optional[bool]] = mapped_column(
+        "AddedMonthDaytoDate", Boolean
     )
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
+
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
 
 
 class SurfaceWaterData(Base):

@@ -29,7 +29,7 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
     icon = "fa fa-water"
     enable_publish_actions = False
 
-    column_list = [
+    list_fields = [
         "surface_id",
         "point_id",
         "date_measured",
@@ -42,7 +42,7 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
         "data_source",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "surface_id",
         "point_id",
         "date_measured",
@@ -54,26 +54,20 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
         "aq_class",
     ]
 
-    column_default_sort = ("date_measured", True)
+    fields_default_sort = [("date_measured", True)]
 
-    search_fields = [
+    searchable_fields = [
         "point_id",
         "discharge",
         "formation_zone",
         "aq_class",
         "data_source",
-    ]
-
-    column_filters = [
         "discharge_units",
         "discharge_method",
         "discharge_source",
         "formation_zone",
         "aq_class",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -96,7 +90,7 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
         "data_source",
     ]
 
-    labels = {
+    field_labels = {
         "surface_id": "Surface ID",
         "point_id": "Point ID",
         "object_id": "Object ID",

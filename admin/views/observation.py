@@ -41,7 +41,7 @@ class ObservationAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -52,7 +52,7 @@ class ObservationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -62,26 +62,19 @@ class ObservationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = (
-        "observation_datetime",
-        True,
-    )  # True = descending (newest first)
+    fields_default_sort = [
+        ("observation_datetime", True)
+    ]  # True = descending (newest first)
 
-    search_fields = [
+    searchable_fields = [
         "groundwater_level_reason",
         "notes",
-    ]
-
-    column_filters = [
         "observation_datetime",
         "unit",
         "groundwater_level_reason",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200, 500]
@@ -144,7 +137,7 @@ class ObservationAdmin(OcotilloModelView):
 
     # ========== Field Labels and Help Text ==========
 
-    labels = {
+    field_labels = {
         "id": "Observation ID",
         "observation_datetime": "Date/Time Measured",
         "value": "Depth to Water (ft)",
@@ -163,7 +156,7 @@ class ObservationAdmin(OcotilloModelView):
         "updated_by_name": "Updated By",
     }
 
-    help_texts = {
+    field_help_texts = {
         "observation_datetime": "Date and time of the water level measurement (UTC)",
         "value": "Depth to water from measuring point (feet)",
         "unit": "Unit of measurement (typically 'ft' for feet)",

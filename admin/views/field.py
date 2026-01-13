@@ -28,7 +28,7 @@ class FieldEventAdmin(OcotilloModelView):
     label = "Field Events"
     icon = "fa fa-calendar"
 
-    column_list = [
+    list_fields = [
         "id",
         "thing_id",
         "event_date",
@@ -38,7 +38,7 @@ class FieldEventAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "thing_id",
         "event_date",
@@ -46,19 +46,13 @@ class FieldEventAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("event_date", True)
+    fields_default_sort = [("event_date", True)]
 
-    search_fields = [
+    searchable_fields = [
         "notes",
-    ]
-
-    column_filters = [
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -92,7 +86,7 @@ class FieldEventAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Field Event ID",
         "thing_id": "Thing",
         "event_date": "Event Date",
@@ -113,7 +107,7 @@ class FieldActivityAdmin(OcotilloModelView):
     label = "Field Activities"
     icon = "fa fa-tasks"
 
-    column_list = [
+    list_fields = [
         "id",
         "field_event_id",
         "activity_type",
@@ -123,7 +117,7 @@ class FieldActivityAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "field_event_id",
         "activity_type",
@@ -131,20 +125,14 @@ class FieldActivityAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)
+    fields_default_sort = [("created_at", True)]
 
-    search_fields = [
+    searchable_fields = [
         "notes",
-    ]
-
-    column_filters = [
         "activity_type",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -178,7 +166,7 @@ class FieldActivityAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Field Activity ID",
         "field_event_id": "Field Event",
         "activity_type": "Activity Type",
@@ -199,7 +187,7 @@ class FieldEventParticipantAdmin(OcotilloModelView):
     label = "Field Event Participants"
     icon = "fa fa-users"
 
-    column_list = [
+    list_fields = [
         "id",
         "field_event_id",
         "contact_id",
@@ -209,7 +197,7 @@ class FieldEventParticipantAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "field_event_id",
         "contact_id",
@@ -218,16 +206,13 @@ class FieldEventParticipantAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)
+    fields_default_sort = [("created_at", True)]
 
-    column_filters = [
+    searchable_fields = [
         "participant_role",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -261,7 +246,7 @@ class FieldEventParticipantAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Participant ID",
         "field_event_id": "Field Event",
         "contact_id": "Contact",

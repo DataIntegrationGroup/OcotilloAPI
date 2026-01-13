@@ -41,7 +41,7 @@ class DeploymentAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "thing_id",
         "sensor_id",
@@ -53,7 +53,7 @@ class DeploymentAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "thing_id",
         "sensor_id",
@@ -64,26 +64,19 @@ class DeploymentAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = (
-        "installation_date",
-        True,
-    )  # True = descending (newest first)
+    fields_default_sort = [
+        ("installation_date", True)
+    ]  # True = descending (newest first)
 
-    search_fields = [
+    searchable_fields = [
         "hanging_point_description",
         "notes",
-    ]
-
-    column_filters = [
         "installation_date",
         "removal_date",
         "recording_interval_units",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -137,7 +130,7 @@ class DeploymentAdmin(OcotilloModelView):
 
     # ========== Field Labels and Help Text ==========
 
-    labels = {
+    field_labels = {
         "id": "Deployment ID",
         "thing_id": "Well/Thing",
         "sensor_id": "Sensor/Equipment",
@@ -155,7 +148,7 @@ class DeploymentAdmin(OcotilloModelView):
         "updated_by_name": "Updated By",
     }
 
-    help_texts = {
+    field_help_texts = {
         "thing_id": "The well or thing where this equipment is deployed",
         "sensor_id": "The sensor/equipment being deployed",
         "installation_date": "Date the equipment was installed",

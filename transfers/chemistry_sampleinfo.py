@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
+from uuid import UUID, uuid4
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -48,7 +49,7 @@ class ChemistrySampleInfoTransferer(Transferer):
     def _transfer_hook(self, session: Session) -> None:
         rows = self._dedupe_rows(
             [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
-            key="OBJECTID",
+            key="SamplePtID",
         )
 
         insert_stmt = insert(ChemistrySampleInfo)
@@ -60,7 +61,7 @@ class ChemistrySampleInfoTransferer(Transferer):
                 f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows) into Chemistry_SampleInfo"
             )
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                index_elements=["OBJECTID"],
+                index_elements=["SamplePtID"],
                 set_={
                     "SamplePointID": excluded.SamplePointID,
                     "SamplePtID": excluded.SamplePtID,
@@ -78,6 +79,8 @@ class ChemistrySampleInfoTransferer(Transferer):
                     "PublicRelease": excluded.PublicRelease,
                     "AddedDaytoDate": excluded.AddedDaytoDate,
                     "AddedMonthDaytoDate": excluded.AddedMonthDaytoDate,
+                    "LocationId": excluded.LocationId,
+                    "OBJECTID": excluded.OBJECTID,
                     "SampleNotes": excluded.SampleNotes,
                 },
             )
@@ -91,6 +94,27 @@ class ChemistrySampleInfoTransferer(Transferer):
             if pd.isna(v):
                 return None
             return v
+
+        def str_val(key: str) -> Optional[str]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return v
+            return str(v)
+
+        def uuid_val(key: str) -> Optional[UUID]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, UUID):
+                return v
+            if isinstance(v, str):
+                try:
+                    return UUID(v)
+                except ValueError:
+                    return None
+            return None
 
         def bool_val(key: str) -> Optional[bool]:
             v = val(key)
@@ -109,28 +133,29 @@ class ChemistrySampleInfoTransferer(Transferer):
             return None
 
         collection_date = val("CollectionDate")
-        if hasattr(collection_date, "date"):
-            collection_date = collection_date.date()
+        if hasattr(collection_date, "to_pydatetime"):
+            collection_date = collection_date.to_pydatetime()
 
         return {
-            "OBJECTID": val("OBJECTID"),
-            "SamplePointID": val("SamplePointID"),
-            "SamplePtID": val("SamplePtID"),
-            "WCLab_ID": val("WCLab_ID"),
+            "SamplePtID": uuid_val("SamplePtID") or uuid4(),
+            "WCLab_ID": str_val("WCLab_ID"),
+            "SamplePointID": str_val("SamplePointID"),
             "CollectionDate": collection_date,
-            "CollectionMethod": val("CollectionMethod"),
-            "CollectedBy": val("CollectedBy"),
-            "AnalysesAgency": val("AnalysesAgency"),
-            "SampleType": val("SampleType"),
-            "SampleMaterialNotH2O": bool_val("SampleMaterialNotH2O"),
-            "WaterType": val("WaterType"),
-            "StudySample": bool_val("StudySample"),
-            "DataSource": val("DataSource"),
-            "DataQuality": val("DataQuality"),
+            "CollectionMethod": str_val("CollectionMethod"),
+            "CollectedBy": str_val("CollectedBy"),
+            "AnalysesAgency": str_val("AnalysesAgency"),
+            "SampleType": str_val("SampleType"),
+            "SampleMaterialNotH2O": str_val("SampleMaterialNotH2O"),
+            "WaterType": str_val("WaterType"),
+            "StudySample": str_val("StudySample"),
+            "DataSource": str_val("DataSource"),
+            "DataQuality": bool_val("DataQuality"),
             "PublicRelease": bool_val("PublicRelease"),
-            "AddedDaytoDate": val("AddedDaytoDate"),
-            "AddedMonthDaytoDate": val("AddedMonthDaytoDate"),
-            "SampleNotes": val("SampleNotes"),
+            "AddedDaytoDate": bool_val("AddedDaytoDate"),
+            "AddedMonthDaytoDate": bool_val("AddedMonthDaytoDate"),
+            "SampleNotes": str_val("SampleNotes"),
+            "LocationId": uuid_val("LocationId"),
+            "OBJECTID": val("OBJECTID"),
         }
 
     def _dedupe_rows(

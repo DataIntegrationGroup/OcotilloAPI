@@ -15,12 +15,12 @@
 # ===============================================================================
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 from sqlalchemy import select, update
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette_admin import action
+from starlette_admin import ExportType, action
 from starlette_admin.contrib.sqla import ModelView
 
 from db.engine import session_ctx
@@ -39,6 +39,31 @@ class OcotilloModelView(ModelView):
     draft_value = "draft"
     published_value = "published"
     enable_publish_actions: bool = True
+    export_types: Sequence[ExportType] = (ExportType.CSV, ExportType.EXCEL)
+    list_fields: Sequence[str] = ()
+    field_labels: dict[str, str] = {}
+    field_help_texts: dict[str, str] = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_list_fields()
+        self._apply_field_overrides()
+
+    def _apply_list_fields(self) -> None:
+        if not self.list_fields:
+            return
+        column_set = set(self.list_fields)
+        for field in self.fields:
+            field.exclude_from_list = field.name not in column_set
+
+    def _apply_field_overrides(self) -> None:
+        if not (self.field_labels or self.field_help_texts):
+            return
+        for field in self.fields:
+            if field.name in self.field_labels:
+                field.label = self.field_labels[field.name]
+            if field.name in self.field_help_texts:
+                field.help_text = self.field_help_texts[field.name]
 
     # ========= Permissions (RBAC) =========
     def _get_user(self, request: Request) -> Any:

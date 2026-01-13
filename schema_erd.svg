@@ -12,27 +12,28 @@
 <!-- NMA_Chemistry_SampleInfo -->
 <g id="node1" class="node">
 <title>NMA_Chemistry_SampleInfo</title>
-<polygon fill="none" stroke="black" points="61.88,-2591.5 61.88,-2869.5 567.88,-2869.5 567.88,-2591.5 61.88,-2591.5"/>
-<text xml:space="preserve" text-anchor="middle" x="158" y="-2724.7" font-family="Helvetica,sans-Serif" font-size="14.00">NMA_Chemistry_SampleInfo</text>
-<polyline fill="none" stroke="black" points="254.12,-2591.5 254.12,-2869.5"/>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2852.2" font-family="Helvetica,sans-Serif" font-size="14.00">* OBJECTID: INTEGER (not null)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2837.2" font-family="Helvetica,sans-Serif" font-size="14.00">SamplePointID: VARCHAR(50) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2822.2" font-family="Helvetica,sans-Serif" font-size="14.00">SamplePtID: VARCHAR(50) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2807.2" font-family="Helvetica,sans-Serif" font-size="14.00">WCLab_ID: VARCHAR(50) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2792.2" font-family="Helvetica,sans-Serif" font-size="14.00">CollectionDate: DATE (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2777.2" font-family="Helvetica,sans-Serif" font-size="14.00">CollectionMethod: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2762.2" font-family="Helvetica,sans-Serif" font-size="14.00">CollectedBy: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2747.2" font-family="Helvetica,sans-Serif" font-size="14.00">AnalysesAgency: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2732.2" font-family="Helvetica,sans-Serif" font-size="14.00">SampleType: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2717.2" font-family="Helvetica,sans-Serif" font-size="14.00">SampleMaterialNotH2O: BOOLEAN (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2702.2" font-family="Helvetica,sans-Serif" font-size="14.00">WaterType: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2687.2" font-family="Helvetica,sans-Serif" font-size="14.00">StudySample: BOOLEAN (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2672.2" font-family="Helvetica,sans-Serif" font-size="14.00">DataSource: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2657.2" font-family="Helvetica,sans-Serif" font-size="14.00">DataQuality: VARCHAR(100) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2642.2" font-family="Helvetica,sans-Serif" font-size="14.00">PublicRelease: BOOLEAN (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2627.2" font-family="Helvetica,sans-Serif" font-size="14.00">AddedDaytoDate: VARCHAR(10) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2612.2" font-family="Helvetica,sans-Serif" font-size="14.00">AddedMonthDaytoDate: VARCHAR(10) (nullable)</text>
-<text xml:space="preserve" text-anchor="start" x="262.12" y="-2597.2" font-family="Helvetica,sans-Serif" font-size="14.00">SampleNotes: TEXT (nullable)</text>
+<polygon fill="none" stroke="black" points="56.25,-2577 56.25,-2870 573.5,-2870 573.5,-2577 56.25,-2577"/>
+<text xml:space="preserve" text-anchor="middle" x="152.38" y="-2717.7" font-family="Helvetica,sans-Serif" font-size="14.00">NMA_Chemistry_SampleInfo</text>
+<polyline fill="none" stroke="black" points="248.5,-2577 248.5,-2870"/>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2852.7" font-family="Helvetica,sans-Serif" font-size="14.00">* SamplePtID: UUID (not null)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2837.7" font-family="Helvetica,sans-Serif" font-size="14.00">WCLab_ID: VARCHAR(18) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2822.7" font-family="Helvetica,sans-Serif" font-size="14.00">SamplePointID: VARCHAR(10) (not null)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2807.7" font-family="Helvetica,sans-Serif" font-size="14.00">CollectionDate: DATETIME (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2792.7" font-family="Helvetica,sans-Serif" font-size="14.00">CollectionMethod: VARCHAR(50) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2777.7" font-family="Helvetica,sans-Serif" font-size="14.00">CollectedBy: VARCHAR(5) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2762.7" font-family="Helvetica,sans-Serif" font-size="14.00">AnalysesAgency: VARCHAR(50) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2747.7" font-family="Helvetica,sans-Serif" font-size="14.00">SampleType: VARCHAR(50) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2732.7" font-family="Helvetica,sans-Serif" font-size="14.00">SampleMaterialNotH2O: VARCHAR(100) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2717.7" font-family="Helvetica,sans-Serif" font-size="14.00">WaterType: VARCHAR(50) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2702.7" font-family="Helvetica,sans-Serif" font-size="14.00">StudySample: TEXT (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2687.7" font-family="Helvetica,sans-Serif" font-size="14.00">DataSource: VARCHAR(100) (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2672.7" font-family="Helvetica,sans-Serif" font-size="14.00">DataQuality: BOOLEAN (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2657.7" font-family="Helvetica,sans-Serif" font-size="14.00">PublicRelease: BOOLEAN (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2642.7" font-family="Helvetica,sans-Serif" font-size="14.00">AddedDaytoDate: BOOLEAN (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2627.7" font-family="Helvetica,sans-Serif" font-size="14.00">AddedMonthDaytoDate: BOOLEAN (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2612.7" font-family="Helvetica,sans-Serif" font-size="14.00">SampleNotes: TEXT (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2597.7" font-family="Helvetica,sans-Serif" font-size="14.00">OBJECTID: INTEGER (nullable)</text>
+<text xml:space="preserve" text-anchor="start" x="256.5" y="-2582.7" font-family="Helvetica,sans-Serif" font-size="14.00">LocationId: UUID (nullable)</text>
 </g>
 <!-- NMA_SurfaceWaterData -->
 <g id="node2" class="node">

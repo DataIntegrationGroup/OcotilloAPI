@@ -34,7 +34,7 @@ class AssetAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "name",
         "label",
@@ -46,7 +46,7 @@ class AssetAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "name",
         "mime_type",
@@ -56,26 +56,18 @@ class AssetAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)
+    fields_default_sort = [("created_at", True)]
 
-    search_fields = [
+    searchable_fields = [
         "name",
         "label",
         "mime_type",
         "storage_service",
         "storage_path",
         "uri",
-    ]
-
-    column_filters = [
-        "mime_type",
-        "storage_service",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -115,7 +107,7 @@ class AssetAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Asset ID",
         "name": "Name",
         "label": "Label",

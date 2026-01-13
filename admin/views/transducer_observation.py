@@ -32,7 +32,7 @@ class TransducerObservationAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -41,7 +41,7 @@ class TransducerObservationAdmin(OcotilloModelView):
         "release_status",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -50,17 +50,14 @@ class TransducerObservationAdmin(OcotilloModelView):
         "release_status",
     ]
 
-    column_default_sort = ("observation_datetime", True)
+    fields_default_sort = [("observation_datetime", True)]
 
-    column_filters = [
+    searchable_fields = [
         "observation_datetime",
         "parameter_id",
         "deployment_id",
         "release_status",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -212,7 +209,7 @@ class TransducerObservationAdmin(OcotilloModelView):
         "nma_waterlevelscontinuous_acoustic_temperature_air",
     ]
 
-    labels = {
+    field_labels = {
         "id": "Observation ID",
         "observation_datetime": "Observation Date/Time",
         "value": "Value",

@@ -42,7 +42,7 @@ class ThingAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
+    list_fields = [
         "id",
         "name",
         "thing_type",
@@ -54,7 +54,7 @@ class ThingAdmin(OcotilloModelView):
         "updated_by_name",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "name",
         "thing_type",
@@ -65,24 +65,17 @@ class ThingAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)  # True = descending
+    fields_default_sort = [("created_at", True)]  # True = descending
 
-    search_fields = [
+    searchable_fields = [
         "name",
         "thing_type",
         "well_driller_name",
-    ]
-
-    column_filters = [
-        "thing_type",
         "well_depth",
         "first_visit_date",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -179,7 +172,7 @@ class ThingAdmin(OcotilloModelView):
 
     # ========== Field Labels and Help Text ==========
 
-    labels = {
+    field_labels = {
         "id": "Thing ID",
         "name": "PointID",
         "thing_type": "Type",
@@ -203,7 +196,7 @@ class ThingAdmin(OcotilloModelView):
         "updated_by_name": "Updated By",
     }
 
-    help_texts = {
+    field_help_texts = {
         "name": "Unique identifier for this well/spring (PointID from legacy system)",
         "thing_type": "Type of infrastructure: 'water well', 'spring', etc.",
         "first_visit_date": "Date of NMBGMR's first recorded interaction",
