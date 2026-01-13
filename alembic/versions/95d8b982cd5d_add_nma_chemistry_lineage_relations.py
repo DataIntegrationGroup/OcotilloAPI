@@ -50,6 +50,24 @@ def upgrade() -> None:
             ondelete="CASCADE",
         )
 
+    sample_pt_col = next(
+        (
+            col
+            for col in inspector.get_columns("NMA_Chemistry_SampleInfo")
+            if col["name"] == "SamplePtID"
+        ),
+        None,
+    )
+    if sample_pt_col is not None and not isinstance(
+        sample_pt_col["type"], postgresql.UUID
+    ):
+        op.alter_column(
+            "NMA_Chemistry_SampleInfo",
+            "SamplePtID",
+            type_=postgresql.UUID(as_uuid=True),
+            postgresql_using='"SamplePtID"::uuid',
+        )
+
     # Ensure SamplePtID is uniquely constrained for downstream FK usage.
     pk = inspector.get_pk_constraint("NMA_Chemistry_SampleInfo")
     pk_columns = pk.get("constrained_columns") or []
