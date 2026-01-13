@@ -477,6 +477,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     Returns a tuple of location data, the elevation method, and notes
     """
     point = Point(row.Easting, row.Northing)
+    elevation_from_epqs = False
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
@@ -485,7 +486,6 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
 
     z = row.Altitude
     if z:
-        elevation_from_epqs = False
         z = convert_ft_to_m(z)
 
         if row.AltDatum == "NGVD29":
@@ -515,11 +515,12 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
                         elevation_from_epqs = True
             elevations[key] = z
     else:
-        elevation_from_epqs = True
         logger.info(
             f"Location {row.PointID} has no Altitude. Setting from National Map EPQS. "
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
+        if z is not None:
+            elevation_from_epqs = True
 
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"

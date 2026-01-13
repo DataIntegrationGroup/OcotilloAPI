@@ -20,7 +20,6 @@ Provides MS Access-like interface for CRUD operations on Location model.
 """
 from admin.fields import CoordinateHelpField
 from admin.views.base import OcotilloModelView
-from db.location import Location
 
 
 class LocationAdmin(OcotilloModelView):
@@ -42,18 +41,6 @@ class LocationAdmin(OcotilloModelView):
     icon = "fa fa-map-marker"
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
-
-    list_fields = [
-        "id",
-        "description",
-        "county",
-        "state",
-        "elevation",
-        "quad_name",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
 
     sortable_fields = [
         "id",
@@ -131,33 +118,3 @@ class LocationAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    field_labels = {
-        "id": "Location ID",
-        "description": "Description",
-        "point": "Coordinates (WKT)",
-        "elevation": "Elevation (meters)",
-        "county": "County",
-        "state": "State",
-        "quad_name": "USGS Quad Name",
-        "release_status": "Release Status",
-        "nma_notes_location": "Location Notes",
-        "nma_coordinate_notes": "Coordinate Notes",
-        "nma_pk_location": "AMPAPI Location ID (Legacy)",
-        "nma_date_created": "AMPAPI Date Created (Legacy)",
-        "nma_site_date": "AMPAPI Site Date (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    field_help_texts = {
-        "description": "Brief description of this location (e.g., 'Well near Albuquerque')",
-        "elevation": "Elevation in meters. Vertical datum: NAVD88. Will be displayed in feet in reports.",
-        "release_status": "Data release status: 'draft' (internal only) or 'published' (public)",
-        "nma_notes_location": "General notes about this location",
-        "nma_coordinate_notes": "Notes about coordinate accuracy, source, or collection method",
-        "county": "New Mexico county name",
-        "state": "State (usually 'New Mexico')",
-        "quad_name": "USGS 7.5-minute quadrangle map name",
-    }

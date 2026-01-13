@@ -19,7 +19,6 @@ ThingAdmin view for NMSampleLocations.
 Provides MS Access-like interface for CRUD operations on Thing (Wells/Springs) model.
 """
 from admin.views.base import OcotilloModelView
-from db.thing import Thing
 
 
 class ThingAdmin(OcotilloModelView):
@@ -41,18 +40,6 @@ class ThingAdmin(OcotilloModelView):
     icon = "fa fa-tint"
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
-
-    list_fields = [
-        "id",
-        "name",
-        "thing_type",
-        "well_depth",
-        "hole_depth",
-        "first_visit_date",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
 
     sortable_fields = [
         "id",
@@ -171,46 +158,3 @@ class ThingAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    field_labels = {
-        "id": "Thing ID",
-        "name": "PointID",
-        "thing_type": "Type",
-        "first_visit_date": "First Visit Date",
-        "well_depth": "Well Depth (ft)",
-        "hole_depth": "Hole Depth (ft)",
-        "well_casing_diameter": "Casing Diameter (in)",
-        "well_casing_depth": "Casing Depth (ft)",
-        "well_completion_date": "Completion Date",
-        "well_driller_name": "Driller Name",
-        "well_construction_method": "Construction Method",
-        "well_pump_type": "Pump Type",
-        "well_pump_depth": "Pump Depth (ft)",
-        "formation_completion_code": "Formation Code",
-        "is_suitable_for_datalogger": "Datalogger OK?",
-        "spring_type": "Spring Type",
-        "release_status": "Release Status",
-        "nma_pk_welldata": "AMPAPI WellData ID (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    field_help_texts = {
-        "name": "Unique identifier for this well/spring (PointID from legacy system)",
-        "thing_type": "Type of infrastructure: 'water well', 'spring', etc.",
-        "first_visit_date": "Date of NMBGMR's first recorded interaction",
-        "well_depth": "Total depth of well from ground surface to bottom (feet)",
-        "hole_depth": "Depth of drilled hole from ground surface (feet)",
-        "well_casing_diameter": "Diameter of well casing (inches)",
-        "well_casing_depth": "Depth of casing from ground surface (feet)",
-        "well_completion_date": "Date the well was completed",
-        "well_driller_name": "Name of the well driller",
-        "well_construction_method": "Method used to construct the well",
-        "well_pump_type": "Type of pump installed",
-        "well_pump_depth": "Depth of pump intake from ground surface (feet)",
-        "formation_completion_code": "Geologic formation where well was completed",
-        "is_suitable_for_datalogger": "Can a datalogger be installed at this well?",
-        "spring_type": "Type of spring (for springs only)",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

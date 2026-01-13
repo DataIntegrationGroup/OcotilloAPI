@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 from uuid import UUID
 
@@ -70,9 +71,12 @@ class ChemistrySampleInfoTransferer(Transferer):
         # Use cached Thing names (keys of thing_id_cache)
         valid_point_ids = set(self._thing_id_cache.keys())
 
+        # Normalize SamplePointID to handle suffixed sample counts (e.g. AB-0002A -> AB-0002).
+        normalized_ids = df["SamplePointID"].apply(self._normalize_sample_point_id)
+
         # Filter to rows where SamplePointID exists as a Thing.name
         before_count = len(df)
-        filtered_df = df[df["SamplePointID"].isin(valid_point_ids)].copy()
+        filtered_df = df[normalized_ids.isin(valid_point_ids)].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
@@ -83,6 +87,22 @@ class ChemistrySampleInfoTransferer(Transferer):
             )
 
         return filtered_df
+
+    @staticmethod
+    def _normalize_sample_point_id(value: Any) -> Optional[str]:
+        """
+        Normalize SamplePointID for Thing matching by removing trailing alpha suffixes
+        used to denote multiple samples (e.g. AB-0002A -> AB-0002).
+        """
+        if pd.isna(value):
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        match = re.match(r"^(?P<base>.*\d)[A-Za-z]+$", text)
+        if match:
+            return match.group("base")
+        return text
 
     def _filter_to_valid_sample_pt_ids(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter to rows with a valid SamplePtID UUID (required for idempotent upserts)."""
@@ -239,9 +259,13 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         # Look up Thing by SamplePointID to prevent orphan records
         sample_point_id = val("SamplePointID")
+        normalized_sample_point_id = self._normalize_sample_point_id(sample_point_id)
         thing_id = None
-        if sample_point_id and sample_point_id in self._thing_id_cache:
-            thing_id = self._thing_id_cache[sample_point_id]
+        if (
+            normalized_sample_point_id
+            and normalized_sample_point_id in self._thing_id_cache
+        ):
+            thing_id = self._thing_id_cache[normalized_sample_point_id]
         # If Thing not found, thing_id remains None and will be filtered out
 
         return {

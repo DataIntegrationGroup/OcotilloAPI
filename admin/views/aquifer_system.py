@@ -33,16 +33,6 @@ class AquiferSystemAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "id",
-        "name",
-        "primary_aquifer_type",
-        "geographic_scale",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "name",
@@ -98,18 +88,6 @@ class AquiferSystemAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Aquifer System ID",
-        "name": "Name",
-        "description": "Description",
-        "primary_aquifer_type": "Primary Aquifer Type",
-        "geographic_scale": "Geographic Scale",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

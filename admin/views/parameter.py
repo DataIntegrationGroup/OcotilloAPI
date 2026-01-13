@@ -28,18 +28,6 @@ class ParameterAdmin(OcotilloModelView):
     label = "Parameters"
     icon = "fa fa-flask"
 
-    list_fields = [
-        "id",
-        "parameter_name",
-        "matrix",
-        "parameter_type",
-        "cas_number",
-        "default_unit",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "parameter_name",
@@ -96,19 +84,6 @@ class ParameterAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Parameter ID",
-        "parameter_name": "Parameter Name",
-        "matrix": "Matrix",
-        "parameter_type": "Parameter Type",
-        "cas_number": "CAS Number",
-        "default_unit": "Default Unit",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

@@ -41,17 +41,6 @@ class ObservationAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    list_fields = [
-        "id",
-        "observation_datetime",
-        "value",
-        "unit",
-        "measuring_point_height",
-        "groundwater_level_reason",
-        "release_status",
-        "created_at",
-    ]
-
     sortable_fields = [
         "id",
         "observation_datetime",
@@ -136,35 +125,3 @@ class ObservationAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    field_labels = {
-        "id": "Observation ID",
-        "observation_datetime": "Date/Time Measured",
-        "value": "Depth to Water (ft)",
-        "unit": "Unit",
-        "measuring_point_height": "MP Height (ft)",
-        "groundwater_level_reason": "Level Status/Reason",
-        "notes": "Notes",
-        "sample_id": "Sample",
-        "sensor_id": "Sensor/Equipment",
-        "parameter_id": "Parameter",
-        "analysis_method_id": "Analysis Method",
-        "release_status": "Release Status",
-        "nma_pk_waterlevels": "AMPAPI WaterLevels ID (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    field_help_texts = {
-        "observation_datetime": "Date and time of the water level measurement (UTC)",
-        "value": "Depth to water from measuring point (feet)",
-        "unit": "Unit of measurement (typically 'ft' for feet)",
-        "measuring_point_height": "Height of measuring point above ground surface (feet)",
-        "groundwater_level_reason": "Reason/status: obstruction, dry well, equipment failure, etc. Leave blank if normal measurement.",
-        "notes": "Additional notes about this observation",
-        "sample_id": "Associated sample record",
-        "sensor_id": "Equipment used to take measurement (if automated)",
-        "parameter_id": "The parameter being measured (e.g., 'Depth to Water')",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

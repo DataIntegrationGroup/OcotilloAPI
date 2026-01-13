@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import os
 import time
 
@@ -20,18 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _log_warning(message: str) -> None:
-    # First, ensure that any TIGER error messages containing POINT coordinates
-    # do not log raw longitude/latitude values.
-    redacted = re.sub(
-        r"Error getting TIGER data for POINT \([^)]*\)",
-        "Error getting TIGER data for POINT ([redacted])",
-        message,
-    )
-    # Redact URLs.
-    redacted = re.sub(r"https?://\S+", "[redacted_url]", redacted)
-    # Redact any remaining WKT POINT coordinate contents.
-    redacted = re.sub(r"POINT \([^)]*\)", "POINT ([redacted])", redacted)
-    logger.warning(redacted)
+    logger.warning(message)
 
 
 def _get_json(
@@ -48,10 +36,10 @@ def _get_json(
             return resp.json()
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
             if attempt == retries:
-                _log_warning(f"HTTP request failed for {url}: {exc}")
+                _log_warning(f"HTTP request failed: {exc}")
                 return None
         except json.JSONDecodeError as exc:
-            _log_warning(f"Invalid JSON response from {url}: {exc}")
+            _log_warning(f"Invalid JSON response: {exc}")
             return None
         if attempt < retries:
             time.sleep(backoff * attempt)
@@ -121,7 +109,7 @@ def get_tiger_data(
     }
     data = _get_json(url, params=params, timeout=5)
     if data is None:
-        _log_warning(f"Error getting TIGER data for POINT ({lon} {lat})")
+        _log_warning("Error getting TIGER data for requested point")
         return None
 
     if not data.get("features"):

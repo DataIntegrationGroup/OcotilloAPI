@@ -29,12 +29,6 @@ class LexiconTermAdmin(OcotilloModelView):
     icon = "fa fa-book"
     enable_publish_actions = False
 
-    list_fields = [
-        "id",
-        "term",
-        "definition",
-    ]
-
     sortable_fields = [
         "id",
         "term",
@@ -61,12 +55,6 @@ class LexiconTermAdmin(OcotilloModelView):
         "id",
     ]
 
-    field_labels = {
-        "id": "Term ID",
-        "term": "Term",
-        "definition": "Definition",
-    }
-
 
 class LexiconCategoryAdmin(OcotilloModelView):
     """
@@ -77,12 +65,6 @@ class LexiconCategoryAdmin(OcotilloModelView):
     label = "Lexicon Categories"
     icon = "fa fa-tags"
     enable_publish_actions = False
-
-    list_fields = [
-        "id",
-        "name",
-        "description",
-    ]
 
     sortable_fields = [
         "id",
@@ -109,12 +91,6 @@ class LexiconCategoryAdmin(OcotilloModelView):
     exclude_fields_from_edit = [
         "id",
     ]
-
-    field_labels = {
-        "id": "Category ID",
-        "name": "Name",
-        "description": "Description",
-    }
 
 
 # ============= EOF =============================================

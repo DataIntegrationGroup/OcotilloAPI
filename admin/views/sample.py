@@ -32,18 +32,6 @@ class SampleAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "id",
-        "sample_name",
-        "sample_date",
-        "sample_matrix",
-        "sample_method",
-        "qc_type",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "sample_name",
@@ -109,25 +97,6 @@ class SampleAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Sample ID",
-        "field_activity_id": "Field Activity",
-        "field_event_participant_id": "Field Event Participant",
-        "sample_date": "Sample Date",
-        "sample_name": "Sample Name",
-        "sample_matrix": "Sample Matrix",
-        "sample_method": "Sample Method",
-        "qc_type": "QC Type",
-        "depth_top": "Depth Top (ft)",
-        "depth_bottom": "Depth Bottom (ft)",
-        "notes": "Notes",
-        "nma_pk_waterlevels": "AMPAPI WaterLevels ID (Legacy)",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

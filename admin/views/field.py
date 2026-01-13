@@ -28,16 +28,6 @@ class FieldEventAdmin(OcotilloModelView):
     label = "Field Events"
     icon = "fa fa-calendar"
 
-    list_fields = [
-        "id",
-        "thing_id",
-        "event_date",
-        "notes",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "thing_id",
@@ -86,17 +76,6 @@ class FieldEventAdmin(OcotilloModelView):
         "created_by_name",
     ]
 
-    field_labels = {
-        "id": "Field Event ID",
-        "thing_id": "Thing",
-        "event_date": "Event Date",
-        "notes": "Notes",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
 
 class FieldActivityAdmin(OcotilloModelView):
     """
@@ -106,16 +85,6 @@ class FieldActivityAdmin(OcotilloModelView):
     name = "Field Activities"
     label = "Field Activities"
     icon = "fa fa-tasks"
-
-    list_fields = [
-        "id",
-        "field_event_id",
-        "activity_type",
-        "notes",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
 
     sortable_fields = [
         "id",
@@ -165,17 +134,6 @@ class FieldActivityAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Field Activity ID",
-        "field_event_id": "Field Event",
-        "activity_type": "Activity Type",
-        "notes": "Notes",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 class FieldEventParticipantAdmin(OcotilloModelView):
@@ -187,16 +145,6 @@ class FieldEventParticipantAdmin(OcotilloModelView):
     label = "Field Event Participants"
     icon = "fa fa-users"
 
-    list_fields = [
-        "id",
-        "field_event_id",
-        "contact_id",
-        "participant_role",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "field_event_id",
@@ -245,17 +193,6 @@ class FieldEventParticipantAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Participant ID",
-        "field_event_id": "Field Event",
-        "contact_id": "Contact",
-        "participant_role": "Participant Role",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

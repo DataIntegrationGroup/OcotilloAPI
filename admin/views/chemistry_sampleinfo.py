@@ -32,18 +32,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "sample_pt_id",
-        "object_id",
-        "sample_point_id",
-        "wclab_id",
-        "collection_date",
-        "sample_type",
-        "data_source",
-        "data_quality",
-        "public_release",
-    ]
-
     sortable_fields = [
         "sample_pt_id",
         "object_id",
@@ -81,9 +69,9 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "object_id",
-        "sample_point_id",
         "sample_pt_id",
+        "sample_point_id",
+        "object_id",
         "wclab_id",
         "collection_date",
         "collection_method",
@@ -108,27 +96,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     exclude_fields_from_edit = [
         "object_id",
     ]
-
-    field_labels = {
-        "object_id": "OBJECTID",
-        "sample_point_id": "SamplePointID",
-        "sample_pt_id": "SamplePtID",
-        "wclab_id": "WCLab ID",
-        "collection_date": "Collection Date",
-        "collection_method": "Collection Method",
-        "collected_by": "Collected By",
-        "analyses_agency": "Analyses Agency",
-        "sample_type": "Sample Type",
-        "sample_material_not_h2o": "Sample Material Not H2O",
-        "water_type": "Water Type",
-        "study_sample": "Study Sample",
-        "data_source": "Data Source",
-        "data_quality": "Data Quality",
-        "public_release": "Public Release",
-        "added_day_to_date": "Added Day to Date",
-        "added_month_day_to_date": "Added Month Day to Date",
-        "sample_notes": "Sample Notes",
-    }
 
 
 # ============= EOF =============================================

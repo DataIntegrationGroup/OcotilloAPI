@@ -32,17 +32,6 @@ class NotesAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "id",
-        "target_table",
-        "target_id",
-        "note_type",
-        "content",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "target_table",
@@ -96,18 +85,6 @@ class NotesAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Note ID",
-        "target_table": "Target Table",
-        "target_id": "Target ID",
-        "note_type": "Note Type",
-        "content": "Content",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

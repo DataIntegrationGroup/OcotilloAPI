@@ -170,7 +170,7 @@ class ChemistrySampleInfo(Base):
     )
     wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(18))
     sample_point_id: Mapped[str] = mapped_column(
-        "SamplePointID", String(10), nullable=False, unique=True
+        "SamplePointID", String(10), nullable=False
     )
 
     # FK to Thing - required (no orphans)

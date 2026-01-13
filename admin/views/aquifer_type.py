@@ -32,15 +32,6 @@ class AquiferTypeAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "id",
-        "thing_aquifer_association_id",
-        "aquifer_type",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "thing_aquifer_association_id",
@@ -89,16 +80,6 @@ class AquiferTypeAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Aquifer Type ID",
-        "thing_aquifer_association_id": "Thing-Aquifer Association",
-        "aquifer_type": "Aquifer Type",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

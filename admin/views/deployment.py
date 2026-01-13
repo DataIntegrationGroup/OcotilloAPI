@@ -41,18 +41,6 @@ class DeploymentAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    list_fields = [
-        "id",
-        "thing_id",
-        "sensor_id",
-        "installation_date",
-        "removal_date",
-        "recording_interval",
-        "recording_interval_units",
-        "release_status",
-        "created_at",
-    ]
-
     sortable_fields = [
         "id",
         "thing_id",
@@ -129,35 +117,3 @@ class DeploymentAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    field_labels = {
-        "id": "Deployment ID",
-        "thing_id": "Well/Thing",
-        "sensor_id": "Sensor/Equipment",
-        "installation_date": "Installation Date",
-        "removal_date": "Removal Date",
-        "recording_interval": "Recording Interval",
-        "recording_interval_units": "Interval Units",
-        "hanging_cable_length": "Hanging Cable Length (ft)",
-        "hanging_point_height": "Hanging Point Height (ft)",
-        "hanging_point_description": "Hanging Point Description",
-        "notes": "Notes",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    field_help_texts = {
-        "thing_id": "The well or thing where this equipment is deployed",
-        "sensor_id": "The sensor/equipment being deployed",
-        "installation_date": "Date the equipment was installed",
-        "removal_date": "Date the equipment was removed (leave blank if still installed)",
-        "recording_interval": "How often the sensor records data (numeric value)",
-        "recording_interval_units": "Units for recording interval (e.g., 'minutes', 'hours')",
-        "hanging_cable_length": "Length of cable from sensor to hanging point (feet)",
-        "hanging_point_height": "Height of hanging point above ground (feet)",
-        "hanging_point_description": "Description of the hanging point (e.g., 'Top of casing')",
-        "notes": "General notes about this deployment",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

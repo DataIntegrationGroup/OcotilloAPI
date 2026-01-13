@@ -29,19 +29,6 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
     icon = "fa fa-water"
     enable_publish_actions = False
 
-    list_fields = [
-        "surface_id",
-        "point_id",
-        "date_measured",
-        "discharge",
-        "discharge_units",
-        "discharge_method",
-        "discharge_source",
-        "formation_zone",
-        "aq_class",
-        "data_source",
-    ]
-
     sortable_fields = [
         "surface_id",
         "point_id",
@@ -89,24 +76,6 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
         "source_notes",
         "data_source",
     ]
-
-    field_labels = {
-        "surface_id": "Surface ID",
-        "point_id": "Point ID",
-        "object_id": "Object ID",
-        "date_measured": "Date Measured",
-        "discharge": "Discharge",
-        "discharge_rate": "Discharge Rate",
-        "discharge_units": "Discharge Units",
-        "discharge_method": "Discharge Method",
-        "discharge_source": "Discharge Source",
-        "formation_zone": "Formation Zone",
-        "aq_class": "Aquifer Class",
-        "site_notes": "Site Notes",
-        "field_method_notes": "Field Method Notes",
-        "source_notes": "Source Notes",
-        "data_source": "Data Source",
-    }
 
 
 # ============= EOF =============================================

@@ -28,9 +28,7 @@ def upgrade() -> None:
             "NMA_Chemistry_SampleInfo",
             sa.Column("SamplePtID", postgresql.UUID(as_uuid=True), primary_key=True),
             sa.Column("WCLab_ID", sa.String(length=18), nullable=True),
-            sa.Column(
-                "SamplePointID", sa.String(length=10), nullable=False, unique=True
-            ),
+            sa.Column("SamplePointID", sa.String(length=10), nullable=False),
             sa.Column(
                 "thing_id",
                 sa.Integer(),

@@ -34,18 +34,6 @@ class AssetAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    list_fields = [
-        "id",
-        "name",
-        "label",
-        "mime_type",
-        "storage_service",
-        "size",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "name",
@@ -106,21 +94,6 @@ class AssetAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Asset ID",
-        "name": "Name",
-        "label": "Label",
-        "storage_service": "Storage Service",
-        "storage_path": "Storage Path",
-        "mime_type": "MIME Type",
-        "size": "Size (bytes)",
-        "uri": "URI",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

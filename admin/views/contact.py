@@ -41,17 +41,6 @@ class ContactAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    list_fields = [
-        "id",
-        "name",
-        "organization",
-        "role",
-        "contact_type",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "name",
@@ -137,25 +126,3 @@ class ContactAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    field_labels = {
-        "id": "Contact ID",
-        "name": "Name",
-        "organization": "Organization",
-        "role": "Role",
-        "contact_type": "Contact Type",
-        "release_status": "Release Status",
-        "nma_pk_owners": "AMPAPI Owners ID (Legacy)",
-        "nma_pk_waterlevels": "AMPAPI WaterLevels ID (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    field_help_texts = {
-        "name": "Full name of the contact (First Last)",
-        "organization": "Organization or agency the contact is affiliated with",
-        "role": "Role of the contact (e.g., 'Owner', 'Measurer', 'Manager')",
-        "contact_type": "Type of contact (e.g., 'Primary', 'Secondary')",
-        "release_status": "'draft' (internal only) or 'published' (public)",
-    }

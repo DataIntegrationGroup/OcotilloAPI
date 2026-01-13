@@ -29,15 +29,6 @@ class GeologicFormationAdmin(OcotilloModelView):
     label = "Geologic Formations"
     icon = "fa fa-layer-group"
 
-    list_fields = [
-        "id",
-        "formation_code",
-        "lithology",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
     sortable_fields = [
         "id",
         "formation_code",
@@ -88,17 +79,6 @@ class GeologicFormationAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    field_labels = {
-        "id": "Geologic Formation ID",
-        "formation_code": "Formation Code",
-        "description": "Description",
-        "lithology": "Lithology",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================
