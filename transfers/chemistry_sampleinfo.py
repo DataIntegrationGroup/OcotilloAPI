@@ -165,7 +165,6 @@ class ChemistrySampleInfoTransferer(Transferer):
                 set_={
                     "thing_id": excluded.thing_id,  # Required FK - prevent orphans
                     "SamplePointID": excluded.SamplePointID,
-                    "SamplePtID": excluded.SamplePtID,
                     "WCLab_ID": excluded.WCLab_ID,
                     "CollectionDate": excluded.CollectionDate,
                     "CollectionMethod": excluded.CollectionMethod,

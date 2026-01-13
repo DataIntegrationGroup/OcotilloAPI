@@ -52,6 +52,7 @@ def _sync_search_vectors() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def _setup_test_db():
+    """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
     _reset_schema()
     command.upgrade(_alembic_config(), "head")
     _sync_search_vectors()

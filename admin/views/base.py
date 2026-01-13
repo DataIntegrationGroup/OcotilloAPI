@@ -55,7 +55,7 @@ class OcotilloModelView(ModelView):
             model_fields = [
                 model.__dict__[key].key
                 for key in list(model.__dict__.keys())
-                if type(model.__dict__[key]) is InstrumentedAttribute
+                if isinstance(model.__dict__[key], InstrumentedAttribute)
             ]
             self.exclude_fields_from_list = [
                 name for name in model_fields if name not in self.list_fields

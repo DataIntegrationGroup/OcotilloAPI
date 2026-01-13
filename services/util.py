@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import os
 import time
 
@@ -19,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 def _log_warning(message: str) -> None:
-    logger.warning(message)
+    redacted = re.sub(r"https?://\\S+", "[redacted_url]", message)
+    redacted = re.sub(r"POINT \\([^\\)]+\\)", "POINT ([redacted])", redacted)
+    logger.warning(redacted)
 
 
 def _get_json(
@@ -39,9 +42,8 @@ def _get_json(
                 _log_warning(f"HTTP request failed for {url}: {exc}")
                 return None
         except json.JSONDecodeError as exc:
-            if attempt == retries:
-                _log_warning(f"Invalid JSON response from {url}: {exc}")
-                return None
+            _log_warning(f"Invalid JSON response from {url}: {exc}")
+            return None
         if attempt < retries:
             time.sleep(backoff * attempt)
     return None

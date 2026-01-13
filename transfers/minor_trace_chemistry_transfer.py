@@ -79,10 +79,10 @@ class MinorTraceChemistryTransferer(Transferer):
         valid_sample_pt_ids = self._sample_pt_ids
 
         before_count = len(df)
-        df = df.copy()
-        df["_sample_pt_uuid"] = df["SamplePtID"].apply(self._uuid_val)
-        filtered_df = df[df["_sample_pt_uuid"].isin(valid_sample_pt_ids)].copy()
-        filtered_df.drop(columns=["_sample_pt_uuid"], inplace=True)
+        mask = df["SamplePtID"].apply(
+            lambda value: self._uuid_val(value) in valid_sample_pt_ids
+        )
+        filtered_df = df[mask].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
