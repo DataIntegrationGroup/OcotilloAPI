@@ -45,6 +45,7 @@ from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import WellTransferer, WellScreenTransferer
+from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
 from transfers.util import timeit
@@ -170,6 +171,9 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
+    transfer_minor_trace_chemistry = get_bool_env(
+        "TRANSFER_MINOR_TRACE_CHEMISTRY", True
+    )
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -186,6 +190,7 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_minor_trace_chemistry,
         )
     else:
         _transfer_sequential(
@@ -201,6 +206,7 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_minor_trace_chemistry,
         )
 
 
@@ -217,6 +223,7 @@ def _transfer_parallel(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_minor_trace_chemistry,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -241,6 +248,10 @@ def _transfer_parallel(
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+    if transfer_minor_trace_chemistry:
+        parallel_tasks_1.append(
+            ("MinorTraceChemistry", MinorTraceChemistryTransferer, flags)
+        )
 
     # Track results for metrics
     results_map = {}
@@ -295,6 +306,8 @@ def _transfer_parallel(
         metrics.group_metrics(*results_map["Groups"])
     if "Assets" in results_map and results_map["Assets"]:
         metrics.asset_metrics(*results_map["Assets"])
+    if "MinorTraceChemistry" in results_map and results_map["MinorTraceChemistry"]:
+        metrics.minor_trace_chemistry_metrics(*results_map["MinorTraceChemistry"])
 
     # =========================================================================
     # PHASE 3: Sensors (Sequential - required before continuous water levels)
@@ -358,6 +371,7 @@ def _transfer_sequential(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_minor_trace_chemistry,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -419,6 +433,11 @@ def _transfer_sequential(
         message("TRANSFERRING ASSETS")
         results = _execute_transfer(AssetTransferer, flags=flags)
         metrics.asset_metrics(*results)
+
+    if transfer_minor_trace_chemistry:
+        message("TRANSFERRING MINOR TRACE CHEMISTRY")
+        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
+        metrics.minor_trace_chemistry_metrics(*results)
 
 
 def main():

@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
+    from db.nma_legacy import ChemistrySampleInfo
 
 
 class Thing(
@@ -296,6 +297,14 @@ class Thing(
             cascade="all, delete-orphan",
             passive_deletes=True,
         )
+    )
+
+    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
+    chemistry_sample_infos: Mapped[List["ChemistrySampleInfo"]] = relationship(
+        "ChemistrySampleInfo",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
