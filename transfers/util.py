@@ -487,9 +487,9 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     if z:
         elevation_from_epqs = False
         z = convert_ft_to_m(z)
-        z_before_datum_conversion = z
 
         if row.AltDatum == "NGVD29":
+            z_before_datum_conversion = z
             key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
             if key in elevations:
                 z = elevations[key]
