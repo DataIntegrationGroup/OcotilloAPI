@@ -50,6 +50,18 @@ def upgrade() -> None:
             ondelete="CASCADE",
         )
 
+    # Ensure SamplePtID is uniquely constrained for downstream FK usage.
+    pk = inspector.get_pk_constraint("NMA_Chemistry_SampleInfo")
+    pk_columns = pk.get("constrained_columns") or []
+    unique_constraints = inspector.get_unique_constraints("NMA_Chemistry_SampleInfo")
+    unique_columns = {tuple(uc.get("column_names") or []) for uc in unique_constraints}
+    if pk_columns != ["SamplePtID"] and ("SamplePtID",) not in unique_columns:
+        op.create_unique_constraint(
+            "NMA_Chemistry_SampleInfo_SamplePtID_key",
+            "NMA_Chemistry_SampleInfo",
+            ["SamplePtID"],
+        )
+
     # Create NMA_MinorTraceChemistry table
     op.create_table(
         "NMA_MinorTraceChemistry",
