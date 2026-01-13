@@ -487,7 +487,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     if z:
         elevation_from_epqs = False
         z = convert_ft_to_m(z)
-        z_original = z
+        z_before_datum_conversion = z
 
         if row.AltDatum == "NGVD29":
             key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
@@ -510,7 +510,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
                             f"EPQS fallback failed for {row.PointID}; "
                             "using original altitude."
                         )
-                        z = z_original
+                        z = z_before_datum_conversion
                     else:
                         elevation_from_epqs = True
             elevations[key] = z

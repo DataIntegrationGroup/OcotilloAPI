@@ -29,8 +29,12 @@ from tests import (
     cleanup_post_test,
     cleanup_patch_test,
     override_authentication,
-    groundwater_level_parameter_id,
+    get_parameter_id,
 )
+
+
+def _groundwater_level_parameter_id() -> int:
+    return get_parameter_id("groundwater level", "Field Parameter")
 
 
 # from pydantic import ValidationError
@@ -212,7 +216,7 @@ def test_get_sensors_by_thing_id(
 
 
 def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
-    response = client.get(f"/sensor?parameter_id={groundwater_level_parameter_id}")
+    response = client.get(f"/sensor?parameter_id={_groundwater_level_parameter_id()}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1

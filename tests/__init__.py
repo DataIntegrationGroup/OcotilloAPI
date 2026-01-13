@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-# Load .env file BEFORE importing anything else
-# Use override=True to override conflicting shell environment variables
 import os
-
+from functools import lru_cache
 from dotenv import load_dotenv
 
+# Load .env file BEFORE importing anything else
+# Use override=True to override conflicting shell environment variables
 load_dotenv(override=True)
 
 # for safety dont test on the production database port
@@ -38,53 +38,11 @@ from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
 
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import text
-from sqlalchemy_utils import TSVectorType
-from sqlalchemy_searchable import sync_trigger
-
-from core.initializers import register_routes, init_lexicon, init_parameter
-from db import Base, Parameter
+from core.initializers import register_routes
+from db import Parameter, Base
 from db.engine import session_ctx
 from core.app import app
 
-
-def _alembic_config() -> Config:
-    root = os.path.dirname(os.path.dirname(__file__))
-    cfg = Config(os.path.join(root, "alembic.ini"))
-    cfg.set_main_option("script_location", os.path.join(root, "alembic"))
-    return cfg
-
-
-def _reset_schema() -> None:
-    with session_ctx() as session:
-        session.execute(text("DROP SCHEMA public CASCADE"))
-        session.execute(text("CREATE SCHEMA public"))
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        session.commit()
-
-
-def _sync_search_vectors() -> None:
-    with session_ctx() as session:
-        conn = session.connection()
-        for table in Base.metadata.tables.values():
-            for column in table.columns:
-                if isinstance(column.type, TSVectorType):
-                    sync_trigger(
-                        conn,
-                        table.name,
-                        column.name,
-                        list(column.type.columns),
-                    )
-        session.commit()
-
-
-_reset_schema()
-command.upgrade(_alembic_config(), "head")
-_sync_search_vectors()
-init_lexicon()
-init_parameter()
 register_routes(app)
 
 app.add_middleware(
@@ -99,18 +57,19 @@ add_pagination(app)
 
 client = TestClient(app)
 
-# map (name, type) to id for easy lookup in tests
-parameter_map = {}
-with session_ctx() as session:
-    for param in session.query(Parameter).all():
-        if (
-            param.parameter_name in ["groundwater level", "pH"]
-            and param.parameter_type == "Field Parameter"
-        ):
-            parameter_map[(param.parameter_name, param.parameter_type)] = param.id
 
-groundwater_level_parameter_id = parameter_map[("groundwater level", "Field Parameter")]
-pH_parameter_id = parameter_map[("pH", "Field Parameter")]
+@lru_cache(maxsize=None)
+def get_parameter_id(parameter_name: str, parameter_type: str) -> int:
+    with session_ctx() as session:
+        param = (
+            session.query(Parameter)
+            .filter(
+                Parameter.parameter_name == parameter_name,
+                Parameter.parameter_type == parameter_type,
+            )
+            .one()
+        )
+        return param.id
 
 
 def override_authentication(default=True):

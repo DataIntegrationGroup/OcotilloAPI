@@ -9,6 +9,9 @@ Create Date: 2025-07-28 12:07:27.082752
 from typing import Sequence, Union
 
 from alembic import op
+import geoalchemy2
+import sqlalchemy as sa
+import sqlalchemy_utils
 
 # revision identifiers, used by Alembic.
 revision: str = "66ac1af4ba69"
@@ -78,1071 +81,2585 @@ TABLE_NAMES = [
     "observation",
 ]
 
-TABLE_DDL = [
-    """CREATE TABLE aquifer_system_version (
-	name VARCHAR, 
-	description TEXT, 
-	primary_aquifer_type VARCHAR(100), 
-	geographic_scale VARCHAR(100), 
-	boundary geometry(MULTIPOLYGON,4326), 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE geologic_formation_version (
-	formation_code VARCHAR(100), 
-	description TEXT, 
-	lithology VARCHAR(100), 
-	boundary geometry(MULTIPOLYGON,4326), 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE lexicon_category (
-	name VARCHAR(100) NOT NULL, 
-	description VARCHAR(255), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	UNIQUE (name)
-)""",
-    """CREATE TABLE lexicon_term (
-	term VARCHAR NOT NULL, 
-	definition VARCHAR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	UNIQUE (term)
-)""",
-    """CREATE TABLE location_version (
-	nma_pk_location VARCHAR(36), 
-	description VARCHAR, 
-	point geometry(POINT,4326) NOT NULL, 
-	elevation FLOAT, 
-	county VARCHAR(100), 
-	state VARCHAR(100), 
-	quad_name VARCHAR(100), 
-	nma_notes_location TEXT, 
-	nma_coordinate_notes TEXT, 
-	nma_date_created DATE, 
-	nma_site_date DATE, 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE observation_version (
-	nma_pk_waterlevels VARCHAR, 
-	sample_id INTEGER, 
-	sensor_id INTEGER, 
-	analysis_method_id INTEGER, 
-	parameter_id INTEGER, 
-	observation_datetime TIMESTAMP WITH TIME ZONE, 
-	value FLOAT, 
-	unit VARCHAR(100), 
-	notes VARCHAR, 
-	measuring_point_height FLOAT, 
-	groundwater_level_reason VARCHAR(100), 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE parameter_version (
-	parameter_name VARCHAR(100), 
-	matrix VARCHAR(100), 
-	parameter_type VARCHAR(100), 
-	cas_number VARCHAR, 
-	default_unit VARCHAR(100), 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE pub_author (
-	name VARCHAR NOT NULL, 
-	affiliation VARCHAR, 
-	search_vector TSVECTOR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id)
-)""",
-    """CREATE TABLE regulatory_limit_version (
-	parameter_id INTEGER, 
-	limit_source VARCHAR(100), 
-	limit_value NUMERIC, 
-	limit_unit VARCHAR(100), 
-	limit_type VARCHAR(100), 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE thing_version (
-	nma_pk_welldata VARCHAR, 
-	name VARCHAR, 
-	thing_type VARCHAR(100), 
-	first_visit_date DATE, 
-	well_depth FLOAT, 
-	hole_depth FLOAT, 
-	well_casing_diameter FLOAT, 
-	well_casing_depth FLOAT, 
-	well_completion_date DATE, 
-	well_driller_name VARCHAR(200), 
-	well_construction_method VARCHAR(100), 
-	well_pump_type VARCHAR(100), 
-	well_pump_depth FLOAT, 
-	formation_completion_code VARCHAR(100), 
-	is_suitable_for_datalogger BOOLEAN, 
-	spring_type VARCHAR(100), 
-	search_vector TSVECTOR, 
-	id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()), 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	transaction_id BIGINT NOT NULL, 
-	end_transaction_id BIGINT, 
-	operation_type SMALLINT NOT NULL, 
-	PRIMARY KEY (id, transaction_id)
-)""",
-    """CREATE TABLE \"user\" (
-	id SERIAL NOT NULL, 
-	username VARCHAR(255) NOT NULL, 
-	PRIMARY KEY (id)
-)""",
-    """CREATE TABLE analysis_method (
-	analysis_method_code VARCHAR, 
-	analysis_method_name VARCHAR NOT NULL, 
-	analysis_method_type VARCHAR(100), 
-	source_organization VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	UNIQUE (analysis_method_code), 
-	FOREIGN KEY(analysis_method_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(source_organization) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE aquifer_system (
-	name VARCHAR NOT NULL, 
-	description TEXT, 
-	primary_aquifer_type VARCHAR(100) NOT NULL, 
-	geographic_scale VARCHAR(100), 
-	boundary geometry(MULTIPOLYGON,4326), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	UNIQUE (name), 
-	FOREIGN KEY(primary_aquifer_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(geographic_scale) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE asset (
-	name VARCHAR NOT NULL, 
-	label VARCHAR, 
-	storage_service VARCHAR NOT NULL, 
-	storage_path VARCHAR NOT NULL, 
-	mime_type VARCHAR NOT NULL, 
-	size INTEGER NOT NULL, 
-	uri VARCHAR NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE contact (
-	name VARCHAR(100), 
-	organization VARCHAR(100), 
-	role VARCHAR(100) NOT NULL, 
-	contact_type VARCHAR(100) NOT NULL, 
-	nma_pk_owners VARCHAR(100), 
-	nma_pk_waterlevels VARCHAR(100), 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	CONSTRAINT uq_contact_name_organization UNIQUE (name, organization), 
-	FOREIGN KEY(organization) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(role) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(contact_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE data_provenance (
-	target_id INTEGER NOT NULL, 
-	target_table VARCHAR NOT NULL, 
-	field_name VARCHAR, 
-	origin_type VARCHAR(100), 
-	origin_source VARCHAR, 
-	collection_method VARCHAR(100), 
-	accuracy_value FLOAT, 
-	accuracy_unit VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(origin_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(collection_method) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(accuracy_unit) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE geochronology_age (
-	location_id INTEGER NOT NULL, 
-	age FLOAT NOT NULL, 
-	age_error FLOAT, 
-	method VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(method) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE geologic_formation (
-	formation_code VARCHAR(100), 
-	description TEXT, 
-	lithology VARCHAR(100), 
-	boundary geometry(MULTIPOLYGON,4326), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	UNIQUE (formation_code), 
-	FOREIGN KEY(formation_code) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(lithology) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE \"group\" (
-	name VARCHAR(100) NOT NULL, 
-	description VARCHAR(255), 
-	project_area geometry(MULTIPOLYGON,4326), 
-	group_type VARCHAR(100), 
-	parent_group_id INTEGER, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	UNIQUE (name), 
-	FOREIGN KEY(group_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(parent_group_id) REFERENCES \"group\" (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE lexicon_term_category_association (
-	term_id INTEGER NOT NULL, 
-	category_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(term_id) REFERENCES lexicon_term (id) ON DELETE CASCADE, 
-	FOREIGN KEY(category_id) REFERENCES lexicon_category (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE lexicon_triple (
-	subject VARCHAR(100) NOT NULL, 
-	predicate VARCHAR(100) NOT NULL, 
-	object_ VARCHAR(100) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(subject) REFERENCES lexicon_term (term) ON DELETE CASCADE ON UPDATE CASCADE, 
-	FOREIGN KEY(object_) REFERENCES lexicon_term (term) ON DELETE CASCADE ON UPDATE CASCADE
-)""",
-    """CREATE TABLE location (
-	nma_pk_location VARCHAR(36), 
-	description VARCHAR, 
-	point geometry(POINT,4326) NOT NULL, 
-	elevation FLOAT NOT NULL, 
-	county VARCHAR(100), 
-	state VARCHAR(100), 
-	quad_name VARCHAR(100), 
-	nma_notes_location TEXT, 
-	nma_coordinate_notes TEXT, 
-	nma_date_created DATE, 
-	nma_site_date DATE, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE notes (
-	target_id INTEGER NOT NULL, 
-	target_table VARCHAR NOT NULL, 
-	note_type VARCHAR(100) NOT NULL, 
-	content TEXT NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(note_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE parameter (
-	parameter_name VARCHAR(100) NOT NULL, 
-	matrix VARCHAR(100) NOT NULL, 
-	parameter_type VARCHAR(100), 
-	cas_number VARCHAR, 
-	default_unit VARCHAR(100) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	CONSTRAINT uq_parameter_name_matrix UNIQUE (parameter_name, matrix), 
-	FOREIGN KEY(parameter_name) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(matrix) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(parameter_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(default_unit) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE publication (
-	title TEXT NOT NULL, 
-	abstract TEXT, 
-	doi VARCHAR, 
-	year INTEGER, 
-	publisher VARCHAR, 
-	url VARCHAR, 
-	publication_type VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	UNIQUE (doi), 
-	FOREIGN KEY(publication_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE sensor (
-	nma_pk_equipment VARCHAR(36), 
-	name VARCHAR(255) NOT NULL, 
-	sensor_type VARCHAR(100) NOT NULL, 
-	model VARCHAR(50), 
-	serial_no VARCHAR(50), 
-	pcn_number VARCHAR(50), 
-	owner_agency VARCHAR(100), 
-	sensor_status VARCHAR(100), 
-	notes TEXT, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(sensor_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	UNIQUE (serial_no), 
-	UNIQUE (pcn_number), 
-	FOREIGN KEY(owner_agency) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(sensor_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE status_history (
-	status_type VARCHAR(100) NOT NULL, 
-	status_value VARCHAR(100) NOT NULL, 
-	start_date DATE NOT NULL, 
-	end_date DATE, 
-	reason TEXT, 
-	target_id INTEGER NOT NULL, 
-	target_table VARCHAR(50) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(status_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(status_value) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE thing (
-	nma_pk_welldata VARCHAR, 
-	name VARCHAR NOT NULL, 
-	thing_type VARCHAR(100) NOT NULL, 
-	first_visit_date DATE, 
-	well_depth FLOAT, 
-	hole_depth FLOAT, 
-	well_casing_diameter FLOAT, 
-	well_casing_depth FLOAT, 
-	well_completion_date DATE, 
-	well_driller_name VARCHAR(200), 
-	well_construction_method VARCHAR(100), 
-	well_pump_type VARCHAR(100), 
-	well_pump_depth FLOAT, 
-	formation_completion_code VARCHAR(100), 
-	is_suitable_for_datalogger BOOLEAN, 
-	spring_type VARCHAR(100), 
-	search_vector TSVECTOR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(well_construction_method) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(well_pump_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(formation_completion_code) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(spring_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE transaction (
-	id BIGINT NOT NULL, 
-	remote_addr VARCHAR(50), 
-	user_id INTEGER, 
-	issued_at TIMESTAMP WITHOUT TIME ZONE, 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(user_id) REFERENCES \"user\" (id)
-)""",
-    """CREATE TABLE address (
-	contact_id INTEGER NOT NULL, 
-	address_line_1 VARCHAR(255) NOT NULL, 
-	address_line_2 VARCHAR(255), 
-	city VARCHAR(100) NOT NULL, 
-	state VARCHAR(50) NOT NULL, 
-	postal_code VARCHAR(20) NOT NULL, 
-	country VARCHAR(50) NOT NULL, 
-	address_type VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(address_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE asset_thing_association (
-	asset_id INTEGER NOT NULL, 
-	thing_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(asset_id) REFERENCES asset (id) ON DELETE CASCADE, 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE collaborative_network_well (
-	actively_monitored BOOLEAN NOT NULL, 
-	thing_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE deployment (
-	thing_id INTEGER NOT NULL, 
-	sensor_id INTEGER NOT NULL, 
-	installation_date DATE NOT NULL, 
-	removal_date DATE, 
-	recording_interval INTEGER, 
-	recording_interval_units VARCHAR(100), 
-	hanging_cable_length NUMERIC, 
-	hanging_point_height NUMERIC, 
-	hanging_point_description TEXT, 
-	notes TEXT, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(sensor_id) REFERENCES sensor (id), 
-	FOREIGN KEY(recording_interval_units) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE email (
-	contact_id INTEGER NOT NULL, 
-	email VARCHAR(100) NOT NULL, 
-	email_type VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(email_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE field_event (
-	thing_id INTEGER NOT NULL, 
-	event_date TIMESTAMP WITH TIME ZONE NOT NULL, 
-	notes VARCHAR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE group_thing_association (
-	group_id INTEGER NOT NULL, 
-	thing_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(group_id) REFERENCES \"group\" (id) ON DELETE CASCADE, 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE incomplete_nma_phone (
-	contact_id INTEGER NOT NULL, 
-	phone_number VARCHAR(20) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE location_thing_association (
-	location_id INTEGER NOT NULL, 
-	thing_id INTEGER NOT NULL, 
-	effective_start TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	effective_end TIMESTAMP WITH TIME ZONE, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id, location_id, thing_id), 
-	FOREIGN KEY(location_id) REFERENCES location (id) ON DELETE CASCADE, 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE measuring_point_history (
-	thing_id INTEGER NOT NULL, 
-	measuring_point_height NUMERIC NOT NULL, 
-	measuring_point_description TEXT, 
-	start_date DATE NOT NULL, 
-	end_date DATE, 
-	reason TEXT, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE monitoring_frequency_history (
-	thing_id INTEGER NOT NULL, 
-	monitoring_frequency VARCHAR(100) NOT NULL, 
-	start_date DATE NOT NULL, 
-	end_date DATE, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(monitoring_frequency) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE permission_history (
-	contact_id INTEGER NOT NULL, 
-	permission_type VARCHAR(100) NOT NULL, 
-	permission_allowed BOOLEAN NOT NULL, 
-	start_date DATE NOT NULL, 
-	end_date DATE, 
-	notes VARCHAR, 
-	target_id INTEGER NOT NULL, 
-	target_table VARCHAR(50) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(permission_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE phone (
-	contact_id INTEGER NOT NULL, 
-	phone_number VARCHAR(20) NOT NULL, 
-	phone_type VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(phone_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE pub_author_contact_association (
-	author_id INTEGER NOT NULL, 
-	contact_id INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (author_id, contact_id), 
-	FOREIGN KEY(author_id) REFERENCES pub_author (id) ON DELETE CASCADE, 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE pub_author_publication_association (
-	publication_id INTEGER NOT NULL, 
-	author_id INTEGER NOT NULL, 
-	author_order INTEGER NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (publication_id, author_id), 
-	FOREIGN KEY(publication_id) REFERENCES publication (id) ON DELETE CASCADE, 
-	FOREIGN KEY(author_id) REFERENCES pub_author (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE regulatory_limit (
-	parameter_id INTEGER NOT NULL, 
-	limit_source VARCHAR(100) NOT NULL, 
-	limit_value NUMERIC NOT NULL, 
-	limit_unit VARCHAR(100) NOT NULL, 
-	limit_type VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(parameter_id) REFERENCES parameter (id), 
-	FOREIGN KEY(limit_source) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(limit_unit) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(limit_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE thing_aquifer_association (
-	thing_id INTEGER NOT NULL, 
-	aquifer_system_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(aquifer_system_id) REFERENCES aquifer_system (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE thing_contact_association (
-	thing_id INTEGER NOT NULL, 
-	contact_id INTEGER NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE
-)""",
-    """CREATE TABLE thing_geologic_formation_association (
-	thing_id INTEGER NOT NULL, 
-	geologic_formation_id INTEGER, 
-	top_depth FLOAT NOT NULL, 
-	bottom_depth FLOAT NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(geologic_formation_id) REFERENCES geologic_formation (id) ON DELETE SET NULL, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE thing_id_link (
-	thing_id INTEGER NOT NULL, 
-	relation VARCHAR(100) NOT NULL, 
-	alternate_id VARCHAR(100) NOT NULL, 
-	alternate_organization VARCHAR(100) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(relation) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(alternate_organization) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE transducer_observation_block (
-	thing_id INTEGER NOT NULL, 
-	parameter_id INTEGER NOT NULL, 
-	review_status VARCHAR(100) NOT NULL, 
-	start_datetime TIMESTAMP WITH TIME ZONE NOT NULL, 
-	end_datetime TIMESTAMP WITH TIME ZONE NOT NULL, 
-	comment TEXT, 
-	reviewer_id INTEGER, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	CONSTRAINT uq_transducer_block_thing_status_parameter_time UNIQUE (thing_id, review_status, parameter_id, start_datetime, end_datetime), 
-	CONSTRAINT check_transuder_block_time_order CHECK (end_datetime > start_datetime), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(parameter_id) REFERENCES parameter (id) ON DELETE CASCADE, 
-	FOREIGN KEY(review_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(reviewer_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE well_casing_material (
-	thing_id INTEGER NOT NULL, 
-	material VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(material) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE well_purpose (
-	thing_id INTEGER NOT NULL, 
-	purpose VARCHAR(100) NOT NULL, 
-	search_vector TSVECTOR NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(purpose) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE well_screen (
-	thing_id INTEGER NOT NULL, 
-	aquifer_system_id INTEGER, 
-	geologic_formation_id INTEGER, 
-	screen_depth_top FLOAT, 
-	screen_depth_bottom FLOAT, 
-	screen_type VARCHAR(100), 
-	screen_description VARCHAR(1000), 
-	nma_pk_wellscreens VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_id) REFERENCES thing (id) ON DELETE CASCADE, 
-	FOREIGN KEY(aquifer_system_id) REFERENCES aquifer_system (id) ON DELETE SET NULL, 
-	FOREIGN KEY(geologic_formation_id) REFERENCES geologic_formation (id) ON DELETE SET NULL, 
-	FOREIGN KEY(screen_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE aquifer_type (
-	thing_aquifer_association_id INTEGER NOT NULL, 
-	aquifer_type VARCHAR(100) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(thing_aquifer_association_id) REFERENCES thing_aquifer_association (id) ON DELETE CASCADE, 
-	FOREIGN KEY(aquifer_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE field_activity (
-	field_event_id INTEGER NOT NULL, 
-	activity_type VARCHAR(100) NOT NULL, 
-	notes VARCHAR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(field_event_id) REFERENCES field_event (id) ON DELETE CASCADE, 
-	FOREIGN KEY(activity_type) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE field_event_participant (
-	field_event_id INTEGER NOT NULL, 
-	contact_id INTEGER NOT NULL, 
-	participant_role VARCHAR(100) NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(field_event_id) REFERENCES field_event (id) ON DELETE CASCADE, 
-	FOREIGN KEY(contact_id) REFERENCES contact (id) ON DELETE CASCADE, 
-	FOREIGN KEY(participant_role) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE transducer_observation (
-	parameter_id INTEGER NOT NULL, 
-	deployment_id INTEGER NOT NULL, 
-	observation_datetime TIMESTAMP WITH TIME ZONE NOT NULL, 
-	value FLOAT NOT NULL, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(parameter_id) REFERENCES parameter (id) ON DELETE CASCADE, 
-	FOREIGN KEY(deployment_id) REFERENCES deployment (id) ON DELETE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE sample (
-	field_activity_id INTEGER NOT NULL, 
-	field_event_participant_id INTEGER, 
-	sample_date TIMESTAMP WITH TIME ZONE NOT NULL, 
-	sample_name VARCHAR NOT NULL, 
-	sample_matrix VARCHAR(100) NOT NULL, 
-	sample_method VARCHAR(100) NOT NULL, 
-	qc_type VARCHAR NOT NULL, 
-	depth_top FLOAT, 
-	depth_bottom FLOAT, 
-	notes VARCHAR, 
-	nma_pk_waterlevels VARCHAR, 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(field_activity_id) REFERENCES field_activity (id) ON DELETE CASCADE, 
-	FOREIGN KEY(field_event_participant_id) REFERENCES field_event_participant (id), 
-	UNIQUE (sample_name), 
-	FOREIGN KEY(sample_matrix) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(sample_method) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-    """CREATE TABLE observation (
-	nma_pk_waterlevels VARCHAR, 
-	sample_id INTEGER NOT NULL, 
-	sensor_id INTEGER, 
-	analysis_method_id INTEGER, 
-	parameter_id INTEGER NOT NULL, 
-	observation_datetime TIMESTAMP WITH TIME ZONE NOT NULL, 
-	value FLOAT, 
-	unit VARCHAR(100) NOT NULL, 
-	notes VARCHAR, 
-	measuring_point_height FLOAT, 
-	groundwater_level_reason VARCHAR(100), 
-	id SERIAL NOT NULL, 
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('UTC', now()) NOT NULL, 
-	created_by_name VARCHAR(255), 
-	created_by_id VARCHAR(255), 
-	updated_by_name VARCHAR(255), 
-	updated_by_id VARCHAR(255), 
-	release_status VARCHAR(100), 
-	PRIMARY KEY (id), 
-	FOREIGN KEY(sample_id) REFERENCES sample (id) ON DELETE CASCADE, 
-	FOREIGN KEY(sensor_id) REFERENCES sensor (id) ON DELETE CASCADE, 
-	FOREIGN KEY(analysis_method_id) REFERENCES analysis_method (id), 
-	FOREIGN KEY(parameter_id) REFERENCES parameter (id), 
-	FOREIGN KEY(unit) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(groundwater_level_reason) REFERENCES lexicon_term (term) ON UPDATE CASCADE, 
-	FOREIGN KEY(release_status) REFERENCES lexicon_term (term) ON UPDATE CASCADE
-)""",
-]
 
-SEQUENCE_DDL = [
-    """CREATE SEQUENCE transaction_id_seq""",
-    """ALTER TABLE transaction ALTER COLUMN id SET DEFAULT nextval('transaction_id_seq')""",
-]
-
-FUNCTION_DDL = [
-    """CREATE OR REPLACE FUNCTION parse_websearch(config regconfig, search_query text)
+def upgrade() -> None:
+    """Upgrade schema."""
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table(
+        "aquifer_system_version",
+        sa.Column(
+            "name",
+            sa.String(),
+            autoincrement=False,
+            nullable=True,
+            comment="The full, human-readable name of the aquifer system (e.g., 'Ogallala Aquifer').",
+        ),
+        sa.Column(
+            "description",
+            sa.Text(),
+            autoincrement=False,
+            nullable=True,
+            comment="A detailed description of the aquifer system, its characteristics, and its significance.",
+        ),
+        sa.Column(
+            "primary_aquifer_type",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field to classify the aquifer system as a whole (e.g., 'Unconfined', 'Confined', 'Perched').",
+        ),
+        sa.Column(
+            "geographic_scale",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field to classify the aquifer's geographic scale (e.g., 'Major', 'Regional', 'Local').",
+        ),
+        sa.Column(
+            "boundary",
+            geoalchemy2.types.Geometry(
+                geometry_type="MULTIPOLYGON",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+            ),
+            autoincrement=False,
+            nullable=True,
+            comment="A spatial representation of the aquifer system's boundary.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "geologic_formation_version",
+        sa.Column(
+            "formation_code",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A short code or abbreviation for the geologic formation (e.g., '120ELRT').",
+        ),
+        sa.Column(
+            "description",
+            sa.Text(),
+            autoincrement=False,
+            nullable=True,
+            comment="A detailed description of the geologic formation, its characteristics, and its significance.",
+        ),
+        sa.Column(
+            "lithology",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary for the primary, dominant rock type(e.g., 'Tuff', 'Sandstone', 'Alluvium', 'Shale').",
+        ),
+        sa.Column(
+            "boundary",
+            geoalchemy2.types.Geometry(
+                geometry_type="MULTIPOLYGON",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+            ),
+            autoincrement=False,
+            nullable=True,
+            comment="A spatial representation of the geologic formation's extent.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "lexicon_category",
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.String(length=255), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
+    )
+    op.create_table(
+        "lexicon_term",
+        sa.Column("term", sa.String(), nullable=False),
+        sa.Column("definition", sa.String(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("term"),
+    )
+    op.create_table(
+        "location_version",
+        sa.Column(
+            "nma_pk_location", sa.String(length=36), autoincrement=False, nullable=True
+        ),
+        sa.Column("description", sa.String(), autoincrement=False, nullable=True),
+        sa.Column(
+            "point",
+            geoalchemy2.types.Geometry(
+                geometry_type="POINT",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+                nullable=False,
+            ),
+            autoincrement=False,
+            nullable=False,
+        ),
+        sa.Column(
+            "elevation",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="in meters with vertical datum of NAVD88",
+        ),
+        sa.Column("county", sa.String(length=100), autoincrement=False, nullable=True),
+        sa.Column("state", sa.String(length=100), autoincrement=False, nullable=True),
+        sa.Column(
+            "quad_name", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column("nma_notes_location", sa.Text(), autoincrement=False, nullable=True),
+        sa.Column(
+            "nma_coordinate_notes", sa.Text(), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "nma_date_created",
+            sa.Date(),
+            autoincrement=False,
+            nullable=True,
+            comment="Original AMPAPI DateCreated (read-only, populated only during migration)",
+        ),
+        sa.Column(
+            "nma_site_date",
+            sa.Date(),
+            autoincrement=False,
+            nullable=True,
+            comment="Original AMPAPI SiteDate (read-only, populated only during migration)",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "observation_version",
+        sa.Column(
+            "nma_pk_waterlevels", sa.String(), autoincrement=False, nullable=True
+        ),
+        sa.Column("sample_id", sa.Integer(), autoincrement=False, nullable=True),
+        sa.Column("sensor_id", sa.Integer(), autoincrement=False, nullable=True),
+        sa.Column(
+            "analysis_method_id", sa.Integer(), autoincrement=False, nullable=True
+        ),
+        sa.Column("parameter_id", sa.Integer(), autoincrement=False, nullable=True),
+        sa.Column(
+            "observation_datetime",
+            sa.DateTime(timezone=True),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column("value", sa.Float(), autoincrement=False, nullable=True),
+        sa.Column("unit", sa.String(length=100), autoincrement=False, nullable=True),
+        sa.Column("notes", sa.String(), autoincrement=False, nullable=True),
+        sa.Column(
+            "measuring_point_height", sa.Float(), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "groundwater_level_reason",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="The reason describes everything that can effect the observation the moment a sample/observation is attempted (e.g. obstruction, dry well, equipment failure); a null value must have an associated reason in the same record. Factors preventing the obtainment of the observation from the beginning of the field event to attempted sampling/observation (e.g. flat tire, locked gate, destroyed well) are not recorded here but in the notes field of the FieldEvent table; in this situation no sample/observation should be recorded.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "parameter_version",
+        sa.Column(
+            "parameter_name",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="The official, full name of the parameter (e.g., 'Arsenic, Dissolved').",
+        ),
+        sa.Column(
+            "matrix",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field defining the physical medium the analyte is measured in (e.g., 'Water', 'Soil', 'Air').",
+        ),
+        sa.Column(
+            "parameter_type",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field defining the category of the parameter (e.g., 'Metals', 'Nutrients', 'Field Parameter'). Used for grouping and filtering.",
+        ),
+        sa.Column(
+            "cas_number",
+            sa.String(),
+            autoincrement=False,
+            nullable=True,
+            comment="The Chemical Abstracts Service (CAS) registry number, a globally unique identifier for a chemical substance.",
+        ),
+        sa.Column(
+            "default_unit",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="The standard, preferred unit for reporting this parameter (e.g., 'ug/L', 'mg/L', 'pH units').",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "pub_author",
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("affiliation", sa.String(), nullable=True),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=True,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "regulatory_limit_version",
+        sa.Column("parameter_id", sa.Integer(), autoincrement=False, nullable=True),
+        sa.Column(
+            "limit_source",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="The official source of the limit (e.g., 'EPA', 'NMED', 'EPA').",
+        ),
+        sa.Column("limit_value", sa.Numeric(), autoincrement=False, nullable=True),
+        sa.Column(
+            "limit_unit", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "limit_type",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field to categorize the limit (e.g., 'MCL', 'PQL', 'MDL', etc.).",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "thing_version",
+        sa.Column(
+            "nma_pk_welldata",
+            sa.String(),
+            autoincrement=False,
+            nullable=True,
+            comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+        ),
+        sa.Column(
+            "name",
+            sa.String(),
+            autoincrement=False,
+            nullable=True,
+            comment="The name of the thing (e.g., well name or identifier).",
+        ),
+        sa.Column(
+            "thing_type",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
+        ),
+        sa.Column(
+            "first_visit_date",
+            sa.Date(),
+            autoincrement=False,
+            nullable=True,
+            comment="The date of NMBGMR's first recorded interaction with this specific `Thing`.",
+        ),
+        sa.Column(
+            "well_depth",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="Total depth of the well, from ground surface to the bottom of the well (in feet).",
+        ),
+        sa.Column(
+            "hole_depth",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
+        ),
+        sa.Column(
+            "well_casing_diameter",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="Diameter of the well casing in inches.",
+        ),
+        sa.Column(
+            "well_casing_depth",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
+        ),
+        sa.Column(
+            "well_completion_date",
+            sa.Date(),
+            autoincrement=False,
+            nullable=True,
+            comment="the date the well was completed if known",
+        ),
+        sa.Column(
+            "well_driller_name",
+            sa.String(length=200),
+            autoincrement=False,
+            nullable=True,
+            comment="Name of the well driller.",
+        ),
+        sa.Column(
+            "well_construction_method",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "well_pump_type", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "well_pump_depth",
+            sa.Float(),
+            autoincrement=False,
+            nullable=True,
+            comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+        ),
+        sa.Column(
+            "formation_completion_code",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="The geologic formation in which the well was completed (from WellData.FormationZone). This indicates the target formation for the well, not the full stratigraphic column. For detailed depth-interval stratigraphy, see formation_associations.",
+        ),
+        sa.Column(
+            "is_suitable_for_datalogger",
+            sa.Boolean(),
+            autoincrement=False,
+            nullable=True,
+            comment="Indicates if the well is suitable for datalogger installation.",
+        ),
+        sa.Column(
+            "spring_type",
+            sa.String(length=100),
+            autoincrement=False,
+            nullable=True,
+            comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
+        ),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "created_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "created_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_name", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "updated_by_id", sa.String(length=255), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "release_status", sa.String(length=100), autoincrement=False, nullable=True
+        ),
+        sa.Column(
+            "transaction_id", sa.BigInteger(), autoincrement=False, nullable=False
+        ),
+        sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
+        sa.Column("operation_type", sa.SmallInteger(), nullable=False),
+        sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "transaction",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("remote_addr", sa.String(length=50), nullable=True),
+        sa.Column("user_id", sa.Integer(), nullable=True),
+        sa.Column("issued_at", sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["user.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "analysis_method",
+        sa.Column(
+            "analysis_method_code",
+            sa.String(),
+            nullable=True,
+            comment="The official code or identifier for the method (e.g., 'EPA 300.0').",
+        ),
+        sa.Column(
+            "analysis_method_name",
+            sa.String(),
+            nullable=False,
+            comment="The common, human-readable name of the method (e.g., Ion Chromatography for Anions).",
+        ),
+        sa.Column(
+            "analysis_method_type",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field to categorize the method (e.g., 'Laboratory', 'Field Procedure', 'Calculation').",
+        ),
+        sa.Column(
+            "source_organization",
+            sa.String(length=100),
+            nullable=True,
+            comment="The organization that published the method (e.g., 'US EPA', 'USGS').",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["analysis_method_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["source_organization"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("analysis_method_code"),
+    )
+    op.create_table(
+        "aquifer_system",
+        sa.Column(
+            "name",
+            sa.String(),
+            nullable=False,
+            comment="The full, human-readable name of the aquifer system (e.g., 'Ogallala Aquifer').",
+        ),
+        sa.Column(
+            "description",
+            sa.Text(),
+            nullable=True,
+            comment="A detailed description of the aquifer system, its characteristics, and its significance.",
+        ),
+        sa.Column(
+            "primary_aquifer_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="A controlled vocabulary field to classify the aquifer system as a whole (e.g., 'Unconfined', 'Confined', 'Perched').",
+        ),
+        sa.Column(
+            "geographic_scale",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field to classify the aquifer's geographic scale (e.g., 'Major', 'Regional', 'Local').",
+        ),
+        sa.Column(
+            "boundary",
+            geoalchemy2.types.Geometry(
+                geometry_type="MULTIPOLYGON",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+            ),
+            nullable=True,
+            comment="A spatial representation of the aquifer system's boundary.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["geographic_scale"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["primary_aquifer_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
+    )
+    op.create_table(
+        "asset",
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("label", sa.String(), nullable=True),
+        sa.Column("storage_service", sa.String(), nullable=False),
+        sa.Column("storage_path", sa.String(), nullable=False),
+        sa.Column("mime_type", sa.String(), nullable=False),
+        sa.Column("size", sa.Integer(), nullable=False),
+        sa.Column("uri", sa.String(), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "contact",
+        sa.Column("name", sa.String(length=100), nullable=True),
+        sa.Column("organization", sa.String(length=100), nullable=True),
+        sa.Column("role", sa.String(length=100), nullable=False),
+        sa.Column("contact_type", sa.String(length=100), nullable=False),
+        sa.Column("nma_pk_owners", sa.String(length=100), nullable=True),
+        sa.Column("nma_pk_waterlevels", sa.String(length=100), nullable=True),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["contact_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["organization"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["role"], ["lexicon_term.term"], onupdate="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "name", "organization", name="uq_contact_name_organization"
+        ),
+    )
+    op.create_table(
+        "data_provenance",
+        sa.Column(
+            "target_id",
+            sa.Integer(),
+            nullable=False,
+            comment="The primary key (`id`) of the parent record this metadata is about (e.g., the `thing_id` of a well).",
+        ),
+        sa.Column(
+            "target_table",
+            sa.String(),
+            nullable=False,
+            comment="The name of the parent table this metadata is for (e.g., 'Thing', 'Location', etc).",
+        ),
+        sa.Column(
+            "field_name",
+            sa.String(),
+            nullable=True,
+            comment="The specific column in the parent table that this metadata applies to (e.g., 'well_depth_ft', 'coordinates').If `NULL`, the record applies to the entire parent object.",
+        ),
+        sa.Column(
+            "origin_type",
+            sa.String(length=100),
+            nullable=True,
+            comment="Indicates the type of origin the data (e.g'Driller's Log', 'Well Report'.",
+        ),
+        sa.Column(
+            "origin_source",
+            sa.String(),
+            nullable=True,
+            comment="The specific source of the data (e.g., 'J. Brown Thesis, \"I like APIs\", Pomona College, 1994').",
+        ),
+        sa.Column(
+            "collection_method",
+            sa.String(length=100),
+            nullable=True,
+            comment="Indicates the method used to collect the data (e.g., 'GPS - Survey Grade').",
+        ),
+        sa.Column(
+            "accuracy_value",
+            sa.Float(),
+            nullable=True,
+            comment="A numeric value representing the data's accuracy.",
+        ),
+        sa.Column(
+            "accuracy_unit",
+            sa.String(length=100),
+            nullable=True,
+            comment="The unit for the `accuracy_value` (e.g., 'meters', 'feet').",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["accuracy_unit"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["collection_method"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["origin_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "geochronology_age",
+        sa.Column("location_id", sa.Integer(), nullable=False),
+        sa.Column("age", sa.Float(), nullable=False),
+        sa.Column("age_error", sa.Float(), nullable=True),
+        sa.Column("method", sa.String(length=100), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["method"], ["lexicon_term.term"], onupdate="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "geologic_formation",
+        sa.Column(
+            "formation_code",
+            sa.String(length=100),
+            nullable=True,
+            comment="A short code or abbreviation for the geologic formation (e.g., '120ELRT').",
+        ),
+        sa.Column(
+            "description",
+            sa.Text(),
+            nullable=True,
+            comment="A detailed description of the geologic formation, its characteristics, and its significance.",
+        ),
+        sa.Column(
+            "lithology",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary for the primary, dominant rock type(e.g., 'Tuff', 'Sandstone', 'Alluvium', 'Shale').",
+        ),
+        sa.Column(
+            "boundary",
+            geoalchemy2.types.Geometry(
+                geometry_type="MULTIPOLYGON",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+            ),
+            nullable=True,
+            comment="A spatial representation of the geologic formation's extent.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["formation_code"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["lithology"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("formation_code"),
+    )
+    op.create_table(
+        "lexicon_term_category_association",
+        sa.Column("term_id", sa.Integer(), nullable=False),
+        sa.Column("category_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["category_id"], ["lexicon_category.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["term_id"], ["lexicon_term.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "lexicon_triple",
+        sa.Column("subject", sa.String(length=100), nullable=False),
+        sa.Column("predicate", sa.String(length=100), nullable=False),
+        sa.Column("object_", sa.String(length=100), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["object_"], ["lexicon_term.term"], onupdate="CASCADE", ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["subject"], ["lexicon_term.term"], onupdate="CASCADE", ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "location",
+        sa.Column("nma_pk_location", sa.String(length=36), nullable=True),
+        sa.Column("description", sa.String(), nullable=True),
+        sa.Column(
+            "point",
+            geoalchemy2.types.Geometry(
+                geometry_type="POINT",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+                nullable=False,
+            ),
+            nullable=False,
+        ),
+        sa.Column(
+            "elevation",
+            sa.Float(),
+            nullable=False,
+            comment="in meters with vertical datum of NAVD88",
+        ),
+        sa.Column("county", sa.String(length=100), nullable=True),
+        sa.Column("state", sa.String(length=100), nullable=True),
+        sa.Column("quad_name", sa.String(length=100), nullable=True),
+        sa.Column("nma_notes_location", sa.Text(), nullable=True),
+        sa.Column("nma_coordinate_notes", sa.Text(), nullable=True),
+        sa.Column(
+            "nma_date_created",
+            sa.Date(),
+            nullable=True,
+            comment="Original AMPAPI DateCreated (read-only, populated only during migration)",
+        ),
+        sa.Column(
+            "nma_site_date",
+            sa.Date(),
+            nullable=True,
+            comment="Original AMPAPI SiteDate (read-only, populated only during migration)",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "notes",
+        sa.Column(
+            "target_id",
+            sa.Integer(),
+            nullable=False,
+            comment="The ID of the parent record this note is about (e.g., a `thing_id`, `location_id`, etc).",
+        ),
+        sa.Column("target_table", sa.String(), nullable=False),
+        sa.Column(
+            "note_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="A controlled vocabulary field that defines the specific category of the note (e.g. 'Access Instructions`, ",
+        ),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["note_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "parameter",
+        sa.Column(
+            "parameter_name",
+            sa.String(length=100),
+            nullable=False,
+            comment="The official, full name of the parameter (e.g., 'Arsenic, Dissolved').",
+        ),
+        sa.Column(
+            "matrix",
+            sa.String(length=100),
+            nullable=False,
+            comment="A controlled vocabulary field defining the physical medium the analyte is measured in (e.g., 'Water', 'Soil', 'Air').",
+        ),
+        sa.Column(
+            "parameter_type",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field defining the category of the parameter (e.g., 'Metals', 'Nutrients', 'Field Parameter'). Used for grouping and filtering.",
+        ),
+        sa.Column(
+            "cas_number",
+            sa.String(),
+            nullable=True,
+            comment="The Chemical Abstracts Service (CAS) registry number, a globally unique identifier for a chemical substance.",
+        ),
+        sa.Column(
+            "default_unit",
+            sa.String(length=100),
+            nullable=False,
+            comment="The standard, preferred unit for reporting this parameter (e.g., 'ug/L', 'mg/L', 'pH units').",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["default_unit"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["matrix"], ["lexicon_term.term"], onupdate="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["parameter_name"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["parameter_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "parameter_name", "matrix", name="uq_parameter_name_matrix"
+        ),
+    )
+    op.create_table(
+        "publication",
+        sa.Column("title", sa.Text(), nullable=False),
+        sa.Column("abstract", sa.Text(), nullable=True),
+        sa.Column("doi", sa.String(), nullable=True),
+        sa.Column("year", sa.Integer(), nullable=True),
+        sa.Column("publisher", sa.String(), nullable=True),
+        sa.Column("url", sa.String(), nullable=True),
+        sa.Column("publication_type", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=True,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["publication_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("doi"),
+    )
+    op.create_table(
+        "sensor",
+        sa.Column(
+            "nma_pk_equipment",
+            sa.String(length=36),
+            nullable=True,
+            comment="Preserves the primary key (GlobalID) of the Equipment table from NMAquifer.",
+        ),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column(
+            "sensor_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="A controlled vocabulary field to categorize the equipment (e.g., 'Pressure Transducer', 'Barometer', 'Data Logger', etc).",
+        ),
+        sa.Column(
+            "model",
+            sa.String(length=50),
+            nullable=True,
+            comment="The specific model of the equipment.",
+        ),
+        sa.Column(
+            "serial_no",
+            sa.String(length=50),
+            nullable=True,
+            comment="The serial number of the equipment.",
+        ),
+        sa.Column(
+            "pcn_number",
+            sa.String(length=50),
+            nullable=True,
+            comment="The Property Control Number (PCN) assigned to equipment for inventory tracking. This is only available for equipment owned by the NMBGMR.",
+        ),
+        sa.Column(
+            "owner_agency",
+            sa.String(length=100),
+            nullable=True,
+            comment="The agency or organization that owns the equipment.",
+        ),
+        sa.Column(
+            "sensor_status",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field to indicate the current status of the equipment (e.g., 'In Service', 'In Repair', 'Retired', 'Lost', etc).",
+        ),
+        sa.Column(
+            "notes",
+            sa.Text(),
+            nullable=True,
+            comment="A field for general notes or comments about the equipment.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["owner_agency"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["sensor_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["sensor_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("pcn_number"),
+        sa.UniqueConstraint("serial_no"),
+    )
+    op.create_table(
+        "status_history",
+        sa.Column("status_type", sa.String(length=100), nullable=False),
+        sa.Column("status_value", sa.String(length=100), nullable=False),
+        sa.Column("start_date", sa.Date(), nullable=False),
+        sa.Column("end_date", sa.Date(), nullable=True),
+        sa.Column("reason", sa.Text(), nullable=True),
+        sa.Column("target_id", sa.Integer(), nullable=False),
+        sa.Column("target_table", sa.String(length=50), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["status_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["status_value"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "thing",
+        sa.Column(
+            "nma_pk_welldata",
+            sa.String(),
+            nullable=True,
+            comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+        ),
+        sa.Column(
+            "name",
+            sa.String(),
+            nullable=False,
+            comment="The name of the thing (e.g., well name or identifier).",
+        ),
+        sa.Column(
+            "thing_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="A controlled vocabulary field defining the type of infrastructure (e.g., 'Well', 'Spring', 'Stream Gauge').",
+        ),
+        sa.Column(
+            "first_visit_date",
+            sa.Date(),
+            nullable=True,
+            comment="The date of NMBGMR's first recorded interaction with this specific `Thing`.",
+        ),
+        sa.Column(
+            "well_depth",
+            sa.Float(),
+            nullable=True,
+            comment="Total depth of the well, from ground surface to the bottom of the well (in feet).",
+        ),
+        sa.Column(
+            "hole_depth",
+            sa.Float(),
+            nullable=True,
+            comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
+        ),
+        sa.Column(
+            "well_casing_diameter",
+            sa.Float(),
+            nullable=True,
+            comment="Diameter of the well casing in inches.",
+        ),
+        sa.Column(
+            "well_casing_depth",
+            sa.Float(),
+            nullable=True,
+            comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
+        ),
+        sa.Column(
+            "well_completion_date",
+            sa.Date(),
+            nullable=True,
+            comment="the date the well was completed if known",
+        ),
+        sa.Column(
+            "well_driller_name",
+            sa.String(length=200),
+            nullable=True,
+            comment="Name of the well driller.",
+        ),
+        sa.Column("well_construction_method", sa.String(length=100), nullable=True),
+        sa.Column("well_pump_type", sa.String(length=100), nullable=True),
+        sa.Column(
+            "well_pump_depth",
+            sa.Float(),
+            nullable=True,
+            comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+        ),
+        sa.Column(
+            "formation_completion_code",
+            sa.String(length=100),
+            nullable=True,
+            comment="The geologic formation in which the well was completed (from WellData.FormationZone). This indicates the target formation for the well, not the full stratigraphic column. For detailed depth-interval stratigraphy, see formation_associations.",
+        ),
+        sa.Column(
+            "is_suitable_for_datalogger",
+            sa.Boolean(),
+            nullable=True,
+            comment="Indicates if the well is suitable for datalogger installation.",
+        ),
+        sa.Column(
+            "spring_type",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field defining the type of spring (e.g., 'Mineral', 'Artesian', 'Seep', etc.).",
+        ),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=True,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["formation_completion_code"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["spring_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["thing_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["well_construction_method"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["well_pump_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "address",
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("address_line_1", sa.String(length=255), nullable=False),
+        sa.Column("address_line_2", sa.String(length=255), nullable=True),
+        sa.Column("city", sa.String(length=100), nullable=False),
+        sa.Column("state", sa.String(length=50), nullable=False),
+        sa.Column("postal_code", sa.String(length=20), nullable=False),
+        sa.Column("country", sa.String(length=50), nullable=False),
+        sa.Column("address_type", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["address_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "email",
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("email", sa.String(length=100), nullable=False),
+        sa.Column("email_type", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["email_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "incomplete_nma_phone",
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("phone_number", sa.String(length=20), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "permission_history",
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("permission_type", sa.String(length=100), nullable=False),
+        sa.Column("permission_allowed", sa.Boolean(), nullable=False),
+        sa.Column("start_date", sa.Date(), nullable=False),
+        sa.Column("end_date", sa.Date(), nullable=True),
+        sa.Column("notes", sa.String(), nullable=True),
+        sa.Column("target_id", sa.Integer(), nullable=False),
+        sa.Column("target_table", sa.String(length=50), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["permission_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "phone",
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("phone_number", sa.String(length=20), nullable=False),
+        sa.Column("phone_type", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["phone_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "pub_author_contact_association",
+        sa.Column("author_id", sa.Integer(), nullable=False),
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["author_id"], ["pub_author.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("author_id", "contact_id"),
+    )
+    op.create_table(
+        "regulatory_limit",
+        sa.Column("parameter_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "limit_source",
+            sa.String(length=100),
+            nullable=False,
+            comment="The official source of the limit (e.g., 'EPA', 'NMED', 'EPA').",
+        ),
+        sa.Column("limit_value", sa.Numeric(), nullable=False),
+        sa.Column("limit_unit", sa.String(length=100), nullable=False),
+        sa.Column(
+            "limit_type",
+            sa.String(length=100),
+            nullable=True,
+            comment="A controlled vocabulary field to categorize the limit (e.g., 'MCL', 'PQL', 'MDL', etc.).",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["limit_source"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["limit_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["limit_unit"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["parameter_id"],
+            ["parameter.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "pub_author_publication_association",
+        sa.Column("publication_id", sa.Integer(), nullable=False),
+        sa.Column("author_id", sa.Integer(), nullable=False),
+        sa.Column("author_order", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["author_id"], ["pub_author.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["publication_id"], ["publication.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("publication_id", "author_id"),
+    )
+    op.create_table(
+        "asset_thing_association",
+        sa.Column("asset_id", sa.Integer(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["asset_id"], ["asset.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "collaborative_network_well",
+        sa.Column("actively_monitored", sa.Boolean(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "deployment",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("sensor_id", sa.Integer(), nullable=False),
+        sa.Column("installation_date", sa.Date(), nullable=False),
+        sa.Column("removal_date", sa.Date(), nullable=True),
+        sa.Column("recording_interval", sa.Integer(), nullable=True),
+        sa.Column("recording_interval_units", sa.String(length=100), nullable=True),
+        sa.Column(
+            "hanging_cable_length",
+            sa.Numeric(),
+            nullable=True,
+            comment="Length of cable from sensor to hanging point, in ft",
+        ),
+        sa.Column("hanging_point_height", sa.Numeric(), nullable=True),
+        sa.Column("hanging_point_description", sa.Text(), nullable=True),
+        sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["recording_interval_units"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["sensor_id"],
+            ["sensor.id"],
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "field_event",
+        sa.Column(
+            "thing_id",
+            sa.Integer(),
+            nullable=False,
+            comment="Foreign key to the Thing (e.g., sampling location) table.",
+        ),
+        sa.Column(
+            "event_date",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            comment="Date and time of the field event.",
+        ),
+        sa.Column(
+            "notes",
+            sa.String(),
+            nullable=True,
+            comment="Notes or comments about the field event.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "group_thing_association",
+        sa.Column("group_id", sa.Integer(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["group_id"], ["group.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "location_thing_association",
+        sa.Column("location_id", sa.Integer(), nullable=False),
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "effective_start",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("effective_end", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["location_id"], ["location.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("location_id", "thing_id", "id"),
+    )
+    op.create_table(
+        "measuring_point_history",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "measuring_point_height",
+            sa.Numeric(),
+            nullable=False,
+            comment="The official, surveyed height of the measuring point relative to ground surface (in feet).",
+        ),
+        sa.Column(
+            "measuring_point_description",
+            sa.Text(),
+            nullable=True,
+            comment="A clear description of the measuring point (e.g., 'North side of casing, top of PVC', 'Top of new steel collar').",
+        ),
+        sa.Column(
+            "start_date",
+            sa.Date(),
+            nullable=False,
+            comment="The date this measuring point configuration became effective.",
+        ),
+        sa.Column(
+            "end_date",
+            sa.Date(),
+            nullable=True,
+            comment="The date this measuring point configuration was superseded. A `NULL` value indicates this is the current, active, and authoritative record for the `Thing`.",
+        ),
+        sa.Column(
+            "reason",
+            sa.Text(),
+            nullable=True,
+            comment="Describes the reason for the new or updated measuring point (e.g., 'A new wellhead was installed').",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "monitoring_frequency_history",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("monitoring_frequency", sa.String(length=100), nullable=False),
+        sa.Column("start_date", sa.Date(), nullable=False),
+        sa.Column("end_date", sa.Date(), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["monitoring_frequency"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "thing_aquifer_association",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("aquifer_system_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["aquifer_system_id"], ["aquifer_system.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "thing_contact_association",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("contact_id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "thing_geologic_formation_association",
+        sa.Column(
+            "thing_id",
+            sa.Integer(),
+            nullable=False,
+            comment="The foreign key linking this record to the `Thing` table.Deleting a `Thing` will cascade and delete its formation log.",
+        ),
+        sa.Column(
+            "geologic_formation_id",
+            sa.Integer(),
+            nullable=True,
+            comment="The foreign key linking this record to the `GeologicFormation` table.This is set to `SET NULL` on delete, as deleting a formation definition (a rare admin action)should not delete the historical fact that a well had a pick at this depth.",
+        ),
+        sa.Column(
+            "top_depth",
+            sa.Float(),
+            nullable=False,
+            comment="The depth (in feet) to the top of the geologic formation, as measured from ground surface.",
+        ),
+        sa.Column(
+            "bottom_depth",
+            sa.Float(),
+            nullable=False,
+            comment="The depth (in feet) to the bottom of the geologic formation, as measured from ground surface.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["geologic_formation_id"], ["geologic_formation.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "thing_id_link",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("relation", sa.String(length=100), nullable=False),
+        sa.Column("alternate_id", sa.String(length=100), nullable=False),
+        sa.Column("alternate_organization", sa.String(length=100), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["alternate_organization"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["relation"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "transducer_observation_block",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("parameter_id", sa.Integer(), nullable=False),
+        sa.Column("review_status", sa.String(length=100), nullable=False),
+        sa.Column("start_datetime", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("end_datetime", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("comment", sa.Text(), nullable=True),
+        sa.Column(
+            "reviewer_id",
+            sa.Integer(),
+            nullable=True,
+            comment="Foreign key to the Contact table",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.CheckConstraint(
+            "end_datetime > start_datetime", name="check_transuder_block_time_order"
+        ),
+        sa.ForeignKeyConstraint(["parameter_id"], ["parameter.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["review_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["reviewer_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "thing_id",
+            "review_status",
+            "parameter_id",
+            "start_datetime",
+            "end_datetime",
+            name="uq_transducer_block_thing_status_parameter_time",
+        ),
+    )
+    op.create_table(
+        "well_casing_material",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("material", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["material"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "well_purpose",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("purpose", sa.String(length=100), nullable=False),
+        sa.Column(
+            "search_vector",
+            sqlalchemy_utils.types.ts_vector.TSVectorType(),
+            nullable=False,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(["purpose"], ["lexicon_term.term"], onupdate="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "well_screen",
+        sa.Column("thing_id", sa.Integer(), nullable=False),
+        sa.Column("aquifer_system_id", sa.Integer(), nullable=True),
+        sa.Column("geologic_formation_id", sa.Integer(), nullable=True),
+        sa.Column("screen_depth_top", sa.Float(), nullable=True),
+        sa.Column("screen_depth_bottom", sa.Float(), nullable=True),
+        sa.Column("screen_type", sa.String(length=100), nullable=True),
+        sa.Column("screen_description", sa.String(length=1000), nullable=True),
+        sa.Column("nma_pk_wellscreens", sa.String(length=100), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["aquifer_system_id"], ["aquifer_system.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["geologic_formation_id"], ["geologic_formation.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["screen_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "transducer_observation",
+        sa.Column("parameter_id", sa.Integer(), nullable=False),
+        sa.Column("deployment_id", sa.Integer(), nullable=False),
+        sa.Column("observation_datetime", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("value", sa.Float(), nullable=False),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_conddl_ms_cm", sa.Float(), nullable=True
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_checked_by",
+            sa.String(length=4),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_created",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_data_source",
+            sa.String(length=5),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_global_id",
+            sa.String(length=40),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_measurement_method",
+            sa.String(length=2),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_measuring_agency",
+            sa.String(length=50),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_notes",
+            sa.String(length=100),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_processed_by",
+            sa.String(length=4),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_qced", sa.Boolean(), nullable=True
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_temperature_water",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_updated",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_water_head", sa.Float(), nullable=True
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_pressure_water_head_adjusted",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_created",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_data_source",
+            sa.String(length=5),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_global_id",
+            sa.String(length=40),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_measurement_method",
+            sa.String(length=2),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_measuring_agency",
+            sa.String(length=50),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_notes",
+            sa.String(length=200),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_point_id",
+            sa.String(length=50),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_pre_process_data_field",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_public_release",
+            sa.Boolean(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_serial_no",
+            sa.String(length=50),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_server_receipt_date",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column(
+            "nma_waterlevelscontinuous_acoustic_temperature_air",
+            sa.Float(),
+            nullable=True,
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["deployment_id"], ["deployment.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["parameter_id"], ["parameter.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "field_activity",
+        sa.Column(
+            "field_event_id",
+            sa.Integer(),
+            nullable=False,
+            comment="Foreign key to the FieldEvent table.",
+        ),
+        sa.Column(
+            "activity_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="The type of activity performed during the field event (e.g., 'groundwater level', 'water chemistry', 'geothermal').",
+        ),
+        sa.Column(
+            "notes",
+            sa.String(),
+            nullable=True,
+            comment="Notes or comments about the field activity.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["activity_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["field_event_id"], ["field_event.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "field_event_participant",
+        sa.Column(
+            "field_event_id",
+            sa.Integer(),
+            nullable=False,
+            comment="Foreign key to the FieldEvent table.",
+        ),
+        sa.Column(
+            "contact_id",
+            sa.Integer(),
+            nullable=False,
+            comment="Foreign key to the Contact table",
+        ),
+        sa.Column(
+            "participant_role",
+            sa.String(length=100),
+            nullable=False,
+            comment="Role of the contact in the field event",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(["contact_id"], ["contact.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["field_event_id"], ["field_event.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["participant_role"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "aquifer_type",
+        sa.Column(
+            "thing_aquifer_association_id",
+            sa.Integer(),
+            nullable=False,
+            comment="Links to the Thing-Aquifer association this type describes.",
+        ),
+        sa.Column(
+            "aquifer_type",
+            sa.String(length=100),
+            nullable=False,
+            comment="Controlled vocabulary for aquifer hydrologic properties. Examples: 'Unconfined', 'Confined', 'Perched', 'Fractured', 'Unconsolidated'.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["aquifer_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["thing_aquifer_association_id"],
+            ["thing_aquifer_association.id"],
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
+        "sample",
+        sa.Column("field_activity_id", sa.Integer(), nullable=False),
+        sa.Column("field_event_participant_id", sa.Integer(), nullable=True),
+        sa.Column(
+            "sample_date",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            comment="Date and time of sample collection.",
+        ),
+        sa.Column(
+            "sample_name",
+            sa.String(),
+            nullable=False,
+            comment="The unique identifier physically written on the sample container or used in field logs. Use for tracking/auditing purposes.",
+        ),
+        sa.Column(
+            "sample_matrix",
+            sa.String(length=100),
+            nullable=False,
+            comment="The material of the sample (e.g., 'gw', 'soil').",
+        ),
+        sa.Column(
+            "sample_method",
+            sa.String(length=100),
+            nullable=False,
+            comment="Method used to collect the sample.",
+        ),
+        sa.Column(
+            "qc_type",
+            sa.String(),
+            nullable=False,
+            comment="Quality control sample type (e.g., 'Normal', 'Split', 'Field duplicate').",
+        ),
+        sa.Column(
+            "depth_top",
+            sa.Float(),
+            nullable=True,
+            comment="Top depth of a discrete sample interval in ft.",
+        ),
+        sa.Column(
+            "depth_bottom",
+            sa.Float(),
+            nullable=True,
+            comment="Bottom depth of a discrete sample interval in ft.",
+        ),
+        sa.Column("notes", sa.String(), nullable=True),
+        sa.Column(
+            "nma_pk_waterlevels",
+            sa.String(),
+            nullable=True,
+            comment="NM_Aquifer primary key for waterlevels - to be used for transfer audits",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["field_activity_id"], ["field_activity.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["field_event_participant_id"],
+            ["field_event_participant.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["sample_matrix"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["sample_method"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("sample_name"),
+    )
+    op.create_table(
+        "observation",
+        sa.Column("nma_pk_waterlevels", sa.String(), nullable=True),
+        sa.Column("sample_id", sa.Integer(), nullable=False),
+        sa.Column("sensor_id", sa.Integer(), nullable=True),
+        sa.Column("analysis_method_id", sa.Integer(), nullable=True),
+        sa.Column("parameter_id", sa.Integer(), nullable=False),
+        sa.Column("observation_datetime", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("value", sa.Float(), nullable=True),
+        sa.Column("unit", sa.String(length=100), nullable=False),
+        sa.Column("notes", sa.String(), nullable=True),
+        sa.Column("measuring_point_height", sa.Float(), nullable=True),
+        sa.Column(
+            "groundwater_level_reason",
+            sa.String(length=100),
+            nullable=True,
+            comment="The reason describes everything that can effect the observation the moment a sample/observation is attempted (e.g. obstruction, dry well, equipment failure); a null value must have an associated reason in the same record. Factors preventing the obtainment of the observation from the beginning of the field event to attempted sampling/observation (e.g. flat tire, locked gate, destroyed well) are not recorded here but in the notes field of the FieldEvent table; in this situation no sample/observation should be recorded.",
+        ),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["analysis_method_id"],
+            ["analysis_method.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["groundwater_level_reason"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["parameter_id"],
+            ["parameter.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["sample_id"], ["sample.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["sensor_id"], ["sensor.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["unit"], ["lexicon_term.term"], onupdate="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.execute("CREATE SEQUENCE transaction_id_seq")
+    op.execute(
+        "ALTER TABLE transaction ALTER COLUMN id SET DEFAULT nextval('transaction_id_seq')"
+    )
+    op.execute(
+        """CREATE OR REPLACE FUNCTION parse_websearch(config regconfig, search_query text)
 RETURNS tsquery AS $$
 SELECT
     string_agg(
@@ -1162,85 +2679,544 @@ FROM (
         )
     ) AS word
 ) AS words
-$$ LANGUAGE SQL IMMUTABLE""",
-    """CREATE OR REPLACE FUNCTION parse_websearch(search_query text)
+$$ LANGUAGE SQL IMMUTABLE;"""
+    )
+    op.execute(
+        """CREATE OR REPLACE FUNCTION parse_websearch(search_query text)
 RETURNS tsquery AS $$
 SELECT parse_websearch('pg_catalog.simple', search_query);
-$$ LANGUAGE SQL IMMUTABLE""",
-]
-
-INDEX_DDL = [
-    """CREATE INDEX idx_aquifer_system_version_boundary ON aquifer_system_version USING gist (boundary)""",
-    """CREATE INDEX ix_aquifer_system_version_end_transaction_id ON aquifer_system_version (end_transaction_id)""",
-    """CREATE INDEX ix_aquifer_system_version_operation_type ON aquifer_system_version (operation_type)""",
-    """CREATE INDEX ix_aquifer_system_version_transaction_id ON aquifer_system_version (transaction_id)""",
-    """CREATE INDEX idx_geologic_formation_version_boundary ON geologic_formation_version USING gist (boundary)""",
-    """CREATE INDEX ix_geologic_formation_version_end_transaction_id ON geologic_formation_version (end_transaction_id)""",
-    """CREATE INDEX ix_geologic_formation_version_operation_type ON geologic_formation_version (operation_type)""",
-    """CREATE INDEX ix_geologic_formation_version_transaction_id ON geologic_formation_version (transaction_id)""",
-    """CREATE INDEX idx_location_version_point ON location_version USING gist (point)""",
-    """CREATE INDEX ix_location_version_end_transaction_id ON location_version (end_transaction_id)""",
-    """CREATE INDEX ix_location_version_operation_type ON location_version (operation_type)""",
-    """CREATE INDEX ix_location_version_transaction_id ON location_version (transaction_id)""",
-    """CREATE INDEX ix_observation_version_end_transaction_id ON observation_version (end_transaction_id)""",
-    """CREATE INDEX ix_observation_version_operation_type ON observation_version (operation_type)""",
-    """CREATE INDEX ix_observation_version_transaction_id ON observation_version (transaction_id)""",
-    """CREATE INDEX ix_parameter_version_end_transaction_id ON parameter_version (end_transaction_id)""",
-    """CREATE INDEX ix_parameter_version_operation_type ON parameter_version (operation_type)""",
-    """CREATE INDEX ix_parameter_version_transaction_id ON parameter_version (transaction_id)""",
-    """CREATE INDEX ix_pub_author_search_vector ON pub_author USING gin (search_vector)""",
-    """CREATE INDEX ix_regulatory_limit_version_end_transaction_id ON regulatory_limit_version (end_transaction_id)""",
-    """CREATE INDEX ix_regulatory_limit_version_operation_type ON regulatory_limit_version (operation_type)""",
-    """CREATE INDEX ix_regulatory_limit_version_transaction_id ON regulatory_limit_version (transaction_id)""",
-    """CREATE INDEX ix_thing_version_end_transaction_id ON thing_version (end_transaction_id)""",
-    """CREATE INDEX ix_thing_version_operation_type ON thing_version (operation_type)""",
-    """CREATE INDEX ix_thing_version_search_vector ON thing_version USING gin (search_vector)""",
-    """CREATE INDEX ix_thing_version_transaction_id ON thing_version (transaction_id)""",
-    """CREATE INDEX idx_aquifer_system_boundary ON aquifer_system USING gist (boundary)""",
-    """CREATE INDEX ix_aquifersystem_name ON aquifer_system (name)""",
-    """CREATE INDEX ix_asset_search_vector ON asset USING gin (search_vector)""",
-    """CREATE INDEX ix_contact_search_vector ON contact USING gin (search_vector)""",
-    """CREATE INDEX ix_provenance_targets ON data_provenance (target_id, target_table)""",
-    """CREATE INDEX idx_geologic_formation_boundary ON geologic_formation USING gist (boundary)""",
-    """CREATE INDEX ix_geologicformation_formation_code ON geologic_formation (formation_code)""",
-    """CREATE INDEX idx_group_project_area ON \"group\" USING gist (project_area)""",
-    """CREATE INDEX idx_location_point ON location USING gist (point)""",
-    """CREATE INDEX ix_notes_polymorphic_link ON notes (target_id, target_table)""",
-    """CREATE INDEX ix_publication_search_vector ON publication USING gin (search_vector)""",
-    """CREATE INDEX ix_thing_search_vector ON thing USING gin (search_vector)""",
-    """CREATE INDEX ix_transaction_user_id ON transaction (user_id)""",
-    """CREATE INDEX ix_address_search_vector ON address USING gin (search_vector)""",
-    """CREATE INDEX ix_email_search_vector ON email USING gin (search_vector)""",
-    """CREATE INDEX ix_phone_search_vector ON phone USING gin (search_vector)""",
-    """CREATE INDEX ix_transducer_block_time ON transducer_observation_block (start_datetime, end_datetime)""",
-    """CREATE INDEX ix_transducer_observation_block_end_datetime ON transducer_observation_block (end_datetime)""",
-    """CREATE INDEX ix_transducer_observation_block_parameter_id ON transducer_observation_block (parameter_id)""",
-    """CREATE INDEX ix_transducer_observation_block_start_datetime ON transducer_observation_block (start_datetime)""",
-    """CREATE INDEX ix_transducer_observation_block_thing_id ON transducer_observation_block (thing_id)""",
-    """CREATE INDEX ix_well_casing_material_search_vector ON well_casing_material USING gin (search_vector)""",
-    """CREATE INDEX ix_well_purpose_search_vector ON well_purpose USING gin (search_vector)""",
-    """CREATE INDEX ix_transducer_observation_observation_datetime ON transducer_observation (observation_datetime)""",
-    """CREATE INDEX ix_transducer_observation_parameter_id ON transducer_observation (parameter_id)""",
-]
-
-
-def upgrade() -> None:
-    """Upgrade schema."""
-    for ddl in TABLE_DDL:
-        op.execute(ddl)
-    for ddl in SEQUENCE_DDL:
-        op.execute(ddl)
-    for ddl in FUNCTION_DDL:
-        op.execute(ddl)
-    for ddl in INDEX_DDL:
-        op.execute(ddl)
+$$ LANGUAGE SQL IMMUTABLE;"""
+    )
+    op.create_index(
+        "idx_aquifer_system_boundary",
+        "aquifer_system",
+        ["boundary"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "idx_aquifer_system_version_boundary",
+        "aquifer_system_version",
+        ["boundary"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "idx_geologic_formation_boundary",
+        "geologic_formation",
+        ["boundary"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "idx_geologic_formation_version_boundary",
+        "geologic_formation_version",
+        ["boundary"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "idx_location_point",
+        "location",
+        ["point"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "idx_location_version_point",
+        "location_version",
+        ["point"],
+        unique=False,
+        postgresql_using="gist",
+    )
+    op.create_index(
+        "ix_address_search_vector",
+        "address",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        op.f("ix_aquifer_system_version_end_transaction_id"),
+        "aquifer_system_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_aquifer_system_version_operation_type"),
+        "aquifer_system_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_aquifer_system_version_transaction_id"),
+        "aquifer_system_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index("ix_aquifersystem_name", "aquifer_system", ["name"], unique=False)
+    op.create_index(
+        "ix_asset_search_vector",
+        "asset",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_contact_search_vector",
+        "contact",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_email_search_vector",
+        "email",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        op.f("ix_geologic_formation_version_end_transaction_id"),
+        "geologic_formation_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_geologic_formation_version_operation_type"),
+        "geologic_formation_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_geologic_formation_version_transaction_id"),
+        "geologic_formation_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_geologicformation_formation_code",
+        "geologic_formation",
+        ["formation_code"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_location_version_end_transaction_id"),
+        "location_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_location_version_operation_type"),
+        "location_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_location_version_transaction_id"),
+        "location_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_notes_polymorphic_link",
+        "notes",
+        ["target_id", "target_table"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_observation_version_end_transaction_id"),
+        "observation_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_observation_version_operation_type"),
+        "observation_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_observation_version_transaction_id"),
+        "observation_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_parameter_version_end_transaction_id"),
+        "parameter_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_parameter_version_operation_type"),
+        "parameter_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_parameter_version_transaction_id"),
+        "parameter_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_phone_search_vector",
+        "phone",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_provenance_targets",
+        "data_provenance",
+        ["target_id", "target_table"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_pub_author_search_vector",
+        "pub_author",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_publication_search_vector",
+        "publication",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        op.f("ix_regulatory_limit_version_end_transaction_id"),
+        "regulatory_limit_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_regulatory_limit_version_operation_type"),
+        "regulatory_limit_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_regulatory_limit_version_transaction_id"),
+        "regulatory_limit_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_thing_search_vector",
+        "thing",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        op.f("ix_thing_version_end_transaction_id"),
+        "thing_version",
+        ["end_transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_thing_version_operation_type"),
+        "thing_version",
+        ["operation_type"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_thing_version_search_vector",
+        "thing_version",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        op.f("ix_thing_version_transaction_id"),
+        "thing_version",
+        ["transaction_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transaction_user_id"), "transaction", ["user_id"], unique=False
+    )
+    op.create_index(
+        "ix_transducer_block_time",
+        "transducer_observation_block",
+        ["start_datetime", "end_datetime"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_block_end_datetime"),
+        "transducer_observation_block",
+        ["end_datetime"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_block_parameter_id"),
+        "transducer_observation_block",
+        ["parameter_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_block_start_datetime"),
+        "transducer_observation_block",
+        ["start_datetime"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_block_thing_id"),
+        "transducer_observation_block",
+        ["thing_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_observation_datetime"),
+        "transducer_observation",
+        ["observation_datetime"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_transducer_observation_parameter_id"),
+        "transducer_observation",
+        ["parameter_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_well_casing_material_search_vector",
+        "well_casing_material",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
+    op.create_index(
+        "ix_well_purpose_search_vector",
+        "well_purpose",
+        ["search_vector"],
+        unique=False,
+        postgresql_using="gin",
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    for table_name in reversed(TABLE_NAMES):
-        op.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(
+        "ix_well_purpose_search_vector",
+        table_name="well_purpose",
+        postgresql_using="gin",
+    )
+    op.drop_index(
+        "ix_well_casing_material_search_vector",
+        table_name="well_casing_material",
+        postgresql_using="gin",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_parameter_id"),
+        table_name="transducer_observation",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_observation_datetime"),
+        table_name="transducer_observation",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_block_thing_id"),
+        table_name="transducer_observation_block",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_block_start_datetime"),
+        table_name="transducer_observation_block",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_block_parameter_id"),
+        table_name="transducer_observation_block",
+    )
+    op.drop_index(
+        op.f("ix_transducer_observation_block_end_datetime"),
+        table_name="transducer_observation_block",
+    )
+    op.drop_index("ix_transducer_block_time", table_name="transducer_observation_block")
+    op.drop_index(op.f("ix_transaction_user_id"), table_name="transaction")
+    op.drop_index(op.f("ix_thing_version_transaction_id"), table_name="thing_version")
+    op.drop_index(
+        "ix_thing_version_search_vector",
+        table_name="thing_version",
+        postgresql_using="gin",
+    )
+    op.drop_index(op.f("ix_thing_version_operation_type"), table_name="thing_version")
+    op.drop_index(
+        op.f("ix_thing_version_end_transaction_id"), table_name="thing_version"
+    )
+    op.drop_index("ix_thing_search_vector", table_name="thing", postgresql_using="gin")
+    op.drop_index(
+        op.f("ix_regulatory_limit_version_transaction_id"),
+        table_name="regulatory_limit_version",
+    )
+    op.drop_index(
+        op.f("ix_regulatory_limit_version_operation_type"),
+        table_name="regulatory_limit_version",
+    )
+    op.drop_index(
+        op.f("ix_regulatory_limit_version_end_transaction_id"),
+        table_name="regulatory_limit_version",
+    )
+    op.drop_index(
+        "ix_publication_search_vector", table_name="publication", postgresql_using="gin"
+    )
+    op.drop_index(
+        "ix_pub_author_search_vector", table_name="pub_author", postgresql_using="gin"
+    )
+    op.drop_index("ix_provenance_targets", table_name="data_provenance")
+    op.drop_index("ix_phone_search_vector", table_name="phone", postgresql_using="gin")
+    op.drop_index(
+        op.f("ix_parameter_version_transaction_id"), table_name="parameter_version"
+    )
+    op.drop_index(
+        op.f("ix_parameter_version_operation_type"), table_name="parameter_version"
+    )
+    op.drop_index(
+        op.f("ix_parameter_version_end_transaction_id"), table_name="parameter_version"
+    )
+    op.drop_index(
+        op.f("ix_observation_version_transaction_id"), table_name="observation_version"
+    )
+    op.drop_index(
+        op.f("ix_observation_version_operation_type"), table_name="observation_version"
+    )
+    op.drop_index(
+        op.f("ix_observation_version_end_transaction_id"),
+        table_name="observation_version",
+    )
+    op.drop_index("ix_notes_polymorphic_link", table_name="notes")
+    op.drop_index(
+        op.f("ix_location_version_transaction_id"), table_name="location_version"
+    )
+    op.drop_index(
+        op.f("ix_location_version_operation_type"), table_name="location_version"
+    )
+    op.drop_index(
+        op.f("ix_location_version_end_transaction_id"), table_name="location_version"
+    )
+    op.drop_index(
+        "ix_geologicformation_formation_code", table_name="geologic_formation"
+    )
+    op.drop_index(
+        op.f("ix_geologic_formation_version_transaction_id"),
+        table_name="geologic_formation_version",
+    )
+    op.drop_index(
+        op.f("ix_geologic_formation_version_operation_type"),
+        table_name="geologic_formation_version",
+    )
+    op.drop_index(
+        op.f("ix_geologic_formation_version_end_transaction_id"),
+        table_name="geologic_formation_version",
+    )
+    op.drop_index("ix_email_search_vector", table_name="email", postgresql_using="gin")
+    op.drop_index(
+        "ix_contact_search_vector", table_name="contact", postgresql_using="gin"
+    )
+    op.drop_index("ix_asset_search_vector", table_name="asset", postgresql_using="gin")
+    op.drop_index("ix_aquifersystem_name", table_name="aquifer_system")
+    op.drop_index(
+        op.f("ix_aquifer_system_version_transaction_id"),
+        table_name="aquifer_system_version",
+    )
+    op.drop_index(
+        op.f("ix_aquifer_system_version_operation_type"),
+        table_name="aquifer_system_version",
+    )
+    op.drop_index(
+        op.f("ix_aquifer_system_version_end_transaction_id"),
+        table_name="aquifer_system_version",
+    )
+    op.drop_index(
+        "ix_address_search_vector", table_name="address", postgresql_using="gin"
+    )
+    op.drop_index(
+        "idx_location_version_point",
+        table_name="location_version",
+        postgresql_using="gist",
+    )
+    op.drop_index("idx_location_point", table_name="location", postgresql_using="gist")
+    op.drop_index(
+        "idx_geologic_formation_version_boundary",
+        table_name="geologic_formation_version",
+        postgresql_using="gist",
+    )
+    op.drop_index(
+        "idx_geologic_formation_boundary",
+        table_name="geologic_formation",
+        postgresql_using="gist",
+    )
+    op.drop_index(
+        "idx_aquifer_system_version_boundary",
+        table_name="aquifer_system_version",
+        postgresql_using="gist",
+    )
+    op.drop_index(
+        "idx_aquifer_system_boundary",
+        table_name="aquifer_system",
+        postgresql_using="gist",
+    )
+    op.drop_table("observation")
+    op.drop_table("sample")
+    op.drop_table("aquifer_type")
+    op.drop_table("field_event_participant")
+    op.drop_table("field_activity")
+    op.drop_table("transducer_observation")
+    op.drop_table("well_screen")
+    op.drop_table("well_purpose")
+    op.drop_table("well_casing_material")
+    op.drop_table("transducer_observation_block")
+    op.drop_table("thing_id_link")
+    op.drop_table("thing_geologic_formation_association")
+    op.drop_table("thing_contact_association")
+    op.drop_table("thing_aquifer_association")
+    op.drop_table("monitoring_frequency_history")
+    op.drop_table("measuring_point_history")
+    op.drop_table("location_thing_association")
+    op.drop_table("group_thing_association")
+    op.drop_table("field_event")
+    op.drop_table("deployment")
+    op.drop_table("collaborative_network_well")
+    op.drop_table("asset_thing_association")
+    op.drop_table("pub_author_publication_association")
+    op.drop_table("regulatory_limit")
+    op.drop_table("pub_author_contact_association")
+    op.drop_table("phone")
+    op.drop_table("permission_history")
+    op.drop_table("incomplete_nma_phone")
+    op.drop_table("email")
+    op.drop_table("address")
+    op.drop_table("thing")
+    op.drop_table("status_history")
+    op.drop_table("sensor")
+    op.drop_table("publication")
+    op.drop_table("parameter")
+    op.drop_table("notes")
+    op.drop_table("location")
+    op.drop_table("lexicon_triple")
+    op.drop_table("lexicon_term_category_association")
+    op.drop_table("geologic_formation")
+    op.drop_table("geochronology_age")
+    op.drop_table("data_provenance")
+    op.drop_table("contact")
+    op.drop_table("asset")
+    op.drop_table("aquifer_system")
+    op.drop_table("analysis_method")
+    op.drop_table("transaction")
+    op.drop_table("thing_version")
+    op.drop_table("regulatory_limit_version")
+    op.drop_table("pub_author")
+    op.drop_table("parameter_version")
+    op.drop_table("observation_version")
+    op.drop_table("location_version")
+    op.drop_table("lexicon_term")
+    op.drop_table("lexicon_category")
+    op.drop_table("geologic_formation_version")
+    op.drop_table("aquifer_system_version")
     op.execute("DROP FUNCTION IF EXISTS parse_websearch(text)")
     op.execute("DROP FUNCTION IF EXISTS parse_websearch(regconfig, text)")
     op.execute("DROP SEQUENCE IF EXISTS transaction_id_seq")

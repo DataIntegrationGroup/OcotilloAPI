@@ -33,9 +33,9 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
+        "sample_pt_id",
         "object_id",
         "sample_point_id",
-        "sample_pt_id",
         "wclab_id",
         "collection_date",
         "sample_type",
@@ -45,9 +45,9 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     ]
 
     sortable_fields = [
+        "sample_pt_id",
         "object_id",
         "sample_point_id",
-        "sample_pt_id",
         "wclab_id",
         "collection_date",
         "sample_type",

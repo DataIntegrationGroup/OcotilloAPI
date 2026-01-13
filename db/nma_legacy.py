@@ -29,6 +29,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -184,7 +185,9 @@ class ChemistrySampleInfo(Base):
     study_sample: Mapped[Optional[str]] = mapped_column("StudySample", Text)
 
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(100))
-    data_quality: Mapped[Optional[bool]] = mapped_column("DataQuality", Boolean)
+    data_quality: Mapped[Optional[bool]] = mapped_column(
+        "DataQuality", Boolean, server_default=text("true")
+    )
     public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
 
     added_day_to_date: Mapped[Optional[bool]] = mapped_column("AddedDaytoDate", Boolean)
