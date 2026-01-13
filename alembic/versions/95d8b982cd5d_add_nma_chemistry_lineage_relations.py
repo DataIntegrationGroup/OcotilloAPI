@@ -14,6 +14,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "95d8b982cd5d"
@@ -53,7 +54,11 @@ def upgrade() -> None:
     op.create_table(
         "NMA_MinorTraceChemistry",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("chemistry_sample_info_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "chemistry_sample_info_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
         sa.Column("analyte", sa.String(50), nullable=True),
         sa.Column("sample_value", sa.Float(), nullable=True),
         sa.Column("units", sa.String(20), nullable=True),
@@ -68,7 +73,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(
             ["chemistry_sample_info_id"],
-            ["NMA_Chemistry_SampleInfo.OBJECTID"],
+            ["NMA_Chemistry_SampleInfo.SamplePtID"],
             ondelete="CASCADE",
         ),
     )

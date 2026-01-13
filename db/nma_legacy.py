@@ -302,9 +302,9 @@ class NMAMinorTraceChemistry(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # FK to ChemistrySampleInfo - required (no orphans)
-    chemistry_sample_info_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("NMA_Chemistry_SampleInfo.OBJECTID", ondelete="CASCADE"),
+    chemistry_sample_info_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
         nullable=False,
     )
 

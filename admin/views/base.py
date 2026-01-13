@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Sequence
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import InstrumentedAttribute
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette_admin import ExportType, action
@@ -41,20 +42,26 @@ class OcotilloModelView(ModelView):
     enable_publish_actions: bool = True
     export_types: Sequence[ExportType] = (ExportType.CSV, ExportType.EXCEL)
     list_fields: Sequence[str] = ()
-    field_labels: dict[str, str] = {}
-    field_help_texts: dict[str, str] = {}
+    field_labels: dict[str, str] | None = None
+    field_help_texts: dict[str, str] | None = None
 
     def __init__(self, *args, **kwargs):
+        model = args[0] if args else kwargs.get("model")
+        if self.field_labels is None:
+            self.field_labels = {}
+        if self.field_help_texts is None:
+            self.field_help_texts = {}
+        if self.list_fields and model is not None:
+            model_fields = [
+                model.__dict__[key].key
+                for key in list(model.__dict__.keys())
+                if type(model.__dict__[key]) is InstrumentedAttribute
+            ]
+            self.exclude_fields_from_list = [
+                name for name in model_fields if name not in self.list_fields
+            ]
         super().__init__(*args, **kwargs)
-        self._apply_list_fields()
         self._apply_field_overrides()
-
-    def _apply_list_fields(self) -> None:
-        if not self.list_fields:
-            return
-        column_set = set(self.list_fields)
-        for field in self.fields:
-            field.exclude_from_list = field.name not in column_set
 
     def _apply_field_overrides(self) -> None:
         if not (self.field_labels or self.field_help_texts):

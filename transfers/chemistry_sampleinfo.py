@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -57,6 +57,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])
         # Filter to only include rows where Thing exists (prevent orphan records)
         cleaned_df = self._filter_to_valid_things(input_df)
+        cleaned_df = self._filter_to_valid_sample_pt_ids(cleaned_df)
         return input_df, cleaned_df
 
     def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -83,15 +84,54 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         return filtered_df
 
+    def _filter_to_valid_sample_pt_ids(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter to rows with a valid SamplePtID UUID (required for idempotent upserts)."""
+
+        def _is_valid_uuid(value: Any) -> bool:
+            if pd.isna(value):
+                return False
+            if isinstance(value, UUID):
+                return True
+            if isinstance(value, str):
+                try:
+                    UUID(value)
+                    return True
+                except ValueError:
+                    return False
+            return False
+
+        before_count = len(df)
+        filtered_df = df[df["SamplePtID"].apply(_is_valid_uuid)].copy()
+        after_count = len(filtered_df)
+
+        if before_count > after_count:
+            skipped = before_count - after_count
+            logger.warning(
+                f"Filtered out {skipped} ChemistrySampleInfo records without valid SamplePtID "
+                f"({after_count} valid, {skipped} invalid SamplePtID values)"
+            )
+
+        return filtered_df
+
     def _transfer_hook(self, session: Session) -> None:
         # Convert rows to dicts and filter out any without valid thing_id
         row_dicts = []
-        skipped_count = 0
+        skipped_orphan_count = 0
+        skipped_sample_pt_id_count = 0
         for row in self.cleaned_df.to_dict("records"):
             row_dict = self._row_dict(row)
+            if row_dict.get("SamplePtID") is None:
+                skipped_sample_pt_id_count += 1
+                logger.warning(
+                    "Skipping ChemistrySampleInfo OBJECTID=%s SamplePointID=%s - "
+                    "SamplePtID missing or invalid",
+                    row_dict.get("OBJECTID"),
+                    row_dict.get("SamplePointID"),
+                )
+                continue
             # Skip rows without valid thing_id (orphan prevention)
             if row_dict.get("thing_id") is None:
-                skipped_count += 1
+                skipped_orphan_count += 1
                 logger.warning(
                     f"Skipping ChemistrySampleInfo OBJECTID={row_dict.get('OBJECTID')} "
                     f"SamplePointID={row_dict.get('SamplePointID')} - Thing not found"
@@ -99,9 +139,14 @@ class ChemistrySampleInfoTransferer(Transferer):
                 continue
             row_dicts.append(row_dict)
 
-        if skipped_count > 0:
+        if skipped_sample_pt_id_count > 0:
             logger.warning(
-                f"Skipped {skipped_count} ChemistrySampleInfo records without valid Thing "
+                "Skipped %s ChemistrySampleInfo records without valid SamplePtID",
+                skipped_sample_pt_id_count,
+            )
+        if skipped_orphan_count > 0:
+            logger.warning(
+                f"Skipped {skipped_orphan_count} ChemistrySampleInfo records without valid Thing "
                 f"(orphan prevention)"
             )
 
@@ -188,6 +233,7 @@ class ChemistrySampleInfoTransferer(Transferer):
                     return False
             return None
 
+        # Convert pandas Timestamp to datetime; native datetime stays unchanged.
         collection_date = val("CollectionDate")
         if hasattr(collection_date, "to_pydatetime"):
             collection_date = collection_date.to_pydatetime()
@@ -200,7 +246,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         # If Thing not found, thing_id remains None and will be filtered out
 
         return {
-            "SamplePtID": uuid_val("SamplePtID") or uuid4(),
+            "SamplePtID": uuid_val("SamplePtID"),
             "WCLab_ID": str_val("WCLab_ID"),
             "SamplePointID": str_val("SamplePointID"),
             "CollectionDate": collection_date,

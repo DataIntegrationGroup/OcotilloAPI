@@ -14,8 +14,10 @@ from db import *
 from db.engine import session_ctx
 from tests import get_parameter_id
 
-load_dotenv(override=True)
-os.environ.setdefault("POSTGRES_PORT", "54321")
+
+def pytest_configure():
+    load_dotenv(override=True)
+    os.environ.setdefault("POSTGRES_PORT", "54321")
 
 
 def _alembic_config() -> Config:

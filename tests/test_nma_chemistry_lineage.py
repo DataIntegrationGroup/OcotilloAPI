@@ -102,7 +102,7 @@ def test_nma_minor_trace_chemistry_columns():
 
     expected_columns = [
         "id",  # new PK
-        "chemistry_sample_info_id",  # new FK (integer, not string)
+        "chemistry_sample_info_id",  # new FK (UUID, not string)
         # from legacy
         "analyte",
         "sample_value",
@@ -139,9 +139,6 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.add(sample_info)
         session.commit()
 
-        # object_id is the legacy FK target for minor trace chemistry rows.
-        assert sample_info.object_id is not None
-
         mtc = NMAMinorTraceChemistry(
             chemistry_sample_info=sample_info,
             analyte="As",
@@ -162,7 +159,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
 
         # Verify all columns saved
         assert mtc.id is not None
-        assert mtc.chemistry_sample_info_id == sample_info.object_id
+        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
         assert mtc.units == "mg/L"
@@ -380,7 +377,7 @@ def test_append_mtc_to_sample_info(shared_well):
 
         # Verify bidirectional
         assert mtc.chemistry_sample_info == sample_info
-        assert mtc.chemistry_sample_info_id == sample_info.object_id
+        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
 
         session.delete(sample_info)
         session.commit()
@@ -477,7 +474,7 @@ def test_reverse_lineage_navigation(shared_well):
         matching = [
             si
             for si in well.chemistry_sample_infos
-            if si.object_id == sample_info.object_id
+            if si.sample_pt_id == sample_info.sample_pt_id
         ]
         assert len(matching) == 1
         assert len(matching[0].minor_trace_chemistries) == 1
@@ -507,9 +504,6 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
         session.add(sample_info)
         session.commit()
 
-        # MinorTraceChemistry rows key off legacy object_id, not SamplePtID.
-        assert sample_info.object_id is not None
-
         # Add multiple children
         for analyte in ["As", "U", "Se", "Pb"]:
             sample_info.minor_trace_chemistries.append(
@@ -521,7 +515,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
             )
         session.commit()
 
-        sample_info_id = sample_info.object_id
+        sample_info_id = sample_info.sample_pt_id
         assert (
             session.query(NMAMinorTraceChemistry)
             .filter_by(chemistry_sample_info_id=sample_info_id)
