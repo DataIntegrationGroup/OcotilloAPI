@@ -44,6 +44,7 @@ from admin.views import (
     FieldActivityAdmin,
     ParameterAdmin,
     SurfaceWaterDataAdmin,
+    MajorChemistryAdmin,
 )
 
 from db.engine import engine
@@ -63,7 +64,7 @@ from db.aquifer_system import AquiferSystem
 from db.group import Group
 from db.notes import Notes
 from db.sample import Sample
-from db.nma_legacy import ChemistrySampleInfo, SurfaceWaterData
+from db.nma_legacy import ChemistrySampleInfo, SurfaceWaterData, MajorChemistry
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
 from db.transducer import TransducerObservation
@@ -156,6 +157,9 @@ def create_admin(app):
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)
     # admin.add_view(GroupAdmin)
+
+    # MajorChemistry
+    admin.add_view(MajorChemistryAdmin(MajorChemistry))
 
     # Mount admin to app
     admin.mount_to(app)
