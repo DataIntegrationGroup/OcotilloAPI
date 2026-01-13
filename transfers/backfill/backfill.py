@@ -36,7 +36,13 @@ from transfers.logger import logger
 def run(batch_size: int = 1000) -> None:
     """
     Execute all backfill steps in a deterministic order.
+
+    Currently, no concrete backfill steps are registered. This function is kept
+    as a stable orchestration entry point (used by CD/CLI) and will be wired
+    up to real backfill steps in future refactoring work.
     """
+    # NOTE: Intentionally empty; this serves as a placeholder until concrete
+    # backfill steps are implemented and registered in this tuple.
     steps = ()
     for name, fn, flag in steps:
         if not get_bool_env(flag, True):
