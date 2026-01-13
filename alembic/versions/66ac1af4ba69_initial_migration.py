@@ -12,6 +12,7 @@ from alembic import op
 import geoalchemy2
 import sqlalchemy as sa
 import sqlalchemy_utils
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "66ac1af4ba69"
@@ -32,6 +33,7 @@ TABLE_NAMES = [
     "pub_author",
     "regulatory_limit_version",
     "thing_version",
+    "user",
     "transaction",
     "analysis_method",
     "aquifer_system",
@@ -61,6 +63,7 @@ TABLE_NAMES = [
     "collaborative_network_well",
     "deployment",
     "field_event",
+    "group",
     "group_thing_association",
     "location_thing_association",
     "measuring_point_history",
@@ -683,6 +686,12 @@ def upgrade() -> None:
         sa.Column("end_transaction_id", sa.BigInteger(), nullable=True),
         sa.Column("operation_type", sa.SmallInteger(), nullable=False),
         sa.PrimaryKeyConstraint("id", "transaction_id"),
+    )
+    op.create_table(
+        "user",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("username", sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "transaction",
@@ -1848,6 +1857,45 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
+        "group",
+        sa.Column("name", sa.String(length=100), nullable=False),
+        sa.Column("description", sa.String(length=255), nullable=True),
+        sa.Column(
+            "project_area",
+            geoalchemy2.types.Geometry(
+                geometry_type="MULTIPOLYGON",
+                srid=4326,
+                dimension=2,
+                from_text="ST_GeomFromEWKT",
+                name="geometry",
+            ),
+            nullable=True,
+        ),
+        sa.Column("group_type", sa.String(length=100), nullable=True),
+        sa.Column("parent_group_id", sa.Integer(), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column("created_by_name", sa.String(length=255), nullable=True),
+        sa.Column("created_by_id", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_name", sa.String(length=255), nullable=True),
+        sa.Column("updated_by_id", sa.String(length=255), nullable=True),
+        sa.Column("release_status", sa.String(length=100), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["group_type"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["parent_group_id"], ["group.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["release_status"], ["lexicon_term.term"], onupdate="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("name"),
+    )
+    op.create_table(
         "group_thing_association",
         sa.Column("group_id", sa.Integer(), nullable=False),
         sa.Column("thing_id", sa.Integer(), nullable=False),
@@ -2240,140 +2288,6 @@ def upgrade() -> None:
         sa.Column("deployment_id", sa.Integer(), nullable=False),
         sa.Column("observation_datetime", sa.DateTime(timezone=True), nullable=False),
         sa.Column("value", sa.Float(), nullable=False),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_conddl_ms_cm", sa.Float(), nullable=True
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_checked_by",
-            sa.String(length=4),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_created",
-            sa.DateTime(timezone=True),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_data_source",
-            sa.String(length=5),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_global_id",
-            sa.String(length=40),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_measurement_method",
-            sa.String(length=2),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_measuring_agency",
-            sa.String(length=50),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_notes",
-            sa.String(length=100),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_processed_by",
-            sa.String(length=4),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_qced", sa.Boolean(), nullable=True
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_temperature_water",
-            sa.Float(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_updated",
-            sa.DateTime(timezone=True),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_water_head", sa.Float(), nullable=True
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_pressure_water_head_adjusted",
-            sa.Float(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_created",
-            sa.DateTime(timezone=True),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_data_source",
-            sa.String(length=5),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_global_id",
-            sa.String(length=40),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_measurement_method",
-            sa.String(length=2),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_measuring_agency",
-            sa.String(length=50),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_notes",
-            sa.String(length=200),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_point_id",
-            sa.String(length=50),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_pre_process_data_field",
-            sa.Float(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_public_release",
-            sa.Boolean(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp",
-            sa.Float(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_serial_no",
-            sa.String(length=50),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_server_receipt_date",
-            sa.DateTime(timezone=True),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length",
-            sa.Float(),
-            nullable=True,
-        ),
-        sa.Column(
-            "nma_waterlevelscontinuous_acoustic_temperature_air",
-            sa.Float(),
-            nullable=True,
-        ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
             "created_at",
@@ -2654,10 +2568,6 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["unit"], ["lexicon_term.term"], onupdate="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.execute("CREATE SEQUENCE transaction_id_seq")
-    op.execute(
-        "ALTER TABLE transaction ALTER COLUMN id SET DEFAULT nextval('transaction_id_seq')"
-    )
     op.execute(
         """CREATE OR REPLACE FUNCTION parse_websearch(config regconfig, search_query text)
 RETURNS tsquery AS $$
@@ -2686,48 +2596,6 @@ $$ LANGUAGE SQL IMMUTABLE;"""
 RETURNS tsquery AS $$
 SELECT parse_websearch('pg_catalog.simple', search_query);
 $$ LANGUAGE SQL IMMUTABLE;"""
-    )
-    op.create_index(
-        "idx_aquifer_system_boundary",
-        "aquifer_system",
-        ["boundary"],
-        unique=False,
-        postgresql_using="gist",
-    )
-    op.create_index(
-        "idx_aquifer_system_version_boundary",
-        "aquifer_system_version",
-        ["boundary"],
-        unique=False,
-        postgresql_using="gist",
-    )
-    op.create_index(
-        "idx_geologic_formation_boundary",
-        "geologic_formation",
-        ["boundary"],
-        unique=False,
-        postgresql_using="gist",
-    )
-    op.create_index(
-        "idx_geologic_formation_version_boundary",
-        "geologic_formation_version",
-        ["boundary"],
-        unique=False,
-        postgresql_using="gist",
-    )
-    op.create_index(
-        "idx_location_point",
-        "location",
-        ["point"],
-        unique=False,
-        postgresql_using="gist",
-    )
-    op.create_index(
-        "idx_location_version_point",
-        "location_version",
-        ["point"],
-        unique=False,
-        postgresql_using="gist",
     )
     op.create_index(
         "ix_address_search_vector",
@@ -3134,32 +3002,6 @@ def downgrade() -> None:
     op.drop_index(
         "ix_address_search_vector", table_name="address", postgresql_using="gin"
     )
-    op.drop_index(
-        "idx_location_version_point",
-        table_name="location_version",
-        postgresql_using="gist",
-    )
-    op.drop_index("idx_location_point", table_name="location", postgresql_using="gist")
-    op.drop_index(
-        "idx_geologic_formation_version_boundary",
-        table_name="geologic_formation_version",
-        postgresql_using="gist",
-    )
-    op.drop_index(
-        "idx_geologic_formation_boundary",
-        table_name="geologic_formation",
-        postgresql_using="gist",
-    )
-    op.drop_index(
-        "idx_aquifer_system_version_boundary",
-        table_name="aquifer_system_version",
-        postgresql_using="gist",
-    )
-    op.drop_index(
-        "idx_aquifer_system_boundary",
-        table_name="aquifer_system",
-        postgresql_using="gist",
-    )
     op.drop_table("observation")
     op.drop_table("sample")
     op.drop_table("aquifer_type")
@@ -3178,6 +3020,7 @@ def downgrade() -> None:
     op.drop_table("measuring_point_history")
     op.drop_table("location_thing_association")
     op.drop_table("group_thing_association")
+    op.drop_table("group")
     op.drop_table("field_event")
     op.drop_table("deployment")
     op.drop_table("collaborative_network_well")
@@ -3207,6 +3050,7 @@ def downgrade() -> None:
     op.drop_table("aquifer_system")
     op.drop_table("analysis_method")
     op.drop_table("transaction")
+    op.drop_table("user")
     op.drop_table("thing_version")
     op.drop_table("regulatory_limit_version")
     op.drop_table("pub_author")
@@ -3219,5 +3063,4 @@ def downgrade() -> None:
     op.drop_table("aquifer_system_version")
     op.execute("DROP FUNCTION IF EXISTS parse_websearch(text)")
     op.execute("DROP FUNCTION IF EXISTS parse_websearch(regconfig, text)")
-    op.execute("DROP SEQUENCE IF EXISTS transaction_id_seq")
     # ### end Alembic commands ###
