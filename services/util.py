@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 
@@ -14,10 +15,11 @@ METERS_TO_FEET = 3.28084
 DEFAULT_HTTP_TIMEOUT = 10.0
 DEFAULT_HTTP_RETRIES = 3
 DEFAULT_HTTP_BACKOFF = 0.5
+logger = logging.getLogger(__name__)
 
 
 def _log_warning(message: str) -> None:
-    print(message)
+    logger.warning(message)
 
 
 def _get_json(
