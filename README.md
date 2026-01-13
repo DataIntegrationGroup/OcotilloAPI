@@ -91,7 +91,7 @@ pre-commit install
 cp .env.example .env
 ```
 Notes:
-* Create file gcs_credentials.json, and get contents from a teammate and place it in the root directory of the project.
+* Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
 * PostgreSQL port is 54321 (default is 5432). Update your postgresql.conf to `port = 54321`
 
 
