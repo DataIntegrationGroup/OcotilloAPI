@@ -38,6 +38,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     n = len(ldf)
     start_time = time.time()
 
+    logger.info("Starting transfer: Things (%s) [%s rows]", site_type, n)
     cached_elevations = {}
 
     for i, row in enumerate(ldf.itertuples()):
@@ -89,6 +90,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             continue
 
     session.commit()
+    logger.info("Completed transfer: Things (%s)", site_type)
 
 
 def transfer_springs(session, limit=None):

@@ -45,11 +45,23 @@ class Transferer(object):
         self.manual_fixer = ManualFixer()
         self.pointids = pointids
 
+    def _df_len(self, df: pd.DataFrame | None) -> int:
+        return int(len(df)) if df is not None else 0
+
     def transfer(self) -> None:
         with session_ctx() as session:
+            name = self.source_table or self.__class__.__name__
+            logger.info("Starting transfer: %s", name)
             self.input_df, self.cleaned_df = self._get_dfs()
+            logger.info(
+                "Loaded %s rows (%s cleaned) for %s",
+                self._df_len(self.input_df),
+                self._df_len(self.cleaned_df),
+                name,
+            )
             self._transfer_hook(session)
             session.commit()
+            logger.info("Completed transfer: %s", name)
 
     def _capture_validation_error(self, pointid: str, err: ValidationError) -> None:
         self._capture_error(
