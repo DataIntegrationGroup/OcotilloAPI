@@ -13,7 +13,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision: str = "d1a2b3c4e5f6"
-down_revision: Union[str, Sequence[str], None] = "c9f1d2e3a4b5"
+down_revision: Union[str, Sequence[str], None] = "6e1c90f6135a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -28,6 +28,12 @@ def upgrade() -> None:
             sa.Column("GlobalID", sa.String(length=40), primary_key=True),
             sa.Column("PointID", sa.String(length=50), nullable=True),
             sa.Column("HydraulicUnit", sa.String(length=18), nullable=True),
+            sa.Column(
+                "thing_id",
+                sa.Integer(),
+                sa.ForeignKey("thing.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
             sa.Column("TestTop", sa.SmallInteger(), nullable=False),
             sa.Column("TestBottom", sa.SmallInteger(), nullable=False),
             sa.Column("HydraulicUnitType", sa.String(length=2), nullable=True),

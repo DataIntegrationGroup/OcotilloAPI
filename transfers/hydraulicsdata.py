@@ -22,15 +22,16 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMAHydraulicsData
+from db import NMAHydraulicsData, Thing
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class NMAHydraulicsDataBackfill(Transferer):
+class HydraulicsDataTransferer(Transferer):
     """
-    Backfill for the legacy NMA_HydraulicsData table.
+    Transfer for the legacy NMA_HydraulicsData table.
     """
 
     source_table = "HydraulicsData"
@@ -38,16 +39,55 @@ class NMAHydraulicsDataBackfill(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._thing_id_cache: dict[str, int] = {}
+        self._build_thing_id_cache()
+
+    def _build_thing_id_cache(self) -> None:
+        with session_ctx() as session:
+            things = session.query(Thing.name, Thing.id).all()
+            self._thing_id_cache = {name: thing_id for name, thing_id in things}
+        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table)
-        return input_df, input_df
+        df = read_csv(self.source_table)
+        cleaned_df = self._filter_to_valid_things(df)
+        return df, cleaned_df
+
+    def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
+        valid_point_ids = set(self._thing_id_cache.keys())
+        before_count = len(df)
+        filtered_df = df[df["PointID"].isin(valid_point_ids)].copy()
+        after_count = len(filtered_df)
+        if before_count > after_count:
+            skipped = before_count - after_count
+            logger.warning(
+                f"Filtered out {skipped} HydraulicsData records without matching Things "
+                f"({after_count} valid, {skipped} orphan records prevented)"
+            )
+        return filtered_df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = self._dedupe_rows(
-            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
-            key="GlobalID",
-        )
+        row_dicts = []
+        skipped_count = 0
+        for row in self.cleaned_df.to_dict("records"):
+            row_dict = self._row_dict(row)
+            if row_dict.get("thing_id") is None:
+                skipped_count += 1
+                logger.warning(
+                    "Skipping HydraulicsData GlobalID=%s PointID=%s - Thing not found",
+                    row_dict.get("GlobalID"),
+                    row_dict.get("PointID"),
+                )
+                continue
+            row_dicts.append(row_dict)
+
+        if skipped_count > 0:
+            logger.warning(
+                f"Skipped {skipped_count} HydraulicsData records without valid Thing "
+                f"(orphan prevention)"
+            )
+
+        rows = self._dedupe_rows(row_dicts, key="GlobalID")
 
         insert_stmt = insert(NMAHydraulicsData)
         excluded = insert_stmt.excluded
@@ -62,6 +102,7 @@ class NMAHydraulicsDataBackfill(Transferer):
                 set_={
                     "PointID": excluded["PointID"],
                     "HydraulicUnit": excluded["HydraulicUnit"],
+                    "thing_id": excluded["thing_id"],
                     "TestTop": excluded["TestTop"],
                     "TestBottom": excluded["TestBottom"],
                     "HydraulicUnitType": excluded["HydraulicUnitType"],
@@ -104,6 +145,7 @@ class NMAHydraulicsDataBackfill(Transferer):
             "GlobalID": val("GlobalID"),
             "PointID": val("PointID"),
             "HydraulicUnit": val("HydraulicUnit"),
+            "thing_id": self._thing_id_cache.get(val("PointID")),
             "TestTop": as_int("TestTop"),
             "TestBottom": as_int("TestBottom"),
             "HydraulicUnitType": val("HydraulicUnitType"),
@@ -139,13 +181,13 @@ class NMAHydraulicsDataBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = NMAHydraulicsDataBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = HydraulicsDataTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.hydraulicsdata`
+    # Allow running via `python -m transfers.hydraulicsdata`
     run()
 
 # ============= EOF =============================================

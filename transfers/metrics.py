@@ -37,6 +37,7 @@ from db import (
     PermissionHistory,
     ThingGeologicFormationAssociation,
     ChemistrySampleInfo,
+    NMAHydraulicsData,
     SurfaceWaterData,
     NMAWaterLevelsContinuousPressureDaily,
     ViewNGWMNWellConstruction,
@@ -107,6 +108,9 @@ class Metrics:
 
     def surface_water_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(SurfaceWaterData, *args, **kw)
+
+    def hydraulics_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMAHydraulicsData, name="HydraulicsData", *args, **kw)
 
     def chemistry_sampleinfo_metrics(self, *args, **kw) -> None:
         self._handle_metrics(

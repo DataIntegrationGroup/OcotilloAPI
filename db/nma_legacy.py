@@ -169,6 +169,9 @@ class NMAHydraulicsData(Base):
     global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
 
     cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
     hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)
@@ -195,6 +198,8 @@ class NMAHydraulicsData(Base):
     hydraulic_remarks: Mapped[Optional[str]] = mapped_column(
         "Hydraulic Remarks", String(200)
     )
+
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class ChemistrySampleInfo(Base):
