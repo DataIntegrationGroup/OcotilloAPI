@@ -47,6 +47,10 @@ def _next_sample_point_id() -> str:
     return f"SP-{uuid4().hex[:7]}"
 
 
+def _next_global_id():
+    return uuid4()
+
+
 @pytest.fixture(scope="module")
 def shared_well():
     """Create a single Thing for all tests in this module."""
@@ -101,7 +105,7 @@ def test_nma_minor_trace_chemistry_columns():
     from db.nma_legacy import NMAMinorTraceChemistry
 
     expected_columns = [
-        "id",  # new PK
+        "global_id",  # PK
         "chemistry_sample_info_id",  # new FK (UUID, not string)
         # from legacy
         "analyte",
@@ -140,6 +144,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
             analyte="As",
             sample_value=0.015,
@@ -158,7 +163,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.refresh(mtc)
 
         # Verify all columns saved
-        assert mtc.id is not None
+        assert mtc.global_id is not None
         assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
@@ -334,6 +339,7 @@ def test_assign_sample_info_to_mtc(shared_well):
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="As",
             sample_value=0.01,
             units="mg/L",
@@ -368,6 +374,7 @@ def test_append_mtc_to_sample_info(shared_well):
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="U",
             sample_value=15.2,
             units="ug/L",
@@ -428,6 +435,7 @@ def test_full_lineage_navigation(shared_well):
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="Se",
             sample_value=0.005,
             units="mg/L",
@@ -461,6 +469,7 @@ def test_reverse_lineage_navigation(shared_well):
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="Pb",
             sample_value=0.002,
             units="mg/L",
@@ -508,6 +517,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
         for analyte in ["As", "U", "Se", "Pb"]:
             sample_info.minor_trace_chemistries.append(
                 NMAMinorTraceChemistry(
+                    global_id=_next_global_id(),
                     analyte=analyte,
                     sample_value=0.01,
                     units="mg/L",
@@ -629,6 +639,7 @@ def test_multiple_mtc_per_sample_info(shared_well):
         for analyte in analytes:
             sample_info.minor_trace_chemistries.append(
                 NMAMinorTraceChemistry(
+                    global_id=_next_global_id(),
                     analyte=analyte,
                     sample_value=0.01,
                     units="mg/L",

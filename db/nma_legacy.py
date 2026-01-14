@@ -28,10 +28,11 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    SmallInteger,
     String,
     Text,
-    text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
@@ -156,6 +157,49 @@ class ViewNGWMNLithology(Base):
     strat_bottom_unit: Mapped[Optional[str]] = mapped_column(
         "StratBottomUnit", String(20)
     )
+
+
+class NMAHydraulicsData(Base):
+    """
+    Legacy HydraulicsData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_HydraulicsData"
+
+    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
+    data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
+    hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)
+    hl_day_1: Mapped[Optional[float]] = mapped_column("HL (day-1)", Float)
+    kh_ft_d: Mapped[Optional[float]] = mapped_column("KH (ft/d)", Float)
+    kv_ft_d: Mapped[Optional[float]] = mapped_column("KV (ft/d)", Float)
+    p_decimal_fraction: Mapped[Optional[float]] = mapped_column(
+        "P (decimal fraction)", Float
+    )
+    s_dimensionless: Mapped[Optional[float]] = mapped_column("S (dimensionless)", Float)
+    ss_ft_1: Mapped[Optional[float]] = mapped_column("Ss (ft-1)", Float)
+    sy_decimalfractn: Mapped[Optional[float]] = mapped_column(
+        "Sy (decimalfractn)", Float
+    )
+    t_ft2_d: Mapped[Optional[float]] = mapped_column("T (ft2/d)", Float)
+    k_darcy: Mapped[Optional[float]] = mapped_column("k (darcy)", Float)
+
+    test_bottom: Mapped[int] = mapped_column("TestBottom", SmallInteger, nullable=False)
+    test_top: Mapped[int] = mapped_column("TestTop", SmallInteger, nullable=False)
+    hydraulic_unit: Mapped[Optional[str]] = mapped_column("HydraulicUnit", String(18))
+    hydraulic_unit_type: Mapped[Optional[str]] = mapped_column(
+        "HydraulicUnitType", String(2)
+    )
+    hydraulic_remarks: Mapped[Optional[str]] = mapped_column(
+        "Hydraulic Remarks", String(200)
+    )
+
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class ChemistrySampleInfo(Base):
@@ -299,7 +343,9 @@ class NMAMinorTraceChemistry(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
 
     # FK to ChemistrySampleInfo - required (no orphans)
     chemistry_sample_info_id: Mapped[uuid.UUID] = mapped_column(

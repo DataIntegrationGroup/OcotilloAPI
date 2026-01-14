@@ -116,7 +116,7 @@ class MinorTraceChemistryTransferer(Transferer):
             logger.warning("No valid rows to transfer")
             return
 
-        # Dedupe by unique key (chemistry_sample_info_id, analyte)
+        # Dedupe by GlobalID to avoid PK conflicts.
         rows = self._dedupe_rows(row_dicts)
         logger.info(f"Upserting {len(rows)} MinorTraceChemistry records")
 
@@ -127,7 +127,7 @@ class MinorTraceChemistryTransferer(Transferer):
             chunk = rows[i : i + self.batch_size]
             logger.info(f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows)")
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                constraint="uq_minor_trace_chemistry_sample_analyte",
+                index_elements=["GlobalID"],
                 set_={
                     "sample_value": excluded.sample_value,
                     "units": excluded.units,
@@ -164,7 +164,17 @@ class MinorTraceChemistryTransferer(Transferer):
             )
             return None
 
+        global_id = self._uuid_val(getattr(row, "GlobalID", None))
+        if global_id is None:
+            self._capture_error(
+                getattr(row, "GlobalID", None),
+                f"Invalid GlobalID: {getattr(row, 'GlobalID', None)}",
+                "GlobalID",
+            )
+            return None
+
         return {
+            "global_id": global_id,
             "chemistry_sample_info_id": sample_pt_id,
             "analyte": self._safe_str(row, "Analyte"),
             "sample_value": self._safe_float(row, "SampleValue"),
@@ -183,7 +193,9 @@ class MinorTraceChemistryTransferer(Transferer):
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
         deduped = {}
         for row in rows:
-            key = (row["chemistry_sample_info_id"], row["analyte"])
+            key = row.get("global_id")
+            if key is None:
+                continue
             deduped[key] = row
         return list(deduped.values())
 

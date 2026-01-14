@@ -240,3 +240,9 @@ python -m transfers.transfer
 ```
 
 Configure the `.env` file with the appropriate credentials before running transfers.
+
+To drop the existing schema and rebuild from migrations before transferring data, set:
+
+```bash
+export DROP_AND_REBUILD_DB=true
+```
