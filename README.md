@@ -166,7 +166,7 @@ curl "http://localhost:8000/ogc/collections/locations/items?filter=WITHIN(geomet
 Basic property filters are supported with `properties`:
 
 ```bash
-curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth=100"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth>=100 AND well_depth<=200"
 curl "http://localhost:8000/ogc/collections/wells/items?properties=well_purposes IN ('domestic','irrigation')"
 curl "http://localhost:8000/ogc/collections/wells/items?properties=well_casing_materials='PVC'"
 curl "http://localhost:8000/ogc/collections/wells/items?properties=well_screen_type='Steel'"
