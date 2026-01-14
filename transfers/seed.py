@@ -68,14 +68,15 @@ def ensure_seed_prereqs() -> None:
         init_parameter()
 
 
-def seed_data_exists() -> bool:
+def contact_data_exists() -> bool:
     with session_ctx() as s:
         return s.scalar(select(Contact.id).limit(1)) is not None
 
 
 def seed_all(n: int = 5, skip_if_exists: bool = False):
     """Seed roughly `n` of each main entity and connect them."""
-    if skip_if_exists and seed_data_exists():
+    if skip_if_exists and contact_data_exists():
+        print("Contact data exists; skipping seeding.")
         return
     ensure_seed_prereqs()
     new_mexico_bounds = [
@@ -455,6 +456,7 @@ def seed_all(n: int = 5, skip_if_exists: bool = False):
             print(f"Error committing seed data: {e}")
             raise
 
+    print("Seeding data finished.")
 
 if __name__ == "__main__":
     seed_all(5)
