@@ -165,6 +165,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         row_dicts = []
         skipped_orphan_count = 0
         skipped_sample_pt_id_count = 0
+        lookup_miss_count = 0
         for row in self.cleaned_df.to_dict("records"):
             row_dict = self._row_dict(row)
             if row_dict.get("SamplePtID") is None:
@@ -179,6 +180,7 @@ class ChemistrySampleInfoTransferer(Transferer):
             # Skip rows without valid thing_id (orphan prevention)
             if row_dict.get("thing_id") is None:
                 skipped_orphan_count += 1
+                lookup_miss_count += 1
                 logger.warning(
                     f"Skipping ChemistrySampleInfo OBJECTID={row_dict.get('OBJECTID')} "
                     f"SamplePointID={row_dict.get('SamplePointID')} - Thing not found"
@@ -195,6 +197,10 @@ class ChemistrySampleInfoTransferer(Transferer):
             logger.warning(
                 f"Skipped {skipped_orphan_count} ChemistrySampleInfo records without valid Thing "
                 f"(orphan prevention)"
+            )
+        if lookup_miss_count > 0:
+            logger.warning(
+                "ChemistrySampleInfo Thing lookup misses: %s", lookup_miss_count
             )
 
         rows = self._dedupe_rows(row_dicts, key="OBJECTID")
@@ -295,7 +301,7 @@ class ChemistrySampleInfoTransferer(Transferer):
             thing_id = self._thing_id_cache[normalized_sample_point_id]
         # If Thing not found, thing_id remains None and will be filtered out
         if thing_id is None and sample_point_id is not None:
-            logger.info(
+            logger.debug(
                 "ChemistrySampleInfo Thing lookup miss: SamplePointID=%s normalized=%s",
                 sample_point_id,
                 normalized_sample_point_id,

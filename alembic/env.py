@@ -158,14 +158,17 @@ def run_migrations_online() -> None:
             poolclass=pool.NullPool,
         )
 
-    with connectable.connect() as connection:
-        autocommit_conn = connection.execution_options(isolation_level="AUTOCOMMIT")
-        role_exists = autocommit_conn.execute(
+    with connectable.connect() as role_connection:
+        autocommit_role = role_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        role_exists = autocommit_role.execute(
             text("SELECT 1 FROM pg_roles WHERE rolname = 'app_read'")
         ).first()
         if not role_exists:
-            autocommit_conn.execute(text("CREATE ROLE app_read"))
+            autocommit_role.execute(text("CREATE ROLE app_read"))
 
+    with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -174,17 +177,21 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
-        alembic_logger.info("Alembic migrations completed; applying app_read grants")
-        autocommit_conn.execute(
+    alembic_logger.info("Alembic migrations completed; applying app_read grants")
+    with connectable.connect() as grant_connection:
+        autocommit_grants = grant_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        autocommit_grants.execute(
             text("GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read")
         )
-        autocommit_conn.execute(
+        autocommit_grants.execute(
             text(
                 "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
                 "GRANT SELECT ON TABLES TO app_read"
             )
         )
-        alembic_logger.info("Applied app_read grants")
+    alembic_logger.info("Applied app_read grants")
 
 
 if context.is_offline_mode():
