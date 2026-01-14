@@ -134,6 +134,11 @@ class Thing(
         "This indicates the target formation for the well, not the full stratigraphic column. "
         "For detailed depth-interval stratigraphy, see formation_associations.",
     )
+    nma_formation_zone: Mapped[str] = mapped_column(
+        String(25),
+        nullable=True,
+        comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
+    )
     # TODO: should this be required for every well in the database? AMMP review
     is_suitable_for_datalogger: Mapped[bool] = mapped_column(
         nullable=True,
