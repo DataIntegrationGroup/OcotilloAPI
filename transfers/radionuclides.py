@@ -229,8 +229,26 @@ class RadionuclidesTransferer(Transferer):
         self, rows: list[dict[str, Any]], key: str
     ) -> list[dict[str, Any]]:
         """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
+        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops
+        when inserting into the database.
+
+        For any given ``key`` value, only a single row is kept in the returned list.
+        If multiple rows share the same ``key`` value, the *last* occurrence in
+        ``rows`` overwrites earlier ones (i.e. "later rows win"), because the
+        internal mapping is updated on each encounter of that key.
+
+        This behavior is appropriate when:
+          * The input batch is ordered such that later rows represent the most
+            recent or authoritative data for a given key, and
+          * Only one row per key should be written in a single batch to prevent
+            repeated ON CONFLICT handling for the same key.
+
+        Callers should be aware that this can silently drop earlier rows with the
+        same key. If preserving all conflicting rows or applying a custom conflict
+        resolution strategy is important, the caller should:
+          * Pre-process and consolidate rows before passing them to this method, or
+          * Implement a different deduplication/merge strategy tailored to their
+            needs.
         """
         deduped = {}
         for row in rows:
