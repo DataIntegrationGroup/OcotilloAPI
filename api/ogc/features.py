@@ -35,11 +35,9 @@ def _parse_datetime(value: str) -> datetime:
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
     parsed = datetime.fromisoformat(text)
-    if isinstance(parsed, datetime):
-        if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=timezone.utc)
-        return parsed
-    return datetime.combine(parsed, datetime.min.time(), tzinfo=timezone.utc)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def _parse_datetime_range(value: str) -> Tuple[datetime | None, datetime | None]:
