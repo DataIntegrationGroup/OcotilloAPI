@@ -54,6 +54,7 @@ from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransfer
 from transfers.asset_transfer import AssetTransferer
 from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
 from transfers.hydraulicsdata import HydraulicsDataTransferer
+from transfers.radionuclides import RadionuclidesTransferer
 from transfers.ngwmn_views import (
     NGWMNLithologyTransferer,
     NGWMNWaterLevelsTransferer,
@@ -211,6 +212,7 @@ def transfer_all(metrics, limit=100):
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
+    transfer_radionuclides = get_bool_env("TRANSFER_RADIONUCLIDES", True)
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
     transfer_weather_data = get_bool_env("TRANSFER_WEATHER_DATA", True)
@@ -236,6 +238,7 @@ def transfer_all(metrics, limit=100):
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
@@ -258,6 +261,7 @@ def transfer_all(metrics, limit=100):
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
@@ -281,6 +285,7 @@ def _transfer_parallel(
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
@@ -317,6 +322,8 @@ def _transfer_parallel(
         parallel_tasks_1.append(
             ("ChemistrySampleInfo", ChemistrySampleInfoTransferer, flags)
         )
+    if transfer_radionuclides:
+        parallel_tasks_1.append(("Radionuclides", RadionuclidesTransferer, flags))
     if transfer_ngwmn_views:
         parallel_tasks_1.append(
             ("NGWMNWellConstruction", NGWMNWellConstructionTransferer, flags)
@@ -397,6 +404,8 @@ def _transfer_parallel(
         metrics.hydraulics_data_metrics(*results_map["HydraulicsData"])
     if "ChemistrySampleInfo" in results_map and results_map["ChemistrySampleInfo"]:
         metrics.chemistry_sampleinfo_metrics(*results_map["ChemistrySampleInfo"])
+    if "Radionuclides" in results_map and results_map["Radionuclides"]:
+        metrics.radionuclides_metrics(*results_map["Radionuclides"])
     if "NGWMNWellConstruction" in results_map and results_map["NGWMNWellConstruction"]:
         metrics.ngwmn_well_construction_metrics(*results_map["NGWMNWellConstruction"])
     if "NGWMNWaterLevels" in results_map and results_map["NGWMNWaterLevels"]:
@@ -480,6 +489,7 @@ def _transfer_sequential(
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
@@ -515,20 +525,6 @@ def _transfer_sequential(
         results = _execute_transfer(WaterLevelTransferer, flags=flags)
         metrics.water_level_metrics(*results)
 
-    if transfer_pressure:
-        message("TRANSFERRING WATER LEVELS PRESSURE")
-        results = _execute_transfer(
-            WaterLevelsContinuousPressureTransferer, flags=flags
-        )
-        metrics.pressure_metrics(*results)
-
-    if transfer_acoustic:
-        message("TRANSFERRING WATER LEVELS ACOUSTIC")
-        results = _execute_transfer(
-            WaterLevelsContinuousAcousticTransferer, flags=flags
-        )
-        metrics.acoustic_metrics(*results)
-
     if transfer_link_ids:
         message("TRANSFERRING LINK IDS")
         results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
@@ -561,6 +557,11 @@ def _transfer_sequential(
         results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
         metrics.chemistry_sampleinfo_metrics(*results)
 
+    if transfer_radionuclides:
+        message("TRANSFERRING RADIONUCLIDES")
+        results = _execute_transfer(RadionuclidesTransferer, flags=flags)
+        metrics.radionuclides_metrics(*results)
+
     if transfer_ngwmn_views:
         message("TRANSFERRING NGWMN WELL CONSTRUCTION")
         results = _execute_transfer(NGWMNWellConstructionTransferer, flags=flags)
@@ -588,6 +589,20 @@ def _transfer_sequential(
         message("TRANSFERRING MINOR TRACE CHEMISTRY")
         results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
         metrics.minor_trace_chemistry_metrics(*results)
+
+    if transfer_pressure:
+        message("TRANSFERRING WATER LEVELS PRESSURE")
+        results = _execute_transfer(
+            WaterLevelsContinuousPressureTransferer, flags=flags
+        )
+        metrics.pressure_metrics(*results)
+
+    if transfer_acoustic:
+        message("TRANSFERRING WATER LEVELS ACOUSTIC")
+        results = _execute_transfer(
+            WaterLevelsContinuousAcousticTransferer, flags=flags
+        )
+        metrics.acoustic_metrics(*results)
 
 
 def main():

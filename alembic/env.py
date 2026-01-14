@@ -4,7 +4,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool, create_engine
+from sqlalchemy import create_engine, engine_from_config, pool, text
 
 from services.util import get_bool_env
 
@@ -164,6 +164,22 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+            connection.execute(
+                text(
+                    """
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
+                            CREATE ROLE app_read;
+                        END IF;
+                        GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read;
+                        ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                        GRANT SELECT ON TABLES TO app_read;
+                    END
+                    $$;
+                    """
+                )
+            )
 
 
 if context.is_offline_mode():
