@@ -83,7 +83,7 @@ def upgrade() -> None:
     # Create NMA_MinorTraceChemistry table
     op.create_table(
         "NMA_MinorTraceChemistry",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("GlobalID", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
             "chemistry_sample_info_id",
             postgresql.UUID(as_uuid=True),
@@ -100,7 +100,7 @@ def upgrade() -> None:
         sa.Column("uncertainty", sa.Float(), nullable=True),
         sa.Column("volume", sa.Float(), nullable=True),
         sa.Column("volume_unit", sa.String(20), nullable=True),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("GlobalID"),
         sa.ForeignKeyConstraint(
             ["chemistry_sample_info_id"],
             ["NMA_Chemistry_SampleInfo.SamplePtID"],
