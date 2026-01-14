@@ -66,6 +66,37 @@ def _coerce_value(value: str) -> Any:
         return stripped
 
 
+def _split_and_clauses(properties: str) -> list[str]:
+    normalized = " ".join(properties.split())
+    lower = normalized.lower()
+    clauses = []
+    start = 0
+    needle = " and "
+    while True:
+        idx = lower.find(needle, start)
+        if idx == -1:
+            clause = normalized[start:].strip()
+            if clause:
+                clauses.append(clause)
+            break
+        clause = normalized[start:idx].strip()
+        if clause:
+            clauses.append(clause)
+        start = idx + len(needle)
+    return clauses
+
+
+def _split_field_and_value(text: str) -> tuple[str | None, str | None]:
+    left, sep, right = text.partition("=")
+    if not sep:
+        return None, None
+    field = left.strip()
+    value = right.strip()
+    if not field or not value:
+        return None, None
+    return field, value
+
+
 def _apply_properties_filter(
     query,
     properties: str,
@@ -73,11 +104,7 @@ def _apply_properties_filter(
     relationship_map: Dict[str, Any] | None = None,
 ):
     relationship_map = relationship_map or {}
-    clauses = [
-        clause.strip()
-        for clause in re.split(r"\s+AND\s+", properties, flags=re.IGNORECASE)
-        if clause.strip()
-    ]
+    clauses = _split_and_clauses(properties)
     for clause in clauses:
         in_match = re.match(
             r"^\s*(\w+)\s+IN\s+\((.+)\)\s*$", clause, flags=re.IGNORECASE
@@ -98,10 +125,8 @@ def _apply_properties_filter(
                 column_map[field].in_([_coerce_value(v) for v in values])
             )
             continue
-        eq_match = re.match(r"^\s*(\w+)\s*=\s*(.+)\s*$", clause)
-        if eq_match:
-            field = eq_match.group(1)
-            value = eq_match.group(2)
+        field, value = _split_field_and_value(clause)
+        if field and value:
             if field in relationship_map:
                 query = query.where(relationship_map[field]([_coerce_value(value)]))
                 continue
