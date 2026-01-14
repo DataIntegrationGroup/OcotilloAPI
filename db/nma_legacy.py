@@ -375,7 +375,7 @@ class NMAMinorTraceChemistry(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text)
     analyses_agency: Mapped[Optional[str]] = mapped_column(String(100))
     uncertainty: Mapped[Optional[float]] = mapped_column(Float)
-    volume: Mapped[Optional[float]] = mapped_column(Float)
+    volume: Mapped[Optional[int]] = mapped_column(Integer)
     volume_unit: Mapped[Optional[str]] = mapped_column(String(20))
 
     # --- Relationships ---

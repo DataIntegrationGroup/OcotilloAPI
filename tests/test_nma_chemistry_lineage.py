@@ -155,7 +155,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
             notes="Test measurement",
             analyses_agency="NMBGMR",
             uncertainty=0.002,
-            volume=500.0,
+            volume=500,
             volume_unit="mL",
         )
         session.add(mtc)
@@ -174,7 +174,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         assert mtc.notes == "Test measurement"
         assert mtc.analyses_agency == "NMBGMR"
         assert mtc.uncertainty == 0.002
-        assert mtc.volume == 500.0
+        assert mtc.volume == 500
         assert mtc.volume_unit == "mL"
 
         session.delete(sample_info)
