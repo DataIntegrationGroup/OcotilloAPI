@@ -24,20 +24,16 @@ from fastapi.openapi.docs import (
 )
 from fastapi.openapi.utils import get_openapi
 
-from .initializers import (
-    register_routes,
-    erase_and_rebuild_db,
-)
+from .initializers import register_routes
 from .settings import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Application lifespan event handler to initialize the database and lexicon.
+    Application lifespan event handler to seed data in development mode.
     """
     if settings.get_enum("MODE") == "development":
-        erase_and_rebuild_db()
         from transfers.seed import seed_all
 
         seed_all(10)
