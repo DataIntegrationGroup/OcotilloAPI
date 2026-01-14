@@ -34,13 +34,12 @@ from .settings import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Application lifespan event handler to initialize the database and lexicon.
+    Application lifespan event handler to seed data in development mode.
     """
     if settings.get_enum("MODE") == "development":
-        erase_and_rebuild_db()
         from transfers.seed import seed_all
 
-        seed_all(10)
+        seed_all(10, skip_if_exists=True)
 
     register_routes(app)
     yield

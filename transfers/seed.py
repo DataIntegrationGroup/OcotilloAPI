@@ -54,8 +54,31 @@ def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
     )
 
 
-def seed_all(n: int = 5):
+def ensure_seed_prereqs() -> None:
+    """Ensure that lexicon and parameter data exist before seeding."""
+    from core.initializers import init_lexicon, init_parameter
+
+    with session_ctx() as s:
+        has_lexicon = s.scalar(select(LexiconTerm.id).limit(1)) is not None
+        has_parameter = s.scalar(select(Parameter.id).limit(1)) is not None
+
+    if not has_lexicon:
+        init_lexicon()
+    if not has_parameter:
+        init_parameter()
+
+
+def contact_data_exists() -> bool:
+    with session_ctx() as s:
+        return s.scalar(select(Contact.id).limit(1)) is not None
+
+
+def seed_all(n: int = 5, skip_if_exists: bool = False):
     """Seed roughly `n` of each main entity and connect them."""
+    if skip_if_exists and contact_data_exists():
+        print("Contact data exists; skipping seeding.")
+        return
+    ensure_seed_prereqs()
     new_mexico_bounds = [
         (36.9, -106.6),  # Taos area
         (35.1, -106.6),  # Albuquerque
@@ -432,6 +455,8 @@ def seed_all(n: int = 5):
             s.rollback()
             print(f"Error committing seed data: {e}")
             raise
+
+    print("Seeding data finished.")
 
 
 if __name__ == "__main__":
