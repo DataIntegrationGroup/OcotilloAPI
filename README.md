@@ -121,6 +121,56 @@ alembic upgrade head
 # start development server
 uvicorn app.main:app --reload
 ```
+
+---
+
+## 🗺️ OGC API - Features
+
+The API exposes OGC API - Features endpoints under `/ogc`.
+
+### Landing & metadata
+
+```bash
+curl http://localhost:8000/ogc
+curl http://localhost:8000/ogc/conformance
+curl http://localhost:8000/ogc/collections
+curl http://localhost:8000/ogc/collections/locations
+```
+
+### Items (GeoJSON)
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?limit=10&offset=0"
+curl "http://localhost:8000/ogc/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogc/collections/springs/items?limit=5"
+curl "http://localhost:8000/ogc/collections/locations/items/123"
+```
+
+### BBOX + datetime filters
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogc/collections/wells/items?datetime=2020-01-01/2024-01-01"
+```
+
+### Polygon filter (CQL2 text)
+
+Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+```
+
+### Property filter (CQL)
+
+Basic property filters are supported with `properties`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth=100"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_purposes IN ('domestic','irrigation')"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_casing_materials='PVC'"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_screen_type='Steel'"
+```
     
 </td>
 <td>
