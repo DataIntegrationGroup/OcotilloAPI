@@ -51,7 +51,24 @@ class ChemistrySampleInfoTransferer(Transferer):
         """Build cache of Thing.name -> thing.id to prevent orphan records."""
         with session_ctx() as session:
             things = session.query(Thing.name, Thing.id).all()
-            self._thing_id_cache = {name: thing_id for name, thing_id in things}
+            normalized = {}
+            for name, thing_id in things:
+                normalized_name = self._normalize_for_thing_match(name)
+                if not normalized_name:
+                    continue
+                if (
+                    normalized_name in normalized
+                    and normalized[normalized_name] != thing_id
+                ):
+                    logger.warning(
+                        "Duplicate Thing match key '%s' for ids %s and %s",
+                        normalized_name,
+                        normalized[normalized_name],
+                        thing_id,
+                    )
+                    continue
+                normalized[normalized_name] = thing_id
+            self._thing_id_cache = normalized
         logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -72,7 +89,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         valid_point_ids = set(self._thing_id_cache.keys())
 
         # Normalize SamplePointID to handle suffixed sample counts (e.g. AB-0002A -> AB-0002).
-        normalized_ids = df["SamplePointID"].apply(self._normalize_sample_point_id)
+        normalized_ids = df["SamplePointID"].apply(self._normalize_for_thing_match)
 
         # Filter to rows where SamplePointID exists as a Thing.name
         before_count = len(df)
@@ -103,6 +120,16 @@ class ChemistrySampleInfoTransferer(Transferer):
         if match:
             return match.group("base")
         return text
+
+    @classmethod
+    def _normalize_for_thing_match(cls, value: Any) -> Optional[str]:
+        """
+        Normalize IDs for Thing matching (strip suffixes, trim, uppercase).
+        """
+        normalized = cls._normalize_sample_point_id(value)
+        if not normalized:
+            return None
+        return normalized.strip().upper()
 
     def _filter_to_valid_sample_pt_ids(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter to rows with a valid SamplePtID UUID (required for idempotent upserts)."""
@@ -259,7 +286,7 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         # Look up Thing by SamplePointID to prevent orphan records
         sample_point_id = val("SamplePointID")
-        normalized_sample_point_id = self._normalize_sample_point_id(sample_point_id)
+        normalized_sample_point_id = self._normalize_for_thing_match(sample_point_id)
         thing_id = None
         if (
             normalized_sample_point_id
@@ -267,6 +294,12 @@ class ChemistrySampleInfoTransferer(Transferer):
         ):
             thing_id = self._thing_id_cache[normalized_sample_point_id]
         # If Thing not found, thing_id remains None and will be filtered out
+        if thing_id is None and sample_point_id is not None:
+            logger.info(
+                "ChemistrySampleInfo Thing lookup miss: SamplePointID=%s normalized=%s",
+                sample_point_id,
+                normalized_sample_point_id,
+            )
 
         return {
             "SamplePtID": uuid_val("SamplePtID"),
@@ -288,6 +321,7 @@ class ChemistrySampleInfoTransferer(Transferer):
             "SampleNotes": str_val("SampleNotes"),
             "LocationId": uuid_val("LocationId"),
             "OBJECTID": val("OBJECTID"),
+            "thing_id": thing_id,
         }
 
     def _dedupe_rows(

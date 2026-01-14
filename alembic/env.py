@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 from logging.config import fileConfig
 
@@ -11,11 +12,12 @@ from services.util import get_bool_env
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+alembic_logger = logging.getLogger("alembic.env")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -171,15 +173,18 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
-            connection.execute(
-                text(
-                    """
-                    GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read;
-                    ALTER DEFAULT PRIVILEGES IN SCHEMA public
-                    GRANT SELECT ON TABLES TO app_read;
-                    """
-                )
+
+        alembic_logger.info("Alembic migrations completed; applying app_read grants")
+        autocommit_conn.execute(
+            text("GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read")
+        )
+        autocommit_conn.execute(
+            text(
+                "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                "GRANT SELECT ON TABLES TO app_read"
             )
+        )
+        alembic_logger.info("Applied app_read grants")
 
 
 if context.is_offline_mode():

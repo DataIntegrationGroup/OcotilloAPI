@@ -50,8 +50,13 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout),
         logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
     ],
+    force=True,
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# ensure root logger propagates INFO level to handlers
+logging.getLogger().setLevel(logging.INFO)
 
 # workaround to not redirect httpx logging
 logging.getLogger("httpx").setLevel(logging.WARNING)

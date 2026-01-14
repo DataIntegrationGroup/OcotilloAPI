@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -138,14 +139,27 @@ def _alembic_config() -> Config:
 
 
 def _drop_and_rebuild_db() -> None:
+    logger.info("Dropping schema public")
     with session_ctx() as session:
         session.execute(text("DROP SCHEMA public CASCADE"))
         session.execute(text("CREATE SCHEMA public"))
         session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         session.commit()
-    command.upgrade(_alembic_config(), "head")
+    logger.info("Running Alembic migrations")
+    try:
+        command.upgrade(_alembic_config(), "head")
+    except SystemExit as exc:
+        if exc.code not in (0, None):
+            raise
+        logger.info(
+            "Alembic upgrade returned SystemExit(%s); continuing transfer", exc.code
+        )
+    logger.info("Alembic migrations complete")
+    logger.info("Initializing lexicon data")
     init_lexicon()
+    logger.info("Initializing parameter data")
     init_parameter()
+    logger.info("Schema rebuild complete")
 
 
 @timeit
@@ -322,8 +336,6 @@ def _transfer_parallel(
         parallel_tasks_1.append(
             ("ChemistrySampleInfo", ChemistrySampleInfoTransferer, flags)
         )
-    if transfer_radionuclides:
-        parallel_tasks_1.append(("Radionuclides", RadionuclidesTransferer, flags))
     if transfer_ngwmn_views:
         parallel_tasks_1.append(
             ("NGWMNWellConstruction", NGWMNWellConstructionTransferer, flags)
@@ -340,10 +352,6 @@ def _transfer_parallel(
         )
     if transfer_weather_data:
         parallel_tasks_1.append(("WeatherData", WeatherDataTransferer, flags))
-    if transfer_minor_trace_chemistry:
-        parallel_tasks_1.append(
-            ("MinorTraceChemistry", MinorTraceChemistryTransferer, flags)
-        )
 
     # Track results for metrics
     results_map = {}
@@ -404,8 +412,6 @@ def _transfer_parallel(
         metrics.hydraulics_data_metrics(*results_map["HydraulicsData"])
     if "ChemistrySampleInfo" in results_map and results_map["ChemistrySampleInfo"]:
         metrics.chemistry_sampleinfo_metrics(*results_map["ChemistrySampleInfo"])
-    if "Radionuclides" in results_map and results_map["Radionuclides"]:
-        metrics.radionuclides_metrics(*results_map["Radionuclides"])
     if "NGWMNWellConstruction" in results_map and results_map["NGWMNWellConstruction"]:
         metrics.ngwmn_well_construction_metrics(*results_map["NGWMNWellConstruction"])
     if "NGWMNWaterLevels" in results_map and results_map["NGWMNWaterLevels"]:
@@ -421,8 +427,15 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
-    if "MinorTraceChemistry" in results_map and results_map["MinorTraceChemistry"]:
-        metrics.minor_trace_chemistry_metrics(*results_map["MinorTraceChemistry"])
+    if transfer_radionuclides:
+        message("TRANSFERRING RADIONUCLIDES")
+        results = _execute_transfer(RadionuclidesTransferer, flags=flags)
+        metrics.radionuclides_metrics(*results)
+
+    if transfer_minor_trace_chemistry:
+        message("TRANSFERRING MINOR TRACE CHEMISTRY")
+        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
+        metrics.minor_trace_chemistry_metrics(*results)
 
     # =========================================================================
     # PHASE 3: Sensors (Sequential - required before continuous water levels)
