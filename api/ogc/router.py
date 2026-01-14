@@ -14,7 +14,7 @@ from core.dependencies import session_dependency, viewer_dependency
 router = APIRouter(prefix="/ogc", tags=["ogc"])
 
 
-@router.get("")
+@router.get("/")
 def landing_page(request: Request) -> LandingPage:
     base = str(request.base_url).rstrip("/")
     return {
