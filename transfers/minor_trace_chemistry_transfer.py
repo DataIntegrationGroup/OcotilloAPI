@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -165,6 +165,7 @@ class MinorTraceChemistryTransferer(Transferer):
             return None
 
         return {
+            "global_id": self._uuid_val(getattr(row, "GlobalID", None)) or uuid4(),
             "chemistry_sample_info_id": sample_pt_id,
             "analyte": self._safe_str(row, "Analyte"),
             "sample_value": self._safe_float(row, "SampleValue"),

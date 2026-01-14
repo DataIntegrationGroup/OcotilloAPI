@@ -85,6 +85,11 @@ def upgrade() -> None:
         "NMA_MinorTraceChemistry",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column(
+            "GlobalID",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
             "chemistry_sample_info_id",
             postgresql.UUID(as_uuid=True),
             nullable=False,

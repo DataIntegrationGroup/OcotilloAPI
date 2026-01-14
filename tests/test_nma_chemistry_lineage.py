@@ -102,6 +102,7 @@ def test_nma_minor_trace_chemistry_columns():
 
     expected_columns = [
         "id",  # new PK
+        "global_id",
         "chemistry_sample_info_id",  # new FK (UUID, not string)
         # from legacy
         "analyte",
@@ -159,6 +160,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
 
         # Verify all columns saved
         assert mtc.id is not None
+        assert mtc.global_id is not None
         assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
