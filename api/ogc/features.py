@@ -164,7 +164,7 @@ def _latest_location_subquery():
             LocationThingAssociation.thing_id,
             func.max(LocationThingAssociation.effective_start).label("max_start"),
         )
-        .where(LocationThingAssociation.effective_end == None)
+        .where(LocationThingAssociation.effective_end is None)
         .group_by(LocationThingAssociation.thing_id)
         .subquery()
     )
