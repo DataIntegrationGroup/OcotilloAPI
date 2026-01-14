@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 import os
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
