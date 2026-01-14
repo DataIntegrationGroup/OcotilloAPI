@@ -343,9 +343,8 @@ class NMAMinorTraceChemistry(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     global_id: Mapped[uuid.UUID] = mapped_column(
-        "GlobalID", UUID(as_uuid=True), nullable=False, default=uuid.uuid4
+        "GlobalID", UUID(as_uuid=True), primary_key=True
     )
 
     # FK to ChemistrySampleInfo - required (no orphans)

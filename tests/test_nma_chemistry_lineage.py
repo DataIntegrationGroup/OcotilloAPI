@@ -101,8 +101,7 @@ def test_nma_minor_trace_chemistry_columns():
     from db.nma_legacy import NMAMinorTraceChemistry
 
     expected_columns = [
-        "id",  # new PK
-        "global_id",
+        "global_id",  # PK
         "chemistry_sample_info_id",  # new FK (UUID, not string)
         # from legacy
         "analyte",
@@ -159,7 +158,6 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.refresh(mtc)
 
         # Verify all columns saved
-        assert mtc.id is not None
         assert mtc.global_id is not None
         assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
