@@ -14,10 +14,10 @@
 # limitations under the License.
 # ===============================================================================
 """
-Orchestrates all backfills used in the staging CD pipeline.
+Orchestrates the backfill pipeline used in CD workflows.
 
 Preferred usage (avoids import path issues):
-    python -m transfers.backfill.staging --batch-size 1000
+    python -m transfers.backfill.backfill --batch-size 1000
 """
 
 import argparse
@@ -28,34 +28,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from transfers.backfill.ngwmn_views import run as run_ngwmn_views
-from transfers.backfill.waterlevelscontinuous_pressure_daily import (
-    run as run_pressure_daily,
-)
-from transfers.backfill.chemistry_sampleinfo import run as run_chemistry_sampleinfo
-from transfers.backfill.hydraulicsdata import run as run_hydraulicsdata
+
+from services.util import get_bool_env
 from transfers.logger import logger
 
 
 def run(batch_size: int = 1000) -> None:
     """
     Execute all backfill steps in a deterministic order.
-    """
-    steps = (
-        ("WaterLevelsContinuous_Pressure_Daily", run_pressure_daily),
-        ("Chemistry_SampleInfo", run_chemistry_sampleinfo),
-        ("HydraulicsData", run_hydraulicsdata),
-        ("NGWMN views", run_ngwmn_views),
-    )
 
-    for name, fn in steps:
+    Currently, no concrete backfill steps are registered. This function is kept
+    as a stable orchestration entry point (used by CD/CLI) and will be wired
+    up to real backfill steps in future refactoring work.
+    """
+    # NOTE: Intentionally empty; this serves as a placeholder until concrete
+    # backfill steps are implemented and registered in this tuple.
+    steps = ()
+    for name, fn, flag in steps:
+        if not get_bool_env(flag, True):
+            logger.info(f"Skipping backfill: {name} ({flag}=false)")
+            continue
         logger.info(f"Starting backfill: {name}")
         fn(batch_size)
         logger.info(f"Completed backfill: {name}")
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run staging backfills.")
+    parser = argparse.ArgumentParser(description="Run backfill pipeline.")
     parser.add_argument(
         "--batch-size",
         type=int,

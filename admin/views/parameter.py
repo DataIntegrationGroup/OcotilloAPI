@@ -28,19 +28,7 @@ class ParameterAdmin(OcotilloModelView):
     label = "Parameters"
     icon = "fa fa-flask"
 
-    column_list = [
-        "id",
-        "parameter_name",
-        "matrix",
-        "parameter_type",
-        "cas_number",
-        "default_unit",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "parameter_name",
         "matrix",
@@ -51,23 +39,17 @@ class ParameterAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("parameter_name", False)
+    fields_default_sort = [("parameter_name", False)]
 
-    search_fields = [
+    searchable_fields = [
         "parameter_name",
         "cas_number",
-    ]
-
-    column_filters = [
         "matrix",
         "parameter_type",
         "default_unit",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -102,19 +84,6 @@ class ParameterAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    labels = {
-        "id": "Parameter ID",
-        "parameter_name": "Parameter Name",
-        "matrix": "Matrix",
-        "parameter_type": "Parameter Type",
-        "cas_number": "CAS Number",
-        "default_unit": "Default Unit",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

@@ -29,7 +29,7 @@ reset_db.sh
 tests/uploads
 migrate.sh
 launcher.sh
-gcs_credentials.json
+*credentials.json
 transfers/data/assets*
 transfers/data/nma_csv_cache/*
 transfers/data/*.csv

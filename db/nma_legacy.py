@@ -16,8 +16,10 @@
 
 """Legacy NM Aquifer models copied from AMPAPI."""
 
+import uuid
+
 from datetime import date, datetime
-from typing import Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Float, Integer, SmallInteger, String
 from sqlalchemy import (
@@ -25,13 +27,20 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     String,
     Text,
+    text,
+    UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from db.base import Base
+
+if TYPE_CHECKING:
+    from db.thing import Thing
 
 
 class NMAWaterLevelsContinuousPressureDaily(Base):
@@ -195,38 +204,175 @@ class ChemistrySampleInfo(Base):
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
 
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
-    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(50))
-    sample_pt_id: Mapped[Optional[str]] = mapped_column("SamplePtID", String(50))
-    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(50))
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID", UUID(as_uuid=True), primary_key=True
+    )
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(18))
+    sample_point_id: Mapped[str] = mapped_column(
+        "SamplePointID", String(10), nullable=False
+    )
 
-    collection_date: Mapped[Optional[date]] = mapped_column("CollectionDate", Date)
+    # FK to Thing - required for all ChemistrySampleInfo records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    collection_date: Mapped[Optional[datetime]] = mapped_column(
+        "CollectionDate", DateTime
+    )
     collection_method: Mapped[Optional[str]] = mapped_column(
-        "CollectionMethod", String(100)
+        "CollectionMethod", String(50)
     )
-    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(100))
-    analyses_agency: Mapped[Optional[str]] = mapped_column(
-        "AnalysesAgency", String(100)
-    )
+    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(5))
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
 
-    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(100))
-    sample_material_not_h2o: Mapped[Optional[bool]] = mapped_column(
-        "SampleMaterialNotH2O", Boolean
+    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(50))
+    sample_material_not_h2o: Mapped[Optional[str]] = mapped_column(
+        "SampleMaterialNotH2O", String(100)
     )
-    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(100))
-    study_sample: Mapped[Optional[bool]] = mapped_column("StudySample", Boolean)
+    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(50))
+    study_sample: Mapped[Optional[str]] = mapped_column("StudySample", Text)
 
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(100))
-    data_quality: Mapped[Optional[str]] = mapped_column("DataQuality", String(100))
+    data_quality: Mapped[Optional[bool]] = mapped_column(
+        "DataQuality", Boolean, server_default=text("true")
+    )
     public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
 
-    added_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedDaytoDate", String(10)
-    )
-    added_month_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedMonthDaytoDate", String(10)
+    added_day_to_date: Mapped[Optional[bool]] = mapped_column("AddedDaytoDate", Boolean)
+    added_month_day_to_date: Mapped[Optional[bool]] = mapped_column(
+        "AddedMonthDaytoDate", Boolean
     )
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
+
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
+
+    # --- Relationships ---
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="chemistry_sample_infos"
+    )
+
+    minor_trace_chemistries: Mapped[List["NMAMinorTraceChemistry"]] = relationship(
+        "NMAMinorTraceChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
+
+
+class SurfaceWaterData(Base):
+    """
+    Legacy SurfaceWaterData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_SurfaceWaterData"
+
+    surface_id: Mapped[uuid.UUID] = mapped_column(
+        "SurfaceID", UUID(as_uuid=True), nullable=False
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    discharge: Mapped[Optional[str]] = mapped_column("Discharge", String(50))
+    discharge_method: Mapped[Optional[str]] = mapped_column(
+        "DischargeMethod", String(50)
+    )
+    discharge_rate: Mapped[Optional[float]] = mapped_column("DischargeRate", Float)
+    discharge_units: Mapped[Optional[str]] = mapped_column("DischargeUnits", String(3))
+    date_measured: Mapped[Optional[datetime]] = mapped_column("DateMeasured", DateTime)
+    discharge_source: Mapped[Optional[str]] = mapped_column(
+        "DischargeSource", String(50)
+    )
+    site_notes: Mapped[Optional[str]] = mapped_column("SiteNotes", String(200))
+    field_method_notes: Mapped[Optional[str]] = mapped_column(
+        "FieldMethodNotes", String(200)
+    )
+    formation_zone: Mapped[Optional[str]] = mapped_column("FormationZone", String(15))
+    aq_class: Mapped[Optional[str]] = mapped_column("AqClass", String(50))
+    source_notes: Mapped[Optional[str]] = mapped_column("SourceNotes", String(200))
+    data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
+
+
+class WeatherData(Base):
+    """
+    Legacy WeatherData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_WeatherData"
+
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
+    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WeatherID", UUID(as_uuid=True)
+    )
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+
+class NMAMinorTraceChemistry(Base):
+    """
+    Legacy MinorandTraceChemistry table from AMPAPI.
+
+    Stores minor and trace element chemistry results linked to a ChemistrySampleInfo.
+    """
+
+    __tablename__ = "NMA_MinorTraceChemistry"
+    __table_args__ = (
+        UniqueConstraint(
+            "chemistry_sample_info_id",
+            "analyte",
+            name="uq_minor_trace_chemistry_sample_analyte",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # FK to ChemistrySampleInfo - required (no orphans)
+    chemistry_sample_info_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # Legacy columns
+    analyte: Mapped[Optional[str]] = mapped_column(String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(Float)
+    units: Mapped[Optional[str]] = mapped_column(String(20))
+    symbol: Mapped[Optional[str]] = mapped_column(String(10))
+    analysis_method: Mapped[Optional[str]] = mapped_column(String(100))
+    analysis_date: Mapped[Optional[date]] = mapped_column(Date)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    analyses_agency: Mapped[Optional[str]] = mapped_column(String(100))
+    uncertainty: Mapped[Optional[float]] = mapped_column(Float)
+    volume: Mapped[Optional[float]] = mapped_column(Float)
+    volume_unit: Mapped[Optional[str]] = mapped_column(String(20))
+
+    # --- Relationships ---
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="minor_trace_chemistries"
+    )
+
+    @validates("chemistry_sample_info_id")
+    def validate_chemistry_sample_info_id(self, key, value):
+        """Prevent orphan NMAMinorTraceChemistry - must have a parent ChemistrySampleInfo."""
+        if value is None:
+            raise ValueError(
+                "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
+            )
+        return value
 
 
 # ============= EOF =============================================

@@ -20,7 +20,6 @@ Provides MS Access-like interface for CRUD operations on Location model.
 """
 from admin.fields import CoordinateHelpField
 from admin.views.base import OcotilloModelView
-from db.location import Location
 
 
 class LocationAdmin(OcotilloModelView):
@@ -43,19 +42,7 @@ class LocationAdmin(OcotilloModelView):
 
     # ========== List View (MS Access Datasheet View Equivalent) ==========
 
-    column_list = [
-        "id",
-        "description",
-        "county",
-        "state",
-        "elevation",
-        "quad_name",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "description",
         "elevation",
@@ -66,25 +53,17 @@ class LocationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)  # True = descending
+    fields_default_sort = [("created_at", True)]  # True = descending
 
-    search_fields = [
+    searchable_fields = [
         "description",
         "county",
         "state",
         "quad_name",
-    ]
-
-    column_filters = [
-        "county",
-        "state",
         "release_status",
         "elevation",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -116,8 +95,6 @@ class LocationAdmin(OcotilloModelView):
         "nma_site_date",
     ]
 
-    fields_default_sort = ["description", "point", "elevation", "county", "state"]
-
     exclude_fields_from_create = [
         "id",
         "created_at",
@@ -141,33 +118,3 @@ class LocationAdmin(OcotilloModelView):
     ]
 
     # ========== Field Labels and Help Text ==========
-
-    labels = {
-        "id": "Location ID",
-        "description": "Description",
-        "point": "Coordinates (WKT)",
-        "elevation": "Elevation (meters)",
-        "county": "County",
-        "state": "State",
-        "quad_name": "USGS Quad Name",
-        "release_status": "Release Status",
-        "nma_notes_location": "Location Notes",
-        "nma_coordinate_notes": "Coordinate Notes",
-        "nma_pk_location": "AMPAPI Location ID (Legacy)",
-        "nma_date_created": "AMPAPI Date Created (Legacy)",
-        "nma_site_date": "AMPAPI Site Date (Legacy)",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
-
-    help_texts = {
-        "description": "Brief description of this location (e.g., 'Well near Albuquerque')",
-        "elevation": "Elevation in meters. Vertical datum: NAVD88. Will be displayed in feet in reports.",
-        "release_status": "Data release status: 'draft' (internal only) or 'published' (public)",
-        "nma_notes_location": "General notes about this location",
-        "nma_coordinate_notes": "Notes about coordinate accuracy, source, or collection method",
-        "county": "New Mexico county name",
-        "state": "State (usually 'New Mexico')",
-        "quad_name": "USGS 7.5-minute quadrangle map name",
-    }

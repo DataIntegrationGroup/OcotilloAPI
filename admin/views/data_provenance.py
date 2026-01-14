@@ -28,22 +28,7 @@ class DataProvenanceAdmin(OcotilloModelView):
     label = "Data Provenance"
     icon = "fa fa-history"
 
-    column_list = [
-        "id",
-        "target_table",
-        "target_id",
-        "field_name",
-        "origin_type",
-        "origin_source",
-        "collection_method",
-        "accuracy_value",
-        "accuracy_unit",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "target_table",
         "target_id",
@@ -54,25 +39,18 @@ class DataProvenanceAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("created_at", True)
+    fields_default_sort = [("created_at", True)]
 
-    search_fields = [
+    searchable_fields = [
         "target_table",
         "field_name",
         "origin_source",
-    ]
-
-    column_filters = [
-        "target_table",
         "origin_type",
         "collection_method",
         "accuracy_unit",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -110,22 +88,6 @@ class DataProvenanceAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    labels = {
-        "id": "Provenance ID",
-        "target_table": "Target Table",
-        "target_id": "Target ID",
-        "field_name": "Field Name",
-        "origin_type": "Origin Type",
-        "origin_source": "Origin Source",
-        "collection_method": "Collection Method",
-        "accuracy_value": "Accuracy Value",
-        "accuracy_unit": "Accuracy Unit",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

@@ -15,12 +15,12 @@
 # ===============================================================================
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 from sqlalchemy import select, update
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette_admin import action
+from starlette_admin import ExportType, action
 from starlette_admin.contrib.sqla import ModelView
 
 from db.engine import session_ctx
@@ -39,6 +39,10 @@ class OcotilloModelView(ModelView):
     draft_value = "draft"
     published_value = "published"
     enable_publish_actions: bool = True
+    export_types: Sequence[ExportType] = (ExportType.CSV, ExportType.EXCEL)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     # ========= Permissions (RBAC) =========
     def _get_user(self, request: Request) -> Any:

@@ -23,15 +23,14 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from db import NMAWaterLevelsContinuousPressureDaily
-from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class NMAWaterLevelsContinuousPressureDailyBackfill(Transferer):
+class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
     """
-    Backfill for the legacy WaterLevelsContinuous_Pressure_Daily table.
+    Transfer for the legacy WaterLevelsContinuous_Pressure_Daily table.
 
     Uses the Transferer utilities to load the CSV into a DataFrame and performs
     a batch insert into the legacy table.
@@ -139,13 +138,13 @@ class NMAWaterLevelsContinuousPressureDailyBackfill(Transferer):
 
 
 def run(batch_size: int = 1000) -> None:
-    """Entrypoint to execute the backfill."""
-    transferer = NMAWaterLevelsContinuousPressureDailyBackfill(batch_size=batch_size)
+    """Entrypoint to execute the transfer."""
+    transferer = NMAWaterLevelsContinuousPressureDailyTransferer(batch_size=batch_size)
     transferer.transfer()
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.backfill.waterlevelscontinuous_pressure_daily`
+    # Allow running via `python -m transfers.waterlevelscontinuous_pressure_daily`
     run()
 
 # ============= EOF =============================================

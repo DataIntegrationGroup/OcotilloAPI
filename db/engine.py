@@ -15,6 +15,7 @@
 # ===============================================================================
 
 import asyncio
+import copy
 import getpass
 import os
 from contextlib import contextmanager
@@ -29,8 +30,30 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.util import await_only
 
+from services.util import get_bool_env
+
 load_dotenv()
 driver = os.environ.get("DB_DRIVER", "")
+
+
+def get_iam_login_token() -> str:
+    """
+    Return a short-lived IAM DB auth token for Cloud SQL Postgres.
+    """
+    from google.auth import default
+    from google.auth.transport.requests import Request
+
+    scopes = ["https://www.googleapis.com/auth/sqlservice.login"]
+    creds, _ = default()
+    if hasattr(creds, "with_scopes"):
+        creds = creds.with_scopes(scopes=scopes)
+    else:
+        creds = copy.copy(creds)
+        creds._scopes = scopes  # type: ignore[attr-defined]
+    creds.refresh(Request())
+    if not getattr(creds, "token", None):
+        raise RuntimeError("Unable to acquire IAM DB auth token.")
+    return creds.token
 
 
 async def get_async_engine():
@@ -48,14 +71,21 @@ async def get_async_engine():
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
-        connection = connector.connect_async(
-            instance_name,
-            "asyncpg",
-            db=database,
-            password=password,
-            user=user,
-        )
+        connect_kwargs = {
+            "db": database,
+            "user": user,
+            "enable_iam_auth": use_iam_auth,
+            "ip_type": ip_type,
+        }
+        if use_iam_auth:
+            connect_kwargs["password"] = get_iam_login_token()
+        else:
+            connect_kwargs["password"] = password
+
+        connection = connector.connect_async(instance_name, "asyncpg", **connect_kwargs)
 
         return AsyncAdapt_asyncpg_connection(
             engine.dialect.dbapi,
@@ -78,15 +108,25 @@ if driver == "cloudsql":
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         def getconn():
+            connect_kwargs = {
+                "user": user,
+                "db": database,
+                "ip_type": ip_type,
+                "enable_iam_auth": use_iam_auth,
+            }
+            if use_iam_auth:
+                connect_kwargs["password"] = get_iam_login_token()
+            else:
+                connect_kwargs["password"] = password
+
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
                 "pg8000",
-                user=user,
-                password=password,
-                db=database,
-                ip_type="public",
+                **connect_kwargs,
             )
             return conn
 
@@ -107,7 +147,7 @@ if driver == "cloudsql":
     connector = Connector()
     engine = init_connection_pool(connector)
 
-    async_engine = asyncio.run(get_async_engine())
+    # async_engine = asyncio.run(get_async_engine())
 
 else:
     # if driver == "sqlite":
@@ -161,7 +201,7 @@ else:
     #     listen(engine, "connect", on_connect)
 
 
-async_database_sessionmaker = async_sessionmaker(async_engine)
+# async_database_sessionmaker = async_sessionmaker(async_engine)
 database_sessionmaker = sessionmaker(engine, expire_on_commit=False)
 
 

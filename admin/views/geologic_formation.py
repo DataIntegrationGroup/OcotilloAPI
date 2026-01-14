@@ -29,16 +29,7 @@ class GeologicFormationAdmin(OcotilloModelView):
     label = "Geologic Formations"
     icon = "fa fa-layer-group"
 
-    column_list = [
-        "id",
-        "formation_code",
-        "lithology",
-        "release_status",
-        "created_at",
-        "updated_by_name",
-    ]
-
-    column_sortable_list = [
+    sortable_fields = [
         "id",
         "formation_code",
         "lithology",
@@ -46,22 +37,15 @@ class GeologicFormationAdmin(OcotilloModelView):
         "created_at",
     ]
 
-    column_default_sort = ("formation_code", False)
+    fields_default_sort = [("formation_code", False)]
 
-    search_fields = [
+    searchable_fields = [
         "formation_code",
         "description",
         "lithology",
-    ]
-
-    column_filters = [
-        "lithology",
         "release_status",
         "created_at",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -95,17 +79,6 @@ class GeologicFormationAdmin(OcotilloModelView):
         "created_by_id",
         "created_by_name",
     ]
-
-    labels = {
-        "id": "Geologic Formation ID",
-        "formation_code": "Formation Code",
-        "description": "Description",
-        "lithology": "Lithology",
-        "release_status": "Release Status",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================
