@@ -15,19 +15,16 @@ COLLECTIONS: Dict[str, dict] = {
         "title": "Locations",
         "description": "Sample locations",
         "itemType": "feature",
-        "priority": "P0",
     },
     "wells": {
         "title": "Wells",
         "description": "Things filtered to water wells",
         "itemType": "feature",
-        "priority": "P0",
     },
     "springs": {
         "title": "Springs",
         "description": "Things filtered to springs",
         "itemType": "feature",
-        "priority": "P1",
     },
 }
 
