@@ -53,6 +53,7 @@ def get_terms_by_category(s, category_name: str) -> list[LexiconTerm]:
         )
     )
 
+
 def ensure_seed_prereqs() -> None:
     """Ensure that lexicon and parameter data exist before seeding."""
     from core.initializers import init_lexicon, init_parameter
