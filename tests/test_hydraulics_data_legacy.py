@@ -19,6 +19,7 @@ Unit tests for HydraulicsData legacy model.
 These tests verify the migration of columns from the legacy HydraulicsData table.
 Migrated columns:
 - GlobalID -> global_id
+- WellID -> well_id
 - PointID -> point_id
 - Data Source -> data_source
 - Cs (gal/d/ft) -> cs_gal_d_ft
@@ -37,6 +38,7 @@ Migrated columns:
 - HydraulicUnit -> hydraulic_unit
 - HydraulicUnitType -> hydraulic_unit_type
 - Hydraulic Remarks -> hydraulic_remarks
+- OBJECTID -> object_id
 - thing_id -> thing_id
 """
 
@@ -46,8 +48,8 @@ from db.engine import session_ctx
 from db.nma_legacy import NMAHydraulicsData
 
 
-def _next_global_id() -> str:
-    return str(uuid4())
+def _next_global_id():
+    return uuid4()
 
 
 # ===================== CREATE tests ==========================
@@ -56,6 +58,7 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
     with session_ctx() as session:
         record = NMAHydraulicsData(
             global_id=_next_global_id(),
+            well_id=uuid4(),
             point_id=water_well_thing.name,
             data_source="Legacy Source",
             cs_gal_d_ft=1.2,
@@ -74,6 +77,7 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
             hydraulic_unit="Unit A",
             hydraulic_unit_type="U",
             hydraulic_remarks="Test remarks",
+            object_id=101,
             thing_id=water_well_thing.id,
         )
         session.add(record)
@@ -81,10 +85,12 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
         session.refresh(record)
 
         assert record.global_id is not None
+        assert record.well_id is not None
         assert record.point_id == water_well_thing.name
         assert record.data_source == "Legacy Source"
         assert record.test_top == 30
         assert record.test_bottom == 120
+        assert record.object_id == 101
         assert record.thing_id == water_well_thing.id
 
         session.delete(record)
@@ -105,8 +111,10 @@ def test_create_hydraulics_data_minimal(water_well_thing):
         session.refresh(record)
 
         assert record.global_id is not None
+        assert record.well_id is None
         assert record.point_id is None
         assert record.data_source is None
+        assert record.object_id is None
         assert record.thing_id == water_well_thing.id
 
         session.delete(record)
@@ -139,6 +147,7 @@ def test_query_hydraulics_data_by_point_id(water_well_thing):
     with session_ctx() as session:
         record1 = NMAHydraulicsData(
             global_id=_next_global_id(),
+            well_id=uuid4(),
             point_id=water_well_thing.name,
             test_top=10,
             test_bottom=20,
@@ -217,6 +226,7 @@ def test_hydraulics_data_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
         "global_id",
+        "well_id",
         "point_id",
         "data_source",
         "cs_gal_d_ft",
@@ -235,6 +245,7 @@ def test_hydraulics_data_has_all_migrated_columns():
         "hydraulic_unit",
         "hydraulic_unit_type",
         "hydraulic_remarks",
+        "object_id",
         "thing_id",
     ]
 

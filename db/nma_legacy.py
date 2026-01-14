@@ -166,12 +166,16 @@ class NMAHydraulicsData(Base):
 
     __tablename__ = "NMA_HydraulicsData"
 
-    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
     cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
     hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)
@@ -262,6 +266,13 @@ class ChemistrySampleInfo(Base):
 
     minor_trace_chemistries: Mapped[List["NMAMinorTraceChemistry"]] = relationship(
         "NMAMinorTraceChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    radionuclides: Mapped[List["NMARadionuclides"]] = relationship(
+        "NMARadionuclides",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -379,6 +390,68 @@ class NMAMinorTraceChemistry(Base):
             raise ValueError(
                 "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
             )
+        return value
+
+
+class NMARadionuclides(Base):
+    """
+    Legacy Radionuclides table from NM_Aquifer_Dev_DB.
+    """
+
+    __tablename__ = "NMA_Radionuclides"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
+    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, server_default=text("0")
+    )
+    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
+    uncertainty: Mapped[Optional[float]] = mapped_column(
+        "Uncertainty", Float, server_default=text("0")
+    )
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "AnalysisMethod", String(255)
+    )
+    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    volume: Mapped[Optional[int]] = mapped_column(
+        "Volume", Integer, server_default=text("0")
+    )
+    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
+
+    thing: Mapped["Thing"] = relationship("Thing")
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="radionuclides"
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        if value is None:
+            raise ValueError(
+                "NMARadionuclides requires a Thing (thing_id cannot be None)"
+            )
+        return value
+
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
+        if value is None:
+            raise ValueError("NMARadionuclides requires a SamplePtID")
         return value
 
 

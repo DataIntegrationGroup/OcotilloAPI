@@ -36,9 +36,11 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    list_fields = [
         "global_id",
+        "well_id",
         "point_id",
+        "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
         "test_top",
@@ -46,11 +48,14 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
-    column_sortable_list = [
+    sortable_fields = [
         "global_id",
+        "well_id",
         "point_id",
+        "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
         "test_top",
@@ -58,23 +63,16 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
-    search_fields = [
+    searchable_fields = [
         "global_id",
         "point_id",
         "hydraulic_unit",
         "hydraulic_remarks",
-    ]
-
-    column_filters = [
-        "hydraulic_unit",
-        "hydraulic_unit_type",
         "data_source",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -83,7 +81,9 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     fields = [
         "global_id",
+        "well_id",
         "point_id",
+        "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
         "hydraulic_remarks",
@@ -101,11 +101,14 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
-    labels = {
+    field_labels = {
         "global_id": "GlobalID",
+        "well_id": "WellID",
         "point_id": "PointID",
+        "thing_id": "Thing ID",
         "hydraulic_unit": "HydraulicUnit",
         "hydraulic_unit_type": "HydraulicUnitType",
         "hydraulic_remarks": "Hydraulic Remarks",
@@ -123,6 +126,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction": "P (decimal fraction)",
         "k_darcy": "k (darcy)",
         "data_source": "Data Source",
+        "object_id": "OBJECTID",
     }
 
 
