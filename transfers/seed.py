@@ -458,5 +458,6 @@ def seed_all(n: int = 5, skip_if_exists: bool = False):
 
     print("Seeding data finished.")
 
+
 if __name__ == "__main__":
     seed_all(5)
