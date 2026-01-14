@@ -13,7 +13,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from sqlalchemy import exists, func, select
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 
 from core.constants import SRID_WGS84
 from db.location import Location, LocationThingAssociation
@@ -177,10 +177,10 @@ def _location_query():
     )
 
 
-def _thing_query(thing_type: str):
+def _thing_query(thing_type: str, eager_well_relationships: bool = False):
     lta_alias = aliased(LocationThingAssociation)
     latest_assoc = _latest_location_subquery()
-    return (
+    query = (
         select(
             Thing,
             ST_AsGeoJSON(Location.point).label("geojson"),
@@ -194,6 +194,13 @@ def _thing_query(thing_type: str):
         )
         .where(Thing.thing_type == thing_type)
     )
+    if eager_well_relationships:
+        query = query.options(
+            selectinload(Thing.well_purposes),
+            selectinload(Thing.well_casing_materials),
+            selectinload(Thing.screens),
+        )
+    return query
 
 
 def _apply_bbox_filter(query, bbox: str):
@@ -310,7 +317,7 @@ def get_items(
         datetime_column = Location.created_at
         relationship_map = {}
     elif collection_id == "wells":
-        query = _thing_query("water well")
+        query = _thing_query("water well", eager_well_relationships=True)
         column_map = {
             "id": Thing.id,
             "name": Thing.name,
@@ -416,7 +423,9 @@ def get_item(
     if collection_id == "locations":
         query = _location_query().where(Location.id == fid)
     elif collection_id == "wells":
-        query = _thing_query("water well").where(Thing.id == fid)
+        query = _thing_query("water well", eager_well_relationships=True).where(
+            Thing.id == fid
+        )
     elif collection_id == "springs":
         query = _thing_query("spring").where(Thing.id == fid)
     else:
