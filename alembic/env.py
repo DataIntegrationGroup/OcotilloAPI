@@ -157,6 +157,13 @@ def run_migrations_online() -> None:
         )
 
     with connectable.connect() as connection:
+        autocommit_conn = connection.execution_options(isolation_level="AUTOCOMMIT")
+        role_exists = autocommit_conn.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = 'app_read'")
+        ).first()
+        if not role_exists:
+            autocommit_conn.execute(text("CREATE ROLE app_read"))
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -167,16 +174,9 @@ def run_migrations_online() -> None:
             connection.execute(
                 text(
                     """
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
-                            CREATE ROLE app_read;
-                        END IF;
-                        GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read;
-                        ALTER DEFAULT PRIVILEGES IN SCHEMA public
-                        GRANT SELECT ON TABLES TO app_read;
-                    END
-                    $$;
+                    GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read;
+                    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                    GRANT SELECT ON TABLES TO app_read;
                     """
                 )
             )

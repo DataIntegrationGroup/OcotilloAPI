@@ -166,12 +166,16 @@ class NMAHydraulicsData(Base):
 
     __tablename__ = "NMA_HydraulicsData"
 
-    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
     cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
     hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)

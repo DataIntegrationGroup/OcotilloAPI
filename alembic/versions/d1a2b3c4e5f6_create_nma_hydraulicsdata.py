@@ -10,6 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "d1a2b3c4e5f6"
@@ -25,7 +26,13 @@ def upgrade() -> None:
     if not inspector.has_table("NMA_HydraulicsData"):
         op.create_table(
             "NMA_HydraulicsData",
-            sa.Column("GlobalID", sa.String(length=40), primary_key=True),
+            sa.Column(
+                "GlobalID",
+                postgresql.UUID(as_uuid=True),
+                primary_key=True,
+                nullable=False,
+            ),
+            sa.Column("WellID", postgresql.UUID(as_uuid=True), nullable=True),
             sa.Column("PointID", sa.String(length=50), nullable=True),
             sa.Column("HydraulicUnit", sa.String(length=18), nullable=True),
             sa.Column(
@@ -50,6 +57,23 @@ def upgrade() -> None:
             sa.Column("P (decimal fraction)", sa.Float(), nullable=True),
             sa.Column("k (darcy)", sa.Float(), nullable=True),
             sa.Column("Data Source", sa.String(length=255), nullable=True),
+            sa.Column("OBJECTID", sa.Integer(), nullable=True),
+        )
+        op.create_index(
+            "ix_nma_hydraulicsdata_objectid",
+            "NMA_HydraulicsData",
+            ["OBJECTID"],
+            unique=True,
+        )
+        op.create_index(
+            "ix_nma_hydraulicsdata_pointid",
+            "NMA_HydraulicsData",
+            ["PointID"],
+        )
+        op.create_index(
+            "ix_nma_hydraulicsdata_wellid",
+            "NMA_HydraulicsData",
+            ["WellID"],
         )
 
 
@@ -58,4 +82,7 @@ def downgrade() -> None:
     bind = op.get_bind()
     inspector = inspect(bind)
     if inspector.has_table("NMA_HydraulicsData"):
+        op.drop_index("ix_nma_hydraulicsdata_wellid", table_name="NMA_HydraulicsData")
+        op.drop_index("ix_nma_hydraulicsdata_pointid", table_name="NMA_HydraulicsData")
+        op.drop_index("ix_nma_hydraulicsdata_objectid", table_name="NMA_HydraulicsData")
         op.drop_table("NMA_HydraulicsData")

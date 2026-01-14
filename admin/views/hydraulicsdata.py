@@ -38,6 +38,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     list_fields = [
         "global_id",
+        "well_id",
         "point_id",
         "thing_id",
         "hydraulic_unit",
@@ -47,10 +48,12 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
     sortable_fields = [
         "global_id",
+        "well_id",
         "point_id",
         "thing_id",
         "hydraulic_unit",
@@ -60,6 +63,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
     searchable_fields = [
@@ -77,6 +81,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     fields = [
         "global_id",
+        "well_id",
         "point_id",
         "thing_id",
         "hydraulic_unit",
@@ -96,10 +101,12 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction",
         "k_darcy",
         "data_source",
+        "object_id",
     ]
 
     field_labels = {
         "global_id": "GlobalID",
+        "well_id": "WellID",
         "point_id": "PointID",
         "thing_id": "Thing ID",
         "hydraulic_unit": "HydraulicUnit",
@@ -119,6 +126,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction": "P (decimal fraction)",
         "k_darcy": "k (darcy)",
         "data_source": "Data Source",
+        "object_id": "OBJECTID",
     }
 
 

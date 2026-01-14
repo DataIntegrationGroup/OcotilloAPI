@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
+import uuid
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -100,6 +101,7 @@ class HydraulicsDataTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["GlobalID"],
                 set_={
+                    "WellID": excluded["WellID"],
                     "PointID": excluded["PointID"],
                     "HydraulicUnit": excluded["HydraulicUnit"],
                     "thing_id": excluded["thing_id"],
@@ -119,6 +121,7 @@ class HydraulicsDataTransferer(Transferer):
                     "P (decimal fraction)": excluded["P (decimal fraction)"],
                     "k (darcy)": excluded["k (darcy)"],
                     "Data Source": excluded["Data Source"],
+                    "OBJECTID": excluded["OBJECTID"],
                 },
             )
             session.execute(stmt)
@@ -132,6 +135,17 @@ class HydraulicsDataTransferer(Transferer):
                 return None
             return v
 
+        def as_uuid(key: str) -> Optional[uuid.UUID]:
+            v = val(key)
+            if v is None:
+                return None
+            if isinstance(v, uuid.UUID):
+                return v
+            try:
+                return uuid.UUID(str(v))
+            except (ValueError, TypeError):
+                return None
+
         def as_int(key: str) -> Optional[int]:
             v = val(key)
             if v is None:
@@ -142,7 +156,8 @@ class HydraulicsDataTransferer(Transferer):
                 return None
 
         return {
-            "GlobalID": val("GlobalID"),
+            "GlobalID": as_uuid("GlobalID"),
+            "WellID": as_uuid("WellID"),
             "PointID": val("PointID"),
             "HydraulicUnit": val("HydraulicUnit"),
             "thing_id": self._thing_id_cache.get(val("PointID")),
@@ -162,6 +177,7 @@ class HydraulicsDataTransferer(Transferer):
             "P (decimal fraction)": val("P (decimal fraction)"),
             "k (darcy)": val("k (darcy)"),
             "Data Source": val("Data Source"),
+            "OBJECTID": as_int("OBJECTID"),
         }
 
     def _dedupe_rows(
