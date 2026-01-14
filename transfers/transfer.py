@@ -48,7 +48,11 @@ from transfers.link_ids_transfer import (
 from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
-from transfers.well_transfer import WellTransferer, WellScreenTransferer
+from transfers.well_transfer import (
+    WellTransferer,
+    WellScreenTransferer,
+    cleanup_locations,
+)
 from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
@@ -483,6 +487,10 @@ def _transfer_parallel(
             metrics.pressure_metrics(*results_map["Pressure"])
         if "Acoustic" in results_map and results_map["Acoustic"]:
             metrics.acoustic_metrics(*results_map["Acoustic"])
+
+    message("CLEANING UP LOCATIONS")
+    with session_ctx() as session:
+        cleanup_locations(session)
 
 
 def _transfer_sequential(
