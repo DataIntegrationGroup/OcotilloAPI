@@ -24,6 +24,7 @@ if config.config_file_name is not None:
 
 # from db import Base  # Import your Base from models/__init__.py
 from db import Base
+from db.initialization import grant_app_read_members
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
@@ -166,7 +167,7 @@ def run_migrations_online() -> None:
         ).first()
         if not role_exists:
             autocommit_role.execute(text("CREATE ROLE app_read"))
-        autocommit_role.execute(text("GRANT app_read TO PUBLIC"))
+        grant_app_read_members(autocommit_role)
 
     with connectable.connect() as connection:
         context.configure(

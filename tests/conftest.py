@@ -1,5 +1,7 @@
 import os
 
+from dotenv import load_dotenv
+
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -10,7 +12,6 @@ from db.initialization import (
     recreate_public_schema,
     sync_search_vector_triggers,
 )
-from dotenv import load_dotenv
 from tests import get_parameter_id
 
 

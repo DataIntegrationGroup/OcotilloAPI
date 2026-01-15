@@ -1,10 +1,14 @@
 """Utilities for preparing and keeping the database schema in sync."""
 
-from db import Base
+import os
+
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 from sqlalchemy_searchable import sync_trigger
 from sqlalchemy_utils import TSVectorType
+
+from db import Base
 
 APP_READ_GRANT_SQL = text(
     """
@@ -14,11 +18,42 @@ APP_READ_GRANT_SQL = text(
             EXECUTE 'GRANT USAGE ON SCHEMA public TO app_read';
             EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read';
             EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
-            EXECUTE 'GRANT app_read TO PUBLIC';
         END IF;
     END $$;
     """
 )
+
+GRANT_MEMBER_SQL = text(
+    """
+    DO $$
+    DECLARE
+        username text := :grantee;
+    BEGIN
+        IF username IS NULL OR username = '' THEN
+            RETURN;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = username) THEN
+            EXECUTE format('GRANT app_read TO %I', username);
+        END IF;
+    END $$;
+    """
+)
+
+
+def _parse_app_read_members() -> list[str]:
+    members = os.environ.get("APP_READ_MEMBERS", "")
+    return [member.strip() for member in members.split(",") if member.strip()]
+
+
+def grant_app_read_members(executor: Session | Connection | None) -> None:
+    """Grant app_read to each configured role if it exists."""
+    if executor is None:
+        return
+    members = _parse_app_read_members()
+    if not members:
+        return
+    for member in members:
+        executor.execute(GRANT_MEMBER_SQL, {"grantee": member})
 
 
 def recreate_public_schema(session: Session) -> None:
@@ -27,6 +62,7 @@ def recreate_public_schema(session: Session) -> None:
     session.execute(text("CREATE SCHEMA public"))
     session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
     session.execute(APP_READ_GRANT_SQL)
+    grant_app_read_members(session)
     session.commit()
 
 
