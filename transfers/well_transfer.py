@@ -439,6 +439,7 @@ class WellTransferer(Transferer):
         formation_code = row.FormationZone
         if formation_code:
             formation_code = formation_code.strip()
+            well.nma_formation_zone = formation_code
             if formation_code in formations:
                 # Formation exists: Set association
                 well.formation_completion_code = formations[
@@ -1325,6 +1326,7 @@ class WellTransferer(Transferer):
         if formation_code:
             formation_code = formation_code.strip() if formation_code else None
             if formation_code:
+                well.nma_formation_zone = formation_code
                 if formation_code in local_formations:
                     well.formation_completion_code = local_formations[
                         formation_code

@@ -59,13 +59,18 @@ from transfers.link_ids_transfer import (
 from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
-from transfers.well_transfer import WellTransferer, WellScreenTransferer
+from transfers.well_transfer import (
+    WellTransferer,
+    WellScreenTransferer,
+    cleanup_locations,
+)
 from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
 from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
 from transfers.hydraulicsdata import HydraulicsDataTransferer
 from transfers.radionuclides import RadionuclidesTransferer
+from transfers.major_chemistry import MajorChemistryTransferer
 from transfers.ngwmn_views import (
     NGWMNLithologyTransferer,
     NGWMNWaterLevelsTransferer,
@@ -236,6 +241,7 @@ def transfer_all(metrics, limit=100):
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
+    transfer_major_chemistry = get_bool_env("TRANSFER_MAJOR_CHEMISTRY", True)
     transfer_radionuclides = get_bool_env("TRANSFER_RADIONUCLIDES", True)
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
@@ -262,6 +268,7 @@ def transfer_all(metrics, limit=100):
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_major_chemistry,
             transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
@@ -285,6 +292,7 @@ def transfer_all(metrics, limit=100):
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_major_chemistry,
             transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
@@ -309,6 +317,7 @@ def _transfer_parallel(
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_major_chemistry,
     transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
@@ -437,6 +446,11 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
+    if transfer_major_chemistry:
+        message("TRANSFERRING MAJOR CHEMISTRY")
+        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
+        metrics.major_chemistry_metrics(*results)
+
     if transfer_radionuclides:
         message("TRANSFERRING RADIONUCLIDES")
         results = _execute_transfer(RadionuclidesTransferer, flags=flags)
@@ -512,6 +526,7 @@ def _transfer_sequential(
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_major_chemistry,
     transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
@@ -580,6 +595,11 @@ def _transfer_sequential(
         results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
         metrics.chemistry_sampleinfo_metrics(*results)
 
+    if transfer_major_chemistry:
+        message("TRANSFERRING MAJOR CHEMISTRY")
+        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
+        metrics.major_chemistry_metrics(*results)
+
     if transfer_radionuclides:
         message("TRANSFERRING RADIONUCLIDES")
         results = _execute_transfer(RadionuclidesTransferer, flags=flags)
@@ -626,6 +646,10 @@ def _transfer_sequential(
             WaterLevelsContinuousAcousticTransferer, flags=flags
         )
         metrics.acoustic_metrics(*results)
+
+    message("CLEANING UP LOCATIONS")
+    with session_ctx() as session:
+        cleanup_locations(session)
 
 
 def main():
