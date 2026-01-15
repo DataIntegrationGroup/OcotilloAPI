@@ -74,7 +74,7 @@ Feature: Minor Trace Chemistry Admin View
 
   # ========== Detail View ==========
 
-  @detail-view @bug
+  @detail-view @smoke
   Scenario: Detail page should load without error
     Given a minor trace chemistry record exists
     When I navigate to the detail page for that record
