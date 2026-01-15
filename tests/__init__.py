@@ -23,6 +23,8 @@ load_dotenv(override=True)
 
 # for safety dont test on the production database port
 os.environ["POSTGRES_PORT"] = "54321"
+# Always use test database, never dev
+os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 # this should not be needed since all Pydantic serializes all datetimes as UTC
 # furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility
