@@ -32,7 +32,8 @@ from sqlalchemy.util import await_only
 
 from services.util import get_bool_env
 
-load_dotenv()
+# Load .env file with override=True to ensure .env values take precedence over shell env vars
+load_dotenv(override=True)
 driver = os.environ.get("DB_DRIVER", "")
 
 
@@ -156,7 +157,7 @@ else:
     # elif driver == "postgres":
     password = os.environ.get("POSTGRES_PASSWORD", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
+    port = os.environ.get("POSTGRES_PORT", "54321")
     # Default to current OS user if POSTGRES_USER not set or empty
     user = os.environ.get("POSTGRES_USER", "").strip() or getpass.getuser()
     name = os.environ.get("POSTGRES_DB", "postgres")
