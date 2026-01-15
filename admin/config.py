@@ -39,6 +39,7 @@ from admin.views import (
     HydraulicsDataAdmin,
     ChemistrySampleInfoAdmin,
     RadionuclidesAdmin,
+    MinorTraceChemistryAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
     TransducerObservationAdmin,
@@ -69,6 +70,7 @@ from db.nma_legacy import (
     ChemistrySampleInfo,
     NMAHydraulicsData,
     NMARadionuclides,
+    NMAMinorTraceChemistry,
     SurfaceWaterData,
 )
 from db.geologic_formation import GeologicFormation
@@ -143,6 +145,7 @@ def create_admin(app):
     # Hydraulics
     admin.add_view(HydraulicsDataAdmin(NMAHydraulicsData))
     admin.add_view(RadionuclidesAdmin(NMARadionuclides))
+    admin.add_view(MinorTraceChemistryAdmin(NMAMinorTraceChemistry))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))
