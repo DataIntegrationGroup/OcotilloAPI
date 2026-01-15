@@ -65,7 +65,7 @@ class MinorTraceChemistryTransferer(Transferer):
         )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table)
+        input_df = read_csv(self.source_table, keep_default_na=False)
         # Filter to only include rows where ChemistrySampleInfo exists
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
@@ -223,12 +223,16 @@ class MinorTraceChemistryTransferer(Transferer):
         val = getattr(row, attr, None)
         if val is None or pd.isna(val):
             return None
+        if isinstance(val, str) and val.strip() == "":
+            return None
         return float(val)
 
     def _parse_date(self, row, attr: str) -> Optional[date]:
         """Parse a date value from the row."""
         val = getattr(row, attr, None)
         if val is None or pd.isna(val):
+            return None
+        if isinstance(val, str) and val.strip() == "":
             return None
 
         # Handle pandas Timestamp
