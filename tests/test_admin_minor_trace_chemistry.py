@@ -102,7 +102,7 @@ class TestMinorTraceChemistryAdminListView:
             elif isinstance(f, HasOne):
                 field_names.append(f.name)
             else:
-                field_names.append(getattr(f, 'name', str(f)))
+                field_names.append(getattr(f, "name", str(f)))
 
         required_columns = [
             "global_id",
@@ -161,11 +161,15 @@ class TestMinorTraceChemistryAdminFormView:
 
         # Check string fields
         for field in expected_string_fields:
-            assert field in configured_fields, f"Expected '{field}' in configured fields"
+            assert (
+                field in configured_fields
+            ), f"Expected '{field}' in configured fields"
 
         # Check that chemistry_sample_info HasOne relationship is configured
         has_one_fields = [f for f in configured_fields if isinstance(f, HasOne)]
-        assert len(has_one_fields) == 1, "Expected one HasOne field for parent relationship"
+        assert (
+            len(has_one_fields) == 1
+        ), "Expected one HasOne field for parent relationship"
         assert has_one_fields[0].name == "chemistry_sample_info"
 
     def test_field_labels_are_human_readable(self, view):

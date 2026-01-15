@@ -105,9 +105,9 @@ def step_impl(context: Context):
 
 @then("the response status should be {status_code:d}")
 def step_impl(context: Context, status_code: int):
-    assert context.response.status_code == status_code, (
-        f"Expected status {status_code}, got {context.response.status_code}"
-    )
+    assert (
+        context.response.status_code == status_code
+    ), f"Expected status {status_code}, got {context.response.status_code}"
 
 
 @then("the Minor Trace Chemistry admin view should have these fields configured:")
