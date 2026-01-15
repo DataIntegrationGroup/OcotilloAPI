@@ -39,6 +39,7 @@ from db import (
     ChemistrySampleInfo,
     NMAHydraulicsData,
     NMARadionuclides,
+    NMAMajorChemistry,
     SurfaceWaterData,
     NMAWaterLevelsContinuousPressureDaily,
     ViewNGWMNWellConstruction,
@@ -120,6 +121,9 @@ class Metrics:
 
     def radionuclides_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMARadionuclides, name="Radionuclides", *args, **kw)
+
+    def major_chemistry_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMAMajorChemistry, name="MajorChemistry", *args, **kw)
 
     def ngwmn_well_construction_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
