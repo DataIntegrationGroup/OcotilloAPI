@@ -1,17 +1,16 @@
 import os
-import uuid
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from dotenv import load_dotenv
-from sqlalchemy import text
-from sqlalchemy_utils import TSVectorType
-from sqlalchemy_searchable import sync_trigger
-
 from core.initializers import init_lexicon, init_parameter
 from db import *
 from db.engine import session_ctx
+from db.initialization import (
+    recreate_public_schema,
+    sync_search_vector_triggers,
+)
+from dotenv import load_dotenv
 from tests import get_parameter_id
 
 
@@ -29,39 +28,12 @@ def _alembic_config() -> Config:
 
 def _reset_schema() -> None:
     with session_ctx() as session:
-        session.execute(text("DROP SCHEMA public CASCADE"))
-        session.execute(text("CREATE SCHEMA public"))
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        session.execute(
-            text(
-                """
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
-                        EXECUTE 'GRANT USAGE ON SCHEMA public TO app_read';
-                        EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read';
-                        EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
-                    END IF;
-                END $$;
-                """
-            )
-        )
-        session.commit()
+        recreate_public_schema(session)
 
 
 def _sync_search_vectors() -> None:
     with session_ctx() as session:
-        conn = session.connection()
-        for table in Base.metadata.tables.values():
-            for column in table.columns:
-                if isinstance(column.type, TSVectorType):
-                    sync_trigger(
-                        conn,
-                        table.name,
-                        column.name,
-                        list(column.type.columns),
-                    )
-        session.commit()
+        sync_search_vector_triggers(session)
 
 
 @pytest.fixture(scope="session", autouse=True)
