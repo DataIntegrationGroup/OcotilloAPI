@@ -32,6 +32,20 @@ def _reset_schema() -> None:
         session.execute(text("DROP SCHEMA public CASCADE"))
         session.execute(text("CREATE SCHEMA public"))
         session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        session.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
+                        EXECUTE 'GRANT USAGE ON SCHEMA public TO app_read';
+                        EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read';
+                        EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
+                    END IF;
+                END $$;
+                """
+            )
+        )
         session.commit()
 
 
