@@ -1,10 +1,78 @@
+import os
 import uuid
 
 import pytest
+from alembic import command
+from alembic.config import Config
+from dotenv import load_dotenv
+from sqlalchemy import text
+from sqlalchemy_utils import TSVectorType
+from sqlalchemy_searchable import sync_trigger
 
+from core.initializers import init_lexicon, init_parameter
 from db import *
 from db.engine import session_ctx
-from tests import groundwater_level_parameter_id, pH_parameter_id
+from tests import get_parameter_id
+
+
+def pytest_configure():
+    load_dotenv(override=True)
+    os.environ.setdefault("POSTGRES_PORT", "54321")
+
+
+def _alembic_config() -> Config:
+    root = os.path.dirname(os.path.dirname(__file__))
+    cfg = Config(os.path.join(root, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+    return cfg
+
+
+def _reset_schema() -> None:
+    with session_ctx() as session:
+        session.execute(text("DROP SCHEMA public CASCADE"))
+        session.execute(text("CREATE SCHEMA public"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        session.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
+                        EXECUTE 'GRANT USAGE ON SCHEMA public TO app_read';
+                        EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read';
+                        EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
+                    END IF;
+                END $$;
+                """
+            )
+        )
+        session.commit()
+
+
+def _sync_search_vectors() -> None:
+    with session_ctx() as session:
+        conn = session.connection()
+        for table in Base.metadata.tables.values():
+            for column in table.columns:
+                if isinstance(column.type, TSVectorType):
+                    sync_trigger(
+                        conn,
+                        table.name,
+                        column.name,
+                        list(column.type.columns),
+                    )
+        session.commit()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _setup_test_db():
+    """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
+    _reset_schema()
+    command.upgrade(_alembic_config(), "head")
+    _sync_search_vectors()
+    init_lexicon()
+    init_parameter()
+    yield
 
 
 @pytest.fixture()
@@ -754,7 +822,7 @@ def groundwater_level_observation(sensor, groundwater_level_sample):
             observation_datetime="2025-01-01T00:04:00Z",
             sample_id=groundwater_level_sample.id,
             sensor_id=sensor.id,
-            parameter_id=groundwater_level_parameter_id,
+            parameter_id=get_parameter_id("groundwater level", "Field Parameter"),
             release_status="draft",
             value=10.0,
             unit="ft",
@@ -775,7 +843,7 @@ def water_chemistry_observation(sensor, water_chemistry_sample):
             observation_datetime="2025-01-01T00:03:00Z",
             sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            parameter_id=pH_parameter_id,
+            parameter_id=get_parameter_id("pH", "Field Parameter"),
             release_status="draft",
             value=4.0,
             unit="dimensionless",
@@ -814,7 +882,7 @@ def observation_to_delete(water_chemistry_sample, sensor):
             observation_datetime="2019-01-01T00:03:00Z",
             sample_id=water_chemistry_sample.id,
             sensor_id=sensor.id,
-            parameter_id=pH_parameter_id,
+            parameter_id=get_parameter_id("pH", "Field Parameter"),
             release_status="draft",
             value=4.0,
             unit="dimensionless",

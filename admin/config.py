@@ -36,7 +36,9 @@ from admin.views import (
     GroupAdmin,
     NotesAdmin,
     SampleAdmin,
+    HydraulicsDataAdmin,
     ChemistrySampleInfoAdmin,
+    RadionuclidesAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
     TransducerObservationAdmin,
@@ -63,7 +65,12 @@ from db.aquifer_system import AquiferSystem
 from db.group import Group
 from db.notes import Notes
 from db.sample import Sample
-from db.nma_legacy import ChemistrySampleInfo, SurfaceWaterData
+from db.nma_legacy import (
+    ChemistrySampleInfo,
+    NMAHydraulicsData,
+    NMARadionuclides,
+    SurfaceWaterData,
+)
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
 from db.transducer import TransducerObservation
@@ -132,6 +139,10 @@ def create_admin(app):
     admin.add_view(SampleAdmin(Sample))
     admin.add_view(ChemistrySampleInfoAdmin(ChemistrySampleInfo))
     admin.add_view(SurfaceWaterDataAdmin(SurfaceWaterData))
+
+    # Hydraulics
+    admin.add_view(HydraulicsDataAdmin(NMAHydraulicsData))
+    admin.add_view(RadionuclidesAdmin(NMARadionuclides))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))

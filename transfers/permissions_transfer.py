@@ -52,6 +52,7 @@ def transfer_permissions(session: Session) -> None:
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     wdf = replace_nans(wdf)
 
+    logger.info("Starting transfer: Permissions")
     transferred_wells = (
         session.query(Thing, Contact)
         .select_from(Thing)
@@ -61,6 +62,7 @@ def transfer_permissions(session: Session) -> None:
         .order_by(Thing.name)
         .all()
     )
+    created_count = 0
     visited = []
     for chunk in chunk_by_size(transferred_wells, 100):
         objs = []
@@ -77,12 +79,16 @@ def transfer_permissions(session: Session) -> None:
             )
             if permission:
                 objs.append(permission)
+                created_count += 1
 
             permission = _make_permission(
                 wdf, well, contact.id, "MonitorOK", "Water Level Sample"
             )
             if permission:
                 objs.append(permission)
+                created_count += 1
 
         session.bulk_save_objects(objs)
         session.commit()
+
+    logger.info("Completed transfer: Permissions (%s records)", created_count)

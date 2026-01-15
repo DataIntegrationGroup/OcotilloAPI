@@ -32,7 +32,8 @@ from core.settings import settings
 AUTHENTIK_ISSUER = os.environ.get("AUTHENTIK_URL")
 ALGORITHMS = ["RS256"]
 jwks = {}
-if AUTHENTIK_ISSUER:
+auth_disabled = int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0))
+if AUTHENTIK_ISSUER and not auth_disabled:
     JWKS_URL = f"{AUTHENTIK_ISSUER}jwks/"
 
     # Fetch JWKS (could also cache this)

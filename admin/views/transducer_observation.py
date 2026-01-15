@@ -32,7 +32,7 @@ class TransducerObservationAdmin(OcotilloModelView):
 
     # ========== List View ==========
 
-    column_list = [
+    sortable_fields = [
         "id",
         "observation_datetime",
         "value",
@@ -41,26 +41,14 @@ class TransducerObservationAdmin(OcotilloModelView):
         "release_status",
     ]
 
-    column_sortable_list = [
-        "id",
-        "observation_datetime",
-        "value",
-        "parameter_id",
-        "deployment_id",
-        "release_status",
-    ]
+    fields_default_sort = [("observation_datetime", True)]
 
-    column_default_sort = ("observation_datetime", True)
-
-    column_filters = [
+    searchable_fields = [
         "observation_datetime",
         "parameter_id",
         "deployment_id",
         "release_status",
     ]
-
-    can_export = True
-    export_types = ["csv", "excel"]
 
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -211,46 +199,6 @@ class TransducerObservationAdmin(OcotilloModelView):
         "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length",
         "nma_waterlevelscontinuous_acoustic_temperature_air",
     ]
-
-    labels = {
-        "id": "Observation ID",
-        "observation_datetime": "Observation Date/Time",
-        "value": "Value",
-        "parameter_id": "Parameter",
-        "deployment_id": "Deployment",
-        "release_status": "Release Status",
-        "nma_waterlevelscontinuous_pressure_conddl_ms_cm": "CONDDL (mS/cm)",
-        "nma_waterlevelscontinuous_pressure_checked_by": "Checked By",
-        "nma_waterlevelscontinuous_pressure_created": "Created",
-        "nma_waterlevelscontinuous_pressure_data_source": "Data Source",
-        "nma_waterlevelscontinuous_pressure_global_id": "Global ID",
-        "nma_waterlevelscontinuous_pressure_measurement_method": "Measurement Method",
-        "nma_waterlevelscontinuous_pressure_measuring_agency": "Measuring Agency",
-        "nma_waterlevelscontinuous_pressure_notes": "Notes",
-        "nma_waterlevelscontinuous_pressure_processed_by": "Processed By",
-        "nma_waterlevelscontinuous_pressure_qced": "QCed",
-        "nma_waterlevelscontinuous_pressure_temperature_water": "Temperature Water",
-        "nma_waterlevelscontinuous_pressure_updated": "Updated",
-        "nma_waterlevelscontinuous_pressure_water_head": "Water Head",
-        "nma_waterlevelscontinuous_pressure_water_head_adjusted": "Water Head Adjusted",
-        "nma_waterlevelscontinuous_acoustic_created": "Acoustic Created",
-        "nma_waterlevelscontinuous_acoustic_data_source": "Acoustic Data Source",
-        "nma_waterlevelscontinuous_acoustic_global_id": "Acoustic Global ID",
-        "nma_waterlevelscontinuous_acoustic_measurement_method": "Acoustic Measurement Method",
-        "nma_waterlevelscontinuous_acoustic_measuring_agency": "Acoustic Measuring Agency",
-        "nma_waterlevelscontinuous_acoustic_notes": "Acoustic Notes",
-        "nma_waterlevelscontinuous_acoustic_point_id": "Acoustic Point ID",
-        "nma_waterlevelscontinuous_acoustic_pre_process_data_field": "Acoustic Pre-Process Data Field",
-        "nma_waterlevelscontinuous_acoustic_public_release": "Acoustic Public Release",
-        "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp": "Acoustic Sensor Height Above MP",
-        "nma_waterlevelscontinuous_acoustic_serial_no": "Acoustic Serial No",
-        "nma_waterlevelscontinuous_acoustic_server_receipt_date": "Acoustic Server Receipt Date",
-        "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length": "Acoustic Speaker To Mic Length",
-        "nma_waterlevelscontinuous_acoustic_temperature_air": "Acoustic Temperature Air",
-        "created_at": "Created At",
-        "created_by_name": "Created By",
-        "updated_by_name": "Updated By",
-    }
 
 
 # ============= EOF =============================================

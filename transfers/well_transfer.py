@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import json
 import os
 import re
 import time
@@ -68,6 +67,8 @@ from transfers.util import (
     lexicon_mapper,
     filter_non_transferred_wells,
     MeasuringPointEstimator,
+    download_blob_json,
+    upload_blob_json,
 )
 
 ADDED = []
@@ -204,18 +205,14 @@ def get_cached_elevations() -> dict:
     bucket = get_storage_bucket()
     log_filename = "transfer_data/cached_elevations.json"
     blob = bucket.blob(log_filename)
-    if blob.exists():
-        lut = json.loads(blob.download_as_string())
-        return lut
-    else:
-        return {}
+    return download_blob_json(blob, default={})
 
 
 def dump_cached_elevations(lut: dict):
     bucket = get_storage_bucket()
     log_filename = "transfer_data/cached_elevations.json"
     blob = bucket.blob(log_filename)
-    blob.upload_from_string(json.dumps(lut))
+    upload_blob_json(blob, lut)
 
 
 class WellTransferer(Transferer):
@@ -442,6 +439,7 @@ class WellTransferer(Transferer):
         formation_code = row.FormationZone
         if formation_code:
             formation_code = formation_code.strip()
+            well.nma_formation_zone = formation_code
             if formation_code in formations:
                 # Formation exists: Set association
                 well.formation_completion_code = formations[
@@ -1328,6 +1326,7 @@ class WellTransferer(Transferer):
         if formation_code:
             formation_code = formation_code.strip() if formation_code else None
             if formation_code:
+                well.nma_formation_zone = formation_code
                 if formation_code in local_formations:
                     well.formation_completion_code = local_formations[
                         formation_code
@@ -1659,13 +1658,13 @@ def cleanup_locations(session):
     log_filename = "transfer_data/location_cleanup.json"
     blob = bucket.blob(log_filename)
     if blob.exists():
-        lut = json.loads(blob.download_as_string())
+        lut = download_blob_json(blob, default={})
 
     updates = []
     for i, location in enumerate(locations):
         if i and not i % 100:
             logger.info(f"Processing row {i} of {n}. dumping lut to {log_filename}")
-            blob.upload_from_string(json.dumps(lut))
+            upload_blob_json(blob, lut)
             session.bulk_update_mappings(Location, updates)
             session.commit()
             updates = []
@@ -1703,7 +1702,7 @@ def cleanup_locations(session):
             f"={quad_name}"
         )
 
-    blob.upload_from_string(json.dumps(lut))
+    upload_blob_json(blob, lut)
     if updates:
         session.bulk_update_mappings(Location, updates)
         session.commit()

@@ -1,21 +1,23 @@
 import copy
+import logging
 import os
 from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool, create_engine
+from sqlalchemy import create_engine, engine_from_config, pool, text
 
 from services.util import get_bool_env
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+alembic_logger = logging.getLogger("alembic.env")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -156,6 +158,16 @@ def run_migrations_online() -> None:
             poolclass=pool.NullPool,
         )
 
+    with connectable.connect() as role_connection:
+        autocommit_role = role_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        role_exists = autocommit_role.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = 'app_read'")
+        ).first()
+        if not role_exists:
+            autocommit_role.execute(text("CREATE ROLE app_read"))
+
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
@@ -164,6 +176,22 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+
+    alembic_logger.info("Alembic migrations completed; applying app_read grants")
+    with connectable.connect() as grant_connection:
+        autocommit_grants = grant_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        autocommit_grants.execute(
+            text("GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read")
+        )
+        autocommit_grants.execute(
+            text(
+                "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                "GRANT SELECT ON TABLES TO app_read"
+            )
+        )
+    alembic_logger.info("Applied app_read grants")
 
 
 if context.is_offline_mode():

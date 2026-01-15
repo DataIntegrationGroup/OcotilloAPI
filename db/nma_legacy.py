@@ -28,9 +28,11 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
@@ -157,6 +159,53 @@ class ViewNGWMNLithology(Base):
     )
 
 
+class NMAHydraulicsData(Base):
+    """
+    Legacy HydraulicsData table from AMPAPI.
+    """
+
+    __tablename__ = "NMA_HydraulicsData"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
+    data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
+    cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
+    hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)
+    hl_day_1: Mapped[Optional[float]] = mapped_column("HL (day-1)", Float)
+    kh_ft_d: Mapped[Optional[float]] = mapped_column("KH (ft/d)", Float)
+    kv_ft_d: Mapped[Optional[float]] = mapped_column("KV (ft/d)", Float)
+    p_decimal_fraction: Mapped[Optional[float]] = mapped_column(
+        "P (decimal fraction)", Float
+    )
+    s_dimensionless: Mapped[Optional[float]] = mapped_column("S (dimensionless)", Float)
+    ss_ft_1: Mapped[Optional[float]] = mapped_column("Ss (ft-1)", Float)
+    sy_decimalfractn: Mapped[Optional[float]] = mapped_column(
+        "Sy (decimalfractn)", Float
+    )
+    t_ft2_d: Mapped[Optional[float]] = mapped_column("T (ft2/d)", Float)
+    k_darcy: Mapped[Optional[float]] = mapped_column("k (darcy)", Float)
+
+    test_bottom: Mapped[int] = mapped_column("TestBottom", SmallInteger, nullable=False)
+    test_top: Mapped[int] = mapped_column("TestTop", SmallInteger, nullable=False)
+    hydraulic_unit: Mapped[Optional[str]] = mapped_column("HydraulicUnit", String(18))
+    hydraulic_unit_type: Mapped[Optional[str]] = mapped_column(
+        "HydraulicUnitType", String(2)
+    )
+    hydraulic_remarks: Mapped[Optional[str]] = mapped_column(
+        "Hydraulic Remarks", String(200)
+    )
+
+    thing: Mapped["Thing"] = relationship("Thing")
+
+
 class ChemistrySampleInfo(Base):
     """
     Legacy Chemistry SampleInfo table from AMPAPI.
@@ -164,44 +213,51 @@ class ChemistrySampleInfo(Base):
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
 
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID", UUID(as_uuid=True), primary_key=True
+    )
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(18))
+    sample_point_id: Mapped[str] = mapped_column(
+        "SamplePointID", String(10), nullable=False
+    )
 
-    # FK to Thing - required (no orphans)
+    # FK to Thing - required for all ChemistrySampleInfo records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(50))
-    sample_pt_id: Mapped[Optional[str]] = mapped_column("SamplePtID", String(50))
-    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(50))
-
-    collection_date: Mapped[Optional[date]] = mapped_column("CollectionDate", Date)
+    collection_date: Mapped[Optional[datetime]] = mapped_column(
+        "CollectionDate", DateTime
+    )
     collection_method: Mapped[Optional[str]] = mapped_column(
-        "CollectionMethod", String(100)
+        "CollectionMethod", String(50)
     )
-    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(100))
-    analyses_agency: Mapped[Optional[str]] = mapped_column(
-        "AnalysesAgency", String(100)
-    )
+    collected_by: Mapped[Optional[str]] = mapped_column("CollectedBy", String(5))
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
 
-    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(100))
-    sample_material_not_h2o: Mapped[Optional[bool]] = mapped_column(
-        "SampleMaterialNotH2O", Boolean
+    sample_type: Mapped[Optional[str]] = mapped_column("SampleType", String(50))
+    sample_material_not_h2o: Mapped[Optional[str]] = mapped_column(
+        "SampleMaterialNotH2O", String(100)
     )
-    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(100))
-    study_sample: Mapped[Optional[bool]] = mapped_column("StudySample", Boolean)
+    water_type: Mapped[Optional[str]] = mapped_column("WaterType", String(50))
+    study_sample: Mapped[Optional[str]] = mapped_column("StudySample", Text)
 
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(100))
-    data_quality: Mapped[Optional[str]] = mapped_column("DataQuality", String(100))
+    data_quality: Mapped[Optional[bool]] = mapped_column(
+        "DataQuality", Boolean, server_default=text("true")
+    )
     public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
 
-    added_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedDaytoDate", String(10)
-    )
-    added_month_day_to_date: Mapped[Optional[str]] = mapped_column(
-        "AddedMonthDaytoDate", String(10)
+    added_day_to_date: Mapped[Optional[bool]] = mapped_column("AddedDaytoDate", Boolean)
+    added_month_day_to_date: Mapped[Optional[bool]] = mapped_column(
+        "AddedMonthDaytoDate", Boolean
     )
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
+
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
 
     # --- Relationships ---
     thing: Mapped["Thing"] = relationship(
@@ -210,6 +266,20 @@ class ChemistrySampleInfo(Base):
 
     minor_trace_chemistries: Mapped[List["NMAMinorTraceChemistry"]] = relationship(
         "NMAMinorTraceChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    radionuclides: Mapped[List["NMARadionuclides"]] = relationship(
+        "NMARadionuclides",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
+        "NMAMajorChemistry",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -291,12 +361,14 @@ class NMAMinorTraceChemistry(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
 
     # FK to ChemistrySampleInfo - required (no orphans)
-    chemistry_sample_info_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("NMA_Chemistry_SampleInfo.OBJECTID", ondelete="CASCADE"),
+    chemistry_sample_info_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -325,6 +397,116 @@ class NMAMinorTraceChemistry(Base):
             raise ValueError(
                 "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
             )
+        return value
+
+
+class NMARadionuclides(Base):
+    """
+    Legacy Radionuclides table from NM_Aquifer_Dev_DB.
+    """
+
+    __tablename__ = "NMA_Radionuclides"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
+    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, server_default=text("0")
+    )
+    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
+    uncertainty: Mapped[Optional[float]] = mapped_column(
+        "Uncertainty", Float, server_default=text("0")
+    )
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "AnalysisMethod", String(255)
+    )
+    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    volume: Mapped[Optional[int]] = mapped_column(
+        "Volume", Integer, server_default=text("0")
+    )
+    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
+
+    thing: Mapped["Thing"] = relationship("Thing")
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="radionuclides"
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        if value is None:
+            raise ValueError(
+                "NMARadionuclides requires a Thing (thing_id cannot be None)"
+            )
+        return value
+
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
+        if value is None:
+            raise ValueError("NMARadionuclides requires a SamplePtID")
+        return value
+
+
+class NMAMajorChemistry(Base):
+    """
+    Legacy MajorChemistry table from NM_Aquifer_Dev_DB.
+    """
+
+    __tablename__ = "NMA_MajorChemistry"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
+    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, server_default=text("0")
+    )
+    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
+    uncertainty: Mapped[Optional[float]] = mapped_column("Uncertainty", Float)
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "AnalysisMethod", String(255)
+    )
+    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    volume: Mapped[Optional[int]] = mapped_column(
+        "Volume", Integer, server_default=text("0")
+    )
+    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
+
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="major_chemistries"
+    )
+
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
+        if value is None:
+            raise ValueError("NMAMajorChemistry requires a SamplePtID")
         return value
 
 

@@ -125,6 +125,7 @@ def register_routes(app):
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
+    from api.ogc.router import router as ogc_router
 
     app.include_router(asset_router)
     app.include_router(admin_auth_router)
@@ -132,6 +133,7 @@ def register_routes(app):
     app.include_router(contact_router)
     app.include_router(geospatial_router)
     app.include_router(group_router)
+    app.include_router(ogc_router)
     app.include_router(lexicon_router)
     app.include_router(location_router)
     app.include_router(observation_router)

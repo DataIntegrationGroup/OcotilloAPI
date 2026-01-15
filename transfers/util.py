@@ -15,12 +15,14 @@
 # ===============================================================================
 import csv
 import io
+import json
 import math
 import os
 import re
 import time
 from datetime import datetime, timezone, timedelta, UTC
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -231,11 +233,71 @@ def read_csv(
     logger.info(f"Local file and cache not found, reading {name} from GCS")
     bucket = get_storage_bucket()
     blob = bucket.blob(f"nma_csv/{name}.csv")
-    data = blob.download_as_bytes()
+    data = _download_blob_bytes(blob)
     with open(p, "wb") as f:
         f.write(data)
 
     return pd.read_csv(io.BytesIO(data), dtype=dtype)
+
+
+def _download_blob_bytes(blob, attempts: int = 3, base_sleep: float = 1.0) -> bytes:
+    if not blob.exists():
+        raise FileNotFoundError(f"GCS blob not found: {blob.name}")
+    for attempt in range(1, attempts + 1):
+        try:
+            return blob.download_as_bytes()
+        except Exception as exc:
+            if attempt == attempts:
+                raise RuntimeError(
+                    f"Failed to download {blob.name} after {attempts} attempts."
+                ) from exc
+            sleep_for = base_sleep * attempt
+            logger.warning(
+                f"GCS download failed for {blob.name} (attempt {attempt}/{attempts}): {exc}. "
+                f"Retrying in {sleep_for:.1f}s."
+            )
+            time.sleep(sleep_for)
+
+
+def _upload_blob_bytes(
+    blob, data: bytes, attempts: int = 3, base_sleep: float = 1.0
+) -> None:
+    for attempt in range(1, attempts + 1):
+        try:
+            blob.upload_from_string(data)
+            return
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+            sleep_for = base_sleep * attempt
+            logger.warning(
+                f"GCS upload failed for {blob.name} (attempt {attempt}/{attempts}): {exc}. "
+                f"Retrying in {sleep_for:.1f}s."
+            )
+            time.sleep(sleep_for)
+
+
+def download_blob_json(blob, default: Any | None = None, attempts: int = 3) -> Any:
+    if default is None:
+        default = {}
+    if not blob.exists():
+        return default
+
+    data = _download_blob_bytes(blob, attempts=attempts)
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError as exc:
+        logger.critical(f"Invalid JSON in {blob.name}: {exc}")
+        return default
+
+
+def upload_blob_json(
+    blob, payload: Any, attempts: int = 3, base_sleep: float = 1.0
+) -> None:
+    data = json.dumps(payload, ensure_ascii=False)
+    _upload_blob_bytes(
+        blob, data.encode("utf-8"), attempts=attempts, base_sleep=base_sleep
+    )
 
 
 def get_valid_point_ids(thing_type: str = "water well") -> list[str]:
@@ -415,6 +477,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     Returns a tuple of location data, the elevation method, and notes
     """
     point = Point(row.Easting, row.Northing)
+    elevation_from_epqs = False
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
@@ -423,10 +486,10 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
 
     z = row.Altitude
     if z:
-        elevation_from_epqs = False
         z = convert_ft_to_m(z)
 
         if row.AltDatum == "NGVD29":
+            z_before_datum_conversion = z
             key = f"{row.PointID}, {transformed_point.x, transformed_point.y}"
             if key in elevations:
                 z = elevations[key]
@@ -434,13 +497,30 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
                 z = convert_ngvd29_to_navd88(
                     z, transformed_point.x, transformed_point.y
                 )
+                if z is None:
+                    logger.warning(
+                        f"Failed NGVD29->NAVD88 conversion for {row.PointID}; "
+                        "falling back to EPQS."
+                    )
+                    z = get_epqs_elevation_from_point(
+                        transformed_point.x, transformed_point.y
+                    )
+                    if z is None:
+                        logger.warning(
+                            f"EPQS fallback failed for {row.PointID}; "
+                            "using original altitude."
+                        )
+                        z = z_before_datum_conversion
+                    else:
+                        elevation_from_epqs = True
             elevations[key] = z
     else:
-        elevation_from_epqs = True
         logger.info(
             f"Location {row.PointID} has no Altitude. Setting from National Map EPQS. "
         )
         z = get_epqs_elevation_from_point(transformed_point.x, transformed_point.y)
+        if z is not None:
+            elevation_from_epqs = True
 
     if elevation_from_epqs:
         elevation_method = "USGS National Elevation Dataset (NED)"

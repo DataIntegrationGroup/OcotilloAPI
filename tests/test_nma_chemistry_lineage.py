@@ -39,6 +39,18 @@ def _next_object_id() -> int:
     return -(uuid4().int % 2_000_000_000)
 
 
+def _next_sample_pt_id():
+    return uuid4()
+
+
+def _next_sample_point_id() -> str:
+    return f"SP-{uuid4().hex[:7]}"
+
+
+def _next_global_id():
+    return uuid4()
+
+
 @pytest.fixture(scope="module")
 def shared_well():
     """Create a single Thing for all tests in this module."""
@@ -93,8 +105,8 @@ def test_nma_minor_trace_chemistry_columns():
     from db.nma_legacy import NMAMinorTraceChemistry
 
     expected_columns = [
-        "id",  # new PK
-        "chemistry_sample_info_id",  # new FK (integer, not string)
+        "global_id",  # PK
+        "chemistry_sample_info_id",  # new FK (UUID, not string)
         # from legacy
         "analyte",
         "sample_value",
@@ -124,14 +136,15 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=well.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
             analyte="As",
             sample_value=0.015,
@@ -150,8 +163,8 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.refresh(mtc)
 
         # Verify all columns saved
-        assert mtc.id is not None
-        assert mtc.chemistry_sample_info_id == sample_info.object_id
+        assert mtc.global_id is not None
+        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
         assert mtc.units == "mg/L"
@@ -211,8 +224,8 @@ def test_assign_thing_to_sample_info(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=well.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,  # OO: assign object
         )
         session.add(sample_info)
@@ -236,8 +249,8 @@ def test_append_sample_info_to_thing(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=well.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
         )
         well.chemistry_sample_infos.append(sample_info)
         session.commit()
@@ -268,8 +281,8 @@ def test_sample_info_requires_thing():
     with pytest.raises(ValueError, match="requires a parent Thing"):
         ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="ORPHAN",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing_id=None,  # Explicit None triggers validator
         )
 
@@ -294,8 +307,8 @@ def test_sample_info_minor_trace_chemistries_empty_by_default(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="TEST",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
@@ -318,14 +331,15 @@ def test_assign_sample_info_to_mtc(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="TEST",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="As",
             sample_value=0.01,
             units="mg/L",
@@ -352,14 +366,15 @@ def test_append_mtc_to_sample_info(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="TEST",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="U",
             sample_value=15.2,
             units="ug/L",
@@ -369,7 +384,7 @@ def test_append_mtc_to_sample_info(shared_well):
 
         # Verify bidirectional
         assert mtc.chemistry_sample_info == sample_info
-        assert mtc.chemistry_sample_info_id == sample_info.object_id
+        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
 
         session.delete(sample_info)
         session.commit()
@@ -412,14 +427,15 @@ def test_full_lineage_navigation(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=well.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="Se",
             sample_value=0.005,
             units="mg/L",
@@ -445,14 +461,15 @@ def test_reverse_lineage_navigation(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=well.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
         session.commit()
 
         mtc = NMAMinorTraceChemistry(
+            global_id=_next_global_id(),
             analyte="Pb",
             sample_value=0.002,
             units="mg/L",
@@ -466,7 +483,7 @@ def test_reverse_lineage_navigation(shared_well):
         matching = [
             si
             for si in well.chemistry_sample_infos
-            if si.object_id == sample_info.object_id
+            if si.sample_pt_id == sample_info.sample_pt_id
         ]
         assert len(matching) == 1
         assert len(matching[0].minor_trace_chemistries) == 1
@@ -489,8 +506,8 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="CASCADE-TEST",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
@@ -500,6 +517,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
         for analyte in ["As", "U", "Se", "Pb"]:
             sample_info.minor_trace_chemistries.append(
                 NMAMinorTraceChemistry(
+                    global_id=_next_global_id(),
                     analyte=analyte,
                     sample_value=0.01,
                     units="mg/L",
@@ -507,7 +525,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
             )
         session.commit()
 
-        sample_info_id = sample_info.object_id
+        sample_info_id = sample_info.sample_pt_id
         assert (
             session.query(NMAMinorTraceChemistry)
             .filter_by(chemistry_sample_info_id=sample_info_id)
@@ -545,14 +563,15 @@ def test_cascade_delete_thing_deletes_sample_infos():
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id=test_thing.name,
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=test_thing,
         )
         session.add(sample_info)
         session.commit()
 
-        sample_info_id = sample_info.object_id
+        # SamplePtID is the PK for ChemistrySampleInfo.
+        sample_info_id = sample_info.sample_pt_id
 
         # Delete thing
         session.delete(test_thing)
@@ -584,8 +603,8 @@ def test_multiple_sample_infos_per_thing():
         for i in range(3):
             sample_info = ChemistrySampleInfo(
                 object_id=_next_object_id(),
-                sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-                sample_point_id=test_thing.name,
+                sample_pt_id=_next_sample_pt_id(),
+                sample_point_id=_next_sample_point_id(),
                 thing=test_thing,
             )
             session.add(sample_info)
@@ -609,8 +628,8 @@ def test_multiple_mtc_per_sample_info(shared_well):
 
         sample_info = ChemistrySampleInfo(
             object_id=_next_object_id(),
-            sample_pt_id=f"TEST-{uuid4().hex[:8]}",
-            sample_point_id="MULTI-TEST",
+            sample_pt_id=_next_sample_pt_id(),
+            sample_point_id=_next_sample_point_id(),
             thing=well,
         )
         session.add(sample_info)
@@ -620,6 +639,7 @@ def test_multiple_mtc_per_sample_info(shared_well):
         for analyte in analytes:
             sample_info.minor_trace_chemistries.append(
                 NMAMinorTraceChemistry(
+                    global_id=_next_global_id(),
                     analyte=analyte,
                     sample_value=0.01,
                     units="mg/L",

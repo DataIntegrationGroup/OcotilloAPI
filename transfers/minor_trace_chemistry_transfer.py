@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Optional
+from uuid import UUID
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -50,21 +51,17 @@ class MinorTraceChemistryTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        # Cache ChemistrySampleInfo lookups: SamplePtID -> OBJECTID
-        self._sample_info_cache: dict[str, int] = {}
-        self._build_sample_info_cache()
+        # Cache ChemistrySampleInfo SamplePtIDs for FK validation
+        self._sample_pt_ids: set[UUID] = set()
+        self._build_sample_pt_id_cache()
 
-    def _build_sample_info_cache(self):
-        """Build cache of SamplePtID -> ChemistrySampleInfo.OBJECTID."""
+    def _build_sample_pt_id_cache(self):
+        """Build cache of ChemistrySampleInfo.SamplePtID values."""
         with session_ctx() as session:
-            sample_infos = session.query(
-                ChemistrySampleInfo.sample_pt_id, ChemistrySampleInfo.object_id
-            ).all()
-            self._sample_info_cache = {
-                sample_pt_id: object_id for sample_pt_id, object_id in sample_infos
-            }
+            sample_infos = session.query(ChemistrySampleInfo.sample_pt_id).all()
+            self._sample_pt_ids = {sample_pt_id for (sample_pt_id,) in sample_infos}
         logger.info(
-            f"Built ChemistrySampleInfo cache with {len(self._sample_info_cache)} entries"
+            f"Built ChemistrySampleInfo cache with {len(self._sample_pt_ids)} entries"
         )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -79,10 +76,13 @@ class MinorTraceChemistryTransferer(Transferer):
 
         This prevents orphan records and ensures the FK constraint will be satisfied.
         """
-        valid_sample_pt_ids = set(self._sample_info_cache.keys())
+        valid_sample_pt_ids = self._sample_pt_ids
 
         before_count = len(df)
-        filtered_df = df[df["SamplePtID"].isin(valid_sample_pt_ids)].copy()
+        mask = df["SamplePtID"].apply(
+            lambda value: self._uuid_val(value) in valid_sample_pt_ids
+        )
+        filtered_df = df[mask].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
@@ -116,7 +116,7 @@ class MinorTraceChemistryTransferer(Transferer):
             logger.warning("No valid rows to transfer")
             return
 
-        # Dedupe by unique key (chemistry_sample_info_id, analyte)
+        # Dedupe by GlobalID to avoid PK conflicts.
         rows = self._dedupe_rows(row_dicts)
         logger.info(f"Upserting {len(rows)} MinorTraceChemistry records")
 
@@ -127,7 +127,7 @@ class MinorTraceChemistryTransferer(Transferer):
             chunk = rows[i : i + self.batch_size]
             logger.info(f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows)")
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                constraint="uq_minor_trace_chemistry_sample_analyte",
+                index_elements=["GlobalID"],
                 set_={
                     "sample_value": excluded.sample_value,
                     "units": excluded.units,
@@ -147,11 +147,16 @@ class MinorTraceChemistryTransferer(Transferer):
 
     def _row_to_dict(self, row) -> Optional[dict[str, Any]]:
         """Convert a DataFrame row to a dict for upsert."""
-        sample_pt_id = row.SamplePtID
+        sample_pt_id = self._uuid_val(row.SamplePtID)
+        if sample_pt_id is None:
+            self._capture_error(
+                getattr(row, "SamplePtID", None),
+                f"Invalid SamplePtID: {getattr(row, 'SamplePtID', None)}",
+                "SamplePtID",
+            )
+            return None
 
-        # Look up ChemistrySampleInfo OBJECTID from cache
-        chemistry_sample_info_id = self._sample_info_cache.get(sample_pt_id)
-        if chemistry_sample_info_id is None:
+        if sample_pt_id not in self._sample_pt_ids:
             self._capture_error(
                 sample_pt_id,
                 f"ChemistrySampleInfo not found for SamplePtID: {sample_pt_id}",
@@ -159,8 +164,18 @@ class MinorTraceChemistryTransferer(Transferer):
             )
             return None
 
+        global_id = self._uuid_val(getattr(row, "GlobalID", None))
+        if global_id is None:
+            self._capture_error(
+                getattr(row, "GlobalID", None),
+                f"Invalid GlobalID: {getattr(row, 'GlobalID', None)}",
+                "GlobalID",
+            )
+            return None
+
         return {
-            "chemistry_sample_info_id": chemistry_sample_info_id,
+            "global_id": global_id,
+            "chemistry_sample_info_id": sample_pt_id,
             "analyte": self._safe_str(row, "Analyte"),
             "sample_value": self._safe_float(row, "SampleValue"),
             "units": self._safe_str(row, "Units"),
@@ -178,7 +193,9 @@ class MinorTraceChemistryTransferer(Transferer):
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
         deduped = {}
         for row in rows:
-            key = (row["chemistry_sample_info_id"], row["analyte"])
+            key = row.get("global_id")
+            if key is None:
+                continue
             deduped[key] = row
         return list(deduped.values())
 
@@ -188,6 +205,18 @@ class MinorTraceChemistryTransferer(Transferer):
         if val is None or pd.isna(val):
             return None
         return str(val)
+
+    def _uuid_val(self, value: Any) -> Optional[UUID]:
+        if value is None or pd.isna(value):
+            return None
+        if isinstance(value, UUID):
+            return value
+        if isinstance(value, str):
+            try:
+                return UUID(value)
+            except ValueError:
+                return None
+        return None
 
     def _safe_float(self, row, attr: str) -> Optional[float]:
         """Safely get a float value, returning None for NaN."""
