@@ -150,22 +150,32 @@ if driver == "cloudsql":
     # async_engine = asyncio.run(get_async_engine())
 
 else:
-    # if driver == "sqlite":
-    #     name = os.environ.get("DB_NAME", "development.db")
-    #     url = f"sqlite:///{name}"
-    # elif driver == "postgres":
-    password = os.environ.get("POSTGRES_PASSWORD", "")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    # Default to current OS user if POSTGRES_USER not set or empty
-    user = os.environ.get("POSTGRES_USER", "").strip() or getpass.getuser()
-    name = os.environ.get("POSTGRES_DB", "postgres")
+    # Check for DATABASE_URL first (Render/Heroku standard)
+    # Falls back to individual env vars for backward compatibility
+    database_url = os.environ.get("DATABASE_URL", "")
 
-    auth = f"{user}:{password}@" if user and password else ""
-    port_part = f":{port}" if port else ""
-    url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
-    # else:
-    #     url = "sqlite:///./development.db"
+    if database_url:
+        # Use DATABASE_URL if provided (e.g., from Render)
+        # Convert postgresql:// to postgresql+pg8000:// for SQLAlchemy
+        if database_url.startswith("postgres://"):
+            # Handle legacy postgres:// scheme (some platforms use this)
+            url = database_url.replace("postgres://", "postgresql+pg8000://", 1)
+        elif database_url.startswith("postgresql://"):
+            url = database_url.replace("postgresql://", "postgresql+pg8000://", 1)
+        else:
+            url = database_url
+    else:
+        # Fall back to individual environment variables (backward compatible)
+        password = os.environ.get("POSTGRES_PASSWORD", "")
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        # Default to current OS user if POSTGRES_USER not set or empty
+        user = os.environ.get("POSTGRES_USER", "").strip() or getpass.getuser()
+        name = os.environ.get("POSTGRES_DB", "postgres")
+
+        auth = f"{user}:{password}@" if user and password else ""
+        port_part = f":{port}" if port else ""
+        url = f"postgresql+pg8000://{auth}{host}{port_part}/{name}"
 
     # Configure connection pool for parallel transfers
     # pool_size: number of persistent connections
