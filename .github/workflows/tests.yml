@@ -63,6 +63,11 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -c "CREATE DATABASE ocotilloapi_test"
+          PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
+
       - name: Run tests
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
 
