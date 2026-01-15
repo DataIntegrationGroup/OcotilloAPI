@@ -1,14 +1,14 @@
-# Render Blueprint for OcotilloAPI
-# This file defines infrastructure as code for staging and production environments
+# Render Blueprint for OcotilloAPI - FREE TIER
+# NOTE: Free tier has 30-day database expiration and service spin-down after 15 min inactivity
+# Staging environment only - upgrade to paid plans for production
 
-# Environment variable groups shared across services
 envVarGroups:
   - name: ocotillo-shared
     envVars:
       - key: DB_POOL_SIZE
-        value: 10
+        value: 5  # Reduced for free tier (256MB RAM)
       - key: DB_MAX_OVERFLOW
-        value: 20
+        value: 5
       - key: TRANSFER_PARALLEL
         value: 1
       - key: TRANSFER_WELL_SCREENS
@@ -51,10 +51,9 @@ envVarGroups:
       - key: MODE
         value: development
       - key: AUTHENTIK_DISABLE_AUTHENTICATION
-        value: 0
-      # Add staging-specific Authentik configuration
+        value: 1  # Disable auth for free tier testing
       - key: AUTHENTIK_URL
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: AUTHENTIK_CLIENT_ID
         sync: false
       - key: AUTHENTIK_AUTHORIZE_URL
@@ -62,62 +61,30 @@ envVarGroups:
       - key: AUTHENTIK_TOKEN_URL
         sync: false
       - key: SESSION_SECRET_KEY
-        generateValue: true  # Auto-generate secure secret
-      # GCS configuration for staging
+        generateValue: true
       - key: GCS_BUCKET_NAME
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
         sync: false
 
-  - name: ocotillo-production
-    envVars:
-      - key: MODE
-        value: production
-      - key: AUTHENTIK_DISABLE_AUTHENTICATION
-        value: 0
-      # Add production Authentik configuration
-      - key: AUTHENTIK_URL
-        sync: false  # Set in Render dashboard
-      - key: AUTHENTIK_CLIENT_ID
-        sync: false
-      - key: AUTHENTIK_AUTHORIZE_URL
-        sync: false
-      - key: AUTHENTIK_TOKEN_URL
-        sync: false
-      - key: SESSION_SECRET_KEY
-        generateValue: true  # Auto-generate secure secret
-      # GCS configuration for production
-      - key: GCS_BUCKET_NAME
-        sync: false
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        sync: false
-
-# Database services
+# Database - FREE TIER (30-day expiration, 256MB RAM, 1GB storage)
 databases:
   - name: ocotillo-db-staging
     databaseName: ocotillo_staging
     user: ocotillo_staging
-    plan: standard  # Choose: free, starter, standard, pro
-    region: oregon  # Choose your preferred region
-    postgresMajorVersion: "17"
-    ipAllowList: []  # Empty means accessible from Render services only
-
-  - name: ocotillo-db-production
-    databaseName: ocotillo_production
-    user: ocotillo_production
-    plan: standard  # Recommended for production
+    plan: free
     region: oregon
     postgresMajorVersion: "17"
-    ipAllowList: []  # Configure IP whitelist if needed
+    ipAllowList: []
 
-# Web services
+# Web service - FREE TIER (spins down after 15 min inactivity)
 services:
   - type: web
     name: ocotillo-api-staging
     runtime: docker
     region: oregon
-    plan: starter  # Choose: starter, standard, pro
-    branch: staging  # Auto-deploy from staging branch
+    plan: free
+    branch: render-deploy  # Deploy from this branch for testing
     dockerfilePath: ./docker/app/Dockerfile
     dockerContext: .
     envVars:
@@ -126,54 +93,11 @@ services:
           name: ocotillo-db-staging
           property: connectionString
       - key: PORT
-        value: 10000  # Render default, can be overridden
+        value: 10000
       - fromGroup: ocotillo-shared
       - fromGroup: ocotillo-staging
     healthCheckPath: /health/ready
-    preDeployCommand: |
-      echo "Installing PostGIS extension..."
-      PGPASSWORD=$PGPASSWORD psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-      echo "Running database migrations..."
-      alembic upgrade head
     autoDeploy: true
-    buildFilter:
-      paths:
-        - "**/*.py"
-        - "alembic/**/*"
-        - "docker/**/*"
-        - "pyproject.toml"
-        - "uv.lock"
-        - "entrypoint.sh"
-        - "render.yaml"
-      ignoredPaths:
-        - "tests/**/*"
-        - "*.md"
-        - ".github/**/*"
-
-  - type: web
-    name: ocotillo-api-production
-    runtime: docker
-    region: oregon
-    plan: standard  # Recommended for production
-    branch: main  # Auto-deploy from main branch
-    dockerfilePath: ./docker/app/Dockerfile
-    dockerContext: .
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: ocotillo-db-production
-          property: connectionString
-      - key: PORT
-        value: 10000
-      - fromGroup: ocotillo-shared
-      - fromGroup: ocotillo-production
-    healthCheckPath: /health/ready
-    preDeployCommand: |
-      echo "Installing PostGIS extension..."
-      PGPASSWORD=$PGPASSWORD psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-      echo "Running database migrations..."
-      alembic upgrade head
-    autoDeploy: false  # Require manual approval for production deploys
     buildFilter:
       paths:
         - "**/*.py"
