@@ -7,14 +7,14 @@ Create Date: 2026-03-01 02:00:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "a7b8c9d0e1f2"
-down_revision: Union[str, Sequence[str], None] = "f3b4c5d6e7f8"
+down_revision: Union[str, Sequence[str], None] = "f1a2b3c4d5e6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
