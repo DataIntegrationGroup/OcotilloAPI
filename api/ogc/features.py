@@ -65,22 +65,40 @@ def _coerce_value(value: str) -> Any:
 
 
 def _split_and_clauses(properties: str) -> list[str]:
-    normalized = " ".join(properties.split())
-    lower = normalized.lower()
+    lower = properties.lower()
     clauses = []
-    start = 0
-    needle = " and "
-    while True:
-        idx = lower.find(needle, start)
-        if idx == -1:
-            clause = normalized[start:].strip()
-            if clause:
-                clauses.append(clause)
-            break
-        clause = normalized[start:idx].strip()
-        if clause:
-            clauses.append(clause)
-        start = idx + len(needle)
+    buffer = []
+    in_single_quote = False
+    in_double_quote = False
+    idx = 0
+    while idx < len(properties):
+        char = properties[idx]
+        if char == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+            buffer.append(char)
+            idx += 1
+            continue
+        if char == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+            buffer.append(char)
+            idx += 1
+            continue
+        if not in_single_quote and not in_double_quote:
+            if lower[idx : idx + 3] == "and":
+                before = properties[idx - 1] if idx > 0 else " "
+                after = properties[idx + 3] if idx + 3 < len(properties) else " "
+                if before.isspace() and after.isspace():
+                    clause = "".join(buffer).strip()
+                    if clause:
+                        clauses.append(clause)
+                    buffer = []
+                    idx += 3
+                    continue
+        buffer.append(char)
+        idx += 1
+    clause = "".join(buffer).strip()
+    if clause:
+        clauses.append(clause)
     return clauses
 
 
@@ -162,7 +180,7 @@ def _latest_location_subquery():
             LocationThingAssociation.thing_id,
             func.max(LocationThingAssociation.effective_start).label("max_start"),
         )
-        .where(LocationThingAssociation.effective_end is None)
+        .where(LocationThingAssociation.effective_end.is_(None))
         .group_by(LocationThingAssociation.thing_id)
         .subquery()
     )
