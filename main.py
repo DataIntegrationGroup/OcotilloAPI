@@ -7,6 +7,8 @@ from core.initializers import register_routes
 
 load_dotenv()
 
+# this is a comment. please remove later
+
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DSN"),
     # Set traces_sample_rate to 1.0 to capture 100%
