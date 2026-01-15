@@ -128,14 +128,10 @@ class TestMinorTraceChemistryListView:
 class TestMinorTraceChemistryDetailView:
     """Tests for the detail view endpoint."""
 
-    def test_detail_view_returns_200(
-        self, admin_client, minor_trace_chemistry_record
-    ):
+    def test_detail_view_returns_200(self, admin_client, minor_trace_chemistry_record):
         """Detail view should return 200 OK for existing record."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(
-            f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}"
-        )
+        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
         assert response.status_code == 200, (
             f"Expected 200, got {response.status_code}. "
             f"Response: {response.text[:500]}"
@@ -146,9 +142,7 @@ class TestMinorTraceChemistryDetailView:
     ):
         """Detail view should display the analyte."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(
-            f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}"
-        )
+        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
         assert response.status_code == 200
         assert "Arsenic" in response.text
 
@@ -157,9 +151,7 @@ class TestMinorTraceChemistryDetailView:
     ):
         """Detail view should display the parent ChemistrySampleInfo."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(
-            f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}"
-        )
+        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
         assert response.status_code == 200
         # The parent relationship should be displayed somehow
         # Check for the field label
@@ -181,22 +173,22 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
         """Create endpoint should be forbidden for read-only view."""
         response = admin_client.get("/admin/n-m-a-minor-trace-chemistry/create")
         # Should be 403 or redirect, not 200
-        assert response.status_code in (403, 302, 307), (
-            f"Expected 403 or redirect, got {response.status_code}"
-        )
+        assert response.status_code in (
+            403,
+            302,
+            307,
+        ), f"Expected 403 or redirect, got {response.status_code}"
 
-    def test_edit_endpoint_forbidden(
-        self, admin_client, minor_trace_chemistry_record
-    ):
+    def test_edit_endpoint_forbidden(self, admin_client, minor_trace_chemistry_record):
         """Edit endpoint should be forbidden for read-only view."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(
-            f"/admin/n-m-a-minor-trace-chemistry/edit/{pk}"
-        )
+        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/edit/{pk}")
         # Should be 403 or redirect, not 200
-        assert response.status_code in (403, 302, 307), (
-            f"Expected 403 or redirect, got {response.status_code}"
-        )
+        assert response.status_code in (
+            403,
+            302,
+            307,
+        ), f"Expected 403 or redirect, got {response.status_code}"
 
     def test_delete_endpoint_forbidden(
         self, admin_client, minor_trace_chemistry_record
@@ -208,9 +200,13 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
             data={"pks": [pk]},
         )
         # Should be 403, redirect, or 404/405 (route may not exist for read-only)
-        assert response.status_code in (403, 302, 307, 404, 405), (
-            f"Expected 403/redirect/404/405, got {response.status_code}"
-        )
+        assert response.status_code in (
+            403,
+            302,
+            307,
+            404,
+            405,
+        ), f"Expected 403/redirect/404/405, got {response.status_code}"
 
 
 # ============= EOF =============================================
