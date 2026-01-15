@@ -97,69 +97,42 @@ Notes:
   - You can find the exact location from `psql` with: `SHOW config_file;`  
   - After changing the port, restart PostgreSQL so the new port takes effect.
 
-In development set `MODE=development` to allow lexicon enums to be populated.
+In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Database and server
 
+Choose one of the following:
 
-<table>
-<tr>
-<td>
-    PostgreSQL + PostGIS installed locally
-</td>
-<td>
-    Docker
-</td>
-</tr>
-<tr>
-<td>
+**Option A: Local PostgreSQL + PostGIS**
 
 ```bash
-#run database migrations
+# run database migrations
 alembic upgrade head
 
 # start development server
 uvicorn app.main:app --reload
 ```
-    
-</td>
-<td>
+
+Notes:
+* Requires PostgreSQL with PostGIS installed locally.
+* Use the `POSTGRES_*` settings in `.env` for your local instance.
+
+**Option B: Docker Compose (dev)**
 
 ```bash
 # include -d flag for silent/detached build
 docker compose up --build
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-Requires PostgreSQL and PostGIS extensions to be installed locally
-</td>
-<td>
-Requires Docker Desktop to be installed locally
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-Run <code>docker exec -it nmsamplelocations-app-1 bash</code> to open a shell inside the running app container.
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-After the database container is running, you can run tests with Pytest from your local command line (not necessarily inside the app container).
-</td>
-</tr>
-</table>
-
+Notes:
+* Requires Docker Desktop.
+* Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* `alembic upgrade head` runs on app startup after `docker compose up`.
+* The database listens on `5432` in the container and is published to your host as `54321`. Ensure `POSTGRES_PORT=54321` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 
-To get staging data into the database run `python -m transfers.transfer` from the root directory of the project.
+To get staging data into the database: `python -m transfers.transfer` from the root directory of the project.
 
 ### 🧭 Project Structure
 ```text
