@@ -33,11 +33,13 @@ RUN if [ "$INSTALL_DEV" = "true" ]; then \
       uv sync --locked; \
     fi
 
-# expose FastAPI's default dev port
-EXPOSE 8000
+# Expose port (Render uses $PORT env variable, defaults to 8000 locally)
+ARG PORT=8000
+EXPOSE ${PORT}
 
-# set environment variables for database connection
+# Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# default command (run database migrations and the FastAPI development server)
+# Default command: runs migrations and starts gunicorn (production) or uvicorn (dev)
+# Gunicorn is used by default; set RELOAD_ENABLED=true for local development with uvicorn
 CMD ["sh", "entrypoint.sh"]

@@ -19,7 +19,7 @@ services:
       retries: 20
 
   app:
-    build: 
+    build:
       context: .
       dockerfile: ./docker/app/Dockerfile
     environment:
@@ -29,6 +29,7 @@ services:
       - POSTGRES_HOST=db
       - MODE=${MODE}
       - AUTHENTIK_DISABLE_AUTHENTICATION=${AUTHENTIK_DISABLE_AUTHENTICATION}
+      - RELOAD_ENABLED=true  # Enable hot-reload for local development
     ports:
       - 8000:8000
     depends_on:
