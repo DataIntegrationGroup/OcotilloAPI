@@ -108,6 +108,7 @@ def init_lexicon(path: str = None) -> None:
 
 def register_routes(app):
     from admin.auth_routes import router as admin_auth_router
+    from api.health import router as health_router
     from api.group import router as group_router
     from api.contact import router as contact_router
     from api.location import router as location_router
@@ -126,6 +127,7 @@ def register_routes(app):
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
 
+    app.include_router(health_router)
     app.include_router(asset_router)
     app.include_router(admin_auth_router)
     app.include_router(author_router)
