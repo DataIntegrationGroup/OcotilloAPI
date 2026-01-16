@@ -56,7 +56,17 @@ def build_database_url():
             return f"postgresql+pg8000://{user}@/{database}"
         return f"postgresql+pg8000://{user}:{password}@/{database}"
 
-    # Default/Postgres
+    # Check for DATABASE_URL first (Render/Heroku standard)
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url:
+        # Convert to psycopg2 driver for alembic
+        if database_url.startswith("postgres://"):
+            return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif database_url.startswith("postgresql://"):
+            return database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return database_url
+
+    # Fall back to individual env vars (backward compatible)
     user = os.environ.get("POSTGRES_USER", "")
     password = os.environ.get("POSTGRES_PASSWORD", "")
     db = os.environ.get("POSTGRES_DB", "")
