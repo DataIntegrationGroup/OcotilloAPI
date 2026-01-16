@@ -1,13 +1,15 @@
 #!/bin/sh
 # Wait for PostgreSQL to be ready (only in local docker-compose environment)
-# Skip this check if POSTGRES_HOST is not "db" (e.g., on Render)
-if [ "${POSTGRES_HOST:-db}" = "db" ]; then
+# Skip this check if DATABASE_URL is set (e.g., on Render) or POSTGRES_HOST is not "db"
+if [ -z "$DATABASE_URL" ] && [ "${POSTGRES_HOST:-db}" = "db" ]; then
   echo "Checking local PostgreSQL readiness..."
   until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h db -p 5432 -U "$POSTGRES_USER"; do
     echo "Waiting for postgres..."
     sleep 2
   done
   echo "PostgreSQL is ready!"
+else
+  echo "Using DATABASE_URL or external PostgreSQL, skipping local db wait..."
 fi
 
 echo "Applying migrations..."
