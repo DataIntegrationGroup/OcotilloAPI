@@ -35,7 +35,7 @@ from transfers.transferer import ThingBasedTransferer
 from transfers.util import (
     get_transfers_data_path,
 )
-from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
+from transfers.util import filter_to_valid_point_ids, replace_nans
 
 
 class ContactTransfer(ThingBasedTransferer):
@@ -70,11 +70,11 @@ class ContactTransfer(ThingBasedTransferer):
                 logger.critical(f"Invalid Organization {e}")
 
     def _get_dfs(self):
-        input_df = read_csv(self.source_table)
+        input_df = self._read_csv(self.source_table)
         odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
-        ldf = read_csv("OwnerLink")
+        ldf = self._read_csv("OwnerLink")
         ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
-        locdf = read_csv("Location")
+        locdf = self._read_csv("Location")
         ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
         odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
@@ -150,7 +150,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
         email = _make_email(
             "first",
             row.OwnerKey,
-            email=row.Email.strip(),
+            email=row.Email,
             email_type="Primary",
             release_status=release_status,
         )
@@ -306,8 +306,8 @@ def _make_email(first_second, ownerkey, **kw):
     from schemas.contact import CreateEmail
 
     try:
-        if "email" in kw:
-            kw["email"] = kw["email"].strip()
+        if "email" in kw and kw["email"] is not None:
+            kw["email"] = str(kw["email"]).strip()
 
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
@@ -321,8 +321,8 @@ def _make_phone(first_second, ownerkey, **kw):
     from schemas.contact import CreatePhone
 
     try:
-        if "phone_number" in kw:
-            kw["phone_number"] = kw["phone_number"].strip()
+        if "phone_number" in kw and kw["phone_number"] is not None:
+            kw["phone_number"] = str(kw["phone_number"]).strip()
 
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump()), True

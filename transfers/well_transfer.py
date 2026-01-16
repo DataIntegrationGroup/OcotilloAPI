@@ -60,7 +60,6 @@ from transfers.util import (
     make_location,
     make_location_data_provenance,
     filter_to_valid_point_ids,
-    read_csv,
     logger,
     replace_nans,
     get_transferable_wells,
@@ -220,14 +219,17 @@ class WellTransferer(Transferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self._cached_elevations = get_cached_elevations()
+        if self.flags.get("CSV_PATHS"):
+            self._cached_elevations = {}
+        else:
+            self._cached_elevations = get_cached_elevations()
         self._added_locations = {}
         self._aquifers = None
         self._measuring_point_estimator = MeasuringPointEstimator()
 
     def _get_dfs(self):
-        wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
-        ldf = read_csv("Location")
+        wdf = self._read_csv("WellData", dtype={"OSEWelltagID": str})
+        ldf = self._read_csv("Location")
         ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
         wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
         wdf = wdf[wdf["SiteType"] == "GW"]
@@ -1592,7 +1594,7 @@ class WellChunkTransferer(ChunkTransferer):
         if self.source_table is None:
             raise ValueError("source_table must be set")
 
-        input_df = read_csv(self.source_table, self.source_dtypes)
+        input_df = self._read_csv(self.source_table, self.source_dtypes)
         wdf = replace_nans(input_df)
         cleaned_df = filter_to_valid_point_ids(wdf)
         return input_df, cleaned_df

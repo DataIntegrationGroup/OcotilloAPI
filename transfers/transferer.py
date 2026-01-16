@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from db import Thing, Base
 from db.engine import session_ctx
 from transfers.logger import logger
-from transfers.util import chunk_by_size
+from transfers.util import chunk_by_size, read_csv
 
 
 class ManualFixer(object):
@@ -131,6 +131,13 @@ class Transferer(object):
 
     def _get_dfs(self):
         raise NotImplementedError("Must implement _get_dfs method")
+
+    def _read_csv(self, name: str, *args, **kw) -> pd.DataFrame:
+        csv_paths = self.flags.get("CSV_PATHS") or {}
+        csv_path = csv_paths.get(name)
+        if csv_path:
+            return pd.read_csv(csv_path, *args, **kw)
+        return read_csv(name, *args, **kw)
 
 
 class ChunkTransferer(Transferer):
