@@ -278,6 +278,25 @@ class ChemistrySampleInfo(Base):
         passive_deletes=True,
     )
 
+
+class AssociatedData(Base):
+    """
+    Legacy AssociatedData table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_AssociatedData"
+
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True), unique=True
+    )
+    point_id: Mapped[Optional[str]] = mapped_column("PointID", String(10))
+    assoc_id: Mapped[uuid.UUID] = mapped_column(
+        "AssocID", UUID(as_uuid=True), primary_key=True
+    )
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
     major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
         "NMAMajorChemistry",
         back_populates="chemistry_sample_info",
@@ -328,6 +347,24 @@ class SurfaceWaterData(Base):
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
 
+class SurfaceWaterPhotos(Base):
+    """
+    Legacy SurfaceWaterPhotos table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_SurfaceWaterPhotos"
+
+    surface_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "SurfaceID", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+
+
 class WeatherData(Base):
     """
     Legacy WeatherData table from AMPAPI.
@@ -343,6 +380,40 @@ class WeatherData(Base):
         "WeatherID", UUID(as_uuid=True)
     )
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+
+class WeatherPhotos(Base):
+    """
+    Legacy WeatherPhotos table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_WeatherPhotos"
+
+    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WeatherID", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+
+
+class SoilRockResults(Base):
+    """
+    Legacy Soil_Rock_Results table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_Soil_Rock_Results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    point_id: Mapped[Optional[str]] = mapped_column("Point_ID", String(255))
+    sample_type: Mapped[Optional[str]] = mapped_column("Sample Type", String(255))
+    date_sampled: Mapped[Optional[str]] = mapped_column("Date Sampled", String(255))
+    d13c: Mapped[Optional[float]] = mapped_column("d13C", Float)
+    d18o: Mapped[Optional[float]] = mapped_column("d18O", Float)
+    sampled_by: Mapped[Optional[str]] = mapped_column("Sampled by", String(255))
 
 
 class NMAMinorTraceChemistry(Base):

@@ -65,11 +65,13 @@ from transfers.ngwmn_views import (
     NGWMNWellConstructionTransferer,
 )
 from transfers.surface_water_data import SurfaceWaterDataTransferer
+from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
     NMAWaterLevelsContinuousPressureDailyTransferer,
 )
 from transfers.weather_data import WeatherDataTransferer
+from transfers.weather_photos import WeatherPhotosTransferer
 from transfers.logger import logger, save_log_to_bucket
 
 
@@ -226,6 +228,7 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
+    transfer_surface_water_photos = get_bool_env("TRANSFER_SURFACE_WATER_PHOTOS", True)
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
@@ -234,6 +237,7 @@ def transfer_all(metrics, limit=100):
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
     transfer_weather_data = get_bool_env("TRANSFER_WEATHER_DATA", True)
+    transfer_weather_photos = get_bool_env("TRANSFER_WEATHER_PHOTOS", True)
     transfer_minor_trace_chemistry = get_bool_env(
         "TRANSFER_MINOR_TRACE_CHEMISTRY", True
     )
@@ -254,6 +258,7 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -262,6 +267,7 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
         )
@@ -279,6 +285,7 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -287,6 +294,7 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
         )
@@ -305,6 +313,7 @@ def _transfer_parallel(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -313,6 +322,7 @@ def _transfer_parallel(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
 ):
@@ -337,6 +347,12 @@ def _transfer_parallel(
         )
     if transfer_groups:
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
+    if transfer_surface_water_photos:
+        parallel_tasks_1.append(
+            ("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer, flags)
+        )
+    if transfer_weather_photos:
+        parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
     if transfer_surface_water_data:
@@ -426,6 +442,8 @@ def _transfer_parallel(
         metrics.location_link_ids_metrics(*results_map["LinkIdsLocation"])
     if "Groups" in results_map and results_map["Groups"]:
         metrics.group_metrics(*results_map["Groups"])
+    if "SurfaceWaterPhotos" in results_map and results_map["SurfaceWaterPhotos"]:
+        metrics.surface_water_photos_metrics(*results_map["SurfaceWaterPhotos"])
     if "Assets" in results_map and results_map["Assets"]:
         metrics.asset_metrics(*results_map["Assets"])
     if "SurfaceWaterData" in results_map and results_map["SurfaceWaterData"]:
@@ -449,6 +467,8 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
+    if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
+        metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
     if transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
         results = _execute_transfer(MajorChemistryTransferer, flags=flags)
@@ -526,6 +546,7 @@ def _transfer_sequential(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -534,6 +555,7 @@ def _transfer_sequential(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
 ):
@@ -583,6 +605,16 @@ def _transfer_sequential(
         message("TRANSFERRING GROUPS")
         results = _execute_transfer(ProjectGroupTransferer, flags=flags)
         metrics.group_metrics(*results)
+
+    if transfer_surface_water_photos:
+        message("TRANSFERRING SURFACE WATER PHOTOS")
+        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
+        metrics.surface_water_photos_metrics(*results)
+
+    if transfer_weather_photos:
+        message("TRANSFERRING WEATHER PHOTOS")
+        results = _execute_transfer(WeatherPhotosTransferer, flags=flags)
+        metrics.weather_photos_metrics(*results)
 
     if transfer_assets:
         message("TRANSFERRING ASSETS")

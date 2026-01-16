@@ -41,11 +41,13 @@ from db import (
     NMARadionuclides,
     NMAMajorChemistry,
     SurfaceWaterData,
+    SurfaceWaterPhotos,
     NMAWaterLevelsContinuousPressureDaily,
     ViewNGWMNWellConstruction,
     ViewNGWMNWaterLevels,
     ViewNGWMNLithology,
     WeatherData,
+    WeatherPhotos,
     NMAMinorTraceChemistry,
 )
 from db.engine import session_ctx
@@ -111,6 +113,9 @@ class Metrics:
     def surface_water_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(SurfaceWaterData, *args, **kw)
 
+    def surface_water_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(SurfaceWaterPhotos, name="SurfaceWaterPhotos", *args, **kw)
+
     def hydraulics_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMAHydraulicsData, name="HydraulicsData", *args, **kw)
 
@@ -137,6 +142,9 @@ class Metrics:
 
     def ngwmn_lithology_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ViewNGWMNLithology, name="NGWMN Lithology", *args, **kw)
+
+    def weather_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(WeatherPhotos, name="WeatherPhotos", *args, **kw)
 
     def waterlevels_pressure_daily_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
