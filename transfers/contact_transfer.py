@@ -16,10 +16,6 @@
 import json
 
 import pandas as pd
-from pandas import DataFrame
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
-
 from core.enums import Organization
 from db import (
     Contact,
@@ -30,12 +26,15 @@ from db import (
     IncompleteNMAPhone,
     Base,
 )
+from pandas import DataFrame
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from transfers.logger import logger
 from transfers.transferer import ThingBasedTransferer
+from transfers.util import filter_to_valid_point_ids, replace_nans
 from transfers.util import (
     get_transfers_data_path,
 )
-from transfers.util import filter_to_valid_point_ids, replace_nans
 
 
 class ContactTransfer(ThingBasedTransferer):
@@ -302,12 +301,18 @@ def _make_name(first, last):
         return f"{first} {last}"
 
 
+def _normalize_string_field(payload: dict, field: str) -> None:
+    value = payload.get(field)
+    if value is None:
+        return
+    payload[field] = str(value).strip()
+
+
 def _make_email(first_second, ownerkey, **kw):
     from schemas.contact import CreateEmail
 
     try:
-        if "email" in kw and kw["email"] is not None:
-            kw["email"] = str(kw["email"]).strip()
+        _normalize_string_field(kw, "email")
 
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
@@ -321,8 +326,7 @@ def _make_phone(first_second, ownerkey, **kw):
     from schemas.contact import CreatePhone
 
     try:
-        if "phone_number" in kw and kw["phone_number"] is not None:
-            kw["phone_number"] = str(kw["phone_number"]).strip()
+        _normalize_string_field(kw, "phone_number")
 
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump()), True
