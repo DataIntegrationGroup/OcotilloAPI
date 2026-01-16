@@ -237,7 +237,7 @@ def read_csv(
     with open(p, "wb") as f:
         f.write(data)
 
-    return pd.read_csv(io.BytesIO(data), dtype=dtype)
+    return pd.read_csv(io.BytesIO(data), dtype=dtype, *args, **kw)
 
 
 def _download_blob_bytes(blob, attempts: int = 3, base_sleep: float = 1.0) -> bytes:
