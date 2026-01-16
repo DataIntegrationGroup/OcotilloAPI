@@ -33,6 +33,7 @@ from admin.views.notes import NotesAdmin
 from admin.views.sample import SampleAdmin
 from admin.views.hydraulicsdata import HydraulicsDataAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
+from admin.views.field_parameters import FieldParametersAdmin
 from admin.views.radionuclides import RadionuclidesAdmin
 from admin.views.geologic_formation import GeologicFormationAdmin
 from admin.views.data_provenance import DataProvenanceAdmin
@@ -62,6 +63,7 @@ __all__ = [
     "SampleAdmin",
     "HydraulicsDataAdmin",
     "ChemistrySampleInfoAdmin",
+    "FieldParametersAdmin",
     "RadionuclidesAdmin",
     "GeologicFormationAdmin",
     "DataProvenanceAdmin",
