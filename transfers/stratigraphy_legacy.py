@@ -28,7 +28,7 @@ class StratigraphyLegacyTransferer(Transferer):
         self.batch_size = batch_size
         self._thing_id_cache: dict[str, int] = {}
 
-    def _get_dfs(self):  # type: ignore[override]
+    def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = read_csv("Stratigraphy")
         cleaned = replace_nans(df)
         cleaned = filter_to_valid_point_ids(cleaned, self.pointids)
