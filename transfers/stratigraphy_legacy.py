@@ -103,9 +103,13 @@ class StratigraphyLegacyTransferer(Transferer):
             self._capture_error(point_id, "No Thing found for PointID", "thing_id")
             return None
 
-        global_id = self._uuid_value(getattr(row, "GlobalID", None))
+        raw_global_id = getattr(row, "GlobalID", None)
+        if raw_global_id in (None, ""):
+            self._capture_error(point_id, "Missing GlobalID", "GlobalID")
+            return None
+        global_id = self._uuid_value(raw_global_id)
         if global_id is None:
-            self._capture_error(point_id, "Invalid GlobalID", "GlobalID")
+            self._capture_error(point_id, "Malformed GlobalID", "GlobalID")
             return None
 
         return {
