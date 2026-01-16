@@ -17,10 +17,10 @@
 """Legacy NM Aquifer models copied from AMPAPI."""
 
 import uuid
-
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
+from db.base import Base
 from sqlalchemy import (
     Boolean,
     Date,
@@ -36,8 +36,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
-
-from db.base import Base
 
 if TYPE_CHECKING:
     from db.thing import Thing
@@ -204,6 +202,37 @@ class NMAHydraulicsData(Base):
     )
 
     thing: Mapped["Thing"] = relationship("Thing")
+
+
+class Stratigraphy(Base):
+    """Legacy stratigraphy (lithology log) data from AMPAPI."""
+
+    __tablename__ = "NMA_Stratigraphy"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    point_id: Mapped[str] = mapped_column("PointID", String(10), nullable=False)
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    strat_top: Mapped[Optional[float]] = mapped_column("StratTop", Float)
+    strat_bottom: Mapped[Optional[float]] = mapped_column("StratBottom", Float)
+    unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(50))
+    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(100))
+    lithologic_modifier: Mapped[Optional[str]] = mapped_column(
+        "LithologicModifier", String(100)
+    )
+    contributing_unit: Mapped[Optional[str]] = mapped_column(
+        "ContributingUnit", String(10)
+    )
+    strat_source: Mapped[Optional[str]] = mapped_column("StratSource", Text)
+    strat_notes: Mapped[Optional[str]] = mapped_column("StratNotes", Text)
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="stratigraphy_logs")
 
 
 class ChemistrySampleInfo(Base):

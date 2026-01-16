@@ -138,7 +138,7 @@ class Transferer(object):
         csv_path = csv_paths.get(name)
         if csv_path:
             return pd.read_csv(csv_path, **kw)
-        return read_csv(name, dtype=dtype, **kw)
+        return read_csv(name, **kw)
 
 
 class ChunkTransferer(Transferer):
