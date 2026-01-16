@@ -128,9 +128,6 @@ def _create_well_with_location(session, name: str, point_wkt: str) -> Thing:
     session.commit()
     return thing
 
-    # Cleanup
-
-
 def test_get_project_area():
     response = client.get("/geospatial/project-area/1")
     assert response.status_code == 200
