@@ -16,15 +16,14 @@
 import time
 
 import pandas as pd
+from db import Thing, Base
+from db.engine import session_ctx
 from pandas import DataFrame
 from pydantic import ValidationError
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
-
-from db import Thing, Base
-from db.engine import session_ctx
 from transfers.logger import logger
-from transfers.util import chunk_by_size
+from transfers.util import chunk_by_size, read_csv
 
 
 class ManualFixer(object):
@@ -131,6 +130,15 @@ class Transferer(object):
 
     def _get_dfs(self):
         raise NotImplementedError("Must implement _get_dfs method")
+
+    def _read_csv(self, name: str, dtype: dict | None = None, **kw) -> pd.DataFrame:
+        if dtype is not None and "dtype" not in kw:
+            kw["dtype"] = dtype
+        csv_paths = self.flags.get("CSV_PATHS") or {}
+        csv_path = csv_paths.get(name)
+        if csv_path:
+            return pd.read_csv(csv_path, **kw)
+        return read_csv(name, dtype=dtype, **kw)
 
 
 class ChunkTransferer(Transferer):
