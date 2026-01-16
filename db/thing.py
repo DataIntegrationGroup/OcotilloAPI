@@ -423,6 +423,8 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
+            if not self.measuring_points:
+                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
@@ -439,6 +441,8 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
+            if not self.measuring_points:
+                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )

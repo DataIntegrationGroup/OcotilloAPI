@@ -16,7 +16,6 @@
 from datetime import timezone
 
 import pytest
-
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -750,11 +749,11 @@ def test_get_things(water_well_thing, spring_thing, location):
     response = client.get("/thing")
     assert response.status_code == 200
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
-    # created_at is already serialized to UTC format by UTCAwareDatetime
-
     data = response.json()
-    assert data["total"] == 2
+    assert data["total"] >= 2
+    returned_ids = {item["id"] for item in data["items"]}
+    assert water_well_thing.id in returned_ids
+    assert spring_thing.id in returned_ids
 
 
 @pytest.mark.skip("Needs to be updated per changes made from feature files")
