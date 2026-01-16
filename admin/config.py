@@ -38,6 +38,7 @@ from admin.views import (
     SampleAdmin,
     HydraulicsDataAdmin,
     ChemistrySampleInfoAdmin,
+    FieldParametersAdmin,
     RadionuclidesAdmin,
     GeologicFormationAdmin,
     DataProvenanceAdmin,
@@ -68,6 +69,7 @@ from db.sample import Sample
 from db.nma_legacy import (
     ChemistrySampleInfo,
     NMAHydraulicsData,
+    NMAFieldParameters,
     NMARadionuclides,
     SurfaceWaterData,
 )
@@ -138,6 +140,7 @@ def create_admin(app):
     # Samples
     admin.add_view(SampleAdmin(Sample))
     admin.add_view(ChemistrySampleInfoAdmin(ChemistrySampleInfo))
+    admin.add_view(FieldParametersAdmin(NMAFieldParameters))
     admin.add_view(SurfaceWaterDataAdmin(SurfaceWaterData))
 
     # Hydraulics
