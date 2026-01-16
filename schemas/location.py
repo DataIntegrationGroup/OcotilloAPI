@@ -17,12 +17,11 @@ from datetime import date
 from typing import Any
 from typing import List
 
+from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from core.enums import ElevationMethod, CoordinateMethod
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, model_validator, field_validator, Field, ConfigDict
-
-from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
-from core.enums import ElevationMethod, CoordinateMethod
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.util import convert_m_to_ft, transform_srid
@@ -130,6 +129,8 @@ class LocationGeoJSONResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def populate_fields(cls, data: Any) -> Any:
+        if data is None:
+            return None
         # convert row to dictionary
         if not isinstance(data, dict):
             data_dict = {c.name: getattr(data, c.name) for c in data.__table__.columns}
