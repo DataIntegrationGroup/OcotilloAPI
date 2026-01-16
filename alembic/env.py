@@ -5,9 +5,8 @@ from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, engine_from_config, pool, text
-
 from services.util import get_bool_env
+from sqlalchemy import create_engine, engine_from_config, pool, text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -25,6 +24,7 @@ if config.config_file_name is not None:
 
 # from db import Base  # Import your Base from models/__init__.py
 from db import Base
+from db.initialization import grant_app_read_members
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
@@ -167,6 +167,7 @@ def run_migrations_online() -> None:
         ).first()
         if not role_exists:
             autocommit_role.execute(text("CREATE ROLE app_read"))
+        grant_app_read_members(autocommit_role)
 
     with connectable.connect() as connection:
         context.configure(

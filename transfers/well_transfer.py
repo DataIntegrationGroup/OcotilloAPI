@@ -15,13 +15,18 @@
 # ===============================================================================
 import os
 import re
-import threading
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+from pandas import isna, notna
+from pydantic import ValidationError
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
+
 from core.enums import (
     WellPurpose as WellPurposeEnum,
     CasingMaterial as WellCasingMaterialEnum,
@@ -42,9 +47,6 @@ from db import (
     GeologicFormation,
     ThingAquiferAssociation,
 )
-from db.engine import session_ctx
-from pandas import isna, notna
-from pydantic import ValidationError
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
 from services.util import (
@@ -52,13 +54,13 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
-from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
+from db.engine import session_ctx
 from transfers.transferer import ChunkTransferer, Transferer
 from transfers.util import (
     make_location,
     make_location_data_provenance,
     filter_to_valid_point_ids,
+    read_csv,
     logger,
     replace_nans,
     get_transferable_wells,
@@ -218,19 +220,14 @@ class WellTransferer(Transferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        if self.flags.get("CSV_PATHS"):
-            # Local CSV mode runs in test/dev without GCS; disable the shared cache
-            # so elevation lookups don’t reach out to the bucket.
-            self._cached_elevations = {}
-        else:
-            self._cached_elevations = get_cached_elevations()
+        self._cached_elevations = get_cached_elevations()
         self._added_locations = {}
         self._aquifers = None
         self._measuring_point_estimator = MeasuringPointEstimator()
 
     def _get_dfs(self):
-        wdf = self._read_csv("WellData", dtype={"OSEWelltagID": str})
-        ldf = self._read_csv("Location")
+        wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+        ldf = read_csv("Location")
         ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1)
         wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
         wdf = wdf[wdf["SiteType"] == "GW"]
@@ -625,10 +622,7 @@ class WellTransferer(Transferer):
             return None, False
 
     def _after_hook(self, session):
-        if self.flags.get("CSV_PATHS"):
-            logger.info("Skipping cached elevation dump while using CSV_PATHS")
-        else:
-            dump_cached_elevations(self._cached_elevations)
+        dump_cached_elevations(self._cached_elevations)
 
         self._row_by_pointid = {
             pid: row
@@ -1598,7 +1592,7 @@ class WellChunkTransferer(ChunkTransferer):
         if self.source_table is None:
             raise ValueError("source_table must be set")
 
-        input_df = self._read_csv(self.source_table, dtype=self.source_dtypes)
+        input_df = read_csv(self.source_table, self.source_dtypes)
         wdf = replace_nans(input_df)
         cleaned_df = filter_to_valid_point_ids(wdf)
         return input_df, cleaned_df

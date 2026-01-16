@@ -16,6 +16,10 @@
 import json
 
 import pandas as pd
+from pandas import DataFrame
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
+
 from core.enums import Organization
 from db import (
     Contact,
@@ -26,15 +30,12 @@ from db import (
     IncompleteNMAPhone,
     Base,
 )
-from pandas import DataFrame
-from pydantic import ValidationError
-from sqlalchemy.orm import Session
 from transfers.logger import logger
 from transfers.transferer import ThingBasedTransferer
-from transfers.util import filter_to_valid_point_ids, replace_nans
 from transfers.util import (
     get_transfers_data_path,
 )
+from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
 class ContactTransfer(ThingBasedTransferer):
@@ -69,11 +70,11 @@ class ContactTransfer(ThingBasedTransferer):
                 logger.critical(f"Invalid Organization {e}")
 
     def _get_dfs(self):
-        input_df = self._read_csv(self.source_table)
+        input_df = read_csv(self.source_table)
         odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
-        ldf = self._read_csv("OwnerLink")
+        ldf = read_csv("OwnerLink")
         ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
-        locdf = self._read_csv("Location")
+        locdf = read_csv("Location")
         ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
         odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
@@ -149,7 +150,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
         email = _make_email(
             "first",
             row.OwnerKey,
-            email=str(row.Email).strip() if row.Email is not None else None,
+            email=row.Email.strip(),
             email_type="Primary",
             release_status=release_status,
         )
@@ -301,18 +302,12 @@ def _make_name(first, last):
         return f"{first} {last}"
 
 
-def _normalize_string_field(payload: dict, field: str) -> None:
-    value = payload.get(field)
-    if value is None:
-        return
-    payload[field] = str(value).strip()
-
-
 def _make_email(first_second, ownerkey, **kw):
     from schemas.contact import CreateEmail
 
     try:
-        _normalize_string_field(kw, "email")
+        if "email" in kw:
+            kw["email"] = kw["email"].strip()
 
         email = CreateEmail(**kw)
         return Email(**email.model_dump())
@@ -326,7 +321,8 @@ def _make_phone(first_second, ownerkey, **kw):
     from schemas.contact import CreatePhone
 
     try:
-        _normalize_string_field(kw, "phone_number")
+        if "phone_number" in kw:
+            kw["phone_number"] = kw["phone_number"].strip()
 
         phone = CreatePhone(**kw)
         return Phone(**phone.model_dump()), True

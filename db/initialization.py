@@ -1,0 +1,76 @@
+"""Utilities for preparing and keeping the database schema in sync."""
+
+import os
+
+from sqlalchemy import text
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import Session
+from sqlalchemy_searchable import sync_trigger
+from sqlalchemy_utils import TSVectorType
+
+from db import Base
+
+APP_READ_GRANT_SQL = text(
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
+            EXECUTE 'GRANT USAGE ON SCHEMA public TO app_read';
+            EXECUTE 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read';
+            EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
+        END IF;
+    END $$;
+    """
+)
+
+GRANT_MEMBER_SQL = text(
+    """
+    DO $$
+    DECLARE
+        username text := :grantee;
+    BEGIN
+        IF username IS NULL OR username = '' THEN
+            RETURN;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = username) THEN
+            EXECUTE format('GRANT app_read TO %I', username);
+        END IF;
+    END $$;
+    """
+)
+
+
+def _parse_app_read_members() -> list[str]:
+    members = os.environ.get("APP_READ_MEMBERS", "")
+    return [member.strip() for member in members.split(",") if member.strip()]
+
+
+def grant_app_read_members(executor: Session | Connection | None) -> None:
+    """Grant app_read to each configured role if it exists."""
+    if executor is None:
+        return
+    members = _parse_app_read_members()
+    if not members:
+        return
+    for member in members:
+        executor.execute(GRANT_MEMBER_SQL, {"grantee": member})
+
+
+def recreate_public_schema(session: Session) -> None:
+    """Drop and recreate the public schema, PostGIS extension, and app_read grants."""
+    session.execute(text("DROP SCHEMA public CASCADE"))
+    session.execute(text("CREATE SCHEMA public"))
+    session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+    session.execute(APP_READ_GRANT_SQL)
+    grant_app_read_members(session)
+    session.commit()
+
+
+def sync_search_vector_triggers(session: Session) -> None:
+    """Ensure SQLAlchemy-searchable triggers exist for every TSVector column."""
+    conn = session.connection()
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            if isinstance(column.type, TSVectorType):
+                sync_trigger(conn, table.name, column.name, list(column.type.columns))
+    session.commit()

@@ -72,9 +72,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(
-            self.source_table, parse_dates=["CollectionDate"], keep_default_na=False
-        )
+        input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])
         # Filter to only include rows where Thing exists (prevent orphan records)
         cleaned_df = self._filter_to_valid_things(input_df)
         cleaned_df = self._filter_to_valid_sample_pt_ids(cleaned_df)
@@ -244,9 +242,6 @@ class ChemistrySampleInfoTransferer(Transferer):
             session.expunge_all()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
-        def is_blank(value: Any) -> bool:
-            return isinstance(value, str) and value.strip() == ""
-
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
@@ -292,8 +287,6 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         # Convert pandas Timestamp to datetime; native datetime stays unchanged.
         collection_date = val("CollectionDate")
-        if is_blank(collection_date):
-            collection_date = None
         if hasattr(collection_date, "to_pydatetime"):
             collection_date = collection_date.to_pydatetime()
 

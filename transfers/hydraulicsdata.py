@@ -50,7 +50,7 @@ class HydraulicsDataTransferer(Transferer):
         logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df = read_csv(self.source_table, keep_default_na=False)
+        df = read_csv(self.source_table)
         cleaned_df = self._filter_to_valid_things(df)
         return df, cleaned_df
 
@@ -129,9 +129,6 @@ class HydraulicsDataTransferer(Transferer):
             session.expunge_all()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
-        def is_blank(value: Any) -> bool:
-            return isinstance(value, str) and value.strip() == ""
-
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
@@ -151,19 +148,10 @@ class HydraulicsDataTransferer(Transferer):
 
         def as_int(key: str) -> Optional[int]:
             v = val(key)
-            if v is None or is_blank(v):
+            if v is None:
                 return None
             try:
                 return int(v)
-            except (TypeError, ValueError):
-                return None
-
-        def as_float(key: str) -> Optional[float]:
-            v = val(key)
-            if v is None or is_blank(v):
-                return None
-            try:
-                return float(v)
             except (TypeError, ValueError):
                 return None
 
@@ -177,17 +165,17 @@ class HydraulicsDataTransferer(Transferer):
             "TestBottom": as_int("TestBottom"),
             "HydraulicUnitType": val("HydraulicUnitType"),
             "Hydraulic Remarks": val("Hydraulic Remarks"),
-            "T (ft2/d)": as_float("T (ft2/d)"),
-            "S (dimensionless)": as_float("S (dimensionless)"),
-            "Ss (ft-1)": as_float("Ss (ft-1)"),
-            "Sy (decimalfractn)": as_float("Sy (decimalfractn)"),
-            "KH (ft/d)": as_float("KH (ft/d)"),
-            "KV (ft/d)": as_float("KV (ft/d)"),
-            "HL (day-1)": as_float("HL (day-1)"),
-            "HD (ft2/d)": as_float("HD (ft2/d)"),
-            "Cs (gal/d/ft)": as_float("Cs (gal/d/ft)"),
-            "P (decimal fraction)": as_float("P (decimal fraction)"),
-            "k (darcy)": as_float("k (darcy)"),
+            "T (ft2/d)": val("T (ft2/d)"),
+            "S (dimensionless)": val("S (dimensionless)"),
+            "Ss (ft-1)": val("Ss (ft-1)"),
+            "Sy (decimalfractn)": val("Sy (decimalfractn)"),
+            "KH (ft/d)": val("KH (ft/d)"),
+            "KV (ft/d)": val("KV (ft/d)"),
+            "HL (day-1)": val("HL (day-1)"),
+            "HD (ft2/d)": val("HD (ft2/d)"),
+            "Cs (gal/d/ft)": val("Cs (gal/d/ft)"),
+            "P (decimal fraction)": val("P (decimal fraction)"),
+            "k (darcy)": val("k (darcy)"),
             "Data Source": val("Data Source"),
             "OBJECTID": as_int("OBJECTID"),
         }

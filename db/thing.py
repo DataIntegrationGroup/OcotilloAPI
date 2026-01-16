@@ -16,6 +16,11 @@
 from datetime import date
 from typing import List, TYPE_CHECKING
 
+from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
+from sqlalchemy.orm import relationship, mapped_column, Mapped
+from sqlalchemy_utils import TSVectorType
+
 from db import lexicon_term, NotesMixin
 from db.asset import Asset
 from db.base import (
@@ -28,10 +33,6 @@ from db.measuring_point_history import MeasuringPointHistory
 from db.permission_history import PermissionHistoryMixin
 from db.status_history import StatusHistoryMixin
 from services.util import retrieve_latest_polymorphic_history_table_record
-from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
-from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-from sqlalchemy.orm import relationship, mapped_column, Mapped
-from sqlalchemy_utils import TSVectorType
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -46,7 +47,7 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
-    from db.nma_legacy import ChemistrySampleInfo, Stratigraphy
+    from db.nma_legacy import ChemistrySampleInfo
 
 
 class Thing(
@@ -311,13 +312,6 @@ class Thing(
         passive_deletes=True,
     )
 
-    stratigraphy_logs: Mapped[List["Stratigraphy"]] = relationship(
-        "Stratigraphy",
-        back_populates="thing",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -423,8 +417,6 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
-            if not self.measuring_points:
-                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
@@ -441,8 +433,6 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
-            if not self.measuring_points:
-                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )

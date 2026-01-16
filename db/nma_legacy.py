@@ -17,10 +17,10 @@
 """Legacy NM Aquifer models copied from AMPAPI."""
 
 import uuid
+
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from db.base import Base
 from sqlalchemy import (
     Boolean,
     Date,
@@ -33,11 +33,11 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     text,
-    Identity,
-    Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+
+from db.base import Base
 
 if TYPE_CHECKING:
     from db.thing import Thing
@@ -206,37 +206,6 @@ class NMAHydraulicsData(Base):
     thing: Mapped["Thing"] = relationship("Thing")
 
 
-class Stratigraphy(Base):
-    """Legacy stratigraphy (lithology log) data from AMPAPI."""
-
-    __tablename__ = "NMA_Stratigraphy"
-
-    global_id: Mapped[uuid.UUID] = mapped_column(
-        "GlobalID", UUID(as_uuid=True), primary_key=True
-    )
-    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
-    point_id: Mapped[str] = mapped_column("PointID", String(10), nullable=False)
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
-    )
-
-    strat_top: Mapped[Optional[float]] = mapped_column("StratTop", Float)
-    strat_bottom: Mapped[Optional[float]] = mapped_column("StratBottom", Float)
-    unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(50))
-    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(100))
-    lithologic_modifier: Mapped[Optional[str]] = mapped_column(
-        "LithologicModifier", String(100)
-    )
-    contributing_unit: Mapped[Optional[str]] = mapped_column(
-        "ContributingUnit", String(10)
-    )
-    strat_source: Mapped[Optional[str]] = mapped_column("StratSource", Text)
-    strat_notes: Mapped[Optional[str]] = mapped_column("StratNotes", Text)
-    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
-
-    thing: Mapped["Thing"] = relationship("Thing", back_populates="stratigraphy_logs")
-
-
 class ChemistrySampleInfo(Base):
     """
     Legacy Chemistry SampleInfo table from AMPAPI.
@@ -311,13 +280,6 @@ class ChemistrySampleInfo(Base):
 
     major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
         "NMAMajorChemistry",
-        back_populates="chemistry_sample_info",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-    field_parameters: Mapped[List["NMAFieldParameters"]] = relationship(
-        "NMAFieldParameters",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -545,77 +507,6 @@ class NMAMajorChemistry(Base):
     def validate_sample_pt_id(self, key, value):
         if value is None:
             raise ValueError("NMAMajorChemistry requires a SamplePtID")
-        return value
-
-
-class NMAFieldParameters(Base):
-    """
-    Legacy FieldParameters table from AMPAPI.
-    Stores field measurements (pH, Temp, etc.) linked to ChemistrySampleInfo.
-    """
-
-    __tablename__ = "NMA_FieldParameters"
-
-    __table_args__ = (
-        # Explicit Indexes from DDL
-        Index("FieldParameters$AnalysesAgency", "AnalysesAgency"),
-        Index("FieldParameters$ChemistrySampleInfoFieldParameters", "SamplePtID"),
-        Index("FieldParameters$FieldParameter", "FieldParameter"),
-        Index("FieldParameters$SamplePointID", "SamplePointID"),
-        Index(
-            "FieldParameters$SamplePtID", "SamplePtID"
-        ),  # Note: DDL had two indexes on this col
-        Index("FieldParameters$WCLab_ID", "WCLab_ID"),
-        # Unique Indexes (Explicitly named to match DDL)
-        Index("FieldParameters$GlobalID", "GlobalID", unique=True),
-        Index("FieldParameters$OBJECTID", "OBJECTID", unique=True),
-    )
-
-    # Primary Key
-    global_id: Mapped[uuid.UUID] = mapped_column(
-        "GlobalID", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-
-    # Foreign Key
-    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
-        "SamplePtID",
-        UUID(as_uuid=True),
-        ForeignKey(
-            "NMA_Chemistry_SampleInfo.SamplePtID",
-            onupdate="CASCADE",
-            ondelete="CASCADE",
-        ),
-        nullable=False,
-    )
-
-    # Legacy Columns
-    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
-    field_parameter: Mapped[Optional[str]] = mapped_column("FieldParameter", String(50))
-    sample_value: Mapped[float] = mapped_column(
-        "SampleValue", Float, server_default="0"
-    )
-    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
-    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
-
-    # Identity Column
-    object_id: Mapped[int] = mapped_column(
-        "OBJECTID", Integer, Identity(start=1), nullable=False
-    )
-
-    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
-    wc_lab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
-
-    # Relationships
-    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
-        "ChemistrySampleInfo", back_populates="field_parameters"
-    )
-
-    @validates("sample_pt_id")
-    def validate_sample_pt_id(self, key, value):
-        if value is None:
-            raise ValueError(
-                "FieldParameter requires a parent ChemistrySampleInfo (SamplePtID)"
-            )
         return value
 
 

@@ -20,9 +20,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from alembic import command
 from alembic.config import Config
 from db.engine import session_ctx
+from db.initialization import recreate_public_schema, sync_search_vector_triggers
 from dotenv import load_dotenv
 from services.util import get_bool_env
-from sqlalchemy import text
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.permissions_transfer import transfer_permissions
@@ -144,10 +144,7 @@ def _alembic_config() -> Config:
 def _drop_and_rebuild_db() -> None:
     logger.info("Dropping schema public")
     with session_ctx() as session:
-        session.execute(text("DROP SCHEMA public CASCADE"))
-        session.execute(text("CREATE SCHEMA public"))
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        session.commit()
+        recreate_public_schema(session)
     logger.info("Running Alembic migrations")
     try:
         command.upgrade(_alembic_config(), "head")
@@ -158,6 +155,9 @@ def _drop_and_rebuild_db() -> None:
             "Alembic upgrade returned SystemExit(%s); continuing transfer", exc.code
         )
     logger.info("Alembic migrations complete")
+    logger.info("Synchronizing search vector triggers")
+    with session_ctx() as session:
+        sync_search_vector_triggers(session)
     logger.info("Initializing lexicon data")
     init_lexicon()
     logger.info("Initializing parameter data")

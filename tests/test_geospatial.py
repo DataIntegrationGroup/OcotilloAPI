@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import date
 from pathlib import Path
 
 import pytest
+from geoalchemy2 import functions as geofunc
+
 from core.constants import SRID_WGS84
 from core.dependencies import (
     admin_function,
@@ -28,7 +29,6 @@ from core.dependencies import (
 )
 from db import Thing, Location, LocationThingAssociation, Group, MeasuringPointHistory
 from db.engine import session_ctx
-from geoalchemy2 import functions as geofunc
 from main import app
 from tests import client, override_authentication
 
@@ -68,16 +68,46 @@ def override_authentication_dependency_fixture():
 @pytest.fixture(autouse=True, scope="module")
 def populate():
     with session_ctx() as session:
-        thing1 = _create_well_with_location(
-            session,
-            name="Thing 1",
-            point_wkt="POINT(10.1 10.1)",
+        # Create some sample data
+        thing1 = Thing(name="Thing 1", thing_type="water well")
+        thing2 = Thing(name="Thing 2", thing_type="water well")
+        session.add(thing1)
+        session.add(thing2)
+
+        session.commit()
+
+        mp_history_1 = MeasuringPointHistory(
+            thing_id=thing1.id,
+            measuring_point_height=5.0,
+            measuring_point_description="MP for Thing 1",
+            start_date="2023-01-01",
+            reason="Initial entry",
         )
-        thing2 = _create_well_with_location(
-            session,
-            name="Thing 2",
-            point_wkt="POINT(20 20)",
+        mp_history_2 = MeasuringPointHistory(
+            thing_id=thing2.id,
+            measuring_point_height=10.0,
+            measuring_point_description="MP for Thing 2",
+            start_date="2023-01-01",
+            reason="Initial entry",
         )
+        session.add(mp_history_1)
+        session.add(mp_history_2)
+
+        loc1 = Location(
+            # name="Test Location 1",
+            point=geofunc.ST_GeomFromText("POINT(10.1 10.1)", srid=SRID_WGS84),
+            elevation=0,
+        )
+        loc2 = Location(
+            # name="Test Location 2",
+            point=geofunc.ST_GeomFromText("POINT(20 20)", srid=SRID_WGS84),
+            elevation=0,
+        )
+        session.add(loc1)
+        session.add(loc2)
+
+        session.add(LocationThingAssociation(location=loc1, thing=thing1))
+        session.add(LocationThingAssociation(location=loc2, thing=thing2))
 
         group = Group(
             name="Test Group Foo",
@@ -87,46 +117,15 @@ def populate():
 
         session.add(group)
         session.commit()
-        try:
-            yield
-        finally:
-            session.delete(group)
-            session.delete(thing1)
-            session.delete(thing2)
-            session.commit()
+        yield
 
-
-def _create_well_with_location(session, name: str, point_wkt: str) -> Thing:
-    thing = Thing(name=name, thing_type="water well", release_status="draft")
-    session.add(thing)
-    session.commit()
-    session.refresh(thing)
-
-    location = Location(
-        point=geofunc.ST_GeomFromText(point_wkt, srid=SRID_WGS84),
-        elevation=0,
-        release_status="draft",
-    )
-    session.add(location)
-    session.flush()
-    session.add(
-        LocationThingAssociation(
-            location_id=location.id,
-            thing_id=thing.id,
-            effective_start=date.today().isoformat(),
-        )
-    )
-    session.add(
-        MeasuringPointHistory(
-            thing_id=thing.id,
-            measuring_point_height=5.0,
-            measuring_point_description=f"MP for {name}",
-            start_date=date.today(),
-            release_status="draft",
-        )
-    )
-    session.commit()
-    return thing
+        # Cleanup
+        session.delete(loc1)
+        session.delete(loc2)
+        session.delete(group)
+        session.delete(thing1)
+        session.delete(thing2)
+        session.commit()
 
 
 def test_get_project_area():

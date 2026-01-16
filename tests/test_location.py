@@ -16,9 +16,10 @@
 from datetime import timezone
 
 import pytest
+from geoalchemy2.shape import to_shape
+
 from core.dependencies import admin_function, editor_function, viewer_function
 from db import Location
-from geoalchemy2.shape import to_shape
 from main import app
 from schemas import DT_FMT
 from tests import (
@@ -158,28 +159,28 @@ def test_get_locations(location):
     response = client.get("/location")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] >= 1
-    item = next(item for item in data["items"] if item["id"] == location.id)
-    assert item["created_at"] == location.created_at.astimezone(timezone.utc).strftime(
-        DT_FMT
-    )
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == location.id
+    assert data["items"][0]["created_at"] == location.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     # assert data["items"][0]["name"] == location.name
-    assert isinstance(item["notes"], list)
+    assert isinstance(data["items"][0]["notes"], list)
     # If you know the exact number of notes expected:
     # assert len(data["items"][0]["notes"]) == expected_count
     # If you want to check content of a specific note:
     # if data["items"][0]["notes"]:
     #     assert data["items"][0]["notes"][0]["content"] == expected_content
-    assert item["point"] == to_shape(location.point).wkt
-    assert item["elevation"] == location.elevation
-    assert item["release_status"] == location.release_status
+    assert data["items"][0]["point"] == to_shape(location.point).wkt
+    assert data["items"][0]["elevation"] == location.elevation
+    assert data["items"][0]["release_status"] == location.release_status
     # assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
     # assert data["items"][0]["elevation_method"] == location.elevation_method
     # assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
     # assert data["items"][0]["coordinate_method"] == location.coordinate_method
-    assert item["state"] == location.state
-    assert item["county"] == location.county
-    assert item["quad_name"] == location.quad_name
+    assert data["items"][0]["state"] == location.state
+    assert data["items"][0]["county"] == location.county
+    assert data["items"][0]["quad_name"] == location.quad_name
 
 
 def test_get_location_by_id(location):

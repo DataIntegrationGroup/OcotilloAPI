@@ -41,7 +41,7 @@ class WeatherDataTransferer(Transferer):
         self.batch_size = batch_size
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df = read_csv(self.source_table, keep_default_na=False)
+        df = read_csv(self.source_table)
         return df, df
 
     def _transfer_hook(self, session: Session) -> None:

@@ -18,6 +18,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from pandas import DataFrame
+from pydantic import ValidationError
+from sqlalchemy import select, func
+from sqlalchemy.exc import ProgrammingError
+
 from db import (
     Thing,
     WellScreen,
@@ -35,7 +40,6 @@ from db import (
     NMAHydraulicsData,
     NMARadionuclides,
     NMAMajorChemistry,
-    Stratigraphy,
     SurfaceWaterData,
     NMAWaterLevelsContinuousPressureDaily,
     ViewNGWMNWellConstruction,
@@ -45,11 +49,7 @@ from db import (
     NMAMinorTraceChemistry,
 )
 from db.engine import session_ctx
-from pandas import DataFrame
-from pydantic import ValidationError
 from services.gcs_helper import get_storage_bucket
-from sqlalchemy import select, func
-from sqlalchemy.exc import ProgrammingError
 
 
 class Metrics:
@@ -154,9 +154,6 @@ class Metrics:
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
-
-    def nma_stratigraphy_metrics(self, *args, **kw) -> None:
-        self._handle_metrics(Stratigraphy, name="NMA_Stratigraphy", *args, **kw)
 
     def minor_trace_chemistry_metrics(self, *args, **kw) -> None:
         self._handle_metrics(

@@ -53,9 +53,7 @@ class MajorChemistryTransferer(Transferer):
         )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(
-            self.source_table, parse_dates=["AnalysisDate"], keep_default_na=False
-        )
+        input_df = read_csv(self.source_table, parse_dates=["AnalysisDate"])
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
 
@@ -133,9 +131,6 @@ class MajorChemistryTransferer(Transferer):
             session.expunge_all()
 
     def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
-        def is_blank(value: Any) -> bool:
-            return isinstance(value, str) and value.strip() == ""
-
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
@@ -144,7 +139,7 @@ class MajorChemistryTransferer(Transferer):
 
         def float_val(key: str) -> Optional[float]:
             v = val(key)
-            if v is None or is_blank(v):
+            if v is None:
                 return None
             try:
                 return float(v)
@@ -153,7 +148,7 @@ class MajorChemistryTransferer(Transferer):
 
         def int_val(key: str) -> Optional[int]:
             v = val(key)
-            if v is None or is_blank(v):
+            if v is None:
                 return None
             try:
                 return int(v)
@@ -161,8 +156,6 @@ class MajorChemistryTransferer(Transferer):
                 return None
 
         analysis_date = val("AnalysisDate")
-        if is_blank(analysis_date):
-            analysis_date = None
         if hasattr(analysis_date, "to_pydatetime"):
             analysis_date = analysis_date.to_pydatetime()
         if isinstance(analysis_date, datetime):

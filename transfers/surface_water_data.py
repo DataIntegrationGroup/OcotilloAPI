@@ -41,9 +41,7 @@ class SurfaceWaterDataTransferer(Transferer):
         self.batch_size = batch_size
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df = read_csv(
-            self.source_table, parse_dates=["DateMeasured"], keep_default_na=False
-        )
+        df = read_csv(self.source_table, parse_dates=["DateMeasured"])
         return df, df
 
     def _transfer_hook(self, session: Session) -> None:
@@ -84,23 +82,11 @@ class SurfaceWaterDataTransferer(Transferer):
             session.expunge_all()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
-        def is_blank(value: Any) -> bool:
-            return isinstance(value, str) and value.strip() == ""
-
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
                 return None
             return v
-
-        def as_float(key: str) -> Optional[float]:
-            v = val(key)
-            if v is None or is_blank(v):
-                return None
-            try:
-                return float(v)
-            except (TypeError, ValueError):
-                return None
 
         def to_uuid(v: Any) -> Optional[uuid.UUID]:
             if v is None or pd.isna(v):
@@ -112,8 +98,6 @@ class SurfaceWaterDataTransferer(Transferer):
             return None
 
         dt = val("DateMeasured")
-        if is_blank(dt):
-            dt = None
         if hasattr(dt, "to_pydatetime"):
             dt = dt.to_pydatetime()
 
@@ -123,7 +107,7 @@ class SurfaceWaterDataTransferer(Transferer):
             "OBJECTID": val("OBJECTID"),
             "Discharge": val("Discharge"),
             "DischargeMethod": val("DischargeMethod"),
-            "DischargeRate": as_float("DischargeRate"),
+            "DischargeRate": val("DischargeRate"),
             "DischargeUnits": val("DischargeUnits"),
             "DateMeasured": dt,
             "DischargeSource": val("DischargeSource"),
