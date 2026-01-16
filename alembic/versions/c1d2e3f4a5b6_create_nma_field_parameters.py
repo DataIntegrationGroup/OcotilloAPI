@@ -64,7 +64,7 @@ def upgrade() -> None:
             ["AnalysesAgency"],
         )
         op.create_index(
-            "FieldParameters$Chemistry SampleInfoFieldParameters",
+            "FieldParameters$ChemistrySampleInfoFieldParameters",
             "NMA_FieldParameters",
             ["SamplePtID"],
         )
