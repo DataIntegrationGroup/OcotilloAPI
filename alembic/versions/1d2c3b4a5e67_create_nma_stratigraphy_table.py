@@ -51,7 +51,6 @@ def upgrade() -> None:
         sa.Column("StratSource", sa.Text(), nullable=True),
         sa.Column("StratNotes", sa.Text(), nullable=True),
         sa.Column("OBJECTID", sa.Integer(), nullable=True, unique=True),
-        sa.ForeignKeyConstraint(["thing_id"], ["thing.id"], ondelete="CASCADE"),
     )
     op.create_index(
         "ix_nma_stratigraphy_point_id",
