@@ -93,7 +93,7 @@ class StratigraphyLegacyTransferer(Transferer):
         )
         self._thing_id_cache = {name: thing_id for thing_id, name in results}
 
-    def _row_dict(self, row: pd.Series) -> Dict[str, Any] | None:
+    def _row_dict(self, row: Any) -> Dict[str, Any] | None:
         point_id = getattr(row, "PointID", None)
         if not point_id:
             self._capture_error("<missing>", "Missing PointID", "PointID")
