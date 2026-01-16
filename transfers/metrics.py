@@ -43,6 +43,7 @@ from db import (
     SurfaceWaterData,
     SurfaceWaterPhotos,
     NMAWaterLevelsContinuousPressureDaily,
+    SoilRockResults,
     ViewNGWMNWellConstruction,
     ViewNGWMNWaterLevels,
     ViewNGWMNLithology,
@@ -115,6 +116,9 @@ class Metrics:
 
     def surface_water_photos_metrics(self, *args, **kw) -> None:
         self._handle_metrics(SurfaceWaterPhotos, name="SurfaceWaterPhotos", *args, **kw)
+
+    def soil_rock_results_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(SoilRockResults, name="Soil_Rock_Results", *args, **kw)
 
     def hydraulics_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMAHydraulicsData, name="HydraulicsData", *args, **kw)

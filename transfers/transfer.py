@@ -64,6 +64,7 @@ from transfers.ngwmn_views import (
     NGWMNWaterLevelsTransferer,
     NGWMNWellConstructionTransferer,
 )
+from transfers.soil_rock_results import SoilRockResultsTransferer
 from transfers.surface_water_data import SurfaceWaterDataTransferer
 from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 from transfers.util import timeit
@@ -229,6 +230,7 @@ def transfer_all(metrics, limit=100):
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
     transfer_surface_water_photos = get_bool_env("TRANSFER_SURFACE_WATER_PHOTOS", True)
+    transfer_soil_rock_results = get_bool_env("TRANSFER_SOIL_ROCK_RESULTS", True)
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
@@ -259,6 +261,7 @@ def transfer_all(metrics, limit=100):
             transfer_groups,
             transfer_assets,
             transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -286,6 +289,7 @@ def transfer_all(metrics, limit=100):
             transfer_groups,
             transfer_assets,
             transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -314,6 +318,7 @@ def _transfer_parallel(
     transfer_groups,
     transfer_assets,
     transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -351,6 +356,8 @@ def _transfer_parallel(
         parallel_tasks_1.append(
             ("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer, flags)
         )
+    if transfer_soil_rock_results:
+        parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer, flags))
     if transfer_weather_photos:
         parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
     if transfer_assets:
@@ -444,6 +451,8 @@ def _transfer_parallel(
         metrics.group_metrics(*results_map["Groups"])
     if "SurfaceWaterPhotos" in results_map and results_map["SurfaceWaterPhotos"]:
         metrics.surface_water_photos_metrics(*results_map["SurfaceWaterPhotos"])
+    if "SoilRockResults" in results_map and results_map["SoilRockResults"]:
+        metrics.soil_rock_results_metrics(*results_map["SoilRockResults"])
     if "Assets" in results_map and results_map["Assets"]:
         metrics.asset_metrics(*results_map["Assets"])
     if "SurfaceWaterData" in results_map and results_map["SurfaceWaterData"]:
@@ -547,6 +556,7 @@ def _transfer_sequential(
     transfer_groups,
     transfer_assets,
     transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -610,6 +620,11 @@ def _transfer_sequential(
         message("TRANSFERRING SURFACE WATER PHOTOS")
         results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
         metrics.surface_water_photos_metrics(*results)
+
+    if transfer_soil_rock_results:
+        message("TRANSFERRING SOIL ROCK RESULTS")
+        results = _execute_transfer(SoilRockResultsTransferer, flags=flags)
+        metrics.soil_rock_results_metrics(*results)
 
     if transfer_weather_photos:
         message("TRANSFERRING WEATHER PHOTOS")
