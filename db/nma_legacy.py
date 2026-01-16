@@ -530,7 +530,7 @@ class NMAFieldParameters(Base):
     __table_args__ = (
         # Explicit Indexes from DDL
         Index("FieldParameters$AnalysesAgency", "AnalysesAgency"),
-        Index("FieldParameters$Chemistry SampleInfoFieldParameters", "SamplePtID"),
+        Index("FieldParameters$ChemistrySampleInfoFieldParameters", "SamplePtID"),
         Index("FieldParameters$FieldParameter", "FieldParameter"),
         Index("FieldParameters$SamplePointID", "SamplePointID"),
         Index(
