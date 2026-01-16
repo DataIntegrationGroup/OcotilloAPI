@@ -17,16 +17,16 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from dotenv import load_dotenv
-
 from alembic import command
 from alembic.config import Config
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
+from dotenv import load_dotenv
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.permissions_transfer import transfer_permissions
+from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
 
 load_dotenv()
@@ -237,6 +237,7 @@ def transfer_all(metrics, limit=100):
     transfer_minor_trace_chemistry = get_bool_env(
         "TRANSFER_MINOR_TRACE_CHEMISTRY", True
     )
+    transfer_nma_stratigraphy = get_bool_env("TRANSFER_NMA_STRATIGRAPHY", True)
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -262,6 +263,7 @@ def transfer_all(metrics, limit=100):
             transfer_pressure_daily,
             transfer_weather_data,
             transfer_minor_trace_chemistry,
+            transfer_nma_stratigraphy,
         )
     else:
         _transfer_sequential(
@@ -286,6 +288,7 @@ def transfer_all(metrics, limit=100):
             transfer_pressure_daily,
             transfer_weather_data,
             transfer_minor_trace_chemistry,
+            transfer_nma_stratigraphy,
         )
 
 
@@ -311,6 +314,7 @@ def _transfer_parallel(
     transfer_pressure_daily,
     transfer_weather_data,
     transfer_minor_trace_chemistry,
+    transfer_nma_stratigraphy,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -375,6 +379,15 @@ def _transfer_parallel(
             futures[future] = name
 
         # Submit session-based transfers
+        if transfer_nma_stratigraphy:
+            future = executor.submit(
+                _execute_transfer_with_timing,
+                "NMAStratigraphy",
+                StratigraphyLegacyTransferer,
+                flags,
+            )
+            futures[future] = "NMAStratigraphy"
+
         future = executor.submit(
             _execute_session_transfer_with_timing,
             "Stratigraphy",
@@ -403,6 +416,8 @@ def _transfer_parallel(
         metrics.contact_metrics(*results_map["Contacts"])
     if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
         metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
+    if "NMAStratigraphy" in results_map and results_map["NMAStratigraphy"]:
+        metrics.nma_stratigraphy_metrics(*results_map["NMAStratigraphy"])
     if "WaterLevels" in results_map and results_map["WaterLevels"]:
         metrics.water_level_metrics(*results_map["WaterLevels"])
     if "LinkIdsWellData" in results_map and results_map["LinkIdsWellData"]:
@@ -520,6 +535,7 @@ def _transfer_sequential(
     transfer_pressure_daily,
     transfer_weather_data,
     transfer_minor_trace_chemistry,
+    transfer_nma_stratigraphy,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -540,6 +556,11 @@ def _transfer_sequential(
     message("TRANSFERRING PERMISSIONS")
     with session_ctx() as session:
         transfer_permissions(session)
+
+    if transfer_nma_stratigraphy:
+        message("TRANSFERRING NMA STRATIGRAPHY")
+        results = _execute_transfer(StratigraphyLegacyTransferer, flags=flags)
+        metrics.nma_stratigraphy_metrics(*results)
 
     message("TRANSFERRING STRATIGRAPHY")
     with session_ctx() as session:
