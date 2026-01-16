@@ -150,7 +150,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
         email = _make_email(
             "first",
             row.OwnerKey,
-            email=row.Email,
+            email=str(row.Email).strip() if row.Email is not None else None,
             email_type="Primary",
             release_status=release_status,
         )
