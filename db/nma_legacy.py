@@ -278,6 +278,22 @@ class ChemistrySampleInfo(Base):
         passive_deletes=True,
     )
 
+    major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
+        "NMAMajorChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
+
 
 class AssociatedData(Base):
     """
