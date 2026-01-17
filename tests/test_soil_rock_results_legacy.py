@@ -31,7 +31,7 @@ from db.engine import session_ctx
 from db.nma_legacy import SoilRockResults
 
 
-def test_create_soil_rock_results_all_fields():
+def test_create_soil_rock_results_all_fields(water_well_thing):
     """Test creating a soil/rock results record with all fields."""
     with session_ctx() as session:
         record = SoilRockResults(
@@ -41,6 +41,7 @@ def test_create_soil_rock_results_all_fields():
             d13c=-5.5,
             d18o=12.3,
             sampled_by="Tester",
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -53,6 +54,7 @@ def test_create_soil_rock_results_all_fields():
         assert record.d13c == -5.5
         assert record.d18o == 12.3
         assert record.sampled_by == "Tester"
+        assert record.thing_id == water_well_thing.id
         session.delete(record)
         session.commit()
 

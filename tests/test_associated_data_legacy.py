@@ -32,7 +32,7 @@ from db.engine import session_ctx
 from db.nma_legacy import AssociatedData
 
 
-def test_create_associated_data_all_fields():
+def test_create_associated_data_all_fields(water_well_thing):
     """Test creating an associated data record with all fields."""
     with session_ctx() as session:
         record = AssociatedData(
@@ -42,6 +42,7 @@ def test_create_associated_data_all_fields():
             notes="Legacy notes",
             formation="TEST",
             object_id=42,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -53,6 +54,7 @@ def test_create_associated_data_all_fields():
         assert record.notes == "Legacy notes"
         assert record.formation == "TEST"
         assert record.object_id == 42
+        assert record.thing_id == water_well_thing.id
 
         session.delete(record)
         session.commit()

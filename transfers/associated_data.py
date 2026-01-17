@@ -23,7 +23,8 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import AssociatedData
+from db import AssociatedData, Thing
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -37,6 +38,14 @@ class AssociatedDataTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._thing_id_cache: dict[str, int] = {}
+        self._build_thing_id_cache()
+
+    def _build_thing_id_cache(self) -> None:
+        with session_ctx() as session:
+            things = session.query(Thing.name, Thing.id).all()
+            self._thing_id_cache = {name: thing_id for name, thing_id in things}
+        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
@@ -83,6 +92,7 @@ class AssociatedDataTransferer(Transferer):
             "Notes": row.get("Notes"),
             "Formation": row.get("Formation"),
             "OBJECTID": row.get("OBJECTID"),
+            "thing_id": self._thing_id_cache.get(row.get("PointID")),
         }
 
     def _dedupe_rows(

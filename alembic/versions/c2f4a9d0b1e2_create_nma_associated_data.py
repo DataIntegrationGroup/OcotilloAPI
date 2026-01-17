@@ -37,6 +37,12 @@ def upgrade() -> None:
             sa.Column("Notes", sa.String(length=255), nullable=True),
             sa.Column("Formation", sa.String(length=15), nullable=True),
             sa.Column("OBJECTID", sa.Integer(), nullable=True, unique=True),
+            sa.Column(
+                "thing_id",
+                sa.Integer(),
+                sa.ForeignKey("thing.id", ondelete="CASCADE"),
+                nullable=True,
+            ),
             sa.UniqueConstraint("LocationId", name="AssociatedData$LocationId"),
         )
         op.create_index("AssociatedData$PointID", "NMA_AssociatedData", ["PointID"])

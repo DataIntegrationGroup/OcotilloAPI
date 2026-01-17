@@ -296,22 +296,11 @@ class AssociatedData(Base):
     notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
     formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
-
-    major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
-        "NMAMajorChemistry",
-        back_populates="chemistry_sample_info",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+    thing_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE")
     )
 
-    @validates("thing_id")
-    def validate_thing_id(self, key, value):
-        """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
-        if value is None:
-            raise ValueError(
-                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
-            )
-        return value
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class SurfaceWaterData(Base):
@@ -414,6 +403,11 @@ class SoilRockResults(Base):
     d13c: Mapped[Optional[float]] = mapped_column("d13C", Float)
     d18o: Mapped[Optional[float]] = mapped_column("d18O", Float)
     sampled_by: Mapped[Optional[str]] = mapped_column("Sampled by", String(255))
+    thing_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    )
+
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class NMAMinorTraceChemistry(Base):

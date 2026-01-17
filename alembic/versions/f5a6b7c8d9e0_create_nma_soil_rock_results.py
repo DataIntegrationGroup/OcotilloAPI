@@ -32,6 +32,12 @@ def upgrade() -> None:
             sa.Column("d13C", sa.Float(), nullable=True),
             sa.Column("d18O", sa.Float(), nullable=True),
             sa.Column("Sampled by", sa.String(length=255), nullable=True),
+            sa.Column(
+                "thing_id",
+                sa.Integer(),
+                sa.ForeignKey("thing.id", ondelete="CASCADE"),
+                nullable=True,
+            ),
         )
         op.create_index(
             "Soil_Rock_Results$Point_ID", "NMA_Soil_Rock_Results", ["Point_ID"]
