@@ -38,12 +38,13 @@ def grant_app_read_members(executor: Session | Connection | None) -> None:
         return
     for member in members:
         safe_member = member.replace("'", "''")
+        quoted = f'"{safe_member}"'
         stmt = text(
             f"""
             DO $$
             BEGIN
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{safe_member}') THEN
-                    EXECUTE 'GRANT app_read TO {safe_member}';
+                    EXECUTE 'GRANT app_read TO {quoted}';
                 END IF;
             END $$;
             """
