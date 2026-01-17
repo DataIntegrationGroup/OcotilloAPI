@@ -69,14 +69,15 @@ class SoilRockResultsTransferer(Transferer):
             session.commit()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+        point_id = row.get("Point_ID")
         return {
-            "Point_ID": row.get("Point_ID"),
-            "Sample Type": row.get("Sample Type"),
-            "Date Sampled": row.get("Date Sampled"),
-            "d13C": self._float_val(row.get("d13C")),
-            "d18O": self._float_val(row.get("d18O")),
-            "Sampled by": row.get("Sampled by"),
-            "thing_id": self._thing_id_cache.get(row.get("Point_ID")),
+            "point_id": point_id,
+            "sample_type": row.get("Sample Type"),
+            "date_sampled": row.get("Date Sampled"),
+            "d13c": self._float_val(row.get("d13C")),
+            "d18o": self._float_val(row.get("d18O")),
+            "sampled_by": row.get("Sampled by"),
+            "thing_id": self._thing_id_cache.get(point_id),
         }
 
     def _float_val(self, value: Any) -> Optional[float]:

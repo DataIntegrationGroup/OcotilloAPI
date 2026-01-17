@@ -50,6 +50,7 @@ from db import (
     WeatherData,
     WeatherPhotos,
     NMAMinorTraceChemistry,
+    AssociatedData,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -166,6 +167,9 @@ class Metrics:
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+
+    def associated_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(AssociatedData, name="AssociatedData", *args, **kw)
 
     def minor_trace_chemistry_metrics(self, *args, **kw) -> None:
         self._handle_metrics(

@@ -19,9 +19,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from alembic import command
 from alembic.config import Config
+from dotenv import load_dotenv
+
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from dotenv import load_dotenv
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
@@ -64,6 +65,7 @@ from transfers.ngwmn_views import (
     NGWMNWaterLevelsTransferer,
     NGWMNWellConstructionTransferer,
 )
+from transfers.associated_data import AssociatedDataTransferer
 from transfers.soil_rock_results import SoilRockResultsTransferer
 from transfers.surface_water_data import SurfaceWaterDataTransferer
 from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
@@ -244,6 +246,7 @@ def transfer_all(metrics, limit=100):
         "TRANSFER_MINOR_TRACE_CHEMISTRY", True
     )
     transfer_nma_stratigraphy = get_bool_env("TRANSFER_NMA_STRATIGRAPHY", True)
+    transfer_associated_data = get_bool_env("TRANSFER_ASSOCIATED_DATA", True)
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -273,6 +276,7 @@ def transfer_all(metrics, limit=100):
             transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
     else:
         _transfer_sequential(
@@ -301,6 +305,7 @@ def transfer_all(metrics, limit=100):
             transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
 
 
@@ -330,6 +335,7 @@ def _transfer_parallel(
     transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -362,6 +368,8 @@ def _transfer_parallel(
         parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+    if transfer_associated_data:
+        parallel_tasks_1.append(("AssociatedData", AssociatedDataTransferer, flags))
     if transfer_surface_water_data:
         parallel_tasks_1.append(("SurfaceWaterData", SurfaceWaterDataTransferer, flags))
     if transfer_hydraulics_data:
@@ -405,11 +413,11 @@ def _transfer_parallel(
         if transfer_nma_stratigraphy:
             future = executor.submit(
                 _execute_transfer_with_timing,
-                "NMAStratigraphy",
+                "Stratigraphy",
                 StratigraphyLegacyTransferer,
                 flags,
             )
-            futures[future] = "NMAStratigraphy"
+            futures[future] = "StratigraphyLegacy"
 
         future = executor.submit(
             _execute_session_transfer_with_timing,
@@ -439,8 +447,10 @@ def _transfer_parallel(
         metrics.contact_metrics(*results_map["Contacts"])
     if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
         metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
-    if "NMAStratigraphy" in results_map and results_map["NMAStratigraphy"]:
-        metrics.nma_stratigraphy_metrics(*results_map["NMAStratigraphy"])
+    if "StratigraphyLegacy" in results_map and results_map["StratigraphyLegacy"]:
+        metrics.nma_stratigraphy_metrics(*results_map["StratigraphyLegacy"])
+    if "AssociatedData" in results_map and results_map["AssociatedData"]:
+        metrics.associated_data_metrics(*results_map["AssociatedData"])
     if "WaterLevels" in results_map and results_map["WaterLevels"]:
         metrics.water_level_metrics(*results_map["WaterLevels"])
     if "LinkIdsWellData" in results_map and results_map["LinkIdsWellData"]:
@@ -568,6 +578,7 @@ def _transfer_sequential(
     transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -635,6 +646,11 @@ def _transfer_sequential(
         message("TRANSFERRING ASSETS")
         results = _execute_transfer(AssetTransferer, flags=flags)
         metrics.asset_metrics(*results)
+
+    if transfer_associated_data:
+        message("TRANSFERRING ASSOCIATED DATA")
+        results = _execute_transfer(AssociatedDataTransferer, flags=flags)
+        metrics.associated_data_metrics(*results)
 
     if transfer_surface_water_data:
         message("TRANSFERRING SURFACE WATER DATA")
