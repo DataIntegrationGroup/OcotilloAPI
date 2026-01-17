@@ -19,9 +19,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from alembic import command
 from alembic.config import Config
+from dotenv import load_dotenv
+
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from dotenv import load_dotenv
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
@@ -64,12 +65,16 @@ from transfers.ngwmn_views import (
     NGWMNWaterLevelsTransferer,
     NGWMNWellConstructionTransferer,
 )
+from transfers.associated_data import AssociatedDataTransferer
+from transfers.soil_rock_results import SoilRockResultsTransferer
 from transfers.surface_water_data import SurfaceWaterDataTransferer
+from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
     NMAWaterLevelsContinuousPressureDailyTransferer,
 )
 from transfers.weather_data import WeatherDataTransferer
+from transfers.weather_photos import WeatherPhotosTransferer
 from transfers.logger import logger, save_log_to_bucket
 
 
@@ -226,6 +231,8 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
+    transfer_surface_water_photos = get_bool_env("TRANSFER_SURFACE_WATER_PHOTOS", True)
+    transfer_soil_rock_results = get_bool_env("TRANSFER_SOIL_ROCK_RESULTS", True)
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
@@ -234,10 +241,12 @@ def transfer_all(metrics, limit=100):
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
     transfer_weather_data = get_bool_env("TRANSFER_WEATHER_DATA", True)
+    transfer_weather_photos = get_bool_env("TRANSFER_WEATHER_PHOTOS", True)
     transfer_minor_trace_chemistry = get_bool_env(
         "TRANSFER_MINOR_TRACE_CHEMISTRY", True
     )
     transfer_nma_stratigraphy = get_bool_env("TRANSFER_NMA_STRATIGRAPHY", True)
+    transfer_associated_data = get_bool_env("TRANSFER_ASSOCIATED_DATA", True)
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -254,6 +263,8 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -262,8 +273,10 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
     else:
         _transfer_sequential(
@@ -279,6 +292,8 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
@@ -287,8 +302,10 @@ def transfer_all(metrics, limit=100):
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
 
 
@@ -305,6 +322,8 @@ def _transfer_parallel(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -313,8 +332,10 @@ def _transfer_parallel(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -337,8 +358,18 @@ def _transfer_parallel(
         )
     if transfer_groups:
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
+    if transfer_surface_water_photos:
+        parallel_tasks_1.append(
+            ("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer, flags)
+        )
+    if transfer_soil_rock_results:
+        parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer, flags))
+    if transfer_weather_photos:
+        parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+    if transfer_associated_data:
+        parallel_tasks_1.append(("AssociatedData", AssociatedDataTransferer, flags))
     if transfer_surface_water_data:
         parallel_tasks_1.append(("SurfaceWaterData", SurfaceWaterDataTransferer, flags))
     if transfer_hydraulics_data:
@@ -382,11 +413,11 @@ def _transfer_parallel(
         if transfer_nma_stratigraphy:
             future = executor.submit(
                 _execute_transfer_with_timing,
-                "NMAStratigraphy",
+                "Stratigraphy",
                 StratigraphyLegacyTransferer,
                 flags,
             )
-            futures[future] = "NMAStratigraphy"
+            futures[future] = "StratigraphyLegacy"
 
         future = executor.submit(
             _execute_session_transfer_with_timing,
@@ -416,8 +447,10 @@ def _transfer_parallel(
         metrics.contact_metrics(*results_map["Contacts"])
     if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
         metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
-    if "NMAStratigraphy" in results_map and results_map["NMAStratigraphy"]:
-        metrics.nma_stratigraphy_metrics(*results_map["NMAStratigraphy"])
+    if "StratigraphyLegacy" in results_map and results_map["StratigraphyLegacy"]:
+        metrics.nma_stratigraphy_metrics(*results_map["StratigraphyLegacy"])
+    if "AssociatedData" in results_map and results_map["AssociatedData"]:
+        metrics.associated_data_metrics(*results_map["AssociatedData"])
     if "WaterLevels" in results_map and results_map["WaterLevels"]:
         metrics.water_level_metrics(*results_map["WaterLevels"])
     if "LinkIdsWellData" in results_map and results_map["LinkIdsWellData"]:
@@ -426,6 +459,10 @@ def _transfer_parallel(
         metrics.location_link_ids_metrics(*results_map["LinkIdsLocation"])
     if "Groups" in results_map and results_map["Groups"]:
         metrics.group_metrics(*results_map["Groups"])
+    if "SurfaceWaterPhotos" in results_map and results_map["SurfaceWaterPhotos"]:
+        metrics.surface_water_photos_metrics(*results_map["SurfaceWaterPhotos"])
+    if "SoilRockResults" in results_map and results_map["SoilRockResults"]:
+        metrics.soil_rock_results_metrics(*results_map["SoilRockResults"])
     if "Assets" in results_map and results_map["Assets"]:
         metrics.asset_metrics(*results_map["Assets"])
     if "SurfaceWaterData" in results_map and results_map["SurfaceWaterData"]:
@@ -449,6 +486,8 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
+    if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
+        metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
     if transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
         results = _execute_transfer(MajorChemistryTransferer, flags=flags)
@@ -526,6 +565,8 @@ def _transfer_sequential(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
@@ -534,8 +575,10 @@ def _transfer_sequential(
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -584,10 +627,30 @@ def _transfer_sequential(
         results = _execute_transfer(ProjectGroupTransferer, flags=flags)
         metrics.group_metrics(*results)
 
+    if transfer_surface_water_photos:
+        message("TRANSFERRING SURFACE WATER PHOTOS")
+        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
+        metrics.surface_water_photos_metrics(*results)
+
+    if transfer_soil_rock_results:
+        message("TRANSFERRING SOIL ROCK RESULTS")
+        results = _execute_transfer(SoilRockResultsTransferer, flags=flags)
+        metrics.soil_rock_results_metrics(*results)
+
+    if transfer_weather_photos:
+        message("TRANSFERRING WEATHER PHOTOS")
+        results = _execute_transfer(WeatherPhotosTransferer, flags=flags)
+        metrics.weather_photos_metrics(*results)
+
     if transfer_assets:
         message("TRANSFERRING ASSETS")
         results = _execute_transfer(AssetTransferer, flags=flags)
         metrics.asset_metrics(*results)
+
+    if transfer_associated_data:
+        message("TRANSFERRING ASSOCIATED DATA")
+        results = _execute_transfer(AssociatedDataTransferer, flags=flags)
+        metrics.associated_data_metrics(*results)
 
     if transfer_surface_water_data:
         message("TRANSFERRING SURFACE WATER DATA")
