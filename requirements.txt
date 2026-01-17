@@ -65,9 +65,9 @@ anyio==4.10.0 \
     #   httpx
     #   ocotilloapi
     #   starlette
-asgiref==3.9.1 \
-    --hash=sha256:a5ab6582236218e5ef1648f242fd9f10626cfd4de8dc377db215d5d5098e3142 \
-    --hash=sha256:f3bba7092a48005b5f5bacd747d36ee4a5a61f4a269a6df590b43144355ebd2c
+asgiref==3.11.0 \
+    --hash=sha256:13acff32519542a1736223fb79a715acdebe24286d98e8b164a73085f40da2c4 \
+    --hash=sha256:1db9021efadb0d9512ce8ffaf72fcef601c7b73a8807a1bb2ef143dc6b14846d
     # via ocotilloapi
 asn1crypto==1.5.1 \
     --hash=sha256:13ae38502be632115abf8a24cbe5f4da52e3b5231990aff31123c805306ccb9c \
