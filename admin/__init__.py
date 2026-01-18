@@ -18,6 +18,7 @@ Starlette Admin package for NMSampleLocations.
 
 Provides web-based administrative interface for managing database records.
 """
+
 from admin.config import create_admin
 
 __all__ = ["create_admin"]

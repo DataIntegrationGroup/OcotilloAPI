@@ -18,6 +18,7 @@ SensorAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Sensor (Equipment) model.
 """
+
 from admin.views.base import OcotilloModelView
 
 

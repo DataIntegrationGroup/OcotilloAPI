@@ -2591,12 +2591,10 @@ FROM (
 ) AS words
 $$ LANGUAGE SQL IMMUTABLE;"""
     )
-    op.execute(
-        """CREATE OR REPLACE FUNCTION parse_websearch(search_query text)
+    op.execute("""CREATE OR REPLACE FUNCTION parse_websearch(search_query text)
 RETURNS tsquery AS $$
 SELECT parse_websearch('pg_catalog.simple', search_query);
-$$ LANGUAGE SQL IMMUTABLE;"""
-    )
+$$ LANGUAGE SQL IMMUTABLE;""")
     op.create_index(
         "ix_address_search_vector",
         "address",
