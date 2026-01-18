@@ -23,7 +23,6 @@ from pydantic import field_validator, BaseModel, model_validator
 from core.enums import Role, ContactType, PhoneType, EmailType, AddressType
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 
-
 # -------- VALIDATORS ----------
 
 

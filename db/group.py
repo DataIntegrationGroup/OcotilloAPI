@@ -17,11 +17,11 @@ from typing import Optional, List, TYPE_CHECKING
 
 from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.testing.schema import mapped_column
-from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:

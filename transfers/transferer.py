@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from db import Thing, Base
 from db.engine import session_ctx
 from transfers.logger import logger
-from transfers.util import chunk_by_size
+from transfers.util import chunk_by_size, read_csv
 
 
 class ManualFixer(object):
@@ -45,11 +45,23 @@ class Transferer(object):
         self.manual_fixer = ManualFixer()
         self.pointids = pointids
 
+    def _df_len(self, df: pd.DataFrame | None) -> int:
+        return int(len(df)) if df is not None else 0
+
     def transfer(self) -> None:
         with session_ctx() as session:
+            name = self.source_table or self.__class__.__name__
+            logger.info("Starting transfer: %s", name)
             self.input_df, self.cleaned_df = self._get_dfs()
+            logger.info(
+                "Loaded %s rows (%s cleaned) for %s",
+                self._df_len(self.input_df),
+                self._df_len(self.cleaned_df),
+                name,
+            )
             self._transfer_hook(session)
             session.commit()
+            logger.info("Completed transfer: %s", name)
 
     def _capture_validation_error(self, pointid: str, err: ValidationError) -> None:
         self._capture_error(
@@ -88,7 +100,7 @@ class Transferer(object):
         start_time = time.time()
         logger.info(f"Starting transfer of {n} [limit={limit}] rows")
         for i, row in enumerate(df.itertuples()):
-            if limit and i >= limit:
+            if limit > 0 and i >= limit:
                 logger.info(f"Reached limit of {limit} rows. Stopping migration.")
                 break
 
@@ -119,6 +131,15 @@ class Transferer(object):
 
     def _get_dfs(self):
         raise NotImplementedError("Must implement _get_dfs method")
+
+    def _read_csv(self, name: str, dtype: dict | None = None, **kw) -> pd.DataFrame:
+        if dtype is not None and "dtype" not in kw:
+            kw["dtype"] = dtype
+        csv_paths = self.flags.get("CSV_PATHS") or {}
+        csv_path = csv_paths.get(name)
+        if csv_path:
+            return pd.read_csv(csv_path, **kw)
+        return read_csv(name, dtype=dtype, **kw)
 
 
 class ChunkTransferer(Transferer):

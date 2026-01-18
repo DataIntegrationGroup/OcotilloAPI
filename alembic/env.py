@@ -1,19 +1,22 @@
+import copy
+import logging
+import os
+from logging.config import fileConfig
+
 from alembic import context
 from dotenv import load_dotenv
-from logging.config import fileConfig
-from os import environ
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+from services.util import get_bool_env
+from sqlalchemy import create_engine, engine_from_config, pool, text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+alembic_logger = logging.getLogger("alembic.env")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -21,6 +24,7 @@ if config.config_file_name is not None:
 
 # from db import Base  # Import your Base from models/__init__.py
 from db import Base
+from db.initialization import grant_app_read_members
 
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
@@ -33,15 +37,36 @@ model_tables = set(target_metadata.tables.keys())
 
 load_dotenv()
 
-# Fallback to environment variables for PostgreSQL connection
-user = environ.get("POSTGRES_USER", None)
-password = environ.get("POSTGRES_PASSWORD", None)
-db = environ.get("POSTGRES_DB", None)
-host = environ.get("POSTGRES_HOST", "localhost")
-port = environ.get("POSTGRES_PORT", 5432)
-SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
 
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+def build_database_url():
+    """
+    Build a SQLAlchemy URL based on driver/env vars.
+    For cloudsql we still return a pg8000 URL (hostless) so Alembic can render
+    offline migrations; the actual connection uses a Connector creator in
+    run_migrations_online.
+    """
+    db_driver = os.environ.get("DB_DRIVER", "").lower()
+    if db_driver == "cloudsql":
+        user = os.environ.get("CLOUD_SQL_USER", "")
+        password = os.environ.get("CLOUD_SQL_PASSWORD", "")
+        database = os.environ.get("CLOUD_SQL_DATABASE", "")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        # Host is provided by connector, so leave blank.
+        if use_iam_auth:
+            return f"postgresql+pg8000://{user}@/{database}"
+        return f"postgresql+pg8000://{user}:{password}@/{database}"
+
+    # Default/Postgres
+    user = os.environ.get("POSTGRES_USER", "")
+    password = os.environ.get("POSTGRES_PASSWORD", "")
+    db = os.environ.get("POSTGRES_DB", "")
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    port = os.environ.get("POSTGRES_PORT", 5432)
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+
+
+url = build_database_url()
+config.set_main_option("sqlalchemy.url", url)
 
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -73,11 +98,76 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    db_driver = os.environ.get("DB_DRIVER", "").lower()
+
+    if db_driver == "cloudsql":
+        # Use the Cloud SQL Python Connector for direct Cloud SQL access.
+        from google.cloud.sql.connector import Connector
+        from google.auth import default
+        from google.auth.transport.requests import Request
+
+        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
+        user = os.environ.get("CLOUD_SQL_USER")
+        password = os.environ.get("CLOUD_SQL_PASSWORD")
+        database = os.environ.get("CLOUD_SQL_DATABASE")
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
+
+        connector = Connector()
+
+        def get_iam_login_token() -> str:
+            scopes = ["https://www.googleapis.com/auth/sqlservice.login"]
+            creds, _ = default()
+            if hasattr(creds, "with_scopes"):
+                creds = creds.with_scopes(scopes=scopes)
+            else:
+                creds = copy.copy(creds)
+                creds._scopes = scopes  # type: ignore[attr-defined]
+            creds.refresh(Request())
+            if not getattr(creds, "token", None):
+                raise RuntimeError("Unable to acquire IAM DB auth token.")
+            return creds.token
+
+        def getconn():
+            connect_kwargs = {
+                "user": user,
+                "db": database,
+                "ip_type": ip_type,
+                "enable_iam_auth": use_iam_auth,
+            }
+            if use_iam_auth:
+                connect_kwargs["password"] = get_iam_login_token()
+            else:
+                connect_kwargs["password"] = password
+            return connector.connect(
+                instance_name,
+                "pg8000",
+                **connect_kwargs,
+            )
+
+        connectable = create_engine(
+            "postgresql+pg8000://",
+            creator=getconn,
+            pool_pre_ping=True,
+            poolclass=pool.NullPool,
+        )
+    else:
+        connectable = engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
+
+    with connectable.connect() as role_connection:
+        autocommit_role = role_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        role_exists = autocommit_role.execute(
+            text("SELECT 1 FROM pg_roles WHERE rolname = 'app_read'")
+        ).first()
+        if not role_exists:
+            autocommit_role.execute(text("CREATE ROLE app_read"))
+        grant_app_read_members(autocommit_role)
 
     with connectable.connect() as connection:
         context.configure(
@@ -87,6 +177,22 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+
+    alembic_logger.info("Alembic migrations completed; applying app_read grants")
+    with connectable.connect() as grant_connection:
+        autocommit_grants = grant_connection.execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        autocommit_grants.execute(
+            text("GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_read")
+        )
+        autocommit_grants.execute(
+            text(
+                "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                "GRANT SELECT ON TABLES TO app_read"
+            )
+        )
+    alembic_logger.info("Applied app_read grants")
 
 
 if context.is_offline_mode():

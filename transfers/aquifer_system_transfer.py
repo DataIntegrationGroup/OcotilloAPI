@@ -37,12 +37,15 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
     created_count = 0
     skipped_count = 0
 
-    logger.info(f"Starting transfer of {n} aquifer systems from LU_AquiferClass.")
+    logger.info(
+        "Starting transfer: AquiferSystems (%s rows) from LU_AquiferClass",
+        n,
+    )
 
     # 4. Process each row
     for i, row in enumerate(cleaned_df.itertuples()):
         # check if limit is reached
-        if limit and i >= limit:
+        if limit is not None and limit > 0 and i >= limit:
             logger.info(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
@@ -138,4 +141,5 @@ def transfer_aquifer_systems(session: Session, limit: int = None) -> tuple:
         logger.critical(f"Error in final commit: {e}")
         session.rollback()
 
+    logger.info("Completed transfer: AquiferSystems")
     return input_df, cleaned_df, errors

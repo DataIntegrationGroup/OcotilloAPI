@@ -48,6 +48,7 @@ from db.geologic_formation import *
 from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
 from db.aquifer_type import *
+from db.nma_legacy import *
 
 from sqlalchemy import (
     func,

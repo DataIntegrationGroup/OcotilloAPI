@@ -18,9 +18,11 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     ForeignKey,
     Float,
     DateTime,
+    String,
     Text,
     CheckConstraint,
     Index,
@@ -33,12 +35,18 @@ from db import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 if TYPE_CHECKING:
     from db.parameter import Parameter
     from db.contact import Contact
+    from db.thing import Thing
 
 
 class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
     """
     Represents a contiguous block of transducer observations that share a QC status.
+    Each block is associated with a specific Thing (well) to ensure uniqueness.
     """
+
+    thing_id: Mapped[int] = mapped_column(
+        ForeignKey("thing.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     parameter_id: Mapped[int] = mapped_column(
         ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
@@ -60,16 +68,18 @@ class TransducerObservationBlock(Base, AutoBaseMixin, ReleaseMixin):
         comment="Foreign key to the Contact table",
     )
 
+    thing: Mapped["Thing"] = relationship("Thing")
     parameter: Mapped["Parameter"] = relationship("Parameter")
     reviewer: Mapped["Contact"] = relationship("Contact")
 
     __table_args__ = (
         UniqueConstraint(
+            "thing_id",
             "review_status",
             "parameter_id",
             "start_datetime",
             "end_datetime",
-            name="uq_transducer_block_status_parameter_time",
+            name="uq_transducer_block_thing_status_parameter_time",
         ),
         CheckConstraint(
             "end_datetime > start_datetime", name="check_transuder_block_time_order"
@@ -110,6 +120,90 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
         DateTime(timezone=True), nullable=False, index=True
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
+    nma_waterlevelscontinuous_pressure_conddl_ms_cm: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_checked_by: Mapped[str] = mapped_column(
+        String(4), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_data_source: Mapped[str] = mapped_column(
+        String(5), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_global_id: Mapped[str] = mapped_column(
+        String(40), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_measurement_method: Mapped[str] = mapped_column(
+        String(2), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_measuring_agency: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_notes: Mapped[str] = mapped_column(
+        String(100), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_processed_by: Mapped[str] = mapped_column(
+        String(4), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_qced: Mapped[bool] = mapped_column(
+        Boolean, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_temperature_water: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_updated: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_water_head: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
+    nma_waterlevelscontinuous_pressure_water_head_adjusted: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_data_source: Mapped[str] = mapped_column(
+        String(5), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_global_id: Mapped[str] = mapped_column(
+        String(40), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_measurement_method: Mapped[str] = mapped_column(
+        String(2), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_measuring_agency: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_notes: Mapped[str] = mapped_column(
+        String(200), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_point_id: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_pre_process_data_field: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_public_release: Mapped[bool] = mapped_column(
+        Boolean, nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_serial_no: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )
+    nma_waterlevelscontinuous_acoustic_server_receipt_date: Mapped[datetime] = (
+        mapped_column(DateTime(timezone=True), nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_speaker_to_mic_length: Mapped[float] = (
+        mapped_column(Float, nullable=True)
+    )
+    nma_waterlevelscontinuous_acoustic_temperature_air: Mapped[float] = mapped_column(
+        Float, nullable=True
+    )
 
     # qc_block_id: Mapped[Optional[int]] = mapped_column(
     #     ForeignKey("transducer_observation_block.id", ondelete="SET NULL"), index=True

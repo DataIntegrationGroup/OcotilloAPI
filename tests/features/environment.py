@@ -16,6 +16,8 @@
 import random
 from datetime import datetime, timedelta
 
+from sqlalchemy import select
+
 from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
@@ -42,6 +44,9 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
+    Base,
+    Asset,
+    Sample,
 )
 from db.engine import session_ctx
 
@@ -86,7 +91,7 @@ def add_location(context, session):
 @add_context_object_container("wells")
 def add_well(context, session, location, name_num):
     well = Thing(
-        name=f"WL-{name_num:04d}",
+        name=f"AR{name_num:04d}",
         first_visit_date="2023-03-03",
         thing_type="water well",
         release_status="draft",
@@ -115,7 +120,7 @@ def add_well(context, session, location, name_num):
     for nt, c in (
         ("General", "well notes"),
         ("Water", "water notes"),
-        ("Measuring", "measuring notes"),
+        ("Sampling Procedure", "sampling procedure notes"),
         ("Construction", "construction notes"),
     ):
         n = well.add_note(c, nt)
@@ -320,8 +325,9 @@ def add_deployment(context, session, tid, sid):
 
 
 @add_context_object_container("blocks")
-def add_block(context, session, parameter):
+def add_block(context, session, parameter, thing):
     block = TransducerObservationBlock(
+        thing_id=thing.id,
         parameter_id=parameter.id,
         start_datetime=datetime.now() - timedelta(hours=1),
         end_datetime=datetime.now() + timedelta(hours=1),
@@ -496,10 +502,22 @@ def add_geologic_formation(context, session, formation_code, well):
 
 def before_all(context):
     context.objects = {}
+
     rebuild = False
-    rebuild = True
+    # rebuild = True
+    erase_data = True
     if rebuild:
         erase_and_rebuild_db()
+    elif erase_data:
+        with session_ctx() as session:
+            for table in reversed(Base.metadata.sorted_tables):
+                if table.name in ("alembic_version", "parameter"):
+                    continue
+                elif table.name.startswith("lexicon"):
+                    continue
+
+                session.execute(table.delete())
+            session.commit()
 
     with session_ctx() as session:
 
@@ -656,7 +674,7 @@ def before_all(context):
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
-        block = add_block(context, session, parameter)
+        block = add_block(context, session, parameter, well_1)
         for i in range(1, 10):
             add_transducer_observation(
                 context, session, block, deployment.id, random.random()
@@ -671,12 +689,44 @@ def before_all(context):
 
 def after_all(context):
     with session_ctx() as session:
-        for table in context.objects.values():
-            for record in table:
-                obj = session.get(record.__class__, record.id)
-                if obj:
-                    session.delete(obj)
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name in ("alembic_version", "parameter"):
+                continue
+            elif table.name.startswith("lexicon"):
+                continue
+            elif table.name == "sample":
+                continue
+            session.execute(table.delete())
         session.commit()
+    context.objects.clear()
+
+
+def before_scenario(context, scenario):
+    # runs before EVERY scenario
+    # e.g. reset test data, open browser, etc.
+    pass
+
+
+def after_scenario(context, scenario):
+    # runs after EVERY scenario
+    # e.g. clean up temp files, close db sessions
+    if scenario.name.startswith(
+        "Successfully upload and associate assets from a valid manifest"
+    ):
+        # delete all the assets uploaded for this scenario
+        with session_ctx() as session:
+            for uri in context.uris:
+                sql = select(Asset).where(Asset.uri == uri)
+                asset = session.scalars(sql).one()
+                session.delete(asset)
+            session.commit()
+    elif "cleanup_samples" in scenario.tags:
+        # delete all samples created during happy path tests
+        with session_ctx() as session:
+            samples = session.query(Sample).all()
+            for sample in samples:
+                session.delete(sample)
+            session.commit()
 
 
 # ============= EOF =============================================

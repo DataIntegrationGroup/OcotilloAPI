@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
+    from db.nma_legacy import ChemistrySampleInfo, Stratigraphy
 
 
 class Thing(
@@ -100,10 +101,6 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
     )
-    well_purpose: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
-    )
     well_casing_diameter: Mapped[float] = mapped_column(
         Float,
         nullable=True,
@@ -136,6 +133,11 @@ class Thing(
         comment="The geologic formation in which the well was completed (from WellData.FormationZone). "
         "This indicates the target formation for the well, not the full stratigraphic column. "
         "For detailed depth-interval stratigraphy, see formation_associations.",
+    )
+    nma_formation_zone: Mapped[str] = mapped_column(
+        String(25),
+        nullable=True,
+        comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
     )
     # TODO: should this be required for every well in the database? AMMP review
     is_suitable_for_datalogger: Mapped[bool] = mapped_column(
@@ -302,6 +304,21 @@ class Thing(
         )
     )
 
+    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
+    chemistry_sample_infos: Mapped[List["ChemistrySampleInfo"]] = relationship(
+        "ChemistrySampleInfo",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    stratigraphy_logs: Mapped[List["Stratigraphy"]] = relationship(
+        "Stratigraphy",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     # --- Association Proxies ---
     assets: AssociationProxy[list["Asset"]] = association_proxy(
         "asset_associations", "asset"
@@ -365,8 +382,8 @@ class Thing(
         return self._get_notes("General")
 
     @property
-    def measuring_notes(self):
-        return self._get_notes("Measuring")
+    def sampling_procedure_notes(self):
+        return self._get_notes("Sampling Procedure")
 
     @property
     def construction_notes(self):

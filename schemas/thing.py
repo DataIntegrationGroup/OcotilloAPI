@@ -34,7 +34,6 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
-
 # -------- VALIDATE ----------
 
 
@@ -140,6 +139,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_pump_type: WellPumpType | None = None
     is_suitable_for_datalogger: bool | None
     formation_completion_code: FormationCode | None = None
+    nma_formation_zone: str | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -196,7 +196,8 @@ class BaseThingResponse(BaseResponseModel):
     monitoring_status: str | None
     links: list[ThingIdLinkResponse] = Field(default=[], alias="alternate_ids")
     monitoring_frequencies: list[MonitoringFrequencyResponse] = []
-    general_notes: list[NoteResponse] | None = None
+    general_notes: list[NoteResponse] = []
+    sampling_procedure_notes: list[NoteResponse] = []
 
     @field_validator("monitoring_frequencies", mode="before")
     def remove_records_with_end_date(cls, monitoring_frequencies):
@@ -243,12 +244,11 @@ class WellResponse(BaseThingResponse):
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []
-    water_notes: list[NoteResponse] | None = None
-    measuring_notes: list[NoteResponse] | None = None
-
-    construction_notes: list[NoteResponse] | None = None
+    water_notes: list[NoteResponse] = []
+    construction_notes: list[NoteResponse] = []
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
+    nma_formation_zone: str | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -410,6 +410,7 @@ class UpdateWell(UpdateThing, ValidateWell):
     well_casing_diameter: float | None = None  # in inches
     well_casing_depth: float | None = None  # in feet
     well_casing_materials: list[str] | None = None
+    nma_formation_zone: str | None = None
 
 
 class UpdateSpring(UpdateThing):

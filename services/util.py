@@ -1,15 +1,49 @@
 import json
+import logging
 import os
+import time
 
 import httpx
 import pyproj
 from shapely.ops import transform
 from sqlalchemy.orm import DeclarativeBase
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 
 TRANSFORMERS = {}
 METERS_TO_FEET = 3.28084
+DEFAULT_HTTP_TIMEOUT = 10.0
+DEFAULT_HTTP_RETRIES = 3
+DEFAULT_HTTP_BACKOFF = 0.5
+logger = logging.getLogger(__name__)
+
+
+def _log_warning(message: str) -> None:
+    logger.warning(message)
+
+
+def _get_json(
+    url: str,
+    params: dict | None = None,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,
+    retries: int = DEFAULT_HTTP_RETRIES,
+    backoff: float = DEFAULT_HTTP_BACKOFF,
+) -> dict | None:
+    for attempt in range(1, retries + 1):
+        try:
+            resp = httpx.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if attempt == retries:
+                _log_warning(f"HTTP request failed: {exc}")
+                return None
+        except json.JSONDecodeError as exc:
+            _log_warning(f"Invalid JSON response: {exc}")
+            return None
+        if attempt < retries:
+            time.sleep(backoff * attempt)
+    return None
 
 
 def to_bool(value: str) -> bool | str:
@@ -45,25 +79,18 @@ def transform_srid(geometry, source_srid, target_srid):
     return transform(transformer.transform, geometry)
 
 
-def convert_m_to_ft(meters: float | None) -> float | None:
-    """Convert a length from meters to feet."""
-    if meters is None:
-        return None
-    return round(meters * METERS_TO_FEET, 6)
-
-
-def convert_ft_to_m(feet: float | None) -> float | None:
+def convert_ft_to_m(feet: float | None, ndigits: int = 6) -> float | None:
     """Convert a length from feet to meters."""
     if feet is None:
         return None
-    return round(feet / METERS_TO_FEET, 6)
+    return round(feet / METERS_TO_FEET, ndigits)
 
 
-def convert_m_to_ft(meters: float | None) -> float | None:
+def convert_m_to_ft(meters: float | None, ndigits: int = 6) -> float | None:
     """Convert a length from meters to feet."""
     if meters is None:
         return None
-    return round(meters * METERS_TO_FEET, 6)
+    return round(meters * METERS_TO_FEET, ndigits)
 
 
 def get_tiger_data(
@@ -80,13 +107,11 @@ def get_tiger_data(
         "outFields": outfields,
         "returnGeometry": "false",
     }
-    try:
-        resp = httpx.get(url, params=params, timeout=5)
-    except Exception as e:
-        print(f"Error getting TIGER data for POINT ({lon} {lat}) {e}")
+    data = _get_json(url, params=params, timeout=5)
+    if data is None:
+        _log_warning("Error getting TIGER data for requested point")
         return None
 
-    data = resp.json()
     if not data.get("features"):
         return None
 
@@ -121,18 +146,16 @@ def get_quad_name_from_point(lon: float, lat: float) -> str:
         "outFields": "CELL_NAME,CELL_MAPCODE",
         "returnGeometry": "false",
     }
-    try:
-        resp = httpx.get(url, params=params, timeout=30)
-        data = resp.json()
-    except Exception as e:
-        print(f"Error getting quad name for POINT ({lon} {lat}) {e}")
+    data = _get_json(url, params=params, timeout=30)
+    if data is None:
+        _log_warning("Error getting quad name for requested point")
         return None
 
     if data["features"]:
         attrs = data["features"][0]["attributes"]
         return attrs["CELL_NAME"]
     else:
-        print(f"No quad name found for POINT ({lon} {lat})")
+        _log_warning("No quad name found for requested point")
         return None
 
 
@@ -146,19 +169,21 @@ def get_epqs_elevation_from_point(lon: float, lat: float) -> float | None:
         "includeDate": False,
     }
 
-    resp = httpx.get(url, params=params)
-    try:
-        data = resp.json()
-    except json.decoder.JSONDecodeError:
-        print(f"Error decoding JSON from EPQS: {resp.text}")
+    data = _get_json(url, params=params)
+    if data is None:
+        _log_warning("Error getting EPQS elevation for requested point")
         return None
 
-    return data["value"]
+    value = data.get("value")
+    if value is None:
+        _log_warning("No EPQS elevation value for requested point")
+        return None
+    return value
 
 
 def convert_ngvd29_to_navd88(
     elevation_ngvd29: float, longitude: float, latitude: float
-) -> float:
+) -> float | None:
     url = "https://geodesy.noaa.gov/api/ncat/llh"
     params = {
         "lat": latitude,
@@ -169,11 +194,12 @@ def convert_ngvd29_to_navd88(
         "outVertDatum": "navd88",
         "orthoHt": elevation_ngvd29,
     }
-    response = httpx.get(url, params=params)
-    data = response.json()
+    data = _get_json(url, params=params)
+    if data is None:
+        _log_warning("Error converting NGVD29 to NAVD88 for requested point")
+        return None
 
-    elevation_navd88 = data.get("destOrthoht")
-    return elevation_navd88
+    return data.get("destOrthoht")
 
 
 def retrieve_latest_polymorphic_history_table_record(

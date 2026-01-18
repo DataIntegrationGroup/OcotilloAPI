@@ -30,7 +30,6 @@ from tests import (
     cleanup_patch_test,
 )
 
-
 # CLASSES, FIXTURES, AND FUNCTIONS =============================================
 
 

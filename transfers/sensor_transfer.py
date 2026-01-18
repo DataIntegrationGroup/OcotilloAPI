@@ -30,11 +30,21 @@ from transfers.util import (
 )
 
 EQUIPMENT_TO_SENSOR_TYPE_MAP = {
+    # Hydrological sensors
     "Pressure transducer": "Pressure Transducer",
     "Acoustic sounder": "Acoustic Sounder",
     "Barometer": "Barometer",
     "DiverLink": "DiverLink",
     "Diver Cable": "Diver Cable",
+    # Meteorological/environmental sensors
+    "Precip Collector": "Precip Collector",
+    "Soil Moisture": "Soil Moisture Sensor",
+    "Weather Station": "Weather Station",
+    "Camera": "Camera",
+    "Weir": "Weir",
+    "Snow Lysimeter": "Snow Lysimeter",
+    "Tipping Bucket": "Tipping Bucket",
+    "Lysimeter": "Lysimeter",
 }
 
 

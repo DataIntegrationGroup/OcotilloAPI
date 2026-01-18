@@ -14,10 +14,11 @@
 # limitations under the License.
 # ===============================================================================
 from pathlib import Path
-import pytest
 
-from main import app
-from constants import SRID_WGS84
+import pytest
+from geoalchemy2 import functions as geofunc
+
+from core.constants import SRID_WGS84
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -28,8 +29,8 @@ from core.dependencies import (
 )
 from db import Thing, Location, LocationThingAssociation, Group, MeasuringPointHistory
 from db.engine import session_ctx
+from main import app
 from tests import client, override_authentication
-from geoalchemy2 import functions as geofunc
 
 
 @pytest.fixture(scope="module", autouse=True)

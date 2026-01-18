@@ -1,0 +1,3 @@
+asset_file_name,thing_name
+AR0001_1.JPG, AR0001
+AR0001_2.JPG, AR0001

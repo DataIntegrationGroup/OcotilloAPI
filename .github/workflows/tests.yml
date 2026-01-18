@@ -23,6 +23,7 @@ jobs:
       POSTGRES_PASSWORD: postgres
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
+      SESSION_SECRET_KEY: supersecretkeyforunittests
 
     services:
       postgis:
@@ -67,15 +68,11 @@ jobs:
 
       - name: Run BDD tests
         run: |
-          uv run behave tests/features --tags="@backend and @production" --no-capture
+          uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
 
       - name: Upload results to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
+          report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}

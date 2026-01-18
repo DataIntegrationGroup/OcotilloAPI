@@ -30,7 +30,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from constants import SRID_WGS84
+from core.constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 from db.data_provenance import DataProvenanceMixin
 from db.notes import NotesMixin
@@ -43,7 +43,7 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     __versioned__ = {}
 
     nma_pk_location: Mapped[UUID] = mapped_column(String(36), nullable=True)
-    description: Mapped[str] = mapped_column
+    description: Mapped[str] = mapped_column(nullable=True)
     # name: Mapped[str] = mapped_column(String(255), nullable=True)
     point: Mapped[WKBElement] = mapped_column(
         Geometry(geometry_type="POINT", srid=SRID_WGS84, spatial_index=True)

@@ -56,7 +56,9 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     n_wells = len(cleaned_df["PointID"].unique())
 
     logger.info(
-        f"Starting transfer of {n_records} stratigraphy records for {n_wells} wells"
+        "Starting transfer: Stratigraphy (%s records, %s wells)",
+        n_records,
+        n_wells,
     )
 
     # 3. Initialize tracking variables for logging
@@ -78,7 +80,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
 
     for well_index, (pointid, strat_group) in enumerate(well_groups):
         # Check limit (on number of wells, not records)
-        if limit and well_index >= limit:
+        if limit is not None and limit > 0 and well_index >= limit:
             logger.info(f"Reached limit of {limit} wells. Stopping.")
             break
 
@@ -294,4 +296,5 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
         logger.critical(f"Error in final commit: {e}")
         session.rollback()
 
+    logger.info("Completed transfer: Stratigraphy")
     return input_df, cleaned_df, errors
