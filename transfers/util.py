@@ -63,8 +63,7 @@ class MeasuringPointEstimator:
         df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
         df = df.dropna(subset=["DateMeasured"])
         self._grouped = (
-            df.sort_values("PointID")
-            .groupby("PointID", sort=False)
+            df.groupby("PointID", sort=False)
             .apply(lambda g: g.sort_values("DateMeasured"))
         )
         self.verbose = False
