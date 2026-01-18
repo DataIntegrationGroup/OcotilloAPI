@@ -62,9 +62,11 @@ class MeasuringPointEstimator:
         df = read_csv("WaterLevels")
         df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
         df = df.dropna(subset=["DateMeasured"])
-        self._grouped = df.groupby("PointID", sort=False).apply(
-            lambda g: g.sort_values("DateMeasured")
-        )
+
+        # Sort within each PointID by DateMeasured, then group
+        df = df.sort_values(["PointID", "DateMeasured"], kind="mergesort")
+        self._grouped = df.groupby("PointID", sort=False)
+
         self.verbose = False
 
     def estimate_measuring_point_height(
