@@ -61,7 +61,12 @@ class MeasuringPointEstimator:
     def __init__(self):
         df = read_csv("WaterLevels")
         df["DateMeasured"] = pd.to_datetime(df["DateMeasured"], errors="coerce")
-        self._df = df.dropna(subset=["DateMeasured"])
+        df = df.dropna(subset=["DateMeasured"])
+        self._grouped = (
+            df.sort_values("PointID")
+            .groupby("PointID", sort=False)
+            .apply(lambda g: g.sort_values("DateMeasured"))
+        )
         self.verbose = False
 
     def estimate_measuring_point_height(
@@ -69,8 +74,7 @@ class MeasuringPointEstimator:
     ) -> tuple[float, str, datetime | None, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
-        df = self._df[self._df["PointID"] == row.PointID]
-        df = df.sort_values("DateMeasured")
+        df = self._grouped.get(row.PointID)
         if mph is None:
             if self.verbose:
                 logger.info(
@@ -80,7 +84,7 @@ class MeasuringPointEstimator:
             start_dates = []
             mph_descs = []
 
-            if len(df) == 0:
+            if df is None or len(df) == 0:
                 if self.verbose:
                     logger.warning(f"No measurements found for PointID: {row.PointID}.")
             else:
@@ -102,7 +106,7 @@ class MeasuringPointEstimator:
         else:
             mphs = [mph]
             mph_descs = [mph_desc]
-            if len(df) > 0:
+            if df is not None and len(df) > 0:
                 start_dates = [df["DateMeasured"].min()]
             else:
                 start_dates = [datetime.now(tz=UTC)]
