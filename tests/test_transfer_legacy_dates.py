@@ -20,13 +20,13 @@ These tests verify that:
 1. Location.nma_date_created is populated from CSV DateCreated (read-only post-migration)
 2. Location.nma_site_date is populated from CSV SiteDate if not null (read-only post-migration)
 """
+
 import datetime
 from unittest.mock import patch
 import pandas as pd
 import pytest
 
 from transfers.util import make_location
-
 
 # ============================================================================
 # FIXTURES

@@ -18,6 +18,7 @@ AssetAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Asset model.
 """
+
 from admin.views.base import OcotilloModelView
 
 

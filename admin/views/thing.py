@@ -18,6 +18,7 @@ ThingAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Thing (Wells/Springs) model.
 """
+
 from admin.views.base import OcotilloModelView
 
 

@@ -18,6 +18,7 @@ ContactAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Contact (Owners) model.
 """
+
 from admin.views.base import OcotilloModelView
 
 

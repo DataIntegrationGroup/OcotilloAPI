@@ -18,6 +18,7 @@ Custom fields for Starlette Admin.
 
 Provides field handlers for complex data types like PostGIS geometry.
 """
+
 from typing import Any
 
 from geoalchemy2 import WKTElement

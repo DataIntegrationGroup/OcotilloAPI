@@ -16,6 +16,7 @@
 """
 Admin authentication callback routes.
 """
+
 import os
 
 import httpx

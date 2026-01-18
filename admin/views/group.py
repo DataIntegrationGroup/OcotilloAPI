@@ -16,6 +16,7 @@
 """
 GroupAdmin view for NMSampleLocations.
 """
+
 from admin.fields import WKTField
 from admin.views.base import OcotilloModelView
 

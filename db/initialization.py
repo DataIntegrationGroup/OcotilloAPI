@@ -10,8 +10,7 @@ from sqlalchemy_utils import TSVectorType
 
 from db import Base
 
-APP_READ_GRANT_SQL = text(
-    """
+APP_READ_GRANT_SQL = text("""
     DO $$
     BEGIN
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
@@ -20,8 +19,7 @@ APP_READ_GRANT_SQL = text(
             EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
         END IF;
     END $$;
-    """
-)
+    """)
 
 
 def _parse_app_read_members() -> list[str]:
@@ -39,16 +37,14 @@ def grant_app_read_members(executor: Session | Connection | None) -> None:
     for member in members:
         safe_member = member.replace("'", "''")
         quoted = f'"{safe_member}"'
-        stmt = text(
-            f"""
+        stmt = text(f"""
             DO $$
             BEGIN
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{safe_member}') THEN
                     EXECUTE 'GRANT app_read TO {quoted}';
                 END IF;
             END $$;
-            """
-        )
+            """)
         executor.execute(stmt)
 
 

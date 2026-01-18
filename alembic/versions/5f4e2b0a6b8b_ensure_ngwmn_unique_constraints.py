@@ -18,8 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add unique constraints needed for ON CONFLICT upserts (idempotent)."""
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -30,11 +29,9 @@ def upgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
 
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -46,11 +43,9 @@ def upgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
 
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -61,14 +56,12 @@ def upgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
 
 
 def downgrade() -> None:
     """Drop the NGWMN unique constraints if they exist."""
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -79,11 +72,9 @@ def downgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
 
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -94,11 +85,9 @@ def downgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
 
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -109,5 +98,4 @@ def downgrade() -> None:
             END IF;
         END;
         $$;
-        """
-    )
+        """)
