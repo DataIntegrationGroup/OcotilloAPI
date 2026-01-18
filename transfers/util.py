@@ -72,7 +72,10 @@ class MeasuringPointEstimator:
     ) -> tuple[float, str, datetime | None, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
-        df = self._grouped.get(row.PointID)
+        try:
+            df = self._grouped.get_group(row.PointID)
+        except KeyError:
+            df = None
         if mph is None:
             if self.verbose:
                 logger.info(
