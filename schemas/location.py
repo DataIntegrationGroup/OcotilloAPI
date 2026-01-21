@@ -28,7 +28,6 @@ from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.util import convert_m_to_ft, transform_srid
 from services.validation.geospatial import validate_wkt_geometry
 
-
 # -------- VALIDATE --------
 
 

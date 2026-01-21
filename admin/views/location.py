@@ -18,6 +18,7 @@ LocationAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Location model.
 """
+
 from admin.fields import CoordinateHelpField
 from admin.views.base import OcotilloModelView
 

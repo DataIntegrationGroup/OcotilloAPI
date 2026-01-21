@@ -14,7 +14,6 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr, f
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
-
 if TYPE_CHECKING:
     from db.contact import Contact
     from db.thing import Thing

@@ -16,6 +16,7 @@
 """
 TransducerObservationAdmin view for transducer observations.
 """
+
 from admin.views.base import OcotilloModelView
 
 

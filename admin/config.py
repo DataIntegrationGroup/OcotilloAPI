@@ -18,6 +18,7 @@ Starlette Admin configuration and initialization.
 
 This module creates and configures the admin interface for NMSampleLocations.
 """
+
 from starlette_admin.contrib.sqla import Admin
 
 from admin.auth import NMSampleLocationsAuthProvider

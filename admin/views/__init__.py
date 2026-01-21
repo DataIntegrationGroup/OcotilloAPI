@@ -18,6 +18,7 @@ Admin views package for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on database models.
 """
+
 from admin.views.location import LocationAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.observation import ObservationAdmin

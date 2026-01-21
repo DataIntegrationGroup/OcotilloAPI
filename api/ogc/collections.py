@@ -6,7 +6,6 @@ from fastapi import Request
 
 from api.ogc.schemas import Collection, CollectionExtent, CollectionExtentSpatial, Link
 
-
 BASE_CRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
 
 

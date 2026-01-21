@@ -16,6 +16,7 @@
 """
 SampleAdmin view for NMSampleLocations.
 """
+
 from admin.views.base import OcotilloModelView
 
 

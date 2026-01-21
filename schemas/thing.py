@@ -34,7 +34,6 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
-
 # -------- VALIDATE ----------
 
 
