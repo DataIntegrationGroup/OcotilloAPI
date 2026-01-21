@@ -14,6 +14,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field             | value                               |
       | SamplePtID        | 550e8400-e29b-41d4-a716-446655440000 |
+      | thing_id          | (thing.id for Thing "AB-0186")       |
       | SamplePointID     | AB-0186A                            |
       | WCLab_ID          | LAB-12345                           |
       | CollectionDate    | 2001-06-25                           |
@@ -34,6 +35,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field        | value                                |
       | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000  |
+      | thing_id     | (thing.id for Thing "AB-0186")        |
       | SamplePointID| AB-0186A                             |
     And a Thing exists with name "AB-0186"
     And a FieldActivity exists for Thing "AB-0186"
@@ -48,6 +50,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field        | value                                |
       | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000  |
+      | thing_id     | (thing.id for Thing "AB-0186")        |
       | SamplePointID| AB-0186A                             |
       | CollectedBy  | USGS                                 |
       | DataSource   | USGS WRIR 03-4131                     |
@@ -67,6 +70,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field        | value                                                                 |
       | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000                                  |
+      | thing_id     | (thing.id for Thing "AB-0186")                                        |
       | SamplePointID| AB-0186A                                                              |
       | SampleNotes  | Sample collected by NMED; chemistry is incomplete.                    |
     And a Thing exists with name "AB-0186"
@@ -84,6 +88,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field         | value                               |
       | SamplePtID    | 550e8400-e29b-41d4-a716-446655440000 |
+      | thing_id      | (thing.id for Thing "AB-0186")       |
       | SamplePointID | AB-0186A                            |
       | PublicRelease | true                                |
     And a Thing exists with name "AB-0186"
@@ -96,6 +101,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field                 | value     |
       | SamplePtID            | 550e8400-e29b-41d4-a716-446655440000 |
+      | thing_id              | (thing.id for Thing "AB-0186")       |
       | SamplePointID         | AB-0186A  |
       | StudySample           | Y         |
       | WaterType             | NA        |
@@ -113,8 +119,8 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     Given a legacy Chemistry_SampleInfo record exists with:
       | field        | value                               |
       | SamplePtID   | 319c1256-1237-4e17-b93e-03ad8a7789d6 |
+      | thing_id     | 999999                              |
       | SamplePointID| AB-0024A                            |
-    And no Thing exists with name "AB-0024"
     When I run the Chemistry SampleInfo backfill job
     Then no Sample record should exist with nma_pk_chemistrysample "319c1256-1237-4e17-b93e-03ad8a7789d6"
-    And the backfill job should report 1 skipped record due to missing Thing linkage
+    And the backfill job should report 1 skipped record due to missing Thing linkage (thing_id)
