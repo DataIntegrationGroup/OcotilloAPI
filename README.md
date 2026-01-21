@@ -143,10 +143,7 @@ cp .env.example .env
 ```
 Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
-* PostgreSQL port is 54321 (default is 5432). Update your `postgresql.conf` to `port = 54321`.  
-  - On many systems, `postgresql.conf` is in the PostgreSQL data directory (for example: `/etc/postgresql/<version>/main/postgresql.conf` on Debian/Ubuntu, `/var/lib/pgsql/data/postgresql.conf` on many RPM-based distros, or `/usr/local/var/postgres/postgresql.conf` for Homebrew on macOS).  
-  - You can find the exact location from `psql` with: `SHOW config_file;`  
-  - After changing the port, restart PostgreSQL so the new port takes effect.
+* PostgreSQL uses the default port 5432.
 
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
@@ -179,7 +176,7 @@ Notes:
 * Requires Docker Desktop.
 * Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
 * `alembic upgrade head` runs on app startup after `docker compose up`.
-* The database listens on `5432` in the container and is published to your host as `54321`. Ensure `POSTGRES_PORT=54321` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 
