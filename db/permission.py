@@ -21,7 +21,6 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
 
-
 if TYPE_CHECKING:
     from db.contact import Contact
     from db.thing import Thing

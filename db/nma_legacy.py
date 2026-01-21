@@ -17,7 +17,6 @@
 """Legacy NM Aquifer models copied from AMPAPI."""
 
 import uuid
-
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
@@ -206,6 +205,37 @@ class NMAHydraulicsData(Base):
     thing: Mapped["Thing"] = relationship("Thing")
 
 
+class Stratigraphy(Base):
+    """Legacy stratigraphy (lithology log) data from AMPAPI."""
+
+    __tablename__ = "NMA_Stratigraphy"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    point_id: Mapped[str] = mapped_column("PointID", String(10), nullable=False)
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    strat_top: Mapped[Optional[float]] = mapped_column("StratTop", Float)
+    strat_bottom: Mapped[Optional[float]] = mapped_column("StratBottom", Float)
+    unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(50))
+    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(100))
+    lithologic_modifier: Mapped[Optional[str]] = mapped_column(
+        "LithologicModifier", String(100)
+    )
+    contributing_unit: Mapped[Optional[str]] = mapped_column(
+        "ContributingUnit", String(10)
+    )
+    strat_source: Mapped[Optional[str]] = mapped_column("StratSource", Text)
+    strat_notes: Mapped[Optional[str]] = mapped_column("StratNotes", Text)
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="stratigraphy_logs")
+
+
 class ChemistrySampleInfo(Base):
     """
     Legacy Chemistry SampleInfo table from AMPAPI.
@@ -278,6 +308,13 @@ class ChemistrySampleInfo(Base):
         passive_deletes=True,
     )
 
+    major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
+        "NMAMajorChemistry",
+        back_populates="chemistry_sample_info",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     @validates("thing_id")
     def validate_thing_id(self, key, value):
         """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
@@ -286,6 +323,30 @@ class ChemistrySampleInfo(Base):
                 "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
             )
         return value
+
+
+class AssociatedData(Base):
+    """
+    Legacy AssociatedData table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_AssociatedData"
+
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True), unique=True
+    )
+    point_id: Mapped[Optional[str]] = mapped_column("PointID", String(10))
+    assoc_id: Mapped[uuid.UUID] = mapped_column(
+        "AssocID", UUID(as_uuid=True), primary_key=True
+    )
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    thing_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    )
+
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class SurfaceWaterData(Base):
@@ -321,6 +382,24 @@ class SurfaceWaterData(Base):
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
 
+class SurfaceWaterPhotos(Base):
+    """
+    Legacy SurfaceWaterPhotos table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_SurfaceWaterPhotos"
+
+    surface_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "SurfaceID", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+
+
 class WeatherData(Base):
     """
     Legacy WeatherData table from AMPAPI.
@@ -336,6 +415,45 @@ class WeatherData(Base):
         "WeatherID", UUID(as_uuid=True)
     )
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+
+class WeatherPhotos(Base):
+    """
+    Legacy WeatherPhotos table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_WeatherPhotos"
+
+    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WeatherID", UUID(as_uuid=True)
+    )
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+
+
+class SoilRockResults(Base):
+    """
+    Legacy Soil_Rock_Results table from NM_Aquifer.
+    """
+
+    __tablename__ = "NMA_Soil_Rock_Results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    point_id: Mapped[Optional[str]] = mapped_column("Point_ID", String(255))
+    sample_type: Mapped[Optional[str]] = mapped_column("Sample Type", String(255))
+    date_sampled: Mapped[Optional[str]] = mapped_column("Date Sampled", String(255))
+    d13c: Mapped[Optional[float]] = mapped_column("d13C", Float)
+    d18o: Mapped[Optional[float]] = mapped_column("d18O", Float)
+    sampled_by: Mapped[Optional[str]] = mapped_column("Sampled by", String(255))
+    thing_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    )
+
+    thing: Mapped["Thing"] = relationship("Thing")
 
 
 class NMAMinorTraceChemistry(Base):
@@ -452,6 +570,54 @@ class NMARadionuclides(Base):
     def validate_sample_pt_id(self, key, value):
         if value is None:
             raise ValueError("NMARadionuclides requires a SamplePtID")
+        return value
+
+
+class NMAMajorChemistry(Base):
+    """
+    Legacy MajorChemistry table from NM_Aquifer_Dev_DB.
+    """
+
+    __tablename__ = "NMA_MajorChemistry"
+
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
+    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, server_default=text("0")
+    )
+    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
+    uncertainty: Mapped[Optional[float]] = mapped_column("Uncertainty", Float)
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "AnalysisMethod", String(255)
+    )
+    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    volume: Mapped[Optional[int]] = mapped_column(
+        "Volume", Integer, server_default=text("0")
+    )
+    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
+
+    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
+        "ChemistrySampleInfo", back_populates="major_chemistries"
+    )
+
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
+        if value is None:
+            raise ValueError("NMAMajorChemistry requires a SamplePtID")
         return value
 
 

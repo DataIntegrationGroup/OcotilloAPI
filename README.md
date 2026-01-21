@@ -25,6 +25,57 @@ supports research, field operations, and public data delivery for the Bureau of 
 
 ---
 
+## 🗺️ OGC API - Features
+
+The API exposes OGC API - Features endpoints under `/ogc`.
+
+### Landing & metadata
+
+```bash
+curl http://localhost:8000/ogc
+curl http://localhost:8000/ogc/conformance
+curl http://localhost:8000/ogc/collections
+curl http://localhost:8000/ogc/collections/locations
+```
+
+### Items (GeoJSON)
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?limit=10&offset=0"
+curl "http://localhost:8000/ogc/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogc/collections/springs/items?limit=5"
+curl "http://localhost:8000/ogc/collections/locations/items/123"
+```
+
+### BBOX + datetime filters
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogc/collections/wells/items?datetime=2020-01-01/2024-01-01"
+```
+
+### Polygon filter (CQL2 text)
+
+Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+```
+
+### Property filter (CQL)
+
+Basic property filters are supported with `properties`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth>=100 AND well_depth<=200"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_purposes IN ('domestic','irrigation')"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_casing_materials='PVC'"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_screen_type='Steel'"
+```
+    
+
+---
+
 ## 🛠️ Getting Started
 
 ### Prerequisites
@@ -92,74 +143,44 @@ cp .env.example .env
 ```
 Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
-* PostgreSQL port is 54321 (default is 5432). Update your `postgresql.conf` to `port = 54321`.  
-  - On many systems, `postgresql.conf` is in the PostgreSQL data directory (for example: `/etc/postgresql/<version>/main/postgresql.conf` on Debian/Ubuntu, `/var/lib/pgsql/data/postgresql.conf` on many RPM-based distros, or `/usr/local/var/postgres/postgresql.conf` for Homebrew on macOS).  
-  - You can find the exact location from `psql` with: `SHOW config_file;`  
-  - After changing the port, restart PostgreSQL so the new port takes effect.
+* PostgreSQL uses the default port 5432.
 
-In development set `MODE=development` to allow lexicon enums to be populated.
+In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Database and server
 
+Choose one of the following:
 
-<table>
-<tr>
-<td>
-    PostgreSQL + PostGIS installed locally
-</td>
-<td>
-    Docker
-</td>
-</tr>
-<tr>
-<td>
+**Option A: Local PostgreSQL + PostGIS**
 
 ```bash
-#run database migrations
+# run database migrations
 alembic upgrade head
 
 # start development server
 uvicorn app.main:app --reload
 ```
-    
-</td>
-<td>
+
+Notes:
+* Requires PostgreSQL with PostGIS installed locally.
+* Use the `POSTGRES_*` settings in `.env` for your local instance.
+
+**Option B: Docker Compose (dev)**
 
 ```bash
 # include -d flag for silent/detached build
 docker compose up --build
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-Requires PostgreSQL and PostGIS extensions to be installed locally
-</td>
-<td>
-Requires Docker Desktop to be installed locally
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-Run <code>docker exec -it nmsamplelocations-app-1 bash</code> to open a shell inside the running app container.
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-After the database container is running, you can run tests with Pytest from your local command line (not necessarily inside the app container).
-</td>
-</tr>
-</table>
-
+Notes:
+* Requires Docker Desktop.
+* Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* `alembic upgrade head` runs on app startup after `docker compose up`.
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 
-To get staging data into the database run `python -m transfers.transfer` from the root directory of the project.
+To get staging data into the database: `python -m transfers.transfer` from the root directory of the project.
 
 ### 🧭 Project Structure
 ```text

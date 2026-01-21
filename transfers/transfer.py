@@ -19,18 +19,30 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 
+# Load .env file FIRST, before any database imports, to ensure correct port/database settings
+load_dotenv(override=True)
+
 from alembic import command
 from alembic.config import Config
 
 from db.engine import session_ctx
-from sqlalchemy import text
+from db.initialization import recreate_public_schema, sync_search_vector_triggers
 from services.util import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.permissions_transfer import transfer_permissions
+from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
 
-load_dotenv()
+# Safety check: Ensure we're not writing to the test database
+if (
+    os.getenv("POSTGRES_DB") == "ocotilloapi_test"
+    or os.getenv("POSTGRES_DB") == "nmsamplelocations_test"
+):
+    raise ValueError(
+        "ERROR: Transfer script is configured to write to test database! "
+        "Set POSTGRES_DB=ocotilloapi_dev in .env file"
+    )
 
 from transfers.waterlevels_transducer_transfer import (
     WaterLevelsContinuousPressureTransferer,
@@ -48,24 +60,33 @@ from transfers.link_ids_transfer import (
 from transfers.contact_transfer import ContactTransfer
 from transfers.sensor_transfer import SensorTransferer
 from transfers.waterlevels_transfer import WaterLevelTransferer
-from transfers.well_transfer import WellTransferer, WellScreenTransferer
+from transfers.well_transfer import (
+    WellTransferer,
+    WellScreenTransferer,
+    cleanup_locations,
+)
 from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
 from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
 from transfers.hydraulicsdata import HydraulicsDataTransferer
 from transfers.radionuclides import RadionuclidesTransferer
+from transfers.major_chemistry import MajorChemistryTransferer
 from transfers.ngwmn_views import (
     NGWMNLithologyTransferer,
     NGWMNWaterLevelsTransferer,
     NGWMNWellConstructionTransferer,
 )
+from transfers.associated_data import AssociatedDataTransferer
+from transfers.soil_rock_results import SoilRockResultsTransferer
 from transfers.surface_water_data import SurfaceWaterDataTransferer
+from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
     NMAWaterLevelsContinuousPressureDailyTransferer,
 )
 from transfers.weather_data import WeatherDataTransferer
+from transfers.weather_photos import WeatherPhotosTransferer
 from transfers.logger import logger, save_log_to_bucket
 
 
@@ -140,10 +161,7 @@ def _alembic_config() -> Config:
 def _drop_and_rebuild_db() -> None:
     logger.info("Dropping schema public")
     with session_ctx() as session:
-        session.execute(text("DROP SCHEMA public CASCADE"))
-        session.execute(text("CREATE SCHEMA public"))
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        session.commit()
+        recreate_public_schema(session)
     logger.info("Running Alembic migrations")
     try:
         command.upgrade(_alembic_config(), "head")
@@ -154,6 +172,9 @@ def _drop_and_rebuild_db() -> None:
             "Alembic upgrade returned SystemExit(%s); continuing transfer", exc.code
         )
     logger.info("Alembic migrations complete")
+    logger.info("Synchronizing search vector triggers")
+    with session_ctx() as session:
+        sync_search_vector_triggers(session)
     logger.info("Initializing lexicon data")
     init_lexicon()
     logger.info("Initializing parameter data")
@@ -222,16 +243,22 @@ def transfer_all(metrics, limit=100):
     transfer_link_ids = get_bool_env("TRANSFER_LINK_IDS", True)
     transfer_groups = get_bool_env("TRANSFER_GROUPS", True)
     transfer_assets = get_bool_env("TRANSFER_ASSETS", False)
+    transfer_surface_water_photos = get_bool_env("TRANSFER_SURFACE_WATER_PHOTOS", True)
+    transfer_soil_rock_results = get_bool_env("TRANSFER_SOIL_ROCK_RESULTS", True)
     transfer_surface_water_data = get_bool_env("TRANSFER_SURFACE_WATER_DATA", True)
     transfer_hydraulics_data = get_bool_env("TRANSFER_HYDRAULICS_DATA", True)
     transfer_chemistry_sampleinfo = get_bool_env("TRANSFER_CHEMISTRY_SAMPLEINFO", True)
+    transfer_major_chemistry = get_bool_env("TRANSFER_MAJOR_CHEMISTRY", True)
     transfer_radionuclides = get_bool_env("TRANSFER_RADIONUCLIDES", True)
     transfer_ngwmn_views = get_bool_env("TRANSFER_NGWMN_VIEWS", True)
     transfer_pressure_daily = get_bool_env("TRANSFER_WATERLEVELS_PRESSURE_DAILY", True)
     transfer_weather_data = get_bool_env("TRANSFER_WEATHER_DATA", True)
+    transfer_weather_photos = get_bool_env("TRANSFER_WEATHER_PHOTOS", True)
     transfer_minor_trace_chemistry = get_bool_env(
         "TRANSFER_MINOR_TRACE_CHEMISTRY", True
     )
+    transfer_nma_stratigraphy = get_bool_env("TRANSFER_NMA_STRATIGRAPHY", True)
+    transfer_associated_data = get_bool_env("TRANSFER_ASSOCIATED_DATA", True)
     use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
     if use_parallel:
@@ -248,14 +275,20 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_major_chemistry,
             transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
+            transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
     else:
         _transfer_sequential(
@@ -271,14 +304,20 @@ def transfer_all(metrics, limit=100):
             transfer_link_ids,
             transfer_groups,
             transfer_assets,
+            transfer_surface_water_photos,
+            transfer_soil_rock_results,
             transfer_surface_water_data,
             transfer_hydraulics_data,
             transfer_chemistry_sampleinfo,
+            transfer_major_chemistry,
             transfer_radionuclides,
             transfer_ngwmn_views,
             transfer_pressure_daily,
             transfer_weather_data,
+            transfer_weather_photos,
             transfer_minor_trace_chemistry,
+            transfer_nma_stratigraphy,
+            transfer_associated_data,
         )
 
 
@@ -295,14 +334,20 @@ def _transfer_parallel(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_major_chemistry,
     transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
+    transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -325,8 +370,18 @@ def _transfer_parallel(
         )
     if transfer_groups:
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
+    if transfer_surface_water_photos:
+        parallel_tasks_1.append(
+            ("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer, flags)
+        )
+    if transfer_soil_rock_results:
+        parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer, flags))
+    if transfer_weather_photos:
+        parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
     if transfer_assets:
         parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+    if transfer_associated_data:
+        parallel_tasks_1.append(("AssociatedData", AssociatedDataTransferer, flags))
     if transfer_surface_water_data:
         parallel_tasks_1.append(("SurfaceWaterData", SurfaceWaterDataTransferer, flags))
     if transfer_hydraulics_data:
@@ -367,6 +422,15 @@ def _transfer_parallel(
             futures[future] = name
 
         # Submit session-based transfers
+        if transfer_nma_stratigraphy:
+            future = executor.submit(
+                _execute_transfer_with_timing,
+                "Stratigraphy",
+                StratigraphyLegacyTransferer,
+                flags,
+            )
+            futures[future] = "StratigraphyLegacy"
+
         future = executor.submit(
             _execute_session_transfer_with_timing,
             "Stratigraphy",
@@ -395,6 +459,10 @@ def _transfer_parallel(
         metrics.contact_metrics(*results_map["Contacts"])
     if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
         metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
+    if "StratigraphyLegacy" in results_map and results_map["StratigraphyLegacy"]:
+        metrics.nma_stratigraphy_metrics(*results_map["StratigraphyLegacy"])
+    if "AssociatedData" in results_map and results_map["AssociatedData"]:
+        metrics.associated_data_metrics(*results_map["AssociatedData"])
     if "WaterLevels" in results_map and results_map["WaterLevels"]:
         metrics.water_level_metrics(*results_map["WaterLevels"])
     if "LinkIdsWellData" in results_map and results_map["LinkIdsWellData"]:
@@ -403,6 +471,10 @@ def _transfer_parallel(
         metrics.location_link_ids_metrics(*results_map["LinkIdsLocation"])
     if "Groups" in results_map and results_map["Groups"]:
         metrics.group_metrics(*results_map["Groups"])
+    if "SurfaceWaterPhotos" in results_map and results_map["SurfaceWaterPhotos"]:
+        metrics.surface_water_photos_metrics(*results_map["SurfaceWaterPhotos"])
+    if "SoilRockResults" in results_map and results_map["SoilRockResults"]:
+        metrics.soil_rock_results_metrics(*results_map["SoilRockResults"])
     if "Assets" in results_map and results_map["Assets"]:
         metrics.asset_metrics(*results_map["Assets"])
     if "SurfaceWaterData" in results_map and results_map["SurfaceWaterData"]:
@@ -426,6 +498,13 @@ def _transfer_parallel(
         )
     if "WeatherData" in results_map and results_map["WeatherData"]:
         metrics.weather_data_metrics(*results_map["WeatherData"])
+    if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
+        metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
+    if transfer_major_chemistry:
+        message("TRANSFERRING MAJOR CHEMISTRY")
+        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
+        metrics.major_chemistry_metrics(*results)
+
     if transfer_radionuclides:
         message("TRANSFERRING RADIONUCLIDES")
         results = _execute_transfer(RadionuclidesTransferer, flags=flags)
@@ -498,14 +577,20 @@ def _transfer_sequential(
     transfer_link_ids,
     transfer_groups,
     transfer_assets,
+    transfer_surface_water_photos,
+    transfer_soil_rock_results,
     transfer_surface_water_data,
     transfer_hydraulics_data,
     transfer_chemistry_sampleinfo,
+    transfer_major_chemistry,
     transfer_radionuclides,
     transfer_ngwmn_views,
     transfer_pressure_daily,
     transfer_weather_data,
+    transfer_weather_photos,
     transfer_minor_trace_chemistry,
+    transfer_nma_stratigraphy,
+    transfer_associated_data,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -526,6 +611,11 @@ def _transfer_sequential(
     message("TRANSFERRING PERMISSIONS")
     with session_ctx() as session:
         transfer_permissions(session)
+
+    if transfer_nma_stratigraphy:
+        message("TRANSFERRING NMA STRATIGRAPHY")
+        results = _execute_transfer(StratigraphyLegacyTransferer, flags=flags)
+        metrics.nma_stratigraphy_metrics(*results)
 
     message("TRANSFERRING STRATIGRAPHY")
     with session_ctx() as session:
@@ -549,10 +639,30 @@ def _transfer_sequential(
         results = _execute_transfer(ProjectGroupTransferer, flags=flags)
         metrics.group_metrics(*results)
 
+    if transfer_surface_water_photos:
+        message("TRANSFERRING SURFACE WATER PHOTOS")
+        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
+        metrics.surface_water_photos_metrics(*results)
+
+    if transfer_soil_rock_results:
+        message("TRANSFERRING SOIL ROCK RESULTS")
+        results = _execute_transfer(SoilRockResultsTransferer, flags=flags)
+        metrics.soil_rock_results_metrics(*results)
+
+    if transfer_weather_photos:
+        message("TRANSFERRING WEATHER PHOTOS")
+        results = _execute_transfer(WeatherPhotosTransferer, flags=flags)
+        metrics.weather_photos_metrics(*results)
+
     if transfer_assets:
         message("TRANSFERRING ASSETS")
         results = _execute_transfer(AssetTransferer, flags=flags)
         metrics.asset_metrics(*results)
+
+    if transfer_associated_data:
+        message("TRANSFERRING ASSOCIATED DATA")
+        results = _execute_transfer(AssociatedDataTransferer, flags=flags)
+        metrics.associated_data_metrics(*results)
 
     if transfer_surface_water_data:
         message("TRANSFERRING SURFACE WATER DATA")
@@ -568,6 +678,11 @@ def _transfer_sequential(
         message("TRANSFERRING CHEMISTRY SAMPLEINFO")
         results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
         metrics.chemistry_sampleinfo_metrics(*results)
+
+    if transfer_major_chemistry:
+        message("TRANSFERRING MAJOR CHEMISTRY")
+        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
+        metrics.major_chemistry_metrics(*results)
 
     if transfer_radionuclides:
         message("TRANSFERRING RADIONUCLIDES")
@@ -616,9 +731,29 @@ def _transfer_sequential(
         )
         metrics.acoustic_metrics(*results)
 
+    message("CLEANING UP LOCATIONS")
+    with session_ctx() as session:
+        cleanup_locations(session)
+
 
 def main():
     message("START--------------------------------------")
+
+    # Display database configuration for verification
+    db_name = os.getenv("POSTGRES_DB", "postgres")
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+    message(f"Database Configuration: {db_host}:{db_port}/{db_name}")
+
+    # Double-check we're using the development database
+    if db_name != "ocotilloapi_dev":
+        message(f"WARNING: Using database '{db_name}' instead of 'ocotilloapi_dev'")
+        if db_name in ("ocotilloapi_test", "nmsamplelocations_test"):
+            raise ValueError(
+                "ERROR: Cannot run transfer on test database! "
+                "Set POSTGRES_DB=ocotilloapi_dev in .env file"
+            )
+
     limit = int(os.getenv("TRANSFER_LIMIT", 1000))
     metrics = Metrics()
 

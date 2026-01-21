@@ -32,7 +32,8 @@ from sqlalchemy.util import await_only
 
 from services.util import get_bool_env
 
-load_dotenv()
+# Load .env file with override=True to ensure .env values take precedence over shell env vars
+load_dotenv(override=True)
 driver = os.environ.get("DB_DRIVER", "")
 
 

@@ -18,6 +18,7 @@ Admin views package for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on database models.
 """
+
 from admin.views.location import LocationAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.observation import ObservationAdmin
@@ -34,6 +35,7 @@ from admin.views.sample import SampleAdmin
 from admin.views.hydraulicsdata import HydraulicsDataAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
 from admin.views.radionuclides import RadionuclidesAdmin
+from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from admin.views.geologic_formation import GeologicFormationAdmin
 from admin.views.data_provenance import DataProvenanceAdmin
 from admin.views.transducer_observation import TransducerObservationAdmin
@@ -63,6 +65,7 @@ __all__ = [
     "HydraulicsDataAdmin",
     "ChemistrySampleInfoAdmin",
     "RadionuclidesAdmin",
+    "MinorTraceChemistryAdmin",
     "GeologicFormationAdmin",
     "DataProvenanceAdmin",
     "TransducerObservationAdmin",

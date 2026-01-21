@@ -39,13 +39,18 @@ from db import (
     ChemistrySampleInfo,
     NMAHydraulicsData,
     NMARadionuclides,
+    NMAMajorChemistry,
     SurfaceWaterData,
+    SurfaceWaterPhotos,
     NMAWaterLevelsContinuousPressureDaily,
+    SoilRockResults,
     ViewNGWMNWellConstruction,
     ViewNGWMNWaterLevels,
     ViewNGWMNLithology,
     WeatherData,
+    WeatherPhotos,
     NMAMinorTraceChemistry,
+    AssociatedData,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -110,6 +115,12 @@ class Metrics:
     def surface_water_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(SurfaceWaterData, *args, **kw)
 
+    def surface_water_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(SurfaceWaterPhotos, name="SurfaceWaterPhotos", *args, **kw)
+
+    def soil_rock_results_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(SoilRockResults, name="Soil_Rock_Results", *args, **kw)
+
     def hydraulics_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMAHydraulicsData, name="HydraulicsData", *args, **kw)
 
@@ -120,6 +131,9 @@ class Metrics:
 
     def radionuclides_metrics(self, *args, **kw) -> None:
         self._handle_metrics(NMARadionuclides, name="Radionuclides", *args, **kw)
+
+    def major_chemistry_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMAMajorChemistry, name="MajorChemistry", *args, **kw)
 
     def ngwmn_well_construction_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
@@ -133,6 +147,9 @@ class Metrics:
 
     def ngwmn_lithology_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ViewNGWMNLithology, name="NGWMN Lithology", *args, **kw)
+
+    def weather_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(WeatherPhotos, name="WeatherPhotos", *args, **kw)
 
     def waterlevels_pressure_daily_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
@@ -150,6 +167,9 @@ class Metrics:
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+
+    def associated_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(AssociatedData, name="AssociatedData", *args, **kw)
 
     def minor_trace_chemistry_metrics(self, *args, **kw) -> None:
         self._handle_metrics(
