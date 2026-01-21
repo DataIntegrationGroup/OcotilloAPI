@@ -19,6 +19,7 @@ HTTP integration tests for Minor Trace Chemistry admin view.
 These tests make real HTTP requests to verify endpoint behavior.
 When these tests pass, the UI should work.
 """
+
 import uuid
 
 import pytest

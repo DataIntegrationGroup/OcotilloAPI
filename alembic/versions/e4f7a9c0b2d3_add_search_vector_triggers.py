@@ -42,14 +42,12 @@ def _create_trigger(table: str, columns: Sequence[str]) -> None:
     trigger_name = f"{table}_search_vector_update"
     column_list = ", ".join(f"'{col}'" for col in columns)
     op.execute(f'DROP TRIGGER IF EXISTS "{trigger_name}" ON "{table}"')
-    op.execute(
-        f"""
+    op.execute(f"""
         CREATE TRIGGER "{trigger_name}"
         BEFORE INSERT OR UPDATE ON "{table}"
         FOR EACH ROW EXECUTE FUNCTION
         tsvector_update_trigger('search_vector', 'pg_catalog.simple', {column_list});
-        """
-    )
+        """)
 
 
 def _drop_trigger(table: str) -> None:

@@ -16,6 +16,7 @@
 """
 ChemistrySampleInfoAdmin view for legacy Chemistry_SampleInfo.
 """
+
 from admin.views.base import OcotilloModelView
 
 

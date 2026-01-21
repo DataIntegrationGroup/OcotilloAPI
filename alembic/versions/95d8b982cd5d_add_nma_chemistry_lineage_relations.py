@@ -16,7 +16,6 @@ import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
-
 revision: str = "95d8b982cd5d"
 down_revision: Union[str, Sequence[str], None] = "2f6e9d3a1c45"
 branch_labels: Union[str, Sequence[str], None] = None

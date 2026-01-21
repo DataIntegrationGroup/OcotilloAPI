@@ -17,6 +17,7 @@
 Step definitions for Minor Trace Chemistry admin view tests.
 These are fast integration tests - no HTTP calls, direct module testing.
 """
+
 from behave import when, then, given
 from behave.runner import Context
 

@@ -18,6 +18,7 @@ ObservationAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Observation (Water Levels) model.
 """
+
 from admin.views.base import OcotilloModelView
 
 

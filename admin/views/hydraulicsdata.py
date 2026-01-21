@@ -16,6 +16,7 @@
 """
 HydraulicsDataAdmin view for legacy NMA_HydraulicsData.
 """
+
 from admin.views.base import OcotilloModelView
 
 

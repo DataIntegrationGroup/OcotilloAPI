@@ -16,6 +16,7 @@
 """
 MinorTraceChemistryAdmin view for legacy NMA_MinorTraceChemistry.
 """
+
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
 

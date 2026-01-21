@@ -19,6 +19,7 @@ Unit tests for Minor Trace Chemistry admin view configuration.
 These tests verify the admin view is properly configured without requiring
 a running server or database.
 """
+
 import pytest
 from fastapi import FastAPI
 

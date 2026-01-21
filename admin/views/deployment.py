@@ -18,6 +18,7 @@ DeploymentAdmin view for NMSampleLocations.
 
 Provides MS Access-like interface for CRUD operations on Deployment model.
 """
+
 from admin.views.base import OcotilloModelView
 
 
