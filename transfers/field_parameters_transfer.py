@@ -28,7 +28,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import ChemistrySampleInfo, NMAFieldParameters
+from db import ChemistrySampleInfo, FieldParameters
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -40,7 +40,7 @@ class FieldParametersTransferer(Transferer):
     Transfer FieldParameters records to NMA_FieldParameters.
 
     Looks up ChemistrySampleInfo by SamplePtID and creates linked
-    NMAFieldParameters records. Uses upsert for idempotent transfers.
+    FieldParameters records. Uses upsert for idempotent transfers.
     """
 
     source_table = "FieldParameters"
@@ -112,7 +112,7 @@ class FieldParametersTransferer(Transferer):
         rows = self._dedupe_rows(row_dicts)
         logger.info(f"Upserting {len(rows)} FieldParameters records")
 
-        insert_stmt = insert(NMAFieldParameters)
+        insert_stmt = insert(FieldParameters)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

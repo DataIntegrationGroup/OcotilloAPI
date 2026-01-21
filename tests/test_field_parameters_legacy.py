@@ -22,7 +22,7 @@ from sqlalchemy import select, inspect
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from db.engine import session_ctx
-from db.nma_legacy import ChemistrySampleInfo, NMAFieldParameters
+from db.nma_legacy import ChemistrySampleInfo, FieldParameters
 
 
 def _next_sample_point_id() -> str:
@@ -48,7 +48,7 @@ def test_field_parameters_has_all_migrated_columns():
     VERIFIES: The SQLAlchemy model matches the migration mapping contract.
     This ensures all Python-side attribute names exist as expected in the ORM.
     """
-    mapper = inspect(NMAFieldParameters)
+    mapper = inspect(FieldParameters)
     actual_columns = [column.key for column in mapper.attrs]
 
     expected_columns = [
@@ -70,7 +70,7 @@ def test_field_parameters_has_all_migrated_columns():
 
 def test_field_parameters_table_name():
     """Test that the table name follows convention."""
-    assert NMAFieldParameters.__tablename__ == "NMA_FieldParameters"
+    assert FieldParameters.__tablename__ == "NMA_FieldParameters"
 
 
 # ===================== Functional & CRUD Tests =========================
@@ -84,7 +84,7 @@ def test_field_parameters_persistence(water_well_thing):
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
         test_global_id = uuid4()
-        new_fp = NMAFieldParameters(
+        new_fp = FieldParameters(
             global_id=test_global_id,
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id="PT-123",
@@ -100,7 +100,7 @@ def test_field_parameters_persistence(water_well_thing):
         session.commit()
         session.expire_all()
 
-        retrieved = session.get(NMAFieldParameters, test_global_id)
+        retrieved = session.get(FieldParameters, test_global_id)
         assert retrieved.sample_value == 7.4
         assert retrieved.field_parameter == "pH"
         assert retrieved.units == "SU"
@@ -115,7 +115,7 @@ def test_object_id_auto_generation(water_well_thing):
     """Verifies that the OBJECTID (Identity) column auto-increments in Postgres."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        fp1 = NMAFieldParameters(
+        fp1 = FieldParameters(
             sample_pt_id=sample_info.sample_pt_id,
             field_parameter="Temp",
         )
@@ -135,7 +135,7 @@ def test_create_field_parameters_all_fields(water_well_thing):
     """Test creating a field parameters record with all fields."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record = NMAFieldParameters(
+        record = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id=sample_info.sample_point_id,
@@ -165,7 +165,7 @@ def test_create_field_parameters_minimal(water_well_thing):
     """Test creating a field parameters record with minimal fields."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record = NMAFieldParameters(
+        record = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -189,14 +189,14 @@ def test_read_field_parameters_by_global_id(water_well_thing):
     """Test reading a field parameters record by GlobalID."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record = NMAFieldParameters(
+        record = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMAFieldParameters, record.global_id)
+        fetched = session.get(FieldParameters, record.global_id)
         assert fetched is not None
         assert fetched.global_id == record.global_id
 
@@ -209,12 +209,12 @@ def test_query_field_parameters_by_sample_point_id(water_well_thing):
     """Test querying field parameters by sample_point_id."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record1 = NMAFieldParameters(
+        record1 = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id=sample_info.sample_point_id,
         )
-        record2 = NMAFieldParameters(
+        record2 = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id="OTHER-PT",
@@ -223,8 +223,8 @@ def test_query_field_parameters_by_sample_point_id(water_well_thing):
         session.commit()
 
         # Use SQLAlchemy 2.0 style select/execute for ORM queries.
-        stmt = select(NMAFieldParameters).filter(
-            NMAFieldParameters.sample_point_id == sample_info.sample_point_id
+        stmt = select(FieldParameters).filter(
+            FieldParameters.sample_point_id == sample_info.sample_point_id
         )
         results = session.execute(stmt).scalars().all()
         assert len(results) >= 1
@@ -241,7 +241,7 @@ def test_update_field_parameters(water_well_thing):
     """Test updating a field parameters record."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record = NMAFieldParameters(
+        record = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -266,7 +266,7 @@ def test_delete_field_parameters(water_well_thing):
     """Test deleting a field parameters record."""
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        record = NMAFieldParameters(
+        record = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -276,7 +276,7 @@ def test_delete_field_parameters(water_well_thing):
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMAFieldParameters, record.global_id)
+        fetched = session.get(FieldParameters, record.global_id)
         assert fetched is None
 
         session.delete(sample_info)
@@ -292,7 +292,7 @@ def test_orphan_prevention_constraint():
     Ensures the DB rejects records that aren't linked to a ChemistrySampleInfo.
     """
     with session_ctx() as session:
-        orphan = NMAFieldParameters(
+        orphan = FieldParameters(
             field_parameter="pH",
             sample_value=7.0,
         )
@@ -310,7 +310,7 @@ def test_cascade_delete_behavior(water_well_thing):
     """
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        fp = NMAFieldParameters(
+        fp = FieldParameters(
             sample_pt_id=sample_info.sample_pt_id,
             field_parameter="Temperature",
         )
@@ -325,7 +325,7 @@ def test_cascade_delete_behavior(water_well_thing):
         session.expire_all()
 
         assert (
-            session.get(NMAFieldParameters, fp_id) is None
+            session.get(FieldParameters, fp_id) is None
         ), "Child record persisted after parent deletion."
 
 
@@ -336,7 +336,7 @@ def test_update_cascade_propagation(water_well_thing):
     """
     with session_ctx() as session:
         sample_info = _create_sample_info(session, water_well_thing)
-        fp = NMAFieldParameters(
+        fp = FieldParameters(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             field_parameter="Dissolved Oxygen",
@@ -350,7 +350,7 @@ def test_update_cascade_propagation(water_well_thing):
             session.flush()
         session.rollback()
 
-        fetched = session.get(NMAFieldParameters, fp_id)
+        fetched = session.get(FieldParameters, fp_id)
         if fetched is not None:
             session.delete(fetched)
         session.delete(sample_info)

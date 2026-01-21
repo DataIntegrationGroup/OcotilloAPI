@@ -22,7 +22,7 @@ from admin.views.base import OcotilloModelView
 
 class FieldParametersAdmin(OcotilloModelView):
     """
-    Admin view for NMAFieldParameters model.
+    Admin view for FieldParameters model.
     """
 
     # ========== Basic Configuration ==========
