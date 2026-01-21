@@ -185,7 +185,7 @@ class MinorTraceChemistryTransferer(Transferer):
             "notes": self._safe_str(row, "Notes"),
             "analyses_agency": self._safe_str(row, "AnalysesAgency"),
             "uncertainty": self._safe_float(row, "Uncertainty"),
-            "volume": self._safe_float(row, "Volume"),
+            "volume": self._safe_int(row, "Volume"),
             "volume_unit": self._safe_str(row, "VolumeUnit"),
         }
 
@@ -224,6 +224,13 @@ class MinorTraceChemistryTransferer(Transferer):
         if val is None or pd.isna(val):
             return None
         return float(val)
+
+    def _safe_int(self, row, attr: str) -> Optional[int]:
+        """Safely get an int value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        return int(val)
 
     def _parse_date(self, row, attr: str) -> Optional[date]:
         """Parse a date value from the row."""
