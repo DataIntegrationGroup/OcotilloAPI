@@ -16,6 +16,7 @@
 """
 FieldParametersAdmin view for legacy NMA_FieldParameters.
 """
+
 from admin.views.base import OcotilloModelView
 
 
