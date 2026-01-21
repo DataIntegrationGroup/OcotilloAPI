@@ -679,7 +679,7 @@ def main():
     # Display database configuration for verification
     db_name = os.getenv("POSTGRES_DB", "postgres")
     db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = os.getenv("POSTGRES_PORT", "54321")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
     message(f"Database Configuration: {db_host}:{db_port}/{db_name}")
 
     # Double-check we're using the development database

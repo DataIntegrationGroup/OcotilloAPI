@@ -17,7 +17,7 @@ from tests import get_parameter_id
 
 def pytest_configure():
     load_dotenv(override=True)
-    os.environ.setdefault("POSTGRES_PORT", "54321")
+    os.environ.setdefault("POSTGRES_PORT", "5432")
     # Always use test database, never dev
     os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 

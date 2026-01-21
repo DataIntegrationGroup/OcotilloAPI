@@ -18,7 +18,7 @@ jobs:
     env:
       MODE: development
       POSTGRES_HOST: localhost
-      POSTGRES_PORT: 54321
+      POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ocotilloapi_test
@@ -36,7 +36,7 @@ jobs:
         # These env vars are ONLY for the service container itself
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_PORT: 54321
+          POSTGRES_PORT: 5432
 
         options: >-
           --health-cmd pg_isready
@@ -46,7 +46,7 @@ jobs:
 
         ports:
           # Maps tcp port 5432 on service container to the host
-          - 54321:5432
+          - 5432:5432
 
     steps:
       - name: Check out source repository
@@ -67,8 +67,8 @@ jobs:
 
       - name: Create test database
         run: |
-          PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -c "CREATE DATABASE ocotilloapi_test"
-          PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
 
       - name: Run tests
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers

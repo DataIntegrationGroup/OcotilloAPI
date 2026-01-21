@@ -61,7 +61,7 @@ def build_database_url():
     password = os.environ.get("POSTGRES_PASSWORD", "")
     db = os.environ.get("POSTGRES_DB", "")
     host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", 54321)
+    port = os.environ.get("POSTGRES_PORT", 5432)
     return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
 
 
