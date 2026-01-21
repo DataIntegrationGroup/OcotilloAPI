@@ -153,8 +153,8 @@ class WaterLevelsContinuousTransferer(Transferer):
         for pointid, (min_date, max_date) in nodeployments.items():
             self._capture_error(
                 pointid,
-                "DateMeasured",
                 f"no deployment between {min_date} and {max_date}",
+                "DateMeasured",
             )
 
     def _make_observation(
