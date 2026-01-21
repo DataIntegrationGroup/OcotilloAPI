@@ -21,20 +21,6 @@ APP_READ_GRANT_SQL = text("""
     END $$;
     """)
 
-GRANT_MEMBER_SQL = text("""
-    DO $$
-    DECLARE
-        username text := :grantee;
-    BEGIN
-        IF username IS NULL OR username = '' THEN
-            RETURN;
-        END IF;
-        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = username) THEN
-            EXECUTE format('GRANT app_read TO %I', username);
-        END IF;
-    END $$;
-    """)
-
 
 def _parse_app_read_members() -> list[str]:
     members = os.environ.get("APP_READ_MEMBERS", "")
@@ -49,7 +35,17 @@ def grant_app_read_members(executor: Session | Connection | None) -> None:
     if not members:
         return
     for member in members:
-        executor.execute(GRANT_MEMBER_SQL, {"grantee": member})
+        safe_member = member.replace("'", "''")
+        quoted = f'"{safe_member}"'
+        stmt = text(f"""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{safe_member}') THEN
+                    EXECUTE 'GRANT app_read TO {quoted}';
+                END IF;
+            END $$;
+            """)
+        executor.execute(stmt)
 
 
 def recreate_public_schema(session: Session) -> None:
