@@ -7,7 +7,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
   Background:
     Given a database session is available
     And legacy Chemistry_SampleInfo records exist in the database
-    And lexicon terms exist for sample_method, qc_type, note_type "sample_notes", and data_provenance origin_type
+    And lexicon terms exist for sample_method, qc_type, note_type "Sampling Procedure", and data_provenance origin_type
 
   @backfill @idempotent
   Scenario: Backfill creates Sample records and can be re-run without duplicates
@@ -17,8 +17,8 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | thing_id          | (thing.id for Thing "AB-0186")       |
       | SamplePointID     | AB-0186A                            |
       | WCLab_ID          | LAB-12345                           |
-      | CollectionDate    | 2001-06-25                           |
-      | CollectionMethod  | pump                                |
+      | CollectionDate    | 2001-06-25                          |
+      | CollectionMethod  | Pump                                |
       | SampleType        | Normal                              |
     And a Thing exists with name "AB-0186"
     When I run the Chemistry SampleInfo backfill job
@@ -52,8 +52,8 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000  |
       | thing_id     | (thing.id for Thing "AB-0186")        |
       | SamplePointID| AB-0186A                             |
-      | CollectedBy  | USGS                                 |
-      | DataSource   | USGS WRIR 03-4131                     |
+      | CollectedBy  | Measured by NMBGMR staff         |
+      | DataSource   | WRIR 03-4131                     |
     And a Thing exists with name "AB-0186"
     When I run the Chemistry SampleInfo backfill job
     Then a Sample record should exist with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
@@ -62,8 +62,8 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | target_table | sample  |
       | target_id    | (sample.id for SamplePtID 550e8400-e29b-41d4-a716-446655440000) |
       | field_name   | null    |
-      | origin_type  | USGS    |
-      | origin_source| USGS WRIR 03-4131 |
+      | origin_type  | Measured by NMBGMR staff    |
+      | origin_source| WRIR 03-4131 |
 
   @backfill @notes
   Scenario: SampleNotes are stored as Notes linked to Sample
@@ -80,7 +80,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | field        | value   |
       | target_table | sample  |
       | target_id    | (sample.id for SamplePtID 550e8400-e29b-41d4-a716-446655440000) |
-      | note_type    | sample_notes |
+      | note_type    | Sampling Procedure |
       | content      | Sample collected by NMED; chemistry is incomplete. |
 
   @backfill @release
@@ -94,7 +94,7 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     And a Thing exists with name "AB-0186"
     And legacy chemistry result rows exist for SamplePtID "550e8400-e29b-41d4-a716-446655440000"
     When I run the Chemistry SampleInfo backfill job
-    Then Observation records derived from that sample should set release_status to "published"
+    Then Observation records derived from that sample should set release_status to "public"
 
   @backfill @ignore
   Scenario: Unmapped legacy fields are not persisted in the new schema
