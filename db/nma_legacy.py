@@ -673,8 +673,8 @@ class FieldParameters(Base):
     # Legacy Columns
     sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
     field_parameter: Mapped[Optional[str]] = mapped_column("FieldParameter", String(50))
-    sample_value: Mapped[float] = mapped_column(
-        "SampleValue", Float, server_default="0"
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, nullable=True
     )
     units: Mapped[Optional[str]] = mapped_column("Units", String(50))
     notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))

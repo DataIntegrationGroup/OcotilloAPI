@@ -44,9 +44,7 @@ def upgrade() -> None:
             ),
             sa.Column("SamplePointID", sa.String(length=10), nullable=True),
             sa.Column("FieldParameter", sa.String(length=50), nullable=True),
-            sa.Column(
-                "SampleValue", sa.Float(), nullable=False, server_default=sa.text("0")
-            ),
+            sa.Column("SampleValue", sa.Float(), nullable=True),
             sa.Column("Units", sa.String(length=50), nullable=True),
             sa.Column("Notes", sa.String(length=255), nullable=True),
             sa.Column(
