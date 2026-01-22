@@ -1,7 +1,7 @@
 @backend @migration @chemistry
 Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backfill job
   As an Ocotillo database engineer
-  I want a repeatable backfill job to refactor legacy Chemistry_SampleInfo into the new schema
+  I want a repeatable backfill job to refactor legacy Chemistry SampleInfo into the new schema
   So that chemistry sampling metadata is migrated with auditability and idempotence
 
   Background:
@@ -45,6 +45,19 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
     And the Sample should reference the FieldActivity for Thing "AB-0186"
     And Observation records derived from SamplePtID "550e8400-e29b-41d4-a716-446655440000" should reference that Sample's id
 
+  @backfill @agency
+  Scenario: AnalysesAgency is stored on the Sample
+    Given a legacy Chemistry_SampleInfo record exists with:
+      | field          | value                               |
+      | SamplePtID     | 550e8400-e29b-41d4-a716-446655440000 |
+      | thing_id       | (thing.id for Thing "AB-0186")       |
+      | SamplePointID  | AB-0186A                            |
+      | AnalysesAgency | NMBGMR                              |
+    And a Thing exists with name "AB-0186"
+    When I run the Chemistry SampleInfo backfill job
+    Then a Sample record should exist with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
+    And the Sample should set analysis_agency to "NMBGMR"
+
   @backfill @provenance
   Scenario: CollectedBy and DataSource create DataProvenance records for Sample
     Given a legacy Chemistry_SampleInfo record exists with:
@@ -64,6 +77,19 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | field_name   | null    |
       | origin_type  | Measured by NMBGMR staff    |
       | origin_source| WRIR 03-4131 |
+
+  @backfill @data-quality
+  Scenario: DataQuality sets reportable on Sample
+    Given a legacy Chemistry_SampleInfo record exists with:
+      | field        | value                               |
+      | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000 |
+      | thing_id     | (thing.id for Thing "AB-0186")       |
+      | SamplePointID| AB-0186A                            |
+      | DataQuality  | Y                                   |
+    And a Thing exists with name "AB-0186"
+    And legacy chemistry result rows exist for SamplePtID "550e8400-e29b-41d4-a716-446655440000"
+    When I run the Chemistry SampleInfo backfill job
+    Then the Sample should set reportable to true
 
   @backfill @notes
   Scenario: SampleNotes are stored as Notes linked to Sample
@@ -108,11 +134,12 @@ Feature: Refactor legacy Chemistry SampleInfo into the Ocotillo schema via backf
       | SampleMaterialNotH2O  | Soil      |
       | AddedDaytoDate        | true      |
       | AddedMonthDaytoDate   | false     |
+      | LocationID            | 410       |
       | ObjectID              | 2739      |
     And a Thing exists with name "AB-0186"
     When I run the Chemistry SampleInfo backfill job
     Then a Sample record should exist with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
-    And no Sample fields should store StudySample, WaterType, SampleMaterialNotH2O, AddedDaytoDate, AddedMonthDaytoDate, or ObjectID
+    And no Sample fields should store SamplePointID, StudySample, WaterType, SampleMaterialNotH2O, AddedDaytoDate, AddedMonthDaytoDate, LocationID, or ObjectID
 
   @backfill @orphan-prevention
   Scenario: Orphan legacy records are skipped and reported
