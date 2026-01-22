@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NMSampleLocations is a FastAPI-based geospatial sample data management system for the New Mexico Bureau of Geology and Mineral Resources. It uses PostgreSQL with PostGIS for storing and querying spatial data related to sample locations, field observations, water chemistry, geochronology, and more.
+OcotilloAPI (also known as NMSampleLocations) is a FastAPI-based geospatial sample data management system for the New Mexico Bureau of Geology and Mineral Resources. It uses PostgreSQL with PostGIS for storing and querying spatial data related to sample locations, field observations, water chemistry, and more.
 
-This project is **migrating data from the legacy AMPAPI system** (SQL Server, NM_Aquifer schema) to a new PostgreSQL + PostGIS stack. The migration is ~50-60% complete, with transfer scripts in `transfers/` handling data conversion from legacy tables.
+This project is **migrating data from the legacy AMPAPI system** (SQL Server, NM_Aquifer schema) to a new PostgreSQL + PostGIS stack. Transfer scripts in `transfers/` handle data conversion from legacy tables.
 
 ## Key Commands
 
@@ -44,7 +44,6 @@ uvicorn main:app --reload
 
 # Docker (includes database)
 docker compose up --build
-docker exec -it nmsamplelocations-app-1 bash  # Access app container
 ```
 
 ### Testing
@@ -62,17 +61,19 @@ uv run pytest tests/test_sample.py::test_add_sample
 uv run pytest --cov
 
 # Set up test database (PostgreSQL with PostGIS required)
-createdb -h localhost -U <user> nmsamplelocations_test
-psql -h localhost -U <user> -d nmsamplelocations_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+createdb -h localhost -U <user> ocotilloapi_test
+psql -h localhost -U <user> -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 ```
 
-**Test Environment Variables**: Tests read from `.env` file. Ensure these are set:
+**Test Database**: Tests automatically use `ocotilloapi_test` database. The test framework sets `POSTGRES_DB=ocotilloapi_test` in `tests/__init__.py` before importing the database engine.
+
+**Environment Variables**: Tests read from `.env` file but override the database name:
 ```bash
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=<username>
 POSTGRES_PASSWORD=<password>
-POSTGRES_DB=nmsamplelocations_test
+# POSTGRES_DB in .env is ignored during tests - always uses ocotilloapi_test
 ```
 
 ### Data Migration
@@ -108,28 +109,19 @@ Location (geographic point)
 ```
 ├── alembic/              # Database migrations
 ├── api/                  # Route handlers (one file per resource)
-│   ├── sample.py         # CRUD endpoints for samples
-│   ├── observation.py    # Endpoints for field observations
-│   └── ...
+├── cli/                  # Ocotillo CLI commands (oco)
 ├── core/                 # Application configuration
 │   ├── app.py            # FastAPI app initialization
 │   ├── dependencies.py   # Dependency injection (auth, DB session)
 │   └── permissions.py    # Authentication/authorization logic
 ├── db/                   # SQLAlchemy models (one file per table/resource)
 │   ├── engine.py         # Database connection configuration
-│   ├── sample.py         # Sample model
-│   ├── observation.py    # Observation model
 │   └── ...
 ├── schemas/              # Pydantic schemas (validation, serialization)
-│   ├── sample.py         # Sample Create/Update/Response schemas
-│   └── ...
 ├── services/             # Business logic and database interactions
-│   ├── exceptions_helper.py  # PydanticStyleException for consistent error formatting
-│   └── ...
 ├── tests/                # Pytest test suite
 │   ├── conftest.py       # Shared fixtures (test data setup)
-│   ├── test_sample.py    # Sample CRUD tests
-│   └── ...
+│   └── __init__.py       # Sets test database (ocotilloapi_test)
 ├── transfers/            # Data migration scripts from AMPAPI (SQL Server)
 │   ├── transfer.py       # Main transfer orchestrator
 │   ├── well_transfer.py  # Well/thing data migration
@@ -148,28 +140,19 @@ The system uses **Authentik** for OAuth2 authentication with role-based access c
 
 **AMP-Specific Roles**: `AMPAdmin`, `AMPEditor`, `AMPViewer` for legacy AMPAPI integration
 
-**Dependency Injection**:
-```python
-from core.dependencies import admin_function, editor_function, viewer_function
-
-@router.post("/sample", dependencies=[Depends(admin_function)])  # Admin required
-@router.patch("/sample/{id}", dependencies=[Depends(editor_function)])  # Editor required
-@router.get("/sample", dependencies=[Depends(viewer_function)])  # Viewer required
-```
-
 ### Database Configuration
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):
 
-1. **Google Cloud SQL** (`DB_DRIVER=cloud_sql`): Uses Cloud SQL Python Connector
-2. **Standard PostgreSQL** (`DB_DRIVER=postgres`): Direct pg8000/asyncpg connection
+1. **Google Cloud SQL** (`DB_DRIVER=cloudsql`): Uses Cloud SQL Python Connector
+2. **Standard PostgreSQL** (default): Direct pg8000/asyncpg connection
 
 **Connection String Format** (standard mode):
 ```
 postgresql+pg8000://{user}:{password}@{host}:{port}/{database}
 ```
 
-See `db/engine.py:108-116` for connection string construction.
+**Important**: `db/engine.py` uses `load_dotenv(override=False)` so that environment variables set before import (e.g., by the test framework) are preserved.
 
 ### Spatial Data
 
@@ -202,7 +185,7 @@ raise PydanticStyleException(
 
 ## Model Change Workflow
 
-When modifying data models (from README.md):
+When modifying data models:
 
 1. **Update DB Model**: Revise model in `db/` directory
 2. **Update Schemas**: Revise Pydantic schemas in `schemas/`
@@ -225,18 +208,13 @@ When modifying data models (from README.md):
 
 ## Testing Notes
 
-- **Test Database**: Requires separate PostgreSQL database with PostGIS extension
-- **Test Client**: `TestClient` from FastAPI (`tests/__init__.py:30`)
+- **Test Database**: Uses `ocotilloapi_test` (set automatically by `tests/__init__.py`)
+- **Test Client**: `TestClient` from FastAPI (`tests/__init__.py`)
 - **Authentication Override**: Tests bypass Authentik auth using `override_authentication()` fixture
-- **Fixtures**: Session-scoped fixtures in `conftest.py` create test data (locations, things, events, etc.)
+- **Fixtures**: Session-scoped fixtures in `conftest.py` create test data
 - **Cleanup Helpers**:
   - `cleanup_post_test(model, id)`: Delete records created by POST tests
   - `cleanup_patch_test(model, payload, original_data)`: Rollback PATCH test changes
-
-**Known Test Issues** (as of Oct 2025):
-- Some tests have isolation issues due to session-scoped fixtures
-- Foreign key cascade failures in sample deletion tests
-- Date format inconsistencies in sample tests
 
 ## CI/CD
 
@@ -248,13 +226,7 @@ GitHub Actions workflows (`.github/workflows/`):
 ## Legacy System Migration
 
 **Source**: AMPAPI (SQL Server, `NM_Aquifer` schema)
-**Target**: NMSampleLocations (PostgreSQL + PostGIS)
-**Progress**: ~50-60% complete
-
-**Key Differences**:
-- Geometry format: GeoJSON (legacy) → WKT (new)
-- Auth: Fief OAuth2 (legacy) → Authentik (new)
-- API versioning: URL path `/v0` (legacy) → Schema versioning (new)
+**Target**: OcotilloAPI (PostgreSQL + PostGIS)
 
 **Transfer Scripts** (`transfers/`):
 - `well_transfer.py`: Migrates well/thing data with coordinate transformation
@@ -265,5 +237,6 @@ GitHub Actions workflows (`.github/workflows/`):
 ## Additional Resources
 
 - **API Docs**: `http://localhost:8000/docs` (Swagger UI) or `/redoc` (ReDoc)
-- **Database Visualization**: Use PostGIS-compatible tools (QGIS, pgAdmin with PostGIS plugin)
+- **OGC API**: `http://localhost:8000/ogc` for OGC API - Features endpoints
+- **CLI**: `oco --help` for Ocotillo CLI commands
 - **Sentry**: Error tracking and performance monitoring integrated
