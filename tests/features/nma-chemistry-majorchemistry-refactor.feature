@@ -20,6 +20,8 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
       | Units          | mg/L                                |
       | AnalysisDate   | 2001-06-26                           |
       | AnalysisMethod | EPA 200.7                            |
+      | AnalysesAgency | NMBGMR & others                     |
+      | Uncertainty     | 0.15                                |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Major Chemistry backfill job
     Then exactly 1 Observation record should exist with nma_pk_chemistryresults "6f8a6b2c-2a6c-4b74-8a7b-2f09fcbfef10"
@@ -27,10 +29,29 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
     And the Observation should set observation_datetime to "2001-06-26"
     And the Observation should set value to 45.6
     And the Observation should set unit to "mg/L"
-    And the Observation should set parameter_name to "Calcium"
+    And a Parameter record should exist with parameter_name "Calcium" and matrix "water"
+    And the Observation should reference the Parameter with parameter_name "Calcium" and matrix "water"
     And the Observation should set analysis_method_name to "EPA 200.7"
+    And the Observation should set uncertainty to 0.15
+    And the Observation should set analysis_agency to "NMBGMR & others"
     When I run the Major Chemistry backfill job again
     Then exactly 1 Observation record should exist with nma_pk_chemistryresults "6f8a6b2c-2a6c-4b74-8a7b-2f09fcbfef10"
+
+  @backfill @volume
+  Scenario: Volume and VolumeUnit populate the related Sample
+    Given a legacy NMA_MajorChemistry record exists with:
+      | field       | value                               |
+      | GlobalID    | 9cece0ef-f0b3-4e3d-8df7-2f82dc67cb2c |
+      | SamplePtID  | 550e8400-e29b-41d4-a716-446655440000 |
+      | Analyte     | Potassium                           |
+      | SampleValue | 3.2                                 |
+      | Units       | mg/L                                |
+      | Volume      | 25                                  |
+      | VolumeUnit  | mL                                  |
+    And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
+    When I run the Major Chemistry backfill job
+    Then the Sample should set volume to 25
+    And the Sample should set volume_unit to "mL"
 
   @backfill @linkage
   Scenario: Observations are not orphaned and link to Sample (and Thing) by SamplePtID
@@ -62,7 +83,7 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
     And the Observation for GlobalID "362dc2e3-8ef7-4f4a-8d13-4c09a9f2f4b2" should set analysis_method_name to "Taken in the field"
 
   @backfill @notes
-  Scenario: Notes are stored as observation notes
+  Scenario: Notes are stored in the Notes table and linked to the Observation
     Given a legacy NMA_MajorChemistry record exists with:
       | field       | value                               |
       | GlobalID    | 6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74 |
@@ -73,8 +94,14 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
       | Units       | mg/L                                |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Major Chemistry backfill job
-    Then the Observation for GlobalID "6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74" should set parameter_name to "Alkalinity"
-    And the Observation for GlobalID "6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74" should set notes to "as CaCO3"
+    Then a Parameter record should exist with parameter_name "Alkalinity" and matrix "water"
+    And the Observation for GlobalID "6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74" should reference the Parameter with parameter_name "Alkalinity" and matrix "water"
+    And a Notes record should exist with:
+      | field        | value   |
+      | target_table | observation |
+      | target_id    | (observation.id for GlobalID 6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74) |
+      | note_type    | Chemistry Observation |
+      | content      | as CaCO3 |
 
   @backfill @qualifiers
   Scenario: Symbol "<" means SampleValue is a detection limit (not a detected concentration)
@@ -89,24 +116,6 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Major Chemistry backfill job
     Then the Observation for GlobalID "28d93dc8-99e3-40a2-8f1b-0b1f48d46cd8" should set detect_flag to false
-
-  @backfill @agency
-  Scenario: AnalysesAgency is standardized and mapped consistently
-    Given a legacy Chemistry_SampleInfo record exists with:
-      | field          | value                               |
-      | SamplePtID     | 550e8400-e29b-41d4-a716-446655440000 |
-      | AnalysesAgency | NMBGMR                              |
-    And a legacy NMA_MajorChemistry record exists with:
-      | field          | value                               |
-      | GlobalID       | 82e8c6d9-6c2b-4b2b-8c86-1b7b6b62cfe0 |
-      | SamplePtID     | 550e8400-e29b-41d4-a716-446655440000 |
-      | Analyte        | Sodium                              |
-      | SampleValue    | 19.4                                |
-      | Units          | mg/L                                |
-      | AnalysesAgency | NMBGMR & others                     |
-    And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
-    When I run the Major Chemistry backfill job
-    Then the Observation for GlobalID "82e8c6d9-6c2b-4b2b-8c86-1b7b6b62cfe0" should set analysis_agency to "NMBGMR"
 
   @backfill @ignore
   Scenario: Unmapped legacy fields are not persisted in the new schema
