@@ -50,6 +50,11 @@ from transfers.waterlevels_transducer_transfer import (
 )
 
 from transfers.metrics import Metrics
+from transfers.profiling import (
+    TransferProfiler,
+    ProfileArtifact,
+    upload_profile_artifacts,
+)
 from core.initializers import erase_and_rebuild_db, init_lexicon, init_parameter
 
 from transfers.group_transfer import ProjectGroupTransferer
@@ -183,7 +188,7 @@ def _drop_and_rebuild_db() -> None:
 
 
 @timeit
-def transfer_all(metrics, limit=100):
+def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
     message("STARTING TRANSFER", new_line_at_top=False)
     if get_bool_env("DROP_AND_REBUILD_DB", False):
         logger.info("Dropping schema and rebuilding database from migrations")
@@ -193,6 +198,8 @@ def transfer_all(metrics, limit=100):
         erase_and_rebuild_db()
 
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
+
+    profile_artifacts: list[ProfileArtifact] = []
 
     # =========================================================================
     # PHASE 1: Foundation (Parallel - these are independent of each other)
@@ -318,6 +325,8 @@ def transfer_all(metrics, limit=100):
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
             transfer_associated_data,
+            profile_waterlevels,
+            profile_artifacts,
         )
 
 
@@ -591,6 +600,8 @@ def _transfer_sequential(
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
     transfer_associated_data,
+    profile_waterlevels,
+    profile_artifacts,
 ):
     """Original sequential transfer logic."""
     if transfer_screens:
@@ -719,21 +730,37 @@ def _transfer_sequential(
 
     if transfer_pressure:
         message("TRANSFERRING WATER LEVELS PRESSURE")
-        results = _execute_transfer(
-            WaterLevelsContinuousPressureTransferer, flags=flags
-        )
+        if profile_waterlevels:
+            profiler = TransferProfiler("waterlevels_continuous_pressure")
+            results, artifact = profiler.run(
+                _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
+            )
+            profile_artifacts.append(artifact)
+        else:
+            results = _execute_transfer(
+                WaterLevelsContinuousPressureTransferer, flags=flags
+            )
         metrics.pressure_metrics(*results)
 
     if transfer_acoustic:
         message("TRANSFERRING WATER LEVELS ACOUSTIC")
-        results = _execute_transfer(
-            WaterLevelsContinuousAcousticTransferer, flags=flags
-        )
+        if profile_waterlevels:
+            profiler = TransferProfiler("waterlevels_continuous_acoustic")
+            results, artifact = profiler.run(
+                _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
+            )
+            profile_artifacts.append(artifact)
+        else:
+            results = _execute_transfer(
+                WaterLevelsContinuousAcousticTransferer, flags=flags
+            )
         metrics.acoustic_metrics(*results)
 
     message("CLEANING UP LOCATIONS")
     with session_ctx() as session:
         cleanup_locations(session)
+
+    return None
 
 
 def main():
@@ -755,13 +782,17 @@ def main():
             )
 
     limit = int(os.getenv("TRANSFER_LIMIT", 1000))
+    profile_waterlevels = get_bool_env("PROFILE_WATERLEVELS_CONTINUOUS", True)
     metrics = Metrics()
 
-    transfer_all(metrics, limit=limit)
+    profile_artifacts = transfer_all(
+        metrics, limit=limit, profile_waterlevels=profile_waterlevels
+    )
 
     metrics.close()
     metrics.save_to_storage_bucket()
     save_log_to_bucket()
+    upload_profile_artifacts(profile_artifacts)
     message("END--------------------------------------")
 
 

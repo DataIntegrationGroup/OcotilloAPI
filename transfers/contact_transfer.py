@@ -106,7 +106,7 @@ class ContactTransfer(ThingBasedTransferer):
                 logger.critical(
                     f"Skipping {tag} contact for PointID {row.PointID} due to validation error: {e.errors()}"
                 )
-                self._capture_error(row.PointID, str(e), "ValidationError")
+                self._capture_validation_error(row.PointID, e)
             except Exception as e:
                 logger.critical(
                     f"Skipping {tag} contact for PointID {row.PointID} due to error: {e}"

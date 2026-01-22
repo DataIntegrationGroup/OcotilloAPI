@@ -153,8 +153,8 @@ class WaterLevelsContinuousTransferer(Transferer):
         for pointid, (min_date, max_date) in nodeployments.items():
             self._capture_error(
                 pointid,
-                "DateMeasured",
                 f"no deployment between {min_date} and {max_date}",
+                "DateMeasured",
             )
 
     def _make_observation(
@@ -199,7 +199,7 @@ class WaterLevelsContinuousTransferer(Transferer):
 
         except ValidationError as e:
             logger.critical(f"Observation validation error: {e.errors()}")
-            self._capture_error(pointid, str(e), "DepthToWaterBGS")
+            self._capture_validation_error(pointid, e)
 
     def _legacy_payload(self, row: pd.Series) -> dict:
         return {}

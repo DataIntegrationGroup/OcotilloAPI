@@ -183,7 +183,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
                 continue
 
             # Validate depth logic
-            if top_depth >= bottom_depth:
+            if (top_depth or bottom_depth) and top_depth >= bottom_depth:
                 error_msg = (
                     f"Invalid depth logic: top={top_depth} >= bottom={bottom_depth}"
                 )

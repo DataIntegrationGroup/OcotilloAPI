@@ -22,7 +22,7 @@ from transfers.util import (
 class StratigraphyLegacyTransferer(Transferer):
     """Imports Stratigraphy.csv rows into NMA_Stratigraphy."""
 
-    source_table = "NMA_Stratigraphy"
+    source_table = "Stratigraphy"
 
     def __init__(self, batch_size: int = 1000, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -30,7 +30,7 @@ class StratigraphyLegacyTransferer(Transferer):
         self._thing_id_cache: dict[str, int] = {}
 
     def _get_dfs(self):  # type: ignore[override]
-        df = read_csv("Stratigraphy")
+        df = read_csv(self.source_table)
         cleaned = replace_nans(df)
         cleaned = filter_to_valid_point_ids(cleaned, self.pointids)
         return df, cleaned
