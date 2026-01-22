@@ -17,9 +17,13 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from dotenv import load_dotenv
+
+# Load .env file FIRST, before any database imports, to ensure correct port/database settings
+load_dotenv(override=True)
+
 from alembic import command
 from alembic.config import Config
-from dotenv import load_dotenv
 
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
@@ -30,7 +34,15 @@ from transfers.permissions_transfer import transfer_permissions
 from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
 
-load_dotenv()
+# Safety check: Ensure we're not writing to the test database
+if (
+    os.getenv("POSTGRES_DB") == "ocotilloapi_test"
+    or os.getenv("POSTGRES_DB") == "nmsamplelocations_test"
+):
+    raise ValueError(
+        "ERROR: Transfer script is configured to write to test database! "
+        "Set POSTGRES_DB=ocotilloapi_dev in .env file"
+    )
 
 from transfers.waterlevels_transducer_transfer import (
     WaterLevelsContinuousPressureTransferer,
@@ -726,6 +738,22 @@ def _transfer_sequential(
 
 def main():
     message("START--------------------------------------")
+
+    # Display database configuration for verification
+    db_name = os.getenv("POSTGRES_DB", "postgres")
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+    message(f"Database Configuration: {db_host}:{db_port}/{db_name}")
+
+    # Double-check we're using the development database
+    if db_name != "ocotilloapi_dev":
+        message(f"WARNING: Using database '{db_name}' instead of 'ocotilloapi_dev'")
+        if db_name in ("ocotilloapi_test", "nmsamplelocations_test"):
+            raise ValueError(
+                "ERROR: Cannot run transfer on test database! "
+                "Set POSTGRES_DB=ocotilloapi_dev in .env file"
+            )
+
     limit = int(os.getenv("TRANSFER_LIMIT", 1000))
     metrics = Metrics()
 
