@@ -18,10 +18,10 @@ Feature: Refactor legacy MajorChemistry into the Ocotillo schema via backfill jo
       | Analyte        | Calcium                             |
       | SampleValue    | 45.6                                |
       | Units          | mg/L                                |
-      | AnalysisDate   | 2001-06-26                           |
-      | AnalysisMethod | EPA 200.7                            |
+      | AnalysisDate   | 2001-06-26                          |
+      | AnalysisMethod | EPA 200.7                           |
       | AnalysesAgency | NMBGMR & others                     |
-      | Uncertainty     | 0.15                                |
+      | Uncertainty    | 0.15                                |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Major Chemistry backfill job
     Then exactly 1 Observation record should exist with nma_pk_chemistryresults "6f8a6b2c-2a6c-4b74-8a7b-2f09fcbfef10"

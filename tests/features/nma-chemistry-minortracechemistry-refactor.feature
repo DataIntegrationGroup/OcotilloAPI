@@ -18,8 +18,8 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Analyte        | Arsenic                             |
       | SampleValue    | 4.1                                 |
       | Units          | ug/L                                |
-      | AnalysisDate   | 2001-06-26                           |
-      | AnalysisMethod | EPA 200.8                            |
+      | AnalysisDate   | 2001-06-26                          |
+      | AnalysisMethod | EPA 200.8                           |
       | AnalysesAgency | NMBGMR & others                     |
       | Uncertainty    | 0.12                                |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
