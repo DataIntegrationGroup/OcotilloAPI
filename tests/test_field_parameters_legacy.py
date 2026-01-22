@@ -177,7 +177,7 @@ def test_create_field_parameters_minimal(water_well_thing):
         assert record.sample_pt_id == sample_info.sample_pt_id
         assert record.field_parameter is None
         assert record.units is None
-        assert record.sample_value == 0
+        assert record.sample_value is None
 
         session.delete(record)
         session.delete(sample_info)
