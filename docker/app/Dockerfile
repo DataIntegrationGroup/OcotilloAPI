@@ -19,9 +19,19 @@ WORKDIR /app
 # copy the full project source
 COPY . .
 
-# install dependencies using uv
+# Define an optional build argument
+ARG INSTALL_DEV=false
+ENV INSTALL_DEV=${INSTALL_DEV}
+
+# Install dependencies using uv (conditionally include dev dependencies)
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
-RUN uv sync --locked
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+      echo "Installing all groups (including dev)..." && \
+      uv sync --locked --all-groups; \
+    else \
+      echo "Installing only production dependencies..." && \
+      uv sync --locked; \
+    fi
 
 # expose FastAPI's default dev port
 EXPOSE 8000

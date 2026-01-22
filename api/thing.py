@@ -17,6 +17,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import selectinload
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
@@ -32,8 +33,9 @@ from core.dependencies import (
     editor_dependency,
     viewer_dependency,
 )
-from db.thing import Thing, ThingIdLink, WellScreen
 from db.deployment import Deployment
+from db.thing import Thing, ThingIdLink, WellScreen
+from schemas.deployment import DeploymentResponse
 from schemas.thing import (
     CreateThingIdLink,
     CreateWell,
@@ -49,9 +51,9 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
-from schemas.deployment import DeploymentResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
+from services.lexicon_helper import get_terms_by_category
 from services.query_helper import (
     simple_get_by_id,
     paginated_all_getter,
@@ -66,7 +68,6 @@ from services.thing_helper import (
     modify_well_descriptor_tables,
     WELL_DESCRIPTOR_MODEL_MAP,
 )
-from services.lexicon_helper import get_terms_by_category
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
@@ -150,12 +151,15 @@ async def get_water_wells(
     order: str = None,
     filter_: str = Query(alias="filter", default=None),
     query: str = None,
+    name: str = None,
 ) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(filter_, order, query, session, sort, thing_type=thing_type)
+    return get_db_things(
+        filter_, order, query, session, sort, name=name, thing_type=thing_type
+    )
 
 
 @router.get(
@@ -358,6 +362,7 @@ async def get_thing_deployments(
     """
     thing = simple_get_by_id(session, Thing, thing_id)
     sql = select(Deployment).where(Deployment.thing_id == thing.id)
+    sql = sql.options(selectinload(Deployment.sensor))
     return paginate(query=sql, conn=session)
 
 

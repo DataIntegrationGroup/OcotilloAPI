@@ -13,14 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from datetime import timezone
+from unittest.mock import patch
+
+import pytest
+
 from api.asset import get_storage_bucket
 from core.app import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
-from tests import client, cleanup_post_test, override_authentication, cleanup_patch_test
-
-import pytest
-from unittest.mock import patch
+from schemas import DT_FMT
+from tests import (
+    client,
+    cleanup_post_test,
+    override_authentication,
+    cleanup_patch_test,
+)
 
 # CLASSES, FIXTURES, AND FUNCTIONS =============================================
 
@@ -147,9 +155,9 @@ def test_get_assets(asset, asset_with_associated_thing):
     data = response.json()
     assert data["total"] == 2
     assert data["items"][0]["id"] == asset.id
-    assert data["items"][0]["created_at"] == asset.created_at.isoformat().replace(
-        "+00:00", "Z"
-    )
+    assert data["items"][0]["created_at"] == asset.created_at.astimezone(
+        timezone.utc
+    ).strftime(DT_FMT)
     assert data["items"][0]["release_status"] == asset.release_status
     assert data["items"][0]["name"] == asset.name
     assert data["items"][0]["label"] == asset.label
@@ -163,7 +171,9 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][1]["id"] == asset_with_associated_thing.id
     assert data["items"][1][
         "created_at"
-    ] == asset_with_associated_thing.created_at.isoformat().replace("+00:00", "Z")
+    ] == asset_with_associated_thing.created_at.astimezone(timezone.utc).strftime(
+        DT_FMT
+    )
     assert (
         data["items"][1]["release_status"] == asset_with_associated_thing.release_status
     )
@@ -199,7 +209,9 @@ def test_get_asset_by_id(asset):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == asset.id
-    assert data["created_at"] == asset.created_at.isoformat().replace("+00:00", "Z")
+    assert data["created_at"] == asset.created_at.astimezone(timezone.utc).strftime(
+        DT_FMT
+    )
     assert data["release_status"] == asset.release_status
     assert data["name"] == asset.name
     assert data["label"] == asset.label

@@ -14,14 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 import time
-
+from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from db import LocationThingAssociation
 from services.thing_helper import add_thing
-from transfers.util import make_location, read_csv, replace_nans
 from transfers.logger import logger
+from transfers.util import (
+    make_location,
+    make_location_data_provenance,
+    read_csv,
+    replace_nans,
+)
 
 
 def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
@@ -32,13 +37,17 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     ldf = replace_nans(ldf)
     n = len(ldf)
     start_time = time.time()
+
+    logger.info("Starting transfer: Things (%s) [%s rows]", site_type, n)
+    cached_elevations = {}
+
     for i, row in enumerate(ldf.itertuples()):
         pointid = row.PointID
         if ldf[ldf["PointID"] == pointid].shape[0] > 1:
             logger.critical(f"PointID {pointid} has duplicate records. Skipping.")
             continue
 
-        if limit and i >= limit:
+        if limit is not None and limit > 0 and i >= limit:
             logger.warning(f"Reached limit of {limit} rows. Stopping migration.")
             break
 
@@ -49,7 +58,22 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             session.commit()
 
         try:
-            location = make_location(row)
+            location, elevation_method, location_notes = make_location(
+                row, cached_elevations
+            )
+            session.add(location)
+            session.flush()
+            for note_type, note_content in location_notes.items():
+                if not isna(note_content):
+                    location_note = location.add_note(note_content, note_type)
+                    session.add(location_note)
+
+            data_provenances = make_location_data_provenance(
+                row, location, elevation_method
+            )
+            for dp in data_provenances:
+                session.add(dp)
+
             payload = make_payload(row)
             thing_type = payload.pop("thing_type")
             thing = add_thing(session, payload, thing_type=thing_type)
@@ -66,6 +90,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
             continue
 
     session.commit()
+    logger.info("Completed transfer: Things (%s)", site_type)
 
 
 def transfer_springs(session, limit=None):

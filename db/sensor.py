@@ -17,13 +17,13 @@
 SQLAlchemy model for the Sensor table.
 """
 
+from typing import List, TYPE_CHECKING
+
 from sqlalchemy import String, Text
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-
-from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from db.deployment import Deployment

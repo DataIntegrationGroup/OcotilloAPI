@@ -13,53 +13,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-# for testing only. remove later
-from dotenv import load_dotenv
-from db.engine import session_ctx
-
-load_dotenv()
-# -----------------------------------------------
-
 import io
 
-from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session
-from db import Asset, AssetThingAssociation, Thing
-from services.audit_helper import audit_add
+from starlette.datastructures import UploadFile
+
+from db import Thing
+from services.asset_helper import upload_and_associate
 from services.gcs_helper import (
-    gcs_upload,
-    check_asset_exists,
     get_storage_bucket,
     get_storage_client,
 )
-from transfers.util import get_valid_things, read_csv
 from transfers.logger import logger
+from transfers.transferer import Transferer
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
-def transfer_assets(session: Session) -> None:
-    client = get_storage_client()
+class AssetTransferer(Transferer):
+    def __init__(self, *args, **kw):
+        self.source_table = "WellPhotos"
+        super().__init__(*args, **kw)
+        self._client = get_storage_client()
+        self._bucket = get_storage_bucket(self._client)
+        logger.info(f"Using bucket {self._bucket.name}")
+        self.chunk_size = 20
 
-    bucket = get_storage_bucket(client)
-    logger.info(f"Using bucket {bucket.name}")
+    def _get_dfs(self):
+        input_df = read_csv(self.source_table)
+        cleaned_df = filter_to_valid_point_ids(input_df)
+        return input_df, cleaned_df
 
-    well_photos = read_csv("WellPhotos")
-    # for name in ['AR0001']: # for testing
-    valid_things = get_valid_things(session)
-    n = len(valid_things)
-    for j, thing in enumerate(valid_things):
-        photos = well_photos[well_photos["PointID"] == thing.name]
-        if photos.empty:
-            photos = well_photos[well_photos["PointID"] == thing.name.replace("-", "")]
-            if photos.empty:
-                logger.info(f"No photos found for PointID: {thing.name}")
+    def _transfer_hook(self, session: Session):
+        added_pointid = []
+        for i, row in enumerate(self.cleaned_df.itertuples()):
+            if row.PointID in added_pointid:
                 continue
 
-        for i, row in enumerate(photos.itertuples()):
+            added_pointid.append(row.PointID)
+            well = (
+                session.query(Thing)
+                .filter(Thing.name == row.PointID, Thing.thing_type == "water well")
+                .one_or_none()
+            )
+            self._asset_step(session, i, well)
+            session.commit()
+
+    def _asset_step(self, session, i, db_item):
+        df = self.cleaned_df
+        photos = df[df["PointID"] == db_item.name]
+        if photos.empty:
+            photos = df[df["PointID"] == db_item.name.replace("-", "")]
+            if photos.empty:
+                logger.info(f"No photos found for PointID: {db_item.name}")
+                return
+
+        n = len(photos)
+        for j, row in enumerate(photos.itertuples()):
             photo_path = row.OLEPath
-            srcblob = bucket.get_blob(f"nma-photos/{photo_path}")
+            srcblob = self._bucket.get_blob(f"nma-photos/{photo_path}")
             if not srcblob:
-                logger.critical(
-                    f"No photo found for PointID: {thing.name}, {photo_path}"
+                self._capture_error(
+                    db_item.name, f"No photo found for {photo_path}", "OLEPath"
                 )
                 continue
 
@@ -67,56 +81,18 @@ def transfer_assets(session: Session) -> None:
             f = srcblob.download_as_bytes()
             ff = UploadFile(file=io.BytesIO(f), filename=filename, size=len(f))
 
-            uri, blob_name = gcs_upload(ff, bucket)
-            add_asset(session, ff, filename, thing.id, uri, blob_name)
-            logger.info(
-                f"Added asset {j}-{i}/{n} thing.id={thing.id} thing={thing.name} uri: {uri}"
+            uri = upload_and_associate(
+                session,
+                ff,
+                self._bucket,
+                db_item,
+                filename,
+                **{"label": filename, "mime_type": "image/png"},
             )
 
+            logger.info(
+                f"Added asset {i}-{j}/{n} thing.id={db_item.id} thing={db_item.name} uri: {uri}"
+            )
 
-def transfer_assets_testing(session: Session) -> None:
-    for p in ("asset1.png", "asset2.png", "asset3.png"):
-        with open(f"./transfers/data/assets/{p}", "rb") as f:
-            uf = UploadFile(file=f, filename=p, size=10)
-            uri, blob_name = gcs_upload(uf)
-            thing_id = 151
-
-            if check_asset_exists(session, blob_name, thing_id):
-                logger.warning(f"Asset {blob_name} already exists. Skipping.")
-                continue
-            add_asset(session, uf, p, thing_id, uri, blob_name)
-
-
-def add_asset(
-    session: Session,
-    uf: UploadFile,
-    label: str,
-    thing_id: int,
-    uri: str,
-    blob_name: str,
-) -> None:
-    asset = Asset(
-        name=label,
-        label=label,
-        storage_path=blob_name,
-        storage_service="gcs",
-        mime_type="image/png",
-        size=uf.size,
-        uri=uri,
-    )
-    assoc = AssetThingAssociation()
-    audit_add({"sub": "foobar", "name": "Mr. Foobar"}, assoc)
-    thing = session.get(Thing, thing_id)
-    assoc.thing = thing
-    assoc.asset = asset
-    session.add(assoc)
-    session.add(asset)
-    session.commit()
-
-
-if __name__ == "__main__":
-
-    with session_ctx() as session:
-        transfer_assets(session)
 
 # ============= EOF =============================================

@@ -22,7 +22,7 @@
 #     model_validator,
 #     field_validator,
 # )
-
+from core.enums import SensorType
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 
 # ------- VALIDATION ------
@@ -58,7 +58,7 @@ class CreateSensor(BaseCreateModel):
     """
 
     name: str
-    sensor_type: str
+    sensor_type: SensorType
     model: str | None = None
     serial_no: str | None = None
     pcn_number: str | None = None
@@ -70,7 +70,7 @@ class CreateSensor(BaseCreateModel):
 # -------- UPDATE ----------
 class UpdateSensor(BaseUpdateModel):
     name: str | None = None
-    sensor_type: str | None = None
+    sensor_type: SensorType | None = None
     model: str | None = None
     serial_no: str | None = None
     pcn_number: str | None = None
@@ -82,7 +82,7 @@ class UpdateSensor(BaseUpdateModel):
 # -------- RESPONSE ----------
 class SensorResponse(BaseResponseModel):
     name: str
-    sensor_type: str
+    sensor_type: SensorType
     model: str | None  # = Column(String(50))
     serial_no: str | None  # = Column(String(50))
     pcn_number: str | None

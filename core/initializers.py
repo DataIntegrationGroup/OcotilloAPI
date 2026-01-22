@@ -15,40 +15,14 @@
 # ===============================================================================
 from pathlib import Path
 
+from fastapi_pagination import add_pagination
 from sqlalchemy import text
 from sqlalchemy.exc import DatabaseError
 
 from db import Base
-from db.engine import engine, session_ctx
+from db.engine import session_ctx
 from db.parameter import Parameter
 from services.lexicon_helper import add_lexicon_term, add_lexicon_category
-
-
-# ============= EOF =============================================
-def init_db():
-    """
-    Initialize the database by creating all tables.
-    This function is called during application startup.
-    """
-
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
-
-def init_hypertables():
-    """
-    Initialize hypertables for time-series data.
-    This function is called during application startup.
-    """
-    # session = next(get_db_session())
-    # Create hypertables for time-series data
-    with session_ctx() as session:
-        session.execute(
-            text("select create_hypertable('observation', 'observation_datetime');")
-        )
-
-    # session.commit()
-    # session.close()
 
 
 def init_parameter(path: str = None) -> None:
@@ -79,6 +53,19 @@ def init_parameter(path: str = None) -> None:
             except DatabaseError as e:
                 print(f"Failed to add parameter {param['parameter_name']}: error: {e}")
                 session.rollback()
+
+
+def erase_and_rebuild_db():
+    with session_ctx() as session:
+        session.execute(text("DROP SCHEMA public CASCADE"))
+        session.execute(text("CREATE SCHEMA public"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        session.commit()
+        Base.metadata.drop_all(session.bind)
+        Base.metadata.create_all(session.bind)
+
+    init_lexicon()
+    init_parameter()
 
 
 def init_lexicon(path: str = None) -> None:
@@ -117,3 +104,46 @@ def init_lexicon(path: str = None) -> None:
                 )
 
                 session.rollback()
+
+
+def register_routes(app):
+    from admin.auth_routes import router as admin_auth_router
+    from api.group import router as group_router
+    from api.contact import router as contact_router
+    from api.location import router as location_router
+    from api.thing import router as thing_router
+    from api.sensor import router as sensor_router
+
+    from api.sample import router as sample_router
+    from api.observation import router as observation_router
+
+    from api.lexicon import router as lexicon_router
+
+    from api.publication import router as publication_router
+    from api.author import router as author_router
+    from api.asset import router as asset_router
+    from api.search import router as search_router
+    from api.geospatial import router as geospatial_router
+    from api.ngwmn import router as ngwmn_router
+    from api.ogc.router import router as ogc_router
+
+    app.include_router(asset_router)
+    app.include_router(admin_auth_router)
+    app.include_router(author_router)
+    app.include_router(contact_router)
+    app.include_router(geospatial_router)
+    app.include_router(group_router)
+    app.include_router(ogc_router)
+    app.include_router(lexicon_router)
+    app.include_router(location_router)
+    app.include_router(observation_router)
+    app.include_router(publication_router)
+    app.include_router(sample_router)
+    app.include_router(sensor_router)
+    app.include_router(search_router)
+    app.include_router(thing_router)
+    app.include_router(ngwmn_router)
+    add_pagination(app)
+
+
+# ============= EOF =============================================

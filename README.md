@@ -1,4 +1,4 @@
-# NMSampleLocations
+# NMSampleLocations aka OcotilloAPI
 
 [![Code Format](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/format_code.yml/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/format_code.yml)
 [![Dependabot Updates](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/DataIntegrationGroup/NMSampleLocations/actions/workflows/dependabot/dependabot-updates)
@@ -9,7 +9,8 @@
 **Geospatial Sample Data Management System**  
 _New Mexico Bureau of Geology and Mineral Resources_
 
-NMSampleLocations is a FastAPI-based backend service designed to manage geospatial sample location data across New Mexico. It supports research, field operations, and public data delivery for the Bureau of Geology and Mineral Resources.
+OcotilloAPI is a FastAPI-based backend service designed to manage geospatial sample location data across New Mexico. It 
+supports research, field operations, and public data delivery for the Bureau of Geology and Mineral Resources.
 
 ---
 
@@ -21,6 +22,57 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 - 📦 PostgreSQL + PostGIS database backend
 - 🔐 Optional authentication and role-based access
 - 🧾 Interactive API documentation via OpenAPI and ReDoc
+
+---
+
+## 🗺️ OGC API - Features
+
+The API exposes OGC API - Features endpoints under `/ogc`.
+
+### Landing & metadata
+
+```bash
+curl http://localhost:8000/ogc
+curl http://localhost:8000/ogc/conformance
+curl http://localhost:8000/ogc/collections
+curl http://localhost:8000/ogc/collections/locations
+```
+
+### Items (GeoJSON)
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?limit=10&offset=0"
+curl "http://localhost:8000/ogc/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogc/collections/springs/items?limit=5"
+curl "http://localhost:8000/ogc/collections/locations/items/123"
+```
+
+### BBOX + datetime filters
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogc/collections/wells/items?datetime=2020-01-01/2024-01-01"
+```
+
+### Polygon filter (CQL2 text)
+
+Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+```
+
+### Property filter (CQL)
+
+Basic property filters are supported with `properties`:
+
+```bash
+curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth>=100 AND well_depth<=200"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_purposes IN ('domestic','irrigation')"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_casing_materials='PVC'"
+curl "http://localhost:8000/ogc/collections/wells/items?properties=well_screen_type='Steel'"
+```
+    
 
 ---
 
@@ -38,11 +90,11 @@ NMSampleLocations is a FastAPI-based backend service designed to manage geospati
 #### 1. Clone the repository
 
 ```bash
-git clone https://github.com/DataIntegrationGroup/NMSampleLocations.git
-cd NMSampleLocations
+git clone https://github.com/DataIntegrationGroup/OcotilloAPI.git
+cd OcotilloAPI
 ```
 
-#### 2. Set up virtual environment and install depdencies
+#### 2. Set up virtual environment and install dependencies
 
 
 <table>
@@ -89,68 +141,46 @@ pre-commit install
 # Edit `.env` to configure database connection and app settings
 cp .env.example .env
 ```
+Notes:
+* Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
+* PostgreSQL uses the default port 5432.
+
+In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Database and server
 
+Choose one of the following:
 
-<table>
-<tr>
-<td>
-    PostgreSQL + PostGIS installed locally
-</td>
-<td>
-    Docker
-</td>
-</tr>
-<tr>
-<td>
+**Option A: Local PostgreSQL + PostGIS**
 
 ```bash
-#run database migrations
+# run database migrations
 alembic upgrade head
 
 # start development server
 uvicorn app.main:app --reload
 ```
-    
-</td>
-<td>
+
+Notes:
+* Requires PostgreSQL with PostGIS installed locally.
+* Use the `POSTGRES_*` settings in `.env` for your local instance.
+
+**Option B: Docker Compose (dev)**
 
 ```bash
 # include -d flag for silent/detached build
 docker compose up --build
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-Requires PostgreSQL and PostGIS extensions to be installed locally
-</td>
-<td>
-Requires Docker Desktop to be installed locally
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-Run <code>docker exec -it nmsamplelocations-app-1 bash</code> to open a shell inside the running app container.
-</td>
-</tr>
-<tr>
-<td>
-</td>
-<td>
-After the database container is running, you can run tests with Pytest from your local command line (not necessarily inside the app container).
-</td>
-</tr>
-</table>
-
+Notes:
+* Requires Docker Desktop.
+* Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* `alembic upgrade head` runs on app startup after `docker compose up`.
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 
-To get staging data into the database run `python -m transfers.transfer` from the root directory of the project.
+To get staging data into the database: `python -m transfers.transfer` from the root directory of the project.
 
 ### 🧭 Project Structure
 ```text
@@ -195,4 +225,45 @@ Notes:
 - All `Update` schema fields are optional and default to `None`
 - All `Response` schema fields are defined as `<type>` if non-nullable and `<type> | None` if nullable
 - All raised exceptions should use the `PydanticStyleException` as defined in `services/exceptions_helper.py`
-- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file
+- Errors handled by the database should be enumerated and handled in a database_error_handler in each router's file---
+
+## 📦 Ocotillo CLI
+
+The `oco` command exposes project automation and bulk data utilities.
+
+```bash
+# Display available commands
+oco --help
+
+# Bulk import water level data from a CSV
+oco water-levels bulk-upload --file water_levels.csv --output json
+```
+
+The bulk upload command parses and validates each row, creates the corresponding field events/samples/observations, and prints a JSON summary (matching the API response shape) so the workflow can be automated or scripted.
+## 🧪 Testing
+
+```bash
+# Run unit tests
+pytest
+
+# Run Behave BDD specs
+behave tests/features
+```
+
+> Tests require a local Postgres/PostGIS instance. Set `POSTGRES_*` values in `.env`, run migrations, and ensure the database is reachable before running the suites.
+
+## 🔄 Data Transfers
+
+Legacy or staging datasets can be imported using the transfer utilities:
+
+```bash
+python -m transfers.transfer
+```
+
+Configure the `.env` file with the appropriate credentials before running transfers.
+
+To drop the existing schema and rebuild from migrations before transferring data, set:
+
+```bash
+export DROP_AND_REBUILD_DB=true
+```

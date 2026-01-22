@@ -13,13 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import datetime
-
 import pytest
-from sqlalchemy import func, select, cast, Interval
-from sqlalchemy_utils.types.range import intervals
-
-from db.engine import get_db_session
 
 # from db.timeseries import GroundwaterLevelObservation
 from tests import client

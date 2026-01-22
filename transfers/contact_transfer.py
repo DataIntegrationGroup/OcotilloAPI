@@ -13,93 +13,109 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import json
+
+import pandas as pd
+from pandas import DataFrame
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
-from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
+from core.enums import Organization
+from db import (
+    Contact,
+    ThingContactAssociation,
+    Email,
+    Phone,
+    Address,
+    IncompleteNMAPhone,
+    Base,
+)
 from transfers.logger import logger
-from db import Thing, Contact, ThingContactAssociation, Email, Phone, Address
-from schemas.contact import CreateContact, CreateAddress, CreatePhone, CreateEmail
+from transfers.transferer import ThingBasedTransferer
+from transfers.util import (
+    get_transfers_data_path,
+)
+from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
-def extract_owner_role(comment):
-    # if comment is None:
-    #     return "Owner"
-    # if "Owner" in comment:
-    #     return "Owner"
-    # if "Manager" in comment:
-    #     return "Manager"
-    # if "Director" in comment:
-    #     return "Director"
+class ContactTransfer(ThingBasedTransferer):
+    source_table = "OwnersData"
 
-    return "Owner"
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+
+        """
+        Developer's note
+
+        - company to organization mapping is stored in transfers/data/owners_organization_mapper.json
+        - the key is the value in NM_Aquifer and the value is the standardized organization name used in the lexicon
+        """
+        co_to_org_mapper_path = get_transfers_data_path(
+            "owners_organization_mapper.json"
+        )
+        with open(co_to_org_mapper_path, "r") as f:
+            self._co_to_org_mapper = json.load(f)
+
+        self._added = []
+
+    def calculate_missing_organizations(self):
+        input_df, cleaned_df = self._get_dfs()
+
+        for row in replace_nans(input_df).itertuples():
+            if not row.Company:
+                continue
+            try:
+                _get_organization(row, self._co_to_org_mapper)
+            except ValueError as e:
+                logger.critical(f"Invalid Organization {e}")
+
+    def _get_dfs(self):
+        input_df = read_csv(self.source_table)
+        odf = input_df.drop(["OBJECTID", "GlobalID"], axis=1)
+        ldf = read_csv("OwnerLink")
+        ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
+        locdf = read_csv("Location")
+        ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
+
+        odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
+
+        odf = replace_nans(odf)
+
+        odf = filter_to_valid_point_ids(odf, self.pointids)
+        return input_df, odf
+
+    def _get_prepped_group(self, group) -> DataFrame:
+        return group.sort_values(by=["PointID"])
+
+    def _group_step(self, session: Session, row: pd.Series, db_item: Base):
+        for adder, tag in (_add_first_contact, "first"), (
+            _add_second_contact,
+            "second",
+        ):
+            try:
+                if adder(
+                    session,
+                    row,
+                    db_item,
+                    self._co_to_org_mapper,
+                    self._added,
+                ):
+                    session.commit()
+                    logger.info(f"added {tag} contact for PointID {row.PointID}")
+            except ValidationError as e:
+                logger.critical(
+                    f"Skipping {tag} contact for PointID {row.PointID} due to validation error: {e.errors()}"
+                )
+                self._capture_error(row.PointID, str(e), "ValidationError")
+            except Exception as e:
+                logger.critical(
+                    f"Skipping {tag} contact for PointID {row.PointID} due to error: {e}"
+                )
+                session.rollback()
+                self._capture_error(row.PointID, str(e), "UnknownError")
 
 
-"""
-Developer's notes
-
-Use Pydantic to perform model validations since all restrictions will
-be built into the models
-"""
-
-
-def transfer_contacts(session):
-
-    odf = read_csv("OwnersData")
-    odf = odf.drop(["OBJECTID", "GlobalID"], axis=1)
-    ldf = read_csv("OwnerLink")
-    ldf = ldf.drop(["OBJECTID", "GlobalID"], axis=1)
-    locdf = read_csv("Location")
-    ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
-
-    odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
-
-    odf = replace_nans(odf)
-
-    odf = filter_to_valid_point_ids(session, odf)
-    for i, row in odf.iterrows():
-        thing = session.query(Thing).where(Thing.name == row.PointID).first()
-        logger.info(f"Processing PointID: {i} {row.PointID}")
-        if thing is None:
-            logger.critical(
-                f"Thing with PointID {row.PointID} not found. Skipping owner."
-            )
-            continue
-
-        # TODO: use contact_helper.add_contact
-        try:
-            _add_first_contact(session, row, thing)
-            session.commit()
-            session.flush()
-            logger.info(f"added first contact for PointID {row.PointID}")
-        except ValidationError as e:
-            logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to validation error: {e.errors()}"
-            )
-            session.rollback()
-        except Exception as e:
-            logger.critical(
-                f"Skipping first contact for PointID {row.PointID} due to error: {e}"
-            )
-            session.rollback()
-
-        try:
-            _add_second_contact(session, row, thing)
-            session.commit()
-            session.flush()
-            logger.info(f"added second contact for PointID {row.PointID}")
-        except ValidationError as e:
-            logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to validation error: {e.errors()}"
-            )
-            session.rollback()
-        except Exception as e:
-            logger.critical(
-                f"Skipping second contact for PointID {row.PointID} due to error: {e}"
-            )
-            session.rollback()
-
-
-def _add_first_contact(session, row, thing):
+def _add_first_contact(session, row, thing, co_to_org_mapper, added):
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
@@ -107,20 +123,28 @@ def _add_first_contact(session, row, thing):
 
     name = _make_name(row.FirstName, row.LastName)
 
+    # check if organization is in lexicon
+    organization = _get_organization(row, co_to_org_mapper)
+
     contact_data = {
         "thing_id": thing.id,
         "release_status": release_status,
         "name": name,
         "role": role,
         "contact_type": "Primary",
-        "organization": row.Company,
+        "organization": organization,
         "nma_pk_owners": row.OwnerKey,
         "addresses": [],
         "emails": [],
         "phones": [],
     }
 
-    contact = _make_contact_and_assoc(session, contact_data, thing)
+    contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
+
+    if not new:
+        return True
+    else:
+        added.append((name, organization))
 
     if row.Email:
         email = _make_email(
@@ -134,7 +158,7 @@ def _add_first_contact(session, row, thing):
             contact.emails.append(email)
 
     if row.Phone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "first",
             row.OwnerKey,
             phone_number=row.Phone,
@@ -142,10 +166,13 @@ def _add_first_contact(session, row, thing):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
 
     if row.CellPhone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "first",
             row.OwnerKey,
             phone_number=row.CellPhone,
@@ -153,7 +180,10 @@ def _add_first_contact(session, row, thing):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
 
     if row.MailingAddress:
         address = _make_address(
@@ -184,12 +214,35 @@ def _add_first_contact(session, row, thing):
         )
         if address:
             contact.addresses.append(address)
+    return True
 
 
-def _add_second_contact(session, row, thing):
+def _get_organization(row, co_to_org_mapper):
+    organization = co_to_org_mapper.get(row.Company, row.Company)
+
+    # use Organization enum to catch validation errors
+    try:
+        Organization(organization)
+    except ValueError:
+        return None
+
+    return organization
+
+
+def _add_second_contact(session, row, thing, co_to_org_mapper, added):
+    if all(
+        [
+            getattr(row, f"Second{f}") is None
+            for f in ["FirstName", "LastName", "CtctEmail", "CtctPhone"]
+        ]
+    ):
+        logger.warning(f"No second contact info for PointID {row.PointID}, skipping.")
+        return
 
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
+
+    organization = _get_organization(row, co_to_org_mapper)
 
     contact_data = {
         "thing_id": thing.id,
@@ -197,14 +250,18 @@ def _add_second_contact(session, row, thing):
         "name": name,
         "role": "Owner",
         "contact_type": "Secondary",
-        "organization": row.Company,
+        "organization": organization,
         "nma_pk_owners": row.OwnerKey,
         "addresses": [],
         "emails": [],
         "phones": [],
     }
 
-    contact = _make_contact_and_assoc(session, contact_data, thing)
+    contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
+    if not new:
+        return True
+    else:
+        added.append((name, organization))
 
     if row.SecondCtctEmail:
         email = _make_email(
@@ -218,7 +275,7 @@ def _add_second_contact(session, row, thing):
             contact.emails.append(email)
 
     if row.SecondCtctPhone:
-        phone = _make_phone(
+        phone, complete = _make_phone(
             "second",
             row.OwnerKey,
             phone_number=row.SecondCtctPhone,
@@ -226,7 +283,11 @@ def _add_second_contact(session, row, thing):
             release_status=release_status,
         )
         if phone:
-            contact.phones.append(phone)
+            if complete:
+                contact.phones.append(phone)
+            else:
+                contact.incomplete_nma_phones.append(phone)
+    return True
 
 
 # helpers
@@ -242,6 +303,8 @@ def _make_name(first, last):
 
 
 def _make_email(first_second, ownerkey, **kw):
+    from schemas.contact import CreateEmail
+
     try:
         if "email" in kw:
             kw["email"] = kw["email"].strip()
@@ -255,18 +318,30 @@ def _make_email(first_second, ownerkey, **kw):
 
 
 def _make_phone(first_second, ownerkey, **kw):
+    from schemas.contact import CreatePhone
+
     try:
         if "phone_number" in kw:
             kw["phone_number"] = kw["phone_number"].strip()
+
         phone = CreatePhone(**kw)
-        return Phone(**phone.model_dump())
+        return Phone(**phone.model_dump()), True
     except ValidationError as e:
-        logger.critical(
-            f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
-        )
+        try:
+            if "phone_number" in kw:
+                incomplete_phone = IncompleteNMAPhone(phone_number=kw["phone_number"])
+                logger.info(f"Salvaged incomplete phone number for OwnerKey {ownerkey}")
+                return incomplete_phone, False
+        except ValidationError:
+
+            logger.critical(
+                f"{first_second} '{ownerkey}' Skipping phone . Validation error: {e.errors()}"
+            )
 
 
 def _make_address(first_second, ownerkey, kind, **kw):
+    from schemas.contact import CreateAddress
+
     try:
         address = CreateAddress(**kw)
         return Address(**address.model_dump())
@@ -276,19 +351,31 @@ def _make_address(first_second, ownerkey, kind, **kw):
         )
 
 
-#
-def _make_contact_and_assoc(session, data, thing):
-    contact = CreateContact(**data)
-    contact_data = contact.model_dump()
-    contact_data.pop("thing_id")
-    contact = Contact(**contact_data)
+def _make_contact_and_assoc(session, data, thing, added):
+    new_contact = True
+    if (data["name"], data["organization"]) in added:
+        contact = (
+            session.query(Contact)
+            .filter_by(name=data["name"], organization=data["organization"])
+            .first()
+        )
+        new_contact = False
+    else:
+
+        from schemas.contact import CreateContact
+
+        contact = CreateContact(**data)
+        contact_data = contact.model_dump()
+        contact_data.pop("thing_id")
+        contact = Contact(**contact_data)
+        session.add(contact)
 
     assoc = ThingContactAssociation()
     assoc.thing = thing
     assoc.contact = contact
     session.add(assoc)
-    session.add(contact)
-    return contact
+
+    return contact, new_contact
 
 
 # ============= EOF =============================================

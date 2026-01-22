@@ -6,6 +6,13 @@ dist/
 wheels/
 *.egg-info
 
+# Test coverage reports
+*.cover
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Virtual environments
 .venv
 requirements.txt
@@ -22,10 +29,18 @@ reset_db.sh
 tests/uploads
 migrate.sh
 launcher.sh
-gcs_credentials.json
+*credentials.json
 transfers/data/assets*
+transfers/data/nma_csv_cache/*
+transfers/data/*.csv
 transfers/transfer*.log
 transfer*.log
+transfers/data/nma_csv_cache/*
+!transfers/data/nma_csv_cache/.gitkeep
+transfers/metrics/*
+transfers/logs/*
+run_bdd-local.sh
+.pre-commit-config.local.yaml
 
 # deployment files
 app.yaml

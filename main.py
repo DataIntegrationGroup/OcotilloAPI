@@ -1,6 +1,9 @@
 import os
+
 import sentry_sdk
 from dotenv import load_dotenv
+
+from core.initializers import register_routes
 
 load_dotenv()
 
@@ -22,46 +25,27 @@ sentry_sdk.init(
 )
 
 
-from fastapi_pagination import add_pagination
-
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from core.app import app
 
-from api.group import router as group_router
-from api.contact import router as contact_router
-from api.location import router as location_router
-from api.thing import router as thing_router
-from api.sensor import router as sensor_router
+register_routes(app)
 
-# from api.series import router as series_router
-from api.sample import router as sample_router
-from api.observation import router as observation_router
+# Session middleware is required for the admin auth flow (request.session access).
+SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY")
+if not SESSION_SECRET_KEY:
+    raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
 
-# from api.form import router as form_router
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
-from api.lexicon import router as lexicon_router
+# ========== Starlette Admin Interface ==========
+# Mount admin interface at /admin
+# This provides a web-based UI for managing database records (replaces MS Access)
+from admin import create_admin
 
-from api.publication import router as publication_router
-from api.author import router as author_router
-from api.asset import router as asset_router
-from api.search import router as search_router
-from api.geospatial import router as geospatial_router
-
-app.include_router(asset_router)
-app.include_router(author_router)
-app.include_router(contact_router)
-app.include_router(geospatial_router)
-app.include_router(group_router)
-app.include_router(lexicon_router)
-app.include_router(location_router)
-app.include_router(observation_router)
-app.include_router(publication_router)
-app.include_router(sample_router)
-app.include_router(sensor_router)
-app.include_router(search_router)
-app.include_router(thing_router)
-
+create_admin(app)
+# ==============================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,9 +54,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# setup pagination
-add_pagination(app)
 
 
 if __name__ == "__main__":

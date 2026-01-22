@@ -14,8 +14,14 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
-from fastapi import APIRouter, Query, Request
-from starlette.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+
+from fastapi import APIRouter, Query, Request, UploadFile, File, HTTPException
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -24,7 +30,7 @@ from core.dependencies import (
     amp_editor_dependency,
     amp_viewer_dependency,
 )
-from db import Observation
+from db import Observation, Parameter
 from schemas.observation import (
     CreateGroundwaterLevelObservation,
     GroundwaterLevelObservationResponse,
@@ -34,13 +40,17 @@ from schemas.observation import (
     UpdateGroundwaterLevelObservation,
     UpdateWaterChemistryObservation,
 )
+from schemas.transducer import TransducerObservationWithBlockResponse
+from schemas.water_level_csv import WaterLevelBulkUploadResponse
 from services.crud_helper import model_deleter, model_adder
-from services.query_helper import simple_get_by_id
 from services.observation_helper import (
     get_observations,
     observation_model_patcher,
     get_observation_of_an_activity_type_by_id,
+    get_transducer_observations,
 )
+from services.query_helper import simple_get_by_id
+from services.water_level_csv import bulk_upload_water_levels
 
 router = APIRouter(prefix="/observation", tags=["observation"])
 
@@ -78,6 +88,30 @@ async def add_water_chemistry_observation(
     return model_adder(session, Observation, obs_data, user=user)
 
 
+@router.post(
+    "/groundwater-level/bulk-upload",
+    response_model=WaterLevelBulkUploadResponse,
+    status_code=HTTP_200_OK,
+)
+async def bulk_upload_groundwater_levels(
+    user: amp_admin_dependency,
+    file: UploadFile = File(...),
+):
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
+
+    result = bulk_upload_water_levels(contents)
+
+    if result.exit_code != 0:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=result.payload)
+
+    return result.payload
+
+
 # PATCH ========================================================================
 
 
@@ -110,6 +144,29 @@ async def update_water_chemistry_observation(
 
 
 # ============= Get ==============================================
+@router.get(
+    "/transducer-groundwater-level",
+    summary="Get transducer groundwater level observations",
+)
+async def get_transducer_groundwater_level_observations(
+    request: Request,
+    session: session_dependency,
+    user: amp_viewer_dependency,
+    thing_id: int | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+) -> CustomPage[TransducerObservationWithBlockResponse]:
+
+    groundwater_parameter_id = (
+        session.query(Parameter)
+        .filter(Parameter.parameter_name == "groundwater level")
+        .one()
+        .id
+    )
+
+    return get_transducer_observations(
+        session, thing_id, groundwater_parameter_id, start_time, end_time
+    )
 
 
 @router.get("/groundwater-level", summary="Get groundwater level observations")

@@ -50,6 +50,4 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     # Many-To-One: A Deployment is for one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="deployments")
     # Many-To-One: A Deployment is of one piece of equipment (sensor).
-    sensor: Mapped["Sensor"] = relationship(
-        "Sensor", back_populates="deployments", lazy="joined"
-    )
+    sensor: Mapped["Sensor"] = relationship("Sensor", back_populates="deployments")

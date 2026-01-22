@@ -13,22 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from sqlalchemy import Integer, ForeignKey, String, Column, Float, Text, Date
+from datetime import date
+from typing import List, TYPE_CHECKING
+
+from sqlalchemy import Integer, ForeignKey, String, Column, Float, Date
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy_utils import TSVectorType
 
-from db import lexicon_term
+from db import lexicon_term, NotesMixin
 from db.asset import Asset
 from db.base import (
     AutoBaseMixin,
     Base,
     ReleaseMixin,
-    StatusHistoryMixin,
-    PermissionMixin,
 )
-
-from typing import List, TYPE_CHECKING
+from db.data_provenance import DataProvenanceMixin
+from db.measuring_point_history import MeasuringPointHistory
+from db.permission_history import PermissionHistoryMixin
+from db.status_history import StatusHistoryMixin
+from services.util import retrieve_latest_polymorphic_history_table_record
 
 if TYPE_CHECKING:
     from db.location import Location
@@ -37,9 +41,24 @@ if TYPE_CHECKING:
     from db.sensor import Sensor
     from db.contact import Contact
     from db.group import Group, GroupThingAssociation
+    from db.aquifer_system import AquiferSystem
+    from db.thing_aquifer_association import ThingAquiferAssociation
+    from db.geologic_formation import GeologicFormation
+    from db.thing_geologic_formation_association import (
+        ThingGeologicFormationAssociation,
+    )
+    from db.nma_legacy import ChemistrySampleInfo, Stratigraphy
 
 
-class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMixin):
+class Thing(
+    Base,
+    AutoBaseMixin,
+    ReleaseMixin,
+    StatusHistoryMixin,
+    PermissionHistoryMixin,
+    DataProvenanceMixin,
+    NotesMixin,
+):
     """
     Represents a physical object of interest being monitored (e.g., a well).
     Stores static, core attributes of the physical installation.
@@ -82,10 +101,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         info={"unit": "feet below ground surface"},
         comment="Depth of the drilled hole, from ground surface to the bottom of the borehole (in feet).",
     )
-    well_purpose: Mapped[str] = lexicon_term(
-        nullable=True,
-        comment="A controlled vocabulary field defining the primary function of the well (e.g., 'Monitoring', 'Irrigation', 'Domestic', 'Livestock', 'Remediation').",
-    )
     well_casing_diameter: Mapped[float] = mapped_column(
         Float,
         nullable=True,
@@ -99,7 +114,36 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
     )
 
-    well_construction_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    well_completion_date: Mapped[date] = mapped_column(
+        nullable=True, comment="the date the well was completed if known"
+    )
+    well_driller_name: Mapped[str] = mapped_column(
+        String(200), nullable=True, comment="Name of the well driller."
+    )
+    well_construction_method: Mapped[str] = lexicon_term(nullable=True)
+    well_pump_type: Mapped[str] = lexicon_term(nullable=True)
+    well_pump_depth: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+        info={"unit": "feet below ground surface"},
+        comment="Depth of the well pump from ground surface to the pump intake (in feet).",
+    )
+    formation_completion_code: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="The geologic formation in which the well was completed (from WellData.FormationZone). "
+        "This indicates the target formation for the well, not the full stratigraphic column. "
+        "For detailed depth-interval stratigraphy, see formation_associations.",
+    )
+    nma_formation_zone: Mapped[str] = mapped_column(
+        String(25),
+        nullable=True,
+        comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
+    )
+    # TODO: should this be required for every well in the database? AMMP review
+    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment="Indicates if the well is suitable for datalogger installation.",
+    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
@@ -165,7 +209,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="LocationThingAssociation.effective_start.desc()",
-        lazy="joined",
     )
 
     contact_associations = relationship(
@@ -212,7 +255,6 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
     )
 
     well_casing_materials: Mapped[List["WellCasingMaterial"]] = relationship(
@@ -220,7 +262,61 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="joined",
+    )
+
+    links: Mapped[List["ThingIdLink"]] = relationship(
+        "ThingIdLink",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing (well) can have multiple measuring points over time.
+    measuring_points: Mapped[List["MeasuringPointHistory"]] = relationship(
+        "MeasuringPointHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    monitoring_frequencies: Mapped[List["MonitoringFrequencyHistory"]] = relationship(
+        "MonitoringFrequencyHistory",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can be associated with many AquiferSystems via the ThingAquiferAssociation join table.
+    aquifer_associations: Mapped[List["ThingAquiferAssociation"]] = relationship(
+        "ThingAquiferAssociation",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # Many-To-Many: A Thing can penetrate many GeologicFormations.
+    formation_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
+        relationship(
+            "ThingGeologicFormationAssociation",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+
+    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
+    chemistry_sample_infos: Mapped[List["ChemistrySampleInfo"]] = relationship(
+        "ChemistrySampleInfo",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    stratigraphy_logs: Mapped[List["Stratigraphy"]] = relationship(
+        "Stratigraphy",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---
@@ -248,8 +344,18 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
         "group_associations", "group"
     )
 
+    # Proxy to directly access AquiferSystems associated with this Thing
+    aquifer_systems: AssociationProxy[List["AquiferSystem"]] = association_proxy(
+        "aquifer_associations", "aquifer_system"
+    )
+
+    # Proxy to directly access the GeologicFormations penetrated by this Thing.
+    geologic_formations: AssociationProxy[List["GeologicFormation"]] = (
+        association_proxy("formation_associations", "geologic_formation")
+    )
+
     # Full-text search vector
-    search_vector = Column(TSVectorType("name", "well_construction_notes"))
+    search_vector = Column(TSVectorType("name"))
 
     @property
     def current_location(self):
@@ -267,6 +373,125 @@ class Thing(Base, AutoBaseMixin, ReleaseMixin, StatusHistoryMixin, PermissionMix
             else None
         )
 
+    @property
+    def water_notes(self):
+        return self._get_notes("Water")
+
+    @property
+    def general_notes(self):
+        return self._get_notes("General")
+
+    @property
+    def sampling_procedure_notes(self):
+        return self._get_notes("Sampling Procedure")
+
+    @property
+    def construction_notes(self):
+        return self._get_notes("Construction")
+
+    @property
+    def well_status(self) -> str | None:
+        """
+        Returns the well status from the most recent status history entry
+        where status_type is "Well Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Well Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def monitoring_status(self) -> str | None:
+        """
+        Returns the monitoring status from the most recent status history entry
+        where status_type is "Monitoring Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Monitoring Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def measuring_point_height(self) -> int | None:
+        """
+        Returns the most recent measuring point height from the measuring point history
+        table. This assumes that every well has a measuring point
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_height
+        else:
+            return None
+
+    @property
+    def measuring_point_description(self) -> str | None:
+        """
+        Returns the most recent measuring point description from the measuring point history
+        table. This assumes that every well has a measuring point.
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            return sorted_measuring_point_history[0].measuring_point_description
+        else:
+            return None
+
+    @property
+    def well_depth_source(self) -> str | None:
+        return self._get_data_provenance_attribute("well_depth", "origin_type")
+
+    @property
+    def well_completion_date_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_completion_date", "origin_type"
+        )
+
+    @property
+    def well_construction_method_source(self) -> str | None:
+        return self._get_data_provenance_attribute(
+            "well_construction_method", "origin_source"
+        )
+
+    @property
+    def aquifers(self) -> List[dict]:
+        """
+        Returns a list of aquifer systems and their associated types for this Thing.
+        Each aquifer system is represented as a dictionary with its name and a list of types.
+        """
+        aquifer_list = []
+        for association in self.aquifer_associations:
+            aquifer_info = {
+                "aquifer_system": association.aquifer_system.name,
+                "aquifer_types": [
+                    atype.aquifer_type for atype in association.aquifer_types
+                ],
+            }
+            aquifer_list.append(aquifer_info)
+        return aquifer_list
+
+    @property
+    def permissions(self) -> list:
+        """
+        Returns the associated permissions or an empty list. If there are no
+        associated permissions, an empty list is returned instead of None to
+        allow the API to serialize correctly (see schemas/thing.py).
+        """
+        if self.permission_history:
+            return self.permission_history
+        else:
+            return []
+
 
 class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     """
@@ -280,7 +505,7 @@ class ThingIdLink(Base, AutoBaseMixin, ReleaseMixin):
     alternate_id: Mapped[str] = mapped_column(String(100), nullable=False)
     alternate_organization: Mapped[str] = lexicon_term(nullable=False)
 
-    thing: Mapped["Thing"] = relationship("Thing", backref="links")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="links")
 
 
 class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
@@ -291,6 +516,12 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
 
     thing_id: Mapped[int] = mapped_column(
         ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    aquifer_system_id: Mapped[int] = mapped_column(
+        ForeignKey("aquifer_system.id", ondelete="SET NULL"), nullable=True
+    )
+    geologic_formation_id: Mapped[int] = mapped_column(
+        ForeignKey("geologic_formation.id", ondelete="SET NULL"), nullable=True
     )
     screen_depth_top: Mapped[float] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
@@ -308,6 +539,14 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     # --- Relationships ---
     # Many-To-One: A WellScreen belongs to one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="screens")
+
+    aquifer_system: Mapped["AquiferSystem"] = relationship(
+        "AquiferSystem", back_populates="well_screens", passive_deletes=True
+    )
+
+    geologic_formation: Mapped["GeologicFormation"] = relationship(
+        "GeologicFormation", back_populates="well_screens", passive_deletes=True
+    )
 
 
 class WellPurpose(Base, AutoBaseMixin, ReleaseMixin):
@@ -340,6 +579,23 @@ class WellCasingMaterial(Base, AutoBaseMixin, ReleaseMixin):
 
     thing: Mapped["Thing"] = relationship(
         "Thing", back_populates="well_casing_materials"
+    )
+
+
+class MonitoringFrequencyHistory(Base, AutoBaseMixin, ReleaseMixin):
+    """
+    Represents the monitoring frequency history for a Thing.
+    """
+
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+    monitoring_frequency: Mapped[str] = lexicon_term(nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=True)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="monitoring_frequencies"
     )
 
 
