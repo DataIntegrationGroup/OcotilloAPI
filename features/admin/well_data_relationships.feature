@@ -64,6 +64,22 @@ Feature: Well Data Relationships
     And orphaned soil/rock records are not allowed
 
   # ============================================================================
+  # Relationship Navigation
+  # ============================================================================
+
+  @relationships
+  Scenario: A well can access its related records through relationships
+    Given a well has chemistry sample records
+    And a well has hydraulic test data
+    And a well has lithology logs
+    And a well has radionuclide results
+    And a well has associated data
+    And a well has soil and rock results
+    When I access the well's relationships
+    Then I can navigate to all related record types
+    And each relationship returns the correct records
+
+  # ============================================================================
   # Deleting a Well Removes Related Records
   # ============================================================================
 
