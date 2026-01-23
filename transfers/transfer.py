@@ -760,7 +760,7 @@ def _transfer_sequential(
     with session_ctx() as session:
         cleanup_locations(session)
 
-    return None
+    return profile_artifacts
 
 
 def main():
