@@ -1,5 +1,5 @@
 """
-StratigraphyAdmin view for legacy Chemistry_SampleInfo.
+StratigraphyAdmin view for legacy stratigraphy.
 """
 
 from admin.views.base import OcotilloModelView
