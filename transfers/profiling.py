@@ -20,7 +20,7 @@ import pstats
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Iterable, Any
+from typing import Callable, Iterable, Any, Optional
 
 from services.gcs_helper import get_storage_bucket
 from transfers.logger import logger
@@ -84,13 +84,14 @@ class TransferProfiler:
         return result, artifact
 
 
-def upload_profile_artifacts(artifacts: Iterable[ProfileArtifact]) -> None:
+def upload_profile_artifacts(artifacts: Optional[Iterable[ProfileArtifact]]) -> None:
     """Upload generated profiling artifacts to the configured storage bucket."""
-
-    artifacts = list(artifacts)
     if not artifacts:
         logger.info("No profiling artifacts to upload")
         return
+
+    artifacts = list(artifacts)
+
     bucket = get_storage_bucket()
     for artifact in artifacts:
         for path in (artifact.stats_path, artifact.report_path):
