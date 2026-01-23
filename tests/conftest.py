@@ -19,7 +19,7 @@ def pytest_configure():
     load_dotenv(override=True)
     os.environ.setdefault("POSTGRES_PORT", "54321")
     # Always use test database, never dev
-    os.environ["POSTGRES_DB"] = "postgres"
+    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 
 def _alembic_config() -> Config:
