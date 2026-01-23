@@ -23,64 +23,62 @@ from starlette_admin.contrib.sqla import Admin
 
 from admin.auth import NMSampleLocationsAuthProvider
 from admin.views import (
-    LocationAdmin,
-    ThingAdmin,
-    ObservationAdmin,
-    ContactAdmin,
-    SensorAdmin,
-    DeploymentAdmin,
-    LexiconTermAdmin,
-    LexiconCategoryAdmin,
-    AssetAdmin,
-    AquiferTypeAdmin,
     AquiferSystemAdmin,
-    GroupAdmin,
-    NotesAdmin,
-    SampleAdmin,
-    HydraulicsDataAdmin,
+    AquiferTypeAdmin,
+    AssetAdmin,
     ChemistrySampleInfoAdmin,
-    RadionuclidesAdmin,
-    MinorTraceChemistryAdmin,
-    GeologicFormationAdmin,
+    ContactAdmin,
     DataProvenanceAdmin,
-    TransducerObservationAdmin,
-    FieldEventAdmin,
+    DeploymentAdmin,
     FieldActivityAdmin,
+    FieldEventAdmin,
+    GeologicFormationAdmin,
+    GroupAdmin,
+    HydraulicsDataAdmin,
+    LexiconCategoryAdmin,
+    LexiconTermAdmin,
+    LocationAdmin,
+    MinorTraceChemistryAdmin,
+    NotesAdmin,
+    ObservationAdmin,
     ParameterAdmin,
-    SurfaceWaterDataAdmin,
+    RadionuclidesAdmin,
+    SampleAdmin,
+    SensorAdmin,
+    SoilRockResultsAdmin,
     StratigraphyAdmin,
-)
-
-from db.engine import engine
-from db.location import Location
-from db.thing import Thing
-from db.observation import Observation
-from db.contact import Contact
-from db.sensor import Sensor
-from db.deployment import Deployment
-from db.lexicon import (
-    LexiconTerm,
-    LexiconCategory,
+    SurfaceWaterDataAdmin,
+    ThingAdmin,
+    TransducerObservationAdmin,
 )
 from db.asset import Asset
-from db.aquifer_type import AquiferType
 from db.aquifer_system import AquiferSystem
+from db.aquifer_type import AquiferType
+from db.contact import Contact
+from db.data_provenance import DataProvenance
+from db.deployment import Deployment
+from db.engine import engine
+from db.field import FieldActivity, FieldEvent
+from db.geologic_formation import GeologicFormation
 from db.group import Group
-from db.notes import Notes
-from db.sample import Sample
+from db.lexicon import LexiconCategory, LexiconTerm
+from db.location import Location
 from db.nma_legacy import (
     ChemistrySampleInfo,
-    NMAHydraulicsData,
-    NMARadionuclides,
     NMAMinorTraceChemistry,
-    SurfaceWaterData,
+    NMARadionuclides,
+    NMAHydraulicsData,
+    SoilRockResults,
     Stratigraphy,
+    SurfaceWaterData,
 )
-from db.geologic_formation import GeologicFormation
-from db.data_provenance import DataProvenance
-from db.transducer import TransducerObservation
-from db.field import FieldEvent, FieldActivity
+from db.notes import Notes
+from db.observation import Observation
 from db.parameter import Parameter
+from db.sample import Sample
+from db.sensor import Sensor
+from db.thing import Thing
+from db.transducer import TransducerObservation
 
 
 def create_admin(app):
@@ -172,6 +170,9 @@ def create_admin(app):
 
     # Stratigraphy
     admin.add_view(StratigraphyAdmin(Stratigraphy))
+
+    # SoilRockResults
+    admin.add_view(SoilRockResultsAdmin(SoilRockResults))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)

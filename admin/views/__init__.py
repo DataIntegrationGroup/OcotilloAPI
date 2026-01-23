@@ -43,6 +43,7 @@ from admin.views.parameter import ParameterAdmin
 from admin.views.radionuclides import RadionuclidesAdmin
 from admin.views.sample import SampleAdmin
 from admin.views.sensor import SensorAdmin
+from admin.views.soil_rock_results import SoilRockResultsAdmin
 from admin.views.stratigraphy import StratigraphyAdmin
 from admin.views.surface_water import SurfaceWaterDataAdmin
 from admin.views.thing import ThingAdmin
@@ -72,6 +73,7 @@ __all__ = [
     "RadionuclidesAdmin",
     "SampleAdmin",
     "SensorAdmin",
+    "SoilRockResultsAdmin",
     "StratigraphyAdmin",
     "SurfaceWaterDataAdmin",
     "ThingAdmin",
