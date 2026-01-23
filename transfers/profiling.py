@@ -87,12 +87,10 @@ class TransferProfiler:
 def upload_profile_artifacts(artifacts: Iterable[ProfileArtifact]) -> None:
     """Upload generated profiling artifacts to the configured storage bucket."""
 
+    artifacts = list(artifacts)
     if not artifacts:
         logger.info("No profiling artifacts to upload")
         return
-
-    artifacts = list(artifacts)
-
     bucket = get_storage_bucket()
     for artifact in artifacts:
         for path in (artifact.stats_path, artifact.report_path):
