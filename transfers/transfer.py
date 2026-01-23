@@ -170,17 +170,6 @@ def message(msg, pad=10, new_line_at_top=True):
     logger.info(f"{pad} {msg} {pad}")
 
 
-def log_transfer_start(name: str) -> None:
-    logger.info("Starting transfer: %s", name)
-
-
-def log_transfer_end(name: str, extra: str | None = None) -> None:
-    if extra:
-        logger.info("Completed transfer: %s (%s)", name, extra)
-    else:
-        logger.info("Completed transfer: %s", name)
-
-
 @contextmanager
 def transfer_context(name: str, *, pad: int = 10):
     """Context manager to log start/end markers for a transfer block."""
