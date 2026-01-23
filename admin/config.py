@@ -48,6 +48,7 @@ from admin.views import (
     FieldActivityAdmin,
     ParameterAdmin,
     SurfaceWaterDataAdmin,
+    StratigraphyAdmin,
 )
 
 from db.engine import engine
@@ -73,6 +74,7 @@ from db.nma_legacy import (
     NMARadionuclides,
     NMAMinorTraceChemistry,
     SurfaceWaterData,
+    Stratigraphy,
 )
 from db.geologic_formation import GeologicFormation
 from db.data_provenance import DataProvenance
@@ -167,6 +169,9 @@ def create_admin(app):
     # Lexicon
     admin.add_view(LexiconTermAdmin(LexiconTerm))
     admin.add_view(LexiconCategoryAdmin(LexiconCategory))
+
+    # Stratigraphy
+    admin.add_view(StratigraphyAdmin(Stratigraphy))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)
