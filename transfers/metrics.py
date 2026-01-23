@@ -36,6 +36,8 @@ from db import (
     Asset,
     PermissionHistory,
     ThingGeologicFormationAssociation,
+    Stratigraphy,
+    FieldParameters,
     ChemistrySampleInfo,
     NMAHydraulicsData,
     NMARadionuclides,
@@ -167,6 +169,12 @@ class Metrics:
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+
+    def nma_stratigraphy_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(Stratigraphy, name="NMA_Stratigraphy", *args, **kw)
+
+    def field_parameters_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(FieldParameters, name="FieldParameters", *args, **kw)
 
     def associated_data_metrics(self, *args, **kw) -> None:
         self._handle_metrics(AssociatedData, name="AssociatedData", *args, **kw)
