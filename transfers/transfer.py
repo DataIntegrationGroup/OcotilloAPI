@@ -16,6 +16,7 @@
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -34,16 +35,6 @@ from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.permissions_transfer import transfer_permissions
 from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
 from transfers.stratigraphy_transfer import transfer_stratigraphy
-
-# Safety check: Ensure we're not writing to the test database
-if (
-    os.getenv("POSTGRES_DB") == "ocotilloapi_test"
-    or os.getenv("POSTGRES_DB") == "nmsamplelocations_test"
-):
-    raise ValueError(
-        "ERROR: Transfer script is configured to write to test database! "
-        "Set POSTGRES_DB=ocotilloapi_dev in .env file"
-    )
 
 from transfers.waterlevels_transducer_transfer import (
     WaterLevelsContinuousPressureTransferer,
@@ -87,7 +78,6 @@ from transfers.associated_data import AssociatedDataTransferer
 from transfers.soil_rock_results import SoilRockResultsTransferer
 from transfers.surface_water_data import SurfaceWaterDataTransferer
 from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
-from contextlib import contextmanager
 
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
