@@ -16,14 +16,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
 import uuid
+from typing import Any, Optional
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMAHydraulicsData, Thing
+from db import NMA_HydraulicsData, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -90,7 +90,7 @@ class HydraulicsDataTransferer(Transferer):
 
         rows = self._dedupe_rows(row_dicts, key="GlobalID")
 
-        insert_stmt = insert(NMAHydraulicsData)
+        insert_stmt = insert(NMA_HydraulicsData)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

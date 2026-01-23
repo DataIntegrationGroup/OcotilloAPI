@@ -1,10 +1,10 @@
 import os
 
-from dotenv import load_dotenv
-
 import pytest
 from alembic import command
 from alembic.config import Config
+from dotenv import load_dotenv
+
 from core.initializers import init_lexicon, init_parameter
 from db import *
 from db.engine import session_ctx
@@ -17,9 +17,9 @@ from tests import get_parameter_id
 
 def pytest_configure():
     load_dotenv(override=True)
-    os.environ.setdefault("POSTGRES_PORT", "5432")
+    os.environ.setdefault("POSTGRES_PORT", "54321")
     # Always use test database, never dev
-    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+    os.environ["POSTGRES_DB"] = "postgres"
 
 
 def _alembic_config() -> Config:

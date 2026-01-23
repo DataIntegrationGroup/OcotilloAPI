@@ -40,7 +40,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import ChemistrySampleInfo, NMAMajorChemistry
+from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MajorChemistry
 
 
 def _next_sample_point_id() -> str:
@@ -51,7 +51,7 @@ def _next_sample_point_id() -> str:
 def test_create_major_chemistry_all_fields(water_well_thing):
     """Test creating a major chemistry record with all fields."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -59,7 +59,7 @@ def test_create_major_chemistry_all_fields(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMAMajorChemistry(
+        record = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id=sample_info.sample_point_id,
@@ -95,7 +95,7 @@ def test_create_major_chemistry_all_fields(water_well_thing):
 def test_create_major_chemistry_minimal(water_well_thing):
     """Test creating a major chemistry record with minimal fields."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -103,7 +103,7 @@ def test_create_major_chemistry_minimal(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMAMajorChemistry(
+        record = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -125,7 +125,7 @@ def test_create_major_chemistry_minimal(water_well_thing):
 def test_read_major_chemistry_by_global_id(water_well_thing):
     """Test reading a major chemistry record by GlobalID."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -133,14 +133,14 @@ def test_read_major_chemistry_by_global_id(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMAMajorChemistry(
+        record = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMAMajorChemistry, record.global_id)
+        fetched = session.get(NMA_MajorChemistry, record.global_id)
         assert fetched is not None
         assert fetched.global_id == record.global_id
 
@@ -152,7 +152,7 @@ def test_read_major_chemistry_by_global_id(water_well_thing):
 def test_query_major_chemistry_by_sample_point_id(water_well_thing):
     """Test querying major chemistry by sample_point_id."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -160,12 +160,12 @@ def test_query_major_chemistry_by_sample_point_id(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record1 = NMAMajorChemistry(
+        record1 = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id=sample_info.sample_point_id,
         )
-        record2 = NMAMajorChemistry(
+        record2 = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id="OTHER-PT",
@@ -174,8 +174,8 @@ def test_query_major_chemistry_by_sample_point_id(water_well_thing):
         session.commit()
 
         results = (
-            session.query(NMAMajorChemistry)
-            .filter(NMAMajorChemistry.sample_point_id == sample_info.sample_point_id)
+            session.query(NMA_MajorChemistry)
+            .filter(NMA_MajorChemistry.sample_point_id == sample_info.sample_point_id)
             .all()
         )
         assert len(results) >= 1
@@ -191,7 +191,7 @@ def test_query_major_chemistry_by_sample_point_id(water_well_thing):
 def test_update_major_chemistry(water_well_thing):
     """Test updating a major chemistry record."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -199,7 +199,7 @@ def test_update_major_chemistry(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMAMajorChemistry(
+        record = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -223,7 +223,7 @@ def test_update_major_chemistry(water_well_thing):
 def test_delete_major_chemistry(water_well_thing):
     """Test deleting a major chemistry record."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -231,7 +231,7 @@ def test_delete_major_chemistry(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMAMajorChemistry(
+        record = NMA_MajorChemistry(
             global_id=uuid4(),
             sample_pt_id=sample_info.sample_pt_id,
         )
@@ -241,7 +241,7 @@ def test_delete_major_chemistry(water_well_thing):
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMAMajorChemistry, record.global_id)
+        fetched = session.get(NMA_MajorChemistry, record.global_id)
         assert fetched is None
 
         session.delete(sample_info)
@@ -272,13 +272,13 @@ def test_major_chemistry_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            NMAMajorChemistry, column
-        ), f"Expected column '{column}' not found in NMAMajorChemistry model"
+            NMA_MajorChemistry, column
+        ), f"Expected column '{column}' not found in NMA_MajorChemistry model"
 
 
 def test_major_chemistry_table_name():
     """Test that the table name follows convention."""
-    assert NMAMajorChemistry.__tablename__ == "NMA_MajorChemistry"
+    assert NMA_MajorChemistry.__tablename__ == "NMA_MajorChemistry"
 
 
 # ============= EOF =============================================

@@ -45,7 +45,7 @@ Migrated columns:
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import NMAHydraulicsData
+from db.nma_legacy import NMA_HydraulicsData
 
 
 def _next_global_id():
@@ -56,7 +56,7 @@ def _next_global_id():
 def test_create_hydraulics_data_all_fields(water_well_thing):
     """Test creating a hydraulics data record with all fields."""
     with session_ctx() as session:
-        record = NMAHydraulicsData(
+        record = NMA_HydraulicsData(
             global_id=_next_global_id(),
             well_id=uuid4(),
             point_id=water_well_thing.name,
@@ -100,7 +100,7 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
 def test_create_hydraulics_data_minimal(water_well_thing):
     """Test creating a hydraulics data record with minimal fields."""
     with session_ctx() as session:
-        record = NMAHydraulicsData(
+        record = NMA_HydraulicsData(
             global_id=_next_global_id(),
             test_top=10,
             test_bottom=20,
@@ -125,7 +125,7 @@ def test_create_hydraulics_data_minimal(water_well_thing):
 def test_read_hydraulics_data_by_global_id(water_well_thing):
     """Test reading a hydraulics data record by GlobalID."""
     with session_ctx() as session:
-        record = NMAHydraulicsData(
+        record = NMA_HydraulicsData(
             global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
@@ -134,7 +134,7 @@ def test_read_hydraulics_data_by_global_id(water_well_thing):
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMAHydraulicsData, record.global_id)
+        fetched = session.get(NMA_HydraulicsData, record.global_id)
         assert fetched is not None
         assert fetched.global_id == record.global_id
 
@@ -145,7 +145,7 @@ def test_read_hydraulics_data_by_global_id(water_well_thing):
 def test_query_hydraulics_data_by_point_id(water_well_thing):
     """Test querying hydraulics data by point_id."""
     with session_ctx() as session:
-        record1 = NMAHydraulicsData(
+        record1 = NMA_HydraulicsData(
             global_id=_next_global_id(),
             well_id=uuid4(),
             point_id=water_well_thing.name,
@@ -153,7 +153,7 @@ def test_query_hydraulics_data_by_point_id(water_well_thing):
             test_bottom=20,
             thing_id=water_well_thing.id,
         )
-        record2 = NMAHydraulicsData(
+        record2 = NMA_HydraulicsData(
             global_id=_next_global_id(),
             point_id="OTHER-POINT",
             test_top=30,
@@ -164,8 +164,8 @@ def test_query_hydraulics_data_by_point_id(water_well_thing):
         session.commit()
 
         results = (
-            session.query(NMAHydraulicsData)
-            .filter(NMAHydraulicsData.point_id == water_well_thing.name)
+            session.query(NMA_HydraulicsData)
+            .filter(NMA_HydraulicsData.point_id == water_well_thing.name)
             .all()
         )
         assert len(results) >= 1
@@ -180,7 +180,7 @@ def test_query_hydraulics_data_by_point_id(water_well_thing):
 def test_update_hydraulics_data(water_well_thing):
     """Test updating a hydraulics data record."""
     with session_ctx() as session:
-        record = NMAHydraulicsData(
+        record = NMA_HydraulicsData(
             global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
@@ -205,7 +205,7 @@ def test_update_hydraulics_data(water_well_thing):
 def test_delete_hydraulics_data(water_well_thing):
     """Test deleting a hydraulics data record."""
     with session_ctx() as session:
-        record = NMAHydraulicsData(
+        record = NMA_HydraulicsData(
             global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
@@ -217,7 +217,7 @@ def test_delete_hydraulics_data(water_well_thing):
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMAHydraulicsData, record.global_id)
+        fetched = session.get(NMA_HydraulicsData, record.global_id)
         assert fetched is None
 
 
@@ -251,13 +251,13 @@ def test_hydraulics_data_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            NMAHydraulicsData, column
-        ), f"Expected column '{column}' not found in NMAHydraulicsData model"
+            NMA_HydraulicsData, column
+        ), f"Expected column '{column}' not found in NMA_HydraulicsData model"
 
 
 def test_hydraulics_data_table_name():
     """Test that the table name follows convention."""
-    assert NMAHydraulicsData.__tablename__ == "NMA_HydraulicsData"
+    assert NMA_HydraulicsData.__tablename__ == "NMA_HydraulicsData"
 
 
 # ============= EOF =============================================

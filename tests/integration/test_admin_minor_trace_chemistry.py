@@ -28,9 +28,13 @@ from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
 
 from admin.config import create_admin
-from db.nma_legacy import NMAMinorTraceChemistry, ChemistrySampleInfo
-from db.thing import Thing
+from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from db.engine import session_ctx
+from db.nma_legacy import NMA_MinorTraceChemistry, NMA_Chemistry_SampleInfo
+from db.thing import Thing
+
+ADMIN_IDENTITY = MinorTraceChemistryAdmin.identity
+ADMIN_BASE_URL = f"/admin/{ADMIN_IDENTITY}"
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +61,7 @@ def admin_client(admin_app):
 def minor_trace_chemistry_record():
     """Create a minor trace chemistry record for testing."""
     with session_ctx() as session:
-        # First create a Thing (required for ChemistrySampleInfo)
+        # First create a Thing (required for NMA_Chemistry_SampleInfo)
         thing = Thing(
             name="Integration Test Well",
             thing_type="water well",
@@ -67,8 +71,8 @@ def minor_trace_chemistry_record():
         session.commit()
         session.refresh(thing)
 
-        # Create parent ChemistrySampleInfo
-        sample_info = ChemistrySampleInfo(
+        # Create parent NMA_Chemistry_SampleInfo
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid.uuid4(),
             sample_point_id="INTTEST01",
             thing_id=thing.id,
@@ -78,7 +82,7 @@ def minor_trace_chemistry_record():
         session.refresh(sample_info)
 
         # Create MinorTraceChemistry record
-        chemistry = NMAMinorTraceChemistry(
+        chemistry = NMA_MinorTraceChemistry(
             global_id=uuid.uuid4(),
             chemistry_sample_info_id=sample_info.sample_pt_id,
             analyte="Arsenic",
@@ -106,7 +110,7 @@ class TestMinorTraceChemistryListView:
 
     def test_list_view_returns_200(self, admin_client):
         """List view should return 200 OK."""
-        response = admin_client.get("/admin/n-m-a-minor-trace-chemistry/list")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/list")
         assert response.status_code == 200, (
             f"Expected 200, got {response.status_code}. "
             f"Response: {response.text[:500]}"
@@ -114,16 +118,16 @@ class TestMinorTraceChemistryListView:
 
     def test_list_view_contains_view_name(self, admin_client):
         """List view should contain the view name."""
-        response = admin_client.get("/admin/n-m-a-minor-trace-chemistry/list")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/list")
         assert response.status_code == 200
         assert "Minor Trace Chemistry" in response.text
 
     def test_no_create_button_in_list_view(self, admin_client):
         """List view should not have a Create button for read-only view."""
-        response = admin_client.get("/admin/n-m-a-minor-trace-chemistry/list")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/list")
         assert response.status_code == 200
         html = response.text.lower()
-        assert 'href="/admin/n-m-a-minor-trace-chemistry/create"' not in html
+        assert f'href="{ADMIN_BASE_URL}/create"' not in html
 
 
 class TestMinorTraceChemistryDetailView:
@@ -132,7 +136,7 @@ class TestMinorTraceChemistryDetailView:
     def test_detail_view_returns_200(self, admin_client, minor_trace_chemistry_record):
         """Detail view should return 200 OK for existing record."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200, (
             f"Expected 200, got {response.status_code}. "
             f"Response: {response.text[:500]}"
@@ -143,16 +147,16 @@ class TestMinorTraceChemistryDetailView:
     ):
         """Detail view should display the analyte."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200
         assert "Arsenic" in response.text
 
     def test_detail_view_shows_parent_relationship(
         self, admin_client, minor_trace_chemistry_record
     ):
-        """Detail view should display the parent ChemistrySampleInfo."""
+        """Detail view should display the parent NMA_Chemistry_SampleInfo."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/detail/{pk}")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200
         # The parent relationship should be displayed somehow
         # Check for the field label
@@ -161,9 +165,7 @@ class TestMinorTraceChemistryDetailView:
     def test_detail_view_404_for_nonexistent_record(self, admin_client):
         """Detail view should return 404 for non-existent record."""
         fake_pk = str(uuid.uuid4())
-        response = admin_client.get(
-            f"/admin/n-m-a-minor-trace-chemistry/detail/{fake_pk}"
-        )
+        response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{fake_pk}")
         assert response.status_code == 404
 
 
@@ -172,7 +174,7 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
 
     def test_create_endpoint_forbidden(self, admin_client):
         """Create endpoint should be forbidden for read-only view."""
-        response = admin_client.get("/admin/n-m-a-minor-trace-chemistry/create")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/create")
         # Should be 403 or redirect, not 200
         assert response.status_code in (
             403,
@@ -183,7 +185,7 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
     def test_edit_endpoint_forbidden(self, admin_client, minor_trace_chemistry_record):
         """Edit endpoint should be forbidden for read-only view."""
         pk = str(minor_trace_chemistry_record.global_id)
-        response = admin_client.get(f"/admin/n-m-a-minor-trace-chemistry/edit/{pk}")
+        response = admin_client.get(f"{ADMIN_BASE_URL}/edit/{pk}")
         # Should be 403 or redirect, not 200
         assert response.status_code in (
             403,
@@ -197,7 +199,7 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
         """Delete endpoint should be forbidden for read-only view."""
         pk = str(minor_trace_chemistry_record.global_id)
         response = admin_client.post(
-            f"/admin/n-m-a-minor-trace-chemistry/delete",
+            f"{ADMIN_BASE_URL}/delete",
             data={"pks": [pk]},
         )
         # Should be 403, redirect, or 404/405 (route may not exist for read-only)

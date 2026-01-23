@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import AssociatedData, Thing
+from db import NMA_AssociatedData, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -60,7 +60,7 @@ class AssociatedDataTransferer(Transferer):
             logger.info("No AssociatedData rows to transfer")
             return
 
-        insert_stmt = insert(AssociatedData)
+        insert_stmt = insert(NMA_AssociatedData)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

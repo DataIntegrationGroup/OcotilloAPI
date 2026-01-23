@@ -28,7 +28,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import ChemistrySampleInfo, FieldParameters
+from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -54,7 +54,7 @@ class FieldParametersTransferer(Transferer):
     def _build_sample_pt_id_cache(self) -> None:
         """Build cache of ChemistrySampleInfo.SamplePtID values."""
         with session_ctx() as session:
-            sample_infos = session.query(ChemistrySampleInfo.sample_pt_id).all()
+            sample_infos = session.query(NMA_Chemistry_SampleInfo.sample_pt_id).all()
             self._sample_pt_ids = {sample_pt_id for (sample_pt_id,) in sample_infos}
         logger.info(
             f"Built ChemistrySampleInfo cache with {len(self._sample_pt_ids)} entries"
@@ -112,7 +112,7 @@ class FieldParametersTransferer(Transferer):
         rows = self._dedupe_rows(row_dicts)
         logger.info(f"Upserting {len(rows)} FieldParameters records")
 
-        insert_stmt = insert(FieldParameters)
+        insert_stmt = insert(NMA_FieldParameters)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

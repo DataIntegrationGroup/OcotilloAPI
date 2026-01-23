@@ -22,7 +22,7 @@ from admin.views.base import OcotilloModelView
 
 class HydraulicsDataAdmin(OcotilloModelView):
     """
-    Admin view for NMAHydraulicsData model.
+    Admin view for NMA_HydraulicsData model.
     """
 
     # ========== Basic Configuration ==========

@@ -23,9 +23,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from db import (
-    ViewNGWMNLithology,
-    ViewNGWMNWaterLevels,
-    ViewNGWMNWellConstruction,
+    NMA_view_NGWMN_Lithology,
+    NMA_view_NGWMN_WaterLevels,
+    NMA_view_NGWMN_WellConstruction,
 )
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -125,7 +125,7 @@ class _BaseNGWMNTransferer(Transferer):
 
 class NGWMNWellConstructionTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_WellConstruction"
-    model = ViewNGWMNWellConstruction
+    model = NMA_view_NGWMN_WellConstruction
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         val = self._val
@@ -159,7 +159,7 @@ class NGWMNWellConstructionTransferer(_BaseNGWMNTransferer):
 
 class NGWMNWaterLevelsTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_WaterLevels"
-    model = ViewNGWMNWaterLevels
+    model = NMA_view_NGWMN_WaterLevels
     parse_dates = ["DateMeasured"]
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
@@ -194,7 +194,7 @@ class NGWMNWaterLevelsTransferer(_BaseNGWMNTransferer):
 
 class NGWMNLithologyTransferer(_BaseNGWMNTransferer):
     source_table = "view_NGWMN_Lithology"
-    model = ViewNGWMNLithology
+    model = NMA_view_NGWMN_Lithology
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         val = self._val

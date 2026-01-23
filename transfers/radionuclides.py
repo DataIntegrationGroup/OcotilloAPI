@@ -24,7 +24,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import ChemistrySampleInfo, NMARadionuclides
+from db import NMA_Chemistry_SampleInfo, NMA_Radionuclides
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -48,7 +48,7 @@ class RadionuclidesTransferer(Transferer):
     def _build_sample_info_cache(self) -> None:
         with session_ctx() as session:
             sample_infos = session.query(
-                ChemistrySampleInfo.sample_pt_id, ChemistrySampleInfo.thing_id
+                NMA_Chemistry_SampleInfo.sample_pt_id, NMA_Chemistry_SampleInfo.thing_id
             ).all()
             self._sample_pt_ids = {sample_pt_id for sample_pt_id, _ in sample_infos}
             self._thing_id_by_sample_pt_id = {
@@ -117,7 +117,7 @@ class RadionuclidesTransferer(Transferer):
             )
 
         rows = self._dedupe_rows(row_dicts, key="GlobalID")
-        insert_stmt = insert(NMARadionuclides)
+        insert_stmt = insert(NMA_Radionuclides)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import WeatherData
+from db import NMA_WeatherData
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
@@ -50,7 +50,7 @@ class WeatherDataTransferer(Transferer):
             key="OBJECTID",
         )
 
-        insert_stmt = insert(WeatherData)
+        insert_stmt = insert(NMA_WeatherData)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

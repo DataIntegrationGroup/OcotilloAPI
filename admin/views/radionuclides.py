@@ -22,7 +22,7 @@ from admin.views.base import OcotilloModelView
 
 class RadionuclidesAdmin(OcotilloModelView):
     """
-    Admin view for NMARadionuclides model.
+    Admin view for NMA_Radionuclides model.
     """
 
     # ========== Basic Configuration ==========

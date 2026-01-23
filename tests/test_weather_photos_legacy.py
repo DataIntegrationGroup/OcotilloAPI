@@ -14,9 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 """
-Unit tests for WeatherPhotos legacy model.
+Unit tests for NMA_WeatherPhotos legacy model.
 
-These tests verify the migration of columns from the legacy WeatherPhotos table.
+These tests verify the migration of columns from the legacy NMA_WeatherPhotos table.
 Migrated columns:
 - WeatherID -> weather_id
 - PointID -> point_id
@@ -28,13 +28,13 @@ Migrated columns:
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import WeatherPhotos
+from db.nma_legacy import NMA_WeatherPhotos
 
 
 def test_create_weather_photos_all_fields():
     """Test creating a weather photos record with all fields."""
     with session_ctx() as session:
-        record = WeatherPhotos(
+        record = NMA_WeatherPhotos(
             weather_id=uuid4(),
             point_id="WP-0001",
             ole_path="weather.jpg",
@@ -58,7 +58,7 @@ def test_create_weather_photos_all_fields():
 def test_create_weather_photos_minimal():
     """Test creating a weather photos record with required fields only."""
     with session_ctx() as session:
-        record = WeatherPhotos(
+        record = NMA_WeatherPhotos(
             point_id="WP-0002",
             global_id=uuid4(),
         )

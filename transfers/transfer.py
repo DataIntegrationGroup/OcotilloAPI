@@ -82,7 +82,7 @@ from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
-    NMAWaterLevelsContinuousPressureDailyTransferer,
+    NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
 )
 from transfers.weather_data import WeatherDataTransferer
 from transfers.weather_photos import WeatherPhotosTransferer
@@ -398,7 +398,7 @@ def _transfer_parallel(
         parallel_tasks_1.append(
             (
                 "WaterLevelsPressureDaily",
-                NMAWaterLevelsContinuousPressureDailyTransferer,
+                NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
                 flags,
             )
         )
@@ -699,7 +699,7 @@ def _transfer_sequential(
     if opts.transfer_pressure_daily:
         message("TRANSFERRING WATER LEVELS PRESSURE DAILY")
         results = _execute_transfer(
-            NMAWaterLevelsContinuousPressureDailyTransferer, flags=flags
+            NMA_WaterLevelsContinuous_Pressure_DailyTransferer, flags=flags
         )
         metrics.waterlevels_pressure_daily_metrics(*results)
 

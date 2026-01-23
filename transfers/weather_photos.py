@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import WeatherPhotos
+from db import NMA_WeatherPhotos
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -51,7 +51,7 @@ class WeatherPhotosTransferer(Transferer):
             logger.info("No WeatherPhotos rows to transfer")
             return
 
-        insert_stmt = insert(WeatherPhotos)
+        insert_stmt = insert(NMA_WeatherPhotos)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):
