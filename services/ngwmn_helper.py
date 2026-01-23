@@ -17,7 +17,6 @@ from xml.etree import ElementTree as etree
 
 from sqlalchemy import text
 
-
 # NSMAP = dict(xsi="http://www.w3.org/2001/XMLSchema-instance", xsd="http://www.w3.org/2001/XMLSchema")
 
 
