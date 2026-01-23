@@ -296,6 +296,8 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             transfer_minor_trace_chemistry,
             transfer_nma_stratigraphy,
             transfer_associated_data,
+            profile_waterlevels,
+            profile_artifacts,
         )
     else:
         _transfer_sequential(
@@ -329,6 +331,8 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             profile_artifacts,
         )
 
+    return profile_artifacts
+
 
 def _transfer_parallel(
     metrics,
@@ -357,6 +361,8 @@ def _transfer_parallel(
     transfer_minor_trace_chemistry,
     transfer_nma_stratigraphy,
     transfer_associated_data,
+    profile_waterlevels,
+    profile_artifacts,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -548,24 +554,31 @@ def _transfer_parallel(
                 ("Acoustic", WaterLevelsContinuousAcousticTransferer, flags)
             )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {}
+        if profile_waterlevels:
             for name, klass, task_flags in parallel_tasks_2:
-                future = executor.submit(
-                    _execute_transfer_with_timing, name, klass, task_flags
-                )
-                futures[future] = name
-
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    result_name, result, elapsed = future.result()
-                    results_map[result_name] = result
-                    logger.info(
-                        f"Parallel task {result_name} completed in {elapsed:.2f}s"
+                profiler = TransferProfiler(f"waterlevels_continuous_{name.lower()}")
+                results, artifact = profiler.run(_execute_transfer, klass, task_flags)
+                profile_artifacts.append(artifact)
+                results_map[name] = results
+        else:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                futures = {}
+                for name, klass, task_flags in parallel_tasks_2:
+                    future = executor.submit(
+                        _execute_transfer_with_timing, name, klass, task_flags
                     )
-                except Exception as e:
-                    logger.critical(f"Parallel task {name} failed: {e}")
+                    futures[future] = name
+
+                for future in as_completed(futures):
+                    name = futures[future]
+                    try:
+                        result_name, result, elapsed = future.result()
+                        results_map[result_name] = result
+                        logger.info(
+                            f"Parallel task {result_name} completed in {elapsed:.2f}s"
+                        )
+                    except Exception as e:
+                        logger.critical(f"Parallel task {name} failed: {e}")
 
         if "Pressure" in results_map and results_map["Pressure"]:
             metrics.pressure_metrics(*results_map["Pressure"])
