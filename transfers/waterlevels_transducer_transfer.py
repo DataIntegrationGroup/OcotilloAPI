@@ -43,6 +43,9 @@ class WaterLevelsContinuousTransferer(Transferer):
         self.groundwater_parameter_id = get_groundwater_parameter_id()
         self._itertuples_field_map = {}
         self._df_columns = set()
+        self._observation_columns = {
+            column.key for column in TransducerObservation.__table__.columns
+        }
         if self._sensor_types is None:
             raise ValueError("_sensor_types must be set")
         if self._partition_field is None:
@@ -136,9 +139,13 @@ class WaterLevelsContinuousTransferer(Transferer):
 
                 observations = [obs for obs in observations if obs is not None]
                 if observations:
+                    filtered = [
+                        {k: v for k, v in obs.items() if k in self._observation_columns}
+                        for obs in observations
+                    ]
                     session.execute(
                         insert(TransducerObservation),
-                        observations,
+                        filtered,
                     )
                 session.add(block)
                 logger.info(
