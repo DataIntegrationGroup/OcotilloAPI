@@ -12,7 +12,7 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
   Core insert.
 
   
-## 7. Running pytest safely
+## 2. Running pytest safely
 - Activate the repo virtualenv before testing: `source .venv/bin/activate` from the project root so all
   dependencies (sqlalchemy, fastapi, etc.) are available.
 - Load environment variables from `.env` so pytest sees the same DB creds the app uses. For quick shells:
