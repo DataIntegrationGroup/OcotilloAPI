@@ -139,13 +139,13 @@ class WaterLevelsContinuousTransferer(Transferer):
 
                 observations = [obs for obs in observations if obs is not None]
                 if observations:
-                    filtered = [
+                    filtered_observations = [
                         {k: v for k, v in obs.items() if k in self._observation_columns}
                         for obs in observations
                     ]
                     session.execute(
                         insert(TransducerObservation),
-                        filtered,
+                        filtered_observations,
                     )
                 session.add(block)
                 logger.info(
