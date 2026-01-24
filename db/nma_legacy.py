@@ -515,7 +515,7 @@ class NMA_MinorTraceChemistry(Base):
         """Prevent orphan NMA_MinorTraceChemistry - must have a parent ChemistrySampleInfo."""
         if value is None:
             raise ValueError(
-                "NMA_MinorTraceChemistry requires a parent ChemistrySampleInfo"
+                "NMA_MinorTraceChemistry requires a parent NMA_Chemistry_SampleInfo"
             )
         return value
 

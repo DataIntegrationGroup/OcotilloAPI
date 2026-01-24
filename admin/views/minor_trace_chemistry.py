@@ -52,7 +52,7 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     list_fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="chemistry-sample-info"),
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
         "analyte",
         "sample_value",
         "units",
@@ -89,7 +89,7 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="chemistry-sample-info"),
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
         "analyte",
         "symbol",
         "sample_value",
