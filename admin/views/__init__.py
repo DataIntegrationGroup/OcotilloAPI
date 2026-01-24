@@ -48,6 +48,7 @@ from admin.views.stratigraphy import StratigraphyAdmin
 from admin.views.surface_water import SurfaceWaterDataAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.transducer_observation import TransducerObservationAdmin
+from admin.views.weather_photos import WeatherPhotosAdmin
 
 __all__ = [
     "AssetAdmin",
@@ -78,4 +79,5 @@ __all__ = [
     "SurfaceWaterDataAdmin",
     "ThingAdmin",
     "TransducerObservationAdmin",
+    "WeatherPhotosAdmin",
 ]
