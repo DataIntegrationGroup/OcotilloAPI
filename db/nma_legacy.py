@@ -226,7 +226,7 @@ class NMA_Stratigraphy(Base):
     unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(50))
     lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(100))
     lithologic_modifier: Mapped[Optional[str]] = mapped_column(
-        "LithologicModifier", String(100)
+        "LithologicModifier", String(250)
     )
     contributing_unit: Mapped[Optional[str]] = mapped_column(
         "ContributingUnit", String(10)

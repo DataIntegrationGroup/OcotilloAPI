@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.Column("StratBottom", sa.Float(), nullable=True),
         sa.Column("UnitIdentifier", sa.String(length=50), nullable=True),
         sa.Column("Lithology", sa.String(length=100), nullable=True),
-        sa.Column("LithologicModifier", sa.String(length=100), nullable=True),
+        sa.Column("LithologicModifier", sa.String(length=250), nullable=True),
         sa.Column("ContributingUnit", sa.String(length=10), nullable=True),
         sa.Column("StratSource", sa.Text(), nullable=True),
         sa.Column("StratNotes", sa.Text(), nullable=True),
