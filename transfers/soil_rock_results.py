@@ -21,7 +21,7 @@ from typing import Any, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from db import SoilRockResults, Thing
+from db import NMA_Soil_Rock_Results, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -65,7 +65,7 @@ class SoilRockResultsTransferer(Transferer):
                 i + len(chunk) - 1,
                 len(chunk),
             )
-            session.bulk_insert_mappings(SoilRockResults, chunk)
+            session.bulk_insert_mappings(NMA_Soil_Rock_Results, chunk)
             session.commit()
 
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:

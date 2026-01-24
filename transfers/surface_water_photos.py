@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import SurfaceWaterPhotos
+from db import NMA_SurfaceWaterPhotos
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -51,7 +51,7 @@ class SurfaceWaterPhotosTransferer(Transferer):
             logger.info("No SurfaceWaterPhotos rows to transfer")
             return
 
-        insert_stmt = insert(SurfaceWaterPhotos)
+        insert_stmt = insert(NMA_SurfaceWaterPhotos)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

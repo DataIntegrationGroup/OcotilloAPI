@@ -25,7 +25,7 @@ from fastapi import FastAPI
 
 from admin.config import create_admin
 from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
-from db.nma_legacy import NMAMinorTraceChemistry
+from db.nma_legacy import NMA_MinorTraceChemistry
 
 
 class TestMinorTraceChemistryAdminRegistration:
@@ -44,7 +44,7 @@ class TestMinorTraceChemistryAdminRegistration:
 
     def test_view_has_correct_label(self):
         """View should have proper label for sidebar display."""
-        view = MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+        view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
         assert view.label == "Minor Trace Chemistry"
 
     def test_class_has_flask_icon_configured(self):
@@ -60,7 +60,7 @@ class TestMinorTraceChemistryAdminReadOnly:
     @pytest.fixture
     def view(self):
         """Create a MinorTraceChemistryAdmin instance for testing."""
-        return MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+        return MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
 
     def test_can_create_returns_false(self, view):
         """Create should be disabled for legacy data."""
@@ -89,7 +89,7 @@ class TestMinorTraceChemistryAdminListView:
     @pytest.fixture
     def view(self):
         """Create a MinorTraceChemistryAdmin instance for testing."""
-        return MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+        return MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
 
     def test_list_fields_include_required_columns(self, view):
         """List view should show key chemistry data columns."""
@@ -136,7 +136,7 @@ class TestMinorTraceChemistryAdminFormView:
     @pytest.fixture
     def view(self):
         """Create a MinorTraceChemistryAdmin instance for testing."""
-        return MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+        return MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
 
     def test_form_includes_all_chemistry_fields(self):
         """Form should include all relevant chemistry data fields in configuration."""

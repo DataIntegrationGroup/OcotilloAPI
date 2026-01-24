@@ -24,7 +24,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import NMAWaterLevelsContinuousPressureDaily
+from db.nma_legacy import NMA_WaterLevelsContinuous_Pressure_Daily
 
 
 def _next_global_id() -> str:
@@ -41,7 +41,7 @@ def test_create_pressure_daily_all_fields():
     """Test creating a pressure daily record with required fields."""
     with session_ctx() as session:
         now = datetime(2024, 1, 1, 12, 0, 0)
-        record = NMAWaterLevelsContinuousPressureDaily(
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             object_id=_next_object_id(),
             well_id="WELL-1",
@@ -78,7 +78,7 @@ def test_create_pressure_daily_minimal():
     """Test creating a pressure daily record with minimal fields."""
     with session_ctx() as session:
         now = datetime(2024, 1, 2, 12, 0, 0)
-        record = NMAWaterLevelsContinuousPressureDaily(
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             point_id="PD-1002",
             date_measured=now,
@@ -101,7 +101,7 @@ def test_read_pressure_daily_by_global_id():
     """Test reading a pressure daily record by GlobalID."""
     with session_ctx() as session:
         now = datetime(2024, 1, 3, 12, 0, 0)
-        record = NMAWaterLevelsContinuousPressureDaily(
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             point_id="PD-1003",
             date_measured=now,
@@ -111,7 +111,9 @@ def test_read_pressure_daily_by_global_id():
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMAWaterLevelsContinuousPressureDaily, record.global_id)
+        fetched = session.get(
+            NMA_WaterLevelsContinuous_Pressure_Daily, record.global_id
+        )
         assert fetched is not None
         assert fetched.global_id == record.global_id
         assert fetched.point_id == "PD-1003"
@@ -125,7 +127,7 @@ def test_update_pressure_daily():
     """Test updating a pressure daily record."""
     with session_ctx() as session:
         now = datetime(2024, 1, 4, 12, 0, 0)
-        record = NMAWaterLevelsContinuousPressureDaily(
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             point_id="PD-1004",
             date_measured=now,
@@ -152,7 +154,7 @@ def test_delete_pressure_daily():
     """Test deleting a pressure daily record."""
     with session_ctx() as session:
         now = datetime(2024, 1, 5, 12, 0, 0)
-        record = NMAWaterLevelsContinuousPressureDaily(
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             point_id="PD-1005",
             date_measured=now,
@@ -165,7 +167,9 @@ def test_delete_pressure_daily():
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMAWaterLevelsContinuousPressureDaily, record.global_id)
+        fetched = session.get(
+            NMA_WaterLevelsContinuous_Pressure_Daily, record.global_id
+        )
         assert fetched is None
 
 
@@ -196,14 +200,14 @@ def test_pressure_daily_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            NMAWaterLevelsContinuousPressureDaily, column
+            NMA_WaterLevelsContinuous_Pressure_Daily, column
         ), f"Expected column '{column}' not found in pressure daily model"
 
 
 def test_pressure_daily_table_name():
     """Test that the table name follows convention."""
     assert (
-        NMAWaterLevelsContinuousPressureDaily.__tablename__
+        NMA_WaterLevelsContinuous_Pressure_Daily.__tablename__
         == "NMA_WaterLevelsContinuous_Pressure_Daily"
     )
 

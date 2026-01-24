@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for ChemistrySampleInfo legacy model.
+Unit tests for NMA_Chemistry_SampleInfo legacy model.
 
 These tests verify the migration of columns from the legacy Chemistry_SampleInfo table.
 Migrated columns:
@@ -42,7 +42,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import ChemistrySampleInfo
+from db.nma_legacy import NMA_Chemistry_SampleInfo
 
 
 def _next_sample_point_id() -> str:
@@ -57,7 +57,7 @@ def _next_sample_pt_id():
 def test_create_chemistry_sampleinfo_all_fields(water_well_thing):
     """Test creating a chemistry sample info record with all fields."""
     with session_ctx() as session:
-        record = ChemistrySampleInfo(
+        record = NMA_Chemistry_SampleInfo(
             sample_pt_id=_next_sample_pt_id(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -95,7 +95,7 @@ def test_create_chemistry_sampleinfo_all_fields(water_well_thing):
 def test_create_chemistry_sampleinfo_minimal(water_well_thing):
     """Test creating a chemistry sample info record with minimal fields."""
     with session_ctx() as session:
-        record = ChemistrySampleInfo(
+        record = NMA_Chemistry_SampleInfo(
             sample_pt_id=_next_sample_pt_id(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -116,7 +116,7 @@ def test_create_chemistry_sampleinfo_minimal(water_well_thing):
 def test_read_chemistry_sampleinfo_by_object_id(water_well_thing):
     """Test reading a chemistry sample info record by OBJECTID."""
     with session_ctx() as session:
-        record = ChemistrySampleInfo(
+        record = NMA_Chemistry_SampleInfo(
             sample_pt_id=_next_sample_pt_id(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -124,7 +124,7 @@ def test_read_chemistry_sampleinfo_by_object_id(water_well_thing):
         session.add(record)
         session.commit()
 
-        fetched = session.get(ChemistrySampleInfo, record.sample_pt_id)
+        fetched = session.get(NMA_Chemistry_SampleInfo, record.sample_pt_id)
         assert fetched is not None
         assert fetched.sample_pt_id == record.sample_pt_id
         assert fetched.sample_point_id == record.sample_point_id
@@ -137,7 +137,7 @@ def test_read_chemistry_sampleinfo_by_object_id(water_well_thing):
 def test_update_chemistry_sampleinfo(water_well_thing):
     """Test updating a chemistry sample info record."""
     with session_ctx() as session:
-        record = ChemistrySampleInfo(
+        record = NMA_Chemistry_SampleInfo(
             sample_pt_id=_next_sample_pt_id(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -161,7 +161,7 @@ def test_update_chemistry_sampleinfo(water_well_thing):
 def test_delete_chemistry_sampleinfo(water_well_thing):
     """Test deleting a chemistry sample info record."""
     with session_ctx() as session:
-        record = ChemistrySampleInfo(
+        record = NMA_Chemistry_SampleInfo(
             sample_pt_id=_next_sample_pt_id(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -172,7 +172,7 @@ def test_delete_chemistry_sampleinfo(water_well_thing):
         session.delete(record)
         session.commit()
 
-        fetched = session.get(ChemistrySampleInfo, record.sample_pt_id)
+        fetched = session.get(NMA_Chemistry_SampleInfo, record.sample_pt_id)
         assert fetched is None
 
 
@@ -204,13 +204,13 @@ def test_chemistry_sampleinfo_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            ChemistrySampleInfo, column
-        ), f"Expected column '{column}' not found in ChemistrySampleInfo model"
+            NMA_Chemistry_SampleInfo, column
+        ), f"Expected column '{column}' not found in NMA_Chemistry_SampleInfo model"
 
 
 def test_chemistry_sampleinfo_table_name():
     """Test that the table name follows convention."""
-    assert ChemistrySampleInfo.__tablename__ == "NMA_Chemistry_SampleInfo"
+    assert NMA_Chemistry_SampleInfo.__tablename__ == "NMA_Chemistry_SampleInfo"
 
 
 # ============= EOF =============================================

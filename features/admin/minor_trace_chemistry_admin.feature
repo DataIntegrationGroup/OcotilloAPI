@@ -12,7 +12,7 @@ Feature: Minor Trace Chemistry Admin View
 
   @smoke @list-view
   Scenario: View minor trace chemistry list with default columns
-    When I navigate to "/admin/n-m-a-minor-trace-chemistry/list"
+    When I navigate to "/admin/n-m-a_-minor-trace-chemistry/list"
     Then I should see the minor trace chemistry list page
     And I should see the following columns:
       | Column Name              |
@@ -33,7 +33,7 @@ Feature: Minor Trace Chemistry Admin View
       | Arsenic     | 0.005        | mg/L  |
       | Uranium     | 0.003        | mg/L  |
       | Selenium    | 0.001        | mg/L  |
-    When I navigate to "/admin/n-m-a-minor-trace-chemistry/list"
+    When I navigate to "/admin/n-m-a_-minor-trace-chemistry/list"
     And I enter "Arsenic" in the search box
     Then I should see results containing "Arsenic"
     But I should not see "Uranium" in the results
@@ -41,7 +41,7 @@ Feature: Minor Trace Chemistry Admin View
   @list-view @pagination
   Scenario: Paginate through minor trace chemistry list
     Given at least 100 minor trace chemistry records exist
-    When I navigate to "/admin/n-m-a-minor-trace-chemistry/list"
+    When I navigate to "/admin/n-m-a_-minor-trace-chemistry/list"
     Then I should see 50 records on page 1
     And I should see pagination controls
 
@@ -49,13 +49,13 @@ Feature: Minor Trace Chemistry Admin View
 
   @read-only @security
   Scenario: Create action is disabled
-    When I navigate to "/admin/n-m-a-minor-trace-chemistry/list"
+    When I navigate to "/admin/n-m-a_-minor-trace-chemistry/list"
     Then I should not see a "Create" button
     And I should not see a "New" button
 
   @read-only @security
   Scenario: Direct access to create page is forbidden
-    When I navigate to "/admin/n-m-a-minor-trace-chemistry/create"
+    When I navigate to "/admin/n-m-a_-minor-trace-chemistry/create"
     Then I should see a 403 Forbidden response
     Or I should be redirected to the list page
 
@@ -109,6 +109,6 @@ Feature: Minor Trace Chemistry Admin View
   Scenario: Navigate to Minor Trace Chemistry from sidebar
     When I navigate to "/admin"
     And I click "Minor Trace Chemistry" in the sidebar
-    Then I should be on "/admin/n-m-a-minor-trace-chemistry/list"
+    Then I should be on "/admin/n-m-a_-minor-trace-chemistry/list"
 
 # ============= EOF =============================================

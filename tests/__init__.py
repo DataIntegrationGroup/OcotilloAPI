@@ -13,28 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
 from functools import lru_cache
+
 from dotenv import load_dotenv
 
 # Load .env file BEFORE importing anything else
 # Use override=True to override conflicting shell environment variables
 load_dotenv(override=True)
 
-# for safety dont test on the production database port
-os.environ["POSTGRES_PORT"] = "5432"
-# Always use test database, never dev
-os.environ["POSTGRES_DB"] = "ocotilloapi_test"
-
-# this should not be needed since all Pydantic serializes all datetimes as UTC
-# furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility
-# # Set timezone to UTC for consistent datetime handling in tests
-# os.environ["TZ"] = "UTC"
-
-# # Also set time.tzset() to apply the timezone change
-# import time
-
-# time.tzset()
 
 from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination

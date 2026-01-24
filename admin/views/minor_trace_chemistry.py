@@ -17,6 +17,8 @@
 MinorTraceChemistryAdmin view for legacy NMA_MinorTraceChemistry.
 """
 
+import uuid
+
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
 
@@ -25,14 +27,17 @@ from admin.views.base import OcotilloModelView
 
 class MinorTraceChemistryAdmin(OcotilloModelView):
     """
-    Admin view for NMAMinorTraceChemistry model.
+    Admin view for NMA_MinorTraceChemistry model.
     """
 
     # ========== Basic Configuration ==========
 
+    identity = "n-m-a_-minor-trace-chemistry"
     name = "Minor Trace Chemistry"
     label = "Minor Trace Chemistry"
     icon = "fa fa-flask"
+    pk_attr = "global_id"
+    pk_type = uuid.UUID
 
     def can_create(self, request: Request) -> bool:
         return False
@@ -47,7 +52,7 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     list_fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="chemistry-sample-info"),
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
         "analyte",
         "sample_value",
         "units",
@@ -84,7 +89,7 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="chemistry-sample-info"),
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
         "analyte",
         "symbol",
         "sample_value",

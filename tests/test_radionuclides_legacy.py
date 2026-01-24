@@ -40,7 +40,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import ChemistrySampleInfo, NMARadionuclides
+from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_Radionuclides
 
 
 def _next_sample_point_id() -> str:
@@ -51,7 +51,7 @@ def _next_sample_point_id() -> str:
 def test_create_radionuclides_all_fields(water_well_thing):
     """Test creating a radionuclides record with all fields."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -59,7 +59,7 @@ def test_create_radionuclides_all_fields(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMARadionuclides(
+        record = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -96,7 +96,7 @@ def test_create_radionuclides_all_fields(water_well_thing):
 def test_create_radionuclides_minimal(water_well_thing):
     """Test creating a radionuclides record with minimal fields."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -104,7 +104,7 @@ def test_create_radionuclides_minimal(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMARadionuclides(
+        record = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -127,7 +127,7 @@ def test_create_radionuclides_minimal(water_well_thing):
 def test_read_radionuclides_by_global_id(water_well_thing):
     """Test reading a radionuclides record by GlobalID."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -135,7 +135,7 @@ def test_read_radionuclides_by_global_id(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMARadionuclides(
+        record = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -143,7 +143,7 @@ def test_read_radionuclides_by_global_id(water_well_thing):
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMARadionuclides, record.global_id)
+        fetched = session.get(NMA_Radionuclides, record.global_id)
         assert fetched is not None
         assert fetched.global_id == record.global_id
 
@@ -155,7 +155,7 @@ def test_read_radionuclides_by_global_id(water_well_thing):
 def test_query_radionuclides_by_sample_point_id(water_well_thing):
     """Test querying radionuclides by sample_point_id."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -163,13 +163,13 @@ def test_query_radionuclides_by_sample_point_id(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record1 = NMARadionuclides(
+        record1 = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
             sample_point_id=sample_info.sample_point_id,
         )
-        record2 = NMARadionuclides(
+        record2 = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -179,8 +179,8 @@ def test_query_radionuclides_by_sample_point_id(water_well_thing):
         session.commit()
 
         results = (
-            session.query(NMARadionuclides)
-            .filter(NMARadionuclides.sample_point_id == sample_info.sample_point_id)
+            session.query(NMA_Radionuclides)
+            .filter(NMA_Radionuclides.sample_point_id == sample_info.sample_point_id)
             .all()
         )
         assert len(results) >= 1
@@ -196,7 +196,7 @@ def test_query_radionuclides_by_sample_point_id(water_well_thing):
 def test_update_radionuclides(water_well_thing):
     """Test updating a radionuclides record."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -204,7 +204,7 @@ def test_update_radionuclides(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMARadionuclides(
+        record = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -229,7 +229,7 @@ def test_update_radionuclides(water_well_thing):
 def test_delete_radionuclides(water_well_thing):
     """Test deleting a radionuclides record."""
     with session_ctx() as session:
-        sample_info = ChemistrySampleInfo(
+        sample_info = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid4(),
             sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
@@ -237,7 +237,7 @@ def test_delete_radionuclides(water_well_thing):
         session.add(sample_info)
         session.commit()
 
-        record = NMARadionuclides(
+        record = NMA_Radionuclides(
             global_id=uuid4(),
             thing_id=water_well_thing.id,
             sample_pt_id=sample_info.sample_pt_id,
@@ -248,7 +248,7 @@ def test_delete_radionuclides(water_well_thing):
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMARadionuclides, record.global_id)
+        fetched = session.get(NMA_Radionuclides, record.global_id)
         assert fetched is None
 
         session.delete(sample_info)
@@ -280,13 +280,13 @@ def test_radionuclides_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            NMARadionuclides, column
-        ), f"Expected column '{column}' not found in NMARadionuclides model"
+            NMA_Radionuclides, column
+        ), f"Expected column '{column}' not found in NMA_Radionuclides model"
 
 
 def test_radionuclides_table_name():
     """Test that the table name follows convention."""
-    assert NMARadionuclides.__tablename__ == "NMA_Radionuclides"
+    assert NMA_Radionuclides.__tablename__ == "NMA_Radionuclides"
 
 
 # ============= EOF =============================================

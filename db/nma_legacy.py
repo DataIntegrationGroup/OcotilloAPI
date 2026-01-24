@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from db.thing import Thing
 
 
-class NMAWaterLevelsContinuousPressureDaily(Base):
+class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
     """
     Legacy view of the WaterLevelsContinuous_Pressure_Daily table from AMPAPI.
 
@@ -90,7 +90,7 @@ class NMAWaterLevelsContinuousPressureDaily(Base):
     cond_dl_ms_cm: Mapped[Optional[float]] = mapped_column("CONDDL (mS/cm)", Float)
 
 
-class ViewNGWMNWellConstruction(Base):
+class NMA_view_NGWMN_WellConstruction(Base):
     """
     Legacy NGWMN well construction view.
 
@@ -120,7 +120,7 @@ class ViewNGWMNWellConstruction(Base):
     )
 
 
-class ViewNGWMNWaterLevels(Base):
+class NMA_view_NGWMN_WaterLevels(Base):
     """
     Legacy NGWMN water levels view.
     """
@@ -140,7 +140,7 @@ class ViewNGWMNWaterLevels(Base):
     public_release: Mapped[Optional[bool]] = mapped_column("PublicRelease", Boolean)
 
 
-class ViewNGWMNLithology(Base):
+class NMA_view_NGWMN_Lithology(Base):
     """
     Legacy NGWMN lithology view.
     """
@@ -160,7 +160,7 @@ class ViewNGWMNLithology(Base):
     )
 
 
-class NMAHydraulicsData(Base):
+class NMA_HydraulicsData(Base):
     """
     Legacy HydraulicsData table from AMPAPI.
     """
@@ -207,7 +207,7 @@ class NMAHydraulicsData(Base):
     thing: Mapped["Thing"] = relationship("Thing")
 
 
-class Stratigraphy(Base):
+class NMA_Stratigraphy(Base):
     """Legacy stratigraphy (lithology log) data from AMPAPI."""
 
     __tablename__ = "NMA_Stratigraphy"
@@ -238,7 +238,7 @@ class Stratigraphy(Base):
     thing: Mapped["Thing"] = relationship("Thing", back_populates="stratigraphy_logs")
 
 
-class ChemistrySampleInfo(Base):
+class NMA_Chemistry_SampleInfo(Base):
     """
     Legacy Chemistry SampleInfo table from AMPAPI.
     """
@@ -296,29 +296,29 @@ class ChemistrySampleInfo(Base):
         "Thing", back_populates="chemistry_sample_infos"
     )
 
-    minor_trace_chemistries: Mapped[List["NMAMinorTraceChemistry"]] = relationship(
-        "NMAMinorTraceChemistry",
+    minor_trace_chemistries: Mapped[List["NMA_MinorTraceChemistry"]] = relationship(
+        "NMA_MinorTraceChemistry",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
-    radionuclides: Mapped[List["NMARadionuclides"]] = relationship(
-        "NMARadionuclides",
+    radionuclides: Mapped[List["NMA_Radionuclides"]] = relationship(
+        "NMA_Radionuclides",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
-    major_chemistries: Mapped[List["NMAMajorChemistry"]] = relationship(
-        "NMAMajorChemistry",
+    major_chemistries: Mapped[List["NMA_MajorChemistry"]] = relationship(
+        "NMA_MajorChemistry",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
-    field_parameters: Mapped[List["FieldParameters"]] = relationship(
-        "FieldParameters",
+    field_parameters: Mapped[List["NMA_FieldParameters"]] = relationship(
+        "NMA_FieldParameters",
         back_populates="chemistry_sample_info",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -334,7 +334,7 @@ class ChemistrySampleInfo(Base):
         return value
 
 
-class AssociatedData(Base):
+class NMA_AssociatedData(Base):
     """
     Legacy AssociatedData table from NM_Aquifer.
     """
@@ -358,7 +358,7 @@ class AssociatedData(Base):
     thing: Mapped["Thing"] = relationship("Thing")
 
 
-class SurfaceWaterData(Base):
+class NMA_SurfaceWaterData(Base):
     """
     Legacy SurfaceWaterData table from AMPAPI.
     """
@@ -391,7 +391,7 @@ class SurfaceWaterData(Base):
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
 
-class SurfaceWaterPhotos(Base):
+class NMA_SurfaceWaterPhotos(Base):
     """
     Legacy SurfaceWaterPhotos table from NM_Aquifer.
     """
@@ -409,7 +409,7 @@ class SurfaceWaterPhotos(Base):
     )
 
 
-class WeatherData(Base):
+class NMA_WeatherData(Base):
     """
     Legacy WeatherData table from AMPAPI.
     """
@@ -426,7 +426,7 @@ class WeatherData(Base):
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
 
-class WeatherPhotos(Base):
+class NMA_WeatherPhotos(Base):
     """
     Legacy WeatherPhotos table from NM_Aquifer.
     """
@@ -444,7 +444,7 @@ class WeatherPhotos(Base):
     )
 
 
-class SoilRockResults(Base):
+class NMA_Soil_Rock_Results(Base):
     """
     Legacy Soil_Rock_Results table from NM_Aquifer.
     """
@@ -465,7 +465,7 @@ class SoilRockResults(Base):
     thing: Mapped["Thing"] = relationship("Thing")
 
 
-class NMAMinorTraceChemistry(Base):
+class NMA_MinorTraceChemistry(Base):
     """
     Legacy MinorandTraceChemistry table from AMPAPI.
 
@@ -506,21 +506,21 @@ class NMAMinorTraceChemistry(Base):
     volume_unit: Mapped[Optional[str]] = mapped_column(String(20))
 
     # --- Relationships ---
-    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
-        "ChemistrySampleInfo", back_populates="minor_trace_chemistries"
+    chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
+        "NMA_Chemistry_SampleInfo", back_populates="minor_trace_chemistries"
     )
 
     @validates("chemistry_sample_info_id")
     def validate_chemistry_sample_info_id(self, key, value):
-        """Prevent orphan NMAMinorTraceChemistry - must have a parent ChemistrySampleInfo."""
+        """Prevent orphan NMA_MinorTraceChemistry - must have a parent ChemistrySampleInfo."""
         if value is None:
             raise ValueError(
-                "NMAMinorTraceChemistry requires a parent ChemistrySampleInfo"
+                "NMA_MinorTraceChemistry requires a parent NMA_Chemistry_SampleInfo"
             )
         return value
 
 
-class NMARadionuclides(Base):
+class NMA_Radionuclides(Base):
     """
     Legacy Radionuclides table from NM_Aquifer_Dev_DB.
     """
@@ -563,26 +563,26 @@ class NMARadionuclides(Base):
     wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
 
     thing: Mapped["Thing"] = relationship("Thing")
-    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
-        "ChemistrySampleInfo", back_populates="radionuclides"
+    chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
+        "NMA_Chemistry_SampleInfo", back_populates="radionuclides"
     )
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):
         if value is None:
             raise ValueError(
-                "NMARadionuclides requires a Thing (thing_id cannot be None)"
+                "NMA_Radionuclides requires a Thing (thing_id cannot be None)"
             )
         return value
 
     @validates("sample_pt_id")
     def validate_sample_pt_id(self, key, value):
         if value is None:
-            raise ValueError("NMARadionuclides requires a SamplePtID")
+            raise ValueError("NMA_Radionuclides requires a SamplePtID")
         return value
 
 
-class NMAMajorChemistry(Base):
+class NMA_MajorChemistry(Base):
     """
     Legacy MajorChemistry table from NM_Aquifer_Dev_DB.
     """
@@ -619,18 +619,18 @@ class NMAMajorChemistry(Base):
     analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
     wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
 
-    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
-        "ChemistrySampleInfo", back_populates="major_chemistries"
+    chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
+        "NMA_Chemistry_SampleInfo", back_populates="major_chemistries"
     )
 
     @validates("sample_pt_id")
     def validate_sample_pt_id(self, key, value):
         if value is None:
-            raise ValueError("NMAMajorChemistry requires a SamplePtID")
+            raise ValueError("NMA_MajorChemistry requires a SamplePtID")
         return value
 
 
-class FieldParameters(Base):
+class NMA_FieldParameters(Base):
     """
     Legacy FieldParameters table from AMPAPI.
     Stores field measurements (pH, Temp, etc.) linked to ChemistrySampleInfo.
@@ -688,8 +688,8 @@ class FieldParameters(Base):
     wc_lab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
 
     # Relationships
-    chemistry_sample_info: Mapped["ChemistrySampleInfo"] = relationship(
-        "ChemistrySampleInfo", back_populates="field_parameters"
+    chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
+        "NMA_Chemistry_SampleInfo", back_populates="field_parameters"
     )
 
     @validates("sample_pt_id")

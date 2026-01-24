@@ -14,9 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for WeatherData legacy model.
+Unit tests for NMA_WeatherData legacy model.
 
-These tests verify the migration of columns from the legacy WeatherData table.
+These tests verify the migration of columns from the legacy NMA_WeatherData table.
 Migrated columns (excluding SSMA_TimeStamp):
 - LocationId -> location_id
 - PointID -> point_id
@@ -27,7 +27,7 @@ Migrated columns (excluding SSMA_TimeStamp):
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import WeatherData
+from db.nma_legacy import NMA_WeatherData
 
 
 def _next_object_id() -> int:
@@ -39,7 +39,7 @@ def _next_object_id() -> int:
 def test_create_weather_data_all_fields():
     """Test creating a weather data record with all migrated fields."""
     with session_ctx() as session:
-        record = WeatherData(
+        record = NMA_WeatherData(
             object_id=_next_object_id(),
             location_id=uuid4(),
             point_id="WX-1001",
@@ -61,7 +61,7 @@ def test_create_weather_data_all_fields():
 def test_create_weather_data_minimal():
     """Test creating a weather data record with minimal fields."""
     with session_ctx() as session:
-        record = WeatherData(
+        record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1002",
         )
@@ -82,14 +82,14 @@ def test_create_weather_data_minimal():
 def test_read_weather_data_by_object_id():
     """Test reading a specific weather data record by OBJECTID."""
     with session_ctx() as session:
-        record = WeatherData(
+        record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1003",
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(WeatherData, record.object_id)
+        fetched = session.get(NMA_WeatherData, record.object_id)
         assert fetched is not None
         assert fetched.object_id == record.object_id
         assert fetched.point_id == "WX-1003"
@@ -101,11 +101,11 @@ def test_read_weather_data_by_object_id():
 def test_query_weather_data_by_point_id():
     """Test querying weather data by point_id."""
     with session_ctx() as session:
-        record1 = WeatherData(
+        record1 = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1004",
         )
-        record2 = WeatherData(
+        record2 = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1005",
         )
@@ -113,7 +113,9 @@ def test_query_weather_data_by_point_id():
         session.commit()
 
         results = (
-            session.query(WeatherData).filter(WeatherData.point_id == "WX-1004").all()
+            session.query(NMA_WeatherData)
+            .filter(NMA_WeatherData.point_id == "WX-1004")
+            .all()
         )
         assert len(results) >= 1
         assert all(r.point_id == "WX-1004" for r in results)
@@ -127,7 +129,7 @@ def test_query_weather_data_by_point_id():
 def test_update_weather_data():
     """Test updating a weather data record."""
     with session_ctx() as session:
-        record = WeatherData(
+        record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1006",
         )
@@ -152,7 +154,7 @@ def test_update_weather_data():
 def test_delete_weather_data():
     """Test deleting a weather data record."""
     with session_ctx() as session:
-        record = WeatherData(
+        record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1007",
         )
@@ -162,14 +164,14 @@ def test_delete_weather_data():
         session.delete(record)
         session.commit()
 
-        fetched = session.get(WeatherData, record.object_id)
+        fetched = session.get(NMA_WeatherData, record.object_id)
         assert fetched is None
 
 
 # ===================== Column existence tests ==========================
 def test_weather_data_has_all_migrated_columns():
     """
-    Test that the model has all expected columns from WeatherData.
+    Test that the model has all expected columns from NMA_WeatherData.
     """
     expected_columns = [
         "location_id",
@@ -180,13 +182,13 @@ def test_weather_data_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            WeatherData, column
-        ), f"Expected column '{column}' not found in WeatherData model"
+            NMA_WeatherData, column
+        ), f"Expected column '{column}' not found in NMA_WeatherData model"
 
 
 def test_weather_data_table_name():
     """Test that the table name follows convention."""
-    assert WeatherData.__tablename__ == "NMA_WeatherData"
+    assert NMA_WeatherData.__tablename__ == "NMA_WeatherData"
 
 
 # ============= EOF =============================================

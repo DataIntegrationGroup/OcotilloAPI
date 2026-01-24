@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
-    from db.nma_legacy import ChemistrySampleInfo, Stratigraphy
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_Stratigraphy
 
 
 class Thing(
@@ -305,15 +305,15 @@ class Thing(
     )
 
     # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
-    chemistry_sample_infos: Mapped[List["ChemistrySampleInfo"]] = relationship(
-        "ChemistrySampleInfo",
+    chemistry_sample_infos: Mapped[List["NMA_Chemistry_SampleInfo"]] = relationship(
+        "NMA_Chemistry_SampleInfo",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
-    stratigraphy_logs: Mapped[List["Stratigraphy"]] = relationship(
-        "Stratigraphy",
+    stratigraphy_logs: Mapped[List["NMA_Stratigraphy"]] = relationship(
+        "NMA_Stratigraphy",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,

@@ -9,7 +9,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import Stratigraphy, Thing
+from db import NMA_Stratigraphy, Thing
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import (
@@ -52,7 +52,7 @@ class StratigraphyLegacyTransferer(Transferer):
             logger.warning("All Stratigraphy rows were skipped during processing")
             return
 
-        insert_stmt = insert(Stratigraphy)
+        insert_stmt = insert(NMA_Stratigraphy)
         excluded = insert_stmt.excluded
 
         for start in range(0, len(rows), self.batch_size):

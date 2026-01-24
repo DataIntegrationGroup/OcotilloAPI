@@ -51,9 +51,9 @@ from admin.views import (
     ThingAdmin,
     TransducerObservationAdmin,
 )
-from db.asset import Asset
 from db.aquifer_system import AquiferSystem
 from db.aquifer_type import AquiferType
+from db.asset import Asset
 from db.contact import Contact
 from db.data_provenance import DataProvenance
 from db.deployment import Deployment
@@ -64,13 +64,13 @@ from db.group import Group
 from db.lexicon import LexiconCategory, LexiconTerm
 from db.location import Location
 from db.nma_legacy import (
-    ChemistrySampleInfo,
-    NMAMinorTraceChemistry,
-    NMARadionuclides,
-    NMAHydraulicsData,
-    SoilRockResults,
-    Stratigraphy,
-    SurfaceWaterData,
+    NMA_Chemistry_SampleInfo,
+    NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
+    NMA_HydraulicsData,
+    NMA_Soil_Rock_Results,
+    NMA_Stratigraphy,
+    NMA_SurfaceWaterData,
 )
 from db.notes import Notes
 from db.observation import Observation
@@ -140,13 +140,13 @@ def create_admin(app):
 
     # Samples
     admin.add_view(SampleAdmin(Sample))
-    admin.add_view(ChemistrySampleInfoAdmin(ChemistrySampleInfo))
-    admin.add_view(SurfaceWaterDataAdmin(SurfaceWaterData))
+    admin.add_view(ChemistrySampleInfoAdmin(NMA_Chemistry_SampleInfo))
+    admin.add_view(SurfaceWaterDataAdmin(NMA_SurfaceWaterData))
 
     # Hydraulics
-    admin.add_view(HydraulicsDataAdmin(NMAHydraulicsData))
-    admin.add_view(RadionuclidesAdmin(NMARadionuclides))
-    admin.add_view(MinorTraceChemistryAdmin(NMAMinorTraceChemistry))
+    admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
+    admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
+    admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))
@@ -169,10 +169,10 @@ def create_admin(app):
     admin.add_view(LexiconCategoryAdmin(LexiconCategory))
 
     # Stratigraphy
-    admin.add_view(StratigraphyAdmin(Stratigraphy))
+    admin.add_view(StratigraphyAdmin(NMA_Stratigraphy))
 
     # SoilRockResults
-    admin.add_view(SoilRockResultsAdmin(SoilRockResults))
+    admin.add_view(SoilRockResultsAdmin(NMA_Soil_Rock_Results))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)

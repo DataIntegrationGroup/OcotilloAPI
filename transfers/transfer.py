@@ -66,6 +66,7 @@ from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransfer
 
 from transfers.asset_transfer import AssetTransferer
 from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
+from transfers.field_parameters_transfer import FieldParametersTransferer
 from transfers.hydraulicsdata import HydraulicsDataTransferer
 from transfers.radionuclides import RadionuclidesTransferer
 from transfers.major_chemistry import MajorChemistryTransferer
@@ -81,7 +82,7 @@ from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
 
 from transfers.util import timeit
 from transfers.waterlevelscontinuous_pressure_daily import (
-    NMAWaterLevelsContinuousPressureDailyTransferer,
+    NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
 )
 from transfers.weather_data import WeatherDataTransferer
 from transfers.weather_photos import WeatherPhotosTransferer
@@ -104,6 +105,7 @@ class TransferOptions:
     transfer_surface_water_data: bool
     transfer_hydraulics_data: bool
     transfer_chemistry_sampleinfo: bool
+    transfer_field_parameters: bool
     transfer_major_chemistry: bool
     transfer_radionuclides: bool
     transfer_ngwmn_views: bool
@@ -137,6 +139,7 @@ def load_transfer_options() -> TransferOptions:
         transfer_chemistry_sampleinfo=get_bool_env(
             "TRANSFER_CHEMISTRY_SAMPLEINFO", True
         ),
+        transfer_field_parameters=get_bool_env("TRANSFER_FIELD_PARAMETERS", True),
         transfer_major_chemistry=get_bool_env("TRANSFER_MAJOR_CHEMISTRY", True),
         transfer_radionuclides=get_bool_env("TRANSFER_RADIONUCLIDES", True),
         transfer_ngwmn_views=get_bool_env("TRANSFER_NGWMN_VIEWS", True),
@@ -395,7 +398,7 @@ def _transfer_parallel(
         parallel_tasks_1.append(
             (
                 "WaterLevelsPressureDaily",
-                NMAWaterLevelsContinuousPressureDailyTransferer,
+                NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
                 flags,
             )
         )
@@ -420,7 +423,7 @@ def _transfer_parallel(
         if opts.transfer_nma_stratigraphy:
             future = executor.submit(
                 _execute_transfer_with_timing,
-                "Stratigraphy",
+                "StratigraphyLegacy",
                 StratigraphyLegacyTransferer,
                 flags,
             )
@@ -509,6 +512,11 @@ def _transfer_parallel(
         message("TRANSFERRING MINOR TRACE CHEMISTRY")
         results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
         metrics.minor_trace_chemistry_metrics(*results)
+
+    if opts.transfer_field_parameters:
+        message("TRANSFERRING FIELD PARAMETERS")
+        results = _execute_transfer(FieldParametersTransferer, flags=flags)
+        metrics.field_parameters_metrics(*results)
 
     # =========================================================================
     # PHASE 3: Sensors (Sequential - required before continuous water levels)
@@ -662,6 +670,11 @@ def _transfer_sequential(
         results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
         metrics.chemistry_sampleinfo_metrics(*results)
 
+    if opts.transfer_field_parameters:
+        message("TRANSFERRING FIELD PARAMETERS")
+        results = _execute_transfer(FieldParametersTransferer, flags=flags)
+        metrics.field_parameters_metrics(*results)
+
     if opts.transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
         results = _execute_transfer(MajorChemistryTransferer, flags=flags)
@@ -686,7 +699,7 @@ def _transfer_sequential(
     if opts.transfer_pressure_daily:
         message("TRANSFERRING WATER LEVELS PRESSURE DAILY")
         results = _execute_transfer(
-            NMAWaterLevelsContinuousPressureDailyTransferer, flags=flags
+            NMA_WaterLevelsContinuous_Pressure_DailyTransferer, flags=flags
         )
         metrics.waterlevels_pressure_daily_metrics(*results)
 
