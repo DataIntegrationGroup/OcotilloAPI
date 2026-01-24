@@ -18,6 +18,7 @@ from typing import Any
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy import insert
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
@@ -134,7 +135,11 @@ class WaterLevelsContinuousTransferer(Transferer):
                 ]
 
                 observations = [obs for obs in observations if obs is not None]
-                session.bulk_save_objects(observations)
+                if observations:
+                    session.execute(
+                        insert(TransducerObservation),
+                        observations,
+                    )
                 session.add(block)
                 logger.info(
                     f"Added {len(observations)} water levels {release_status} block"
@@ -164,7 +169,7 @@ class WaterLevelsContinuousTransferer(Transferer):
         release_status: str,
         deps_sorted: list,
         nodeployments: dict,
-    ) -> TransducerObservation | None:
+    ) -> dict | None:
         deployment = _find_deployment(row.DateMeasured, deps_sorted)
 
         if deployment is None:
@@ -195,7 +200,7 @@ class WaterLevelsContinuousTransferer(Transferer):
                 payload
             ).model_dump()
             legacy_payload = self._legacy_payload(row)
-            return TransducerObservation(**obspayload, **legacy_payload)
+            return {**obspayload, **legacy_payload}
 
         except ValidationError as e:
             logger.critical(f"Observation validation error: {e.errors()}")
