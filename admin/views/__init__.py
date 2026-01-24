@@ -46,6 +46,7 @@ from admin.views.sensor import SensorAdmin
 from admin.views.soil_rock_results import SoilRockResultsAdmin
 from admin.views.stratigraphy import StratigraphyAdmin
 from admin.views.surface_water import SurfaceWaterDataAdmin
+from admin.views.surface_water_photos import SurfaceWaterPhotosAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.transducer_observation import TransducerObservationAdmin
 
@@ -76,6 +77,7 @@ __all__ = [
     "SoilRockResultsAdmin",
     "StratigraphyAdmin",
     "SurfaceWaterDataAdmin",
+    "SurfaceWaterPhotosAdmin",
     "ThingAdmin",
     "TransducerObservationAdmin",
 ]

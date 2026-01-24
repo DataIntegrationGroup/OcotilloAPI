@@ -48,6 +48,7 @@ from admin.views import (
     SoilRockResultsAdmin,
     StratigraphyAdmin,
     SurfaceWaterDataAdmin,
+    SurfaceWaterPhotosAdmin,
     ThingAdmin,
     TransducerObservationAdmin,
 )
@@ -71,6 +72,7 @@ from db.nma_legacy import (
     NMA_Soil_Rock_Results,
     NMA_Stratigraphy,
     NMA_SurfaceWaterData,
+    NMA_SurfaceWaterPhotos,
 )
 from db.notes import Notes
 from db.observation import Observation
@@ -173,6 +175,9 @@ def create_admin(app):
 
     # SoilRockResults
     admin.add_view(SoilRockResultsAdmin(NMA_Soil_Rock_Results))
+
+    # Surface Water Photos
+    admin.add_view(SurfaceWaterPhotosAdmin(NMA_SurfaceWaterPhotos))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)
