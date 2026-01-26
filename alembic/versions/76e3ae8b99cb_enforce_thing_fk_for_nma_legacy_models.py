@@ -29,7 +29,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema to enforce Thing FK relationships."""
-    # 1. Add nma_pk_location column to thing table
+    # 1. Add nma_pk_location column to thing table and its version table
     op.add_column(
         "thing",
         sa.Column(
@@ -37,6 +37,14 @@ def upgrade() -> None:
             sa.String(),
             nullable=True,
             comment="To audit the original NM_Aquifer LocationID if it was transferred over",
+        ),
+    )
+    op.add_column(
+        "thing_version",
+        sa.Column(
+            "nma_pk_location",
+            sa.String(),
+            nullable=True,
         ),
     )
 
@@ -57,8 +65,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema to allow nullable thing_id."""
-    # 1. Remove nma_pk_location column from thing table
+    # 1. Remove nma_pk_location column from thing table and its version table
     op.drop_column("thing", "nma_pk_location")
+    op.drop_column("thing_version", "nma_pk_location")
 
     # 2. Make thing_id nullable on NMA_AssociatedData
     op.alter_column(
