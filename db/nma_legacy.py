@@ -204,7 +204,16 @@ class NMA_HydraulicsData(Base):
         "Hydraulic Remarks", String(200)
     )
 
-    thing: Mapped["Thing"] = relationship("Thing")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="hydraulics_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_HydraulicsData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_HydraulicsData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_Stratigraphy(Base):
@@ -236,6 +245,15 @@ class NMA_Stratigraphy(Base):
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
     thing: Mapped["Thing"] = relationship("Thing", back_populates="stratigraphy_logs")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_Stratigraphy - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_Stratigraphy requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_Chemistry_SampleInfo(Base):
@@ -351,11 +369,20 @@ class NMA_AssociatedData(Base):
     notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
     formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
-    thing_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    thing: Mapped["Thing"] = relationship("Thing")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="associated_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_AssociatedData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_AssociatedData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_SurfaceWaterData(Base):
@@ -458,11 +485,20 @@ class NMA_Soil_Rock_Results(Base):
     d13c: Mapped[Optional[float]] = mapped_column("d13C", Float)
     d18o: Mapped[Optional[float]] = mapped_column("d18O", Float)
     sampled_by: Mapped[Optional[str]] = mapped_column("Sampled by", String(255))
-    thing_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE")
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    thing: Mapped["Thing"] = relationship("Thing")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="soil_rock_results")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_Soil_Rock_Results - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_Soil_Rock_Results requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_MinorTraceChemistry(Base):
@@ -562,16 +598,17 @@ class NMA_Radionuclides(Base):
     analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
     wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
 
-    thing: Mapped["Thing"] = relationship("Thing")
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="radionuclides")
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="radionuclides"
     )
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_Radionuclides - must have a parent Thing."""
         if value is None:
             raise ValueError(
-                "NMA_Radionuclides requires a Thing (thing_id cannot be None)"
+                "NMA_Radionuclides requires a parent Thing (thing_id cannot be None)"
             )
         return value
 
