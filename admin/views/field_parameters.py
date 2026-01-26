@@ -16,6 +16,7 @@
 """
 FieldParametersAdmin view for legacy NMA_FieldParameters.
 """
+from starlette.requests import Request
 
 from admin.views.base import OcotilloModelView
 
@@ -31,9 +32,14 @@ class FieldParametersAdmin(OcotilloModelView):
     label = "NMA Field Parameters"
     icon = "fa fa-tachometer"
 
-    can_create = False
-    can_edit = False
-    can_delete = False
+    def can_create(self, request: Request) -> bool:
+        return False
+
+    def can_edit(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
 
     # ========== List View ==========
 
