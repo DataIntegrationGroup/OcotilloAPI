@@ -44,9 +44,10 @@ class FieldParametersAdmin(OcotilloModelView):
         "field_parameter",
         "sample_value",
         "units",
+        "notes",
+        "object_id",
         "analyses_agency",
         "wc_lab_id",
-        "object_id",
     ]
 
     sortable_fields = [
