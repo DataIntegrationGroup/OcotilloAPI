@@ -50,3 +50,17 @@ class WeatherDataAdmin(OcotilloModelView):
         "weather_id": "WeatherID",
         "object_id": "OBJECTID",
     }
+
+    # ========== READ ONLY ==========
+    enable_publish_actions = (
+        False  # hides publish/unpublish actions inherited from base
+    )
+
+    def can_create(self, request) -> bool:
+        return False
+
+    def can_edit(self, request) -> bool:
+        return False
+
+    def can_delete(self, request) -> bool:
+        return False
