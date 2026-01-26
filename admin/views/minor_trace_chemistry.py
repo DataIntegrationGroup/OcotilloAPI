@@ -33,8 +33,8 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== Basic Configuration ==========
 
     identity = "n-m-a_-minor-trace-chemistry"
-    name = "Minor Trace Chemistry"
-    label = "Minor Trace Chemistry"
+    name = "NMA Minor Trace Chemistry"
+    label = "NMA Minor Trace Chemistry"
     icon = "fa fa-flask"
     pk_attr = "global_id"
     pk_type = uuid.UUID
