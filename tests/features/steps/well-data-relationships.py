@@ -30,9 +30,9 @@ from db.engine import session_ctx
 from db.nma_legacy import (
     NMA_Chemistry_SampleInfo,
     NMA_HydraulicsData,
-    NMA_NMA_Stratigraphy,
+    NMA_Stratigraphy,
     NMA_Radionuclides,
-    NMA_NMA_AssociatedData,
+    NMA_AssociatedData,
     NMA_Soil_Rock_Results,
 )
 
