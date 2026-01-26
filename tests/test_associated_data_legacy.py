@@ -60,15 +60,17 @@ def test_create_associated_data_all_fields(water_well_thing):
         session.commit()
 
 
-def test_create_associated_data_minimal():
+def test_create_associated_data_minimal(water_well_thing):
     """Test creating an associated data record with required fields only."""
     with session_ctx() as session:
-        record = NMA_AssociatedData(assoc_id=uuid4())
+        well = session.merge(water_well_thing)
+        record = NMA_AssociatedData(assoc_id=uuid4(), thing_id=well.id)
         session.add(record)
         session.commit()
         session.refresh(record)
 
         assert record.assoc_id is not None
+        assert record.thing_id == well.id
         assert record.location_id is None
         assert record.point_id is None
         assert record.notes is None

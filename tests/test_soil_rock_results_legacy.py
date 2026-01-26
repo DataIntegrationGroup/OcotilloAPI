@@ -59,15 +59,17 @@ def test_create_soil_rock_results_all_fields(water_well_thing):
         session.commit()
 
 
-def test_create_soil_rock_results_minimal():
+def test_create_soil_rock_results_minimal(water_well_thing):
     """Test creating a soil/rock results record with required fields only."""
     with session_ctx() as session:
-        record = NMA_Soil_Rock_Results()
+        well = session.merge(water_well_thing)
+        record = NMA_Soil_Rock_Results(thing_id=well.id)
         session.add(record)
         session.commit()
         session.refresh(record)
 
         assert record.id is not None
+        assert record.thing_id == well.id
         assert record.point_id is None
         assert record.sample_type is None
         assert record.date_sampled is None
