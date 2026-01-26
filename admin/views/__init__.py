@@ -31,6 +31,7 @@ from admin.views.field import (
     FieldEventAdmin,
     FieldEventParticipantAdmin,
 )
+from admin.views.field_parameters import FieldParametersAdmin
 from admin.views.geologic_formation import GeologicFormationAdmin
 from admin.views.group import GroupAdmin
 from admin.views.hydraulicsdata import HydraulicsDataAdmin
@@ -60,6 +61,7 @@ __all__ = [
     "FieldActivityAdmin",
     "FieldEventAdmin",
     "FieldEventParticipantAdmin",
+    "FieldParametersAdmin",
     "GeologicFormationAdmin",
     "GroupAdmin",
     "HydraulicsDataAdmin",

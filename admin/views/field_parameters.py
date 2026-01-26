@@ -17,6 +17,8 @@
 FieldParametersAdmin view for legacy NMA_FieldParameters.
 """
 
+from starlette.requests import Request
+
 from admin.views.base import OcotilloModelView
 
 
@@ -27,13 +29,18 @@ class FieldParametersAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "Field Parameters"
-    label = "Field Parameters"
+    name = "NMA Field Parameters"
+    label = "NMA Field Parameters"
     icon = "fa fa-tachometer"
 
-    can_create = False
-    can_edit = False
-    can_delete = False
+    def can_create(self, request: Request) -> bool:
+        return False
+
+    def can_edit(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
 
     # ========== List View ==========
 
@@ -44,9 +51,10 @@ class FieldParametersAdmin(OcotilloModelView):
         "field_parameter",
         "sample_value",
         "units",
+        "notes",
+        "object_id",
         "analyses_agency",
         "wc_lab_id",
-        "object_id",
     ]
 
     sortable_fields = [
