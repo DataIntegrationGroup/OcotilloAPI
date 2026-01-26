@@ -50,7 +50,9 @@ from admin.views import (
     SurfaceWaterDataAdmin,
     ThingAdmin,
     TransducerObservationAdmin,
+    FieldParametersAdmin,
 )
+from db import NMA_FieldParameters
 from db.aquifer_system import AquiferSystem
 from db.aquifer_type import AquiferType
 from db.asset import Asset
@@ -154,6 +156,7 @@ def create_admin(app):
 
     # Parameters
     admin.add_view(ParameterAdmin(Parameter))
+    admin.add_view(FieldParametersAdmin(NMA_FieldParameters))
 
     # Geology
     admin.add_view(GeologicFormationAdmin(GeologicFormation))
