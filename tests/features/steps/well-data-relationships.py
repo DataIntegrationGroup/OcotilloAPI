@@ -28,12 +28,12 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from db import Thing
 from db.engine import session_ctx
 from db.nma_legacy import (
-    ChemistrySampleInfo,
-    NMAHydraulicsData,
-    Stratigraphy,
-    NMARadionuclides,
-    AssociatedData,
-    SoilRockResults,
+    NMA_Chemistry_SampleInfo,
+    NMA_HydraulicsData,
+    NMA_NMA_Stratigraphy,
+    NMA_Radionuclides,
+    NMA_NMA_AssociatedData,
+    NMA_Soil_Rock_Results,
 )
 
 
@@ -127,7 +127,7 @@ def step_when_save_chemistry(context: Context):
 
     try:
         with session_ctx() as session:
-            chemistry = ChemistrySampleInfo(
+            chemistry = NMA_Chemistry_SampleInfo(
                 sample_pt_id=uuid.uuid4(),
                 sample_point_id="TEST001",
                 thing_id=None,  # No parent well
@@ -153,8 +153,8 @@ def step_then_no_orphan_chemistry(context: Context):
     """Verify no orphan chemistry records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(ChemistrySampleInfo)
-            .filter(ChemistrySampleInfo.thing_id.is_(None))
+            session.query(NMA_Chemistry_SampleInfo)
+            .filter(NMA_Chemistry_SampleInfo.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan chemistry records"
@@ -173,7 +173,7 @@ def step_when_save_hydraulics(context: Context):
 
     try:
         with session_ctx() as session:
-            hydraulics = NMAHydraulicsData(
+            hydraulics = NMA_HydraulicsData(
                 global_id=uuid.uuid4(),
                 point_id="TEST001",
                 thing_id=None,  # No parent well
@@ -193,15 +193,15 @@ def step_then_no_orphan_hydraulics(context: Context):
     """Verify no orphan hydraulic records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(NMAHydraulicsData)
-            .filter(NMAHydraulicsData.thing_id.is_(None))
+            session.query(NMA_HydraulicsData)
+            .filter(NMA_HydraulicsData.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan hydraulic records"
 
 
 # ============================================================================
-# Stratigraphy (Lithology)
+# NMA_Stratigraphy (Lithology)
 # ============================================================================
 
 
@@ -213,7 +213,7 @@ def step_when_save_lithology(context: Context):
 
     try:
         with session_ctx() as session:
-            stratigraphy = Stratigraphy(
+            stratigraphy = NMA_Stratigraphy(
                 global_id=uuid.uuid4(),
                 point_id="TEST001",
                 thing_id=None,  # No parent well
@@ -233,7 +233,7 @@ def step_then_no_orphan_lithology(context: Context):
     """Verify no orphan lithology records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(Stratigraphy).filter(Stratigraphy.thing_id.is_(None)).count()
+            session.query(NMA_Stratigraphy).filter(NMA_Stratigraphy.thing_id.is_(None)).count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan lithology records"
 
@@ -252,7 +252,7 @@ def step_when_save_radionuclides(context: Context):
     try:
         with session_ctx() as session:
             # First create a chemistry sample info for the radionuclide
-            chemistry_sample = ChemistrySampleInfo(
+            chemistry_sample = NMA_Chemistry_SampleInfo(
                 sample_pt_id=uuid.uuid4(),
                 sample_point_id="TEST001",
                 thing_id=context.test_well_id,
@@ -261,7 +261,7 @@ def step_when_save_radionuclides(context: Context):
             session.add(chemistry_sample)
             session.flush()
 
-            radionuclide = NMARadionuclides(
+            radionuclide = NMA_Radionuclides(
                 global_id=uuid.uuid4(),
                 thing_id=None,  # No parent well
                 sample_pt_id=chemistry_sample.sample_pt_id,
@@ -280,8 +280,8 @@ def step_then_no_orphan_radionuclides(context: Context):
     """Verify no orphan radionuclide records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(NMARadionuclides)
-            .filter(NMARadionuclides.thing_id.is_(None))
+            session.query(NMA_Radionuclides)
+            .filter(NMA_Radionuclides.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan radionuclide records"
@@ -300,7 +300,7 @@ def step_when_save_associated_data(context: Context):
 
     try:
         with session_ctx() as session:
-            associated_data = AssociatedData(
+            associated_data = NMA_AssociatedData(
                 assoc_id=uuid.uuid4(),
                 point_id="TEST001",
                 thing_id=None,  # No parent well
@@ -319,8 +319,8 @@ def step_then_no_orphan_associated_data(context: Context):
     """Verify no orphan associated data records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(AssociatedData)
-            .filter(AssociatedData.thing_id.is_(None))
+            session.query(NMA_AssociatedData)
+            .filter(NMA_AssociatedData.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan associated data records"
@@ -339,7 +339,7 @@ def step_when_save_soil_rock(context: Context):
 
     try:
         with session_ctx() as session:
-            soil_rock = SoilRockResults(
+            soil_rock = NMA_Soil_Rock_Results(
                 point_id="TEST001",
                 thing_id=None,  # No parent well
                 sample_type="Soil",
@@ -358,8 +358,8 @@ def step_then_no_orphan_soil_rock(context: Context):
     """Verify no orphan soil/rock records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(SoilRockResults)
-            .filter(SoilRockResults.thing_id.is_(None))
+            session.query(NMA_Soil_Rock_Results)
+            .filter(NMA_Soil_Rock_Results.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan soil/rock records"
@@ -419,13 +419,13 @@ def step_given_well_has_chemistry(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        chemistry1 = ChemistrySampleInfo(
+        chemistry1 = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid.uuid4(),
             sample_point_id="TEST001",
             thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
-        chemistry2 = ChemistrySampleInfo(
+        chemistry2 = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid.uuid4(),
             sample_point_id="TEST002",
             thing_id=context.test_well_id,
@@ -443,7 +443,7 @@ def step_given_well_has_hydraulics(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        hydraulics = NMAHydraulicsData(
+        hydraulics = NMA_HydraulicsData(
             global_id=uuid.uuid4(),
             point_id="TEST001",
             thing_id=context.test_well_id,
@@ -462,14 +462,14 @@ def step_given_well_has_lithology(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        lithology1 = Stratigraphy(
+        lithology1 = NMA_Stratigraphy(
             global_id=uuid.uuid4(),
             point_id="TEST001",
             thing_id=context.test_well_id,
             strat_top=0.0,
             strat_bottom=100.0,
         )
-        lithology2 = Stratigraphy(
+        lithology2 = NMA_Stratigraphy(
             global_id=uuid.uuid4(),
             point_id="TEST001",
             thing_id=context.test_well_id,
@@ -488,7 +488,7 @@ def step_given_well_has_radionuclides(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        chemistry_sample = ChemistrySampleInfo(
+        chemistry_sample = NMA_Chemistry_SampleInfo(
             sample_pt_id=uuid.uuid4(),
             sample_point_id="TEST001",
             thing_id=context.test_well_id,
@@ -497,7 +497,7 @@ def step_given_well_has_radionuclides(context: Context):
         session.add(chemistry_sample)
         session.flush()
 
-        radionuclide = NMARadionuclides(
+        radionuclide = NMA_Radionuclides(
             global_id=uuid.uuid4(),
             thing_id=context.test_well_id,
             sample_pt_id=chemistry_sample.sample_pt_id,
@@ -515,7 +515,7 @@ def step_given_well_has_associated_data(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        associated_data = AssociatedData(
+        associated_data = NMA_AssociatedData(
             assoc_id=uuid.uuid4(),
             point_id="TEST001",
             thing_id=context.test_well_id,
@@ -533,7 +533,7 @@ def step_given_well_has_soil_rock(context: Context):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        soil_rock = SoilRockResults(
+        soil_rock = NMA_Soil_Rock_Results(
             point_id="TEST001",
             thing_id=context.test_well_id,
             sample_type="Soil",
@@ -560,8 +560,8 @@ def step_then_chemistry_deleted(context: Context):
     """Verify chemistry samples are cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(ChemistrySampleInfo)
-            .filter(ChemistrySampleInfo.thing_id == context.test_well_id)
+            session.query(NMA_Chemistry_SampleInfo)
+            .filter(NMA_Chemistry_SampleInfo.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 chemistry samples, found {remaining}"
@@ -572,8 +572,8 @@ def step_then_hydraulics_deleted(context: Context):
     """Verify hydraulic data is cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(NMAHydraulicsData)
-            .filter(NMAHydraulicsData.thing_id == context.test_well_id)
+            session.query(NMA_HydraulicsData)
+            .filter(NMA_HydraulicsData.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 hydraulic records, found {remaining}"
@@ -584,8 +584,8 @@ def step_then_lithology_deleted(context: Context):
     """Verify lithology logs are cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(Stratigraphy)
-            .filter(Stratigraphy.thing_id == context.test_well_id)
+            session.query(NMA_Stratigraphy)
+            .filter(NMA_Stratigraphy.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 lithology logs, found {remaining}"
@@ -596,8 +596,8 @@ def step_then_radionuclides_deleted(context: Context):
     """Verify radionuclide results are cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(NMARadionuclides)
-            .filter(NMARadionuclides.thing_id == context.test_well_id)
+            session.query(NMA_Radionuclides)
+            .filter(NMA_Radionuclides.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 radionuclide records, found {remaining}"
@@ -608,8 +608,8 @@ def step_then_associated_data_deleted(context: Context):
     """Verify associated data is cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(AssociatedData)
-            .filter(AssociatedData.thing_id == context.test_well_id)
+            session.query(NMA_AssociatedData)
+            .filter(NMA_AssociatedData.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 associated data records, found {remaining}"
@@ -620,8 +620,8 @@ def step_then_soil_rock_deleted(context: Context):
     """Verify soil/rock results are cascade deleted."""
     with session_ctx() as session:
         remaining = (
-            session.query(SoilRockResults)
-            .filter(SoilRockResults.thing_id == context.test_well_id)
+            session.query(NMA_Soil_Rock_Results)
+            .filter(NMA_Soil_Rock_Results.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 soil/rock records, found {remaining}"

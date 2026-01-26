@@ -342,9 +342,17 @@ class TestRelationshipNavigation:
         with session_ctx() as session:
             well = session.merge(well_for_relationships)
 
-            # Create radionuclide record for this well
-            radio = NMA_Radionuclides(
+            # Create a chemistry sample for this well to satisfy the FK
+            chem_sample = NMA_Chemistry_SampleInfo(
                 sample_pt_id=uuid.uuid4(),
+                thing_id=well.id,
+            )
+            session.add(chem_sample)
+            session.flush()
+
+            # Create radionuclide record for this well using the same sample_pt_id
+            radio = NMA_Radionuclides(
+                sample_pt_id=chem_sample.sample_pt_id,
                 thing_id=well.id,
             )
             session.add(radio)
@@ -517,8 +525,17 @@ class TestCascadeDelete:
             session.add(well)
             session.commit()
 
-            radio = NMA_Radionuclides(
+            # Create a chemistry sample for this well to satisfy the FK
+            chem_sample = NMA_Chemistry_SampleInfo(
                 sample_pt_id=uuid.uuid4(),
+                thing_id=well.id,
+            )
+            session.add(chem_sample)
+            session.flush()
+
+            # Create radionuclide record using the chemistry sample's sample_pt_id
+            radio = NMA_Radionuclides(
+                sample_pt_id=chem_sample.sample_pt_id,
                 thing_id=well.id,
             )
             session.add(radio)
