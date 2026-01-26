@@ -16,6 +16,7 @@
 """
 FieldParametersAdmin view for legacy NMA_FieldParameters.
 """
+
 from starlette.requests import Request
 
 from admin.views.base import OcotilloModelView
