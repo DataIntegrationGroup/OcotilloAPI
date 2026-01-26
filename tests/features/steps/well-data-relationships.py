@@ -233,7 +233,9 @@ def step_then_no_orphan_lithology(context: Context):
     """Verify no orphan lithology records exist."""
     with session_ctx() as session:
         orphan_count = (
-            session.query(NMA_Stratigraphy).filter(NMA_Stratigraphy.thing_id.is_(None)).count()
+            session.query(NMA_Stratigraphy)
+            .filter(NMA_Stratigraphy.thing_id.is_(None))
+            .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan lithology records"
 
