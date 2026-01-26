@@ -475,7 +475,7 @@ class NMA_MinorTraceChemistry(Base):
     __tablename__ = "NMA_MinorTraceChemistry"
     __table_args__ = (
         UniqueConstraint(
-            "chemistry_sample_info_id",
+            "sample_pt_id",
             "analyte",
             name="uq_minor_trace_chemistry_sample_analyte",
         ),
@@ -486,7 +486,7 @@ class NMA_MinorTraceChemistry(Base):
     )
 
     # FK to ChemistrySampleInfo - required (no orphans)
-    chemistry_sample_info_id: Mapped[uuid.UUID] = mapped_column(
+    sample_pt_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
         nullable=False,
@@ -510,8 +510,8 @@ class NMA_MinorTraceChemistry(Base):
         "NMA_Chemistry_SampleInfo", back_populates="minor_trace_chemistries"
     )
 
-    @validates("chemistry_sample_info_id")
-    def validate_chemistry_sample_info_id(self, key, value):
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
         """Prevent orphan NMA_MinorTraceChemistry - must have a parent ChemistrySampleInfo."""
         if value is None:
             raise ValueError(
