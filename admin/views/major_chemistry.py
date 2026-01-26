@@ -22,8 +22,6 @@ import uuid
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
 
-from starlette_admin.fields import HasOne
-
 from admin.views.base import OcotilloModelView
 
 
