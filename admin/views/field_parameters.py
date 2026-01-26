@@ -27,8 +27,8 @@ class FieldParametersAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "Field Parameters"
-    label = "Field Parameters"
+    name = "NMA Field Parameters"
+    label = "NMA Field Parameters"
     icon = "fa fa-tachometer"
 
     can_create = False
