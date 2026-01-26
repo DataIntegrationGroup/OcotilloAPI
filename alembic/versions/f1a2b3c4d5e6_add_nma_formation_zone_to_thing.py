@@ -1,19 +1,19 @@
 """Add nma_formation_zone to Thing.
 
 Revision ID: f1a2b3c4d5e6
-Revises: f3b4c5d6e7f8
+Revises: g4a5b6c7d8e9
 Create Date: 2026-03-01 00:00:00.000000
 """
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision: str = "f1a2b3c4d5e6"
-down_revision: Union[str, Sequence[str], None] = "f3b4c5d6e7f8"
+down_revision: Union[str, Sequence[str], None] = "g4a5b6c7d8e9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

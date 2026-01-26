@@ -28,13 +28,13 @@ Migrated columns:
 """
 
 from db.engine import session_ctx
-from db.nma_legacy import SoilRockResults
+from db.nma_legacy import NMA_Soil_Rock_Results
 
 
 def test_create_soil_rock_results_all_fields(water_well_thing):
     """Test creating a soil/rock results record with all fields."""
     with session_ctx() as session:
-        record = SoilRockResults(
+        record = NMA_Soil_Rock_Results(
             point_id="SR-0001",
             sample_type="Soil",
             date_sampled="2026-01-01",
@@ -62,7 +62,7 @@ def test_create_soil_rock_results_all_fields(water_well_thing):
 def test_create_soil_rock_results_minimal():
     """Test creating a soil/rock results record with required fields only."""
     with session_ctx() as session:
-        record = SoilRockResults()
+        record = NMA_Soil_Rock_Results()
         session.add(record)
         session.commit()
         session.refresh(record)

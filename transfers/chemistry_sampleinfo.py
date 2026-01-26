@@ -24,7 +24,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import ChemistrySampleInfo, Thing
+from db import NMA_Chemistry_SampleInfo, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -205,7 +205,7 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         rows = self._dedupe_rows(row_dicts, key="OBJECTID")
 
-        insert_stmt = insert(ChemistrySampleInfo)
+        insert_stmt = insert(NMA_Chemistry_SampleInfo)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

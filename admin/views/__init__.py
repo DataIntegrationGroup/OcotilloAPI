@@ -19,59 +19,63 @@ Admin views package for NMSampleLocations.
 Provides MS Access-like interface for CRUD operations on database models.
 """
 
-from admin.views.location import LocationAdmin
-from admin.views.thing import ThingAdmin
-from admin.views.observation import ObservationAdmin
-from admin.views.contact import ContactAdmin
-from admin.views.sensor import SensorAdmin
-from admin.views.deployment import DeploymentAdmin
-from admin.views.lexicon import LexiconTermAdmin, LexiconCategoryAdmin
 from admin.views.asset import AssetAdmin
-from admin.views.aquifer_type import AquiferTypeAdmin
 from admin.views.aquifer_system import AquiferSystemAdmin
-from admin.views.group import GroupAdmin
-from admin.views.notes import NotesAdmin
-from admin.views.sample import SampleAdmin
-from admin.views.hydraulicsdata import HydraulicsDataAdmin
+from admin.views.aquifer_type import AquiferTypeAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
-from admin.views.radionuclides import RadionuclidesAdmin
-from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
-from admin.views.geologic_formation import GeologicFormationAdmin
+from admin.views.contact import ContactAdmin
 from admin.views.data_provenance import DataProvenanceAdmin
-from admin.views.transducer_observation import TransducerObservationAdmin
+from admin.views.deployment import DeploymentAdmin
 from admin.views.field import (
-    FieldEventAdmin,
     FieldActivityAdmin,
+    FieldEventAdmin,
     FieldEventParticipantAdmin,
 )
+from admin.views.geologic_formation import GeologicFormationAdmin
+from admin.views.group import GroupAdmin
+from admin.views.hydraulicsdata import HydraulicsDataAdmin
+from admin.views.lexicon import LexiconCategoryAdmin, LexiconTermAdmin
+from admin.views.location import LocationAdmin
+from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
+from admin.views.notes import NotesAdmin
+from admin.views.observation import ObservationAdmin
 from admin.views.parameter import ParameterAdmin
+from admin.views.radionuclides import RadionuclidesAdmin
+from admin.views.sample import SampleAdmin
+from admin.views.sensor import SensorAdmin
+from admin.views.soil_rock_results import SoilRockResultsAdmin
+from admin.views.stratigraphy import StratigraphyAdmin
 from admin.views.surface_water import SurfaceWaterDataAdmin
+from admin.views.thing import ThingAdmin
+from admin.views.transducer_observation import TransducerObservationAdmin
 
 __all__ = [
-    "LocationAdmin",
-    "ThingAdmin",
-    "ObservationAdmin",
-    "ContactAdmin",
-    "SensorAdmin",
-    "DeploymentAdmin",
-    "LexiconTermAdmin",
-    "LexiconCategoryAdmin",
     "AssetAdmin",
-    "AquiferTypeAdmin",
     "AquiferSystemAdmin",
-    "GroupAdmin",
-    "NotesAdmin",
-    "SampleAdmin",
-    "HydraulicsDataAdmin",
+    "AquiferTypeAdmin",
     "ChemistrySampleInfoAdmin",
-    "RadionuclidesAdmin",
-    "MinorTraceChemistryAdmin",
-    "GeologicFormationAdmin",
+    "ContactAdmin",
     "DataProvenanceAdmin",
-    "TransducerObservationAdmin",
-    "FieldEventAdmin",
+    "DeploymentAdmin",
     "FieldActivityAdmin",
+    "FieldEventAdmin",
     "FieldEventParticipantAdmin",
+    "GeologicFormationAdmin",
+    "GroupAdmin",
+    "HydraulicsDataAdmin",
+    "LexiconCategoryAdmin",
+    "LexiconTermAdmin",
+    "LocationAdmin",
+    "MinorTraceChemistryAdmin",
+    "NotesAdmin",
+    "ObservationAdmin",
     "ParameterAdmin",
+    "RadionuclidesAdmin",
+    "SampleAdmin",
+    "SensorAdmin",
+    "SoilRockResultsAdmin",
+    "StratigraphyAdmin",
     "SurfaceWaterDataAdmin",
+    "ThingAdmin",
+    "TransducerObservationAdmin",
 ]

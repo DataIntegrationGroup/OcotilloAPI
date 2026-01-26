@@ -22,13 +22,13 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMAWaterLevelsContinuousPressureDaily
+from db import NMA_WaterLevelsContinuous_Pressure_Daily
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
+class NMA_WaterLevelsContinuous_Pressure_DailyTransferer(Transferer):
     """
     Transfer for the legacy WaterLevelsContinuous_Pressure_Daily table.
 
@@ -57,7 +57,7 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
             key="GlobalID",
         )
 
-        insert_stmt = insert(NMAWaterLevelsContinuousPressureDaily)
+        insert_stmt = insert(NMA_WaterLevelsContinuous_Pressure_Daily)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):
@@ -139,7 +139,9 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
 
 def run(batch_size: int = 1000) -> None:
     """Entrypoint to execute the transfer."""
-    transferer = NMAWaterLevelsContinuousPressureDailyTransferer(batch_size=batch_size)
+    transferer = NMA_WaterLevelsContinuous_Pressure_DailyTransferer(
+        batch_size=batch_size
+    )
     transferer.transfer()
 
 

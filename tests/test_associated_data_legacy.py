@@ -14,9 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 """
-Unit tests for AssociatedData legacy model.
+Unit tests for NMA_AssociatedData legacy model.
 
-These tests verify the migration of columns from the legacy AssociatedData table.
+These tests verify the migration of columns from the legacy NMA_AssociatedData table.
 Migrated columns:
 - LocationId -> location_id
 - PointID -> point_id
@@ -29,13 +29,13 @@ Migrated columns:
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import AssociatedData
+from db.nma_legacy import NMA_AssociatedData
 
 
 def test_create_associated_data_all_fields(water_well_thing):
     """Test creating an associated data record with all fields."""
     with session_ctx() as session:
-        record = AssociatedData(
+        record = NMA_AssociatedData(
             location_id=uuid4(),
             point_id="AA-0001",
             assoc_id=uuid4(),
@@ -63,7 +63,7 @@ def test_create_associated_data_all_fields(water_well_thing):
 def test_create_associated_data_minimal():
     """Test creating an associated data record with required fields only."""
     with session_ctx() as session:
-        record = AssociatedData(assoc_id=uuid4())
+        record = NMA_AssociatedData(assoc_id=uuid4())
         session.add(record)
         session.commit()
         session.refresh(record)

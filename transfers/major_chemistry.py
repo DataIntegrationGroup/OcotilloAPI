@@ -24,7 +24,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import ChemistrySampleInfo, NMAMajorChemistry
+from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -46,7 +46,7 @@ class MajorChemistryTransferer(Transferer):
 
     def _build_sample_pt_id_cache(self) -> None:
         with session_ctx() as session:
-            sample_infos = session.query(ChemistrySampleInfo.sample_pt_id).all()
+            sample_infos = session.query(NMA_Chemistry_SampleInfo.sample_pt_id).all()
             self._sample_pt_ids = {sample_pt_id for (sample_pt_id,) in sample_infos}
         logger.info(
             f"Built ChemistrySampleInfo cache with {len(self._sample_pt_ids)} entries"
@@ -98,7 +98,7 @@ class MajorChemistryTransferer(Transferer):
             )
 
         rows = self._dedupe_rows(row_dicts, key="GlobalID")
-        insert_stmt = insert(NMAMajorChemistry)
+        insert_stmt = insert(NMA_MajorChemistry)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):

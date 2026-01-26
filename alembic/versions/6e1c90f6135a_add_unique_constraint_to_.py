@@ -1,4 +1,4 @@
-"""add unique constraint to NMAMinorTraceChemistry
+"""add unique constraint to NMA_MinorTraceChemistry
 
 Revision ID: 6e1c90f6135a
 Revises: 95d8b982cd5d
@@ -9,9 +9,6 @@ Create Date: 2026-01-09 17:30:00.842462
 from typing import Sequence, Union
 
 from alembic import op
-import geoalchemy2
-import sqlalchemy as sa
-import sqlalchemy_utils
 
 # revision identifiers, used by Alembic.
 revision: str = "6e1c90f6135a"

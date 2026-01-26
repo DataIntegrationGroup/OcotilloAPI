@@ -14,9 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for SurfaceWaterData legacy model.
+Unit tests for NMA_SurfaceWaterData legacy model.
 
-These tests verify the migration of columns from the legacy SurfaceWaterData table.
+These tests verify the migration of columns from the legacy NMA_SurfaceWaterData table.
 Migrated columns:
 - SurfaceID -> surface_id
 - PointID -> point_id
@@ -39,7 +39,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import SurfaceWaterData
+from db.nma_legacy import NMA_SurfaceWaterData
 
 
 def _next_object_id() -> int:
@@ -51,7 +51,7 @@ def _next_object_id() -> int:
 def test_create_surface_water_data_all_fields():
     """Test creating a surface water data record with all fields."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1001",
             object_id=_next_object_id(),
@@ -84,7 +84,7 @@ def test_create_surface_water_data_all_fields():
 def test_create_surface_water_data_minimal():
     """Test creating a surface water data record with minimal fields."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1002",
             object_id=_next_object_id(),
@@ -106,7 +106,7 @@ def test_create_surface_water_data_minimal():
 def test_read_surface_water_data_by_object_id():
     """Test reading a surface water data record by OBJECTID."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1003",
             object_id=_next_object_id(),
@@ -114,7 +114,7 @@ def test_read_surface_water_data_by_object_id():
         session.add(record)
         session.commit()
 
-        fetched = session.get(SurfaceWaterData, record.object_id)
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
         assert fetched is not None
         assert fetched.object_id == record.object_id
         assert fetched.point_id == "SW-1003"
@@ -126,12 +126,12 @@ def test_read_surface_water_data_by_object_id():
 def test_query_surface_water_data_by_point_id():
     """Test querying surface water data by point_id."""
     with session_ctx() as session:
-        record1 = SurfaceWaterData(
+        record1 = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1004",
             object_id=_next_object_id(),
         )
-        record2 = SurfaceWaterData(
+        record2 = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1005",
             object_id=_next_object_id(),
@@ -140,8 +140,8 @@ def test_query_surface_water_data_by_point_id():
         session.commit()
 
         results = (
-            session.query(SurfaceWaterData)
-            .filter(SurfaceWaterData.point_id == "SW-1004")
+            session.query(NMA_SurfaceWaterData)
+            .filter(NMA_SurfaceWaterData.point_id == "SW-1004")
             .all()
         )
         assert len(results) >= 1
@@ -156,7 +156,7 @@ def test_query_surface_water_data_by_point_id():
 def test_update_surface_water_data():
     """Test updating a surface water data record."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1006",
             object_id=_next_object_id(),
@@ -180,7 +180,7 @@ def test_update_surface_water_data():
 def test_delete_surface_water_data():
     """Test deleting a surface water data record."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1007",
             object_id=_next_object_id(),
@@ -191,7 +191,7 @@ def test_delete_surface_water_data():
         session.delete(record)
         session.commit()
 
-        fetched = session.get(SurfaceWaterData, record.object_id)
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
         assert fetched is None
 
 
@@ -218,13 +218,13 @@ def test_surface_water_data_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            SurfaceWaterData, column
-        ), f"Expected column '{column}' not found in SurfaceWaterData model"
+            NMA_SurfaceWaterData, column
+        ), f"Expected column '{column}' not found in NMA_SurfaceWaterData model"
 
 
 def test_surface_water_data_table_name():
     """Test that the table name follows convention."""
-    assert SurfaceWaterData.__tablename__ == "NMA_SurfaceWaterData"
+    assert NMA_SurfaceWaterData.__tablename__ == "NMA_SurfaceWaterData"
 
 
 # ============= EOF =============================================

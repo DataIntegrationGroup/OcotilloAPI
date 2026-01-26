@@ -14,9 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 """
-Unit tests for SurfaceWaterPhotos legacy model.
+Unit tests for NMA_SurfaceWaterPhotos legacy model.
 
-These tests verify the migration of columns from the legacy SurfaceWaterPhotos table.
+These tests verify the migration of columns from the legacy NMA_SurfaceWaterPhotos table.
 Migrated columns:
 - SurfaceID -> surface_id
 - PointID -> point_id
@@ -28,13 +28,13 @@ Migrated columns:
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import SurfaceWaterPhotos
+from db.nma_legacy import NMA_SurfaceWaterPhotos
 
 
 def test_create_surface_water_photos_all_fields():
     """Test creating a surface water photos record with all fields."""
     with session_ctx() as session:
-        record = SurfaceWaterPhotos(
+        record = NMA_SurfaceWaterPhotos(
             surface_id=uuid4(),
             point_id="SW-0001",
             ole_path="photo.jpg",
@@ -58,7 +58,7 @@ def test_create_surface_water_photos_all_fields():
 def test_create_surface_water_photos_minimal():
     """Test creating a surface water photos record with required fields only."""
     with session_ctx() as session:
-        record = SurfaceWaterPhotos(
+        record = NMA_SurfaceWaterPhotos(
             point_id="SW-0002",
             global_id=uuid4(),
         )

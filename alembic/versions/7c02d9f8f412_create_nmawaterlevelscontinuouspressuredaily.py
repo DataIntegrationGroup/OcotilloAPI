@@ -1,4 +1,4 @@
-"""Create legacy NMAWaterLevelsContinuousPressureDaily table.
+"""Create legacy NMA_WaterLevelsContinuous_Pressure_Daily table.
 
 Revision ID: 7c02d9f8f412
 Revises: 2101e0b029dc
@@ -7,8 +7,8 @@ Create Date: 2026-01-09 00:00:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.

@@ -15,8 +15,8 @@
 # ===============================================================================
 import os
 import re
-import time
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
@@ -47,6 +47,7 @@ from db import (
     GeologicFormation,
     ThingAquiferAssociation,
 )
+from db.engine import session_ctx
 from schemas.thing import CreateWell, CreateWellScreen
 from services.gcs_helper import get_storage_bucket
 from services.util import (
@@ -54,7 +55,6 @@ from services.util import (
     get_county_from_point,
     get_quad_name_from_point,
 )
-from db.engine import session_ctx
 from transfers.transferer import ChunkTransferer, Transferer
 from transfers.util import (
     make_location,
@@ -1064,14 +1064,7 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            batch_errors.append(
-                {
-                    "pointid": row.PointID,
-                    "error": f"Validation Error: {e.errors()}",
-                    "table": "WellData",
-                    "field": "UnknownField",
-                }
-            )
+            self._capture_validation_error(row.PointID, e)
             return
 
         well = None
@@ -1229,14 +1222,7 @@ class WellTransferer(Transferer):
 
             CreateWell.model_validate(data)
         except ValidationError as e:
-            batch_errors.append(
-                {
-                    "pointid": row.PointID,
-                    "error": f"Validation Error: {e.errors()}",
-                    "table": "WellData",
-                    "field": "UnknownField",
-                }
-            )
+            self._capture_validation_error(row.PointID, e)
             return
 
         well = None
@@ -1630,7 +1616,7 @@ class WellScreenTransferer(WellChunkTransferer):
             logger.critical(
                 f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
             )
-            self._capture_error(row.PointID, str(e), "UnknownField")
+            self._capture_validation_error(row.PointID, e)
             return
 
         well_screen = WellScreen(**well_screen_data)

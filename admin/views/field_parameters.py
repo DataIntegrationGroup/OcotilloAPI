@@ -14,72 +14,65 @@
 # limitations under the License.
 # ===============================================================================
 """
-MinorTraceChemistryAdmin view for legacy NMA_MinorTraceChemistry.
+FieldParametersAdmin view for legacy NMA_FieldParameters.
 """
-
-import uuid
-
-from starlette.requests import Request
-from starlette_admin.fields import HasOne
 
 from admin.views.base import OcotilloModelView
 
 
-class MinorTraceChemistryAdmin(OcotilloModelView):
+class FieldParametersAdmin(OcotilloModelView):
     """
-    Admin view for NMA_MinorTraceChemistry model.
+    Admin view for FieldParameters model.
     """
 
     # ========== Basic Configuration ==========
 
-    identity = "n-m-a_-minor-trace-chemistry"
-    name = "Minor Trace Chemistry"
-    label = "Minor Trace Chemistry"
-    icon = "fa fa-flask"
-    pk_attr = "global_id"
-    pk_type = uuid.UUID
+    name = "Field Parameters"
+    label = "Field Parameters"
+    icon = "fa fa-tachometer"
 
-    def can_create(self, request: Request) -> bool:
-        return False
-
-    def can_edit(self, request: Request) -> bool:
-        return False
-
-    def can_delete(self, request: Request) -> bool:
-        return False
+    can_create = False
+    can_edit = False
+    can_delete = False
 
     # ========== List View ==========
 
     list_fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
-        "analyte",
+        "sample_pt_id",
+        "sample_point_id",
+        "field_parameter",
         "sample_value",
         "units",
-        "symbol",
-        "analysis_date",
         "analyses_agency",
+        "wc_lab_id",
+        "object_id",
     ]
 
     sortable_fields = [
         "global_id",
-        "analyte",
+        "sample_pt_id",
+        "sample_point_id",
+        "field_parameter",
         "sample_value",
         "units",
-        "symbol",
-        "analysis_date",
+        "notes",
         "analyses_agency",
+        "wc_lab_id",
+        "object_id",
     ]
 
-    fields_default_sort = [("analysis_date", True)]
+    fields_default_sort = [("sample_point_id", True)]
 
     searchable_fields = [
         "global_id",
-        "analyte",
-        "symbol",
-        "analysis_method",
+        "sample_pt_id",
+        "sample_point_id",
+        "field_parameter",
+        "units",
         "notes",
         "analyses_agency",
+        "wc_lab_id",
     ]
 
     page_size = 50
@@ -89,34 +82,28 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     fields = [
         "global_id",
-        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
-        "analyte",
-        "symbol",
+        "sample_pt_id",
+        "sample_point_id",
+        "field_parameter",
         "sample_value",
         "units",
-        "uncertainty",
-        "analysis_method",
-        "analysis_date",
         "notes",
-        "volume",
-        "volume_unit",
+        "object_id",
         "analyses_agency",
+        "wc_lab_id",
     ]
 
     field_labels = {
         "global_id": "GlobalID",
-        "chemistry_sample_info": "Chemistry Sample Info",
-        "analyte": "Analyte",
-        "symbol": "Symbol",
-        "sample_value": "Sample Value",
+        "sample_pt_id": "SamplePtID",
+        "sample_point_id": "SamplePointID",
+        "field_parameter": "FieldParameter",
+        "sample_value": "SampleValue",
         "units": "Units",
-        "uncertainty": "Uncertainty",
-        "analysis_method": "Analysis Method",
-        "analysis_date": "Analysis Date",
         "notes": "Notes",
-        "volume": "Volume",
-        "volume_unit": "Volume Unit",
-        "analyses_agency": "Analyses Agency",
+        "object_id": "OBJECTID",
+        "analyses_agency": "AnalysesAgency",
+        "wc_lab_id": "WCLab_ID",
     }
 
 

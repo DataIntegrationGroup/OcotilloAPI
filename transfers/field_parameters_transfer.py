@@ -13,17 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-"""
-Transfer MinorandTraceChemistry data from NM_Aquifer to NMA_MinorTraceChemistry.
+"""Transfer FieldParameters data from NM_Aquifer to NMA_FieldParameters.
 
-This transfer requires ChemistrySampleInfo to be backfilled first (which links
-to Thing via thing_id). Each MinorTraceChemistry record links to a ChemistrySampleInfo
-record via chemistry_sample_info_id.
+This transfer requires ChemistrySampleInfo to be backfilled first. Each
+FieldParameters record links to a ChemistrySampleInfo record via SamplePtID.
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime
 from typing import Any, Optional
 from uuid import UUID
 
@@ -31,31 +28,30 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
+from db import NMA_Chemistry_SampleInfo, NMA_FieldParameters
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class MinorTraceChemistryTransferer(Transferer):
+class FieldParametersTransferer(Transferer):
     """
-    Transfer MinorandTraceChemistry records to NMA_MinorTraceChemistry.
+    Transfer FieldParameters records to NMA_FieldParameters.
 
     Looks up ChemistrySampleInfo by SamplePtID and creates linked
-    NMA_MinorTraceChemistry records. Uses upsert for idempotent transfers.
+    FieldParameters records. Uses upsert for idempotent transfers.
     """
 
-    source_table = "MinorandTraceChemistry"
+    source_table = "FieldParameters"
 
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        # Cache ChemistrySampleInfo SamplePtIDs for FK validation
         self._sample_pt_ids: set[UUID] = set()
         self._build_sample_pt_id_cache()
 
-    def _build_sample_pt_id_cache(self):
+    def _build_sample_pt_id_cache(self) -> None:
         """Build cache of ChemistrySampleInfo.SamplePtID values."""
         with session_ctx() as session:
             sample_infos = session.query(NMA_Chemistry_SampleInfo.sample_pt_id).all()
@@ -66,7 +62,6 @@ class MinorTraceChemistryTransferer(Transferer):
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table)
-        # Filter to only include rows where ChemistrySampleInfo exists
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
 
@@ -77,7 +72,6 @@ class MinorTraceChemistryTransferer(Transferer):
         This prevents orphan records and ensures the FK constraint will be satisfied.
         """
         valid_sample_pt_ids = self._sample_pt_ids
-
         before_count = len(df)
         mask = df["SamplePtID"].apply(
             lambda value: self._uuid_val(value) in valid_sample_pt_ids
@@ -88,7 +82,7 @@ class MinorTraceChemistryTransferer(Transferer):
         if before_count > after_count:
             skipped = before_count - after_count
             logger.warning(
-                f"Filtered out {skipped} MinorTraceChemistry records without matching "
+                f"Filtered out {skipped} FieldParameters records without matching "
                 f"ChemistrySampleInfo ({after_count} valid, {skipped} orphan records prevented)"
             )
 
@@ -98,14 +92,13 @@ class MinorTraceChemistryTransferer(Transferer):
         """
         Override transfer hook to use batch upsert for idempotent transfers.
 
-        Uses ON CONFLICT DO UPDATE on (chemistry_sample_info_id, analyte).
+        Uses ON CONFLICT DO UPDATE on GlobalID.
         """
         limit = self.flags.get("LIMIT", 0)
         df = self.cleaned_df
         if limit > 0:
             df = df.head(limit)
 
-        # Convert rows to dicts
         row_dicts = []
         for row in df.itertuples():
             row_dict = self._row_to_dict(row)
@@ -116,11 +109,10 @@ class MinorTraceChemistryTransferer(Transferer):
             logger.warning("No valid rows to transfer")
             return
 
-        # Dedupe by GlobalID to avoid PK conflicts.
         rows = self._dedupe_rows(row_dicts)
-        logger.info(f"Upserting {len(rows)} MinorTraceChemistry records")
+        logger.info(f"Upserting {len(rows)} FieldParameters records")
 
-        insert_stmt = insert(NMA_MinorTraceChemistry)
+        insert_stmt = insert(NMA_FieldParameters)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):
@@ -129,16 +121,15 @@ class MinorTraceChemistryTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["GlobalID"],
                 set_={
-                    "sample_value": excluded.sample_value,
-                    "units": excluded.units,
-                    "symbol": excluded.symbol,
-                    "analysis_method": excluded.analysis_method,
-                    "analysis_date": excluded.analysis_date,
-                    "notes": excluded.notes,
-                    "analyses_agency": excluded.analyses_agency,
-                    "uncertainty": excluded.uncertainty,
-                    "volume": excluded.volume,
-                    "volume_unit": excluded.volume_unit,
+                    "SamplePtID": excluded.SamplePtID,
+                    "SamplePointID": excluded.SamplePointID,
+                    "FieldParameter": excluded.FieldParameter,
+                    "SampleValue": excluded.SampleValue,
+                    "Units": excluded.Units,
+                    "Notes": excluded.Notes,
+                    "OBJECTID": excluded.OBJECTID,
+                    "AnalysesAgency": excluded.AnalysesAgency,
+                    "WCLab_ID": excluded.WCLab_ID,
                 },
             )
             session.execute(stmt)
@@ -147,7 +138,7 @@ class MinorTraceChemistryTransferer(Transferer):
 
     def _row_to_dict(self, row) -> Optional[dict[str, Any]]:
         """Convert a DataFrame row to a dict for upsert."""
-        sample_pt_id = self._uuid_val(row.SamplePtID)
+        sample_pt_id = self._uuid_val(getattr(row, "SamplePtID", None))
         if sample_pt_id is None:
             self._capture_error(
                 getattr(row, "SamplePtID", None),
@@ -174,26 +165,23 @@ class MinorTraceChemistryTransferer(Transferer):
             return None
 
         return {
-            "global_id": global_id,
-            "chemistry_sample_info_id": sample_pt_id,
-            "analyte": self._safe_str(row, "Analyte"),
-            "sample_value": self._safe_float(row, "SampleValue"),
-            "units": self._safe_str(row, "Units"),
-            "symbol": self._safe_str(row, "Symbol"),
-            "analysis_method": self._safe_str(row, "AnalysisMethod"),
-            "analysis_date": self._parse_date(row, "AnalysisDate"),
-            "notes": self._safe_str(row, "Notes"),
-            "analyses_agency": self._safe_str(row, "AnalysesAgency"),
-            "uncertainty": self._safe_float(row, "Uncertainty"),
-            "volume": self._safe_int(row, "Volume"),
-            "volume_unit": self._safe_str(row, "VolumeUnit"),
+            "GlobalID": global_id,
+            "SamplePtID": sample_pt_id,
+            "SamplePointID": self._safe_str(row, "SamplePointID"),
+            "FieldParameter": self._safe_str(row, "FieldParameter"),
+            "SampleValue": self._safe_float(row, "SampleValue"),
+            "Units": self._safe_str(row, "Units"),
+            "Notes": self._safe_str(row, "Notes"),
+            "OBJECTID": self._safe_int(row, "OBJECTID"),
+            "AnalysesAgency": self._safe_str(row, "AnalysesAgency"),
+            "WCLab_ID": self._safe_str(row, "WCLab_ID"),
         }
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
         deduped = {}
         for row in rows:
-            key = row.get("global_id")
+            key = row.get("GlobalID")
             if key is None:
                 continue
             deduped[key] = row
@@ -205,6 +193,26 @@ class MinorTraceChemistryTransferer(Transferer):
         if val is None or pd.isna(val):
             return None
         return str(val)
+
+    def _safe_float(self, row, attr: str) -> Optional[float]:
+        """Safely get a float value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    def _safe_int(self, row, attr: str) -> Optional[int]:
+        """Safely get an int value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return None
 
     def _uuid_val(self, value: Any) -> Optional[UUID]:
         if value is None or pd.isna(value):
@@ -218,62 +226,16 @@ class MinorTraceChemistryTransferer(Transferer):
                 return None
         return None
 
-    def _safe_float(self, row, attr: str) -> Optional[float]:
-        """Safely get a float value, returning None for NaN."""
-        val = getattr(row, attr, None)
-        if val is None or pd.isna(val):
-            return None
-        return float(val)
-
-    def _safe_int(self, row, attr: str) -> Optional[int]:
-        """Safely get an int value, returning None for NaN."""
-        val = getattr(row, attr, None)
-        if val is None or pd.isna(val):
-            return None
-        return int(val)
-
-    def _parse_date(self, row, attr: str) -> Optional[date]:
-        """Parse a date value from the row."""
-        val = getattr(row, attr, None)
-        if val is None or pd.isna(val):
-            return None
-
-        # Handle pandas Timestamp
-        if hasattr(val, "date"):
-            return val.date()
-
-        # Handle string dates
-        if isinstance(val, str):
-            try:
-                # Try common date formats (most specific first)
-                for fmt in [
-                    "%Y-%m-%d %H:%M:%S.%f",  # With milliseconds/microseconds
-                    "%Y-%m-%d %H:%M:%S",
-                    "%Y-%m-%d",
-                    "%m/%d/%Y",
-                ]:
-                    try:
-                        return datetime.strptime(val, fmt).date()
-                    except ValueError:
-                        continue
-                logger.warning(f"Could not parse date: {val}")
-                return None
-            except Exception as e:
-                logger.warning(f"Error parsing date {val}: {e}")
-                return None
-
-        return None
-
 
 def run(flags: dict = None) -> tuple[pd.DataFrame, pd.DataFrame, list]:
     """Entrypoint to execute the transfer."""
-    transferer = MinorTraceChemistryTransferer(flags=flags)
+    transferer = FieldParametersTransferer(flags=flags)
     transferer.transfer()
     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
 
 if __name__ == "__main__":
-    # Allow running via `python -m transfers.minor_trace_chemistry_transfer`
+    # Allow running via `python -m transfers.field_parameters_transfer`
     run()
 
 # ============= EOF =============================================

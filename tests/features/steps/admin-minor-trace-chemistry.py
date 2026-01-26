@@ -18,8 +18,13 @@ Step definitions for Minor Trace Chemistry admin view tests.
 These are fast integration tests - no HTTP calls, direct module testing.
 """
 
-from behave import when, then, given
+from behave import when, then
 from behave.runner import Context
+
+from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
+
+ADMIN_IDENTITY = MinorTraceChemistryAdmin.identity
+ADMIN_BASE_URL = f"/admin/{ADMIN_IDENTITY}"
 
 
 def _ensure_admin_mounted(context):
@@ -56,48 +61,45 @@ def step_impl(context: Context, view_name: str):
 
 @then("the Minor Trace Chemistry admin view should not allow create")
 def step_impl(context: Context):
-    from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
-    from db.nma_legacy import NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
-    view = MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+    view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
     assert view.can_create(None) is False
 
 
 @then("the Minor Trace Chemistry admin view should not allow edit")
 def step_impl(context: Context):
-    from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
-    from db.nma_legacy import NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
-    view = MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+    view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
     assert view.can_edit(None) is False
 
 
 @then("the Minor Trace Chemistry admin view should not allow delete")
 def step_impl(context: Context):
-    from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
-    from db.nma_legacy import NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
-    view = MinorTraceChemistryAdmin(NMAMinorTraceChemistry)
+    view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
     assert view.can_delete(None) is False
 
 
 @when("I request the Minor Trace Chemistry admin list page")
 def step_impl(context: Context):
     _ensure_admin_mounted(context)
-    context.response = context.client.get("/admin/n-m-a-minor-trace-chemistry/list")
+    context.response = context.client.get(f"{ADMIN_BASE_URL}/list")
 
 
 @when("I request the Minor Trace Chemistry admin detail page for an existing record")
 def step_impl(context: Context):
     _ensure_admin_mounted(context)
     from db.engine import session_ctx
-    from db.nma_legacy import NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
     with session_ctx() as session:
-        record = session.query(NMAMinorTraceChemistry).first()
+        record = session.query(NMA_MinorTraceChemistry).first()
         if record:
             context.response = context.client.get(
-                f"/admin/n-m-a-minor-trace-chemistry/detail/{record.global_id}"
+                f"{ADMIN_BASE_URL}/detail/{record.global_id}"
             )
         else:
             # No records exist, skip by setting a mock 200 response
