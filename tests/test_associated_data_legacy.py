@@ -79,4 +79,52 @@ def test_create_associated_data_minimal():
         session.commit()
 
 
+# ===================== FK Enforcement tests (Issue #363) ==========================
+
+
+def test_associated_data_validator_rejects_none_thing_id():
+    """NMA_AssociatedData validator rejects None thing_id."""
+    import pytest
+
+    with pytest.raises(ValueError, match="requires a parent Thing"):
+        NMA_AssociatedData(
+            assoc_id=uuid4(),
+            point_id="ORPHAN-TEST",
+            thing_id=None,
+        )
+
+
+def test_associated_data_thing_id_not_nullable():
+    """NMA_AssociatedData.thing_id column is NOT NULL."""
+    col = NMA_AssociatedData.__table__.c.thing_id
+    assert col.nullable is False, "thing_id should be NOT NULL"
+
+
+def test_associated_data_fk_has_cascade():
+    """NMA_AssociatedData.thing_id FK has ondelete=CASCADE."""
+    col = NMA_AssociatedData.__table__.c.thing_id
+    fk = list(col.foreign_keys)[0]
+    assert fk.ondelete == "CASCADE"
+
+
+def test_associated_data_back_populates_thing(water_well_thing):
+    """NMA_AssociatedData.thing navigates back to Thing."""
+    with session_ctx() as session:
+        well = session.merge(water_well_thing)
+        record = NMA_AssociatedData(
+            assoc_id=uuid4(),
+            point_id="BP-ASSOC-01",
+            thing_id=well.id,
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+
+        assert record.thing is not None
+        assert record.thing.id == well.id
+
+        session.delete(record)
+        session.commit()
+
+
 # ============= EOF =============================================

@@ -289,4 +289,45 @@ def test_radionuclides_table_name():
     assert NMA_Radionuclides.__tablename__ == "NMA_Radionuclides"
 
 
+# ===================== FK Enforcement tests (Issue #363) ==========================
+
+
+def test_radionuclides_fk_has_cascade():
+    """NMA_Radionuclides.thing_id FK has ondelete=CASCADE."""
+    col = NMA_Radionuclides.__table__.c.thing_id
+    fk = list(col.foreign_keys)[0]
+    assert fk.ondelete == "CASCADE"
+
+
+def test_radionuclides_back_populates_thing(water_well_thing):
+    """NMA_Radionuclides.thing navigates back to Thing."""
+    with session_ctx() as session:
+        well = session.merge(water_well_thing)
+
+        # Radionuclides requires a chemistry_sample_info
+        sample_info = NMA_Chemistry_SampleInfo(
+            sample_pt_id=uuid4(),
+            sample_point_id=_next_sample_point_id(),
+            thing_id=well.id,
+        )
+        session.add(sample_info)
+        session.commit()
+
+        record = NMA_Radionuclides(
+            global_id=uuid4(),
+            sample_pt_id=sample_info.sample_pt_id,
+            thing_id=well.id,
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+
+        assert record.thing is not None
+        assert record.thing.id == well.id
+
+        session.delete(record)
+        session.delete(sample_info)
+        session.commit()
+
+
 # ============= EOF =============================================

@@ -260,4 +260,54 @@ def test_hydraulics_data_table_name():
     assert NMA_HydraulicsData.__tablename__ == "NMA_HydraulicsData"
 
 
+# ===================== FK Enforcement tests (Issue #363) ==========================
+
+
+def test_hydraulics_data_validator_rejects_none_thing_id():
+    """NMA_HydraulicsData validator rejects None thing_id."""
+    import pytest
+
+    with pytest.raises(ValueError, match="requires a parent Thing"):
+        NMA_HydraulicsData(
+            global_id=_next_global_id(),
+            test_top=5,
+            test_bottom=15,
+            thing_id=None,
+        )
+
+
+def test_hydraulics_data_thing_id_not_nullable():
+    """NMA_HydraulicsData.thing_id column is NOT NULL."""
+    col = NMA_HydraulicsData.__table__.c.thing_id
+    assert col.nullable is False, "thing_id should be NOT NULL"
+
+
+def test_hydraulics_data_fk_has_cascade():
+    """NMA_HydraulicsData.thing_id FK has ondelete=CASCADE."""
+    col = NMA_HydraulicsData.__table__.c.thing_id
+    fk = list(col.foreign_keys)[0]
+    assert fk.ondelete == "CASCADE"
+
+
+def test_hydraulics_data_back_populates_thing(water_well_thing):
+    """NMA_HydraulicsData.thing navigates back to Thing."""
+    with session_ctx() as session:
+        well = session.merge(water_well_thing)
+        record = NMA_HydraulicsData(
+            global_id=_next_global_id(),
+            test_top=5,
+            test_bottom=15,
+            thing_id=well.id,
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+
+        assert record.thing is not None
+        assert record.thing.id == well.id
+
+        session.delete(record)
+        session.commit()
+
+
 # ============= EOF =============================================
