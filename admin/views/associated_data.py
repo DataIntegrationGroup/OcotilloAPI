@@ -63,3 +63,17 @@ class AssociatedDataAdmin(OcotilloModelView):
         "object_id": "OBJECTID",
         "thing_id": "ThingID",
     }
+
+    # ========== READ ONLY ==========
+    enable_publish_actions = (
+        False  # hides publish/unpublish actions inherited from base
+    )
+
+    def can_create(self, request) -> bool:
+        return False
+
+    def can_edit(self, request) -> bool:
+        return False
+
+    def can_delete(self, request) -> bool:
+        return False
