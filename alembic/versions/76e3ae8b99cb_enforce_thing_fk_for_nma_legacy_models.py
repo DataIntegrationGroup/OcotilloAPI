@@ -14,15 +14,15 @@ This migration enforces foreign key relationships between Thing and NMA legacy m
 
 Note: Before running this migration, ensure no orphan records exist in the affected tables.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
-revision: str = '76e3ae8b99cb'
-down_revision: Union[str, Sequence[str], None] = 'c1d2e3f4a5b6'
+revision: str = "76e3ae8b99cb"
+down_revision: Union[str, Sequence[str], None] = "c1d2e3f4a5b6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -31,57 +31,41 @@ def upgrade() -> None:
     """Upgrade schema to enforce Thing FK relationships."""
     # 1. Add nma_pk_location column to thing table
     op.add_column(
-        'thing',
+        "thing",
         sa.Column(
-            'nma_pk_location',
+            "nma_pk_location",
             sa.String(),
             nullable=True,
-            comment='To audit the original NM_Aquifer LocationID if it was transferred over'
-        )
+            comment="To audit the original NM_Aquifer LocationID if it was transferred over",
+        ),
     )
 
     # 2. Make thing_id NOT NULL on NMA_AssociatedData
     # First, delete any orphan records (records without a thing_id)
-    op.execute(
-        'DELETE FROM "NMA_AssociatedData" WHERE thing_id IS NULL'
-    )
+    op.execute('DELETE FROM "NMA_AssociatedData" WHERE thing_id IS NULL')
     op.alter_column(
-        'NMA_AssociatedData',
-        'thing_id',
-        existing_type=sa.Integer(),
-        nullable=False
+        "NMA_AssociatedData", "thing_id", existing_type=sa.Integer(), nullable=False
     )
 
     # 3. Make thing_id NOT NULL on NMA_Soil_Rock_Results
     # First, delete any orphan records (records without a thing_id)
-    op.execute(
-        'DELETE FROM "NMA_Soil_Rock_Results" WHERE thing_id IS NULL'
-    )
+    op.execute('DELETE FROM "NMA_Soil_Rock_Results" WHERE thing_id IS NULL')
     op.alter_column(
-        'NMA_Soil_Rock_Results',
-        'thing_id',
-        existing_type=sa.Integer(),
-        nullable=False
+        "NMA_Soil_Rock_Results", "thing_id", existing_type=sa.Integer(), nullable=False
     )
 
 
 def downgrade() -> None:
     """Downgrade schema to allow nullable thing_id."""
     # 1. Remove nma_pk_location column from thing table
-    op.drop_column('thing', 'nma_pk_location')
+    op.drop_column("thing", "nma_pk_location")
 
     # 2. Make thing_id nullable on NMA_AssociatedData
     op.alter_column(
-        'NMA_AssociatedData',
-        'thing_id',
-        existing_type=sa.Integer(),
-        nullable=True
+        "NMA_AssociatedData", "thing_id", existing_type=sa.Integer(), nullable=True
     )
 
     # 3. Make thing_id nullable on NMA_Soil_Rock_Results
     op.alter_column(
-        'NMA_Soil_Rock_Results',
-        'thing_id',
-        existing_type=sa.Integer(),
-        nullable=True
+        "NMA_Soil_Rock_Results", "thing_id", existing_type=sa.Integer(), nullable=True
     )

@@ -41,7 +41,6 @@ from db.nma_legacy import (
 )
 from db.thing import Thing
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -293,7 +292,9 @@ class TestRelationshipNavigation:
             # Navigate through relationship
             assert hasattr(well, "chemistry_sample_infos")
             assert len(well.chemistry_sample_infos) >= 1
-            assert any(s.sample_point_id == "NAV-CHEM-01" for s in well.chemistry_sample_infos)
+            assert any(
+                s.sample_point_id == "NAV-CHEM-01" for s in well.chemistry_sample_infos
+            )
 
     def test_well_navigates_to_hydraulics_data(self, well_for_relationships):
         """Well can navigate to its hydraulic test data."""
