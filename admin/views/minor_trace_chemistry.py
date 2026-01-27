@@ -61,6 +61,8 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
         "symbol",
         "analysis_date",
         "analyses_agency",
+        "wclab_id",
+        "object_id",
     ]
 
     sortable_fields = [
