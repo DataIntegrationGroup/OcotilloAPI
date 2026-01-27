@@ -31,7 +31,7 @@ Feature: Minor Trace Chemistry Admin View
     Then the Minor Trace Chemistry admin view should have these fields configured:
       | field                     |
       | global_id                 |
-      | chemistry_sample_info_id  |
+      | sample_pt_id              |
       | analyte                   |
       | symbol                    |
       | sample_value              |
