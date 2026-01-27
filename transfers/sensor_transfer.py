@@ -118,12 +118,6 @@ class SensorTransferer(ThingBasedTransferer):
                 serial_no=row.SerialNo,
                 owner_agency="NMBGMR",
                 notes=row.Equipment_Notes,
-                nma_WI_Duration=row.WI_Duration,
-                nma_WI_EndFrequency=row.WI_EndFrequency,
-                nma_WI_Magnitude=row.WI_Magnitude,
-                nma_WI_MicGain=row.WI_MicGain,
-                nma_WI_MinSoundDepth=row.WI_MinSoundDepth,
-                nma_WI_StartFrequency=row.WI_StartFrequency,
             )
             self._added[row.SerialNo] = sensor
             session.add(sensor)
