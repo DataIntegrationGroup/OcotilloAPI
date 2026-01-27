@@ -18,6 +18,7 @@ from typing import Any
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy import insert
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
@@ -42,6 +43,9 @@ class WaterLevelsContinuousTransferer(Transferer):
         self.groundwater_parameter_id = get_groundwater_parameter_id()
         self._itertuples_field_map = {}
         self._df_columns = set()
+        self._observation_columns = {
+            column.key for column in TransducerObservation.__table__.columns
+        }
         if self._sensor_types is None:
             raise ValueError("_sensor_types must be set")
         if self._partition_field is None:
@@ -134,7 +138,15 @@ class WaterLevelsContinuousTransferer(Transferer):
                 ]
 
                 observations = [obs for obs in observations if obs is not None]
-                session.bulk_save_objects(observations)
+                if observations:
+                    filtered_observations = [
+                        {k: v for k, v in obs.items() if k in self._observation_columns}
+                        for obs in observations
+                    ]
+                    session.execute(
+                        insert(TransducerObservation),
+                        filtered_observations,
+                    )
                 session.add(block)
                 logger.info(
                     f"Added {len(observations)} water levels {release_status} block"
@@ -164,7 +176,7 @@ class WaterLevelsContinuousTransferer(Transferer):
         release_status: str,
         deps_sorted: list,
         nodeployments: dict,
-    ) -> TransducerObservation | None:
+    ) -> dict | None:
         deployment = _find_deployment(row.DateMeasured, deps_sorted)
 
         if deployment is None:
@@ -195,7 +207,7 @@ class WaterLevelsContinuousTransferer(Transferer):
                 payload
             ).model_dump()
             legacy_payload = self._legacy_payload(row)
-            return TransducerObservation(**obspayload, **legacy_payload)
+            return {**obspayload, **legacy_payload}
 
         except ValidationError as e:
             logger.critical(f"Observation validation error: {e.errors()}")
