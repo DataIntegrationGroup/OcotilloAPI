@@ -475,7 +475,7 @@ class NMA_MinorTraceChemistry(Base):
     __tablename__ = "NMA_MinorTraceChemistry"
     __table_args__ = (
         UniqueConstraint(
-            "sample_pt_id",
+            "SamplePtID",
             "Analyte",
             name="uq_minor_trace_chemistry_sample_analyte",
         ),
@@ -487,6 +487,7 @@ class NMA_MinorTraceChemistry(Base):
 
     # FK to ChemistrySampleInfo - required (no orphans)
     sample_pt_id: Mapped[uuid.UUID] = mapped_column(
+        "SamplePtID",
         UUID(as_uuid=True),
         ForeignKey("NMA_Chemistry_SampleInfo.SamplePtID", ondelete="CASCADE"),
         nullable=False,
