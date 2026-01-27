@@ -37,6 +37,7 @@ from admin.views.group import GroupAdmin
 from admin.views.hydraulicsdata import HydraulicsDataAdmin
 from admin.views.lexicon import LexiconCategoryAdmin, LexiconTermAdmin
 from admin.views.location import LocationAdmin
+from admin.views.major_chemistry import MajorChemistryAdmin
 from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from admin.views.notes import NotesAdmin
 from admin.views.observation import ObservationAdmin
@@ -68,6 +69,7 @@ __all__ = [
     "LexiconCategoryAdmin",
     "LexiconTermAdmin",
     "LocationAdmin",
+    "MajorChemistryAdmin",
     "MinorTraceChemistryAdmin",
     "NotesAdmin",
     "ObservationAdmin",
