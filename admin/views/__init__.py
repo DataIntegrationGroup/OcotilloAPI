@@ -20,6 +20,7 @@ Provides MS Access-like interface for CRUD operations on database models.
 """
 
 from admin.views.asset import AssetAdmin
+from admin.views.associated_data import AssociatedDataAdmin
 from admin.views.aquifer_system import AquiferSystemAdmin
 from admin.views.aquifer_type import AquiferTypeAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
@@ -31,11 +32,13 @@ from admin.views.field import (
     FieldEventAdmin,
     FieldEventParticipantAdmin,
 )
+from admin.views.field_parameters import FieldParametersAdmin
 from admin.views.geologic_formation import GeologicFormationAdmin
 from admin.views.group import GroupAdmin
 from admin.views.hydraulicsdata import HydraulicsDataAdmin
 from admin.views.lexicon import LexiconCategoryAdmin, LexiconTermAdmin
 from admin.views.location import LocationAdmin
+from admin.views.major_chemistry import MajorChemistryAdmin
 from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from admin.views.notes import NotesAdmin
 from admin.views.observation import ObservationAdmin
@@ -46,12 +49,15 @@ from admin.views.sensor import SensorAdmin
 from admin.views.soil_rock_results import SoilRockResultsAdmin
 from admin.views.stratigraphy import StratigraphyAdmin
 from admin.views.surface_water import SurfaceWaterDataAdmin
+from admin.views.surface_water_photos import SurfaceWaterPhotosAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.transducer_observation import TransducerObservationAdmin
 from admin.views.weather_photos import WeatherPhotosAdmin
+from admin.views.weather_data import WeatherDataAdmin
 
 __all__ = [
     "AssetAdmin",
+    "AssociatedDataAdmin",
     "AquiferSystemAdmin",
     "AquiferTypeAdmin",
     "ChemistrySampleInfoAdmin",
@@ -61,12 +67,14 @@ __all__ = [
     "FieldActivityAdmin",
     "FieldEventAdmin",
     "FieldEventParticipantAdmin",
+    "FieldParametersAdmin",
     "GeologicFormationAdmin",
     "GroupAdmin",
     "HydraulicsDataAdmin",
     "LexiconCategoryAdmin",
     "LexiconTermAdmin",
     "LocationAdmin",
+    "MajorChemistryAdmin",
     "MinorTraceChemistryAdmin",
     "NotesAdmin",
     "ObservationAdmin",
@@ -77,7 +85,9 @@ __all__ = [
     "SoilRockResultsAdmin",
     "StratigraphyAdmin",
     "SurfaceWaterDataAdmin",
+    "SurfaceWaterPhotosAdmin",
     "ThingAdmin",
     "TransducerObservationAdmin",
     "WeatherPhotosAdmin",
+    "WeatherDataAdmin",
 ]
