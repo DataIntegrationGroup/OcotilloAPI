@@ -26,6 +26,7 @@ from admin.views import (
     AquiferSystemAdmin,
     AquiferTypeAdmin,
     AssetAdmin,
+    AssociatedDataAdmin,
     ChemistrySampleInfoAdmin,
     ContactAdmin,
     DataProvenanceAdmin,
@@ -38,6 +39,7 @@ from admin.views import (
     LexiconCategoryAdmin,
     LexiconTermAdmin,
     LocationAdmin,
+    MajorChemistryAdmin,
     MinorTraceChemistryAdmin,
     NotesAdmin,
     ObservationAdmin,
@@ -51,7 +53,10 @@ from admin.views import (
     SurfaceWaterPhotosAdmin,
     ThingAdmin,
     TransducerObservationAdmin,
+    WeatherDataAdmin,
+    FieldParametersAdmin,
 )
+from db import NMA_FieldParameters
 from db.aquifer_system import AquiferSystem
 from db.aquifer_type import AquiferType
 from db.asset import Asset
@@ -65,7 +70,9 @@ from db.group import Group
 from db.lexicon import LexiconCategory, LexiconTerm
 from db.location import Location
 from db.nma_legacy import (
+    NMA_AssociatedData,
     NMA_Chemistry_SampleInfo,
+    NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
     NMA_Radionuclides,
     NMA_HydraulicsData,
@@ -73,6 +80,7 @@ from db.nma_legacy import (
     NMA_Stratigraphy,
     NMA_SurfaceWaterData,
     NMA_SurfaceWaterPhotos,
+    NMA_WeatherData,
 )
 from db.notes import Notes
 from db.observation import Observation
@@ -130,6 +138,9 @@ def create_admin(app):
     # Assets
     admin.add_view(AssetAdmin(Asset))
 
+    # Associated data
+    admin.add_view(AssociatedDataAdmin(NMA_AssociatedData))
+
     # Aquifer
     admin.add_view(AquiferSystemAdmin(AquiferSystem))
     admin.add_view(AquiferTypeAdmin(AquiferType))
@@ -149,6 +160,7 @@ def create_admin(app):
     admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
     admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
     admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
+    admin.add_view(MajorChemistryAdmin(NMA_MajorChemistry))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))
@@ -156,6 +168,7 @@ def create_admin(app):
 
     # Parameters
     admin.add_view(ParameterAdmin(Parameter))
+    admin.add_view(FieldParametersAdmin(NMA_FieldParameters))
 
     # Geology
     admin.add_view(GeologicFormationAdmin(GeologicFormation))
@@ -178,6 +191,8 @@ def create_admin(app):
 
     # Surface Water Photos
     admin.add_view(SurfaceWaterPhotosAdmin(NMA_SurfaceWaterPhotos))
+    # Weather
+    admin.add_view(WeatherDataAdmin(NMA_WeatherData))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)

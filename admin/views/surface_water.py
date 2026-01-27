@@ -25,8 +25,8 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
     Admin view for SurfaceWaterData legacy model.
     """
 
-    name = "Surface Water"
-    label = "Surface Water"
+    name = "NMA Surface Water Data"
+    label = "NMA Surface Water Data"
     icon = "fa fa-water"
     enable_publish_actions = False
 
@@ -77,6 +77,20 @@ class SurfaceWaterDataAdmin(OcotilloModelView):
         "source_notes",
         "data_source",
     ]
+
+    # ========== READ ONLY ==========
+    enable_publish_actions = (
+        False  # hides publish/unpublish actions inherited from base
+    )
+
+    def can_create(self, request) -> bool:
+        return False
+
+    def can_edit(self, request) -> bool:
+        return False
+
+    def can_delete(self, request) -> bool:
+        return False
 
 
 # ============= EOF =============================================
