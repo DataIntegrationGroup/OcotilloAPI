@@ -14,24 +14,30 @@
 # limitations under the License.
 # ===============================================================================
 """
-FieldParametersAdmin view for legacy NMA_FieldParameters.
+MajorChemistryAdmin view for legacy NMA_MajorChemistry.
 """
 
+import uuid
+
 from starlette.requests import Request
+from starlette_admin.fields import HasOne
 
 from admin.views.base import OcotilloModelView
 
 
-class FieldParametersAdmin(OcotilloModelView):
+class MajorChemistryAdmin(OcotilloModelView):
     """
-    Admin view for FieldParameters model.
+    Admin view for NMA_MajorChemistry model.
     """
 
     # ========== Basic Configuration ==========
 
-    name = "NMA Field Parameters"
-    label = "NMA Field Parameters"
-    icon = "fa fa-tachometer"
+    identity = "n-m-a_-major-chemistry"
+    name = "NMA Major Chemistry"
+    label = "NMA Major Chemistry"
+    icon = "fa fa-flask"
+    pk_attr = "global_id"
+    pk_type = uuid.UUID
 
     def can_create(self, request: Request) -> bool:
         return False
@@ -48,39 +54,53 @@ class FieldParametersAdmin(OcotilloModelView):
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "field_parameter",
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
+        "analysis_date",
         "notes",
+        "volume",
+        "volume_unit",
         "object_id",
         "analyses_agency",
-        "wc_lab_id",
+        "wclab_id",
     ]
 
     sortable_fields = [
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "field_parameter",
+        "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
+        "analysis_date",
         "notes",
-        "analyses_agency",
-        "wc_lab_id",
+        "volume",
+        "volume_unit",
         "object_id",
+        "analyses_agency",
+        "wclab_id",
     ]
 
-    fields_default_sort = [("sample_point_id", True)]
+    fields_default_sort = [("analysis_date", True)]
 
     searchable_fields = [
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "field_parameter",
-        "units",
+        "analyte",
+        "symbol",
+        "analysis_method",
         "notes",
         "analyses_agency",
-        "wc_lab_id",
+        "wclab_id",
     ]
 
     page_size = 50
@@ -92,26 +112,40 @@ class FieldParametersAdmin(OcotilloModelView):
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "field_parameter",
+        HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
+        "analysis_date",
         "notes",
+        "volume",
+        "volume_unit",
         "object_id",
         "analyses_agency",
-        "wc_lab_id",
+        "wclab_id",
     ]
 
     field_labels = {
         "global_id": "GlobalID",
         "sample_pt_id": "SamplePtID",
         "sample_point_id": "SamplePointID",
-        "field_parameter": "FieldParameter",
-        "sample_value": "SampleValue",
+        "chemistry_sample_info": "Chemistry Sample Info",
+        "analyte": "Analyte",
+        "symbol": "Symbol",
+        "sample_value": "Sample Value",
         "units": "Units",
+        "uncertainty": "Uncertainty",
+        "analysis_method": "Analysis Method",
+        "analysis_date": "Analysis Date",
         "notes": "Notes",
+        "volume": "Volume",
+        "volume_unit": "Volume Unit",
         "object_id": "OBJECTID",
-        "analyses_agency": "AnalysesAgency",
-        "wc_lab_id": "WCLab_ID",
+        "analyses_agency": "Analyses Agency",
+        "wclab_id": "WCLab_ID",
     }
 
 

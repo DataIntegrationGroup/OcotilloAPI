@@ -38,6 +38,7 @@ from admin.views import (
     LexiconCategoryAdmin,
     LexiconTermAdmin,
     LocationAdmin,
+    MajorChemistryAdmin,
     MinorTraceChemistryAdmin,
     NotesAdmin,
     ObservationAdmin,
@@ -51,7 +52,9 @@ from admin.views import (
     ThingAdmin,
     TransducerObservationAdmin,
     WeatherDataAdmin,
+    FieldParametersAdmin,
 )
+from db import NMA_FieldParameters
 from db.aquifer_system import AquiferSystem
 from db.aquifer_type import AquiferType
 from db.asset import Asset
@@ -66,6 +69,7 @@ from db.lexicon import LexiconCategory, LexiconTerm
 from db.location import Location
 from db.nma_legacy import (
     NMA_Chemistry_SampleInfo,
+    NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
     NMA_Radionuclides,
     NMA_HydraulicsData,
@@ -149,6 +153,7 @@ def create_admin(app):
     admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
     admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
     admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
+    admin.add_view(MajorChemistryAdmin(NMA_MajorChemistry))
 
     # Field
     admin.add_view(FieldEventAdmin(FieldEvent))
@@ -156,6 +161,7 @@ def create_admin(app):
 
     # Parameters
     admin.add_view(ParameterAdmin(Parameter))
+    admin.add_view(FieldParametersAdmin(NMA_FieldParameters))
 
     # Geology
     admin.add_view(GeologicFormationAdmin(GeologicFormation))
