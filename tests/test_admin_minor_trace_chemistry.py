@@ -37,15 +37,15 @@ class TestMinorTraceChemistryAdminRegistration:
         admin = create_admin(app)
         view_names = [v.name for v in admin._views]
 
-        assert "Minor Trace Chemistry" in view_names, (
-            f"Expected 'Minor Trace Chemistry' to be registered in admin views. "
+        assert "NMA Minor Trace Chemistry" in view_names, (
+            f"Expected 'NMA Minor Trace Chemistry' to be registered in admin views. "
             f"Found: {view_names}"
         )
 
     def test_view_has_correct_label(self):
         """View should have proper label for sidebar display."""
         view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
-        assert view.label == "Minor Trace Chemistry"
+        assert view.label == "NMA Minor Trace Chemistry"
 
     def test_class_has_flask_icon_configured(self):
         """View class should have flask icon configured for chemistry data."""
