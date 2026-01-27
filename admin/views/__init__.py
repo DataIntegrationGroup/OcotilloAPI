@@ -52,6 +52,7 @@ from admin.views.surface_water import SurfaceWaterDataAdmin
 from admin.views.surface_water_photos import SurfaceWaterPhotosAdmin
 from admin.views.thing import ThingAdmin
 from admin.views.transducer_observation import TransducerObservationAdmin
+from admin.views.weather_photos import WeatherPhotosAdmin
 from admin.views.weather_data import WeatherDataAdmin
 
 __all__ = [
@@ -87,5 +88,6 @@ __all__ = [
     "SurfaceWaterPhotosAdmin",
     "ThingAdmin",
     "TransducerObservationAdmin",
+    "WeatherPhotosAdmin",
     "WeatherDataAdmin",
 ]

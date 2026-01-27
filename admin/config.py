@@ -53,6 +53,7 @@ from admin.views import (
     SurfaceWaterPhotosAdmin,
     ThingAdmin,
     TransducerObservationAdmin,
+    WeatherPhotosAdmin,
     WeatherDataAdmin,
     FieldParametersAdmin,
 )
@@ -79,6 +80,7 @@ from db.nma_legacy import (
     NMA_Soil_Rock_Results,
     NMA_Stratigraphy,
     NMA_SurfaceWaterData,
+    NMA_WeatherPhotos,
     NMA_SurfaceWaterPhotos,
     NMA_WeatherData,
 )
@@ -119,25 +121,32 @@ def create_admin(app):
     )
 
     # Register model views
-    # Geography
-    admin.add_view(LocationAdmin(Location))
-
-    # Things (Wells, Springs, etc.)
-    admin.add_view(ThingAdmin(Thing))
-
-    # Observations (Water Levels)
-    admin.add_view(ObservationAdmin(Observation))
-
-    # Contacts (Owners)
-    admin.add_view(ContactAdmin(Contact))
-
-    # Equipment
-    admin.add_view(SensorAdmin(Sensor))
-    admin.add_view(DeploymentAdmin(Deployment))
-
     # Assets
     admin.add_view(AssetAdmin(Asset))
 
+    # Aquifer
+    admin.add_view(AquiferSystemAdmin(AquiferSystem))
+    admin.add_view(AquiferTypeAdmin(AquiferType))
+
+    # Contacts
+    admin.add_view(ContactAdmin(Contact))
+
+    # Data provenance
+    admin.add_view(DataProvenanceAdmin(DataProvenance))
+
+    # Deployment / Equipment
+    admin.add_view(DeploymentAdmin(Deployment))
+    admin.add_view(SensorAdmin(Sensor))
+
+    # Field
+    admin.add_view(FieldActivityAdmin(FieldActivity))
+    admin.add_view(FieldEventAdmin(FieldEvent))
+
+    # Geology
+    admin.add_view(GeologicFormationAdmin(GeologicFormation))
+
+    # Geography
+    admin.add_view(LocationAdmin(Location))
     # Associated data
     admin.add_view(AssociatedDataAdmin(NMA_AssociatedData))
 
@@ -148,46 +157,43 @@ def create_admin(app):
     # Groups
     admin.add_view(GroupAdmin(Group))
 
+    # Hydraulics
+    admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
+    admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
+    admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
+    admin.add_view(MajorChemistryAdmin(NMA_MajorChemistry))
+
+    # Lexicon
+    admin.add_view(LexiconCategoryAdmin(LexiconCategory))
+    admin.add_view(LexiconTermAdmin(LexiconTerm))
+
     # Notes
     admin.add_view(NotesAdmin(Notes))
 
-    # Samples
-    admin.add_view(SampleAdmin(Sample))
-    admin.add_view(ChemistrySampleInfoAdmin(NMA_Chemistry_SampleInfo))
-    admin.add_view(SurfaceWaterDataAdmin(NMA_SurfaceWaterData))
-
-    # Hydraulics
-    admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
-    admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
-    admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
-    admin.add_view(MajorChemistryAdmin(NMA_MajorChemistry))
-
-    # Field
-    admin.add_view(FieldEventAdmin(FieldEvent))
-    admin.add_view(FieldActivityAdmin(FieldActivity))
+    # Observations
+    admin.add_view(ObservationAdmin(Observation))
 
     # Parameters
     admin.add_view(ParameterAdmin(Parameter))
     admin.add_view(FieldParametersAdmin(NMA_FieldParameters))
 
-    # Geology
-    admin.add_view(GeologicFormationAdmin(GeologicFormation))
+    # Samples
+    admin.add_view(ChemistrySampleInfoAdmin(NMA_Chemistry_SampleInfo))
+    admin.add_view(SampleAdmin(Sample))
+    admin.add_view(SurfaceWaterDataAdmin(NMA_SurfaceWaterData))
 
-    # Data provenance
-    admin.add_view(DataProvenanceAdmin(DataProvenance))
+    # Soil & Stratigraphy
+    admin.add_view(SoilRockResultsAdmin(NMA_Soil_Rock_Results))
+    admin.add_view(StratigraphyAdmin(NMA_Stratigraphy))
+
+    # Things (Wells, Springs, etc.)
+    admin.add_view(ThingAdmin(Thing))
 
     # Transducer observations
     admin.add_view(TransducerObservationAdmin(TransducerObservation))
 
-    # Lexicon
-    admin.add_view(LexiconTermAdmin(LexiconTerm))
-    admin.add_view(LexiconCategoryAdmin(LexiconCategory))
-
-    # Stratigraphy
-    admin.add_view(StratigraphyAdmin(NMA_Stratigraphy))
-
-    # SoilRockResults
-    admin.add_view(SoilRockResultsAdmin(NMA_Soil_Rock_Results))
+    # Weather
+    admin.add_view(WeatherPhotosAdmin(NMA_WeatherPhotos))
 
     # Surface Water Photos
     admin.add_view(SurfaceWaterPhotosAdmin(NMA_SurfaceWaterPhotos))
