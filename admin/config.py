@@ -26,6 +26,7 @@ from admin.views import (
     AquiferSystemAdmin,
     AquiferTypeAdmin,
     AssetAdmin,
+    AssociatedDataAdmin,
     ChemistrySampleInfoAdmin,
     ContactAdmin,
     DataProvenanceAdmin,
@@ -68,6 +69,7 @@ from db.group import Group
 from db.lexicon import LexiconCategory, LexiconTerm
 from db.location import Location
 from db.nma_legacy import (
+    NMA_AssociatedData,
     NMA_Chemistry_SampleInfo,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
@@ -133,6 +135,9 @@ def create_admin(app):
 
     # Assets
     admin.add_view(AssetAdmin(Asset))
+
+    # Associated data
+    admin.add_view(AssociatedDataAdmin(NMA_AssociatedData))
 
     # Aquifer
     admin.add_view(AquiferSystemAdmin(AquiferSystem))

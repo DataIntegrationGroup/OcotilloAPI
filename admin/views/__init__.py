@@ -20,6 +20,7 @@ Provides MS Access-like interface for CRUD operations on database models.
 """
 
 from admin.views.asset import AssetAdmin
+from admin.views.associated_data import AssociatedDataAdmin
 from admin.views.aquifer_system import AquiferSystemAdmin
 from admin.views.aquifer_type import AquiferTypeAdmin
 from admin.views.chemistry_sampleinfo import ChemistrySampleInfoAdmin
@@ -54,6 +55,7 @@ from admin.views.weather_data import WeatherDataAdmin
 
 __all__ = [
     "AssetAdmin",
+    "AssociatedDataAdmin",
     "AquiferSystemAdmin",
     "AquiferTypeAdmin",
     "ChemistrySampleInfoAdmin",
