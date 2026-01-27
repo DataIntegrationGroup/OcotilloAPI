@@ -53,6 +53,8 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     list_fields = [
         "global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "sample_pt_id",
+        "sample_point_id",
         "analyte",
         "sample_value",
         "units",
@@ -63,23 +65,31 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
 
     sortable_fields = [
         "global_id",
+        "sample_pt_id",
+        "sample_point_id",
         "analyte",
         "sample_value",
         "units",
         "symbol",
         "analysis_date",
         "analyses_agency",
+        "wclab_id",
+        "object_id",
     ]
 
     fields_default_sort = [("analysis_date", True)]
 
     searchable_fields = [
         "global_id",
+        "sample_pt_id",
+        "sample_point_id",
         "analyte",
         "symbol",
         "analysis_method",
+        "analysis_date",
         "notes",
         "analyses_agency",
+        "wclab_id",
     ]
 
     page_size = 50
@@ -90,6 +100,8 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     fields = [
         "global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "sample_pt_id",
+        "sample_point_id",
         "analyte",
         "symbol",
         "sample_value",
@@ -100,23 +112,29 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
         "notes",
         "volume",
         "volume_unit",
+        "object_id",
         "analyses_agency",
+        "wclab_id",
     ]
 
     field_labels = {
         "global_id": "GlobalID",
         "chemistry_sample_info": "Chemistry Sample Info",
+        "sample_pt_id": "SamplePtID",
+        "sample_point_id": "SamplePointID",
         "analyte": "Analyte",
         "symbol": "Symbol",
-        "sample_value": "Sample Value",
+        "sample_value": "SampleValue",
         "units": "Units",
         "uncertainty": "Uncertainty",
-        "analysis_method": "Analysis Method",
-        "analysis_date": "Analysis Date",
+        "analysis_method": "AnalysisMethod",
+        "analysis_date": "AnalysisDate",
         "notes": "Notes",
         "volume": "Volume",
-        "volume_unit": "Volume Unit",
-        "analyses_agency": "Analyses Agency",
+        "volume_unit": "VolumeUnit",
+        "object_id": "OBJECTID",
+        "analyses_agency": "AnalysesAgency",
+        "wclab_id": "WCLab_ID",
     }
 
 
