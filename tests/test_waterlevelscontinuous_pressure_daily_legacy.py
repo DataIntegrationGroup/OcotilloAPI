@@ -21,14 +21,14 @@ WaterLevelsContinuous_Pressure_Daily table.
 """
 
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from db.engine import session_ctx
 from db.nma_legacy import NMA_WaterLevelsContinuous_Pressure_Daily
 
 
-def _next_global_id() -> str:
-    return str(uuid4())
+def _next_global_id() -> UUID:
+    return uuid4()
 
 
 def _next_object_id() -> int:
@@ -44,7 +44,7 @@ def test_create_pressure_daily_all_fields():
         record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
             object_id=_next_object_id(),
-            well_id="WELL-1",
+            well_id=uuid4(),
             point_id="PD-1001",
             date_measured=now,
             temperature_water=12.3,
