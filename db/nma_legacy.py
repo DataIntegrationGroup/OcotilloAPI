@@ -56,11 +56,14 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
 
     __tablename__ = "NMA_WaterLevelsContinuous_Pressure_Daily"
 
-    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
     object_id: Mapped[Optional[int]] = mapped_column(
         "OBJECTID", Integer, autoincrement=True
     )
-    well_id: Mapped[Optional[str]] = mapped_column("WellID", String(40))
+    # FK to Thing table (well_id --> Thing.nma_pk_welldata)
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     date_measured: Mapped[datetime] = mapped_column(
         "DateMeasured", DateTime, nullable=False
