@@ -49,9 +49,9 @@ def test_create_stratigraphy_with_thing(water_well_thing):
             nma_global_id=_next_global_id(),
             nma_point_id="STRAT-01",
             thing_id=well.id,
-            strat_top=0.0,
-            strat_bottom=10.0,
-            lithology="Sandstone",
+            strat_top=0,
+            strat_bottom=10,
+            lithology="Sand",  # Max 4 chars
         )
         session.add(record)
         session.commit()
@@ -100,6 +100,8 @@ def test_stratigraphy_back_populates_thing(water_well_thing):
             nma_global_id=_next_global_id(),
             nma_point_id="BPSTRAT01",  # Max 10 chars
             thing_id=well.id,
+            strat_top=0,
+            strat_bottom=10,
         )
         session.add(record)
         session.commit()

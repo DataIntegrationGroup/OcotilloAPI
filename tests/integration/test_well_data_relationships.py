@@ -333,6 +333,8 @@ class TestRelationshipNavigation:
                 nma_global_id=uuid.uuid4(),
                 nma_point_id="NAVSTRAT1",  # Max 10 chars
                 thing_id=well.id,
+                strat_top=0,
+                strat_bottom=10,
             )
             session.add(strat)
             session.commit()
@@ -515,6 +517,8 @@ class TestCascadeDelete:
                 nma_global_id=uuid.uuid4(),
                 nma_point_id="CASCSTRAT",  # Max 10 chars
                 thing_id=well.id,
+                strat_top=0,
+                strat_bottom=10,
             )
             session.add(strat)
             session.commit()
