@@ -16,6 +16,7 @@
 """
 WaterLevelsContinuousPressureDailyAdmin view for legacy NMA_WaterLevelsContinuous_Pressure_Daily.
 """
+
 from starlette.requests import Request
 
 from admin.views.base import OcotilloModelView
