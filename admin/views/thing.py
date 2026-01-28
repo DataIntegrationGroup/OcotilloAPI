@@ -36,6 +36,7 @@ class ThingAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
+    identity = "thing"
     name = "Things"
     label = "Things (Wells/Springs)"
     icon = "fa fa-tint"
