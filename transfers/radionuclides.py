@@ -62,11 +62,15 @@ class RadionuclidesTransferer(Transferer):
     def _build_sample_info_cache(self) -> None:
         """Build cache of nma_sample_pt_id -> (id, thing_id) for FK lookups."""
         with session_ctx() as session:
-            sample_infos = session.query(
-                NMA_Chemistry_SampleInfo.nma_sample_pt_id,
-                NMA_Chemistry_SampleInfo.id,
-                NMA_Chemistry_SampleInfo.thing_id,
-            ).filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None)).all()
+            sample_infos = (
+                session.query(
+                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
+                    NMA_Chemistry_SampleInfo.id,
+                    NMA_Chemistry_SampleInfo.thing_id,
+                )
+                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+                .all()
+            )
             self._sample_info_cache = {
                 nma_sample_pt_id: (csi_id, thing_id)
                 for nma_sample_pt_id, csi_id, thing_id in sample_infos

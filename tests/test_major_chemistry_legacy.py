@@ -177,7 +177,8 @@ def test_query_major_chemistry_by_nma_sample_point_id(water_well_thing):
         results = (
             session.query(NMA_MajorChemistry)
             .filter(
-                NMA_MajorChemistry.nma_sample_point_id == sample_info.nma_sample_point_id
+                NMA_MajorChemistry.nma_sample_point_id
+                == sample_info.nma_sample_point_id
             )
             .all()
         )

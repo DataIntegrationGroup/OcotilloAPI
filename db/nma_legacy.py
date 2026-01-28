@@ -872,7 +872,10 @@ class NMA_FieldParameters(Base):
     __table_args__ = (
         # Explicit Indexes (updated for new column names)
         Index("FieldParameters$AnalysesAgency", "AnalysesAgency"),
-        Index("FieldParameters$ChemistrySampleInfoFieldParameters", "chemistry_sample_info_id"),
+        Index(
+            "FieldParameters$ChemistrySampleInfoFieldParameters",
+            "chemistry_sample_info_id",
+        ),
         Index("FieldParameters$FieldParameter", "FieldParameter"),
         Index("FieldParameters$nma_SamplePointID", "nma_SamplePointID"),
         Index("FieldParameters$nma_WCLab_ID", "nma_WCLab_ID"),

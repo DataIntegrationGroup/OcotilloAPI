@@ -297,7 +297,8 @@ class TestRelationshipNavigation:
             assert hasattr(well, "chemistry_sample_infos")
             assert len(well.chemistry_sample_infos) >= 1
             assert any(
-                s.nma_sample_point_id == "NAVCHEM01" for s in well.chemistry_sample_infos
+                s.nma_sample_point_id == "NAVCHEM01"
+                for s in well.chemistry_sample_infos
             )
 
     def test_well_navigates_to_hydraulics_data(self, well_for_relationships):

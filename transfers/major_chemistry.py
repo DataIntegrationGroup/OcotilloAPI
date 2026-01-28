@@ -62,13 +62,16 @@ class MajorChemistryTransferer(Transferer):
     def _build_sample_info_cache(self) -> None:
         """Build cache of nma_sample_pt_id -> id for FK lookups."""
         with session_ctx() as session:
-            sample_infos = session.query(
-                NMA_Chemistry_SampleInfo.nma_sample_pt_id,
-                NMA_Chemistry_SampleInfo.id
-            ).filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None)).all()
+            sample_infos = (
+                session.query(
+                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
+                    NMA_Chemistry_SampleInfo.id,
+                )
+                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+                .all()
+            )
             self._sample_info_cache = {
-                nma_sample_pt_id: csi_id
-                for nma_sample_pt_id, csi_id in sample_infos
+                nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
             }
         logger.info(
             f"Built ChemistrySampleInfo cache with {len(self._sample_info_cache)} entries"
