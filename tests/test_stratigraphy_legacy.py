@@ -90,7 +90,7 @@ def test_stratigraphy_back_populates_thing(water_well_thing):
         well = session.merge(water_well_thing)
         record = NMA_Stratigraphy(
             global_id=_next_global_id(),
-            point_id="BP-STRAT-01",
+            point_id="BPSTRAT01",  # Max 10 chars
             thing_id=well.id,
         )
         session.add(record)

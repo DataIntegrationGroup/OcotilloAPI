@@ -115,7 +115,7 @@ def test_associated_data_back_populates_thing(water_well_thing):
         well = session.merge(water_well_thing)
         record = NMA_AssociatedData(
             assoc_id=uuid4(),
-            point_id="BP-ASSOC-01",
+            point_id="BPASSOC01",  # Max 10 chars
             thing_id=well.id,
         )
         session.add(record)
