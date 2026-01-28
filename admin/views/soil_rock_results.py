@@ -1,5 +1,8 @@
 """
 SoilRockResultsAdmin view for legacy NMA_Soil_Rock_Results.
+
+Already has Integer PK. Updated for legacy column rename:
+- point_id -> nma_point_id
 """
 
 from admin.views.base import OcotilloModelView
@@ -15,6 +18,10 @@ class SoilRockResultsAdmin(OcotilloModelView):
     label = "NMA Soil Rock Results"
     icon = "fa fa-mountain"
 
+    # Integer PK (already correct)
+    pk_attr = "id"
+    pk_type = int
+
     # Pagination
     page_size = 50
     page_size_options = [25, 50, 100, 200]
@@ -22,7 +29,7 @@ class SoilRockResultsAdmin(OcotilloModelView):
     # ========== List View ==========
     list_fields = [
         "id",
-        "point_id",
+        "nma_point_id",
         "sample_type",
         "date_sampled",
         "d13c",
@@ -33,11 +40,11 @@ class SoilRockResultsAdmin(OcotilloModelView):
 
     sortable_fields = [
         "id",
-        "point_id",
+        "nma_point_id",
     ]
 
     searchable_fields = [
-        "point_id",
+        "nma_point_id",
         "sample_type",
         "date_sampled",
         "sampled_by",
@@ -48,7 +55,7 @@ class SoilRockResultsAdmin(OcotilloModelView):
     # ========== Detail View ==========
     fields = [
         "id",
-        "point_id",
+        "nma_point_id",
         "sample_type",
         "date_sampled",
         "d13c",
@@ -59,8 +66,8 @@ class SoilRockResultsAdmin(OcotilloModelView):
 
     # ========== Legacy Field Labels ==========
     field_labels = {
-        "id": "id",
-        "point_id": "Point_ID",
+        "id": "ID",
+        "nma_point_id": "NMA Point_ID (Legacy)",
         "sample_type": "Sample Type",
         "date_sampled": "Date Sampled",
         "d13c": "d13C",

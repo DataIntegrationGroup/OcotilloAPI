@@ -15,6 +15,13 @@
 # ===============================================================================
 """
 HydraulicsDataAdmin view for legacy NMA_HydraulicsData.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- nma_well_id: Legacy WellID UUID
+- nma_point_id: Legacy PointID string
+- nma_object_id: Legacy OBJECTID, UNIQUE
 """
 
 from admin.views.base import OcotilloModelView
@@ -31,6 +38,10 @@ class HydraulicsDataAdmin(OcotilloModelView):
     label = "Hydraulics Data"
     icon = "fa fa-tint"
 
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
+
     can_create = False
     can_edit = False
     can_delete = False
@@ -38,9 +49,10 @@ class HydraulicsDataAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
-        "well_id",
-        "point_id",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
@@ -49,13 +61,14 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
-        "object_id",
+        "nma_object_id",
     ]
 
     sortable_fields = [
-        "global_id",
-        "well_id",
-        "point_id",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
@@ -64,12 +77,12 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "t_ft2_d",
         "k_darcy",
         "data_source",
-        "object_id",
+        "nma_object_id",
     ]
 
     searchable_fields = [
-        "global_id",
-        "point_id",
+        "nma_global_id",
+        "nma_point_id",
         "hydraulic_unit",
         "hydraulic_remarks",
         "data_source",
@@ -81,9 +94,10 @@ class HydraulicsDataAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
-        "well_id",
-        "point_id",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
         "hydraulic_unit",
         "hydraulic_unit_type",
@@ -102,13 +116,14 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction",
         "k_darcy",
         "data_source",
-        "object_id",
+        "nma_object_id",
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
-        "well_id": "WellID",
-        "point_id": "PointID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
+        "nma_well_id": "NMA WellID (Legacy)",
+        "nma_point_id": "NMA PointID (Legacy)",
         "thing_id": "Thing ID",
         "hydraulic_unit": "HydraulicUnit",
         "hydraulic_unit_type": "HydraulicUnitType",
@@ -127,7 +142,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction": "P (decimal fraction)",
         "k_darcy": "k (darcy)",
         "data_source": "Data Source",
-        "object_id": "OBJECTID",
+        "nma_object_id": "NMA OBJECTID (Legacy)",
     }
 
 

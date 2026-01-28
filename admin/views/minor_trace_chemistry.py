@@ -15,9 +15,13 @@
 # ===============================================================================
 """
 MinorTraceChemistryAdmin view for legacy NMA_MinorTraceChemistry.
-"""
 
-import uuid
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
+"""
 
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
@@ -36,8 +40,10 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     name = "Minor Trace Chemistry"
     label = "Minor Trace Chemistry"
     icon = "fa fa-flask"
-    pk_attr = "global_id"
-    pk_type = uuid.UUID
+
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
 
     def can_create(self, request: Request) -> bool:
         return False
@@ -51,8 +57,10 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
+        "id",
+        "nma_global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "nma_chemistry_sample_info_uuid",
         "analyte",
         "sample_value",
         "units",
@@ -62,7 +70,9 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     ]
 
     sortable_fields = [
-        "global_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
         "analyte",
         "sample_value",
         "units",
@@ -74,7 +84,7 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     fields_default_sort = [("analysis_date", True)]
 
     searchable_fields = [
-        "global_id",
+        "nma_global_id",
         "analyte",
         "symbol",
         "analysis_method",
@@ -88,8 +98,10 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
+        "id",
+        "nma_global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
+        "nma_chemistry_sample_info_uuid",
         "analyte",
         "symbol",
         "sample_value",
@@ -104,8 +116,11 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
         "chemistry_sample_info": "Chemistry Sample Info",
+        "chemistry_sample_info_id": "Chemistry Sample Info ID",
+        "nma_chemistry_sample_info_uuid": "NMA Chemistry Sample Info UUID (Legacy)",
         "analyte": "Analyte",
         "symbol": "Symbol",
         "sample_value": "Sample Value",

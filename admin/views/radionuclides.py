@@ -15,6 +15,15 @@
 # ===============================================================================
 """
 RadionuclidesAdmin view for legacy NMA_Radionuclides.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_sample_pt_id: Legacy UUID FK (SamplePtID) for audit
+- nma_sample_point_id: Legacy SamplePointID string
+- nma_object_id: Legacy OBJECTID, UNIQUE
+- nma_wclab_id: Legacy WCLab_ID
 """
 
 from admin.views.base import OcotilloModelView
@@ -31,6 +40,10 @@ class RadionuclidesAdmin(OcotilloModelView):
     label = "Radionuclides"
     icon = "fa fa-radiation"
 
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
+
     can_create = False
     can_edit = False
     can_delete = False
@@ -38,9 +51,11 @@ class RadionuclidesAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "thing_id",
         "analyte",
         "sample_value",
@@ -50,32 +65,34 @@ class RadionuclidesAdmin(OcotilloModelView):
     ]
 
     sortable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "thing_id",
         "analyte",
         "sample_value",
         "units",
         "analysis_date",
         "analyses_agency",
-        "wclab_id",
-        "object_id",
+        "nma_wclab_id",
+        "nma_object_id",
     ]
 
     fields_default_sort = [("analysis_date", True)]
 
     searchable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "nma_global_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "analyte",
         "symbol",
         "analysis_method",
         "analysis_date",
         "notes",
         "analyses_agency",
-        "wclab_id",
+        "nma_wclab_id",
     ]
 
     page_size = 50
@@ -84,9 +101,11 @@ class RadionuclidesAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "thing_id",
         "analyte",
         "symbol",
@@ -98,15 +117,17 @@ class RadionuclidesAdmin(OcotilloModelView):
         "notes",
         "volume",
         "volume_unit",
-        "object_id",
+        "nma_object_id",
         "analyses_agency",
-        "wclab_id",
+        "nma_wclab_id",
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
-        "sample_pt_id": "SamplePtID",
-        "sample_point_id": "SamplePointID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
+        "chemistry_sample_info_id": "Chemistry Sample Info ID",
+        "nma_sample_pt_id": "NMA SamplePtID (Legacy)",
+        "nma_sample_point_id": "NMA SamplePointID (Legacy)",
         "thing_id": "Thing ID",
         "analyte": "Analyte",
         "symbol": "Symbol",
@@ -118,9 +139,9 @@ class RadionuclidesAdmin(OcotilloModelView):
         "notes": "Notes",
         "volume": "Volume",
         "volume_unit": "VolumeUnit",
-        "object_id": "OBJECTID",
+        "nma_object_id": "NMA OBJECTID (Legacy)",
         "analyses_agency": "AnalysesAgency",
-        "wclab_id": "WCLab_ID",
+        "nma_wclab_id": "NMA WCLab_ID (Legacy)",
     }
 
 
