@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
@@ -284,6 +285,12 @@ class NMA_Stratigraphy(Base):
     """
 
     __tablename__ = "NMA_Stratigraphy"
+    __table_args__ = (
+        CheckConstraint(
+            'char_length("nma_PointID") > 0',
+            name="ck_nma_stratigraphy_pointid_len",
+        ),
+    )
 
     # New Integer PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -307,15 +314,17 @@ class NMA_Stratigraphy(Base):
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
-    strat_top: Mapped[Optional[float]] = mapped_column("StratTop", Float)
-    strat_bottom: Mapped[Optional[float]] = mapped_column("StratBottom", Float)
-    unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(50))
-    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(100))
+    strat_top: Mapped[int] = mapped_column("StratTop", SmallInteger, nullable=False)
+    strat_bottom: Mapped[int] = mapped_column(
+        "StratBottom", SmallInteger, nullable=False
+    )
+    unit_identifier: Mapped[Optional[str]] = mapped_column("UnitIdentifier", String(20))
+    lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(4))
     lithologic_modifier: Mapped[Optional[str]] = mapped_column(
-        "LithologicModifier", String(100)
+        "LithologicModifier", String(255)
     )
     contributing_unit: Mapped[Optional[str]] = mapped_column(
-        "ContributingUnit", String(10)
+        "ContributingUnit", String(2)
     )
     strat_source: Mapped[Optional[str]] = mapped_column("StratSource", Text)
     strat_notes: Mapped[Optional[str]] = mapped_column("StratNotes", Text)
