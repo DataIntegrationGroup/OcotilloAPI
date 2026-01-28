@@ -102,7 +102,8 @@ class ContactTransfer(ThingBasedTransferer):
                     organization,
                     self._added,
                 )
-                session.flush((contact,))
+                if contact is not None:
+                    session.flush([contact])
                 if tag == "first" and contact and row.OwnerComment:
                     note = contact.add_note(row.OwnerComment, "OwnerComment")
                     session.add(note)
