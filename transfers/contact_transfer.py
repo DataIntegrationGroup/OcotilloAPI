@@ -102,7 +102,7 @@ class ContactTransfer(ThingBasedTransferer):
                     organization,
                     self._added,
                 )
-                session.flush(contact)
+                session.flush((contact,))
                 if tag == "first" and contact and row.OwnerComment:
                     note = contact.add_note(row.OwnerComment, "OwnerComment")
                     session.add(note)
@@ -147,7 +147,7 @@ def _add_first_contact(
     contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
 
     if not new:
-        return
+        return None
     else:
         added.append((name, organization))
 
