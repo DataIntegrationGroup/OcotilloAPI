@@ -145,7 +145,8 @@ def test_associated_data_has_integer_pk():
 
 def test_associated_data_nma_assoc_id_is_unique():
     """NMA_AssociatedData.nma_assoc_id is UNIQUE."""
-    col = NMA_AssociatedData.__table__.c.nma_assoc_id
+    # Use database column name (nma_AssocID), not Python attribute name (nma_assoc_id)
+    col = NMA_AssociatedData.__table__.c["nma_AssocID"]
     assert col.unique is True
 
 

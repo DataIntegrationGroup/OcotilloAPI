@@ -73,8 +73,8 @@ def minor_trace_chemistry_record():
 
         # Create parent NMA_Chemistry_SampleInfo
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid.uuid4(),
-            sample_point_id="INTTEST01",
+            nma_sample_pt_id=uuid.uuid4(),
+            nma_sample_point_id="INTTEST01",
             thing_id=thing.id,
         )
         session.add(sample_info)
@@ -83,8 +83,8 @@ def minor_trace_chemistry_record():
 
         # Create MinorTraceChemistry record
         chemistry = NMA_MinorTraceChemistry(
-            global_id=uuid.uuid4(),
-            chemistry_sample_info_id=sample_info.sample_pt_id,
+            nma_global_id=uuid.uuid4(),
+            chemistry_sample_info_id=sample_info.id,  # Integer FK
             analyte="Arsenic",
             symbol="As",
             sample_value=0.005,
@@ -135,7 +135,7 @@ class TestMinorTraceChemistryDetailView:
 
     def test_detail_view_returns_200(self, admin_client, minor_trace_chemistry_record):
         """Detail view should return 200 OK for existing record."""
-        pk = str(minor_trace_chemistry_record.global_id)
+        pk = str(minor_trace_chemistry_record.id)  # Integer PK
         response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200, (
             f"Expected 200, got {response.status_code}. "
@@ -146,7 +146,7 @@ class TestMinorTraceChemistryDetailView:
         self, admin_client, minor_trace_chemistry_record
     ):
         """Detail view should display the analyte."""
-        pk = str(minor_trace_chemistry_record.global_id)
+        pk = str(minor_trace_chemistry_record.id)  # Integer PK
         response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200
         assert "Arsenic" in response.text
@@ -155,7 +155,7 @@ class TestMinorTraceChemistryDetailView:
         self, admin_client, minor_trace_chemistry_record
     ):
         """Detail view should display the parent NMA_Chemistry_SampleInfo."""
-        pk = str(minor_trace_chemistry_record.global_id)
+        pk = str(minor_trace_chemistry_record.id)  # Integer PK
         response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{pk}")
         assert response.status_code == 200
         # The parent relationship should be displayed somehow
@@ -164,7 +164,7 @@ class TestMinorTraceChemistryDetailView:
 
     def test_detail_view_404_for_nonexistent_record(self, admin_client):
         """Detail view should return 404 for non-existent record."""
-        fake_pk = str(uuid.uuid4())
+        fake_pk = "999999999"  # Integer PK that doesn't exist
         response = admin_client.get(f"{ADMIN_BASE_URL}/detail/{fake_pk}")
         assert response.status_code == 404
 
@@ -184,7 +184,7 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
 
     def test_edit_endpoint_forbidden(self, admin_client, minor_trace_chemistry_record):
         """Edit endpoint should be forbidden for read-only view."""
-        pk = str(minor_trace_chemistry_record.global_id)
+        pk = str(minor_trace_chemistry_record.id)  # Integer PK
         response = admin_client.get(f"{ADMIN_BASE_URL}/edit/{pk}")
         # Should be 403 or redirect, not 200
         assert response.status_code in (
@@ -197,7 +197,7 @@ class TestMinorTraceChemistryReadOnlyRestrictions:
         self, admin_client, minor_trace_chemistry_record
     ):
         """Delete endpoint should be forbidden for read-only view."""
-        pk = str(minor_trace_chemistry_record.global_id)
+        pk = str(minor_trace_chemistry_record.id)  # Integer PK
         response = admin_client.post(
             f"{ADMIN_BASE_URL}/delete",
             data={"pks": [pk]},

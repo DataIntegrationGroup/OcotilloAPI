@@ -126,7 +126,8 @@ def test_stratigraphy_has_integer_pk():
 
 def test_stratigraphy_nma_global_id_is_unique():
     """NMA_Stratigraphy.nma_global_id is UNIQUE."""
-    col = NMA_Stratigraphy.__table__.c.nma_global_id
+    # Use database column name (nma_GlobalID), not Python attribute name
+    col = NMA_Stratigraphy.__table__.c["nma_GlobalID"]
     assert col.unique is True
 
 

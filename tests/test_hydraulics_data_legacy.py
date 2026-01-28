@@ -313,7 +313,7 @@ def test_hydraulics_data_has_integer_pk():
 
 def test_hydraulics_data_nma_global_id_is_unique():
     """NMA_HydraulicsData.nma_global_id is UNIQUE."""
-    col = NMA_HydraulicsData.__table__.c.nma_global_id
+    col = NMA_HydraulicsData.__table__.c["nma_GlobalID"]
     assert col.unique is True
 
 

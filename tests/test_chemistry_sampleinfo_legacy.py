@@ -221,7 +221,8 @@ def test_chemistry_sampleinfo_has_integer_pk():
 
 def test_chemistry_sampleinfo_nma_sample_pt_id_is_unique():
     """NMA_Chemistry_SampleInfo.nma_sample_pt_id is UNIQUE."""
-    col = NMA_Chemistry_SampleInfo.__table__.c.nma_sample_pt_id
+    # Use database column name (nma_SamplePtID), not Python attribute name
+    col = NMA_Chemistry_SampleInfo.__table__.c["nma_SamplePtID"]
     assert col.unique is True
 
 

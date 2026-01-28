@@ -355,7 +355,8 @@ def test_radionuclides_has_integer_pk():
 
 def test_radionuclides_nma_global_id_is_unique():
     """NMA_Radionuclides.nma_global_id is UNIQUE."""
-    col = NMA_Radionuclides.__table__.c.nma_global_id
+    # Use database column name (nma_GlobalID), not Python attribute name
+    col = NMA_Radionuclides.__table__.c["nma_GlobalID"]
     assert col.unique is True
 
 
