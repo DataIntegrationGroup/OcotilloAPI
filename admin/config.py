@@ -53,6 +53,7 @@ from admin.views import (
     SurfaceWaterPhotosAdmin,
     ThingAdmin,
     TransducerObservationAdmin,
+    WaterLevelsContinuousPressureDailyAdmin,
     WeatherPhotosAdmin,
     WeatherDataAdmin,
     FieldParametersAdmin,
@@ -80,6 +81,7 @@ from db.nma_legacy import (
     NMA_Soil_Rock_Results,
     NMA_Stratigraphy,
     NMA_SurfaceWaterData,
+    NMA_WaterLevelsContinuous_Pressure_Daily,
     NMA_WeatherPhotos,
     NMA_SurfaceWaterPhotos,
     NMA_WeatherData,
@@ -191,6 +193,13 @@ def create_admin(app):
 
     # Transducer observations
     admin.add_view(TransducerObservationAdmin(TransducerObservation))
+
+    # Water Levels - Continuous (legacy)
+    admin.add_view(
+        WaterLevelsContinuousPressureDailyAdmin(
+            NMA_WaterLevelsContinuous_Pressure_Daily
+        )
+    )
 
     # Weather
     admin.add_view(WeatherPhotosAdmin(NMA_WeatherPhotos))
