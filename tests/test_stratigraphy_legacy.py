@@ -17,6 +17,13 @@
 Unit tests for NMA_Stratigraphy (lithology log) legacy model.
 
 These tests verify FK enforcement for Issue #363.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID (UNIQUE)
+- nma_well_id: Legacy WellID UUID
+- nma_point_id: Legacy PointID string
+- nma_object_id: Legacy OBJECTID (UNIQUE)
 """
 
 from uuid import uuid4
@@ -39,8 +46,8 @@ def test_create_stratigraphy_with_thing(water_well_thing):
     with session_ctx() as session:
         well = session.merge(water_well_thing)
         record = NMA_Stratigraphy(
-            global_id=_next_global_id(),
-            point_id="STRAT-01",
+            nma_global_id=_next_global_id(),
+            nma_point_id="STRAT-01",
             thing_id=well.id,
             strat_top=0.0,
             strat_bottom=10.0,
@@ -50,8 +57,9 @@ def test_create_stratigraphy_with_thing(water_well_thing):
         session.commit()
         session.refresh(record)
 
-        assert record.global_id is not None
-        assert record.point_id == "STRAT-01"
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_global_id is not None
+        assert record.nma_point_id == "STRAT-01"
         assert record.thing_id == well.id
 
         session.delete(record)
@@ -65,8 +73,8 @@ def test_stratigraphy_validator_rejects_none_thing_id():
     """NMA_Stratigraphy validator rejects None thing_id."""
     with pytest.raises(ValueError, match="requires a parent Thing"):
         NMA_Stratigraphy(
-            global_id=_next_global_id(),
-            point_id="ORPHAN-STRAT",
+            nma_global_id=_next_global_id(),
+            nma_point_id="ORPHAN-STRAT",
             thing_id=None,
         )
 
@@ -89,8 +97,8 @@ def test_stratigraphy_back_populates_thing(water_well_thing):
     with session_ctx() as session:
         well = session.merge(water_well_thing)
         record = NMA_Stratigraphy(
-            global_id=_next_global_id(),
-            point_id="BPSTRAT01",  # Max 10 chars
+            nma_global_id=_next_global_id(),
+            nma_point_id="BPSTRAT01",  # Max 10 chars
             thing_id=well.id,
         )
         session.add(record)
@@ -102,6 +110,24 @@ def test_stratigraphy_back_populates_thing(water_well_thing):
 
         session.delete(record)
         session.commit()
+
+
+# ===================== Integer PK tests ==========================
+
+
+def test_stratigraphy_has_integer_pk():
+    """NMA_Stratigraphy.id is Integer PK."""
+    from sqlalchemy import Integer
+
+    col = NMA_Stratigraphy.__table__.c.id
+    assert col.primary_key is True
+    assert isinstance(col.type, Integer)
+
+
+def test_stratigraphy_nma_global_id_is_unique():
+    """NMA_Stratigraphy.nma_global_id is UNIQUE."""
+    col = NMA_Stratigraphy.__table__.c.nma_global_id
+    assert col.unique is True
 
 
 # ============= EOF =============================================

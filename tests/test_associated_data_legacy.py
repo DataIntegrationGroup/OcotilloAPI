@@ -17,13 +17,13 @@
 Unit tests for NMA_AssociatedData legacy model.
 
 These tests verify the migration of columns from the legacy NMA_AssociatedData table.
-Migrated columns:
-- LocationId -> location_id
-- PointID -> point_id
-- AssocID -> assoc_id
-- Notes -> notes
-- Formation -> formation
-- OBJECTID -> object_id
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_assoc_id: Legacy AssocID UUID (UNIQUE)
+- nma_location_id: Legacy LocationId UUID (UNIQUE)
+- nma_point_id: Legacy PointID string
+- nma_object_id: Legacy OBJECTID (UNIQUE)
 """
 
 from uuid import uuid4
@@ -36,24 +36,25 @@ def test_create_associated_data_all_fields(water_well_thing):
     """Test creating an associated data record with all fields."""
     with session_ctx() as session:
         record = NMA_AssociatedData(
-            location_id=uuid4(),
-            point_id="AA-0001",
-            assoc_id=uuid4(),
+            nma_location_id=uuid4(),
+            nma_point_id="AA-0001",
+            nma_assoc_id=uuid4(),
             notes="Legacy notes",
             formation="TEST",
-            object_id=42,
+            nma_object_id=42,
             thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.assoc_id is not None
-        assert record.location_id is not None
-        assert record.point_id == "AA-0001"
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_assoc_id is not None
+        assert record.nma_location_id is not None
+        assert record.nma_point_id == "AA-0001"
         assert record.notes == "Legacy notes"
         assert record.formation == "TEST"
-        assert record.object_id == 42
+        assert record.nma_object_id == 42
         assert record.thing_id == water_well_thing.id
 
         session.delete(record)
@@ -64,18 +65,19 @@ def test_create_associated_data_minimal(water_well_thing):
     """Test creating an associated data record with required fields only."""
     with session_ctx() as session:
         well = session.merge(water_well_thing)
-        record = NMA_AssociatedData(assoc_id=uuid4(), thing_id=well.id)
+        record = NMA_AssociatedData(nma_assoc_id=uuid4(), thing_id=well.id)
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.assoc_id is not None
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_assoc_id is not None
         assert record.thing_id == well.id
-        assert record.location_id is None
-        assert record.point_id is None
+        assert record.nma_location_id is None
+        assert record.nma_point_id is None
         assert record.notes is None
         assert record.formation is None
-        assert record.object_id is None
+        assert record.nma_object_id is None
 
         session.delete(record)
         session.commit()
@@ -90,8 +92,8 @@ def test_associated_data_validator_rejects_none_thing_id():
 
     with pytest.raises(ValueError, match="requires a parent Thing"):
         NMA_AssociatedData(
-            assoc_id=uuid4(),
-            point_id="ORPHAN-TEST",
+            nma_assoc_id=uuid4(),
+            nma_point_id="ORPHAN-TEST",
             thing_id=None,
         )
 
@@ -114,8 +116,8 @@ def test_associated_data_back_populates_thing(water_well_thing):
     with session_ctx() as session:
         well = session.merge(water_well_thing)
         record = NMA_AssociatedData(
-            assoc_id=uuid4(),
-            point_id="BPASSOC01",  # Max 10 chars
+            nma_assoc_id=uuid4(),
+            nma_point_id="BPASSOC01",  # Max 10 chars
             thing_id=well.id,
         )
         session.add(record)
@@ -127,6 +129,24 @@ def test_associated_data_back_populates_thing(water_well_thing):
 
         session.delete(record)
         session.commit()
+
+
+# ===================== Integer PK tests ==========================
+
+
+def test_associated_data_has_integer_pk():
+    """NMA_AssociatedData.id is Integer PK."""
+    from sqlalchemy import Integer
+
+    col = NMA_AssociatedData.__table__.c.id
+    assert col.primary_key is True
+    assert isinstance(col.type, Integer)
+
+
+def test_associated_data_nma_assoc_id_is_unique():
+    """NMA_AssociatedData.nma_assoc_id is UNIQUE."""
+    col = NMA_AssociatedData.__table__.c.nma_assoc_id
+    assert col.unique is True
 
 
 # ============= EOF =============================================

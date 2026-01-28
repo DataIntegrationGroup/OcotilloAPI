@@ -17,29 +17,13 @@
 Unit tests for HydraulicsData legacy model.
 
 These tests verify the migration of columns from the legacy HydraulicsData table.
-Migrated columns:
-- GlobalID -> global_id
-- WellID -> well_id
-- PointID -> point_id
-- Data Source -> data_source
-- Cs (gal/d/ft) -> cs_gal_d_ft
-- HD (ft2/d) -> hd_ft2_d
-- HL (day-1) -> hl_day_1
-- KH (ft/d) -> kh_ft_d
-- KV (ft/d) -> kv_ft_d
-- P (decimal fraction) -> p_decimal_fraction
-- S (dimensionless) -> s_dimensionless
-- Ss (ft-1) -> ss_ft_1
-- Sy (decimalfractn) -> sy_decimalfractn
-- T (ft2/d) -> t_ft2_d
-- k (darcy) -> k_darcy
-- TestBottom -> test_bottom
-- TestTop -> test_top
-- HydraulicUnit -> hydraulic_unit
-- HydraulicUnitType -> hydraulic_unit_type
-- Hydraulic Remarks -> hydraulic_remarks
-- OBJECTID -> object_id
-- thing_id -> thing_id
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy GlobalID UUID (UNIQUE)
+- nma_well_id: Legacy WellID UUID
+- nma_point_id: Legacy PointID string
+- nma_object_id: Legacy OBJECTID (UNIQUE)
 """
 
 from uuid import uuid4
@@ -57,9 +41,9 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
     """Test creating a hydraulics data record with all fields."""
     with session_ctx() as session:
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
-            well_id=uuid4(),
-            point_id=water_well_thing.name,
+            nma_global_id=_next_global_id(),
+            nma_well_id=uuid4(),
+            nma_point_id=water_well_thing.name,
             data_source="Legacy Source",
             cs_gal_d_ft=1.2,
             hd_ft2_d=3.4,
@@ -77,20 +61,21 @@ def test_create_hydraulics_data_all_fields(water_well_thing):
             hydraulic_unit="Unit A",
             hydraulic_unit_type="U",
             hydraulic_remarks="Test remarks",
-            object_id=101,
+            nma_object_id=101,
             thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.global_id is not None
-        assert record.well_id is not None
-        assert record.point_id == water_well_thing.name
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_global_id is not None
+        assert record.nma_well_id is not None
+        assert record.nma_point_id == water_well_thing.name
         assert record.data_source == "Legacy Source"
         assert record.test_top == 30
         assert record.test_bottom == 120
-        assert record.object_id == 101
+        assert record.nma_object_id == 101
         assert record.thing_id == water_well_thing.id
 
         session.delete(record)
@@ -101,7 +86,7 @@ def test_create_hydraulics_data_minimal(water_well_thing):
     """Test creating a hydraulics data record with minimal fields."""
     with session_ctx() as session:
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=10,
             test_bottom=20,
             thing_id=water_well_thing.id,
@@ -110,11 +95,12 @@ def test_create_hydraulics_data_minimal(water_well_thing):
         session.commit()
         session.refresh(record)
 
-        assert record.global_id is not None
-        assert record.well_id is None
-        assert record.point_id is None
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_global_id is not None
+        assert record.nma_well_id is None
+        assert record.nma_point_id is None
         assert record.data_source is None
-        assert record.object_id is None
+        assert record.nma_object_id is None
         assert record.thing_id == water_well_thing.id
 
         session.delete(record)
@@ -122,11 +108,11 @@ def test_create_hydraulics_data_minimal(water_well_thing):
 
 
 # ===================== READ tests ==========================
-def test_read_hydraulics_data_by_global_id(water_well_thing):
-    """Test reading a hydraulics data record by GlobalID."""
+def test_read_hydraulics_data_by_id(water_well_thing):
+    """Test reading a hydraulics data record by Integer ID."""
     with session_ctx() as session:
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
             thing_id=water_well_thing.id,
@@ -134,28 +120,29 @@ def test_read_hydraulics_data_by_global_id(water_well_thing):
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMA_HydraulicsData, record.global_id)
+        fetched = session.get(NMA_HydraulicsData, record.id)
         assert fetched is not None
-        assert fetched.global_id == record.global_id
+        assert fetched.id == record.id
+        assert fetched.nma_global_id == record.nma_global_id
 
         session.delete(record)
         session.commit()
 
 
-def test_query_hydraulics_data_by_point_id(water_well_thing):
-    """Test querying hydraulics data by point_id."""
+def test_query_hydraulics_data_by_nma_point_id(water_well_thing):
+    """Test querying hydraulics data by nma_point_id."""
     with session_ctx() as session:
         record1 = NMA_HydraulicsData(
-            global_id=_next_global_id(),
-            well_id=uuid4(),
-            point_id=water_well_thing.name,
+            nma_global_id=_next_global_id(),
+            nma_well_id=uuid4(),
+            nma_point_id=water_well_thing.name,
             test_top=10,
             test_bottom=20,
             thing_id=water_well_thing.id,
         )
         record2 = NMA_HydraulicsData(
-            global_id=_next_global_id(),
-            point_id="OTHER-POINT",
+            nma_global_id=_next_global_id(),
+            nma_point_id="OTHER-POINT",
             test_top=30,
             test_bottom=40,
             thing_id=water_well_thing.id,
@@ -165,11 +152,11 @@ def test_query_hydraulics_data_by_point_id(water_well_thing):
 
         results = (
             session.query(NMA_HydraulicsData)
-            .filter(NMA_HydraulicsData.point_id == water_well_thing.name)
+            .filter(NMA_HydraulicsData.nma_point_id == water_well_thing.name)
             .all()
         )
         assert len(results) >= 1
-        assert all(r.point_id == water_well_thing.name for r in results)
+        assert all(r.nma_point_id == water_well_thing.name for r in results)
 
         session.delete(record1)
         session.delete(record2)
@@ -181,7 +168,7 @@ def test_update_hydraulics_data(water_well_thing):
     """Test updating a hydraulics data record."""
     with session_ctx() as session:
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
             thing_id=water_well_thing.id,
@@ -206,18 +193,19 @@ def test_delete_hydraulics_data(water_well_thing):
     """Test deleting a hydraulics data record."""
     with session_ctx() as session:
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
             thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
+        record_id = record.id
 
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMA_HydraulicsData, record.global_id)
+        fetched = session.get(NMA_HydraulicsData, record_id)
         assert fetched is None
 
 
@@ -225,9 +213,10 @@ def test_delete_hydraulics_data(water_well_thing):
 def test_hydraulics_data_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
-        "global_id",
-        "well_id",
-        "point_id",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "data_source",
         "cs_gal_d_ft",
         "hd_ft2_d",
@@ -245,7 +234,7 @@ def test_hydraulics_data_has_all_migrated_columns():
         "hydraulic_unit",
         "hydraulic_unit_type",
         "hydraulic_remarks",
-        "object_id",
+        "nma_object_id",
         "thing_id",
     ]
 
@@ -269,7 +258,7 @@ def test_hydraulics_data_validator_rejects_none_thing_id():
 
     with pytest.raises(ValueError, match="requires a parent Thing"):
         NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
             thing_id=None,
@@ -294,7 +283,7 @@ def test_hydraulics_data_back_populates_thing(water_well_thing):
     with session_ctx() as session:
         well = session.merge(water_well_thing)
         record = NMA_HydraulicsData(
-            global_id=_next_global_id(),
+            nma_global_id=_next_global_id(),
             test_top=5,
             test_bottom=15,
             thing_id=well.id,
@@ -308,6 +297,24 @@ def test_hydraulics_data_back_populates_thing(water_well_thing):
 
         session.delete(record)
         session.commit()
+
+
+# ===================== Integer PK tests ==========================
+
+
+def test_hydraulics_data_has_integer_pk():
+    """NMA_HydraulicsData.id is Integer PK."""
+    from sqlalchemy import Integer
+
+    col = NMA_HydraulicsData.__table__.c.id
+    assert col.primary_key is True
+    assert isinstance(col.type, Integer)
+
+
+def test_hydraulics_data_nma_global_id_is_unique():
+    """NMA_HydraulicsData.nma_global_id is UNIQUE."""
+    col = NMA_HydraulicsData.__table__.c.nma_global_id
+    assert col.unique is True
 
 
 # ============= EOF =============================================
