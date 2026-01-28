@@ -23,6 +23,12 @@ Feature: Well Data Relationships
     As a NMBGMR data manager
     I need well-related records to always belong to a well
     So that data integrity is maintained and orphaned records are prevented
+
+Updated for Integer PK schema:
+- All models now use `id` (Integer, autoincrement) as PK
+- Legacy UUID columns renamed with `nma_` prefix (e.g., `nma_global_id`)
+- Legacy string columns renamed with `nma_` prefix (e.g., `nma_point_id`)
+- Chemistry children use `chemistry_sample_info_id` (Integer FK)
 """
 
 import uuid
@@ -181,8 +187,8 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_Chemistry_SampleInfo(
-                    sample_pt_id=uuid.uuid4(),
-                    sample_point_id="ORPHAN-CHEM",
+                    nma_sample_pt_id=uuid.uuid4(),
+                    nma_sample_point_id="ORPHAN-CHEM",
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -196,8 +202,8 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_HydraulicsData(
-                    global_id=uuid.uuid4(),
-                    point_id="ORPHANHYD",
+                    nma_global_id=uuid.uuid4(),
+                    nma_point_id="ORPHANHYD",
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -211,8 +217,8 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_Stratigraphy(
-                    global_id=uuid.uuid4(),
-                    point_id="ORPHSTRAT",
+                    nma_global_id=uuid.uuid4(),
+                    nma_point_id="ORPHSTRAT",
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -226,7 +232,7 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_Radionuclides(
-                    sample_pt_id=uuid.uuid4(),
+                    nma_sample_pt_id=uuid.uuid4(),
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -240,7 +246,7 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_AssociatedData(
-                    point_id="ORPHAN-ASSOC",
+                    nma_point_id="ORPHAN-ASSOC",
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -254,7 +260,7 @@ class TestRelatedRecordsRequireWell:
         with session_ctx() as session:
             with pytest.raises(ValueError, match="requires a parent Thing"):
                 record = NMA_Soil_Rock_Results(
-                    point_id="ORPHAN-SOIL",
+                    nma_point_id="ORPHAN-SOIL",
                     thing_id=None,  # This should raise ValueError
                 )
                 session.add(record)
@@ -279,8 +285,8 @@ class TestRelationshipNavigation:
 
             # Create a chemistry sample for this well
             sample = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="NAVCHEM01",  # Max 10 chars
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="NAVCHEM01",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(sample)
@@ -291,7 +297,7 @@ class TestRelationshipNavigation:
             assert hasattr(well, "chemistry_sample_infos")
             assert len(well.chemistry_sample_infos) >= 1
             assert any(
-                s.sample_point_id == "NAVCHEM01" for s in well.chemistry_sample_infos
+                s.nma_sample_point_id == "NAVCHEM01" for s in well.chemistry_sample_infos
             )
 
     def test_well_navigates_to_hydraulics_data(self, well_for_relationships):
@@ -301,8 +307,8 @@ class TestRelationshipNavigation:
 
             # Create hydraulics data for this well
             hydraulics = NMA_HydraulicsData(
-                global_id=uuid.uuid4(),
-                point_id="NAVHYD01",  # Max 10 chars
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="NAVHYD01",  # Max 10 chars
                 thing_id=well.id,
                 test_top=0,
                 test_bottom=100,
@@ -314,7 +320,7 @@ class TestRelationshipNavigation:
             # Navigate through relationship
             assert hasattr(well, "hydraulics_data")
             assert len(well.hydraulics_data) >= 1
-            assert any(h.point_id == "NAVHYD01" for h in well.hydraulics_data)
+            assert any(h.nma_point_id == "NAVHYD01" for h in well.hydraulics_data)
 
     def test_well_navigates_to_stratigraphy_logs(self, well_for_relationships):
         """Well can navigate to its lithology logs."""
@@ -323,8 +329,8 @@ class TestRelationshipNavigation:
 
             # Create stratigraphy log for this well
             strat = NMA_Stratigraphy(
-                global_id=uuid.uuid4(),
-                point_id="NAVSTRAT1",  # Max 10 chars
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="NAVSTRAT1",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(strat)
@@ -334,7 +340,7 @@ class TestRelationshipNavigation:
             # Navigate through relationship
             assert hasattr(well, "stratigraphy_logs")
             assert len(well.stratigraphy_logs) >= 1
-            assert any(s.point_id == "NAVSTRAT1" for s in well.stratigraphy_logs)
+            assert any(s.nma_point_id == "NAVSTRAT1" for s in well.stratigraphy_logs)
 
     def test_well_navigates_to_radionuclides(self, well_for_relationships):
         """Well can navigate to its radionuclide results."""
@@ -343,17 +349,19 @@ class TestRelationshipNavigation:
 
             # Create a chemistry sample for this well to satisfy the FK
             chem_sample = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="NAVRAD01",  # Required, max 10 chars
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="NAVRAD01",  # Required, max 10 chars
                 thing_id=well.id,
             )
             session.add(chem_sample)
-            session.flush()
+            session.commit()
+            session.refresh(chem_sample)
 
-            # Create radionuclide record for this well using the same sample_pt_id
+            # Create radionuclide record for this well using the chemistry_sample_info_id
             radio = NMA_Radionuclides(
-                global_id=uuid.uuid4(),
-                sample_pt_id=chem_sample.sample_pt_id,
+                nma_global_id=uuid.uuid4(),
+                chemistry_sample_info_id=chem_sample.id,
+                nma_sample_pt_id=chem_sample.nma_sample_pt_id,
                 thing_id=well.id,
             )
             session.add(radio)
@@ -371,8 +379,8 @@ class TestRelationshipNavigation:
 
             # Create associated data for this well
             assoc = NMA_AssociatedData(
-                assoc_id=uuid.uuid4(),
-                point_id="NAVASSOC1",  # Max 10 chars
+                nma_assoc_id=uuid.uuid4(),
+                nma_point_id="NAVASSOC1",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(assoc)
@@ -382,7 +390,7 @@ class TestRelationshipNavigation:
             # Navigate through relationship
             assert hasattr(well, "associated_data")
             assert len(well.associated_data) >= 1
-            assert any(a.point_id == "NAVASSOC1" for a in well.associated_data)
+            assert any(a.nma_point_id == "NAVASSOC1" for a in well.associated_data)
 
     def test_well_navigates_to_soil_rock_results(self, well_for_relationships):
         """Well can navigate to its soil/rock results."""
@@ -391,7 +399,7 @@ class TestRelationshipNavigation:
 
             # Create soil/rock result for this well
             soil = NMA_Soil_Rock_Results(
-                point_id="NAV-SOIL-01",
+                nma_point_id="NAV-SOIL-01",
                 thing_id=well.id,
             )
             session.add(soil)
@@ -401,7 +409,7 @@ class TestRelationshipNavigation:
             # Navigate through relationship
             assert hasattr(well, "soil_rock_results")
             assert len(well.soil_rock_results) >= 1
-            assert any(s.point_id == "NAV-SOIL-01" for s in well.soil_rock_results)
+            assert any(s.nma_point_id == "NAV-SOIL-01" for s in well.soil_rock_results)
 
 
 # =============================================================================
@@ -431,13 +439,13 @@ class TestCascadeDelete:
             session.commit()
 
             sample = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="CASCCHEM1",  # Max 10 chars
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="CASCCHEM1",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(sample)
             session.commit()
-            sample_id = sample.sample_pt_id  # PK is sample_pt_id
+            sample_id = sample.id  # Integer PK
 
             # Delete the well
             session.delete(well)
@@ -465,16 +473,16 @@ class TestCascadeDelete:
             session.add(well)
             session.commit()
 
-            hyd_global_id = uuid.uuid4()
             hydraulics = NMA_HydraulicsData(
-                global_id=hyd_global_id,
-                point_id="CASCHYD01",  # Max 10 chars
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="CASCHYD01",  # Max 10 chars
                 thing_id=well.id,
                 test_top=0,
                 test_bottom=100,
             )
             session.add(hydraulics)
             session.commit()
+            hyd_id = hydraulics.id  # Integer PK
 
             # Delete the well
             session.delete(well)
@@ -484,7 +492,7 @@ class TestCascadeDelete:
             session.expire_all()
 
             # Verify hydraulics data was also deleted
-            orphan = session.get(NMA_HydraulicsData, hyd_global_id)
+            orphan = session.get(NMA_HydraulicsData, hyd_id)
             assert orphan is None, "Hydraulics data should be deleted with well"
 
     def test_deleting_well_cascades_to_stratigraphy_logs(self):
@@ -502,14 +510,14 @@ class TestCascadeDelete:
             session.add(well)
             session.commit()
 
-            strat_global_id = uuid.uuid4()
             strat = NMA_Stratigraphy(
-                global_id=strat_global_id,
-                point_id="CASCSTRAT",  # Max 10 chars
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="CASCSTRAT",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(strat)
             session.commit()
+            strat_id = strat.id  # Integer PK
 
             # Delete the well
             session.delete(well)
@@ -519,7 +527,7 @@ class TestCascadeDelete:
             session.expire_all()
 
             # Verify stratigraphy was also deleted
-            orphan = session.get(NMA_Stratigraphy, strat_global_id)
+            orphan = session.get(NMA_Stratigraphy, strat_id)
             assert orphan is None, "Stratigraphy log should be deleted with well"
 
     def test_deleting_well_cascades_to_radionuclides(self):
@@ -539,22 +547,24 @@ class TestCascadeDelete:
 
             # Create a chemistry sample for this well to satisfy the FK
             chem_sample = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="CASCRAD01",  # Required, max 10 chars
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="CASCRAD01",  # Required, max 10 chars
                 thing_id=well.id,
             )
             session.add(chem_sample)
-            session.flush()
+            session.commit()
+            session.refresh(chem_sample)
 
-            # Create radionuclide record using the chemistry sample's sample_pt_id
+            # Create radionuclide record using the chemistry_sample_info_id
             radio = NMA_Radionuclides(
-                global_id=uuid.uuid4(),
-                sample_pt_id=chem_sample.sample_pt_id,
+                nma_global_id=uuid.uuid4(),
+                chemistry_sample_info_id=chem_sample.id,
+                nma_sample_pt_id=chem_sample.nma_sample_pt_id,
                 thing_id=well.id,
             )
             session.add(radio)
             session.commit()
-            radio_id = radio.global_id  # PK is global_id
+            radio_id = radio.id  # Integer PK
 
             # Delete the well
             session.delete(well)
@@ -582,14 +592,14 @@ class TestCascadeDelete:
             session.add(well)
             session.commit()
 
-            assoc_uuid = uuid.uuid4()
             assoc = NMA_AssociatedData(
-                assoc_id=assoc_uuid,
-                point_id="CASCASSOC",  # Max 10 chars
+                nma_assoc_id=uuid.uuid4(),
+                nma_point_id="CASCASSOC",  # Max 10 chars
                 thing_id=well.id,
             )
             session.add(assoc)
             session.commit()
+            assoc_id = assoc.id  # Integer PK
 
             # Delete the well
             session.delete(well)
@@ -599,7 +609,7 @@ class TestCascadeDelete:
             session.expire_all()
 
             # Verify associated data was also deleted
-            orphan = session.get(NMA_AssociatedData, assoc_uuid)
+            orphan = session.get(NMA_AssociatedData, assoc_id)
             assert orphan is None, "Associated data should be deleted with well"
 
     def test_deleting_well_cascades_to_soil_rock_results(self):
@@ -618,7 +628,7 @@ class TestCascadeDelete:
             session.commit()
 
             soil = NMA_Soil_Rock_Results(
-                point_id="CASCSOIL1",
+                nma_point_id="CASCSOIL1",
                 thing_id=well.id,
             )
             session.add(soil)

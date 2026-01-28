@@ -16,6 +16,12 @@
 """
 Step definitions for Well Data Relationships feature tests.
 Tests FK relationships, orphan prevention, and cascade delete behavior.
+
+Updated for Integer PK schema:
+- All models now use `id` (Integer, autoincrement) as PK
+- Legacy UUID columns renamed with `nma_` prefix (e.g., `nma_global_id`)
+- Legacy string columns renamed with `nma_` prefix (e.g., `nma_point_id`)
+- Chemistry children use `chemistry_sample_info_id` (Integer FK)
 """
 
 import uuid
@@ -128,8 +134,8 @@ def step_when_save_chemistry(context: Context):
     try:
         with session_ctx() as session:
             chemistry = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="TEST001",
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="TEST001",
                 thing_id=None,  # No parent well
                 collection_date=datetime.now(),
             )
@@ -174,8 +180,8 @@ def step_when_save_hydraulics(context: Context):
     try:
         with session_ctx() as session:
             hydraulics = NMA_HydraulicsData(
-                global_id=uuid.uuid4(),
-                point_id="TEST001",
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="TEST001",
                 thing_id=None,  # No parent well
                 test_top=100,
                 test_bottom=200,
@@ -214,8 +220,8 @@ def step_when_save_lithology(context: Context):
     try:
         with session_ctx() as session:
             stratigraphy = NMA_Stratigraphy(
-                global_id=uuid.uuid4(),
-                point_id="TEST001",
+                nma_global_id=uuid.uuid4(),
+                nma_point_id="TEST001",
                 thing_id=None,  # No parent well
                 strat_top=100.0,
                 strat_bottom=200.0,
@@ -255,18 +261,20 @@ def step_when_save_radionuclides(context: Context):
         with session_ctx() as session:
             # First create a chemistry sample info for the radionuclide
             chemistry_sample = NMA_Chemistry_SampleInfo(
-                sample_pt_id=uuid.uuid4(),
-                sample_point_id="TEST001",
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="TEST001",
                 thing_id=context.test_well_id,
                 collection_date=datetime.now(),
             )
             session.add(chemistry_sample)
-            session.flush()
+            session.commit()
+            session.refresh(chemistry_sample)
 
             radionuclide = NMA_Radionuclides(
-                global_id=uuid.uuid4(),
+                nma_global_id=uuid.uuid4(),
                 thing_id=None,  # No parent well
-                sample_pt_id=chemistry_sample.sample_pt_id,
+                chemistry_sample_info_id=chemistry_sample.id,
+                nma_sample_pt_id=chemistry_sample.nma_sample_pt_id,
                 analyte="U-238",
             )
             session.add(radionuclide)
@@ -303,8 +311,8 @@ def step_when_save_associated_data(context: Context):
     try:
         with session_ctx() as session:
             associated_data = NMA_AssociatedData(
-                assoc_id=uuid.uuid4(),
-                point_id="TEST001",
+                nma_assoc_id=uuid.uuid4(),
+                nma_point_id="TEST001",
                 thing_id=None,  # No parent well
                 notes="Test notes",
             )
@@ -342,7 +350,7 @@ def step_when_save_soil_rock(context: Context):
     try:
         with session_ctx() as session:
             soil_rock = NMA_Soil_Rock_Results(
-                point_id="TEST001",
+                nma_point_id="TEST001",
                 thing_id=None,  # No parent well
                 sample_type="Soil",
                 date_sampled="2025-01-01",
@@ -422,14 +430,14 @@ def step_given_well_has_chemistry(context: Context):
 
     with session_ctx() as session:
         chemistry1 = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid.uuid4(),
-            sample_point_id="TEST001",
+            nma_sample_pt_id=uuid.uuid4(),
+            nma_sample_point_id="TEST001",
             thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
         chemistry2 = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid.uuid4(),
-            sample_point_id="TEST002",
+            nma_sample_pt_id=uuid.uuid4(),
+            nma_sample_point_id="TEST002",
             thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
@@ -446,8 +454,8 @@ def step_given_well_has_hydraulics(context: Context):
 
     with session_ctx() as session:
         hydraulics = NMA_HydraulicsData(
-            global_id=uuid.uuid4(),
-            point_id="TEST001",
+            nma_global_id=uuid.uuid4(),
+            nma_point_id="TEST001",
             thing_id=context.test_well_id,
             test_top=100,
             test_bottom=200,
@@ -465,15 +473,15 @@ def step_given_well_has_lithology(context: Context):
 
     with session_ctx() as session:
         lithology1 = NMA_Stratigraphy(
-            global_id=uuid.uuid4(),
-            point_id="TEST001",
+            nma_global_id=uuid.uuid4(),
+            nma_point_id="TEST001",
             thing_id=context.test_well_id,
             strat_top=0.0,
             strat_bottom=100.0,
         )
         lithology2 = NMA_Stratigraphy(
-            global_id=uuid.uuid4(),
-            point_id="TEST001",
+            nma_global_id=uuid.uuid4(),
+            nma_point_id="TEST001",
             thing_id=context.test_well_id,
             strat_top=100.0,
             strat_bottom=200.0,
@@ -491,18 +499,20 @@ def step_given_well_has_radionuclides(context: Context):
 
     with session_ctx() as session:
         chemistry_sample = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid.uuid4(),
-            sample_point_id="TEST001",
+            nma_sample_pt_id=uuid.uuid4(),
+            nma_sample_point_id="TEST001",
             thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
         session.add(chemistry_sample)
-        session.flush()
+        session.commit()
+        session.refresh(chemistry_sample)
 
         radionuclide = NMA_Radionuclides(
-            global_id=uuid.uuid4(),
+            nma_global_id=uuid.uuid4(),
             thing_id=context.test_well_id,
-            sample_pt_id=chemistry_sample.sample_pt_id,
+            chemistry_sample_info_id=chemistry_sample.id,
+            nma_sample_pt_id=chemistry_sample.nma_sample_pt_id,
             analyte="U-238",
         )
         session.add(radionuclide)
@@ -518,8 +528,8 @@ def step_given_well_has_associated_data(context: Context):
 
     with session_ctx() as session:
         associated_data = NMA_AssociatedData(
-            assoc_id=uuid.uuid4(),
-            point_id="TEST001",
+            nma_assoc_id=uuid.uuid4(),
+            nma_point_id="TEST001",
             thing_id=context.test_well_id,
             notes="Test associated data",
         )
@@ -536,7 +546,7 @@ def step_given_well_has_soil_rock(context: Context):
 
     with session_ctx() as session:
         soil_rock = NMA_Soil_Rock_Results(
-            point_id="TEST001",
+            nma_point_id="TEST001",
             thing_id=context.test_well_id,
             sample_type="Soil",
             date_sampled="2025-01-01",
