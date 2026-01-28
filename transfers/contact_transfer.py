@@ -104,7 +104,13 @@ class ContactTransfer(ThingBasedTransferer):
                 )
                 if contact is not None:
                     session.flush([contact])
-                if tag == "first" and contact and row.OwnerComment:
+                if (
+                    tag == "first"
+                    and contact
+                    and pd.notna(row.OwnerComment)
+                    and isinstance(row.OwnerComment, str)
+                    and row.OwnerComment.strip()
+                ):
                     note = contact.add_note(row.OwnerComment, "OwnerComment")
                     session.add(note)
                 session.commit()
