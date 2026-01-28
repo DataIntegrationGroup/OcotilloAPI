@@ -1,7 +1,7 @@
 """Align NMA_MinorTraceChemistry columns with legacy schema.
 
 Revision ID: 3a9c1f5b7d2e
-Revises: 2d67da5ff3ae
+Revises: c1d2e3f4a5b6
 Create Date: 2026-01-31 12:00:00.000000
 """
 
@@ -13,7 +13,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision: str = "3a9c1f5b7d2e"
-down_revision: Union[str, Sequence[str], None] = "2d67da5ff3ae"
+down_revision: Union[str, Sequence[str], None] = "c1d2e3f4a5b6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
