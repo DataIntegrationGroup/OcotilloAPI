@@ -29,6 +29,7 @@ import pytest
 
 from transfers.util import make_location
 
+
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -303,6 +304,7 @@ def test_make_location_with_empty_string_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
