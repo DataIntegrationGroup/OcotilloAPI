@@ -22,7 +22,10 @@ Updated for Integer PK schema:
 - nma_wclab_id: Legacy WCLab_ID
 - nma_sample_point_id: Legacy SamplePointID
 - nma_object_id: Legacy OBJECTID, UNIQUE
-- nma_location_id: Legacy LocationId UUID
+- nma_location_id: Legacy LocationId UUID (for audit trail)
+
+FK Change (2026-01):
+- Changed from thing_id to location_id
 """
 
 from admin.views.base import OcotilloModelView
@@ -89,7 +92,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "nma_object_id",
         "nma_wclab_id",
         "nma_location_id",
-        "thing_id",
+        "location_id",
         "collection_date",
         "collection_method",
         "collected_by",
@@ -123,7 +126,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "nma_object_id": "NMA OBJECTID (Legacy)",
         "nma_wclab_id": "NMA WCLab_ID (Legacy)",
         "nma_location_id": "NMA LocationId (Legacy)",
-        "thing_id": "Thing ID",
+        "location_id": "Location ID",
         "collection_date": "Collection Date",
         "collection_method": "Collection Method",
         "collected_by": "Collected By",
