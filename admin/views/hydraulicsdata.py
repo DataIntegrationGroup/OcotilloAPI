@@ -16,6 +16,7 @@
 """
 HydraulicsDataAdmin view for legacy NMA_HydraulicsData.
 """
+
 from starlette.requests import Request
 
 from admin.views.base import OcotilloModelView
