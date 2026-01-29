@@ -71,7 +71,7 @@ def test_create_pressure_daily_all_fields(water_well_thing):
         session.refresh(record)
 
         assert record.global_id is not None
-        assert record.point_id == "PD-1001"
+        assert record.point_id == water_well_thing.name
         assert record.date_measured == now
 
         session.delete(record)
@@ -95,7 +95,7 @@ def test_create_pressure_daily_minimal(water_well_thing):
         session.refresh(record)
 
         assert record.global_id is not None
-        assert record.point_id == "PD-1002"
+        assert record.point_id == water_well_thing.name
 
         session.delete(record)
         session.commit()
@@ -122,7 +122,7 @@ def test_read_pressure_daily_by_global_id(water_well_thing):
         )
         assert fetched is not None
         assert fetched.global_id == record.global_id
-        assert fetched.point_id == "PD-1003"
+        assert fetched.point_id == water_well_thing.name
 
         session.delete(record)
         session.commit()
