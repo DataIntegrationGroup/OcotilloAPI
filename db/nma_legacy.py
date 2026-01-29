@@ -63,7 +63,12 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
         "OBJECTID", Integer, autoincrement=True
     )
     # FK to Thing table (well_id --> Thing.nma_pk_welldata)
-    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WellID",
+        UUID(as_uuid=True),
+        ForeignKey("Thing.nma_pk_welldata"),
+        nullable=False,
+    )
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     date_measured: Mapped[datetime] = mapped_column(
         "DateMeasured", DateTime, nullable=False
