@@ -14,20 +14,22 @@
 # limitations under the License.
 # ===============================================================================
 """
-Integration tests for Well Data Relationships feature.
+Integration tests for NMA Legacy Relationships.
 
-These tests verify the business requirements from:
-    features/admin/well_data_relationships.feature
+Tests FK relationships, orphan prevention, and cascade delete behavior
+for NMA legacy models.
 
-Feature: Well Data Relationships
+Feature: NMA Legacy Data Relationships
     As a NMBGMR data manager
-    I need well-related records to always belong to a well
+    I need legacy records to always belong to their parent entities
     So that data integrity is maintained and orphaned records are prevented
 
-Updated for Integer PK schema:
-- All models now use `id` (Integer, autoincrement) as PK
+Schema notes:
+- All models use `id` (Integer, autoincrement) as PK
 - Legacy UUID columns renamed with `nma_` prefix (e.g., `nma_global_id`)
 - Legacy string columns renamed with `nma_` prefix (e.g., `nma_point_id`)
+- Chemistry samples FK to Location (not Thing)
+- Other NMA models (hydraulics, stratigraphy, etc.) FK to Thing
 - Chemistry children use `chemistry_sample_info_id` (Integer FK)
 """
 
@@ -36,6 +38,7 @@ import uuid
 import pytest
 
 from db.engine import session_ctx
+from db.location import Location
 from db.nma_legacy import (
     NMA_AssociatedData,
     NMA_Chemistry_SampleInfo,
@@ -68,6 +71,24 @@ def well_for_relationships():
         yield well
         # Cleanup: delete the well (should cascade to children)
         session.delete(well)
+        session.commit()
+
+
+@pytest.fixture
+def location_for_relationships():
+    """Create a location specifically for chemistry relationship testing."""
+    with session_ctx() as session:
+        location = Location(
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
+            release_status="draft",
+        )
+        session.add(location)
+        session.commit()
+        session.refresh(location)
+        yield location
+        # Cleanup: delete the location (should cascade to chemistry samples)
+        session.delete(location)
         session.commit()
 
 
@@ -176,20 +197,22 @@ class TestWellsStoreLegacyIdentifiers:
 class TestRelatedRecordsRequireWell:
     """
     @chemistry, @hydraulics, @stratigraphy, @radionuclides, @associated-data, @soil-rock
-    Scenarios: Various record types require a well (thing_id cannot be None)
+    Scenarios: Various record types require a parent (thing_id or location_id cannot be None)
     """
 
-    def test_chemistry_sample_requires_well(self):
+    def test_chemistry_sample_requires_location(self):
         """
         @chemistry
-        Scenario: Chemistry samples require a well
+        Scenario: Chemistry samples require a location (not a well)
+
+        Note: Chemistry samples FK to Location, not Thing.
         """
         with session_ctx() as session:
-            with pytest.raises(ValueError, match="requires a parent Thing"):
+            with pytest.raises(ValueError, match="requires a parent Location"):
                 record = NMA_Chemistry_SampleInfo(
                     nma_sample_pt_id=uuid.uuid4(),
                     nma_sample_point_id="ORPHAN-CHEM",
-                    thing_id=None,  # This should raise ValueError
+                    location_id=None,  # This should raise ValueError
                 )
                 session.add(record)
                 session.flush()
@@ -278,27 +301,30 @@ class TestRelationshipNavigation:
     Scenario: A well can access its related records through relationships
     """
 
-    def test_well_navigates_to_chemistry_samples(self, well_for_relationships):
-        """Well can navigate to its chemistry sample records."""
-        with session_ctx() as session:
-            well = session.merge(well_for_relationships)
+    def test_location_navigates_to_chemistry_samples(self, location_for_relationships):
+        """Location can navigate to its chemistry sample records.
 
-            # Create a chemistry sample for this well
+        Note: Chemistry samples FK to Location, not Thing.
+        """
+        with session_ctx() as session:
+            location = session.merge(location_for_relationships)
+
+            # Create a chemistry sample for this location
             sample = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
                 nma_sample_point_id="NAVCHEM01",  # Max 10 chars
-                thing_id=well.id,
+                location_id=location.id,
             )
             session.add(sample)
             session.commit()
-            session.refresh(well)
+            session.refresh(location)
 
             # Navigate through relationship
-            assert hasattr(well, "chemistry_sample_infos")
-            assert len(well.chemistry_sample_infos) >= 1
+            assert hasattr(location, "chemistry_sample_infos")
+            assert len(location.chemistry_sample_infos) >= 1
             assert any(
                 s.nma_sample_point_id == "NAVCHEM01"
-                for s in well.chemistry_sample_infos
+                for s in location.chemistry_sample_infos
             )
 
     def test_well_navigates_to_hydraulics_data(self, well_for_relationships):
@@ -345,16 +371,19 @@ class TestRelationshipNavigation:
             assert len(well.stratigraphy_logs) >= 1
             assert any(s.nma_point_id == "NAVSTRAT1" for s in well.stratigraphy_logs)
 
-    def test_well_navigates_to_radionuclides(self, well_for_relationships):
+    def test_well_navigates_to_radionuclides(
+        self, well_for_relationships, location_for_relationships
+    ):
         """Well can navigate to its radionuclide results."""
         with session_ctx() as session:
             well = session.merge(well_for_relationships)
+            location = session.merge(location_for_relationships)
 
-            # Create a chemistry sample for this well to satisfy the FK
+            # Create a chemistry sample for the location (chemistry FKs to Location)
             chem_sample = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
                 nma_sample_point_id="NAVRAD01",  # Required, max 10 chars
-                thing_id=well.id,
+                location_id=location.id,
             )
             session.add(chem_sample)
             session.commit()
@@ -426,32 +455,34 @@ class TestCascadeDelete:
     Scenarios: Deleting a well removes its related records
     """
 
-    def test_deleting_well_cascades_to_chemistry_samples(self):
+    def test_deleting_location_cascades_to_chemistry_samples(self):
         """
         @cascade-delete
-        Scenario: Deleting a well removes its chemistry samples
+        Scenario: Deleting a location removes its chemistry samples
+
+        Note: Chemistry samples FK to Location, not Thing.
         """
         with session_ctx() as session:
-            # Create well with chemistry sample
-            well = Thing(
-                name="Cascade Chemistry Test",
-                thing_type="water well",
+            # Create location with chemistry sample
+            location = Location(
+                point="POINT(-107.949533 33.809665)",
+                elevation=2464.9,
                 release_status="draft",
             )
-            session.add(well)
+            session.add(location)
             session.commit()
 
             sample = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
                 nma_sample_point_id="CASCCHEM1",  # Max 10 chars
-                thing_id=well.id,
+                location_id=location.id,
             )
             session.add(sample)
             session.commit()
             sample_id = sample.id  # Integer PK
 
-            # Delete the well
-            session.delete(well)
+            # Delete the location
+            session.delete(location)
             session.commit()
 
             # Clear session cache to ensure fresh DB query
@@ -459,7 +490,7 @@ class TestCascadeDelete:
 
             # Verify chemistry sample was also deleted
             orphan = session.get(NMA_Chemistry_SampleInfo, sample_id)
-            assert orphan is None, "Chemistry sample should be deleted with well"
+            assert orphan is None, "Chemistry sample should be deleted with location"
 
     def test_deleting_well_cascades_to_hydraulics_data(self):
         """
@@ -541,6 +572,15 @@ class TestCascadeDelete:
         Scenario: Deleting a well removes its radionuclide results
         """
         with session_ctx() as session:
+            # Create location for chemistry sample (chemistry FKs to Location)
+            location = Location(
+                point="POINT(-107.949533 33.809665)",
+                elevation=2464.9,
+                release_status="draft",
+            )
+            session.add(location)
+            session.commit()
+
             # Create well with radionuclide record
             well = Thing(
                 name="Cascade Radionuclides Test",
@@ -550,11 +590,11 @@ class TestCascadeDelete:
             session.add(well)
             session.commit()
 
-            # Create a chemistry sample for this well to satisfy the FK
+            # Create a chemistry sample for the location
             chem_sample = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
                 nma_sample_point_id="CASCRAD01",  # Required, max 10 chars
-                thing_id=well.id,
+                location_id=location.id,
             )
             session.add(chem_sample)
             session.commit()
@@ -581,6 +621,10 @@ class TestCascadeDelete:
             # Verify radionuclide record was also deleted
             orphan = session.get(NMA_Radionuclides, radio_id)
             assert orphan is None, "Radionuclide record should be deleted with well"
+
+            # Cleanup location
+            session.delete(location)
+            session.commit()
 
     def test_deleting_well_cascades_to_associated_data(self):
         """

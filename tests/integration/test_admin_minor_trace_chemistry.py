@@ -30,8 +30,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from admin.config import create_admin
 from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from db.engine import session_ctx
+from db.location import Location
 from db.nma_legacy import NMA_MinorTraceChemistry, NMA_Chemistry_SampleInfo
-from db.thing import Thing
 
 ADMIN_IDENTITY = MinorTraceChemistryAdmin.identity
 ADMIN_BASE_URL = f"/admin/{ADMIN_IDENTITY}"
@@ -61,21 +61,21 @@ def admin_client(admin_app):
 def minor_trace_chemistry_record():
     """Create a minor trace chemistry record for testing."""
     with session_ctx() as session:
-        # First create a Thing (required for NMA_Chemistry_SampleInfo)
-        thing = Thing(
-            name="Integration Test Well",
-            thing_type="water well",
+        # First create a Location (required for NMA_Chemistry_SampleInfo)
+        location = Location(
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
             release_status="draft",
         )
-        session.add(thing)
+        session.add(location)
         session.commit()
-        session.refresh(thing)
+        session.refresh(location)
 
         # Create parent NMA_Chemistry_SampleInfo
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid.uuid4(),
             nma_sample_point_id="INTTEST01",
-            thing_id=thing.id,
+            location_id=location.id,
         )
         session.add(sample_info)
         session.commit()
@@ -101,7 +101,7 @@ def minor_trace_chemistry_record():
         # Cleanup
         session.delete(chemistry)
         session.delete(sample_info)
-        session.delete(thing)
+        session.delete(location)
         session.commit()
 
 
