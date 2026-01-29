@@ -20,6 +20,7 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column, declared_attr
 from sqlalchemy_utils import TSVectorType
 
+from db import NotesMixin
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 
 if TYPE_CHECKING:
@@ -45,7 +46,7 @@ class ThingContactAssociation(Base, AutoBaseMixin):
     )
 
 
-class Contact(Base, AutoBaseMixin, ReleaseMixin):
+class Contact(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=True)
     organization: Mapped[str] = lexicon_term(nullable=True)
     role: Mapped[str] = lexicon_term(nullable=False)
