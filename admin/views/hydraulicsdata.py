@@ -29,8 +29,8 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "Hydraulics Data"
-    label = "Hydraulics Data"
+    name = "NMA Hydraulics Data"
+    label = "NMA Hydraulics Data"
     icon = "fa fa-tint"
 
     def can_create(self, request: Request) -> bool:
