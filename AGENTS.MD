@@ -23,5 +23,5 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
 
 Following this playbook keeps ETL runs measured in seconds/minutes instead of hours. EOF
 
-## activate python venv
-always use `source .venv/bin/activate` to activate the venv running python
+## Activate python venv
+Always use `source .venv/bin/activate` to activate the venv running python
