@@ -23,6 +23,9 @@ WaterLevelsContinuous_Pressure_Daily table.
 from datetime import datetime
 from uuid import UUID, uuid4
 
+import pytest
+from sqlalchemy.exc import IntegrityError, ProgrammingError
+
 from db.engine import session_ctx
 from db.nma_legacy import NMA_WaterLevelsContinuous_Pressure_Daily
 
@@ -37,7 +40,7 @@ def _next_object_id() -> int:
 
 
 # ===================== CREATE tests ==========================
-def test_create_pressure_daily_all_fields():
+def test_create_pressure_daily_all_fields(water_well_thing):
     """Test creating a pressure daily record with required fields."""
     with session_ctx() as session:
         now = datetime(2024, 1, 1, 12, 0, 0)
@@ -45,7 +48,7 @@ def test_create_pressure_daily_all_fields():
             global_id=_next_global_id(),
             object_id=_next_object_id(),
             well_id=uuid4(),
-            point_id="PD-1001",
+            point_id=water_well_thing.name,
             date_measured=now,
             temperature_water=12.3,
             water_head=4.5,
@@ -61,6 +64,7 @@ def test_create_pressure_daily_all_fields():
             processed_by="AB",
             checked_by="CD",
             cond_dl_ms_cm=0.2,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -74,16 +78,17 @@ def test_create_pressure_daily_all_fields():
         session.commit()
 
 
-def test_create_pressure_daily_minimal():
+def test_create_pressure_daily_minimal(water_well_thing):
     """Test creating a pressure daily record with minimal fields."""
     with session_ctx() as session:
         now = datetime(2024, 1, 2, 12, 0, 0)
         record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
-            point_id="PD-1002",
+            point_id=water_well_thing.name,
             date_measured=now,
             created=now,
             updated=now,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -97,16 +102,17 @@ def test_create_pressure_daily_minimal():
 
 
 # ===================== READ tests ==========================
-def test_read_pressure_daily_by_global_id():
+def test_read_pressure_daily_by_global_id(water_well_thing):
     """Test reading a pressure daily record by GlobalID."""
     with session_ctx() as session:
         now = datetime(2024, 1, 3, 12, 0, 0)
         record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
-            point_id="PD-1003",
+            point_id=water_well_thing.name,
             date_measured=now,
             created=now,
             updated=now,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -123,16 +129,17 @@ def test_read_pressure_daily_by_global_id():
 
 
 # ===================== UPDATE tests ==========================
-def test_update_pressure_daily():
+def test_update_pressure_daily(water_well_thing):
     """Test updating a pressure daily record."""
     with session_ctx() as session:
         now = datetime(2024, 1, 4, 12, 0, 0)
         record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
-            point_id="PD-1004",
+            point_id=water_well_thing.name,
             date_measured=now,
             created=now,
             updated=now,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -150,16 +157,17 @@ def test_update_pressure_daily():
 
 
 # ===================== DELETE tests ==========================
-def test_delete_pressure_daily():
+def test_delete_pressure_daily(water_well_thing):
     """Test deleting a pressure daily record."""
     with session_ctx() as session:
         now = datetime(2024, 1, 5, 12, 0, 0)
         record = NMA_WaterLevelsContinuous_Pressure_Daily(
             global_id=_next_global_id(),
-            point_id="PD-1005",
+            point_id=water_well_thing.name,
             date_measured=now,
             created=now,
             updated=now,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -180,6 +188,7 @@ def test_pressure_daily_has_all_migrated_columns():
         "global_id",
         "object_id",
         "well_id",
+        "thing_id",
         "point_id",
         "date_measured",
         "temperature_water",
@@ -210,6 +219,54 @@ def test_pressure_daily_table_name():
         NMA_WaterLevelsContinuous_Pressure_Daily.__tablename__
         == "NMA_WaterLevelsContinuous_Pressure_Daily"
     )
+
+
+# ===================== Relational Integrity Tests ======================
+
+
+def test_pressure_daily_thing_id_required():
+    """
+    VERIFIES: 'thing_id IS NOT NULL' and Foreign Key presence.
+    Ensures the DB rejects records without a Thing linkage.
+    """
+    with session_ctx() as session:
+        now = datetime(2024, 1, 6, 12, 0, 0)
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
+            global_id=_next_global_id(),
+            point_id="PD-1006",
+            date_measured=now,
+            created=now,
+            updated=now,
+        )
+        session.add(record)
+
+        with pytest.raises((IntegrityError, ProgrammingError)):
+            session.flush()
+        session.rollback()
+
+
+def test_pressure_daily_invalid_thing_id_rejected(water_well_thing):
+    """
+    VERIFIES: foreign key integrity on thing_id.
+    Ensures the DB rejects updates to a non-existent Thing.
+    """
+    with session_ctx() as session:
+        now = datetime(2024, 1, 7, 12, 0, 0)
+        record = NMA_WaterLevelsContinuous_Pressure_Daily(
+            global_id=_next_global_id(),
+            point_id=water_well_thing.name,
+            date_measured=now,
+            created=now,
+            updated=now,
+            thing_id=water_well_thing.id,
+        )
+        session.add(record)
+        session.commit()
+
+        with pytest.raises((IntegrityError, ProgrammingError)):
+            record.thing_id = 999999
+            session.flush()
+        session.rollback()
 
 
 # ============= EOF =============================================
