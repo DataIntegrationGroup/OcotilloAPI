@@ -46,6 +46,13 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     hanging_point_description: Mapped[str] = mapped_column(Text, nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
 
+    nma_WI_Duration: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_EndFrequency: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_Magnitude: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_MicGain: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_MinSoundDepth: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_StartFrequency: Mapped[int] = mapped_column(Integer, nullable=True)
+
     # --- Relationships ---
     # Many-To-One: A Deployment is for one Thing.
     thing: Mapped["Thing"] = relationship("Thing", back_populates="deployments")
