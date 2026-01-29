@@ -557,6 +557,10 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     if row.SiteDate:
         nma_site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
 
+    reliability = None
+    if row.DataReliability and pd.notna(row.DataReliability):
+        reliability = row.DataReliability.strip()
+
     location = Location(
         nma_pk_location=row.LocationId,
         description=row.PointID,  # Use PointID as location description
@@ -567,7 +571,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         nma_site_date=nma_site_date,
         nma_location_notes=row.LocationNotes,
         nma_coordinate_notes=row.CoordinateNotes,
-        nma_data_reliability=row.DataReliability,
+        nma_data_reliability=reliability,
     )
 
     return location, elevation_method, notes

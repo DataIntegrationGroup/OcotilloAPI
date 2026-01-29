@@ -37,11 +37,21 @@ def upgrade() -> None:
     )
     op.add_column(
         "location",
-        sa.Column("nma_data_reliability", sa.String(length=100), nullable=True),
+        sa.Column(
+            "nma_data_reliability",
+            sa.String(length=100),
+            sa.ForeignKey("lexicon_term.term", onupdate="CASCADE"),
+            nullable=True,
+        ),
     )
     op.add_column(
         "location_version",
-        sa.Column("nma_data_reliability", sa.String(length=100), nullable=True),
+        sa.Column(
+            "nma_data_reliability",
+            sa.String(length=100),
+            sa.ForeignKey("lexicon_term.term", onupdate="CASCADE"),
+            nullable=True,
+        ),
     )
 
 
