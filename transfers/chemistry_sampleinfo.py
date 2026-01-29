@@ -62,9 +62,11 @@ class ChemistrySampleInfoTransferer(Transferer):
     def _build_location_id_cache(self):
         """Build cache of Location.nma_pk_location -> Location.id to prevent orphan records."""
         with session_ctx() as session:
-            locations = session.query(Location.nma_pk_location, Location.id).filter(
-                Location.nma_pk_location.isnot(None)
-            ).all()
+            locations = (
+                session.query(Location.nma_pk_location, Location.id)
+                .filter(Location.nma_pk_location.isnot(None))
+                .all()
+            )
             normalized = {}
             for nma_pk, location_id in locations:
                 if nma_pk is None:
@@ -86,7 +88,9 @@ class ChemistrySampleInfoTransferer(Transferer):
                     continue
                 normalized[normalized_pk] = location_id
             self._location_id_cache = normalized
-        logger.info(f"Built Location ID cache with {len(self._location_id_cache)} entries")
+        logger.info(
+            f"Built Location ID cache with {len(self._location_id_cache)} entries"
+        )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])

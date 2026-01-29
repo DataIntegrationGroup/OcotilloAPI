@@ -406,9 +406,11 @@ def step_when_access_relationships(context: Context):
         # Access via the test location created in step_given_well_has_chemistry
         location = None
         if hasattr(context, "test_location_id"):
-            location = session.query(Location).filter(
-                Location.id == context.test_location_id
-            ).first()
+            location = (
+                session.query(Location)
+                .filter(Location.id == context.test_location_id)
+                .first()
+            )
 
         context.well_relationships = {
             "chemistry_samples": location.chemistry_sample_infos if location else [],

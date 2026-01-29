@@ -488,7 +488,9 @@ def test_reverse_lineage_navigation(shared_location):
         session.refresh(location)
 
         # Reverse navigation - filter to just this sample_info
-        matching = [si for si in location.chemistry_sample_infos if si.id == sample_info.id]
+        matching = [
+            si for si in location.chemistry_sample_infos if si.id == sample_info.id
+        ]
         assert len(matching) == 1
         assert len(matching[0].minor_trace_chemistries) == 1
         assert matching[0].minor_trace_chemistries[0] == mtc

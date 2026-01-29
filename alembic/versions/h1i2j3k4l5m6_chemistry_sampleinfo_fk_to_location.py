@@ -44,36 +44,26 @@ def upgrade() -> None:
 
     # Step 2: Populate location_id from nma_LocationId -> Location.nma_pk_location
     # Location.nma_pk_location is stored as String(36), so cast UUID to text for comparison
-    bind.execute(
-        sa.text(
-            """
+    bind.execute(sa.text("""
             UPDATE "NMA_Chemistry_SampleInfo" csi
             SET location_id = l.id
             FROM location l
             WHERE CAST(csi."nma_LocationId" AS TEXT) = l.nma_pk_location
-            """
-        )
-    )
+            """))
 
     # Step 3: Delete orphan records where location_id is still NULL
     # These are records with LocationIds that don't exist in the Location table
-    result = bind.execute(
-        sa.text(
-            """
+    result = bind.execute(sa.text("""
             SELECT COUNT(*) FROM "NMA_Chemistry_SampleInfo" WHERE location_id IS NULL
-            """
-        )
-    )
+            """))
     orphan_count = result.scalar()
     if orphan_count and orphan_count > 0:
-        print(f"Deleting {orphan_count} orphan NMA_Chemistry_SampleInfo records (no matching Location)")
-        bind.execute(
-            sa.text(
-                """
-                DELETE FROM "NMA_Chemistry_SampleInfo" WHERE location_id IS NULL
-                """
-            )
+        print(
+            f"Deleting {orphan_count} orphan NMA_Chemistry_SampleInfo records (no matching Location)"
         )
+        bind.execute(sa.text("""
+                DELETE FROM "NMA_Chemistry_SampleInfo" WHERE location_id IS NULL
+                """))
 
     # Step 4: Make location_id NOT NULL
     op.alter_column(
@@ -140,48 +130,34 @@ def downgrade() -> None:
 
     # Populate thing_id by joining nma_SamplePointID -> Thing.name
     # This is the reverse of what we did - mapping chemistry records back to Things
-    bind.execute(
-        sa.text(
-            """
+    bind.execute(sa.text("""
             UPDATE "NMA_Chemistry_SampleInfo" csi
             SET thing_id = t.id
             FROM thing t
             WHERE UPPER(TRIM(csi."nma_SamplePointID")) = UPPER(TRIM(t.name))
-            """
-        )
-    )
+            """))
 
     # For records that couldn't find a Thing match, try to match via Location -> Thing association
-    bind.execute(
-        sa.text(
-            """
+    bind.execute(sa.text("""
             UPDATE "NMA_Chemistry_SampleInfo" csi
             SET thing_id = lta.thing_id
             FROM location_thing_association lta
             WHERE csi.location_id = lta.location_id
               AND csi.thing_id IS NULL
-            """
-        )
-    )
+            """))
 
     # Delete any remaining orphans (cannot be linked to a Thing)
-    result = bind.execute(
-        sa.text(
-            """
+    result = bind.execute(sa.text("""
             SELECT COUNT(*) FROM "NMA_Chemistry_SampleInfo" WHERE thing_id IS NULL
-            """
-        )
-    )
+            """))
     orphan_count = result.scalar()
     if orphan_count and orphan_count > 0:
-        print(f"Deleting {orphan_count} orphan NMA_Chemistry_SampleInfo records (no matching Thing)")
-        bind.execute(
-            sa.text(
-                """
-                DELETE FROM "NMA_Chemistry_SampleInfo" WHERE thing_id IS NULL
-                """
-            )
+        print(
+            f"Deleting {orphan_count} orphan NMA_Chemistry_SampleInfo records (no matching Thing)"
         )
+        bind.execute(sa.text("""
+                DELETE FROM "NMA_Chemistry_SampleInfo" WHERE thing_id IS NULL
+                """))
 
     # Make thing_id NOT NULL
     op.alter_column(
