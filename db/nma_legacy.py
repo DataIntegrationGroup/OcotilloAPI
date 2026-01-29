@@ -374,6 +374,9 @@ class NMA_SurfaceWaterData(Base):
 
     __tablename__ = "NMA_SurfaceWaterData"
 
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
     surface_id: Mapped[uuid.UUID] = mapped_column(
         "SurfaceID", UUID(as_uuid=True), nullable=False
     )

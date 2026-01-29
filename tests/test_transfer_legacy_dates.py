@@ -23,6 +23,7 @@ These tests verify that:
 
 import datetime
 from unittest.mock import patch
+
 import pandas as pd
 import pytest
 
@@ -65,6 +66,7 @@ def test_make_location_with_both_ampapi_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -102,6 +104,7 @@ def test_make_location_with_only_date_created(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -132,6 +135,7 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -160,6 +164,7 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -192,6 +197,7 @@ def test_make_location_ampapi_dates_are_date_not_datetime(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -227,6 +233,7 @@ def test_make_location_ampapi_dates_independent_of_created_at(mock_lexicon_mappe
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -267,6 +274,7 @@ def test_make_location_with_no_ampapi_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -295,6 +303,7 @@ def test_make_location_with_empty_string_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -326,6 +335,7 @@ def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
                 "CoordinateNotes": None,
                 "LocationNotes": None,
                 "AltitudeAccuracy": None,
+                "DataReliability": None,
             }
         )
 
