@@ -147,8 +147,8 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     assert location.nma_site_date == datetime.date(2015, 6, 20)
 
 
-def test_make_location_maps_data_reliability_code():
-    """DataReliability codes should map to lexicon terms."""
+def test_make_location_maps_data_reliability_code(mock_lexicon_mapper):
+    """DataReliability codes should map via the lexicon mapper."""
     row = pd.Series(
         {
             "PointID": "TEST-DR",
@@ -169,10 +169,8 @@ def test_make_location_maps_data_reliability_code():
     )
 
     location, elevation_method, location_notes = make_location(row, {})
-    assert (
-        location.nma_data_reliability
-        == "Data not field checked, but considered reliable"
-    )
+    mock_lexicon_mapper.map_value.assert_called_once_with("LU_DataReliability:U")
+    assert location.nma_data_reliability == mock_lexicon_mapper.map_value.return_value
 
 
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):

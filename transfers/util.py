@@ -56,13 +56,6 @@ NMA_COORDINATE_ACCURACY = {
     "T": (10, "second"),
 }
 
-DATA_RELIABILITY_MAP = {
-    "C": "Data field checked by reporting agency",
-    "L": "Location not correct",
-    "M": "Minimal data",
-    "U": "Data not field checked, but considered reliable",
-}
-
 
 class MeasuringPointEstimator:
     def __init__(self):
