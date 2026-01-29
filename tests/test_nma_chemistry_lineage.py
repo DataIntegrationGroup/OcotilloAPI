@@ -106,12 +106,13 @@ def test_nma_minor_trace_chemistry_columns():
 
     expected_columns = [
         "global_id",  # PK
-        "chemistry_sample_info_id",  # new FK (UUID, not string)
+        "sample_pt_id",  # FK to NMA_Chemistry_SampleInfo
         # from legacy
+        "sample_point_id",
         "analyte",
+        "symbol",
         "sample_value",
         "units",
-        "symbol",
         "analysis_method",
         "analysis_date",
         "notes",
@@ -119,6 +120,8 @@ def test_nma_minor_trace_chemistry_columns():
         "uncertainty",
         "volume",
         "volume_unit",
+        "object_id",
+        "wclab_id",
     ]
 
     for col in expected_columns:
@@ -164,7 +167,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
 
         # Verify all columns saved
         assert mtc.global_id is not None
-        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
+        assert mtc.sample_pt_id == sample_info.sample_pt_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
         assert mtc.units == "mg/L"
@@ -384,7 +387,7 @@ def test_append_mtc_to_sample_info(shared_well):
 
         # Verify bidirectional
         assert mtc.chemistry_sample_info == sample_info
-        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
+        assert mtc.sample_pt_id == sample_info.sample_pt_id
 
         session.delete(sample_info)
         session.commit()
@@ -410,7 +413,7 @@ def test_mtc_requires_chemistry_sample_info():
             analyte="As",
             sample_value=0.01,
             units="mg/L",
-            chemistry_sample_info_id=None,  # Explicit None triggers validator
+            sample_pt_id=None,  # Explicit None triggers validator
         )
 
 
@@ -528,7 +531,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
         sample_info_id = sample_info.sample_pt_id
         assert (
             session.query(NMA_MinorTraceChemistry)
-            .filter_by(chemistry_sample_info_id=sample_info_id)
+            .filter_by(sample_pt_id=sample_info_id)
             .count()
             == 4
         )
@@ -540,7 +543,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_well):
         # Children should be gone
         assert (
             session.query(NMA_MinorTraceChemistry)
-            .filter_by(chemistry_sample_info_id=sample_info_id)
+            .filter_by(sample_pt_id=sample_info_id)
             .count()
             == 0
         )

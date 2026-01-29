@@ -129,16 +129,16 @@ class MinorTraceChemistryTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["GlobalID"],
                 set_={
-                    "sample_value": excluded.sample_value,
-                    "units": excluded.units,
-                    "symbol": excluded.symbol,
-                    "analysis_method": excluded.analysis_method,
-                    "analysis_date": excluded.analysis_date,
-                    "notes": excluded.notes,
-                    "analyses_agency": excluded.analyses_agency,
-                    "uncertainty": excluded.uncertainty,
-                    "volume": excluded.volume,
-                    "volume_unit": excluded.volume_unit,
+                    "SampleValue": excluded.SampleValue,
+                    "Units": excluded.Units,
+                    "Symbol": excluded.Symbol,
+                    "AnalysisMethod": excluded.AnalysisMethod,
+                    "AnalysisDate": excluded.AnalysisDate,
+                    "Notes": excluded.Notes,
+                    "AnalysesAgency": excluded.AnalysesAgency,
+                    "Uncertainty": excluded.Uncertainty,
+                    "Volume": excluded.Volume,
+                    "VolumeUnit": excluded.VolumeUnit,
                 },
             )
             session.execute(stmt)
@@ -174,26 +174,27 @@ class MinorTraceChemistryTransferer(Transferer):
             return None
 
         return {
-            "global_id": global_id,
-            "chemistry_sample_info_id": sample_pt_id,
-            "analyte": self._safe_str(row, "Analyte"),
-            "sample_value": self._safe_float(row, "SampleValue"),
-            "units": self._safe_str(row, "Units"),
-            "symbol": self._safe_str(row, "Symbol"),
-            "analysis_method": self._safe_str(row, "AnalysisMethod"),
-            "analysis_date": self._parse_date(row, "AnalysisDate"),
-            "notes": self._safe_str(row, "Notes"),
-            "analyses_agency": self._safe_str(row, "AnalysesAgency"),
-            "uncertainty": self._safe_float(row, "Uncertainty"),
-            "volume": self._safe_int(row, "Volume"),
-            "volume_unit": self._safe_str(row, "VolumeUnit"),
+            "GlobalID": global_id,
+            "SamplePtID": sample_pt_id,
+            "SamplePointID": self._safe_str(row, "SamplePointID"),
+            "Analyte": self._safe_str(row, "Analyte"),
+            "SampleValue": self._safe_float(row, "SampleValue"),
+            "Units": self._safe_str(row, "Units"),
+            "Symbol": self._safe_str(row, "Symbol"),
+            "AnalysisMethod": self._safe_str(row, "AnalysisMethod"),
+            "AnalysisDate": self._parse_date(row, "AnalysisDate"),
+            "Notes": self._safe_str(row, "Notes"),
+            "AnalysesAgency": self._safe_str(row, "AnalysesAgency"),
+            "Uncertainty": self._safe_float(row, "Uncertainty"),
+            "Volume": self._safe_int(row, "Volume"),
+            "VolumeUnit": self._safe_str(row, "VolumeUnit"),
         }
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
         deduped = {}
         for row in rows:
-            key = row.get("global_id")
+            key = row.get("GlobalID")
             if key is None:
                 continue
             deduped[key] = row

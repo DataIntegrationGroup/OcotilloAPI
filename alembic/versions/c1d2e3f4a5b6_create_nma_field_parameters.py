@@ -1,7 +1,7 @@
 """Create legacy NMA_FieldParameters table.
 
 Revision ID: c1d2e3f4a5b6
-Revises: 2d67da5ff3ae
+Revises: 1d2c3b4a5e67
 Create Date: 2026-03-01 03:00:00.000000
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "c1d2e3f4a5b6"
-down_revision: Union[str, Sequence[str], None] = "2d67da5ff3ae"
+down_revision: Union[str, Sequence[str], None] = "1d2c3b4a5e67"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

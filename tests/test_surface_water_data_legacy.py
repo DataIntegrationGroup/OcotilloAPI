@@ -52,6 +52,7 @@ def test_create_surface_water_data_all_fields():
     """Test creating a surface water data record with all fields."""
     with session_ctx() as session:
         record = NMA_SurfaceWaterData(
+            location_id=uuid4(),
             surface_id=uuid4(),
             point_id="SW-1001",
             object_id=_next_object_id(),
@@ -75,6 +76,7 @@ def test_create_surface_water_data_all_fields():
         assert record.object_id is not None
         assert record.point_id == "SW-1001"
         assert record.surface_id is not None
+        assert record.location_id is not None
         assert record.discharge_rate == 1.2
 
         session.delete(record)
@@ -118,6 +120,27 @@ def test_read_surface_water_data_by_object_id():
         assert fetched is not None
         assert fetched.object_id == record.object_id
         assert fetched.point_id == "SW-1003"
+
+        session.delete(record)
+        session.commit()
+
+
+def test_surface_water_data_stores_location_id():
+    """Ensure location_id values persist in the legacy model."""
+    with session_ctx() as session:
+        location_id = uuid4()
+        record = NMA_SurfaceWaterData(
+            location_id=location_id,
+            surface_id=uuid4(),
+            point_id="SW-1010",
+            object_id=_next_object_id(),
+        )
+        session.add(record)
+        session.commit()
+
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
+        assert fetched is not None
+        assert fetched.location_id == location_id
 
         session.delete(record)
         session.commit()
@@ -199,6 +222,7 @@ def test_delete_surface_water_data():
 def test_surface_water_data_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
+        "location_id",
         "surface_id",
         "point_id",
         "object_id",
