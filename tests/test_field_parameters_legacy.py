@@ -27,11 +27,15 @@ def _next_sample_point_id() -> str:
     return f"SP-{uuid4().hex[:7]}"
 
 
-def _create_sample_info(session, water_well_thing) -> NMA_Chemistry_SampleInfo:
+def _create_sample_info(session, location) -> NMA_Chemistry_SampleInfo:
+    """Create a sample info record for testing.
+
+    Note: Chemistry samples FK to Location, not Thing (changed 2026-01).
+    """
     sample = NMA_Chemistry_SampleInfo(
         nma_sample_pt_id=uuid4(),
         nma_sample_point_id=_next_sample_point_id(),
-        thing_id=water_well_thing.id,
+        location_id=location.id,
     )
     session.add(sample)
     session.commit()
@@ -77,13 +81,13 @@ def test_field_parameters_table_name():
 # ===================== Functional & CRUD Tests =========================
 
 
-def test_field_parameters_persistence(water_well_thing):
+def test_field_parameters_persistence(location):
     """
     Verifies that data correctly persists and retrieves for the core columns.
     This confirms the Postgres data types (REAL, UUID, VARCHAR) are compatible.
     """
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         test_global_id = uuid4()
         new_fp = NMA_FieldParameters(
             nma_global_id=test_global_id,
@@ -113,10 +117,10 @@ def test_field_parameters_persistence(water_well_thing):
         session.commit()
 
 
-def test_object_id_column_exists(water_well_thing):
+def test_object_id_column_exists(location):
     """Verifies that the nma_object_id column exists."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         fp1 = NMA_FieldParameters(
             chemistry_sample_info_id=sample_info.id,
             field_parameter="Temp",
@@ -135,10 +139,10 @@ def test_object_id_column_exists(water_well_thing):
 
 
 # ===================== CREATE tests ==========================
-def test_create_field_parameters_all_fields(water_well_thing):
+def test_create_field_parameters_all_fields(location):
     """Test creating a field parameters record with all fields."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -168,10 +172,10 @@ def test_create_field_parameters_all_fields(water_well_thing):
         session.commit()
 
 
-def test_create_field_parameters_minimal(water_well_thing):
+def test_create_field_parameters_minimal(location):
     """Test creating a field parameters record with minimal fields."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -193,10 +197,10 @@ def test_create_field_parameters_minimal(water_well_thing):
 
 
 # ===================== READ tests ==========================
-def test_read_field_parameters_by_id(water_well_thing):
+def test_read_field_parameters_by_id(location):
     """Test reading a field parameters record by Integer ID."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -214,10 +218,10 @@ def test_read_field_parameters_by_id(water_well_thing):
         session.commit()
 
 
-def test_query_field_parameters_by_nma_sample_point_id(water_well_thing):
+def test_query_field_parameters_by_nma_sample_point_id(location):
     """Test querying field parameters by nma_sample_point_id."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record1 = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -248,10 +252,10 @@ def test_query_field_parameters_by_nma_sample_point_id(water_well_thing):
 
 
 # ===================== UPDATE tests ==========================
-def test_update_field_parameters(water_well_thing):
+def test_update_field_parameters(location):
     """Test updating a field parameters record."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -273,10 +277,10 @@ def test_update_field_parameters(water_well_thing):
 
 
 # ===================== DELETE tests ==========================
-def test_delete_field_parameters(water_well_thing):
+def test_delete_field_parameters(location):
     """Test deleting a field parameters record."""
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         record = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
@@ -315,13 +319,13 @@ def test_orphan_prevention_constraint():
         session.rollback()
 
 
-def test_cascade_delete_behavior(water_well_thing):
+def test_cascade_delete_behavior(location):
     """
     VERIFIES: 'on delete cascade' behavior.
     Deleting the parent sample must automatically remove associated field measurements.
     """
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         fp = NMA_FieldParameters(
             chemistry_sample_info_id=sample_info.id,
             field_parameter="Temperature",
@@ -341,13 +345,13 @@ def test_cascade_delete_behavior(water_well_thing):
         ), "Child record persisted after parent deletion."
 
 
-def test_update_cascade_propagation(water_well_thing):
+def test_update_cascade_propagation(location):
     """
     VERIFIES: foreign key integrity on chemistry_sample_info_id.
     Ensures the DB rejects updates to a non-existent parent.
     """
     with session_ctx() as session:
-        sample_info = _create_sample_info(session, water_well_thing)
+        sample_info = _create_sample_info(session, location)
         fp = NMA_FieldParameters(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
