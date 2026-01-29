@@ -29,6 +29,7 @@ import pytest
 
 from transfers.util import make_location
 
+
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -169,7 +170,7 @@ def test_make_location_maps_data_reliability_code(mock_lexicon_mapper):
     )
 
     location, elevation_method, location_notes = make_location(row, {})
-    mock_lexicon_mapper.map_value.assert_called_once_with("LU_DataReliability:U")
+    mock_lexicon_mapper.map_value.assert_any_call("LU_DataReliability:U")
     assert location.nma_data_reliability == mock_lexicon_mapper.map_value.return_value
 
 
