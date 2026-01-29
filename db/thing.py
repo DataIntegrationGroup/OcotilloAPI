@@ -315,13 +315,8 @@ class Thing(
         )
     )
 
-    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
-    chemistry_sample_infos: Mapped[List["NMA_Chemistry_SampleInfo"]] = relationship(
-        "NMA_Chemistry_SampleInfo",
-        back_populates="thing",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
+    # NOTE: chemistry_sample_infos relationship removed (2026-01).
+    # NMA_Chemistry_SampleInfo now FKs to Location, not Thing.
 
     stratigraphy_logs: Mapped[List["NMA_Stratigraphy"]] = relationship(
         "NMA_Stratigraphy",

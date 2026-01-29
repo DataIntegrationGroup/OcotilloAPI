@@ -69,6 +69,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from db.base import Base
 
 if TYPE_CHECKING:
+    from db.location import Location
     from db.thing import Thing
 
 
@@ -351,7 +352,12 @@ class NMA_Chemistry_SampleInfo(Base):
     - nma_wclab_id: Legacy WCLab_ID
     - nma_sample_point_id: Legacy SamplePointID
     - nma_object_id: Legacy OBJECTID, UNIQUE
-    - nma_location_id: Legacy LocationId UUID
+    - nma_location_id: Legacy LocationId UUID (for audit trail)
+
+    FK Change (2026-01):
+    - Changed from thing_id FK to location_id FK
+    - 99.95% of chemistry records have valid LocationId -> Location match
+    - Only ~2 truly orphan records (filtered during transfer)
     """
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
@@ -372,13 +378,14 @@ class NMA_Chemistry_SampleInfo(Base):
     nma_object_id: Mapped[Optional[int]] = mapped_column(
         "nma_OBJECTID", Integer, unique=True
     )
+    # Legacy LocationId UUID - kept for audit trail
     nma_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_LocationId", UUID(as_uuid=True)
     )
 
-    # FK to Thing - required for all ChemistrySampleInfo records
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    # FK to Location - required for all ChemistrySampleInfo records
+    location_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("location.id", ondelete="CASCADE"), nullable=False
     )
 
     collection_date: Mapped[Optional[datetime]] = mapped_column(
@@ -410,8 +417,8 @@ class NMA_Chemistry_SampleInfo(Base):
     sample_notes: Mapped[Optional[str]] = mapped_column("SampleNotes", Text)
 
     # --- Relationships ---
-    thing: Mapped["Thing"] = relationship(
-        "Thing", back_populates="chemistry_sample_infos"
+    location: Mapped["Location"] = relationship(
+        "Location", back_populates="chemistry_sample_infos"
     )
 
     minor_trace_chemistries: Mapped[List["NMA_MinorTraceChemistry"]] = relationship(
@@ -442,12 +449,12 @@ class NMA_Chemistry_SampleInfo(Base):
         passive_deletes=True,
     )
 
-    @validates("thing_id")
-    def validate_thing_id(self, key, value):
-        """Prevent orphan ChemistrySampleInfo - must have a parent Thing."""
+    @validates("location_id")
+    def validate_location_id(self, key, value):
+        """Prevent orphan ChemistrySampleInfo - must have a parent Location."""
         if value is None:
             raise ValueError(
-                "ChemistrySampleInfo requires a parent Thing (thing_id cannot be None)"
+                "ChemistrySampleInfo requires a parent Location (location_id cannot be None)"
             )
         return value
 
