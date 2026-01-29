@@ -29,6 +29,7 @@ import pytest
 
 from transfers.util import make_location
 
+
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -60,7 +61,7 @@ def test_make_location_with_both_ampapi_dates(mock_lexicon_mapper):
             "SiteDate": "2002-12-10 00:00:00.000",
             "Altitude": 1558.8,
             "AltDatum": "NAVD88",
-            "AltitudeMethod": "GPS",
+            "AltitudeMethod": None,
             "LocationId": 1,
             "PublicRelease": True,
             "CoordinateNotes": None,
@@ -145,6 +146,34 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     # Both dates should be preserved as-is, regardless of order
     assert location.nma_date_created == datetime.date(2010, 1, 15)
     assert location.nma_site_date == datetime.date(2015, 6, 20)
+
+
+def test_make_location_maps_data_reliability_code():
+    """DataReliability codes should map to lexicon terms."""
+    row = pd.Series(
+        {
+            "PointID": "TEST-DR",
+            "Easting": 350000,
+            "Northing": 3880000,
+            "DateCreated": "2012-01-01 00:00:00.000",
+            "SiteDate": None,
+            "Altitude": 1500.0,
+            "AltDatum": "NAVD88",
+            "AltitudeMethod": "GPS",
+            "LocationId": 9999,
+            "PublicRelease": True,
+            "CoordinateNotes": None,
+            "LocationNotes": None,
+            "AltitudeAccuracy": None,
+            "DataReliability": "U",
+        }
+    )
+
+    location, elevation_method, location_notes = make_location(row, {})
+    assert (
+        location.nma_data_reliability
+        == "Data not field checked, but considered reliable"
+    )
 
 
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
