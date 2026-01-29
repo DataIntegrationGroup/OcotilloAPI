@@ -84,7 +84,7 @@ def minor_trace_chemistry_record():
         # Create MinorTraceChemistry record
         chemistry = NMA_MinorTraceChemistry(
             global_id=uuid.uuid4(),
-            chemistry_sample_info_id=sample_info.sample_pt_id,
+            sample_pt_id=sample_info.sample_pt_id,
             analyte="Arsenic",
             symbol="As",
             sample_value=0.005,
@@ -120,7 +120,7 @@ class TestMinorTraceChemistryListView:
         """List view should contain the view name."""
         response = admin_client.get(f"{ADMIN_BASE_URL}/list")
         assert response.status_code == 200
-        assert "Minor Trace Chemistry" in response.text
+        assert "NMA Minor Trace Chemistry" in response.text
 
     def test_no_create_button_in_list_view(self, admin_client):
         """List view should not have a Create button for read-only view."""

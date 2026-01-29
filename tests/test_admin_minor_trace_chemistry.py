@@ -37,15 +37,15 @@ class TestMinorTraceChemistryAdminRegistration:
         admin = create_admin(app)
         view_names = [v.name for v in admin._views]
 
-        assert "Minor Trace Chemistry" in view_names, (
-            f"Expected 'Minor Trace Chemistry' to be registered in admin views. "
+        assert "NMA Minor Trace Chemistry" in view_names, (
+            f"Expected 'NMA Minor Trace Chemistry' to be registered in admin views. "
             f"Found: {view_names}"
         )
 
     def test_view_has_correct_label(self):
         """View should have proper label for sidebar display."""
         view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
-        assert view.label == "Minor Trace Chemistry"
+        assert view.label == "NMA Minor Trace Chemistry"
 
     def test_class_has_flask_icon_configured(self):
         """View class should have flask icon configured for chemistry data."""
@@ -108,6 +108,8 @@ class TestMinorTraceChemistryAdminListView:
         required_columns = [
             "global_id",
             "chemistry_sample_info",  # HasOne relationship to parent
+            "sample_pt_id",
+            "sample_point_id",
             "analyte",
             "sample_value",
             "units",
@@ -146,6 +148,8 @@ class TestMinorTraceChemistryAdminFormView:
         # Note: chemistry_sample_info is a HasOne field, not a string
         expected_string_fields = [
             "global_id",
+            "sample_pt_id",
+            "sample_point_id",
             "analyte",
             "symbol",
             "sample_value",
@@ -156,7 +160,9 @@ class TestMinorTraceChemistryAdminFormView:
             "notes",
             "volume",
             "volume_unit",
+            "object_id",
             "analyses_agency",
+            "wclab_id",
         ]
         configured_fields = MinorTraceChemistryAdmin.fields
 
@@ -176,8 +182,8 @@ class TestMinorTraceChemistryAdminFormView:
     def test_field_labels_are_human_readable(self, view):
         """Field labels should be human-readable."""
         assert view.field_labels.get("global_id") == "GlobalID"
-        assert view.field_labels.get("sample_value") == "Sample Value"
-        assert view.field_labels.get("analysis_date") == "Analysis Date"
+        assert view.field_labels.get("sample_value") == "SampleValue"
+        assert view.field_labels.get("analysis_date") == "AnalysisDate"
 
     def test_searchable_fields_include_key_fields(self, view):
         """Searchable fields should include commonly searched columns."""
