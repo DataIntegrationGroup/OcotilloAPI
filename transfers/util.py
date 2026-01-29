@@ -560,6 +560,7 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     reliability = None
     if row.DataReliability:
         reliability = row.DataReliability.strip()
+        reliability = lexicon_mapper.map_value(f"LU_DataReliability:{reliability}")
 
     location = Location(
         nma_pk_location=row.LocationId,
