@@ -129,7 +129,7 @@ def load_transfer_options() -> TransferOptions:
         transfer_acoustic=get_bool_env("TRANSFER_WATERLEVELS_ACOUSTIC", True),
         transfer_link_ids=get_bool_env("TRANSFER_LINK_IDS", True),
         transfer_groups=get_bool_env("TRANSFER_GROUPS", True),
-        transfer_assets=get_bool_env("TRANSFER_ASSETS", False),
+        transfer_assets=get_bool_env("TRANSFER_ASSETS", True),
         transfer_surface_water_photos=get_bool_env(
             "TRANSFER_SURFACE_WATER_PHOTOS", True
         ),
@@ -741,10 +741,6 @@ def _transfer_sequential(
             )
         metrics.acoustic_metrics(*results)
 
-    message("CLEANING UP LOCATIONS")
-    with session_ctx() as session:
-        cleanup_locations(session)
-
     return profile_artifacts
 
 
@@ -773,6 +769,10 @@ def main():
     profile_artifacts = transfer_all(
         metrics, limit=limit, profile_waterlevels=profile_waterlevels
     )
+
+    message("CLEANING UP LOCATIONS")
+    with session_ctx() as session:
+        cleanup_locations(session)
 
     metrics.close()
     metrics.save_to_storage_bucket()
