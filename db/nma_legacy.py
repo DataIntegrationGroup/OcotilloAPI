@@ -96,6 +96,10 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
     checked_by: Mapped[Optional[str]] = mapped_column("CheckedBy", String(4))
     cond_dl_ms_cm: Mapped[Optional[float]] = mapped_column("CONDDL (mS/cm)", Float)
 
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="pressure_daily_levels"
+    )
+
 
 class NMA_view_NGWMN_WellConstruction(Base):
     """

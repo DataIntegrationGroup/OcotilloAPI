@@ -47,7 +47,11 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
-    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_Stratigraphy
+    from db.nma_legacy import (
+        NMA_Chemistry_SampleInfo,
+        NMA_Stratigraphy,
+        NMA_WaterLevelsContinuous_Pressure_Daily,
+    )
 
 
 class Thing(
@@ -317,6 +321,14 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+    pressure_daily_levels: Mapped[List["NMA_WaterLevelsContinuous_Pressure_Daily"]] = (
+        relationship(
+            "NMA_WaterLevelsContinuous_Pressure_Daily",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
     )
 
     # --- Association Proxies ---
