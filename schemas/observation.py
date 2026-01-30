@@ -34,7 +34,6 @@ from schemas import (
 )
 from schemas.parameter import ParameterResponse
 
-
 # class GeothermalMixin:
 #     depth: float
 #     temperature: float
