@@ -48,24 +48,36 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 }
 
 
+def _coerce_wi_int(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _coerce_wi_mic_gain(value):
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     if isinstance(value, str):
         value = value.strip()
-    if pd.isna(value):
-        return None
-    if isinstance(value, bool):
-        return value
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
     try:
         return bool(int(float(value)))
-    except (ValueError, TypeError):
-        lowered = str(value).strip().lower()
-        if lowered in {"true", "t", "yes", "y"}:
-            return True
-        if lowered in {"false", "f", "no", "n"}:
-            return False
-    return None
+    except (TypeError, ValueError):
+        return None
 
 
 class SensorTransferer(ThingBasedTransferer):
@@ -238,12 +250,12 @@ class SensorTransferer(ThingBasedTransferer):
             hanging_cable_length=row.HangingCableLength,
             hanging_point_height=row.HangingPointHgt,
             hanging_point_description=row.HangingPointDescription,
-            nma_WI_Duration=row.WI_Duration,
-            nma_WI_EndFrequency=row.WI_EndFrequency,
-            nma_WI_Magnitude=row.WI_Magnitude,
+            nma_WI_Duration=_coerce_wi_int(row.WI_Duration),
+            nma_WI_EndFrequency=_coerce_wi_int(row.WI_EndFrequency),
+            nma_WI_Magnitude=_coerce_wi_int(row.WI_Magnitude),
             nma_WI_MicGain=_coerce_wi_mic_gain(row.WI_MicGain),
-            nma_WI_MinSoundDepth=row.WI_MinSoundDepth,
-            nma_WI_StartFrequency=row.WI_StartFrequency,
+            nma_WI_MinSoundDepth=_coerce_wi_int(row.WI_MinSoundDepth),
+            nma_WI_StartFrequency=_coerce_wi_int(row.WI_StartFrequency),
         )
         session.add(deployment)
         logger.info(
