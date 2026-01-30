@@ -62,9 +62,9 @@ class ChemistrySampleInfoTransferer(Transferer):
     def _build_thing_id_cache(self):
         """Build cache of Thing.name -> Thing.id to prevent orphan records."""
         with session_ctx() as session:
-            things = session.query(Thing.name, Thing.id).filter(
-                Thing.name.isnot(None)
-            ).all()
+            things = (
+                session.query(Thing.name, Thing.id).filter(Thing.name.isnot(None)).all()
+            )
             normalized = {}
             for name, thing_id in things:
                 if name is None:
@@ -97,6 +97,7 @@ class ChemistrySampleInfoTransferer(Transferer):
 
         # Also verify Locations exist (required dependency)
         from db import Location
+
         with session_ctx() as session:
             location_count = session.query(Location).count()
         if location_count == 0:
