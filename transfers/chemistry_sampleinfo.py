@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, Thing
+from db import NMA_Chemistry_SampleInfo, Location, LocationThingAssociation
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -46,8 +46,8 @@ class ChemistrySampleInfoTransferer(Transferer):
 
     FK to Thing:
     - thing_id: Integer FK to Thing.id
-    - Linked via SamplePointID matching Thing.name during transfer
-    - Requires Thing records to be transferred first
+    - Linked via LocationId -> Location.nma_pk_location -> LocationThingAssociation -> Thing.id
+    - Requires Thing and Location records to be transferred first
     """
 
     source_table = "Chemistry_SampleInfo"
@@ -60,33 +60,41 @@ class ChemistrySampleInfoTransferer(Transferer):
         self._build_thing_id_cache()
 
     def _build_thing_id_cache(self):
-        """Build cache of Thing.name -> Thing.id to prevent orphan records."""
+        """Build cache of Location.nma_pk_location (UUID) -> Thing.id to prevent orphan records.
+
+        Uses LocationId from CSV -> Location.nma_pk_location -> LocationThingAssociation -> Thing.id.
+        """
         with session_ctx() as session:
-            things = (
-                session.query(Thing.name, Thing.id).filter(Thing.name.isnot(None)).all()
+            # Query Location.nma_pk_location joined with LocationThingAssociation to get Thing.id
+            results = (
+                session.query(Location.nma_pk_location, LocationThingAssociation.thing_id)
+                .join(
+                    LocationThingAssociation,
+                    Location.id == LocationThingAssociation.location_id,
+                )
+                .filter(Location.nma_pk_location.isnot(None))
+                .all()
             )
-            normalized = {}
-            for name, thing_id in things:
-                if name is None:
+            location_to_thing = {}
+            for nma_pk_location, thing_id in results:
+                if nma_pk_location is None:
                     continue
-                # Normalize to uppercase for case-insensitive matching
-                normalized_name = str(name).strip().upper()
-                if not normalized_name:
-                    continue
+                # Normalize UUID to string for consistent lookup
+                location_key = str(nma_pk_location).lower()
                 if (
-                    normalized_name in normalized
-                    and normalized[normalized_name] != thing_id
+                    location_key in location_to_thing
+                    and location_to_thing[location_key] != thing_id
                 ):
                     logger.warning(
-                        "Duplicate Thing match key '%s' for ids %s and %s",
-                        normalized_name,
-                        normalized[normalized_name],
+                        "Duplicate Location match key '%s' for thing_ids %s and %s",
+                        location_key,
+                        location_to_thing[location_key],
                         thing_id,
                     )
                     continue
-                normalized[normalized_name] = thing_id
-            self._thing_id_cache = normalized
-        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
+                location_to_thing[location_key] = thing_id
+            self._thing_id_cache = location_to_thing
+        logger.info(f"Built Location->Thing ID cache with {len(self._thing_id_cache)} entries")
 
         # Enforce transfer order: Things and Locations must be transferred before ChemistrySampleInfo
         if len(self._thing_id_cache) == 0:
@@ -96,8 +104,6 @@ class ChemistrySampleInfoTransferer(Transferer):
             )
 
         # Also verify Locations exist (required dependency)
-        from db import Location
-
         with session_ctx() as session:
             location_count = session.query(Location).count()
         if location_count == 0:
@@ -116,31 +122,32 @@ class ChemistrySampleInfoTransferer(Transferer):
 
     def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Filter to only include rows where SamplePointID matches an existing Thing.name.
+        Filter to only include rows where LocationId matches an existing Location.nma_pk_location
+        that is linked to a Thing via LocationThingAssociation.
         Prevents orphan ChemistrySampleInfo records.
 
-        Uses cached Thing lookups for performance.
+        Uses cached Location->Thing lookups for performance.
         """
-        # Use cached Thing names (keys of thing_id_cache)
-        valid_thing_names = set(self._thing_id_cache.keys())
+        # Use cached Location UUIDs (keys of thing_id_cache)
+        valid_location_ids = set(self._thing_id_cache.keys())
 
-        # Normalize SamplePointID to uppercase for matching
-        def normalize_sample_point_id(value: Any) -> Optional[str]:
+        # Normalize LocationId UUID to lowercase string for matching
+        def normalize_location_id(value: Any) -> Optional[str]:
             if pd.isna(value):
                 return None
-            return str(value).strip().upper()
+            return str(value).strip().lower()
 
-        normalized_ids = df["SamplePointID"].apply(normalize_sample_point_id)
+        normalized_ids = df["LocationId"].apply(normalize_location_id)
 
-        # Filter to rows where SamplePointID exists in Thing.name
+        # Filter to rows where LocationId exists in Location->Thing cache
         before_count = len(df)
-        filtered_df = df[normalized_ids.isin(valid_thing_names)].copy()
+        filtered_df = df[normalized_ids.isin(valid_location_ids)].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
             skipped = before_count - after_count
             logger.warning(
-                f"Filtered out {skipped} ChemistrySampleInfo records without matching Things "
+                f"Filtered out {skipped} ChemistrySampleInfo records without matching Location->Thing "
                 f"({after_count} valid, {skipped} orphan records prevented)"
             )
 
@@ -198,7 +205,7 @@ class ChemistrySampleInfoTransferer(Transferer):
                 lookup_miss_count += 1
                 logger.warning(
                     f"Skipping ChemistrySampleInfo nma_OBJECTID={row_dict.get('nma_OBJECTID')} "
-                    f"nma_SamplePointID={row_dict.get('nma_SamplePointID')} - Thing not found"
+                    f"nma_LocationId={row_dict.get('nma_LocationId')} - Thing not found via Location"
                 )
                 continue
             row_dicts.append(row_dict)
@@ -215,7 +222,7 @@ class ChemistrySampleInfoTransferer(Transferer):
             )
         if lookup_miss_count > 0:
             logger.warning(
-                "ChemistrySampleInfo Thing lookup misses: %s", lookup_miss_count
+                "ChemistrySampleInfo Location->Thing lookup misses: %s", lookup_miss_count
             )
 
         rows = self._dedupe_rows(row_dicts, key="nma_OBJECTID")
@@ -306,18 +313,19 @@ class ChemistrySampleInfoTransferer(Transferer):
         if hasattr(collection_date, "to_pydatetime"):
             collection_date = collection_date.to_pydatetime()
 
-        # Look up Thing by SamplePointID to prevent orphan records
-        sample_point_id_raw = val("SamplePointID")
+        # Look up Thing by LocationId to prevent orphan records
+        # LocationId -> Location.nma_pk_location -> LocationThingAssociation -> Thing.id
+        location_id_raw = val("LocationId")
         thing_id = None
-        if sample_point_id_raw is not None:
-            normalized_sample_point_id = str(sample_point_id_raw).strip().upper()
-            if normalized_sample_point_id in self._thing_id_cache:
-                thing_id = self._thing_id_cache[normalized_sample_point_id]
+        if location_id_raw is not None:
+            normalized_location_id = str(location_id_raw).strip().lower()
+            if normalized_location_id in self._thing_id_cache:
+                thing_id = self._thing_id_cache[normalized_location_id]
             else:
                 logger.debug(
-                    "ChemistrySampleInfo Thing lookup miss: SamplePointID=%s normalized=%s",
-                    sample_point_id_raw,
-                    normalized_sample_point_id,
+                    "ChemistrySampleInfo Thing lookup miss: LocationId=%s normalized=%s",
+                    location_id_raw,
+                    normalized_location_id,
                 )
 
         # Map to new column names (nma_ prefix for legacy columns)
