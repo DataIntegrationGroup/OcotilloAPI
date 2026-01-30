@@ -16,6 +16,7 @@
 """
 RadionuclidesAdmin view for legacy NMA_Radionuclides.
 """
+
 from starlette.requests import Request
 
 from admin.views.base import OcotilloModelView
