@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 # Use override=True to override conflicting shell environment variables
 load_dotenv(override=True)
 
-# for safety dont test on the production database port
+# for safety don't test on the production database port
 os.environ["POSTGRES_PORT"] = "5432"
 # Always use test database, never dev
 os.environ["POSTGRES_DB"] = "ocotilloapi_test"

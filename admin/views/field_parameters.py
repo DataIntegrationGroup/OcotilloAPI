@@ -67,7 +67,6 @@ class FieldParametersAdmin(OcotilloModelView):
         "sample_value",
         "units",
         "notes",
-        "object_id",
         "analyses_agency",
         "nma_wclab_id",
         "nma_object_id",
