@@ -15,9 +15,14 @@
 # ===============================================================================
 """
 HydraulicsDataAdmin view for legacy NMA_HydraulicsData.
-"""
 
-from starlette.requests import Request
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- nma_well_id: Legacy WellID UUID
+- nma_point_id: Legacy PointID string
+- nma_object_id: Legacy OBJECTID, UNIQUE
+"""
 
 from admin.views.base import OcotilloModelView
 
@@ -29,74 +34,55 @@ class HydraulicsDataAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "NMA Hydraulics Data"
-    label = "NMA Hydraulics Data"
+    name = "Hydraulics Data"
+    label = "Hydraulics Data"
     icon = "fa fa-tint"
 
-    def can_create(self, request: Request) -> bool:
-        return False
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
 
-    def can_edit(self, request: Request) -> bool:
-        return False
-
-    def can_delete(self, request: Request) -> bool:
-        return False
+    can_create = False
+    can_edit = False
+    can_delete = False
 
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
-        "well_id",
-        "point_id",
-        "data_source",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
-        "object_id",
-        "cs_gal_d_ft",
-        "hd_ft2_d",
-        "hl_day_1",
-        "kh_ft_d",
-        "kv_ft_d",
-        "p_decimal_fraction",
-        "s_dimensionless",
-        "ss_ft_1",
-        "sy_decimalfractn",
-        "t_ft2_d",
-        "k_darcy",
-        "test_bottom",
-        "test_top",
         "hydraulic_unit",
         "hydraulic_unit_type",
-        "hydraulic_remarks",
+        "test_top",
+        "test_bottom",
+        "t_ft2_d",
+        "k_darcy",
+        "data_source",
+        "nma_object_id",
     ]
 
     sortable_fields = [
-        "global_id",
-        "well_id",
-        "point_id",
-        "data_source",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
-        "object_id",
-        "cs_gal_d_ft",
-        "hd_ft2_d",
-        "hl_day_1",
-        "kh_ft_d",
-        "kv_ft_d",
-        "p_decimal_fraction",
-        "s_dimensionless",
-        "ss_ft_1",
-        "sy_decimalfractn",
-        "t_ft2_d",
-        "k_darcy",
-        "test_bottom",
-        "test_top",
         "hydraulic_unit",
         "hydraulic_unit_type",
-        "hydraulic_remarks",
+        "test_top",
+        "test_bottom",
+        "t_ft2_d",
+        "k_darcy",
+        "data_source",
+        "nma_object_id",
     ]
 
     searchable_fields = [
-        "global_id",
-        "point_id",
+        "nma_global_id",
+        "nma_point_id",
         "hydraulic_unit",
         "hydraulic_remarks",
         "data_source",
@@ -108,44 +94,46 @@ class HydraulicsDataAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
-        "well_id",
-        "point_id",
-        "data_source",
+        "id",
+        "nma_global_id",
+        "nma_well_id",
+        "nma_point_id",
         "thing_id",
-        "object_id",
-        "cs_gal_d_ft",
-        "hd_ft2_d",
-        "hl_day_1",
-        "kh_ft_d",
-        "kv_ft_d",
-        "p_decimal_fraction",
-        "s_dimensionless",
-        "ss_ft_1",
-        "sy_decimalfractn",
-        "t_ft2_d",
-        "k_darcy",
-        "test_bottom",
-        "test_top",
         "hydraulic_unit",
         "hydraulic_unit_type",
         "hydraulic_remarks",
+        "test_top",
+        "test_bottom",
+        "t_ft2_d",
+        "s_dimensionless",
+        "ss_ft_1",
+        "sy_decimalfractn",
+        "kh_ft_d",
+        "kv_ft_d",
+        "hl_day_1",
+        "hd_ft2_d",
+        "cs_gal_d_ft",
+        "p_decimal_fraction",
+        "k_darcy",
+        "data_source",
+        "nma_object_id",
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
-        "well_id": "WellID",
-        "point_id": "PointID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
+        "nma_well_id": "NMA WellID (Legacy)",
+        "nma_point_id": "NMA PointID (Legacy)",
         "thing_id": "Thing ID",
-        "hydraulic_unit": "Hydraulic Unit",
-        "hydraulic_unit_type": "HydraulicUnit Type",
+        "hydraulic_unit": "HydraulicUnit",
+        "hydraulic_unit_type": "HydraulicUnitType",
         "hydraulic_remarks": "Hydraulic Remarks",
-        "test_top": "Test Top",
-        "test_bottom": "Test Bottom",
+        "test_top": "TestTop",
+        "test_bottom": "TestBottom",
         "t_ft2_d": "T (ft2/d)",
         "s_dimensionless": "S (dimensionless)",
         "ss_ft_1": "Ss (ft-1)",
-        "sy_decimalfractn": "Sy (decimal fraction)",
+        "sy_decimalfractn": "Sy (decimalfractn)",
         "kh_ft_d": "KH (ft/d)",
         "kv_ft_d": "KV (ft/d)",
         "hl_day_1": "HL (day-1)",
@@ -154,7 +142,7 @@ class HydraulicsDataAdmin(OcotilloModelView):
         "p_decimal_fraction": "P (decimal fraction)",
         "k_darcy": "k (darcy)",
         "data_source": "Data Source",
-        "object_id": "OBJECTID",
+        "nma_object_id": "NMA OBJECTID (Legacy)",
     }
 
 

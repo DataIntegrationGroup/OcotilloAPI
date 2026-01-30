@@ -15,6 +15,15 @@
 # ===============================================================================
 """
 FieldParametersAdmin view for legacy NMA_FieldParameters.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_sample_pt_id: Legacy UUID FK (SamplePtID) for audit
+- nma_sample_point_id: Legacy SamplePointID string
+- nma_object_id: Legacy OBJECTID
+- nma_wclab_id: Legacy WCLab_ID
 """
 
 from starlette.requests import Request
@@ -33,6 +42,10 @@ class FieldParametersAdmin(OcotilloModelView):
     label = "NMA Field Parameters"
     icon = "fa fa-tachometer"
 
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
+
     def can_create(self, request: Request) -> bool:
         return False
 
@@ -45,42 +58,46 @@ class FieldParametersAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "field_parameter",
         "sample_value",
         "units",
         "notes",
-        "object_id",
         "analyses_agency",
-        "wc_lab_id",
+        "nma_wclab_id",
+        "nma_object_id",
     ]
 
     sortable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "field_parameter",
         "sample_value",
         "units",
         "notes",
         "analyses_agency",
-        "wc_lab_id",
-        "object_id",
+        "nma_wclab_id",
+        "nma_object_id",
     ]
 
-    fields_default_sort = [("sample_point_id", True)]
+    fields_default_sort = [("nma_sample_point_id", True)]
 
     searchable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "nma_global_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "field_parameter",
         "units",
         "notes",
         "analyses_agency",
-        "wc_lab_id",
+        "nma_wclab_id",
     ]
 
     page_size = 50
@@ -89,29 +106,33 @@ class FieldParametersAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "field_parameter",
         "sample_value",
         "units",
         "notes",
-        "object_id",
+        "nma_object_id",
         "analyses_agency",
-        "wc_lab_id",
+        "nma_wclab_id",
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
-        "sample_pt_id": "SamplePtID",
-        "sample_point_id": "SamplePointID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
+        "chemistry_sample_info_id": "Chemistry Sample Info ID",
+        "nma_sample_pt_id": "NMA SamplePtID (Legacy)",
+        "nma_sample_point_id": "NMA SamplePointID (Legacy)",
         "field_parameter": "FieldParameter",
         "sample_value": "SampleValue",
         "units": "Units",
         "notes": "Notes",
-        "object_id": "OBJECTID",
+        "nma_object_id": "NMA OBJECTID (Legacy)",
         "analyses_agency": "AnalysesAgency",
-        "wc_lab_id": "WCLab_ID",
+        "nma_wclab_id": "NMA WCLab_ID (Legacy)",
     }
 
 

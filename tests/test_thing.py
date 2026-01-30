@@ -1139,3 +1139,69 @@ def test_delete_thing_id_link_404_not_found(second_thing_id_link):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
+
+
+# =============================================================================
+# FK Enforcement Tests - Issue #363
+# Feature: features/admin/well_data_relationships.feature
+# =============================================================================
+
+
+class TestThingLegacyIdentifierColumns:
+    """Tests for Thing's legacy identifier columns (nma_pk_welldata, nma_pk_location)."""
+
+    def test_thing_has_nma_pk_welldata_column(self):
+        """Thing model has nma_pk_welldata column for legacy WellID."""
+        assert hasattr(Thing, "nma_pk_welldata")
+
+    def test_thing_has_nma_pk_location_column(self):
+        """Thing model has nma_pk_location column for legacy LocationID."""
+        assert hasattr(Thing, "nma_pk_location")
+
+
+class TestThingNMARelationshipCollections:
+    """Tests for Thing's relationship collections to NMA legacy models."""
+
+    def test_thing_has_hydraulics_data_relationship(self):
+        """Thing model has hydraulics_data relationship collection."""
+        assert hasattr(Thing, "hydraulics_data")
+
+    def test_thing_has_radionuclides_relationship(self):
+        """Thing model has radionuclides relationship collection."""
+        assert hasattr(Thing, "radionuclides")
+
+    def test_thing_has_associated_data_relationship(self):
+        """Thing model has associated_data relationship collection."""
+        assert hasattr(Thing, "associated_data")
+
+    def test_thing_has_soil_rock_results_relationship(self):
+        """Thing model has soil_rock_results relationship collection."""
+        assert hasattr(Thing, "soil_rock_results")
+
+
+class TestThingNMACascadeDeleteConfiguration:
+    """Tests for cascade delete-orphan configuration on Thing relationships."""
+
+    def test_hydraulics_data_has_cascade_delete(self):
+        """hydraulics_data relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("hydraulics_data")
+        assert rel is not None, "hydraulics_data relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade
+
+    def test_radionuclides_has_cascade_delete(self):
+        """radionuclides relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("radionuclides")
+        assert rel is not None, "radionuclides relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade
+
+    def test_associated_data_has_cascade_delete(self):
+        """associated_data relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("associated_data")
+        assert rel is not None, "associated_data relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade
+
+    def test_soil_rock_results_has_cascade_delete(self):
+        """soil_rock_results relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("soil_rock_results")
+        assert rel is not None, "soil_rock_results relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade

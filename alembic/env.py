@@ -71,6 +71,9 @@ config.set_main_option("sqlalchemy.url", url)
 
 def include_object(object, name, type_, reflected, compare_to):
     # only include tables in sql alchemy model, not auto-generated tables from PostGIS or TIGER
+    # Handle None names for unnamed constraints
+    if name is None:
+        return True
     if type_ == "table" or name.endswith("_version") or name == "transaction":
         return name in model_tables
     return True

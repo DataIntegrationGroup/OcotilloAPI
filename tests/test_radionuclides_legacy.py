@@ -17,23 +17,15 @@
 Unit tests for Radionuclides legacy model.
 
 These tests verify the migration of columns from the legacy Radionuclides table.
-Migrated columns (excluding SSMA_TimeStamp):
-- SamplePtID -> sample_pt_id
-- SamplePointID -> sample_point_id
-- Analyte -> analyte
-- Symbol -> symbol
-- SampleValue -> sample_value
-- Units -> units
-- Uncertainty -> uncertainty
-- AnalysisMethod -> analysis_method
-- AnalysisDate -> analysis_date
-- Notes -> notes
-- Volume -> volume
-- VolumeUnit -> volume_unit
-- OBJECTID -> object_id
-- GlobalID -> global_id
-- AnalysesAgency -> analyses_agency
-- WCLab_ID -> wclab_id
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy GlobalID UUID (UNIQUE)
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_sample_pt_id: Legacy SamplePtID UUID (for audit)
+- nma_sample_point_id: Legacy SamplePointID string
+- nma_object_id: Legacy OBJECTID (UNIQUE)
+- nma_wclab_id: Legacy WCLab_ID string
 """
 
 from datetime import datetime
@@ -52,18 +44,20 @@ def test_create_radionuclides_all_fields(water_well_thing):
     """Test creating a radionuclides record with all fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
-            sample_point_id=sample_info.sample_point_id,
+            chemistry_sample_info_id=sample_info.id,
+            nma_sample_pt_id=sample_info.nma_sample_pt_id,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="U-238",
             symbol="<",
             sample_value=0.12,
@@ -75,15 +69,17 @@ def test_create_radionuclides_all_fields(water_well_thing):
             volume=250,
             volume_unit="mL",
             analyses_agency="NMBGMR",
-            wclab_id="LAB-001",
+            nma_wclab_id="LAB-001",
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.global_id is not None
-        assert record.sample_pt_id == sample_info.sample_pt_id
-        assert record.sample_point_id == sample_info.sample_point_id
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_global_id is not None
+        assert record.chemistry_sample_info_id == sample_info.id
+        assert record.nma_sample_pt_id == sample_info.nma_sample_pt_id
+        assert record.nma_sample_point_id == sample_info.nma_sample_point_id
         assert record.analyte == "U-238"
         assert record.sample_value == 0.12
         assert record.uncertainty == 0.01
@@ -97,24 +93,26 @@ def test_create_radionuclides_minimal(water_well_thing):
     """Test creating a radionuclides record with minimal fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
+            chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.global_id is not None
-        assert record.sample_pt_id == sample_info.sample_pt_id
+        assert record.id is not None  # Integer PK auto-generated
+        assert record.nma_global_id is not None
+        assert record.chemistry_sample_info_id == sample_info.id
         assert record.analyte is None
         assert record.units is None
 
@@ -124,67 +122,74 @@ def test_create_radionuclides_minimal(water_well_thing):
 
 
 # ===================== READ tests ==========================
-def test_read_radionuclides_by_global_id(water_well_thing):
-    """Test reading a radionuclides record by GlobalID."""
+def test_read_radionuclides_by_id(water_well_thing):
+    """Test reading a radionuclides record by Integer ID."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
+            chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(NMA_Radionuclides, record.global_id)
+        fetched = session.get(NMA_Radionuclides, record.id)
         assert fetched is not None
-        assert fetched.global_id == record.global_id
+        assert fetched.id == record.id
+        assert fetched.nma_global_id == record.nma_global_id
 
         session.delete(record)
         session.delete(sample_info)
         session.commit()
 
 
-def test_query_radionuclides_by_sample_point_id(water_well_thing):
-    """Test querying radionuclides by sample_point_id."""
+def test_query_radionuclides_by_nma_sample_point_id(water_well_thing):
+    """Test querying radionuclides by nma_sample_point_id."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record1 = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
-            sample_point_id=sample_info.sample_point_id,
+            chemistry_sample_info_id=sample_info.id,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
         )
         record2 = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
-            sample_point_id="OTHER-PT",
+            chemistry_sample_info_id=sample_info.id,
+            nma_sample_point_id="OTHER-PT",
         )
         session.add_all([record1, record2])
         session.commit()
 
         results = (
             session.query(NMA_Radionuclides)
-            .filter(NMA_Radionuclides.sample_point_id == sample_info.sample_point_id)
+            .filter(
+                NMA_Radionuclides.nma_sample_point_id == sample_info.nma_sample_point_id
+            )
             .all()
         )
         assert len(results) >= 1
-        assert all(r.sample_point_id == sample_info.sample_point_id for r in results)
+        assert all(
+            r.nma_sample_point_id == sample_info.nma_sample_point_id for r in results
+        )
 
         session.delete(record1)
         session.delete(record2)
@@ -197,17 +202,18 @@ def test_update_radionuclides(water_well_thing):
     """Test updating a radionuclides record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
+            chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
         session.commit()
@@ -230,25 +236,27 @@ def test_delete_radionuclides(water_well_thing):
     """Test deleting a radionuclides record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
-            sample_pt_id=uuid4(),
-            sample_point_id=_next_sample_point_id(),
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
             thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
+        session.refresh(sample_info)
 
         record = NMA_Radionuclides(
-            global_id=uuid4(),
+            nma_global_id=uuid4(),
             thing_id=water_well_thing.id,
-            sample_pt_id=sample_info.sample_pt_id,
+            chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
         session.commit()
+        record_id = record.id
 
         session.delete(record)
         session.commit()
 
-        fetched = session.get(NMA_Radionuclides, record.global_id)
+        fetched = session.get(NMA_Radionuclides, record_id)
         assert fetched is None
 
         session.delete(sample_info)
@@ -259,9 +267,12 @@ def test_delete_radionuclides(water_well_thing):
 def test_radionuclides_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
+        "id",
+        "nma_global_id",
         "thing_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "chemistry_sample_info_id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
         "analyte",
         "symbol",
         "sample_value",
@@ -272,10 +283,9 @@ def test_radionuclides_has_all_migrated_columns():
         "notes",
         "volume",
         "volume_unit",
-        "object_id",
-        "global_id",
+        "nma_object_id",
         "analyses_agency",
-        "wclab_id",
+        "nma_wclab_id",
     ]
 
     for column in expected_columns:
@@ -287,6 +297,75 @@ def test_radionuclides_has_all_migrated_columns():
 def test_radionuclides_table_name():
     """Test that the table name follows convention."""
     assert NMA_Radionuclides.__tablename__ == "NMA_Radionuclides"
+
+
+# ===================== FK Enforcement tests (Issue #363) ==========================
+
+
+def test_radionuclides_fk_has_cascade():
+    """NMA_Radionuclides.thing_id FK has ondelete=CASCADE."""
+    col = NMA_Radionuclides.__table__.c.thing_id
+    fk = list(col.foreign_keys)[0]
+    assert fk.ondelete == "CASCADE"
+
+
+def test_radionuclides_back_populates_thing(water_well_thing):
+    """NMA_Radionuclides.thing navigates back to Thing."""
+    with session_ctx() as session:
+        well = session.merge(water_well_thing)
+
+        # Radionuclides requires a chemistry_sample_info (which FKs to Thing)
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_sample_pt_id=uuid4(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing_id=well.id,
+        )
+        session.add(sample_info)
+        session.commit()
+        session.refresh(sample_info)
+
+        record = NMA_Radionuclides(
+            nma_global_id=uuid4(),
+            chemistry_sample_info_id=sample_info.id,
+            thing_id=well.id,
+        )
+        session.add(record)
+        session.commit()
+        session.refresh(record)
+
+        assert record.thing is not None
+        assert record.thing.id == well.id
+
+        session.delete(record)
+        session.delete(sample_info)
+        session.commit()
+
+
+# ===================== Integer PK tests ==========================
+
+
+def test_radionuclides_has_integer_pk():
+    """NMA_Radionuclides.id is Integer PK."""
+    from sqlalchemy import Integer
+
+    col = NMA_Radionuclides.__table__.c.id
+    assert col.primary_key is True
+    assert isinstance(col.type, Integer)
+
+
+def test_radionuclides_nma_global_id_is_unique():
+    """NMA_Radionuclides.nma_global_id is UNIQUE."""
+    # Use database column name (nma_GlobalID), not Python attribute name
+    col = NMA_Radionuclides.__table__.c["nma_GlobalID"]
+    assert col.unique is True
+
+
+def test_radionuclides_chemistry_sample_info_fk():
+    """NMA_Radionuclides.chemistry_sample_info_id is Integer FK."""
+    col = NMA_Radionuclides.__table__.c.chemistry_sample_info_id
+    fks = list(col.foreign_keys)
+    assert len(fks) == 1
+    assert "NMA_Chemistry_SampleInfo.id" in str(fks[0].target_fullname)
 
 
 # ============= EOF =============================================

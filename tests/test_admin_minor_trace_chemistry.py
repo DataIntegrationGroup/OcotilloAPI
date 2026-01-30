@@ -18,6 +18,12 @@ Unit tests for Minor Trace Chemistry admin view configuration.
 
 These tests verify the admin view is properly configured without requiring
 a running server or database.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy GlobalID UUID (UNIQUE)
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_chemistry_sample_info_uuid: Legacy UUID FK (for audit)
 """
 
 import pytest
@@ -37,15 +43,15 @@ class TestMinorTraceChemistryAdminRegistration:
         admin = create_admin(app)
         view_names = [v.name for v in admin._views]
 
-        assert "NMA Minor Trace Chemistry" in view_names, (
-            f"Expected 'NMA Minor Trace Chemistry' to be registered in admin views. "
+        assert "Minor Trace Chemistry" in view_names, (
+            f"Expected 'Minor Trace Chemistry' to be registered in admin views. "
             f"Found: {view_names}"
         )
 
     def test_view_has_correct_label(self):
         """View should have proper label for sidebar display."""
         view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
-        assert view.label == "NMA Minor Trace Chemistry"
+        assert view.label == "Minor Trace Chemistry"
 
     def test_class_has_flask_icon_configured(self):
         """View class should have flask icon configured for chemistry data."""
@@ -106,10 +112,9 @@ class TestMinorTraceChemistryAdminListView:
                 field_names.append(getattr(f, "name", str(f)))
 
         required_columns = [
-            "global_id",
+            "id",  # Integer PK
+            "nma_global_id",  # Legacy UUID
             "chemistry_sample_info",  # HasOne relationship to parent
-            "sample_pt_id",
-            "sample_point_id",
             "analyte",
             "sample_value",
             "units",
@@ -147,9 +152,9 @@ class TestMinorTraceChemistryAdminFormView:
         # Check the class-level configuration
         # Note: chemistry_sample_info is a HasOne field, not a string
         expected_string_fields = [
-            "global_id",
-            "sample_pt_id",
-            "sample_point_id",
+            "id",  # Integer PK
+            "nma_global_id",  # Legacy GlobalID
+            "nma_chemistry_sample_info_uuid",  # Legacy UUID FK
             "analyte",
             "symbol",
             "sample_value",
@@ -160,9 +165,7 @@ class TestMinorTraceChemistryAdminFormView:
             "notes",
             "volume",
             "volume_unit",
-            "object_id",
             "analyses_agency",
-            "wclab_id",
         ]
         configured_fields = MinorTraceChemistryAdmin.fields
 
@@ -181,15 +184,34 @@ class TestMinorTraceChemistryAdminFormView:
 
     def test_field_labels_are_human_readable(self, view):
         """Field labels should be human-readable."""
-        assert view.field_labels.get("global_id") == "GlobalID"
-        assert view.field_labels.get("sample_value") == "SampleValue"
-        assert view.field_labels.get("analysis_date") == "AnalysisDate"
+        assert view.field_labels.get("id") == "ID"
+        assert view.field_labels.get("nma_global_id") == "NMA GlobalID (Legacy)"
+        assert view.field_labels.get("sample_value") == "Sample Value"
+        assert view.field_labels.get("analysis_date") == "Analysis Date"
 
     def test_searchable_fields_include_key_fields(self, view):
         """Searchable fields should include commonly searched columns."""
+        assert "nma_global_id" in view.searchable_fields
         assert "analyte" in view.searchable_fields
         assert "symbol" in view.searchable_fields
         assert "analyses_agency" in view.searchable_fields
+
+
+class TestMinorTraceChemistryAdminIntegerPK:
+    """Tests for Integer PK configuration."""
+
+    @pytest.fixture
+    def view(self):
+        """Create a MinorTraceChemistryAdmin instance for testing."""
+        return MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
+
+    def test_pk_attr_is_id(self, view):
+        """Primary key attribute should be 'id'."""
+        assert view.pk_attr == "id"
+
+    def test_pk_type_is_int(self, view):
+        """Primary key type should be int."""
+        assert view.pk_type == int
 
 
 # ============= EOF =============================================
