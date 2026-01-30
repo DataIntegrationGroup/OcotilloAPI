@@ -27,7 +27,10 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from db import Sample
 from transfers.util import make_location
+from transfers.waterlevels_transfer import WaterLevelTransferer
+
 
 # ============================================================================
 # FIXTURES
@@ -171,6 +174,38 @@ def test_make_location_maps_data_reliability_code(mock_lexicon_mapper):
     location, elevation_method, location_notes = make_location(row, {})
     mock_lexicon_mapper.map_value.assert_any_call("LU_DataReliability:U")
     assert location.nma_data_reliability == mock_lexicon_mapper.map_value.return_value
+
+
+def test_make_observation_maps_data_quality():
+    transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    transfer.groundwater_parameter_id = 1
+
+    row = pd.Series(
+        {
+            "MPHeight": 1.0,
+            "DepthToWater": 10.0,
+            "DepthToWaterBGS": 9.0,
+            "GlobalID": "TEST-GLOBAL",
+            "DataQuality": "U2",
+        }
+    )
+
+    sample = Sample(
+        field_activity_id=1,
+        sample_date=datetime.datetime.now(datetime.timezone.utc),
+        sample_name="test-sample",
+        sample_matrix="water",
+        sample_method="grab sample",
+        qc_type="Normal",
+    )
+
+    with patch("transfers.waterlevels_transfer.lexicon_mapper") as mapper:
+        mapper.map_value.return_value = "Mapped Quality"
+        observation = transfer._make_observation(
+            row, sample, datetime.datetime.now(datetime.timezone.utc), "Reason"
+        )
+        mapper.map_value.assert_any_call("LU_DataQuality:U2")
+        assert observation.nma_data_quality == "Mapped Quality"
 
 
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):

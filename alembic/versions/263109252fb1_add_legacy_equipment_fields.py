@@ -17,24 +17,24 @@ down_revision: Union[str, Sequence[str], None] = "3a9c1f5b7d2e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 FIELDS = (
-    "WI_Duration",
-    "WI_EndFrequency",
-    "WI_Magnitude",
-    "WI_MicGain",
-    "WI_MinSoundDepth",
-    "WI_StartFrequency",
+    ("WI_Duration", sa.Integer()),
+    ("WI_EndFrequency", sa.Integer()),
+    ("WI_Magnitude", sa.Integer()),
+    ("WI_MicGain", sa.Boolean()),
+    ("WI_MinSoundDepth", sa.Integer()),
+    ("WI_StartFrequency", sa.Integer()),
 )
 
 
 def upgrade() -> None:
     """Upgrade schema."""
 
-    for field in FIELDS:
+    for field, column_type in FIELDS:
         op.add_column(
             "deployment",
             sa.Column(
                 f"nma_{field}",
-                sa.Integer(),
+                column_type,
                 nullable=True,
             ),
         )
@@ -42,5 +42,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    for field in FIELDS:
+    for field, _ in FIELDS:
         op.drop_column("deployment", f"nma_{field}")

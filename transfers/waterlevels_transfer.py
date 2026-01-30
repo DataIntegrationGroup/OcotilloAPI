@@ -197,6 +197,17 @@ class WaterLevelTransferer(Transferer):
         else:
             value = row.DepthToWater
 
+        data_quality = None
+        dq_raw = getattr(row, "DataQuality", None)
+        if dq_raw and pd.notna(dq_raw):
+            dq_code = str(dq_raw).strip()
+            try:
+                data_quality = lexicon_mapper.map_value(f"LU_DataQuality:{dq_code}")
+            except KeyError:
+                logger.warning(
+                    f"{SPACE_6}Unknown DataQuality code '{dq_code}' for WaterLevels record {row.GlobalID}"
+                )
+
             # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
         observation = Observation(
             nma_pk_waterlevels=row.GlobalID,
@@ -209,6 +220,7 @@ class WaterLevelTransferer(Transferer):
             unit="ft",
             measuring_point_height=measuring_point_height,
             groundwater_level_reason=glv,
+            nma_data_quality=data_quality,
         )
         return observation
 

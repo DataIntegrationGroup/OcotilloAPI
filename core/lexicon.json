@@ -656,21 +656,21 @@
         "data_quality"
       ],
       "term": "Water level accurate to within two hundreths of a foot",
-      "definition": "Good"
+      "definition": "Water level accurate to within two hundreths of a foot"
     },
     {
       "categories": [
         "data_quality"
       ],
       "term": "Water level accurate to within one foot",
-      "definition": "Fair"
+      "definition": "Water level accurate to within one foot"
     },
     {
       "categories": [
         "data_quality"
       ],
       "term": "Water level accuracy not to nearest foot or water level not repeatable",
-      "definition": "Poor"
+      "definition": "Water level accuracy not to nearest foot or water level not repeatable"
     },
     {
       "categories": [
@@ -712,7 +712,7 @@
         "data_quality"
       ],
       "term": "None",
-      "definition": "NA"
+      "definition": "None"
     },
     {
       "categories": [
