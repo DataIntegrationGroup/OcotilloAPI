@@ -26,6 +26,8 @@ Updated for Integer PK schema:
 - nma_wclab_id: Legacy WCLab_ID
 """
 
+from starlette.requests import Request
+
 from admin.views.base import OcotilloModelView
 
 
@@ -36,17 +38,22 @@ class RadionuclidesAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "Radionuclides"
-    label = "Radionuclides"
+    name = "NMA Radionuclides"
+    label = "NMA Radionuclides"
     icon = "fa fa-radiation"
 
     # Integer PK
     pk_attr = "id"
     pk_type = int
 
-    can_create = False
-    can_edit = False
-    can_delete = False
+    def can_create(self, request: Request) -> bool:
+        return False
+
+    def can_edit(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
 
     # ========== List View ==========
 
@@ -58,10 +65,18 @@ class RadionuclidesAdmin(OcotilloModelView):
         "nma_sample_point_id",
         "thing_id",
         "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
         "analysis_date",
+        "notes",
+        "volume",
+        "volume_unit",
+        "nma_object_id",
         "analyses_agency",
+        "nma_wclab_id",
     ]
 
     sortable_fields = [
@@ -72,12 +87,18 @@ class RadionuclidesAdmin(OcotilloModelView):
         "nma_sample_point_id",
         "thing_id",
         "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
         "analysis_date",
+        "notes",
+        "volume",
+        "volume_unit",
+        "nma_object_id",
         "analyses_agency",
         "nma_wclab_id",
-        "nma_object_id",
     ]
 
     fields_default_sort = [("analysis_date", True)]
@@ -131,16 +152,16 @@ class RadionuclidesAdmin(OcotilloModelView):
         "thing_id": "Thing ID",
         "analyte": "Analyte",
         "symbol": "Symbol",
-        "sample_value": "SampleValue",
+        "sample_value": "Sample Value",
         "units": "Units",
         "uncertainty": "Uncertainty",
-        "analysis_method": "AnalysisMethod",
-        "analysis_date": "AnalysisDate",
+        "analysis_method": "Analysis Method",
+        "analysis_date": "Analysis Date",
         "notes": "Notes",
         "volume": "Volume",
-        "volume_unit": "VolumeUnit",
+        "volume_unit": "Volume Unit",
         "nma_object_id": "NMA OBJECTID (Legacy)",
-        "analyses_agency": "AnalysesAgency",
+        "analyses_agency": "Analyses Agency",
         "nma_wclab_id": "NMA WCLab_ID (Legacy)",
     }
 
