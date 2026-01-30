@@ -22,3 +22,6 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
 - When done, `deactivate` to exit the venv and avoid polluting other shells.
 
 Following this playbook keeps ETL runs measured in seconds/minutes instead of hours. EOF
+
+## Activate python venv
+Always use `source .venv/bin/activate` to activate the venv running python

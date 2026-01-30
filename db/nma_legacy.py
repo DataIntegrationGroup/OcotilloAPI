@@ -516,6 +516,9 @@ class NMA_SurfaceWaterData(Base):
 
     __tablename__ = "NMA_SurfaceWaterData"
 
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
     surface_id: Mapped[uuid.UUID] = mapped_column(
         "SurfaceID", UUID(as_uuid=True), nullable=False
     )
@@ -650,8 +653,8 @@ class NMA_MinorTraceChemistry(Base):
     __tablename__ = "NMA_MinorTraceChemistry"
     __table_args__ = (
         UniqueConstraint(
-            "chemistry_sample_info_id",
-            "analyte",
+            "SamplePtID",
+            "Analyte",
             name="uq_minor_trace_chemistry_sample_analyte",
         ),
     )
@@ -677,25 +680,34 @@ class NMA_MinorTraceChemistry(Base):
     )
 
     # Legacy columns
-    analyte: Mapped[Optional[str]] = mapped_column(String(50))
-    sample_value: Mapped[Optional[float]] = mapped_column(Float)
-    units: Mapped[Optional[str]] = mapped_column(String(20))
-    symbol: Mapped[Optional[str]] = mapped_column(String(10))
-    analysis_method: Mapped[Optional[str]] = mapped_column(String(100))
-    analysis_date: Mapped[Optional[date]] = mapped_column(Date)
-    notes: Mapped[Optional[str]] = mapped_column(Text)
-    analyses_agency: Mapped[Optional[str]] = mapped_column(String(100))
-    uncertainty: Mapped[Optional[float]] = mapped_column(Float)
-    volume: Mapped[Optional[int]] = mapped_column(Integer)
-    volume_unit: Mapped[Optional[str]] = mapped_column(String(20))
+    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
+    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
+    sample_value: Mapped[Optional[float]] = mapped_column(
+        "SampleValue", Float, server_default=text("0")
+    )
+    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
+    uncertainty: Mapped[Optional[float]] = mapped_column("Uncertainty", Float)
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "AnalysisMethod", String(255)
+    )
+    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    volume: Mapped[Optional[int]] = mapped_column(
+        "Volume", Integer, server_default=text("0")
+    )
+    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
+    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
 
     # --- Relationships ---
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="minor_trace_chemistries"
     )
 
-    @validates("chemistry_sample_info_id")
-    def validate_chemistry_sample_info_id(self, key, value):
+    @validates("sample_pt_id")
+    def validate_sample_pt_id(self, key, value):
         """Prevent orphan NMA_MinorTraceChemistry - must have a parent ChemistrySampleInfo."""
         if value is None:
             raise ValueError(

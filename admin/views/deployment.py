@@ -51,6 +51,12 @@ class DeploymentAdmin(OcotilloModelView):
         "recording_interval",
         "release_status",
         "created_at",
+        "nma_WI_Duration",
+        "nma_WI_EndFrequency",
+        "nma_WI_Magnitude",
+        "nma_WI_MicGain",
+        "nma_WI_MinSoundDepth",
+        "nma_WI_StartFrequency",
     ]
 
     fields_default_sort = [
@@ -65,6 +71,12 @@ class DeploymentAdmin(OcotilloModelView):
         "recording_interval_units",
         "release_status",
         "created_at",
+        "nma_WI_Duration",
+        "nma_WI_EndFrequency",
+        "nma_WI_Magnitude",
+        "nma_WI_MicGain",
+        "nma_WI_MinSoundDepth",
+        "nma_WI_StartFrequency",
     ]
 
     page_size = 50
@@ -85,6 +97,12 @@ class DeploymentAdmin(OcotilloModelView):
         "hanging_point_height",
         "hanging_point_description",
         "notes",
+        "nma_WI_Duration",
+        "nma_WI_EndFrequency",
+        "nma_WI_Magnitude",
+        "nma_WI_MicGain",
+        "nma_WI_MinSoundDepth",
+        "nma_WI_StartFrequency",
         # Release Status
         "release_status",
         # Audit Fields

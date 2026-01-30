@@ -25,6 +25,7 @@ from pydantic import (
 )
 from typing_extensions import Self
 
+from core.enums import Unit
 from schemas import (
     BaseCreateModel,
     BaseUpdateModel,
@@ -32,7 +33,6 @@ from schemas import (
     UTCAwareDatetime,
 )
 from schemas.parameter import ParameterResponse
-from core.enums import Unit
 
 # class GeothermalMixin:
 #     depth: float
@@ -111,6 +111,7 @@ class BaseObservationResponse(BaseResponseModel):
     parameter: ParameterResponse
     value: float | None
     unit: Unit
+    nma_data_quality: str | None = None
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):

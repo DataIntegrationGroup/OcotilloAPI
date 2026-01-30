@@ -17,6 +17,7 @@ import os
 import re
 import threading
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
@@ -24,7 +25,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from pandas import isna, notna
 from pydantic import ValidationError
+from sqlalchemy import insert
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
 from core.enums import (
@@ -70,6 +73,21 @@ from transfers.util import (
     download_blob_json,
     upload_blob_json,
 )
+
+
+def _model_to_dict(obj):
+    mapper = sa_inspect(obj.__class__)
+    data = {}
+    for column in mapper.columns:
+        key = column.key
+        if column.primary_key and column.autoincrement:
+            continue
+        value = getattr(obj, key)
+        if value is None and column.server_default is not None:
+            continue
+        data[key] = value
+    return data
+
 
 ADDED = []
 
@@ -651,15 +669,25 @@ class WellTransferer(Transferer):
         def _process_chunk(chunk_index: int, wells_chunk: list[Thing]):
             step_start_time = time.time()
 
-            all_objects = []
+            bulk_rows: dict[type, list[dict]] = defaultdict(list)
+
             for well in wells_chunk:
-                objs = self._after_hook_chunk(well, formations)
-                if objs:
-                    all_objects.extend(objs)
+                payload = self._after_hook_chunk(well, formations)
+                if not payload:
+                    continue
+                for model, rows in payload.items():
+                    if rows:
+                        bulk_rows[model].extend(rows)
 
             save_time = time.time()
+            total_rows = 0
             try:
-                session.bulk_save_objects(all_objects, return_defaults=False)
+                for model, rows in bulk_rows.items():
+                    if not rows:
+                        continue
+                    total_rows += len(rows)
+                    stmt = insert(model)
+                    session.execute(stmt, rows)
                 session.commit()
             except DatabaseError as e:
                 session.rollback()
@@ -670,7 +698,7 @@ class WellTransferer(Transferer):
             processed_count = chunk_index * chunk_size + len(wells_chunk)
             logger.info(
                 f"After hook: {processed_count}/{count} took {time.time() - step_start_time:.2f}s, "
-                f"n_objects={len(all_objects)}, save_time={save_time}"
+                f"rows_inserted={total_rows}, save_time={save_time}"
             )
             return processed_count
 
@@ -687,70 +715,65 @@ class WellTransferer(Transferer):
 
         row = self._row_by_pointid.get(well.name)
         if row is None:
-            return []
+            return {}
 
-        objs = []
+        payload: dict[type, list[dict]] = defaultdict(list)
+
+        def _append(obj):
+            payload[obj.__class__].append(_model_to_dict(obj))
+
         self._add_formation_zone(row, well, formations)
 
         if notna(row.Notes):
-            note = well.add_note(row.Notes, "General")
-            objs.append(note)
+            _append(well.add_note(row.Notes, "General"))
         if row.ConstructionNotes:
-            note = well.add_note(row.ConstructionNotes, "Construction")
-            objs.append(note)
+            _append(well.add_note(row.ConstructionNotes, "Construction"))
         if row.WaterNotes:
-            note = well.add_note(row.WaterNotes, "Water")
-            objs.append(note)
+            _append(well.add_note(row.WaterNotes, "Water"))
 
         location = well.current_location
         elevation_method, location_notes = self._added_locations[row.PointID]
         for note_type, note_content in location_notes.items():
             if notna(note_content):
-                location_note = location.add_note(note_content, note_type)
-                objs.append(location_note)
+                _append(location.add_note(note_content, note_type))
                 if self.verbose:
                     logger.info(
                         f"Added note of type {note_type} for current location of well {well.name}"
                     )
 
-        data_provenances = make_location_data_provenance(
-            row, location, elevation_method
-        )
-        objs.extend(data_provenances)
+        for dp in make_location_data_provenance(row, location, elevation_method):
+            _append(dp)
 
-        cs = (
-            "CompletionSource",
-            {
-                "field_name": "well_completion_date",
-                "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
-            },
-        )
-        ds = (
-            "DataSource",
-            {
-                "field_name": "well_construction_method",
-                "origin_source": row.DataSource,
-            },
-        )
-        des = (
-            "DepthSource",
-            {
-                "field_name": "well_depth",
-                "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
-            },
-        )
-
-        for row_field, kw in (cs, ds, des):
+        for row_field, kw in (
+            (
+                "CompletionSource",
+                {
+                    "field_name": "well_completion_date",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.CompletionSource}",
+                },
+            ),
+            (
+                "DataSource",
+                {
+                    "field_name": "well_construction_method",
+                    "origin_source": row.DataSource,
+                },
+            ),
+            (
+                "DepthSource",
+                {
+                    "field_name": "well_depth",
+                    "origin_type": f"LU_Depth_CompletionSource:{row.DepthSource}",
+                },
+            ),
+        ):
             if notna(row[row_field]):
                 if "origin_type" in kw:
                     ot = self._get_lexicon_value(row, kw["origin_type"])
                     if ot is None:
                         continue
-
                     kw["origin_type"] = ot
-
-                dp = DataProvenance(target_id=well.id, target_table="thing", **kw)
-                objs.append(dp)
+                _append(DataProvenance(target_id=well.id, target_table="thing", **kw))
 
         start_time = time.time()
         mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
@@ -759,85 +782,72 @@ class WellTransferer(Transferer):
                 f"Estimated measuring point heights for {well.name}: {time.time() - start_time:.2f}s"
             )
         for mph, mph_desc, start_date, end_date in zip(*mphs):
-            measuring_point_history = MeasuringPointHistory(
-                thing_id=well.id,
-                measuring_point_height=mph,
-                measuring_point_description=mph_desc,
-                start_date=start_date,
-                end_date=end_date,
+            _append(
+                MeasuringPointHistory(
+                    thing_id=well.id,
+                    measuring_point_height=mph,
+                    measuring_point_description=mph_desc,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
             )
-            objs.append(measuring_point_history)
-
-        """
-        Developer's notes
-
-        For all status_history records the start_date will be now since that
-        isn't recorded in NM_Aquifer
-        """
-        # TODO: if row.MonitoringStatus == "Q" is it monitored or not? <-- AMMP review
-        # TODO: if row.MonitoringStatus == "X" can that change? <-- AMMP review
-        # TODO: have AMMP review and verify the various MonitoringStatus codes
 
         target_id = well.id
         target_table = "thing"
         if notna(row.MonitoringStatus):
-            if (
-                "X" in row.MonitoringStatus
-                or "I" in row.MonitoringStatus
-                or "C" in row.MonitoringStatus
-            ):
+            if any(code in row.MonitoringStatus for code in ("X", "I", "C")):
                 status_value = "Not currently monitored"
             else:
                 status_value = "Currently monitored"
 
-            status_history = StatusHistory(
-                status_type="Monitoring Status",
-                status_value=status_value,
-                reason=row.MonitorStatusReason,
-                start_date=datetime.now(tz=UTC),
-                target_id=target_id,
-                target_table=target_table,
+            _append(
+                StatusHistory(
+                    status_type="Monitoring Status",
+                    status_value=status_value,
+                    reason=row.MonitorStatusReason,
+                    start_date=datetime.now(tz=UTC),
+                    target_id=target_id,
+                    target_table=target_table,
+                )
             )
-            objs.append(status_history)
             if self.verbose:
                 logger.info(
                     f"  Added monitoring status for well {well.name}: {status_value}"
                 )
 
-            for code in NMA_MONITORING_FREQUENCY.keys():
+            for code, monitoring_frequency in NMA_MONITORING_FREQUENCY.items():
                 if code in row.MonitoringStatus:
-                    monitoring_frequency = NMA_MONITORING_FREQUENCY[code]
-                    monitoring_frequency_history = MonitoringFrequencyHistory(
-                        thing_id=well.id,
-                        monitoring_frequency=monitoring_frequency,
-                        start_date=datetime.now(tz=UTC),
-                        end_date=None,
+                    _append(
+                        MonitoringFrequencyHistory(
+                            thing_id=well.id,
+                            monitoring_frequency=monitoring_frequency,
+                            start_date=datetime.now(tz=UTC),
+                            end_date=None,
+                        )
                     )
-
-                    objs.append(monitoring_frequency_history)
                     if self.verbose:
                         logger.info(
                             f"  Adding '{monitoring_frequency}' monitoring frequency for well {well.name}"
                         )
 
         if notna(row.Status):
-
             status_value = self._get_lexicon_value(row, f"LU_Status:{row.Status}")
             if status_value is not None:
-                status_history = StatusHistory(
-                    status_type="Well Status",
-                    status_value=status_value,
-                    reason=row.StatusUserNotes,
-                    start_date=datetime.now(tz=UTC),
-                    target_id=target_id,
-                    target_table=target_table,
+                _append(
+                    StatusHistory(
+                        status_type="Well Status",
+                        status_value=status_value,
+                        reason=row.StatusUserNotes,
+                        start_date=datetime.now(tz=UTC),
+                        target_id=target_id,
+                        target_table=target_table,
+                    )
                 )
-                objs.append(status_history)
                 if self.verbose:
                     logger.info(
                         f"  Added well status for well {well.name}: {status_value}"
                     )
-        return objs
+        return payload
 
     def transfer_parallel(self, num_workers: int = None) -> None:
         """

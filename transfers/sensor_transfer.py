@@ -48,6 +48,38 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 }
 
 
+def _coerce_wi_int(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_wi_mic_gain(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    try:
+        return bool(int(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 class SensorTransferer(ThingBasedTransferer):
     source_table = "Equipment"
 
@@ -218,6 +250,12 @@ class SensorTransferer(ThingBasedTransferer):
             hanging_cable_length=row.HangingCableLength,
             hanging_point_height=row.HangingPointHgt,
             hanging_point_description=row.HangingPointDescription,
+            nma_WI_Duration=_coerce_wi_int(row.WI_Duration),
+            nma_WI_EndFrequency=_coerce_wi_int(row.WI_EndFrequency),
+            nma_WI_Magnitude=_coerce_wi_int(row.WI_Magnitude),
+            nma_WI_MicGain=_coerce_wi_mic_gain(row.WI_MicGain),
+            nma_WI_MinSoundDepth=_coerce_wi_int(row.WI_MinSoundDepth),
+            nma_WI_StartFrequency=_coerce_wi_int(row.WI_StartFrequency),
         )
         session.add(deployment)
         logger.info(

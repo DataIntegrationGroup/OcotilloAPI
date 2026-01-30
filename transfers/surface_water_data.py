@@ -61,6 +61,7 @@ class SurfaceWaterDataTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["OBJECTID"],
                 set_={
+                    "LocationId": excluded.LocationId,
                     "PointID": excluded.PointID,
                     "OBJECTID": excluded.OBJECTID,
                     "Discharge": excluded.Discharge,
@@ -102,6 +103,7 @@ class SurfaceWaterDataTransferer(Transferer):
             dt = dt.to_pydatetime()
 
         return {
+            "LocationId": to_uuid(val("LocationId")),
             "SurfaceID": to_uuid(val("SurfaceID")),
             "PointID": val("PointID"),
             "OBJECTID": val("OBJECTID"),
