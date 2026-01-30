@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, Location
+from db import NMA_Chemistry_SampleInfo, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -44,10 +44,10 @@ class ChemistrySampleInfoTransferer(Transferer):
     - nma_object_id: Legacy OBJECTID, UNIQUE
     - nma_location_id: Legacy LocationId UUID (for audit trail)
 
-    FK Change (2026-01):
-    - Changed from thing_id FK to location_id FK
-    - 99.95% of chemistry records have valid LocationId -> Location match
-    - Only ~2 truly orphan records (filtered during transfer)
+    FK to Thing:
+    - thing_id: Integer FK to Thing.id
+    - Linked via SamplePointID matching Thing.name during transfer
+    - Requires Thing records to be transferred first
     """
 
     source_table = "Chemistry_SampleInfo"
@@ -55,73 +55,73 @@ class ChemistrySampleInfoTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        # Cache Location lookups to prevent N+1 queries
-        self._location_id_cache = {}
-        self._build_location_id_cache()
+        # Cache Thing lookups to prevent N+1 queries
+        self._thing_id_cache = {}
+        self._build_thing_id_cache()
 
-    def _build_location_id_cache(self):
-        """Build cache of Location.nma_pk_location -> Location.id to prevent orphan records."""
+    def _build_thing_id_cache(self):
+        """Build cache of Thing.name -> Thing.id to prevent orphan records."""
         with session_ctx() as session:
-            locations = session.query(Location.nma_pk_location, Location.id).filter(
-                Location.nma_pk_location.isnot(None)
+            things = session.query(Thing.name, Thing.id).filter(
+                Thing.name.isnot(None)
             ).all()
             normalized = {}
-            for nma_pk, location_id in locations:
-                if nma_pk is None:
+            for name, thing_id in things:
+                if name is None:
                     continue
                 # Normalize to uppercase for case-insensitive matching
-                normalized_pk = str(nma_pk).strip().upper()
-                if not normalized_pk:
+                normalized_name = str(name).strip().upper()
+                if not normalized_name:
                     continue
                 if (
-                    normalized_pk in normalized
-                    and normalized[normalized_pk] != location_id
+                    normalized_name in normalized
+                    and normalized[normalized_name] != thing_id
                 ):
                     logger.warning(
-                        "Duplicate Location match key '%s' for ids %s and %s",
-                        normalized_pk,
-                        normalized[normalized_pk],
-                        location_id,
+                        "Duplicate Thing match key '%s' for ids %s and %s",
+                        normalized_name,
+                        normalized[normalized_name],
+                        thing_id,
                     )
                     continue
-                normalized[normalized_pk] = location_id
-            self._location_id_cache = normalized
-        logger.info(f"Built Location ID cache with {len(self._location_id_cache)} entries")
+                normalized[normalized_name] = thing_id
+            self._thing_id_cache = normalized
+        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])
-        # Filter to only include rows where Location exists (prevent orphan records)
-        cleaned_df = self._filter_to_valid_locations(input_df)
+        # Filter to only include rows where Thing exists (prevent orphan records)
+        cleaned_df = self._filter_to_valid_things(input_df)
         cleaned_df = self._filter_to_valid_sample_pt_ids(cleaned_df)
         return input_df, cleaned_df
 
-    def _filter_to_valid_locations(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Filter to only include rows where LocationId matches an existing Location.
+        Filter to only include rows where SamplePointID matches an existing Thing.name.
         Prevents orphan ChemistrySampleInfo records.
 
-        Uses cached Location lookups for performance.
+        Uses cached Thing lookups for performance.
         """
-        # Use cached Location nma_pk_location values (keys of location_id_cache)
-        valid_location_ids = set(self._location_id_cache.keys())
+        # Use cached Thing names (keys of thing_id_cache)
+        valid_thing_names = set(self._thing_id_cache.keys())
 
-        # Normalize LocationId to uppercase for matching
-        def normalize_location_id(value: Any) -> Optional[str]:
+        # Normalize SamplePointID to uppercase for matching
+        def normalize_sample_point_id(value: Any) -> Optional[str]:
             if pd.isna(value):
                 return None
             return str(value).strip().upper()
 
-        normalized_ids = df["LocationId"].apply(normalize_location_id)
+        normalized_ids = df["SamplePointID"].apply(normalize_sample_point_id)
 
-        # Filter to rows where LocationId exists in Location.nma_pk_location
+        # Filter to rows where SamplePointID exists in Thing.name
         before_count = len(df)
-        filtered_df = df[normalized_ids.isin(valid_location_ids)].copy()
+        filtered_df = df[normalized_ids.isin(valid_thing_names)].copy()
         after_count = len(filtered_df)
 
         if before_count > after_count:
             skipped = before_count - after_count
             logger.warning(
-                f"Filtered out {skipped} ChemistrySampleInfo records without matching Locations "
+                f"Filtered out {skipped} ChemistrySampleInfo records without matching Things "
                 f"({after_count} valid, {skipped} orphan records prevented)"
             )
 
@@ -157,7 +157,7 @@ class ChemistrySampleInfoTransferer(Transferer):
         return filtered_df
 
     def _transfer_hook(self, session: Session) -> None:
-        # Convert rows to dicts and filter out any without valid location_id
+        # Convert rows to dicts and filter out any without valid thing_id
         row_dicts = []
         skipped_orphan_count = 0
         skipped_sample_pt_id_count = 0
@@ -173,13 +173,13 @@ class ChemistrySampleInfoTransferer(Transferer):
                     row_dict.get("nma_SamplePointID"),
                 )
                 continue
-            # Skip rows without valid location_id (orphan prevention)
-            if row_dict.get("location_id") is None:
+            # Skip rows without valid thing_id (orphan prevention)
+            if row_dict.get("thing_id") is None:
                 skipped_orphan_count += 1
                 lookup_miss_count += 1
                 logger.warning(
                     f"Skipping ChemistrySampleInfo nma_OBJECTID={row_dict.get('nma_OBJECTID')} "
-                    f"nma_LocationId={row_dict.get('nma_LocationId')} - Location not found"
+                    f"nma_SamplePointID={row_dict.get('nma_SamplePointID')} - Thing not found"
                 )
                 continue
             row_dicts.append(row_dict)
@@ -191,12 +191,12 @@ class ChemistrySampleInfoTransferer(Transferer):
             )
         if skipped_orphan_count > 0:
             logger.warning(
-                f"Skipped {skipped_orphan_count} ChemistrySampleInfo records without valid Location "
+                f"Skipped {skipped_orphan_count} ChemistrySampleInfo records without valid Thing "
                 f"(orphan prevention)"
             )
         if lookup_miss_count > 0:
             logger.warning(
-                "ChemistrySampleInfo Location lookup misses: %s", lookup_miss_count
+                "ChemistrySampleInfo Thing lookup misses: %s", lookup_miss_count
             )
 
         rows = self._dedupe_rows(row_dicts, key="nma_OBJECTID")
@@ -213,7 +213,7 @@ class ChemistrySampleInfoTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["nma_SamplePtID"],
                 set_={
-                    "location_id": excluded.location_id,  # Required FK - prevent orphans
+                    "thing_id": excluded.thing_id,  # Required FK - prevent orphans
                     "nma_SamplePointID": excluded.nma_SamplePointID,
                     "nma_WCLab_ID": excluded.nma_WCLab_ID,
                     "CollectionDate": excluded.CollectionDate,
@@ -287,18 +287,18 @@ class ChemistrySampleInfoTransferer(Transferer):
         if hasattr(collection_date, "to_pydatetime"):
             collection_date = collection_date.to_pydatetime()
 
-        # Look up Location by LocationId to prevent orphan records
-        location_id_raw = val("LocationId")
-        location_id = None
-        if location_id_raw is not None:
-            normalized_location_id = str(location_id_raw).strip().upper()
-            if normalized_location_id in self._location_id_cache:
-                location_id = self._location_id_cache[normalized_location_id]
+        # Look up Thing by SamplePointID to prevent orphan records
+        sample_point_id_raw = val("SamplePointID")
+        thing_id = None
+        if sample_point_id_raw is not None:
+            normalized_sample_point_id = str(sample_point_id_raw).strip().upper()
+            if normalized_sample_point_id in self._thing_id_cache:
+                thing_id = self._thing_id_cache[normalized_sample_point_id]
             else:
                 logger.debug(
-                    "ChemistrySampleInfo Location lookup miss: LocationId=%s normalized=%s",
-                    location_id_raw,
-                    normalized_location_id,
+                    "ChemistrySampleInfo Thing lookup miss: SamplePointID=%s normalized=%s",
+                    sample_point_id_raw,
+                    normalized_sample_point_id,
                 )
 
         # Map to new column names (nma_ prefix for legacy columns)
@@ -310,8 +310,8 @@ class ChemistrySampleInfoTransferer(Transferer):
             "nma_SamplePointID": str_val("SamplePointID"),
             "nma_LocationId": uuid_val("LocationId"),
             "nma_OBJECTID": val("OBJECTID"),
-            # FK to Location
-            "location_id": location_id,
+            # FK to Thing
+            "thing_id": thing_id,
             # Data columns (unchanged names)
             "CollectionDate": collection_date,
             "CollectionMethod": str_val("CollectionMethod"),

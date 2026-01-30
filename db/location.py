@@ -36,7 +36,6 @@ from db.data_provenance import DataProvenanceMixin
 from db.notes import NotesMixin
 
 if TYPE_CHECKING:
-    from db.nma_legacy import NMA_Chemistry_SampleInfo
     from db.thing import Thing
 
 
@@ -78,13 +77,6 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     # --- Relationship Definitions ---
     thing_associations: Mapped[list["LocationThingAssociation"]] = relationship(
         back_populates="location", cascade="all, delete-orphan"
-    )
-
-    chemistry_sample_infos: Mapped[list["NMA_Chemistry_SampleInfo"]] = relationship(
-        "NMA_Chemistry_SampleInfo",
-        back_populates="location",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
     )
 
     # --- Proxy Definitions ---
