@@ -209,6 +209,8 @@ def test_make_observation_maps_data_quality():
 
 def test_get_dt_utc_respects_time_datum():
     transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    transfer.errors = []
+    transfer.source_table = "WaterLevels"
     base = {
         "PointID": "TEST",
         "OBJECTID": 1,

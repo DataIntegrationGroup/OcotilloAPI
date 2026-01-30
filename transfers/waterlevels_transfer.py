@@ -329,7 +329,8 @@ class WaterLevelTransferer(Transferer):
             t = row.TimeMeasured
             # Truncate microseconds to 6 digits if present
             if "." in t:
-                t = t[:-6]
+                dot_index = t.find(".")
+                t = t[: dot_index + 7]
 
             dt_measured = f"{row.DateMeasured} {t}"
 
