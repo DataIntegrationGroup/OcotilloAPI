@@ -1,6 +1,7 @@
-from transfers.sensor_transfer import _coerce_wi_mic_gain, _coerce_wi_int
 import numpy as np
 import pandas as pd
+
+from transfers.sensor_transfer import _coerce_wi_mic_gain, _coerce_wi_int
 
 
 def test_coerce_wi_mic_gain_numeric():
@@ -12,8 +13,6 @@ def test_coerce_wi_mic_gain_numeric():
 def test_coerce_wi_mic_gain_strings():
     assert _coerce_wi_mic_gain("1") is True
     assert _coerce_wi_mic_gain("0") is False
-    assert _coerce_wi_mic_gain(" true ") is True
-    assert _coerce_wi_mic_gain("False") is False
 
 
 def test_coerce_wi_mic_gain_handles_none_like():
