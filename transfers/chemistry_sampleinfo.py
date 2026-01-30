@@ -67,7 +67,9 @@ class ChemistrySampleInfoTransferer(Transferer):
         with session_ctx() as session:
             # Query Location.nma_pk_location joined with LocationThingAssociation to get Thing.id
             results = (
-                session.query(Location.nma_pk_location, LocationThingAssociation.thing_id)
+                session.query(
+                    Location.nma_pk_location, LocationThingAssociation.thing_id
+                )
                 .join(
                     LocationThingAssociation,
                     Location.id == LocationThingAssociation.location_id,
@@ -94,7 +96,9 @@ class ChemistrySampleInfoTransferer(Transferer):
                     continue
                 location_to_thing[location_key] = thing_id
             self._thing_id_cache = location_to_thing
-        logger.info(f"Built Location->Thing ID cache with {len(self._thing_id_cache)} entries")
+        logger.info(
+            f"Built Location->Thing ID cache with {len(self._thing_id_cache)} entries"
+        )
 
         # Enforce transfer order: Things and Locations must be transferred before ChemistrySampleInfo
         if len(self._thing_id_cache) == 0:
@@ -222,7 +226,8 @@ class ChemistrySampleInfoTransferer(Transferer):
             )
         if lookup_miss_count > 0:
             logger.warning(
-                "ChemistrySampleInfo Location->Thing lookup misses: %s", lookup_miss_count
+                "ChemistrySampleInfo Location->Thing lookup misses: %s",
+                lookup_miss_count,
             )
 
         rows = self._dedupe_rows(row_dicts, key="nma_OBJECTID")
