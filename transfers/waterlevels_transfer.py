@@ -15,7 +15,7 @@
 # ===============================================================================
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -335,7 +335,6 @@ class WaterLevelTransferer(Transferer):
 
         try:
             dt = datetime.strptime(dt_measured, fmt)
-            return convert_mt_to_utc(dt)
         except ValueError as e:
             self._capture_error(row.PointID, str(e), "DateMeasured")
             logger.critical(
@@ -343,6 +342,16 @@ class WaterLevelTransferer(Transferer):
                 f"invalid date/time: {e}"
             )
             return None
+
+        time_datum = getattr(row, "TimeDatum", None)
+        if time_datum and pd.notna(time_datum):
+            datum = str(time_datum).strip().upper()
+            if datum in {"MST", "MDT"}:
+                offset_hours = -7 if datum == "MST" else -6
+                tz = timezone(timedelta(hours=offset_hours))
+                return dt.replace(tzinfo=tz).astimezone(timezone.utc)
+
+        return convert_mt_to_utc(dt)
 
 
 # ============= EOF =============================================

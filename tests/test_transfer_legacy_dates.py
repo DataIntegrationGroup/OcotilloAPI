@@ -31,6 +31,7 @@ from db import Sample
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
 
+
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -205,6 +206,25 @@ def test_make_observation_maps_data_quality():
         )
         mapper.map_value.assert_any_call("LU_DataQuality:U2")
         assert observation.nma_data_quality == "Mapped Quality"
+
+
+def test_get_dt_utc_respects_time_datum():
+    transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    base = {
+        "PointID": "TEST",
+        "OBJECTID": 1,
+        "DateMeasured": "2025-01-01",
+        "TimeMeasured": "10:00:00.000000",
+    }
+
+    row_mst = pd.Series({**base, "TimeDatum": "MST"})
+    dt_mst = transfer._get_dt_utc(row_mst)
+    assert dt_mst.tzinfo == datetime.timezone.utc
+    assert dt_mst.hour == 17
+
+    row_mdt = pd.Series({**base, "TimeDatum": "MDT"})
+    dt_mdt = transfer._get_dt_utc(row_mdt)
+    assert dt_mdt.hour == 16
 
 
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
