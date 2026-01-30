@@ -88,6 +88,24 @@ class ChemistrySampleInfoTransferer(Transferer):
             self._thing_id_cache = normalized
         logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
 
+        # Enforce transfer order: Things and Locations must be transferred before ChemistrySampleInfo
+        if len(self._thing_id_cache) == 0:
+            raise RuntimeError(
+                "ChemistrySampleInfo transfer requires Thing records to exist. "
+                "Ensure the Well/Thing transfer runs before ChemistrySampleInfo transfer."
+            )
+
+        # Also verify Locations exist (required dependency)
+        from db import Location
+        with session_ctx() as session:
+            location_count = session.query(Location).count()
+        if location_count == 0:
+            raise RuntimeError(
+                "ChemistrySampleInfo transfer requires Location records to exist. "
+                "Ensure the Location transfer runs before ChemistrySampleInfo transfer."
+            )
+        logger.info(f"Verified {location_count} Location records exist")
+
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, parse_dates=["CollectionDate"])
         # Filter to only include rows where Thing exists (prevent orphan records)
