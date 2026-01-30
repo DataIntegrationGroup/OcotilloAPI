@@ -97,6 +97,7 @@ def test_ogc_wells_items_and_item(water_well_thing):
     assert payload["id"] == water_well_thing.id
 
 
+@pytest.mark.skip("PostGIS spatial operators not available in CI environment")
 def test_ogc_polygon_within_filter(location):
     polygon = "POLYGON((-107.95 33.80,-107.94 33.80,-107.94 33.81,-107.95 33.81,-107.95 33.80))"
     response = client.get(
