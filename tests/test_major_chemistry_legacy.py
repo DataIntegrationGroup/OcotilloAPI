@@ -40,13 +40,13 @@ def _next_sample_point_id() -> str:
 
 
 # ===================== CREATE tests ==========================
-def test_create_major_chemistry_all_fields(location):
+def test_create_major_chemistry_all_fields(water_well_thing):
     """Test creating a major chemistry record with all fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -88,13 +88,13 @@ def test_create_major_chemistry_all_fields(location):
         session.commit()
 
 
-def test_create_major_chemistry_minimal(location):
+def test_create_major_chemistry_minimal(water_well_thing):
     """Test creating a major chemistry record with minimal fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -120,13 +120,13 @@ def test_create_major_chemistry_minimal(location):
 
 
 # ===================== READ tests ==========================
-def test_read_major_chemistry_by_id(location):
+def test_read_major_chemistry_by_id(water_well_thing):
     """Test reading a major chemistry record by Integer ID."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -149,13 +149,13 @@ def test_read_major_chemistry_by_id(location):
         session.commit()
 
 
-def test_query_major_chemistry_by_nma_sample_point_id(location):
+def test_query_major_chemistry_by_nma_sample_point_id(water_well_thing):
     """Test querying major chemistry by nma_sample_point_id."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -194,13 +194,13 @@ def test_query_major_chemistry_by_nma_sample_point_id(location):
 
 
 # ===================== UPDATE tests ==========================
-def test_update_major_chemistry(location):
+def test_update_major_chemistry(water_well_thing):
     """Test updating a major chemistry record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -227,13 +227,13 @@ def test_update_major_chemistry(location):
 
 
 # ===================== DELETE tests ==========================
-def test_delete_major_chemistry(location):
+def test_delete_major_chemistry(water_well_thing):
     """Test deleting a major chemistry record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()

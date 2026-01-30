@@ -27,7 +27,7 @@ Updated for Integer PK schema:
 - nma_object_id: Legacy OBJECTID (UNIQUE)
 
 FK Change (2026-01):
-- Changed from thing_id to location_id
+- thing_id: Integer FK to Thing.id
 """
 
 from datetime import datetime
@@ -46,13 +46,13 @@ def _next_sample_pt_id():
 
 
 # ===================== CREATE tests ==========================
-def test_create_chemistry_sampleinfo_all_fields(location):
+def test_create_chemistry_sampleinfo_all_fields(water_well_thing):
     """Test creating a chemistry sample info record with all fields."""
     with session_ctx() as session:
         record = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=_next_sample_pt_id(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
             nma_wclab_id="LAB-123",
             collection_date=datetime(2024, 1, 1, 10, 30, 0),
             collection_method="Grab",
@@ -85,13 +85,13 @@ def test_create_chemistry_sampleinfo_all_fields(location):
         session.commit()
 
 
-def test_create_chemistry_sampleinfo_minimal(location):
+def test_create_chemistry_sampleinfo_minimal(water_well_thing):
     """Test creating a chemistry sample info record with minimal fields."""
     with session_ctx() as session:
         record = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=_next_sample_pt_id(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -107,13 +107,13 @@ def test_create_chemistry_sampleinfo_minimal(location):
 
 
 # ===================== READ tests ==========================
-def test_read_chemistry_sampleinfo_by_id(location):
+def test_read_chemistry_sampleinfo_by_id(water_well_thing):
     """Test reading a chemistry sample info record by Integer ID."""
     with session_ctx() as session:
         record = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=_next_sample_pt_id(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -129,13 +129,13 @@ def test_read_chemistry_sampleinfo_by_id(location):
 
 
 # ===================== UPDATE tests ==========================
-def test_update_chemistry_sampleinfo(location):
+def test_update_chemistry_sampleinfo(water_well_thing):
     """Test updating a chemistry sample info record."""
     with session_ctx() as session:
         record = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=_next_sample_pt_id(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -153,13 +153,13 @@ def test_update_chemistry_sampleinfo(location):
 
 
 # ===================== DELETE tests ==========================
-def test_delete_chemistry_sampleinfo(location):
+def test_delete_chemistry_sampleinfo(water_well_thing):
     """Test deleting a chemistry sample info record."""
     with session_ctx() as session:
         record = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=_next_sample_pt_id(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(record)
         session.commit()
@@ -180,7 +180,7 @@ def test_chemistry_sampleinfo_has_all_migrated_columns():
         "nma_sample_point_id",
         "nma_sample_pt_id",
         "nma_wclab_id",
-        "location_id",  # Changed from thing_id (2026-01)
+        "thing_id",  # Integer FK to Thing.id
         "collection_date",
         "collection_method",
         "collected_by",

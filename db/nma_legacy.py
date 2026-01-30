@@ -654,7 +654,7 @@ class NMA_MinorTraceChemistry(Base):
     __table_args__ = (
         UniqueConstraint(
             "chemistry_sample_info_id",
-            "Analyte",
+            "analyte",
             name="uq_minor_trace_chemistry_sample_analyte",
         ),
     )
@@ -679,41 +679,23 @@ class NMA_MinorTraceChemistry(Base):
         "nma_chemistry_sample_info_uuid", UUID(as_uuid=True), nullable=True
     )
 
-    # Legacy columns
-    sample_point_id: Mapped[Optional[str]] = mapped_column("SamplePointID", String(10))
-    analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
-    symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
-    sample_value: Mapped[Optional[float]] = mapped_column(
-        "SampleValue", Float, server_default=text("0")
-    )
-    units: Mapped[Optional[str]] = mapped_column("Units", String(50))
-    uncertainty: Mapped[Optional[float]] = mapped_column("Uncertainty", Float)
-    analysis_method: Mapped[Optional[str]] = mapped_column(
-        "AnalysisMethod", String(255)
-    )
-    analysis_date: Mapped[Optional[datetime]] = mapped_column("AnalysisDate", DateTime)
-    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
-    volume: Mapped[Optional[int]] = mapped_column(
-        "Volume", Integer, server_default=text("0")
-    )
-    volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
-    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
-    analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
-    wclab_id: Mapped[Optional[str]] = mapped_column("WCLab_ID", String(25))
+    # Legacy columns (sizes match database schema)
+    analyte: Mapped[Optional[str]] = mapped_column("analyte", String(50))
+    symbol: Mapped[Optional[str]] = mapped_column("symbol", String(10))
+    sample_value: Mapped[Optional[float]] = mapped_column("sample_value", Float)
+    units: Mapped[Optional[str]] = mapped_column("units", String(20))
+    uncertainty: Mapped[Optional[float]] = mapped_column("uncertainty", Float)
+    analysis_method: Mapped[Optional[str]] = mapped_column("analysis_method", String(100))
+    analysis_date: Mapped[Optional[date]] = mapped_column("analysis_date", Date)
+    notes: Mapped[Optional[str]] = mapped_column("notes", Text)
+    volume: Mapped[Optional[int]] = mapped_column("volume", Integer)
+    volume_unit: Mapped[Optional[str]] = mapped_column("volume_unit", String(20))
+    analyses_agency: Mapped[Optional[str]] = mapped_column("analyses_agency", String(100))
 
     # --- Relationships ---
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="minor_trace_chemistries"
     )
-
-    @validates("sample_pt_id")
-    def validate_sample_pt_id(self, key, value):
-        """Prevent orphan NMA_MinorTraceChemistry - must have a parent ChemistrySampleInfo."""
-        if value is None:
-            raise ValueError(
-                "NMA_MinorTraceChemistry requires a parent NMA_Chemistry_SampleInfo"
-            )
-        return value
 
 
 class NMA_Radionuclides(Base):

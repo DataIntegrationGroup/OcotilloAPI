@@ -152,13 +152,13 @@ def test_read_radionuclides_by_id(water_well_thing, location):
         session.commit()
 
 
-def test_query_radionuclides_by_nma_sample_point_id(water_well_thing, location):
+def test_query_radionuclides_by_nma_sample_point_id(water_well_thing):
     """Test querying radionuclides by nma_sample_point_id."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
