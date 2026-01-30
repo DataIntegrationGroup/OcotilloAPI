@@ -5,8 +5,9 @@ from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from services.util import get_bool_env
 from sqlalchemy import create_engine, engine_from_config, pool, text
+
+from services.util import get_bool_env
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -15,8 +16,16 @@ alembic_logger = logging.getLogger("alembic.env")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
+if config.config_file_name is not None and os.environ.get(
+    "ALEMBIC_USE_FILE_CONFIG", "0"
+) not in {"0", "false", "False"}:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
+else:
+    root_logger = logging.getLogger()
+    alembic_logger = logging.getLogger("alembic")
+    alembic_logger.handlers = root_logger.handlers[:]
+    alembic_logger.setLevel(root_logger.level)
+    alembic_logger.propagate = False
 
 # add your model's MetaData object here
 # for 'autogenerate' support
