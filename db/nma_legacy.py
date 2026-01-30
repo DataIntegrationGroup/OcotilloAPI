@@ -653,7 +653,7 @@ class NMA_MinorTraceChemistry(Base):
     __tablename__ = "NMA_MinorTraceChemistry"
     __table_args__ = (
         UniqueConstraint(
-            "SamplePtID",
+            "chemistry_sample_info_id",
             "Analyte",
             name="uq_minor_trace_chemistry_sample_analyte",
         ),
