@@ -31,7 +31,6 @@ from db import Sample
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
 
-
 # ============================================================================
 # FIXTURES
 # ============================================================================
