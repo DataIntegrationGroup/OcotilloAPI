@@ -17,6 +17,8 @@
 RadionuclidesAdmin view for legacy NMA_Radionuclides.
 """
 
+from starlette.requests import Request
+
 from admin.views.base import OcotilloModelView
 
 
@@ -27,13 +29,18 @@ class RadionuclidesAdmin(OcotilloModelView):
 
     # ========== Basic Configuration ==========
 
-    name = "Radionuclides"
-    label = "Radionuclides"
+    name = "NMA Radionuclides"
+    label = "NMA Radionuclides"
     icon = "fa fa-radiation"
 
-    can_create = False
-    can_edit = False
-    can_delete = False
+    def can_create(self, request: Request) -> bool:
+        return False
+
+    def can_edit(self, request: Request) -> bool:
+        return False
+
+    def can_delete(self, request: Request) -> bool:
+        return False
 
     # ========== List View ==========
 
@@ -41,26 +48,38 @@ class RadionuclidesAdmin(OcotilloModelView):
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "thing_id",
         "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
         "analysis_date",
+        "notes",
+        "volume",
+        "volume_unit",
+        "object_id",
         "analyses_agency",
+        "wclab_id",
     ]
 
     sortable_fields = [
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "thing_id",
         "analyte",
+        "symbol",
         "sample_value",
         "units",
+        "uncertainty",
+        "analysis_method",
         "analysis_date",
+        "notes",
+        "volume",
+        "volume_unit",
+        "object_id",
         "analyses_agency",
         "wclab_id",
-        "object_id",
     ]
 
     fields_default_sort = [("analysis_date", True)]
@@ -87,7 +106,6 @@ class RadionuclidesAdmin(OcotilloModelView):
         "global_id",
         "sample_pt_id",
         "sample_point_id",
-        "thing_id",
         "analyte",
         "symbol",
         "sample_value",
@@ -106,20 +124,19 @@ class RadionuclidesAdmin(OcotilloModelView):
     field_labels = {
         "global_id": "GlobalID",
         "sample_pt_id": "SamplePtID",
-        "sample_point_id": "SamplePointID",
-        "thing_id": "Thing ID",
+        "sample_point_id": "Sample PointID",
         "analyte": "Analyte",
         "symbol": "Symbol",
-        "sample_value": "SampleValue",
+        "sample_value": "Sample Value",
         "units": "Units",
         "uncertainty": "Uncertainty",
-        "analysis_method": "AnalysisMethod",
-        "analysis_date": "AnalysisDate",
+        "analysis_method": "Analysis Method",
+        "analysis_date": "Analysis Date",
         "notes": "Notes",
         "volume": "Volume",
-        "volume_unit": "VolumeUnit",
+        "volume_unit": "Volume Unit",
         "object_id": "OBJECTID",
-        "analyses_agency": "AnalysesAgency",
+        "analyses_agency": "Analyses Agency",
         "wclab_id": "WCLab_ID",
     }
 
