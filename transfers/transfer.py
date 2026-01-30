@@ -341,26 +341,14 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             results = _execute_transfer(WellTransferer, flags=flags)
         metrics.well_metrics(*results)
 
-    use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
-
-    if use_parallel:
-        _transfer_parallel(
-            metrics,
-            flags,
-            limit,
-            transfer_options,
-            profile_waterlevels,
-            profile_artifacts,
-        )
-    else:
-        _transfer_sequential(
-            metrics,
-            flags,
-            limit,
-            transfer_options,
-            profile_waterlevels,
-            profile_artifacts,
-        )
+    _transfer_parallel(
+        metrics,
+        flags,
+        limit,
+        transfer_options,
+        profile_waterlevels,
+        profile_artifacts,
+    )
 
     return profile_artifacts
 
@@ -626,176 +614,6 @@ def _transfer_parallel(
             metrics.pressure_metrics(*results_map["Pressure"])
         if "Acoustic" in results_map and results_map["Acoustic"]:
             metrics.acoustic_metrics(*results_map["Acoustic"])
-
-
-def _transfer_sequential(
-    metrics,
-    flags,
-    limit,
-    transfer_options: TransferOptions,
-    profile_waterlevels: bool,
-    profile_artifacts,
-):
-    """Original sequential transfer logic."""
-    opts = transfer_options
-    if opts.transfer_screens:
-        with transfer_context("WELL SCREENS"):
-            results = _execute_transfer(WellScreenTransferer, flags=flags)
-            metrics.well_screen_metrics(*results)
-
-    if opts.transfer_sensors:
-        with transfer_context("SENSORS"):
-            results = _execute_transfer(SensorTransferer, flags=flags)
-            metrics.sensor_metrics(*results)
-
-    if opts.transfer_contacts:
-        with transfer_context("CONTACTS"):
-            results = _execute_transfer(ContactTransfer, flags=flags)
-            metrics.contact_metrics(*results)
-
-    with transfer_context("PERMISSIONS"):
-        with session_ctx() as session:
-            transfer_permissions(session)
-
-    if opts.transfer_nma_stratigraphy:
-        with transfer_context("NMA STRATIGRAPHY"):
-            results = _execute_transfer(StratigraphyLegacyTransferer, flags=flags)
-            metrics.nma_stratigraphy_metrics(*results)
-
-    with transfer_context("STRATIGRAPHY"):
-        with session_ctx() as session:
-            results = transfer_stratigraphy(session, limit=limit)
-            metrics.stratigraphy_metrics(*results)
-
-    if opts.transfer_waterlevels:
-        with transfer_context("WATER LEVELS"):
-            results = _execute_transfer(WaterLevelTransferer, flags=flags)
-            metrics.water_level_metrics(*results)
-
-    if opts.transfer_link_ids:
-        message("TRANSFERRING LINK IDS")
-        results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
-        metrics.welldata_link_ids_metrics(*results)
-        results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
-        metrics.location_link_ids_metrics(*results)
-
-    if opts.transfer_groups:
-        message("TRANSFERRING GROUPS")
-        results = _execute_transfer(ProjectGroupTransferer, flags=flags)
-        metrics.group_metrics(*results)
-
-    if opts.transfer_surface_water_photos:
-        message("TRANSFERRING SURFACE WATER PHOTOS")
-        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
-        metrics.surface_water_photos_metrics(*results)
-
-    if opts.transfer_soil_rock_results:
-        message("TRANSFERRING SOIL ROCK RESULTS")
-        results = _execute_transfer(SoilRockResultsTransferer, flags=flags)
-        metrics.soil_rock_results_metrics(*results)
-
-    if opts.transfer_weather_photos:
-        message("TRANSFERRING WEATHER PHOTOS")
-        results = _execute_transfer(WeatherPhotosTransferer, flags=flags)
-        metrics.weather_photos_metrics(*results)
-
-    if opts.transfer_assets:
-        message("TRANSFERRING ASSETS")
-        results = _execute_transfer(AssetTransferer, flags=flags)
-        metrics.asset_metrics(*results)
-
-    if opts.transfer_associated_data:
-        message("TRANSFERRING ASSOCIATED DATA")
-        results = _execute_transfer(AssociatedDataTransferer, flags=flags)
-        metrics.associated_data_metrics(*results)
-
-    if opts.transfer_surface_water_data:
-        message("TRANSFERRING SURFACE WATER DATA")
-        results = _execute_transfer(SurfaceWaterDataTransferer, flags=flags)
-        metrics.surface_water_data_metrics(*results)
-
-    if opts.transfer_hydraulics_data:
-        message("TRANSFERRING HYDRAULICS DATA")
-        results = _execute_transfer(HydraulicsDataTransferer, flags=flags)
-        metrics.hydraulics_data_metrics(*results)
-
-    if opts.transfer_chemistry_sampleinfo:
-        message("TRANSFERRING CHEMISTRY SAMPLEINFO")
-        results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
-        metrics.chemistry_sampleinfo_metrics(*results)
-
-    if opts.transfer_field_parameters:
-        message("TRANSFERRING FIELD PARAMETERS")
-        results = _execute_transfer(FieldParametersTransferer, flags=flags)
-        metrics.field_parameters_metrics(*results)
-
-    if opts.transfer_major_chemistry:
-        message("TRANSFERRING MAJOR CHEMISTRY")
-        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
-        metrics.major_chemistry_metrics(*results)
-
-    if opts.transfer_radionuclides:
-        message("TRANSFERRING RADIONUCLIDES")
-        results = _execute_transfer(RadionuclidesTransferer, flags=flags)
-        metrics.radionuclides_metrics(*results)
-
-    if opts.transfer_ngwmn_views:
-        message("TRANSFERRING NGWMN WELL CONSTRUCTION")
-        results = _execute_transfer(NGWMNWellConstructionTransferer, flags=flags)
-        metrics.ngwmn_well_construction_metrics(*results)
-        message("TRANSFERRING NGWMN WATER LEVELS")
-        results = _execute_transfer(NGWMNWaterLevelsTransferer, flags=flags)
-        metrics.ngwmn_water_levels_metrics(*results)
-        message("TRANSFERRING NGWMN LITHOLOGY")
-        results = _execute_transfer(NGWMNLithologyTransferer, flags=flags)
-        metrics.ngwmn_lithology_metrics(*results)
-
-    if opts.transfer_pressure_daily:
-        message("TRANSFERRING WATER LEVELS PRESSURE DAILY")
-        results = _execute_transfer(
-            NMA_WaterLevelsContinuous_Pressure_DailyTransferer, flags=flags
-        )
-        metrics.waterlevels_pressure_daily_metrics(*results)
-
-    if opts.transfer_weather_data:
-        message("TRANSFERRING WEATHER DATA")
-        results = _execute_transfer(WeatherDataTransferer, flags=flags)
-        metrics.weather_data_metrics(*results)
-
-    if opts.transfer_minor_trace_chemistry:
-        message("TRANSFERRING MINOR TRACE CHEMISTRY")
-        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
-        metrics.minor_trace_chemistry_metrics(*results)
-
-    if opts.transfer_pressure:
-        message("TRANSFERRING WATER LEVELS PRESSURE")
-        if profile_waterlevels:
-            profiler = TransferProfiler("waterlevels_continuous_pressure")
-            results, artifact = profiler.run(
-                _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
-            )
-            profile_artifacts.append(artifact)
-        else:
-            results = _execute_transfer(
-                WaterLevelsContinuousPressureTransferer, flags=flags
-            )
-        metrics.pressure_metrics(*results)
-
-    if opts.transfer_acoustic:
-        message("TRANSFERRING WATER LEVELS ACOUSTIC")
-        if profile_waterlevels:
-            profiler = TransferProfiler("waterlevels_continuous_acoustic")
-            results, artifact = profiler.run(
-                _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
-            )
-            profile_artifacts.append(artifact)
-        else:
-            results = _execute_transfer(
-                WaterLevelsContinuousAcousticTransferer, flags=flags
-            )
-        metrics.acoustic_metrics(*results)
-
-    return profile_artifacts
 
 
 def main():

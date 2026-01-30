@@ -562,6 +562,9 @@ class NMA_Radionuclides(Base):
     global_id: Mapped[uuid.UUID] = mapped_column(
         "GlobalID", UUID(as_uuid=True), primary_key=True
     )
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
     sample_pt_id: Mapped[uuid.UUID] = mapped_column(
         "SamplePtID",
         UUID(as_uuid=True),
@@ -595,6 +598,7 @@ class NMA_Radionuclides(Base):
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="radionuclides"
     )
+    thing: Mapped["Thing"] = relationship("Thing")
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):
