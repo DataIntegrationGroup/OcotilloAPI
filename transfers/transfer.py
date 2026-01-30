@@ -272,14 +272,14 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
 
     profile_artifacts: list[ProfileArtifact] = []
-    water_levels_only = get_bool_env("CONTINOUS_WATER_LEVELS", False)
+    water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
 
     # =========================================================================
     # PHASE 1: Foundation (Parallel - these are independent of each other)
     # =========================================================================
     if water_levels_only:
-        logger.info("CONTINOUS_WATER_LEVELS set; running only continuous transfers")
-        _run_continuous_water_levels(
+        logger.info("CONTINUOUS_WATER_LEVELS set; running only continuous transfers")
+        _run_continuous_water_level_transfers(
             metrics, flags, profile_waterlevels, profile_artifacts
         )
         return profile_artifacts
@@ -356,32 +356,12 @@ def _run_water_level_transfers(
     results = _execute_transfer(WaterLevelTransferer, flags=flags)
     metrics.water_level_metrics(*results)
 
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_pressure")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousPressureTransferer, flags=flags
-        )
-    metrics.pressure_metrics(*results)
-
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_acoustic")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousAcousticTransferer, flags=flags
-        )
-    metrics.acoustic_metrics(*results)
+    _run_continuous_water_level_transfers(
+        metrics, flags, profile_waterlevels, profile_artifacts
+    )
 
 
-def _run_continuous_water_levels(
+def _run_continuous_water_level_transfers(
     metrics, flags, profile_waterlevels: bool, profile_artifacts: list[ProfileArtifact]
 ):
     message("CONTINUOUS WATER LEVEL TRANSFERS")
