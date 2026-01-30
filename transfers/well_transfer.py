@@ -82,7 +82,10 @@ def _model_to_dict(obj):
         key = column.key
         if column.primary_key and column.autoincrement:
             continue
-        data[key] = getattr(obj, key)
+        value = getattr(obj, key)
+        if value is None and column.server_default is not None:
+            continue
+        data[key] = value
     return data
 
 
