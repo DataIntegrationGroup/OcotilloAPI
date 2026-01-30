@@ -40,13 +40,13 @@ def _next_sample_point_id() -> str:
 
 
 # ===================== CREATE tests ==========================
-def test_create_radionuclides_all_fields(water_well_thing, location):
+def test_create_radionuclides_all_fields(water_well_thing):
     """Test creating a radionuclides record with all fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -89,13 +89,13 @@ def test_create_radionuclides_all_fields(water_well_thing, location):
         session.commit()
 
 
-def test_create_radionuclides_minimal(water_well_thing, location):
+def test_create_radionuclides_minimal(water_well_thing):
     """Test creating a radionuclides record with minimal fields."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -122,13 +122,13 @@ def test_create_radionuclides_minimal(water_well_thing, location):
 
 
 # ===================== READ tests ==========================
-def test_read_radionuclides_by_id(water_well_thing, location):
+def test_read_radionuclides_by_id(water_well_thing):
     """Test reading a radionuclides record by Integer ID."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -198,13 +198,13 @@ def test_query_radionuclides_by_nma_sample_point_id(water_well_thing):
 
 
 # ===================== UPDATE tests ==========================
-def test_update_radionuclides(water_well_thing, location):
+def test_update_radionuclides(water_well_thing):
     """Test updating a radionuclides record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -232,13 +232,13 @@ def test_update_radionuclides(water_well_thing, location):
 
 
 # ===================== DELETE tests ==========================
-def test_delete_radionuclides(water_well_thing, location):
+def test_delete_radionuclides(water_well_thing):
     """Test deleting a radionuclides record."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=location.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -309,17 +309,16 @@ def test_radionuclides_fk_has_cascade():
     assert fk.ondelete == "CASCADE"
 
 
-def test_radionuclides_back_populates_thing(water_well_thing, location):
+def test_radionuclides_back_populates_thing(water_well_thing):
     """NMA_Radionuclides.thing navigates back to Thing."""
     with session_ctx() as session:
         well = session.merge(water_well_thing)
-        loc = session.merge(location)
 
-        # Radionuclides requires a chemistry_sample_info (which FKs to Location)
+        # Radionuclides requires a chemistry_sample_info (which FKs to Thing)
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            location_id=loc.id,
+            thing_id=well.id,
         )
         session.add(sample_info)
         session.commit()
