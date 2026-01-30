@@ -56,11 +56,17 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
 
     __tablename__ = "NMA_WaterLevelsContinuous_Pressure_Daily"
 
-    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
     object_id: Mapped[Optional[int]] = mapped_column(
         "OBJECTID", Integer, autoincrement=True
     )
-    well_id: Mapped[Optional[str]] = mapped_column("WellID", String(40))
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    # FK to Thing table - required for all WaterLevelsContinuous_Pressure_Daily records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     date_measured: Mapped[datetime] = mapped_column(
         "DateMeasured", DateTime, nullable=False
@@ -89,6 +95,10 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
     processed_by: Mapped[Optional[str]] = mapped_column("ProcessedBy", String(4))
     checked_by: Mapped[Optional[str]] = mapped_column("CheckedBy", String(4))
     cond_dl_ms_cm: Mapped[Optional[float]] = mapped_column("CONDDL (mS/cm)", Float)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="pressure_daily_levels"
+    )
 
 
 class NMA_view_NGWMN_WellConstruction(Base):
