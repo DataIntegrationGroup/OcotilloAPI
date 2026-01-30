@@ -685,12 +685,16 @@ class NMA_MinorTraceChemistry(Base):
     sample_value: Mapped[Optional[float]] = mapped_column("sample_value", Float)
     units: Mapped[Optional[str]] = mapped_column("units", String(20))
     uncertainty: Mapped[Optional[float]] = mapped_column("uncertainty", Float)
-    analysis_method: Mapped[Optional[str]] = mapped_column("analysis_method", String(100))
+    analysis_method: Mapped[Optional[str]] = mapped_column(
+        "analysis_method", String(100)
+    )
     analysis_date: Mapped[Optional[date]] = mapped_column("analysis_date", Date)
     notes: Mapped[Optional[str]] = mapped_column("notes", Text)
     volume: Mapped[Optional[int]] = mapped_column("volume", Integer)
     volume_unit: Mapped[Optional[str]] = mapped_column("volume_unit", String(20))
-    analyses_agency: Mapped[Optional[str]] = mapped_column("analyses_agency", String(100))
+    analyses_agency: Mapped[Optional[str]] = mapped_column(
+        "analyses_agency", String(100)
+    )
 
     # --- Relationships ---
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
