@@ -43,4 +43,4 @@ run_bdd-local.sh
 .pre-commit-config.local.yaml
 
 # deployment files
-app.yaml
+app.yaml.serena/
