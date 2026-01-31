@@ -35,4 +35,4 @@ def test_row_to_dict_includes_wclab_id():
     )
 
     row_dict = transfer._row_to_dict(row)
-    assert row_dict["WCLab_ID"] == "LAB-123"
+    assert row_dict["nma_WCLab_ID"] == "LAB-123"
