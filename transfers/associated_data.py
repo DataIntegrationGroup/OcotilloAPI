@@ -48,14 +48,27 @@ class AssociatedDataTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        self._thing_id_cache: dict[str, int] = {}
+        self._thing_id_by_point_id: dict[str, int] = {}
+        self._thing_id_by_location_id: dict[str, int] = {}
         self._build_thing_id_cache()
 
     def _build_thing_id_cache(self) -> None:
         with session_ctx() as session:
-            things = session.query(Thing.name, Thing.id).all()
-            self._thing_id_cache = {name: thing_id for name, thing_id in things}
-        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
+            things = session.query(Thing.id, Thing.name, Thing.nma_pk_location).all()
+            for thing_id, name, nma_pk_location in things:
+                if name:
+                    point_key = self._normalize_point_id(name)
+                    if point_key:
+                        self._thing_id_by_point_id[point_key] = thing_id
+                if nma_pk_location:
+                    key = self._normalize_location_id(nma_pk_location)
+                    if key:
+                        self._thing_id_by_location_id[key] = thing_id
+        logger.info(
+            "Built Thing caches with %s point ids and %s location ids",
+            len(self._thing_id_by_point_id),
+            len(self._thing_id_by_location_id),
+        )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
@@ -63,12 +76,26 @@ class AssociatedDataTransferer(Transferer):
         return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        rows: list[dict[str, Any]] = []
+        skipped_missing_thing = 0
+        for raw in self.cleaned_df.to_dict("records"):
+            record = self._row_dict(raw)
+            if record is None:
+                skipped_missing_thing += 1
+                continue
+            rows.append(record)
+
         rows = self._dedupe_rows(rows, key="nma_AssocID")
 
         if not rows:
             logger.info("No AssociatedData rows to transfer")
             return
+
+        if skipped_missing_thing:
+            logger.warning(
+                "Skipped %s AssociatedData rows without matching Thing",
+                skipped_missing_thing,
+            )
 
         insert_stmt = insert(NMA_AssociatedData)
         excluded = insert_stmt.excluded
@@ -96,21 +123,51 @@ class AssociatedDataTransferer(Transferer):
             session.execute(stmt)
         session.commit()
 
-    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
         point_id = row.get("PointID")
+        location_id = self._uuid_val(row.get("LocationId"))
+        thing_id = self._resolve_thing_id(point_id, location_id)
+        if thing_id is None:
+            logger.warning(
+                "Skipping AssociatedData PointID=%s LocationId=%s - Thing not found",
+                point_id,
+                location_id,
+            )
+            return None
+
         return {
             # Legacy UUID PK -> nma_assoc_id (unique audit column)
             "nma_AssocID": self._uuid_val(row.get("AssocID")),
             # Legacy ID columns (renamed with nma_ prefix)
-            "nma_LocationId": self._uuid_val(row.get("LocationId")),
+            "nma_LocationId": location_id,
             "nma_PointID": point_id,
             "nma_OBJECTID": row.get("OBJECTID"),
             # Data columns
             "Notes": row.get("Notes"),
             "Formation": row.get("Formation"),
             # FK to Thing
-            "thing_id": self._thing_id_cache.get(point_id),
+            "thing_id": thing_id,
         }
+
+    def _resolve_thing_id(
+        self, point_id: Optional[str], location_id: Optional[UUID]
+    ) -> Optional[int]:
+        if location_id is not None:
+            key = self._normalize_location_id(str(location_id))
+            thing_id = self._thing_id_by_location_id.get(key)
+            if thing_id is not None:
+                return thing_id
+        if point_id:
+            return self._thing_id_by_point_id.get(self._normalize_point_id(point_id))
+        return None
+
+    @staticmethod
+    def _normalize_point_id(value: str) -> str:
+        return value.strip().upper()
+
+    @staticmethod
+    def _normalize_location_id(value: str) -> str:
+        return value.strip().lower()
 
     def _dedupe_rows(
         self, rows: list[dict[str, Any]], key: str

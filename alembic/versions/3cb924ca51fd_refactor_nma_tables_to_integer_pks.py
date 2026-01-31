@@ -507,7 +507,6 @@ def upgrade() -> None:
         existing_type=sa.VARCHAR(),
         comment="To audit the original NM_Aquifer LocationID if it was transferred over",
         existing_nullable=True,
-        autoincrement=False,
     )
     op.alter_column(
         "thing_version",
@@ -515,7 +514,6 @@ def upgrade() -> None:
         existing_type=sa.VARCHAR(length=25),
         comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
         existing_nullable=True,
-        autoincrement=False,
     )
     op.alter_column(
         "transducer_observation",
@@ -556,7 +554,6 @@ def downgrade() -> None:
         comment=None,
         existing_comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
         existing_nullable=True,
-        autoincrement=False,
     )
     op.alter_column(
         "thing_version",

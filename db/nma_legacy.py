@@ -657,6 +657,7 @@ class NMA_MinorTraceChemistry(Base):
     - nma_global_id: Original UUID PK, now UNIQUE for audit
     - chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
     - nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
+    - nma_wclab_id: Legacy WCLab_ID string (audit)
     """
 
     __tablename__ = "NMA_MinorTraceChemistry"
@@ -704,6 +705,7 @@ class NMA_MinorTraceChemistry(Base):
     analyses_agency: Mapped[Optional[str]] = mapped_column(
         "analyses_agency", String(100)
     )
+    nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(25))
 
     # --- Relationships ---
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(

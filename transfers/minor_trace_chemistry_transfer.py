@@ -157,7 +157,7 @@ class MinorTraceChemistryTransferer(Transferer):
                     "uncertainty": excluded.uncertainty,
                     "volume": excluded.volume,
                     "volume_unit": excluded.volume_unit,
-                    "WCLab_ID": excluded.WCLab_ID,
+                    "nma_WCLab_ID": excluded.nma_WCLab_ID,
                 },
             )
             session.execute(stmt)
@@ -214,7 +214,7 @@ class MinorTraceChemistryTransferer(Transferer):
             "uncertainty": self._safe_float(row, "Uncertainty"),
             "volume": self._safe_int(row, "Volume"),
             "volume_unit": self._safe_str(row, "VolumeUnit"),
-            "WCLab_ID": self._safe_str(row, "WCLab_ID"),
+            "nma_WCLab_ID": self._safe_str(row, "WCLab_ID"),
         }
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -43,7 +43,6 @@ from transfers.waterlevels_transducer_transfer import (
 
 from transfers.metrics import Metrics
 from transfers.profiling import (
-    TransferProfiler,
     ProfileArtifact,
     upload_profile_artifacts,
 )
@@ -301,20 +300,18 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             for field in transfer_options.__dataclass_fields__
         },
     )
-    transfer_options.transfer_pressure = False
-    transfer_options.transfer_acoustic = False
 
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
     message("TRANSFER_FLAGS")
     logger.info(flags)
 
     profile_artifacts: list[ProfileArtifact] = []
-    water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
+    continuous_water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
 
     # =========================================================================
     # PHASE 1: Foundation (Parallel - these are independent of each other)
     # =========================================================================
-    if water_levels_only:
+    if continuous_water_levels_only:
         logger.info("CONTINUOUS_WATER_LEVELS set; running only continuous transfers")
         _run_continuous_water_level_transfers(
             metrics, flags, profile_waterlevels, profile_artifacts
@@ -393,62 +390,49 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
                     )
                 except Exception as e:
                     logger.critical(f"Non-well transfer {name} failed: {e}")
-    use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
-    if use_parallel:
-        _transfer_parallel(
-            metrics,
-            flags,
-            limit,
-            transfer_options,
-            profile_waterlevels,
-            profile_artifacts,
-        )
+    _transfer_parallel(
+        metrics,
+        flags,
+        limit,
+        transfer_options,
+    )
 
     return profile_artifacts
 
 
-def _run_water_level_transfers(
-    metrics, flags, profile_waterlevels: bool, profile_artifacts: list[ProfileArtifact]
-):
-    message("WATER LEVEL TRANSFERS ONLY")
-
-    results = _execute_transfer(WaterLevelTransferer, flags=flags)
-    metrics.water_level_metrics(*results)
-
-    _run_continuous_water_level_transfers(
-        metrics, flags, profile_waterlevels, profile_artifacts
-    )
-
-
-def _run_continuous_water_level_transfers(
-    metrics, flags, profile_waterlevels: bool, profile_artifacts: list[ProfileArtifact]
-):
+def _run_continuous_water_level_transfers(metrics, flags):
     message("CONTINUOUS WATER LEVEL TRANSFERS")
 
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_pressure")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousPressureTransferer, flags=flags
-        )
-    metrics.pressure_metrics(*results)
+    # =========================================================================
+    # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
+    # =========================================================================
+    message("PARALLEL TRANSFER GROUP 2 (Continuous Water Levels)")
 
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_acoustic")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousAcousticTransferer, flags=flags
-        )
-    metrics.acoustic_metrics(*results)
+    parallel_tasks = [
+        ("Pressure", WaterLevelsContinuousPressureTransferer),
+        ("Acoustic", WaterLevelsContinuousAcousticTransferer),
+    ]
+    results_map = {}
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {}
+        for name, klass, task_flags in parallel_tasks:
+            future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
+            futures[future] = name
+
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result_name, result, elapsed = future.result()
+                results_map[result_name] = result
+                logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
+            except Exception as e:
+                logger.critical(f"Parallel task {name} failed: {e}")
+
+    if "Pressure" in results_map and results_map["Pressure"]:
+        metrics.pressure_metrics(*results_map["Pressure"])
+    if "Acoustic" in results_map and results_map["Acoustic"]:
+        metrics.acoustic_metrics(*results_map["Acoustic"])
 
 
 def _transfer_parallel(
@@ -456,8 +440,6 @@ def _transfer_parallel(
     flags,
     limit,
     transfer_options: TransferOptions,
-    profile_waterlevels: bool,
-    profile_artifacts,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -623,52 +605,12 @@ def _transfer_parallel(
         results = _execute_transfer(SensorTransferer, flags=flags)
         metrics.sensor_metrics(*results)
 
-    # =========================================================================
-    # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
-    # =========================================================================
-    if opts.transfer_pressure or opts.transfer_acoustic:
-        message("PARALLEL TRANSFER GROUP 2 (Continuous Water Levels)")
-
-        parallel_tasks_2 = []
-        if opts.transfer_pressure:
-            parallel_tasks_2.append(
-                ("Pressure", WaterLevelsContinuousPressureTransferer, flags)
-            )
-        if opts.transfer_acoustic:
-            parallel_tasks_2.append(
-                ("Acoustic", WaterLevelsContinuousAcousticTransferer, flags)
-            )
-
-        if profile_waterlevels:
-            for name, klass, task_flags in parallel_tasks_2:
-                profiler = TransferProfiler(f"waterlevels_continuous_{name.lower()}")
-                results, artifact = profiler.run(_execute_transfer, klass, task_flags)
-                profile_artifacts.append(artifact)
-                results_map[name] = results
-        else:
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                futures = {}
-                for name, klass, task_flags in parallel_tasks_2:
-                    future = executor.submit(
-                        _execute_transfer_with_timing, name, klass, task_flags
-                    )
-                    futures[future] = name
-
-                for future in as_completed(futures):
-                    name = futures[future]
-                    try:
-                        result_name, result, elapsed = future.result()
-                        results_map[result_name] = result
-                        logger.info(
-                            f"Parallel task {result_name} completed in {elapsed:.2f}s"
-                        )
-                    except Exception as e:
-                        logger.critical(f"Parallel task {name} failed: {e}")
-
-        if "Pressure" in results_map and results_map["Pressure"]:
-            metrics.pressure_metrics(*results_map["Pressure"])
-        if "Acoustic" in results_map and results_map["Acoustic"]:
-            metrics.acoustic_metrics(*results_map["Acoustic"])
+    # # =========================================================================
+    # # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
+    # # =========================================================================
+    # Continuous water levels handled separately in _run_continuous_water_level_transfers()
+    # the transfer process is bisected because the continuous water levels process is
+    # very time consuming and we want to run it alone in its own phase.
 
 
 def main():
