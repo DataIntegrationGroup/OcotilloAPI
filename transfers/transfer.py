@@ -416,7 +416,7 @@ def _run_continuous_water_level_transfers(metrics, flags):
     results_map = {}
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {}
-        for name, klass, task_flags in parallel_tasks:
+        for name, klass in parallel_tasks:
             future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
             futures[future] = name
 
