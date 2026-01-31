@@ -177,7 +177,9 @@ class MinorTraceChemistryTransferer(Transferer):
             return None
 
         # Look up Integer FK from cache
-        cache = getattr(self, "_sample_info_cache", {})
+        cache = getattr(self, "_sample_info_cache", None)
+        if cache is None:
+            cache = {}
         chemistry_sample_info_id = cache.get(legacy_sample_pt_id)
         if chemistry_sample_info_id is None:
             self._capture_error(
