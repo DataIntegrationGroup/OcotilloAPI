@@ -220,8 +220,6 @@ class MinorTraceChemistryTransferer(Transferer):
             "volume_unit": self._safe_str(row, "VolumeUnit"),
             "nma_WCLab_ID": wclab_id,
         }
-        if wclab_id is not None:
-            row_dict["WCLab_ID"] = wclab_id
         return row_dict
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
