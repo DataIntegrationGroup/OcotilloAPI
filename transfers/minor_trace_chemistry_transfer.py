@@ -177,7 +177,8 @@ class MinorTraceChemistryTransferer(Transferer):
             return None
 
         # Look up Integer FK from cache
-        chemistry_sample_info_id = self._sample_info_cache.get(legacy_sample_pt_id)
+        cache = getattr(self, "_sample_info_cache", {})
+        chemistry_sample_info_id = cache.get(legacy_sample_pt_id)
         if chemistry_sample_info_id is None:
             self._capture_error(
                 legacy_sample_pt_id,
@@ -195,7 +196,8 @@ class MinorTraceChemistryTransferer(Transferer):
             )
             return None
 
-        return {
+        wclab_id = self._safe_str(row, "WCLab_ID")
+        row_dict = {
             # Legacy UUID PK -> nma_global_id (unique audit column)
             "nma_GlobalID": nma_global_id,
             # New Integer FK to ChemistrySampleInfo
@@ -214,8 +216,11 @@ class MinorTraceChemistryTransferer(Transferer):
             "uncertainty": self._safe_float(row, "Uncertainty"),
             "volume": self._safe_int(row, "Volume"),
             "volume_unit": self._safe_str(row, "VolumeUnit"),
-            "nma_WCLab_ID": self._safe_str(row, "WCLab_ID"),
+            "nma_WCLab_ID": wclab_id,
         }
+        if wclab_id is not None:
+            row_dict["WCLab_ID"] = wclab_id
+        return row_dict
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
