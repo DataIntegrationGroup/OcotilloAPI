@@ -59,8 +59,8 @@ from transfers.waterlevels_transfer import WaterLevelTransferer
 from transfers.well_transfer import (
     WellTransferer,
     WellScreenTransferer,
-    cleanup_locations,
 )
+from transfers.well_transfer_util import cleanup_locations
 from transfers.thing_transfer import (
     transfer_springs,
     transfer_perennial_stream,
