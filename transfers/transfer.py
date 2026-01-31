@@ -281,7 +281,7 @@ def _drop_and_rebuild_db() -> None:
 
 
 @timeit
-def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
+def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
     message("STARTING TRANSFER", new_line_at_top=False)
     if get_bool_env("DROP_AND_REBUILD_DB", False):
         logger.info("Dropping schema and rebuilding database from migrations")
@@ -300,7 +300,7 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             for field in transfer_options.__dataclass_fields__
         },
     )
-
+    limit = int(os.getenv("TRANSFER_LIMIT", 1000))
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
     message("TRANSFER_FLAGS")
     logger.info(flags)
@@ -313,9 +313,7 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
     # =========================================================================
     if continuous_water_levels_only:
         logger.info("CONTINUOUS_WATER_LEVELS set; running only continuous transfers")
-        _run_continuous_water_level_transfers(
-            metrics, flags, profile_waterlevels, profile_artifacts
-        )
+        _run_continuous_water_level_transfers(metrics, flags)
         return profile_artifacts
     else:
         message("PHASE 1: FOUNDATIONAL TRANSFERS (PARALLEL)")
@@ -631,13 +629,9 @@ def main():
                 "Set POSTGRES_DB=ocotilloapi_dev in .env file"
             )
 
-    limit = int(os.getenv("TRANSFER_LIMIT", 1000))
-    profile_waterlevels = get_bool_env("PROFILE_WATERLEVELS_CONTINUOUS", True)
     metrics = Metrics()
 
-    profile_artifacts = transfer_all(
-        metrics, limit=limit, profile_waterlevels=profile_waterlevels
-    )
+    profile_artifacts = transfer_all(metrics)
 
     if get_bool_env("CLEANUP_LOCATIONS", True):
         message("CLEANING UP LOCATIONS")
