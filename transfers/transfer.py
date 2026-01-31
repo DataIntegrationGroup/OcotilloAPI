@@ -425,7 +425,11 @@ def _run_continuous_water_level_transfers(metrics, flags):
                 results_map[result_name] = result
                 logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
             except Exception as e:
-                logger.critical(f"Parallel task {name} failed: {e}")
+                import traceback
+
+                logger.critical(
+                    f"Parallel task {name} failed: {traceback.format_exc()}"
+                )
 
     if "Pressure" in results_map and results_map["Pressure"]:
         metrics.pressure_metrics(*results_map["Pressure"])
