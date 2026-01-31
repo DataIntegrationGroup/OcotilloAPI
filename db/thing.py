@@ -54,6 +54,7 @@ if TYPE_CHECKING:
         NMA_Radionuclides,
         NMA_Soil_Rock_Results,
         NMA_Stratigraphy,
+        NMA_WaterLevelsContinuous_Pressure_Daily,
     )
 
 
@@ -360,6 +361,14 @@ class Thing(
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+    pressure_daily_levels: Mapped[List["NMA_WaterLevelsContinuous_Pressure_Daily"]] = (
+        relationship(
+            "NMA_WaterLevelsContinuous_Pressure_Daily",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
     )
 
     # --- Association Proxies ---

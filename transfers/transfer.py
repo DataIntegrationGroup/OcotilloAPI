@@ -43,7 +43,6 @@ from transfers.waterlevels_transducer_transfer import (
 
 from transfers.metrics import Metrics
 from transfers.profiling import (
-    TransferProfiler,
     ProfileArtifact,
     upload_profile_artifacts,
 )
@@ -205,7 +204,11 @@ def _execute_transfer_with_timing(name: str, klass, flags: dict = None):
     """Execute transfer and return timing info."""
     start = time.time()
     logger.info(f"Starting parallel transfer: {name}")
-    result = _execute_transfer(klass, flags)
+    effective_flags = dict(flags or {})
+    yield_transfer_limit = effective_flags.get("LIMIT", 0)
+    if yield_transfer_limit:
+        effective_flags["LIMIT"] = max(1, yield_transfer_limit // 10)
+    result = _execute_transfer(klass, effective_flags)
     elapsed = time.time() - start
     logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
     return name, result, elapsed
@@ -216,7 +219,8 @@ def _execute_session_transfer_with_timing(name: str, transfer_func, limit: int):
     start = time.time()
     logger.info(f"Starting parallel transfer: {name}")
     with session_ctx() as session:
-        result = transfer_func(session, limit=limit)
+        effective_limit = max(1, limit // 10) if limit else 0
+        result = transfer_func(session, limit=effective_limit)
     elapsed = time.time() - start
     logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
     return name, result, elapsed
@@ -256,6 +260,7 @@ def _drop_and_rebuild_db() -> None:
     with session_ctx() as session:
         recreate_public_schema(session)
     logger.info("Running Alembic migrations")
+
     try:
         command.upgrade(_alembic_config(), "head")
     except SystemExit as exc:
@@ -285,15 +290,28 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
         logger.info("Erase and rebuilding database")
         erase_and_rebuild_db()
 
+    # Get transfer flags
+    message("TRANSFER OPTIONS")
+    transfer_options = load_transfer_options()
+    logger.info(
+        "Transfer options: %s",
+        {
+            field: getattr(transfer_options, field)
+            for field in transfer_options.__dataclass_fields__
+        },
+    )
+
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
+    message("TRANSFER_FLAGS")
+    logger.info(flags)
 
     profile_artifacts: list[ProfileArtifact] = []
-    water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
+    continuous_water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
 
     # =========================================================================
     # PHASE 1: Foundation (Parallel - these are independent of each other)
     # =========================================================================
-    if water_levels_only:
+    if continuous_water_levels_only:
         logger.info("CONTINUOUS_WATER_LEVELS set; running only continuous transfers")
         _run_continuous_water_level_transfers(
             metrics, flags, profile_waterlevels, profile_artifacts
@@ -372,71 +390,49 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
                     )
                 except Exception as e:
                     logger.critical(f"Non-well transfer {name} failed: {e}")
-    use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
 
-    if use_parallel:
-        _transfer_parallel(
-            metrics,
-            flags,
-            limit,
-            transfer_options,
-            profile_waterlevels,
-            profile_artifacts,
-        )
-    else:
-        _transfer_sequential(
-            metrics,
-            flags,
-            limit,
-            transfer_options,
-            profile_waterlevels,
-            profile_artifacts,
-        )
+    _transfer_parallel(
+        metrics,
+        flags,
+        limit,
+        transfer_options,
+    )
 
     return profile_artifacts
 
 
-def _run_water_level_transfers(
-    metrics, flags, profile_waterlevels: bool, profile_artifacts: list[ProfileArtifact]
-):
-    message("WATER LEVEL TRANSFERS ONLY")
-
-    results = _execute_transfer(WaterLevelTransferer, flags=flags)
-    metrics.water_level_metrics(*results)
-
-    _run_continuous_water_level_transfers(
-        metrics, flags, profile_waterlevels, profile_artifacts
-    )
-
-
-def _run_continuous_water_level_transfers(
-    metrics, flags, profile_waterlevels: bool, profile_artifacts: list[ProfileArtifact]
-):
+def _run_continuous_water_level_transfers(metrics, flags):
     message("CONTINUOUS WATER LEVEL TRANSFERS")
 
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_pressure")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousPressureTransferer, flags=flags
-        )
-    metrics.pressure_metrics(*results)
+    # =========================================================================
+    # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
+    # =========================================================================
+    message("PARALLEL TRANSFER GROUP 2 (Continuous Water Levels)")
 
-    if profile_waterlevels:
-        profiler = TransferProfiler("waterlevels_continuous_acoustic")
-        results, artifact = profiler.run(
-            _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
-        )
-        profile_artifacts.append(artifact)
-    else:
-        results = _execute_transfer(
-            WaterLevelsContinuousAcousticTransferer, flags=flags
-        )
-    metrics.acoustic_metrics(*results)
+    parallel_tasks = [
+        ("Pressure", WaterLevelsContinuousPressureTransferer),
+        ("Acoustic", WaterLevelsContinuousAcousticTransferer),
+    ]
+    results_map = {}
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {}
+        for name, klass in parallel_tasks:
+            future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
+            futures[future] = name
+
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result_name, result, elapsed = future.result()
+                results_map[result_name] = result
+                logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
+            except Exception as e:
+                logger.critical(f"Parallel task {name} failed: {e}")
+
+    if "Pressure" in results_map and results_map["Pressure"]:
+        metrics.pressure_metrics(*results_map["Pressure"])
+    if "Acoustic" in results_map and results_map["Acoustic"]:
+        metrics.acoustic_metrics(*results_map["Acoustic"])
 
 
 def _transfer_parallel(
@@ -444,8 +440,6 @@ def _transfer_parallel(
     flags,
     limit,
     transfer_options: TransferOptions,
-    profile_waterlevels: bool,
-    profile_artifacts,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -457,54 +451,49 @@ def _transfer_parallel(
     parallel_tasks_1 = []
 
     if opts.transfer_screens:
-        parallel_tasks_1.append(("WellScreens", WellScreenTransferer, flags))
+        parallel_tasks_1.append(("WellScreens", WellScreenTransferer))
     if opts.transfer_contacts:
-        parallel_tasks_1.append(("Contacts", ContactTransfer, flags))
+        parallel_tasks_1.append(("Contacts", ContactTransfer))
     if opts.transfer_waterlevels:
-        parallel_tasks_1.append(("WaterLevels", WaterLevelTransferer, flags))
+        parallel_tasks_1.append(("WaterLevels", WaterLevelTransferer))
     if opts.transfer_link_ids:
-        parallel_tasks_1.append(("LinkIdsWellData", LinkIdsWellDataTransferer, flags))
-        parallel_tasks_1.append(
-            ("LinkIdsLocation", LinkIdsLocationDataTransferer, flags)
-        )
+        parallel_tasks_1.append(("LinkIdsWellData", LinkIdsWellDataTransferer))
+        parallel_tasks_1.append(("LinkIdsLocation", LinkIdsLocationDataTransferer))
     if opts.transfer_groups:
-        parallel_tasks_1.append(("Groups", ProjectGroupTransferer, flags))
+        parallel_tasks_1.append(("Groups", ProjectGroupTransferer))
     if opts.transfer_surface_water_photos:
-        parallel_tasks_1.append(
-            ("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer, flags)
-        )
+        parallel_tasks_1.append(("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer))
     if opts.transfer_soil_rock_results:
-        parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer, flags))
+        parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer))
     if opts.transfer_weather_photos:
-        parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer, flags))
+        parallel_tasks_1.append(("WeatherPhotos", WeatherPhotosTransferer))
     if opts.transfer_assets:
-        parallel_tasks_1.append(("Assets", AssetTransferer, flags))
+        parallel_tasks_1.append(("Assets", AssetTransferer))
     if opts.transfer_associated_data:
-        parallel_tasks_1.append(("AssociatedData", AssociatedDataTransferer, flags))
+        parallel_tasks_1.append(("AssociatedData", AssociatedDataTransferer))
     if opts.transfer_surface_water_data:
-        parallel_tasks_1.append(("SurfaceWaterData", SurfaceWaterDataTransferer, flags))
+        parallel_tasks_1.append(("SurfaceWaterData", SurfaceWaterDataTransferer))
     if opts.transfer_hydraulics_data:
-        parallel_tasks_1.append(("HydraulicsData", HydraulicsDataTransferer, flags))
+        parallel_tasks_1.append(("HydraulicsData", HydraulicsDataTransferer))
     if opts.transfer_chemistry_sampleinfo:
-        parallel_tasks_1.append(
-            ("ChemistrySampleInfo", ChemistrySampleInfoTransferer, flags)
-        )
+        parallel_tasks_1.append(("ChemistrySampleInfo", ChemistrySampleInfoTransferer))
     if opts.transfer_ngwmn_views:
         parallel_tasks_1.append(
-            ("NGWMNWellConstruction", NGWMNWellConstructionTransferer, flags)
+            ("NGWMNWellConstruction", NGWMNWellConstructionTransferer)
         )
-        parallel_tasks_1.append(("NGWMNWaterLevels", NGWMNWaterLevelsTransferer, flags))
-        parallel_tasks_1.append(("NGWMNLithology", NGWMNLithologyTransferer, flags))
+        parallel_tasks_1.append(("NGWMNWaterLevels", NGWMNWaterLevelsTransferer))
+        parallel_tasks_1.append(("NGWMNLithology", NGWMNLithologyTransferer))
     if opts.transfer_pressure_daily:
         parallel_tasks_1.append(
             (
                 "WaterLevelsPressureDaily",
                 NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
-                flags,
             )
         )
     if opts.transfer_weather_data:
-        parallel_tasks_1.append(("WeatherData", WeatherDataTransferer, flags))
+        parallel_tasks_1.append(("WeatherData", WeatherDataTransferer))
+    if opts.transfer_nma_stratigraphy:
+        parallel_tasks_1.append(("StratigraphyLegacy", StratigraphyLegacyTransferer))
 
     # Track results for metrics
     results_map = {}
@@ -514,29 +503,17 @@ def _transfer_parallel(
         futures = {}
 
         # Submit class-based transfers
-        for name, klass, task_flags in parallel_tasks_1:
-            future = executor.submit(
-                _execute_transfer_with_timing, name, klass, task_flags
-            )
+        for name, klass in parallel_tasks_1:
+            future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
             futures[future] = name
-
-        # Submit session-based transfers
-        if opts.transfer_nma_stratigraphy:
-            future = executor.submit(
-                _execute_transfer_with_timing,
-                "StratigraphyLegacy",
-                StratigraphyLegacyTransferer,
-                flags,
-            )
-            futures[future] = "StratigraphyLegacy"
 
         future = executor.submit(
             _execute_session_transfer_with_timing,
-            "Stratigraphy",
+            "StratigraphyNew",
             transfer_stratigraphy,
             limit,
         )
-        futures[future] = "Stratigraphy"
+        futures[future] = "StratigraphyNew"
 
         future = executor.submit(_execute_permissions_with_timing, "Permissions")
         futures[future] = "Permissions"
@@ -556,8 +533,8 @@ def _transfer_parallel(
         metrics.well_screen_metrics(*results_map["WellScreens"])
     if "Contacts" in results_map and results_map["Contacts"]:
         metrics.contact_metrics(*results_map["Contacts"])
-    if "Stratigraphy" in results_map and results_map["Stratigraphy"]:
-        metrics.stratigraphy_metrics(*results_map["Stratigraphy"])
+    if "StratigraphyNew" in results_map and results_map["StratigraphyNew"]:
+        metrics.stratigraphy_metrics(*results_map["StratigraphyNew"])
     if "StratigraphyLegacy" in results_map and results_map["StratigraphyLegacy"]:
         metrics.nma_stratigraphy_metrics(*results_map["StratigraphyLegacy"])
     if "AssociatedData" in results_map and results_map["AssociatedData"]:
@@ -599,6 +576,7 @@ def _transfer_parallel(
         metrics.weather_data_metrics(*results_map["WeatherData"])
     if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
         metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
+
     if opts.transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
         results = _execute_transfer(MajorChemistryTransferer, flags=flags)
@@ -627,222 +605,12 @@ def _transfer_parallel(
         results = _execute_transfer(SensorTransferer, flags=flags)
         metrics.sensor_metrics(*results)
 
-    # =========================================================================
-    # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
-    # =========================================================================
-    if opts.transfer_pressure or opts.transfer_acoustic:
-        message("PARALLEL TRANSFER GROUP 2 (Continuous Water Levels)")
-
-        parallel_tasks_2 = []
-        if opts.transfer_pressure:
-            parallel_tasks_2.append(
-                ("Pressure", WaterLevelsContinuousPressureTransferer, flags)
-            )
-        if opts.transfer_acoustic:
-            parallel_tasks_2.append(
-                ("Acoustic", WaterLevelsContinuousAcousticTransferer, flags)
-            )
-
-        if profile_waterlevels:
-            for name, klass, task_flags in parallel_tasks_2:
-                profiler = TransferProfiler(f"waterlevels_continuous_{name.lower()}")
-                results, artifact = profiler.run(_execute_transfer, klass, task_flags)
-                profile_artifacts.append(artifact)
-                results_map[name] = results
-        else:
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                futures = {}
-                for name, klass, task_flags in parallel_tasks_2:
-                    future = executor.submit(
-                        _execute_transfer_with_timing, name, klass, task_flags
-                    )
-                    futures[future] = name
-
-                for future in as_completed(futures):
-                    name = futures[future]
-                    try:
-                        result_name, result, elapsed = future.result()
-                        results_map[result_name] = result
-                        logger.info(
-                            f"Parallel task {result_name} completed in {elapsed:.2f}s"
-                        )
-                    except Exception as e:
-                        logger.critical(f"Parallel task {name} failed: {e}")
-
-        if "Pressure" in results_map and results_map["Pressure"]:
-            metrics.pressure_metrics(*results_map["Pressure"])
-        if "Acoustic" in results_map and results_map["Acoustic"]:
-            metrics.acoustic_metrics(*results_map["Acoustic"])
-
-
-def _transfer_sequential(
-    metrics,
-    flags,
-    limit,
-    transfer_options: TransferOptions,
-    profile_waterlevels: bool,
-    profile_artifacts,
-):
-    """Original sequential transfer logic."""
-    opts = transfer_options
-    if opts.transfer_screens:
-        with transfer_context("WELL SCREENS"):
-            results = _execute_transfer(WellScreenTransferer, flags=flags)
-            metrics.well_screen_metrics(*results)
-
-    if opts.transfer_sensors:
-        with transfer_context("SENSORS"):
-            results = _execute_transfer(SensorTransferer, flags=flags)
-            metrics.sensor_metrics(*results)
-
-    if opts.transfer_contacts:
-        with transfer_context("CONTACTS"):
-            results = _execute_transfer(ContactTransfer, flags=flags)
-            metrics.contact_metrics(*results)
-
-    with transfer_context("PERMISSIONS"):
-        with session_ctx() as session:
-            transfer_permissions(session)
-
-    if opts.transfer_nma_stratigraphy:
-        with transfer_context("NMA STRATIGRAPHY"):
-            results = _execute_transfer(StratigraphyLegacyTransferer, flags=flags)
-            metrics.nma_stratigraphy_metrics(*results)
-
-    with transfer_context("STRATIGRAPHY"):
-        with session_ctx() as session:
-            results = transfer_stratigraphy(session, limit=limit)
-            metrics.stratigraphy_metrics(*results)
-
-    if opts.transfer_waterlevels:
-        with transfer_context("WATER LEVELS"):
-            results = _execute_transfer(WaterLevelTransferer, flags=flags)
-            metrics.water_level_metrics(*results)
-
-    if opts.transfer_link_ids:
-        message("TRANSFERRING LINK IDS")
-        results = _execute_transfer(LinkIdsWellDataTransferer, flags=flags)
-        metrics.welldata_link_ids_metrics(*results)
-        results = _execute_transfer(LinkIdsLocationDataTransferer, flags=flags)
-        metrics.location_link_ids_metrics(*results)
-
-    if opts.transfer_groups:
-        message("TRANSFERRING GROUPS")
-        results = _execute_transfer(ProjectGroupTransferer, flags=flags)
-        metrics.group_metrics(*results)
-
-    if opts.transfer_surface_water_photos:
-        message("TRANSFERRING SURFACE WATER PHOTOS")
-        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
-        metrics.surface_water_photos_metrics(*results)
-
-    if opts.transfer_soil_rock_results:
-        message("TRANSFERRING SOIL ROCK RESULTS")
-        results = _execute_transfer(SoilRockResultsTransferer, flags=flags)
-        metrics.soil_rock_results_metrics(*results)
-
-    if opts.transfer_weather_photos:
-        message("TRANSFERRING WEATHER PHOTOS")
-        results = _execute_transfer(WeatherPhotosTransferer, flags=flags)
-        metrics.weather_photos_metrics(*results)
-
-    if opts.transfer_assets:
-        message("TRANSFERRING ASSETS")
-        results = _execute_transfer(AssetTransferer, flags=flags)
-        metrics.asset_metrics(*results)
-
-    if opts.transfer_associated_data:
-        message("TRANSFERRING ASSOCIATED DATA")
-        results = _execute_transfer(AssociatedDataTransferer, flags=flags)
-        metrics.associated_data_metrics(*results)
-
-    if opts.transfer_surface_water_data:
-        message("TRANSFERRING SURFACE WATER DATA")
-        results = _execute_transfer(SurfaceWaterDataTransferer, flags=flags)
-        metrics.surface_water_data_metrics(*results)
-
-    if opts.transfer_hydraulics_data:
-        message("TRANSFERRING HYDRAULICS DATA")
-        results = _execute_transfer(HydraulicsDataTransferer, flags=flags)
-        metrics.hydraulics_data_metrics(*results)
-
-    if opts.transfer_chemistry_sampleinfo:
-        message("TRANSFERRING CHEMISTRY SAMPLEINFO")
-        results = _execute_transfer(ChemistrySampleInfoTransferer, flags=flags)
-        metrics.chemistry_sampleinfo_metrics(*results)
-
-    if opts.transfer_field_parameters:
-        message("TRANSFERRING FIELD PARAMETERS")
-        results = _execute_transfer(FieldParametersTransferer, flags=flags)
-        metrics.field_parameters_metrics(*results)
-
-    if opts.transfer_major_chemistry:
-        message("TRANSFERRING MAJOR CHEMISTRY")
-        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
-        metrics.major_chemistry_metrics(*results)
-
-    if opts.transfer_radionuclides:
-        message("TRANSFERRING RADIONUCLIDES")
-        results = _execute_transfer(RadionuclidesTransferer, flags=flags)
-        metrics.radionuclides_metrics(*results)
-
-    if opts.transfer_ngwmn_views:
-        message("TRANSFERRING NGWMN WELL CONSTRUCTION")
-        results = _execute_transfer(NGWMNWellConstructionTransferer, flags=flags)
-        metrics.ngwmn_well_construction_metrics(*results)
-        message("TRANSFERRING NGWMN WATER LEVELS")
-        results = _execute_transfer(NGWMNWaterLevelsTransferer, flags=flags)
-        metrics.ngwmn_water_levels_metrics(*results)
-        message("TRANSFERRING NGWMN LITHOLOGY")
-        results = _execute_transfer(NGWMNLithologyTransferer, flags=flags)
-        metrics.ngwmn_lithology_metrics(*results)
-
-    if opts.transfer_pressure_daily:
-        message("TRANSFERRING WATER LEVELS PRESSURE DAILY")
-        results = _execute_transfer(
-            NMA_WaterLevelsContinuous_Pressure_DailyTransferer, flags=flags
-        )
-        metrics.waterlevels_pressure_daily_metrics(*results)
-
-    if opts.transfer_weather_data:
-        message("TRANSFERRING WEATHER DATA")
-        results = _execute_transfer(WeatherDataTransferer, flags=flags)
-        metrics.weather_data_metrics(*results)
-
-    if opts.transfer_minor_trace_chemistry:
-        message("TRANSFERRING MINOR TRACE CHEMISTRY")
-        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
-        metrics.minor_trace_chemistry_metrics(*results)
-
-    if opts.transfer_pressure:
-        message("TRANSFERRING WATER LEVELS PRESSURE")
-        if profile_waterlevels:
-            profiler = TransferProfiler("waterlevels_continuous_pressure")
-            results, artifact = profiler.run(
-                _execute_transfer, WaterLevelsContinuousPressureTransferer, flags
-            )
-            profile_artifacts.append(artifact)
-        else:
-            results = _execute_transfer(
-                WaterLevelsContinuousPressureTransferer, flags=flags
-            )
-        metrics.pressure_metrics(*results)
-
-    if opts.transfer_acoustic:
-        message("TRANSFERRING WATER LEVELS ACOUSTIC")
-        if profile_waterlevels:
-            profiler = TransferProfiler("waterlevels_continuous_acoustic")
-            results, artifact = profiler.run(
-                _execute_transfer, WaterLevelsContinuousAcousticTransferer, flags
-            )
-            profile_artifacts.append(artifact)
-        else:
-            results = _execute_transfer(
-                WaterLevelsContinuousAcousticTransferer, flags=flags
-            )
-        metrics.acoustic_metrics(*results)
-
-    return profile_artifacts
+    # # =========================================================================
+    # # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
+    # # =========================================================================
+    # Continuous water levels handled separately in _run_continuous_water_level_transfers()
+    # the transfer process is bisected because the continuous water levels process is
+    # very time consuming and we want to run it alone in its own phase.
 
 
 def main():
@@ -871,9 +639,10 @@ def main():
         metrics, limit=limit, profile_waterlevels=profile_waterlevels
     )
 
-    message("CLEANING UP LOCATIONS")
-    with session_ctx() as session:
-        cleanup_locations(session)
+    if get_bool_env("CLEANUP_LOCATIONS", True):
+        message("CLEANING UP LOCATIONS")
+        with session_ctx() as session:
+            cleanup_locations(session)
 
     metrics.close()
     metrics.save_to_storage_bucket()

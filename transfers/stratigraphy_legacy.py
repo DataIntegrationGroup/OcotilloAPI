@@ -128,8 +128,8 @@ class StratigraphyLegacyTransferer(Transferer):
             # FK to Thing
             "thing_id": thing_id,
             # Data columns
-            "StratTop": self._float_value(getattr(row, "StratTop", None)),
-            "StratBottom": self._float_value(getattr(row, "StratBottom", None)),
+            "StratTop": self._int_value(getattr(row, "StratTop", None)),
+            "StratBottom": self._int_value(getattr(row, "StratBottom", None)),
             "UnitIdentifier": self._string_value(getattr(row, "UnitIdentifier", None)),
             "Lithology": self._string_value(getattr(row, "Lithology", None)),
             "LithologicModifier": self._string_value(
@@ -164,7 +164,7 @@ class StratigraphyLegacyTransferer(Transferer):
         if value in (None, ""):
             return None
         try:
-            return int(value)
+            return int(float(value))
         except (TypeError, ValueError):
             return None
 

@@ -1,7 +1,7 @@
 """add nma_data_quality to observation
 
 Revision ID: e123456789ab
-Revises: b12e3919077e
+Revises: f0c9d8e7b6a5
 Create Date: 2026-02-05 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e123456789ab"
-down_revision: Union[str, Sequence[str], None] = "b12e3919077e"
+down_revision: Union[str, Sequence[str], None] = "f0c9d8e7b6a5"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -862,6 +862,10 @@ class WellTransferer(Transferer):
         # Load dataframes
         self.input_df, self.cleaned_df = self._get_dfs()
         df = self.cleaned_df
+        limit = self.flags.get("LIMIT", 0)
+        if limit > 0:
+            df = df.head(limit)
+            self.cleaned_df = df
         n = len(df)
 
         if n == 0:

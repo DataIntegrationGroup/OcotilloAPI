@@ -157,6 +157,7 @@ class MinorTraceChemistryTransferer(Transferer):
                     "uncertainty": excluded.uncertainty,
                     "volume": excluded.volume,
                     "volume_unit": excluded.volume_unit,
+                    "nma_WCLab_ID": excluded.nma_WCLab_ID,
                 },
             )
             session.execute(stmt)
@@ -194,7 +195,8 @@ class MinorTraceChemistryTransferer(Transferer):
             )
             return None
 
-        return {
+        wclab_id = self._safe_str(row, "WCLab_ID")
+        row_dict = {
             # Legacy UUID PK -> nma_global_id (unique audit column)
             "nma_GlobalID": nma_global_id,
             # New Integer FK to ChemistrySampleInfo
@@ -213,7 +215,9 @@ class MinorTraceChemistryTransferer(Transferer):
             "uncertainty": self._safe_float(row, "Uncertainty"),
             "volume": self._safe_int(row, "Volume"),
             "volume_unit": self._safe_str(row, "VolumeUnit"),
+            "nma_WCLab_ID": wclab_id,
         }
+        return row_dict
 
     def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""

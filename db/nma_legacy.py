@@ -69,7 +69,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from db.base import Base
 
 if TYPE_CHECKING:
-    from db.location import Location
     from db.thing import Thing
 
 
@@ -87,11 +86,17 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
 
     __tablename__ = "NMA_WaterLevelsContinuous_Pressure_Daily"
 
-    global_id: Mapped[str] = mapped_column("GlobalID", String(40), primary_key=True)
+    global_id: Mapped[uuid.UUID] = mapped_column(
+        "GlobalID", UUID(as_uuid=True), primary_key=True
+    )
     object_id: Mapped[Optional[int]] = mapped_column(
         "OBJECTID", Integer, autoincrement=True
     )
-    well_id: Mapped[Optional[str]] = mapped_column("WellID", String(40))
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+    # FK to Thing table - required for all WaterLevelsContinuous_Pressure_Daily records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     date_measured: Mapped[datetime] = mapped_column(
         "DateMeasured", DateTime, nullable=False
@@ -120,6 +125,10 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
     processed_by: Mapped[Optional[str]] = mapped_column("ProcessedBy", String(4))
     checked_by: Mapped[Optional[str]] = mapped_column("CheckedBy", String(4))
     cond_dl_ms_cm: Mapped[Optional[float]] = mapped_column("CONDDL (mS/cm)", Float)
+
+    thing: Mapped["Thing"] = relationship(
+        "Thing", back_populates="pressure_daily_levels"
+    )
 
 
 class NMA_view_NGWMN_WellConstruction(Base):
@@ -648,6 +657,7 @@ class NMA_MinorTraceChemistry(Base):
     - nma_global_id: Original UUID PK, now UNIQUE for audit
     - chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
     - nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
+    - nma_wclab_id: Legacy WCLab_ID string (audit)
     """
 
     __tablename__ = "NMA_MinorTraceChemistry"
@@ -695,6 +705,7 @@ class NMA_MinorTraceChemistry(Base):
     analyses_agency: Mapped[Optional[str]] = mapped_column(
         "analyses_agency", String(100)
     )
+    nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(25))
 
     # --- Relationships ---
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
@@ -775,6 +786,7 @@ class NMA_Radionuclides(Base):
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="radionuclides"
     )
+    thing: Mapped["Thing"] = relationship("Thing")
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):

@@ -1,7 +1,7 @@
 """enforce_thing_fk_for_nma_legacy_models
 
 Revision ID: 76e3ae8b99cb
-Revises: c1d2e3f4a5b6
+Revises: e123456789ab
 Create Date: 2026-01-26 11:56:28.744603
 
 Issue: #363
@@ -17,12 +17,12 @@ Note: Before running this migration, ensure no orphan records exist in the affec
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "76e3ae8b99cb"
-down_revision: Union[str, Sequence[str], None] = "c1d2e3f4a5b6"
+down_revision: Union[str, Sequence[str], None] = "e123456789ab"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

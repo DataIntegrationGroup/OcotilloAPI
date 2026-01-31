@@ -21,18 +21,6 @@ from pathlib import Path
 
 from services.gcs_helper import get_storage_bucket
 
-# class StreamToLogger:
-#     def __init__(self, logger_, level):
-#         self.logger = logger_
-#         self.level = level
-#         self.linebuf = ""
-#
-#     def write(self, buf):
-#         for line in buf.rstrip().splitlines():
-#             self.logger.log(self.level, line.rstrip())
-#
-#     def flush(self):
-#         pass
 root = Path("logs")
 if not os.getcwd().endswith("transfers"):
     root = Path("transfers") / root
@@ -40,7 +28,8 @@ if not os.getcwd().endswith("transfers"):
 if not os.path.exists(root):
     os.mkdir(root)
 
-log_filename = root / f"transfer_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
+log_filename = f"transfer_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
+log_path = root / log_filename
 
 
 logging.basicConfig(
@@ -48,7 +37,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)-8s] %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(log_filename, mode="w", encoding="utf-8"),
+        logging.FileHandler(log_path, mode="w", encoding="utf-8"),
     ],
     force=True,
 )
@@ -61,14 +50,11 @@ logging.getLogger().setLevel(logging.INFO)
 # workaround to not redirect httpx logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# redirect stderr to the logger
-# sys.stderr = StreamToLogger(logger, logging.ERROR)
-
 
 def save_log_to_bucket():
     bucket = get_storage_bucket()
     blob = bucket.blob(f"transfer_logs/{log_filename}")
-    blob.upload_from_filename(log_filename)
+    blob.upload_from_filename(log_path)
     logger.info(f"Uploaded log to gs://{bucket.name}/transfer_logs/{log_filename}")
 
 

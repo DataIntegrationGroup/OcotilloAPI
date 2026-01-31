@@ -31,8 +31,8 @@ from admin.config import create_admin
 from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from db.engine import session_ctx
 from db.location import Location, LocationThingAssociation
-from db.thing import Thing
 from db.nma_legacy import NMA_MinorTraceChemistry, NMA_Chemistry_SampleInfo
+from db.thing import Thing
 
 ADMIN_IDENTITY = MinorTraceChemistryAdmin.identity
 ADMIN_BASE_URL = f"/admin/{ADMIN_IDENTITY}"
