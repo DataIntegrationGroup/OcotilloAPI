@@ -9,7 +9,9 @@ def test_row_to_dict_includes_wclab_id():
     transfer = MinorTraceChemistryTransferer.__new__(MinorTraceChemistryTransferer)
     sample_pt_id = uuid.uuid4()
     transfer._sample_pt_ids = {sample_pt_id}
+    transfer._sample_info_cache = {sample_pt_id: 1}
     transfer.flags = {}
+    transfer.errors = []
 
     row = pd.Series(
         {
