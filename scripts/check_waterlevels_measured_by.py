@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Report WaterLevels.csv MeasuredBy values missing from measured_by_mapper.json."""
+
 from __future__ import annotations
 
 import csv
