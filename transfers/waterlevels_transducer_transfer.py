@@ -355,9 +355,7 @@ class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
 
 
 def _find_deployment(ts, deployments):
-    if isinstance(ts, Timestamp):
-        date = ts.date()
-    elif hasattr(ts, "date"):
+    if hasattr(ts, "date"):
         date = ts.date()
     else:
         date = pd.Timestamp(ts).date()
