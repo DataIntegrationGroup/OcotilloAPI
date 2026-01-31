@@ -126,8 +126,15 @@ class WaterLevelsContinuousTransferer(Transferer):
                     logger.info(f"no {release_status} records for pointid {pointid}")
                     continue
 
+                def _install_ts(value):
+                    if isinstance(value, Timestamp):
+                        return value
+                    if hasattr(value, "date"):
+                        return Timestamp(value)
+                    return Timestamp(pd.to_datetime(value, errors="coerce"))
+
                 deps_sorted = sorted(
-                    deployments, key=lambda d: Timestamp(d.installation_date)
+                    deployments, key=lambda d: _install_ts(d.installation_date)
                 )
 
                 observations = [
