@@ -6,6 +6,7 @@ from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransfer
 
 
 def test_row_to_dict_includes_wclab_id():
+    # Bypass __init__ so we can stub the cache without hitting the DB.
     transfer = MinorTraceChemistryTransferer.__new__(MinorTraceChemistryTransferer)
     sample_pt_id = uuid.uuid4()
     transfer._sample_pt_ids = {sample_pt_id}
