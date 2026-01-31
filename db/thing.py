@@ -48,7 +48,11 @@ if TYPE_CHECKING:
         ThingGeologicFormationAssociation,
     )
     from db.nma_legacy import (
+        NMA_AssociatedData,
         NMA_Chemistry_SampleInfo,
+        NMA_HydraulicsData,
+        NMA_Radionuclides,
+        NMA_Soil_Rock_Results,
         NMA_Stratigraphy,
         NMA_WaterLevelsContinuous_Pressure_Daily,
     )
@@ -74,6 +78,10 @@ class Thing(
     nma_pk_welldata: Mapped[str] = mapped_column(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+    )
+    nma_pk_location: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="To audit the original NM_Aquifer LocationID if it was transferred over",
     )
 
     # TODO: should `name` be unique?
@@ -308,7 +316,7 @@ class Thing(
         )
     )
 
-    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
+    # One-To-Many: A Thing can have many NMA_Chemistry_SampleInfo records (legacy NMA data).
     chemistry_sample_infos: Mapped[List["NMA_Chemistry_SampleInfo"]] = relationship(
         "NMA_Chemistry_SampleInfo",
         back_populates="thing",
@@ -318,6 +326,38 @@ class Thing(
 
     stratigraphy_logs: Mapped[List["NMA_Stratigraphy"]] = relationship(
         "NMA_Stratigraphy",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_HydraulicsData records (legacy NMA data).
+    hydraulics_data: Mapped[List["NMA_HydraulicsData"]] = relationship(
+        "NMA_HydraulicsData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_Radionuclides records (legacy NMA data).
+    radionuclides: Mapped[List["NMA_Radionuclides"]] = relationship(
+        "NMA_Radionuclides",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_AssociatedData records (legacy NMA data).
+    associated_data: Mapped[List["NMA_AssociatedData"]] = relationship(
+        "NMA_AssociatedData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_Soil_Rock_Results records (legacy NMA data).
+    soil_rock_results: Mapped[List["NMA_Soil_Rock_Results"]] = relationship(
+        "NMA_Soil_Rock_Results",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,

@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""
+Transfer Soil_Rock_Results from NM_Aquifer to NMA_Soil_Rock_Results.
+
+Already has Integer PK. Updated for legacy column rename:
+- point_id -> nma_point_id
+"""
 
 from __future__ import annotations
 
@@ -71,12 +77,15 @@ class SoilRockResultsTransferer(Transferer):
     def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
         point_id = row.get("Point_ID")
         return {
-            "point_id": point_id,
+            # Legacy ID column (use Python attribute name for bulk_insert_mappings)
+            "nma_point_id": point_id,
+            # Data columns (use Python attribute names, not database column names)
             "sample_type": row.get("Sample Type"),
             "date_sampled": row.get("Date Sampled"),
             "d13c": self._float_val(row.get("d13C")),
             "d18o": self._float_val(row.get("d18O")),
             "sampled_by": row.get("Sampled by"),
+            # FK to Thing
             "thing_id": self._thing_id_cache.get(point_id),
         }
 

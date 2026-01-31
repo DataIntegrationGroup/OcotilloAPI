@@ -15,9 +15,13 @@
 # ===============================================================================
 """
 MinorTraceChemistryAdmin view for legacy NMA_MinorTraceChemistry.
-"""
 
-import uuid
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
+- chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
+- nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
+"""
 
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
@@ -33,11 +37,13 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== Basic Configuration ==========
 
     identity = "n-m-a_-minor-trace-chemistry"
-    name = "NMA Minor Trace Chemistry"
-    label = "NMA Minor Trace Chemistry"
+    name = "Minor Trace Chemistry"
+    label = "Minor Trace Chemistry"
     icon = "fa fa-flask"
-    pk_attr = "global_id"
-    pk_type = uuid.UUID
+
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
 
     def can_create(self, request: Request) -> bool:
         return False
@@ -51,47 +57,39 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== List View ==========
 
     list_fields = [
-        "global_id",
+        "id",
+        "nma_global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
-        "sample_pt_id",
-        "sample_point_id",
+        "nma_chemistry_sample_info_uuid",
         "analyte",
         "sample_value",
         "units",
         "symbol",
         "analysis_date",
         "analyses_agency",
-        "wclab_id",
-        "object_id",
     ]
 
     sortable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "id",
+        "nma_global_id",
+        "chemistry_sample_info_id",
         "analyte",
         "sample_value",
         "units",
         "symbol",
         "analysis_date",
         "analyses_agency",
-        "wclab_id",
-        "object_id",
     ]
 
     fields_default_sort = [("analysis_date", True)]
 
     searchable_fields = [
-        "global_id",
-        "sample_pt_id",
-        "sample_point_id",
+        "nma_global_id",
         "analyte",
         "symbol",
         "analysis_method",
-        "analysis_date",
         "notes",
         "analyses_agency",
-        "wclab_id",
     ]
 
     page_size = 50
@@ -100,10 +98,10 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "global_id",
+        "id",
+        "nma_global_id",
         HasOne("chemistry_sample_info", identity="n-m-a_-chemistry_-sample-info"),
-        "sample_pt_id",
-        "sample_point_id",
+        "nma_chemistry_sample_info_uuid",
         "analyte",
         "symbol",
         "sample_value",
@@ -114,29 +112,26 @@ class MinorTraceChemistryAdmin(OcotilloModelView):
         "notes",
         "volume",
         "volume_unit",
-        "object_id",
         "analyses_agency",
-        "wclab_id",
     ]
 
     field_labels = {
-        "global_id": "GlobalID",
+        "id": "ID",
+        "nma_global_id": "NMA GlobalID (Legacy)",
         "chemistry_sample_info": "Chemistry Sample Info",
-        "sample_pt_id": "SamplePtID",
-        "sample_point_id": "SamplePointID",
+        "chemistry_sample_info_id": "Chemistry Sample Info ID",
+        "nma_chemistry_sample_info_uuid": "NMA Chemistry Sample Info UUID (Legacy)",
         "analyte": "Analyte",
         "symbol": "Symbol",
-        "sample_value": "SampleValue",
+        "sample_value": "Sample Value",
         "units": "Units",
         "uncertainty": "Uncertainty",
-        "analysis_method": "AnalysisMethod",
-        "analysis_date": "AnalysisDate",
+        "analysis_method": "Analysis Method",
+        "analysis_date": "Analysis Date",
         "notes": "Notes",
         "volume": "Volume",
-        "volume_unit": "VolumeUnit",
-        "object_id": "OBJECTID",
-        "analyses_agency": "AnalysesAgency",
-        "wclab_id": "WCLab_ID",
+        "volume_unit": "Volume Unit",
+        "analyses_agency": "Analyses Agency",
     }
 
 

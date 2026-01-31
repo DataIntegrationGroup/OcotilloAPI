@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import os
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -21,6 +22,10 @@ from dotenv import load_dotenv
 # Use override=True to override conflicting shell environment variables
 load_dotenv(override=True)
 
+# for safety don't test on the production database port
+os.environ["POSTGRES_PORT"] = "5432"
+# Always use test database, never dev
+os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 from fastapi.testclient import TestClient
 from fastapi_pagination import add_pagination

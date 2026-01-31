@@ -15,6 +15,17 @@
 # ===============================================================================
 """
 ChemistrySampleInfoAdmin view for legacy Chemistry_SampleInfo.
+
+Updated for Integer PK schema:
+- id: Integer PK (autoincrement)
+- nma_sample_pt_id: Legacy UUID PK (SamplePtID), UNIQUE for audit
+- nma_wclab_id: Legacy WCLab_ID
+- nma_sample_point_id: Legacy SamplePointID
+- nma_object_id: Legacy OBJECTID, UNIQUE
+- nma_location_id: Legacy LocationId UUID (for audit trail)
+
+FK Change (2026-01):
+- thing_id: Integer FK to Thing.id
 """
 
 from admin.views.base import OcotilloModelView
@@ -31,13 +42,18 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     label = "Chemistry Sample Info"
     icon = "fa fa-flask"
 
+    # Integer PK
+    pk_attr = "id"
+    pk_type = int
+
     # ========== List View ==========
 
     sortable_fields = [
-        "sample_pt_id",
-        "object_id",
-        "sample_point_id",
-        "wclab_id",
+        "id",
+        "nma_sample_pt_id",
+        "nma_object_id",
+        "nma_sample_point_id",
+        "nma_wclab_id",
         "collection_date",
         "sample_type",
         "data_source",
@@ -48,9 +64,9 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     fields_default_sort = [("collection_date", True)]
 
     searchable_fields = [
-        "sample_point_id",
-        "sample_pt_id",
-        "wclab_id",
+        "nma_sample_point_id",
+        "nma_sample_pt_id",
+        "nma_wclab_id",
         "collected_by",
         "analyses_agency",
         "sample_notes",
@@ -70,10 +86,13 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "sample_pt_id",
-        "sample_point_id",
-        "object_id",
-        "wclab_id",
+        "id",
+        "nma_sample_pt_id",
+        "nma_sample_point_id",
+        "nma_object_id",
+        "nma_wclab_id",
+        "nma_location_id",
+        "thing_id",
         "collection_date",
         "collection_method",
         "collected_by",
@@ -91,12 +110,38 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     ]
 
     exclude_fields_from_create = [
-        "object_id",
+        "id",
+        "nma_object_id",
     ]
 
     exclude_fields_from_edit = [
-        "object_id",
+        "id",
+        "nma_object_id",
     ]
+
+    field_labels = {
+        "id": "ID",
+        "nma_sample_pt_id": "NMA SamplePtID (Legacy)",
+        "nma_sample_point_id": "NMA SamplePointID (Legacy)",
+        "nma_object_id": "NMA OBJECTID (Legacy)",
+        "nma_wclab_id": "NMA WCLab_ID (Legacy)",
+        "nma_location_id": "NMA LocationId (Legacy)",
+        "thing_id": "Thing ID",
+        "collection_date": "Collection Date",
+        "collection_method": "Collection Method",
+        "collected_by": "Collected By",
+        "analyses_agency": "Analyses Agency",
+        "sample_type": "Sample Type",
+        "sample_material_not_h2o": "Sample Material (Not H2O)",
+        "water_type": "Water Type",
+        "study_sample": "Study Sample",
+        "data_source": "Data Source",
+        "data_quality": "Data Quality",
+        "public_release": "Public Release",
+        "added_day_to_date": "Added Day to Date",
+        "added_month_day_to_date": "Added Month/Day to Date",
+        "sample_notes": "Sample Notes",
+    }
 
 
 # ============= EOF =============================================

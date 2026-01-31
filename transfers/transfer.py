@@ -62,6 +62,12 @@ from transfers.well_transfer import (
     WellScreenTransferer,
     cleanup_locations,
 )
+from transfers.thing_transfer import (
+    transfer_springs,
+    transfer_perennial_stream,
+    transfer_ephemeral_stream,
+    transfer_met,
+)
 from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
@@ -115,6 +121,11 @@ class TransferOptions:
     transfer_minor_trace_chemistry: bool
     transfer_nma_stratigraphy: bool
     transfer_associated_data: bool
+    # Non-well location types
+    transfer_springs: bool
+    transfer_perennial_streams: bool
+    transfer_ephemeral_streams: bool
+    transfer_met_stations: bool
 
 
 def load_transfer_options() -> TransferOptions:
@@ -153,6 +164,11 @@ def load_transfer_options() -> TransferOptions:
         ),
         transfer_nma_stratigraphy=get_bool_env("TRANSFER_NMA_STRATIGRAPHY", True),
         transfer_associated_data=get_bool_env("TRANSFER_ASSOCIATED_DATA", True),
+        # Non-well location types
+        transfer_springs=get_bool_env("TRANSFER_SPRINGS", True),
+        transfer_perennial_streams=get_bool_env("TRANSFER_PERENNIAL_STREAMS", True),
+        transfer_ephemeral_streams=get_bool_env("TRANSFER_EPHEMERAL_STREAMS", True),
+        transfer_met_stations=get_bool_env("TRANSFER_MET_STATIONS", True),
     )
 
 
@@ -341,14 +357,53 @@ def transfer_all(metrics, limit=100, profile_waterlevels: bool = True):
             results = _execute_transfer(WellTransferer, flags=flags)
         metrics.well_metrics(*results)
 
-    _transfer_parallel(
-        metrics,
-        flags,
-        limit,
-        transfer_options,
-        profile_waterlevels,
-        profile_artifacts,
-    )
+    # Get transfer flags
+    transfer_options = load_transfer_options()
+
+    # =========================================================================
+    # PHASE 1.5: Non-well location types (parallel, after wells, before other transfers)
+    # These create Things and Locations that chemistry/other transfers depend on.
+    # =========================================================================
+    non_well_tasks = []
+    if transfer_options.transfer_springs:
+        non_well_tasks.append(("Springs", transfer_springs))
+    if transfer_options.transfer_perennial_streams:
+        non_well_tasks.append(("PerennialStreams", transfer_perennial_stream))
+    if transfer_options.transfer_ephemeral_streams:
+        non_well_tasks.append(("EphemeralStreams", transfer_ephemeral_stream))
+    if transfer_options.transfer_met_stations:
+        non_well_tasks.append(("MetStations", transfer_met))
+
+    if non_well_tasks:
+        message("PHASE 1.5: NON-WELL LOCATION TYPES (PARALLEL)")
+        with ThreadPoolExecutor(max_workers=len(non_well_tasks)) as executor:
+            futures = {
+                executor.submit(
+                    _execute_session_transfer_with_timing, name, func, limit
+                ): name
+                for name, func in non_well_tasks
+            }
+
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    result_name, result, elapsed = future.result()
+                    logger.info(
+                        f"Non-well transfer {result_name} completed in {elapsed:.2f}s"
+                    )
+                except Exception as e:
+                    logger.critical(f"Non-well transfer {name} failed: {e}")
+    use_parallel = get_bool_env("TRANSFER_PARALLEL", True)
+
+    if use_parallel:
+        _transfer_parallel(
+            metrics,
+            flags,
+            limit,
+            transfer_options,
+            profile_waterlevels,
+            profile_artifacts,
+        )
 
     return profile_artifacts
 
