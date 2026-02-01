@@ -259,8 +259,10 @@ class WaterLevelsContinuousTransferer(Transferer):
                 TransducerObservationBlock.thing_id == block.thing_id,
                 TransducerObservationBlock.parameter_id == block.parameter_id,
                 TransducerObservationBlock.review_status == block.review_status,
-                TransducerObservationBlock.start_datetime == block.start_datetime,
-                TransducerObservationBlock.end_datetime == block.end_datetime,
+                TransducerObservationBlock.start_datetime
+                == Timestamp(block.start_datetime),
+                TransducerObservationBlock.end_datetime
+                == Timestamp(block.end_datetime),
             )
             .one_or_none()
         )
