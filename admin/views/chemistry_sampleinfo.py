@@ -125,7 +125,7 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
     # ========== Form View ==========
 
     fields = [
-        "id"
+        "id",
         "nma_sample_pt_id",
         "nma_wclab_id",
         "nma_sample_point_id",
