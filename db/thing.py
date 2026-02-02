@@ -151,11 +151,6 @@ class Thing(
         nullable=True,
         comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
     )
-    # TODO: should this be required for every well in the database? AMMP review
-    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
-        nullable=True,
-        comment="Indicates if the well is suitable for datalogger installation.",
-    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
