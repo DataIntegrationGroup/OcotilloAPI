@@ -562,11 +562,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         notes=well_notes,
         well_purposes=well_purposes,
     )
-    well_data = data.model_dump(
-        exclude=[
-            "well_casing_materials",
-        ]
-    )
+    well_data = data.model_dump()
 
     """
     Developer's notes
@@ -581,6 +577,8 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     - Notes
     - WellPurpose
     - MonitoringFrequencyHistory
+    - StatusHistory for status_type 'Open Status'
+    - StatusHistory for status_type 'Datalogger Suitability Status'
     """
     well = add_thing(
         session=session, data=well_data, user=user, thing_type="water well"
