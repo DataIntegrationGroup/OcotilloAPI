@@ -32,6 +32,7 @@ CoordinateMethod: type[Enum] = build_enum_from_lexicon_category("coordinate_meth
 WellPurpose: type[Enum] = build_enum_from_lexicon_category("well_purpose")
 DataQuality: type[Enum] = build_enum_from_lexicon_category("data_quality")
 DataSource: type[Enum] = build_enum_from_lexicon_category("data_source")
+DataReliability: type[Enum] = build_enum_from_lexicon_category("data_reliability")
 DepthCompletionSource: type[Enum] = build_enum_from_lexicon_category(
     "depth_completion_source"
 )

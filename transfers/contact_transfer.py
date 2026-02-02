@@ -29,6 +29,7 @@ from db import (
     Address,
     IncompleteNMAPhone,
     Base,
+    Thing,
 )
 from transfers.logger import logger
 from transfers.transferer import ThingBasedTransferer
@@ -88,25 +89,37 @@ class ContactTransfer(ThingBasedTransferer):
         return group.sort_values(by=["PointID"])
 
     def _group_step(self, session: Session, row: pd.Series, db_item: Base):
+        organization = _get_organization(row, self._co_to_org_mapper)
         for adder, tag in (_add_first_contact, "first"), (
             _add_second_contact,
             "second",
         ):
             try:
-                if adder(
+                contact = adder(
                     session,
                     row,
                     db_item,
-                    self._co_to_org_mapper,
+                    organization,
                     self._added,
+                )
+                if contact is not None:
+                    session.flush([contact])
+                if (
+                    tag == "first"
+                    and contact
+                    and pd.notna(row.OwnerComment)
+                    and isinstance(row.OwnerComment, str)
+                    and row.OwnerComment.strip()
                 ):
-                    session.commit()
-                    logger.info(f"added {tag} contact for PointID {row.PointID}")
+                    note = contact.add_note(row.OwnerComment, "OwnerComment")
+                    session.add(note)
+                session.commit()
+                logger.info(f"added {tag} contact for PointID {row.PointID}")
             except ValidationError as e:
                 logger.critical(
                     f"Skipping {tag} contact for PointID {row.PointID} due to validation error: {e.errors()}"
                 )
-                self._capture_error(row.PointID, str(e), "ValidationError")
+                self._capture_validation_error(row.PointID, e)
             except Exception as e:
                 logger.critical(
                     f"Skipping {tag} contact for PointID {row.PointID} due to error: {e}"
@@ -115,16 +128,15 @@ class ContactTransfer(ThingBasedTransferer):
                 self._capture_error(row.PointID, str(e), "UnknownError")
 
 
-def _add_first_contact(session, row, thing, co_to_org_mapper, added):
+def _add_first_contact(
+    session: Session, row: pd.Series, thing: Thing, organization: str, added: list
+) -> Contact | None:
     # TODO: extract role from OwnerComment
     # role = extract_owner_role(row.OwnerComment)
     role = "Owner"
     release_status = "private"
 
     name = _make_name(row.FirstName, row.LastName)
-
-    # check if organization is in lexicon
-    organization = _get_organization(row, co_to_org_mapper)
 
     contact_data = {
         "thing_id": thing.id,
@@ -142,7 +154,7 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
     contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
 
     if not new:
-        return True
+        return None
     else:
         added.append((name, organization))
 
@@ -214,22 +226,13 @@ def _add_first_contact(session, row, thing, co_to_org_mapper, added):
         )
         if address:
             contact.addresses.append(address)
-    return True
+
+    return contact
 
 
-def _get_organization(row, co_to_org_mapper):
-    organization = co_to_org_mapper.get(row.Company, row.Company)
-
-    # use Organization enum to catch validation errors
-    try:
-        Organization(organization)
-    except ValueError:
-        return None
-
-    return organization
-
-
-def _add_second_contact(session, row, thing, co_to_org_mapper, added):
+def _add_second_contact(
+    session: Session, row: pd.Series, thing: Thing, organization: str, added: list
+) -> None:
     if all(
         [
             getattr(row, f"Second{f}") is None
@@ -241,8 +244,6 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
 
     release_status = "private"
     name = _make_name(row.SecondFirstName, row.SecondLastName)
-
-    organization = _get_organization(row, co_to_org_mapper)
 
     contact_data = {
         "thing_id": thing.id,
@@ -259,7 +260,7 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
 
     contact, new = _make_contact_and_assoc(session, contact_data, thing, added)
     if not new:
-        return True
+        return
     else:
         added.append((name, organization))
 
@@ -287,11 +288,22 @@ def _add_second_contact(session, row, thing, co_to_org_mapper, added):
                 contact.phones.append(phone)
             else:
                 contact.incomplete_nma_phones.append(phone)
-    return True
 
 
 # helpers
-def _make_name(first, last):
+def _get_organization(row, co_to_org_mapper):
+    organization = co_to_org_mapper.get(row.Company, row.Company)
+
+    # use Organization enum to catch validation errors
+    try:
+        Organization(organization)
+    except ValueError:
+        return None
+
+    return organization
+
+
+def _make_name(first: str | None, last: str | None) -> str | None:
     if first is None and last is None:
         return None
     elif first is not None and last is None:
@@ -302,7 +314,7 @@ def _make_name(first, last):
         return f"{first} {last}"
 
 
-def _make_email(first_second, ownerkey, **kw):
+def _make_email(first_second: str, ownerkey: str, **kw) -> Email | None:
     from schemas.contact import CreateEmail
 
     try:
@@ -317,7 +329,7 @@ def _make_email(first_second, ownerkey, **kw):
         )
 
 
-def _make_phone(first_second, ownerkey, **kw):
+def _make_phone(first_second: str, ownerkey: str, **kw) -> tuple[Phone | None, bool]:
     from schemas.contact import CreatePhone
 
     try:
@@ -339,7 +351,7 @@ def _make_phone(first_second, ownerkey, **kw):
             )
 
 
-def _make_address(first_second, ownerkey, kind, **kw):
+def _make_address(first_second: str, ownerkey: str, kind: str, **kw) -> Address | None:
     from schemas.contact import CreateAddress
 
     try:
@@ -351,7 +363,9 @@ def _make_address(first_second, ownerkey, kind, **kw):
         )
 
 
-def _make_contact_and_assoc(session, data, thing, added):
+def _make_contact_and_assoc(
+    session: Session, data: dict, thing: Thing, added: list
+) -> tuple[Contact, bool]:
     new_contact = True
     if (data["name"], data["organization"]) in added:
         contact = (

@@ -36,6 +36,23 @@ from db import (
     Asset,
     PermissionHistory,
     ThingGeologicFormationAssociation,
+    NMA_Stratigraphy,
+    NMA_FieldParameters,
+    NMA_Chemistry_SampleInfo,
+    NMA_HydraulicsData,
+    NMA_Radionuclides,
+    NMA_MajorChemistry,
+    NMA_SurfaceWaterData,
+    NMA_SurfaceWaterPhotos,
+    NMA_WaterLevelsContinuous_Pressure_Daily,
+    NMA_Soil_Rock_Results,
+    NMA_view_NGWMN_WellConstruction,
+    NMA_view_NGWMN_WaterLevels,
+    NMA_view_NGWMN_Lithology,
+    NMA_WeatherData,
+    NMA_WeatherPhotos,
+    NMA_MinorTraceChemistry,
+    NMA_AssociatedData,
 )
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
@@ -97,11 +114,81 @@ class Metrics:
     def group_metrics(self, *args, **kw) -> None:
         self._handle_metrics(Group, *args, **kw)
 
+    def surface_water_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_SurfaceWaterData, *args, **kw)
+
+    def surface_water_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_SurfaceWaterPhotos, name="SurfaceWaterPhotos", *args, **kw
+        )
+
+    def soil_rock_results_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_Soil_Rock_Results, name="Soil_Rock_Results", *args, **kw
+        )
+
+    def hydraulics_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_HydraulicsData, name="HydraulicsData", *args, **kw)
+
+    def chemistry_sampleinfo_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_Chemistry_SampleInfo, name="Chemistry_SampleInfo", *args, **kw
+        )
+
+    def radionuclides_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_Radionuclides, name="Radionuclides", *args, **kw)
+
+    def major_chemistry_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_MajorChemistry, name="MajorChemistry", *args, **kw)
+
+    def ngwmn_well_construction_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_view_NGWMN_WellConstruction, name="NGWMN WellConstruction", *args, **kw
+        )
+
+    def ngwmn_water_levels_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_view_NGWMN_WaterLevels, name="NGWMN WaterLevels", *args, **kw
+        )
+
+    def ngwmn_lithology_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_view_NGWMN_Lithology, name="NGWMN Lithology", *args, **kw
+        )
+
+    def weather_photos_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_WeatherPhotos, name="WeatherPhotos", *args, **kw)
+
+    def waterlevels_pressure_daily_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_WaterLevelsContinuous_Pressure_Daily,
+            name="WaterLevelsContinuous_Pressure_Daily",
+            *args,
+            **kw,
+        )
+
+    def weather_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_WeatherData, name="WeatherData", *args, **kw)
+
     def permissions_metrics(self, *args, **kw) -> None:
         self._handle_metrics(PermissionHistory, *args, **kw)
 
     def stratigraphy_metrics(self, *args, **kw) -> None:
         self._handle_metrics(ThingGeologicFormationAssociation, *args, **kw)
+
+    def nma_stratigraphy_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_Stratigraphy, name="NMA_Stratigraphy", *args, **kw)
+
+    def field_parameters_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_FieldParameters, name="FieldParameters", *args, **kw)
+
+    def associated_data_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(NMA_AssociatedData, name="AssociatedData", *args, **kw)
+
+    def minor_trace_chemistry_metrics(self, *args, **kw) -> None:
+        self._handle_metrics(
+            NMA_MinorTraceChemistry, name="MinorTraceChemistry", *args, **kw
+        )
 
     def contact_metrics(self, input_df, cleaned_df, errors) -> None:
         count = self._get_count(

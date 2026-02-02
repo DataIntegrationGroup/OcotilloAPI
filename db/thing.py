@@ -47,6 +47,15 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
+    from db.nma_legacy import (
+        NMA_AssociatedData,
+        NMA_Chemistry_SampleInfo,
+        NMA_HydraulicsData,
+        NMA_Radionuclides,
+        NMA_Soil_Rock_Results,
+        NMA_Stratigraphy,
+        NMA_WaterLevelsContinuous_Pressure_Daily,
+    )
 
 
 class Thing(
@@ -69,6 +78,10 @@ class Thing(
     nma_pk_welldata: Mapped[str] = mapped_column(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+    )
+    nma_pk_location: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="To audit the original NM_Aquifer LocationID if it was transferred over",
     )
 
     # TODO: should `name` be unique?
@@ -132,6 +145,16 @@ class Thing(
         comment="The geologic formation in which the well was completed (from WellData.FormationZone). "
         "This indicates the target formation for the well, not the full stratigraphic column. "
         "For detailed depth-interval stratigraphy, see formation_associations.",
+    )
+    nma_formation_zone: Mapped[str] = mapped_column(
+        String(25),
+        nullable=True,
+        comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
+    )
+    # TODO: should this be required for every well in the database? AMMP review
+    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment="Indicates if the well is suitable for datalogger installation.",
     )
 
     # Spring-related columns
@@ -287,6 +310,61 @@ class Thing(
     formation_associations: Mapped[List["ThingGeologicFormationAssociation"]] = (
         relationship(
             "ThingGeologicFormationAssociation",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+
+    # One-To-Many: A Thing can have many NMA_Chemistry_SampleInfo records (legacy NMA data).
+    chemistry_sample_infos: Mapped[List["NMA_Chemistry_SampleInfo"]] = relationship(
+        "NMA_Chemistry_SampleInfo",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    stratigraphy_logs: Mapped[List["NMA_Stratigraphy"]] = relationship(
+        "NMA_Stratigraphy",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_HydraulicsData records (legacy NMA data).
+    hydraulics_data: Mapped[List["NMA_HydraulicsData"]] = relationship(
+        "NMA_HydraulicsData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_Radionuclides records (legacy NMA data).
+    radionuclides: Mapped[List["NMA_Radionuclides"]] = relationship(
+        "NMA_Radionuclides",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_AssociatedData records (legacy NMA data).
+    associated_data: Mapped[List["NMA_AssociatedData"]] = relationship(
+        "NMA_AssociatedData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_Soil_Rock_Results records (legacy NMA data).
+    soil_rock_results: Mapped[List["NMA_Soil_Rock_Results"]] = relationship(
+        "NMA_Soil_Rock_Results",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    pressure_daily_levels: Mapped[List["NMA_WaterLevelsContinuous_Pressure_Daily"]] = (
+        relationship(
+            "NMA_WaterLevelsContinuous_Pressure_Daily",
             back_populates="thing",
             cascade="all, delete-orphan",
             passive_deletes=True,

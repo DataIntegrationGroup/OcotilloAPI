@@ -27,7 +27,6 @@ from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.util import convert_m_to_ft, transform_srid
 from services.validation.geospatial import validate_wkt_geometry
 
-
 # -------- VALIDATE --------
 
 
@@ -106,6 +105,8 @@ class GeoJSONProperties(BaseModel):
         default_factory=GeoJSONUTMCoordinates
     )
     notes: list[NoteResponse] = []
+    nma_location_notes: str | None = None
+    nma_data_reliability: str | None = None
     # AMPAPI date fields (read-only, populated only during migration)
     nma_date_created: date | None = None
     nma_site_date: date | None = None
@@ -153,6 +154,12 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
+        data_dict["properties"]["nma_location_notes"] = data_dict.get(
+            "nma_location_notes"
+        )
+        data_dict["properties"]["nma_data_reliability"] = data_dict.get(
+            "nma_data_reliability"
+        )
         # populate AMPAPI date fields
         data_dict["properties"]["nma_date_created"] = data_dict.get("nma_date_created")
         data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
@@ -186,6 +193,8 @@ class LocationResponse(BaseResponseModel):
     state: str | None
     county: str | None
     quad_name: str | None
+    nma_location_notes: str | None = None
+    nma_data_reliability: str | None = None
 
     # AMPAPI date fields (read-only, populated only during migration, not in Create/Update schemas)
     nma_date_created: date | None = None

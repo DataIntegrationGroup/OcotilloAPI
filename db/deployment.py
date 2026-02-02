@@ -6,7 +6,7 @@ at which Thing and for what period of time.
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, Date, Numeric, Text
+from sqlalchemy import Integer, ForeignKey, Date, Numeric, Text, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -45,6 +45,13 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     hanging_point_height: Mapped[float] = mapped_column(Numeric, nullable=True)
     hanging_point_description: Mapped[str] = mapped_column(Text, nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
+
+    nma_WI_Duration: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_EndFrequency: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_Magnitude: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_MicGain: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    nma_WI_MinSoundDepth: Mapped[int] = mapped_column(Integer, nullable=True)
+    nma_WI_StartFrequency: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # --- Relationships ---
     # Many-To-One: A Deployment is for one Thing.

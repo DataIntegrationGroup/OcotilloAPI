@@ -44,12 +44,10 @@ def get_storage_client() -> storage.Client:
 
         # Create storage client
         client = storage.Client(credentials=creds)
-    elif settings.mode == "transfer":
-        client = storage.Client()
     else:
-        client = storage.Client.from_service_account_json(
-            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        )
+        # Use application default credentials (from ~/.config/gcloud/application_default_credentials.json)
+        # This will automatically use GOOGLE_APPLICATION_CREDENTIALS if set, or the default location
+        client = storage.Client()
     return client
 
 

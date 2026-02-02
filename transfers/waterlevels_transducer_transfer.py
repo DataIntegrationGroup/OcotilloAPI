@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Any
 
 import pandas as pd
 from pandas import Timestamp
 from pydantic import ValidationError
+from sqlalchemy import insert
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
@@ -39,6 +41,11 @@ class WaterLevelsContinuousTransferer(Transferer):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.groundwater_parameter_id = get_groundwater_parameter_id()
+        self._itertuples_field_map = {}
+        self._df_columns = set()
+        self._observation_columns = {
+            column.key for column in TransducerObservation.__table__.columns
+        }
         if self._sensor_types is None:
             raise ValueError("_sensor_types must be set")
         if self._partition_field is None:
@@ -54,6 +61,9 @@ class WaterLevelsContinuousTransferer(Transferer):
 
         # remove duplicate rows
         cleaned_df = cleaned_df.drop_duplicates(subset=["PointID", "DateMeasured"])
+
+        self._df_columns = set(cleaned_df.columns)
+        self._itertuples_field_map = self._build_itertuples_field_map(cleaned_df)
 
         return input_df, cleaned_df
 
@@ -83,11 +93,26 @@ class WaterLevelsContinuousTransferer(Transferer):
             qced = group[field == 1]
             notqced = group[~(field == 1)]
 
+            # Check for deployments first to get thing_id
+            if not deployments:
+                logger.critical(
+                    f"Thing with PointID={pointid} has no deployments. Skipping all water levels"
+                )
+                self._capture_error(pointid, "no deployments", "DateMeasured")
+                continue
+
+            # Get thing_id from the first deployment
+            thing_id = deployments[0].thing_id
+
             qced_block = TransducerObservationBlock(
-                parameter_id=self.groundwater_parameter_id, review_status="approved"
+                thing_id=thing_id,
+                parameter_id=self.groundwater_parameter_id,
+                review_status="approved",
             )
             notqced_block = TransducerObservationBlock(
-                parameter_id=self.groundwater_parameter_id, review_status="not reviewed"
+                thing_id=thing_id,
+                parameter_id=self.groundwater_parameter_id,
+                review_status="not reviewed",
             )
 
             for block, rows, release_status in (
@@ -97,19 +122,19 @@ class WaterLevelsContinuousTransferer(Transferer):
                 block.start_datetime = rows.DateMeasured.min()
                 block.end_datetime = rows.DateMeasured.max()
 
-                if not deployments:
-                    logger.critical(
-                        f"Thing with PointID={pointid} has no deployments. Skipping water levels {release_status} block"
-                    )
-                    self._capture_error(pointid, "no deployments", "DateMeasured")
-                    continue
-
                 if rows.empty:
                     logger.info(f"no {release_status} records for pointid {pointid}")
                     continue
 
+                def _install_ts(value):
+                    if isinstance(value, Timestamp):
+                        return value
+                    if hasattr(value, "date"):
+                        return Timestamp(value)
+                    return Timestamp(pd.to_datetime(value, errors="coerce"))
+
                 deps_sorted = sorted(
-                    deployments, key=lambda d: Timestamp(d.installation_date)
+                    deployments, key=lambda d: _install_ts(d.installation_date)
                 )
 
                 observations = [
@@ -120,8 +145,16 @@ class WaterLevelsContinuousTransferer(Transferer):
                 ]
 
                 observations = [obs for obs in observations if obs is not None]
-                session.bulk_save_objects(observations)
-                session.add(block)
+                if observations:
+                    filtered_observations = [
+                        {k: v for k, v in obs.items() if k in self._observation_columns}
+                        for obs in observations
+                    ]
+                    session.execute(
+                        insert(TransducerObservation),
+                        filtered_observations,
+                    )
+                block = self._get_or_create_block(session, block)
                 logger.info(
                     f"Added {len(observations)} water levels {release_status} block"
                 )
@@ -139,8 +172,8 @@ class WaterLevelsContinuousTransferer(Transferer):
         for pointid, (min_date, max_date) in nodeployments.items():
             self._capture_error(
                 pointid,
-                "DateMeasured",
                 f"no deployment between {min_date} and {max_date}",
+                "DateMeasured",
             )
 
     def _make_observation(
@@ -150,7 +183,7 @@ class WaterLevelsContinuousTransferer(Transferer):
         release_status: str,
         deps_sorted: list,
         nodeployments: dict,
-    ) -> TransducerObservation | None:
+    ) -> dict | None:
         deployment = _find_deployment(row.DateMeasured, deps_sorted)
 
         if deployment is None:
@@ -180,11 +213,71 @@ class WaterLevelsContinuousTransferer(Transferer):
             obspayload = CreateTransducerObservation.model_validate(
                 payload
             ).model_dump()
-            return TransducerObservation(**obspayload)
+            legacy_payload = self._legacy_payload(row)
+            return {**obspayload, **legacy_payload}
 
         except ValidationError as e:
             logger.critical(f"Observation validation error: {e.errors()}")
-            self._capture_error(pointid, str(e), "DepthToWaterBGS")
+            self._capture_validation_error(pointid, e)
+
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        return {}
+
+    def _legacy_val(self, row: pd.Series, key: str) -> Any:
+        if key not in self._df_columns:
+            return None
+        field = self._itertuples_field_map.get(key, key)
+        v = getattr(row, field, None)
+        if pd.isna(v):
+            return None
+        return v
+
+    @staticmethod
+    def _build_itertuples_field_map(df: pd.DataFrame) -> dict[str, str]:
+        """
+        Map original column names to itertuples field names using pandas' rename logic.
+        """
+        mapping: dict[str, str] = {}
+        iterator = df.itertuples()
+        first_row = next(iterator, None)
+        if first_row is None:
+            return mapping
+
+        fields = first_row._fields
+        for idx, col in enumerate(df.columns):
+            field = fields[idx + 1]
+            if field != col:
+                mapping[col] = field
+        return mapping
+
+    def _get_or_create_block(
+        self, session: Session, block: TransducerObservationBlock
+    ) -> TransducerObservationBlock:
+        existing = (
+            session.query(TransducerObservationBlock)
+            .filter(
+                TransducerObservationBlock.thing_id == block.thing_id,
+                TransducerObservationBlock.parameter_id == block.parameter_id,
+                TransducerObservationBlock.review_status == block.review_status,
+                TransducerObservationBlock.start_datetime
+                == Timestamp(block.start_datetime),
+                TransducerObservationBlock.end_datetime
+                == Timestamp(block.end_datetime),
+            )
+            .one_or_none()
+        )
+        if existing:
+            existing.comment = block.comment or existing.comment
+            existing.release_status = block.release_status or existing.release_status
+            existing.reviewer_id = block.reviewer_id or existing.reviewer_id
+            existing.created_by_name = block.created_by_name or existing.created_by_name
+            existing.created_by_id = block.created_by_id or existing.created_by_id
+            existing.updated_by_name = block.updated_by_name or existing.updated_by_name
+            existing.updated_by_id = block.updated_by_id or existing.updated_by_id
+            return existing
+
+        session.add(block)
+        return block
 
 
 class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
@@ -192,15 +285,82 @@ class WaterLevelsContinuousPressureTransferer(WaterLevelsContinuousTransferer):
     _partition_field = "QCed"
     _sensor_types = ("Pressure Transducer", "Barometer", "DiverLink", "Diver Cable")
 
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        val = self._legacy_val
+        return {
+            "nma_waterlevelscontinuous_pressure_conddl_ms_cm": val(
+                row, "CONDDL (mS/cm)"
+            ),
+            "nma_waterlevelscontinuous_pressure_checked_by": val(row, "CheckedBy"),
+            "nma_waterlevelscontinuous_pressure_created": val(row, "Created"),
+            "nma_waterlevelscontinuous_pressure_data_source": val(row, "DataSource"),
+            "nma_waterlevelscontinuous_pressure_global_id": val(row, "GlobalID"),
+            "nma_waterlevelscontinuous_pressure_measurement_method": val(
+                row, "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_pressure_measuring_agency": val(
+                row, "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_pressure_notes": val(row, "Notes"),
+            "nma_waterlevelscontinuous_pressure_processed_by": val(row, "ProcessedBy"),
+            "nma_waterlevelscontinuous_pressure_qced": val(row, "QCed"),
+            "nma_waterlevelscontinuous_pressure_temperature_water": val(
+                row, "TemperatureWater"
+            ),
+            "nma_waterlevelscontinuous_pressure_updated": val(row, "Updated"),
+            "nma_waterlevelscontinuous_pressure_water_head": val(row, "WaterHead"),
+            "nma_waterlevelscontinuous_pressure_water_head_adjusted": val(
+                row, "WaterHeadAdjusted"
+            ),
+        }
+
 
 class WaterLevelsContinuousAcousticTransferer(WaterLevelsContinuousTransferer):
     source_table = "WaterLevelsContinuous_Acoustic"
     _partition_field = "PublicRelease"
     _sensor_types = ("Acoustic Sounder",)
 
+    def _legacy_payload(self, row: pd.Series) -> dict:
+        val = self._legacy_val
+        return {
+            "nma_waterlevelscontinuous_acoustic_created": val(row, "Created"),
+            "nma_waterlevelscontinuous_acoustic_data_source": val(row, "DataSource"),
+            "nma_waterlevelscontinuous_acoustic_global_id": val(row, "GlobalID"),
+            "nma_waterlevelscontinuous_acoustic_measurement_method": val(
+                row, "MeasurementMethod"
+            ),
+            "nma_waterlevelscontinuous_acoustic_measuring_agency": val(
+                row, "MeasuringAgency"
+            ),
+            "nma_waterlevelscontinuous_acoustic_notes": val(row, "Notes"),
+            "nma_waterlevelscontinuous_acoustic_point_id": val(row, "PointID"),
+            "nma_waterlevelscontinuous_acoustic_pre_process_data_field": val(
+                row, "PreProcessDataField"
+            ),
+            "nma_waterlevelscontinuous_acoustic_public_release": val(
+                row, "PublicRelease"
+            ),
+            "nma_waterlevelscontinuous_acoustic_sensor_hgt_above_mp": val(
+                row, "SensorHgtAboveMP"
+            ),
+            "nma_waterlevelscontinuous_acoustic_serial_no": val(row, "SerialNo"),
+            "nma_waterlevelscontinuous_acoustic_server_receipt_date": val(
+                row, "ServerReceiptDate"
+            ),
+            "nma_waterlevelscontinuous_acoustic_speaker_to_mic_length": val(
+                row, "SpeakerToMicLength"
+            ),
+            "nma_waterlevelscontinuous_acoustic_temperature_air": val(
+                row, "TemperatureAir"
+            ),
+        }
+
 
 def _find_deployment(ts, deployments):
-    date = ts.date()
+    if hasattr(ts, "date"):
+        date = ts.date()
+    else:
+        date = pd.Timestamp(ts).date()
     for d in deployments:
         if d.installation_date > date:
             break  # because sorted by start

@@ -35,7 +35,6 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
-
 # -------- VALIDATE ----------
 
 
@@ -164,6 +163,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     is_suitable_for_datalogger: bool | None = None
     is_open: bool | None = None
     formation_completion_code: FormationCode | None = None
+    nma_formation_zone: str | None = None
 
 
 class CreateSpring(CreateBaseThing):
@@ -273,6 +273,7 @@ class WellResponse(BaseThingResponse):
     construction_notes: list[NoteResponse] = []
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
+    nma_formation_zone: str | None
 
     @field_validator("well_purposes", mode="before")
     def populate_well_purposes_with_strings(cls, well_purposes):
@@ -434,6 +435,7 @@ class UpdateWell(UpdateThing, ValidateWell):
     well_casing_diameter: float | None = None  # in inches
     well_casing_depth: float | None = None  # in feet
     well_casing_materials: list[str] | None = None
+    nma_formation_zone: str | None = None
 
 
 class UpdateSpring(UpdateThing):
