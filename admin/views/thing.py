@@ -87,7 +87,6 @@ class ThingAdmin(OcotilloModelView):
         "well_pump_type",
         "well_pump_depth",
         "formation_completion_code",
-        "is_suitable_for_datalogger",
         # Spring-specific
         "spring_type",
         # Release Status
