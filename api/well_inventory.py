@@ -499,14 +499,14 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         historic_depth_to_water_source = "unknown"
 
     if model.historic_depth_to_water_ft is not None:
-        historic_depth_note = f"historic depth to water: {model.historic_depth_to_water_ft} ft - source: {historic_depth_to_water_source}."
+        historic_depth_note = f"historic depth to water: {model.historic_depth_to_water_ft} ft - source: {historic_depth_to_water_source}"
     else:
         historic_depth_note = None
 
     well_notes = []
     for note_content, note_type in (
         (model.specific_location_of_well, "Access"),
-        (model.special_requests, "General"),
+        (model.contact_special_requests_notes, "General"),
         (model.well_measuring_notes, "Sampling Procedure"),
         (model.sampling_scenario_notes, "Sampling Procedure"),
         (historic_depth_note, "Historical"),
@@ -572,7 +572,6 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     - GroupThingAssociation
     - LocationThingAssociation
     - DataProvenance for well_completion_date
-    - DataProvenance for well_construction_method
     - DataProvenance for well_depth
     - Notes
     - WellPurpose
