@@ -650,10 +650,6 @@ class WellTransferer(Transferer):
                     [],
                 )
 
-            is_suitable_for_datalogger = (
-                bool(row.OpenWellLoggerOK) if notna(row.OpenWellLoggerOK) else False
-            )
-
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
@@ -689,7 +685,6 @@ class WellTransferer(Transferer):
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -722,6 +717,15 @@ class WellTransferer(Transferer):
                     "measuring_point_description",
                     "well_completion_date_source",
                     "well_construction_method_source",
+                    "well_depth_source",
+                    "alternate_ids",
+                    "monitoring_frequencies",
+                    "notes",
+                    "well_depth_source",
+                    "well_completion_date_source",
+                    "well_construction_method_source",
+                    "is_suitable_for_datalogger",
+                    "is_open",
                 ]
             )
             well_data["thing_type"] = "water well"
@@ -881,6 +885,32 @@ class WellTransferer(Transferer):
                 )
             except KeyError:
                 pass
+
+        if notna(row.OpenWellLoggerOK):
+            if bool(row.OpenWellLoggerOK):
+                status_value = "Datalogger can be installed"
+            else:
+                status_value = "Datalogger cannot be installed"
+            status_history = StatusHistory(
+                status_type="Datalogger Suitability Status",
+                status_value=status_value,
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+
+        if notna(row.CurrentUse) and "A" in row.CurrentUse:
+            status_history = StatusHistory(
+                status_type="Open Status",
+                status_value="Open",
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
 
     def _step_parallel_complete(
         self,
