@@ -100,6 +100,12 @@ class CreateThingIdLink(BaseModel):
     alternate_organization: str
 
 
+class CreateMonitoringFrequency(BaseModel):
+    monitoring_frequency: MonitoringFrequency
+    start_date: PastOrTodayDate
+    end_date: PastOrTodayDate | None = None
+
+
 class CreateBaseThing(BaseCreateModel):
     """
     Developer's notes
@@ -116,7 +122,7 @@ class CreateBaseThing(BaseCreateModel):
     first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
     notes: list[CreateNote] | None = None
     alternate_ids: list[CreateThingIdLink] | None = None
-    monitoring_frequencies: list[MonitoringFrequency] | None = None
+    monitoring_frequencies: list[CreateMonitoringFrequency] | None = None
 
     @field_validator("alternate_ids", mode="before")
     def use_dummy_values(cls, v):

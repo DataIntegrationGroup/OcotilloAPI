@@ -561,6 +561,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         is_open=model.is_open,
         notes=well_notes,
         well_purposes=well_purposes,
+        monitoring_frequencies=monitoring_frequencies,
     )
     well_data = data.model_dump()
 
