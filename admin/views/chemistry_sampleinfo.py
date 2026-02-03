@@ -27,6 +27,7 @@ Updated for Integer PK schema:
 FK Change (2026-01):
 - thing_id: Integer FK to Thing.id
 """
+
 import uuid
 
 from starlette.requests import Request
@@ -97,7 +98,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "data_source",
         "data_quality",
         "public_release",
-
     ]
 
     fields_default_sort = [("collection_date", True)]
@@ -148,7 +148,6 @@ class ChemistrySampleInfoAdmin(OcotilloModelView):
         "added_month_day_to_date",
         "sample_notes",
     ]
-
 
     field_labels = {
         "id": "ID",
