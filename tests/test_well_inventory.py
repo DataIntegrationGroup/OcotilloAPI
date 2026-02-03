@@ -264,6 +264,11 @@ def test_well_inventory_db_contents():
             )
             assert location.elevation_method == file_content["elevation_method"]
 
+            assert (
+                location._get_notes("Directions")[0].content
+                == file_content["directions_to_site"]
+            )
+
             # CONTACTS AND RELATED RECORDS
             thing_contact_associations = (
                 session.query(ThingContactAssociation)
@@ -290,6 +295,14 @@ def test_well_inventory_db_contents():
                 ), f"Expected 1 thing-contact association for thing {point_id}."
 
             for contact in contacts:
+                assert (
+                    contact.general_notes[0].content
+                    == file_content["contact_special_requests_notes"]
+                )
+                assert (
+                    contact.communication_notes[0].content
+                    == file_content["result_communication_preference"]
+                )
                 if contact.contact_type == "Primary":
                     assert contact.name == file_content["contact_1_name"]
                     assert (
