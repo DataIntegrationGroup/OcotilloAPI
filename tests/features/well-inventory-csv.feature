@@ -469,7 +469,7 @@ Feature: Bulk upload well inventory from CSV
 #    And no wells are imported
 
 ###########################################################################
-  # WATER LEVEL ENTRY VALIDATIION
+  # WATER LEVEL ENTRY VALIDATION
 ###########################################################################
 
  # if one water level entry field is filled, then all are required
