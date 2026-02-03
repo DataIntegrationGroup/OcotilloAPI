@@ -73,6 +73,27 @@ from transfers.well_transfer_util import (
 
 ADDED = []
 
+# these fields are excluded when the CreateWell model is dumped to a dict for Thing creation
+EXCLUDED_FIELDS = [
+    "location_id",
+    "group_id",
+    "well_purposes",
+    "well_casing_materials",
+    "measuring_point_height",
+    "measuring_point_description",
+    "well_completion_date_source",
+    "well_construction_method_source",
+    "well_depth_source",
+    "alternate_ids",
+    "monitoring_frequencies",
+    "notes",
+    "well_depth_source",
+    "well_completion_date_source",
+    "well_construction_method_source",
+    "is_suitable_for_datalogger",
+    "is_open",
+]
+
 
 class WellTransferer(Transferer):
     source_table = "WellData"
@@ -325,27 +346,7 @@ class WellTransferer(Transferer):
 
         well = None
         try:
-            well_data = data.model_dump(
-                exclude=[
-                    "location_id",
-                    "group_id",
-                    "well_purposes",
-                    "well_casing_materials",
-                    "measuring_point_height",
-                    "measuring_point_description",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                    "well_depth_source",
-                    "alternate_ids",
-                    "monitoring_frequencies",
-                    "notes",
-                    "well_depth_source",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                    "is_suitable_for_datalogger",
-                    "is_open",
-                ]
-            )
+            well_data = data.model_dump(exclude=EXCLUDED_FIELDS)
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
 
@@ -707,27 +708,7 @@ class WellTransferer(Transferer):
         data: CreateWell = payload["data"]
         well = None
         try:
-            well_data = data.model_dump(
-                exclude=[
-                    "location_id",
-                    "group_id",
-                    "well_purposes",
-                    "well_casing_materials",
-                    "measuring_point_height",
-                    "measuring_point_description",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                    "well_depth_source",
-                    "alternate_ids",
-                    "monitoring_frequencies",
-                    "notes",
-                    "well_depth_source",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                    "is_suitable_for_datalogger",
-                    "is_open",
-                ]
-            )
+            well_data = data.model_dump(exclude=EXCLUDED_FIELDS)
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
             well_data.pop("notes", None)
