@@ -241,7 +241,7 @@ def add_thing(
         session.refresh(thing)
 
         # ----------
-        # BEING WATER WELL SPECIFIC LOGIC
+        # BEGIN WATER WELL SPECIFIC LOGIC
         # ----------
 
         if thing_type == WATER_WELL_THING_TYPE:
