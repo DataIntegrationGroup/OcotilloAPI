@@ -25,6 +25,7 @@ from pydantic import (
 )
 from typing_extensions import Self
 
+from core.enums import Unit
 from schemas import (
     BaseCreateModel,
     BaseUpdateModel,
@@ -112,6 +113,7 @@ class BaseObservationResponse(BaseResponseModel):
     parameter: ParameterResponse
     value: float | None
     unit: Unit
+    nma_data_quality: str | None = None
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):

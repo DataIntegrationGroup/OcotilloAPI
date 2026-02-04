@@ -26,10 +26,26 @@ sentry_sdk.init(
 
 
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from core.app import app
 
 register_routes(app)
+
+# Session middleware is required for the admin auth flow (request.session access).
+SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY")
+if not SESSION_SECRET_KEY:
+    raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
+
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
+
+# ========== Starlette Admin Interface ==========
+# Mount admin interface at /admin
+# This provides a web-based UI for managing database records (replaces MS Access)
+from admin import create_admin
+
+create_admin(app)
+# ==============================================
 
 app.add_middleware(
     CORSMiddleware,

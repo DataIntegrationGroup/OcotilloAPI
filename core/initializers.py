@@ -107,6 +107,7 @@ def init_lexicon(path: str = None) -> None:
 
 
 def register_routes(app):
+    from admin.auth_routes import router as admin_auth_router
     from api.group import router as group_router
     from api.contact import router as contact_router
     from api.location import router as location_router
@@ -123,14 +124,18 @@ def register_routes(app):
     from api.asset import router as asset_router
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
+    from api.ngwmn import router as ngwmn_router
+    from api.ogc.router import router as ogc_router
     from api.well_inventory import router as well_inventory_router
 
     app.include_router(well_inventory_router)
     app.include_router(asset_router)
+    app.include_router(admin_auth_router)
     app.include_router(author_router)
     app.include_router(contact_router)
     app.include_router(geospatial_router)
     app.include_router(group_router)
+    app.include_router(ogc_router)
     app.include_router(lexicon_router)
     app.include_router(location_router)
     app.include_router(observation_router)
@@ -139,6 +144,7 @@ def register_routes(app):
     app.include_router(sensor_router)
     app.include_router(search_router)
     app.include_router(thing_router)
+    app.include_router(ngwmn_router)
     add_pagination(app)
 
 

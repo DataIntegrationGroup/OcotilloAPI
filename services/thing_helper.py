@@ -241,7 +241,7 @@ def add_thing(
         session.refresh(thing)
 
         # ----------
-        # BEING WATER WELL SPECIFIC LOGIC
+        # BEGIN WATER WELL SPECIFIC LOGIC
         # ----------
 
         if thing_type == WATER_WELL_THING_TYPE:
@@ -377,7 +377,7 @@ def add_thing(
             for mf in monitoring_frequencies:
                 mfh = MonitoringFrequencyHistory(
                     thing_id=thing.id,
-                    monitoring_frquency=mf["monitoring_frequency"],
+                    monitoring_frequency=mf["monitoring_frequency"],
                     start_date=mf["start_date"],
                     end_date=mf.get("end_date", None),
                 )

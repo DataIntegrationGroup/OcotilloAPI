@@ -324,8 +324,9 @@ def add_deployment(context, session, tid, sid):
 
 
 @add_context_object_container("blocks")
-def add_block(context, session, parameter):
+def add_block(context, session, parameter, thing):
     block = TransducerObservationBlock(
+        thing_id=thing.id,
         parameter_id=parameter.id,
         start_datetime=datetime.now() - timedelta(hours=1),
         end_datetime=datetime.now() + timedelta(hours=1),
@@ -690,7 +691,7 @@ def before_all(context):
 
         # parameter ID can be hardcoded because init_parameter always creates the same one
         parameter = session.get(Parameter, 1)
-        block = add_block(context, session, parameter)
+        block = add_block(context, session, parameter, well_1)
         for i in range(1, 10):
             add_transducer_observation(
                 context, session, block, deployment.id, random.random()
