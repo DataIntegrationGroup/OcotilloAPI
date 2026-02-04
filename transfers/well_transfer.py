@@ -150,8 +150,6 @@ class WellTransferer(Transferer):
                             # Process single well with all dependent objects
                             self._step_parallel_complete(
                                 session,
-                                batch_df,
-                                i,
                                 row,
                                 local_aquifers,
                                 local_formations,
@@ -879,8 +877,6 @@ class WellTransferer(Transferer):
     def _step_parallel_complete(
         self,
         session: Session,
-        df: pd.DataFrame,
-        i: int,
         row,
         local_aquifers: list,
         local_formations: dict,
