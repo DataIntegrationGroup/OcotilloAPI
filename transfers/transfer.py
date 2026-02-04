@@ -388,34 +388,35 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
         # =========================================================================
         non_well_tasks = []
         transfer_functions = {
-            "springs": transfer_springs,
-            "perennial_streams": transfer_perennial_streams,
-            "ephemeral_streams": transfer_ephemeral_streams,
-            "met_stations": transfer_met_stations,
-            "rock_sample_locations": transfer_rock_sample_locations,
-            "diversion_of_surface_water": transfer_diversion_of_surface_water,
-            "lake_pond_reservoir": transfer_lake_pond_reservoir,
-            "soil_gas_sample_locations": transfer_soil_gas_sample_locations,
-            "other_site_types": transfer_other_site_types,
-            "outfall_wastewater_return_flow": transfer_outfall_wastewater_return_flow,
+            "transfer_springs": transfer_springs,
+            "transfer_perennial_streams": transfer_perennial_streams,
+            "transfer_ephemeral_streams": transfer_ephemeral_streams,
+            "transfer_met_stations": transfer_met_stations,
+            "transfer_rock_sample_locations": transfer_rock_sample_locations,
+            "transfer_diversion_of_surface_water": transfer_diversion_of_surface_water,
+            "transfer_lake_pond_reservoir": transfer_lake_pond_reservoir,
+            "transfer_soil_gas_sample_locations": transfer_soil_gas_sample_locations,
+            "transfer_other_site_types": transfer_other_site_types,
+            "transfer_outfall_wastewater_return_flow": (
+                transfer_outfall_wastewater_return_flow
+            ),
         }
 
-        for attr in (
-            "springs",
-            "perennial_streams",
-            "ephemeral_streams",
-            "met_stations",
-            "rock_sample_locations",
-            "diversion_of_surface_water",
-            "lake_pond_reservoir",
-            "soil_gas_sample_locations",
-            "other_site_types",
-            "outfall_wastewater_return_flow",
+        for attr, thing_type in (
+            ("springs", "Springs"),
+            ("perennial_streams", "PerennialStreams"),
+            ("ephemeral_streams", "EphemeralStreams"),
+            ("met_stations", "MetStations"),
+            ("rock_sample_locations", "RockSampleLocations"),
+            ("diversion_of_surface_water", "DiversionOfSurfaceWater"),
+            ("lake_pond_reservoir", "LakePondReservoir"),
+            ("soil_gas_sample_locations", "SoilGasSampleLocations"),
+            ("other_site_types", "OtherSiteTypes"),
+            ("outfall_wastewater_return_flow", "OutfallWastewaterReturnFlow"),
         ):
-            thing_type = "".join(part.capitalize() for part in attr.split("_"))
             attr_name = f"transfer_{attr}"
             if getattr(transfer_options, attr_name):
-                transfer_func = transfer_functions[attr]
+                transfer_func = transfer_functions[attr_name]
                 non_well_tasks.append((thing_type, transfer_func))
 
         if non_well_tasks:
