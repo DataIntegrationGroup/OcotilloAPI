@@ -77,6 +77,8 @@ def test_add_location():
     assert data["point"] == payload["point"]
     assert data["elevation"] == payload["elevation"]
     assert data["release_status"] == payload["release_status"]
+    assert data["nma_location_notes"] is None
+    assert data["nma_data_reliability"] is None
     # assert data["elevation_accuracy"] == payload["elevation_accuracy"]
     # assert data["elevation_method"] == payload["elevation_method"]
     # assert data["coordinate_accuracy"] == payload["coordinate_accuracy"]
@@ -174,6 +176,10 @@ def test_get_locations(location):
     assert data["items"][0]["point"] == to_shape(location.point).wkt
     assert data["items"][0]["elevation"] == location.elevation
     assert data["items"][0]["release_status"] == location.release_status
+    assert "nma_location_notes" in data["items"][0]
+    assert data["items"][0]["nma_location_notes"] == location.nma_location_notes
+    assert "nma_data_reliability" in data["items"][0]
+    assert data["items"][0]["nma_data_reliability"] == location.nma_data_reliability
     # assert data["items"][0]["elevation_accuracy"] == location.elevation_accuracy
     # assert data["items"][0]["elevation_method"] == location.elevation_method
     # assert data["items"][0]["coordinate_accuracy"] == location.coordinate_accuracy
@@ -195,6 +201,8 @@ def test_get_location_by_id(location):
     assert data["point"] == to_shape(location.point).wkt
     assert data["elevation"] == location.elevation
     assert data["release_status"] == location.release_status
+    assert data["nma_location_notes"] == location.nma_location_notes
+    assert data["nma_data_reliability"] == location.nma_data_reliability
     # assert data["elevation_accuracy"] == location.elevation_accuracy
     # assert data["elevation_method"] == location.elevation_method
     # assert data["coordinate_accuracy"] == location.coordinate_accuracy

@@ -35,7 +35,10 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
     created_count = 0
     skipped_count = 0
 
-    logger.info(f"Starting transfer of {n} geologic formations")
+    logger.info(
+        "Starting transfer: GeologicFormations (%s rows) from LU_Formations",
+        n,
+    )
 
     # 4. Process each row
     for i, row in enumerate(cleaned_df.itertuples()):
@@ -134,4 +137,5 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
         logger.critical(f"Error during final commit of geologic formations: {e}")
         session.rollback()
 
+    logger.info("Completed transfer: GeologicFormations")
     return input_df, cleaned_df, errors

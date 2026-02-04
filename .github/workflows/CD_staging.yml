@@ -37,6 +37,16 @@ jobs:
           with:
             credentials_json: ${{ secrets.CLOUD_DEPLOY_SERVICE_ACCOUNT_KEY }}
 
+        - name: Run Alembic migrations on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_IAM_AUTH: true
+          run: |
+            uv run alembic upgrade head
+
         # Uses Google Cloud Secret Manager to store secret credentials
         - name: Create app.yaml
           run: |
@@ -44,6 +54,7 @@ jobs:
             service: ocotillo-api-staging
             runtime: python313
             entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+            service_account: "${{ secrets.CLOUD_SQL_USER }}.gserviceaccount.com"
             instance_class: F4
             handlers:
               - url: /.*
@@ -55,13 +66,14 @@ jobs:
               CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
               CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
               CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-              CLOUD_SQL_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
+              CLOUD_SQL_IAM_AUTH: true
               GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
               GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
               AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
               AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
               AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
               AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
+              SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
             EOF
 
         - name: Deploy to Google Cloud

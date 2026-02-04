@@ -57,7 +57,22 @@ from db.status_history import *
 from db.thing import *
 from db.thing_aquifer_association import *
 from db.thing_geologic_formation_association import *
+from db.aquifer_type import *
+from db.nma_legacy import *
 from db.transducer import *
+
+from sqlalchemy import (
+    func,
+    desc,
+    cast,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import REGCONFIG
+from sqlalchemy_searchable import (
+    inspect_search_vectors,
+    search_manager,
+)
+from sqlalchemy.orm import configure_mappers
 
 configure_mappers()
 

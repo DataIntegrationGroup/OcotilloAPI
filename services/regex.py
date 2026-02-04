@@ -21,6 +21,7 @@ The pattern matches the following structure:
 - An operator (e.g., 'eq', 'ne', 'gt', 'lt', etc.)
 - A value (which can be a boolean, number, or string)
 """
+
 import re
 
 QUERY_REGEX = re.compile(

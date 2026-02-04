@@ -15,7 +15,7 @@
 # ===============================================================================
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -223,7 +223,18 @@ class WaterLevelTransferer(Transferer):
         else:
             value = row.DepthToWater
 
-        # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
+        data_quality = None
+        dq_raw = getattr(row, "DataQuality", None)
+        if dq_raw and pd.notna(dq_raw):
+            dq_code = str(dq_raw).strip()
+            try:
+                data_quality = lexicon_mapper.map_value(f"LU_DataQuality:{dq_code}")
+            except KeyError:
+                logger.warning(
+                    f"{SPACE_6}Unknown DataQuality code '{dq_code}' for WaterLevels record {row.GlobalID}"
+                )
+
+            # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
         observation = Observation(
             nma_pk_waterlevels=row.GlobalID,
             sample=sample,
@@ -236,6 +247,7 @@ class WaterLevelTransferer(Transferer):
             measuring_point_height=measuring_point_height,
             groundwater_level_reason=glv,
             groundwater_level_accuracy=groundwater_level_accuracy,
+            nma_data_quality=data_quality,
         )
         return observation
 
@@ -344,13 +356,13 @@ class WaterLevelTransferer(Transferer):
             t = row.TimeMeasured
             # Truncate microseconds to 6 digits if present
             if "." in t:
-                t = t[:-6]
+                dot_index = t.find(".")
+                t = t[: dot_index + 7]
 
             dt_measured = f"{row.DateMeasured} {t}"
 
         try:
             dt = datetime.strptime(dt_measured, fmt)
-            return convert_mt_to_utc(dt)
         except ValueError as e:
             self._capture_error(row.PointID, str(e), "DateMeasured")
             logger.critical(
@@ -358,6 +370,16 @@ class WaterLevelTransferer(Transferer):
                 f"invalid date/time: {e}"
             )
             return None
+
+        time_datum = getattr(row, "TimeDatum", None)
+        if time_datum and pd.notna(time_datum):
+            datum = str(time_datum).strip().upper()
+            if datum in {"MST", "MDT"}:
+                offset_hours = -7 if datum == "MST" else -6
+                tz = timezone(timedelta(hours=offset_hours))
+                return dt.replace(tzinfo=tz).astimezone(timezone.utc)
+
+        return convert_mt_to_utc(dt)
 
 
 # ============= EOF =============================================
