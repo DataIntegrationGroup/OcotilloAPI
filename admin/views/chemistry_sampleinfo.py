@@ -28,7 +28,6 @@ FK Change (2026-01):
 - thing_id: Integer FK to Thing.id
 """
 
-
 from admin.views.base import OcotilloModelView
 
 

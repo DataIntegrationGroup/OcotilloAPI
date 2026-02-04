@@ -88,9 +88,9 @@ class TestMigrationHistory:
                     revisions_without_down.append(rev.revision)
                 base_found = True
 
-        assert not revisions_without_down, (
-            f"Migrations missing down_revision (besides base): {revisions_without_down}"
-        )
+        assert (
+            not revisions_without_down
+        ), f"Migrations missing down_revision (besides base): {revisions_without_down}"
 
     def test_current_revision_matches_head(self):
         """
@@ -103,9 +103,7 @@ class TestMigrationHistory:
         head = script.get_current_head()
 
         with engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT version_num FROM alembic_version")
-            )
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
             current = result.scalar()
 
         assert current == head, (
@@ -274,9 +272,7 @@ class TestForeignKeyIntegrity:
         fks = self._inspector.get_foreign_keys("NMA_Chemistry_SampleInfo")
         fk_tables = {fk["referred_table"] for fk in fks}
 
-        assert "thing" in fk_tables, (
-            "NMA_Chemistry_SampleInfo missing FK to thing"
-        )
+        assert "thing" in fk_tables, "NMA_Chemistry_SampleInfo missing FK to thing"
 
 
 # =============================================================================
@@ -304,21 +300,19 @@ class TestIndexes:
         # Spatial indexes may be named differently, check for point column
         # or gist index type
         has_point_index = "point" in index_columns or any(
-            "point" in str(idx.get("name", "")).lower() or
-            "gist" in str(idx.get("name", "")).lower()
+            "point" in str(idx.get("name", "")).lower()
+            or "gist" in str(idx.get("name", "")).lower()
             for idx in indexes
         )
 
         # Also check via pg_indexes for GIST indexes
         if not has_point_index:
             with session_ctx() as session:
-                result = session.execute(
-                    text("""
+                result = session.execute(text("""
                         SELECT indexname FROM pg_indexes
                         WHERE tablename = 'location'
                         AND indexdef LIKE '%gist%'
-                    """)
-                )
+                    """))
                 gist_indexes = result.fetchall()
                 has_point_index = len(gist_indexes) > 0
 
@@ -363,9 +357,7 @@ class TestMigrationDowngrade:
 
         # Verify we're at previous revision
         with engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT version_num FROM alembic_version")
-            )
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
             current = result.scalar()
         assert current == previous
 
@@ -374,8 +366,6 @@ class TestMigrationDowngrade:
 
         # Verify we're back at head
         with engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT version_num FROM alembic_version")
-            )
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
             current = result.scalar()
         assert current == head
