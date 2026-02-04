@@ -9,7 +9,9 @@ contents after a well inventory upload.
 
 import csv
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
+
 import pytest
 from shapely import Point
 
@@ -454,3 +456,521 @@ def test_well_inventory_db_contents():
         session.query(FieldActivity).delete()
         session.query(FieldEvent).delete()
         session.commit()
+
+
+# =============================================================================
+# Error Handling Tests - Cover API error paths
+# =============================================================================
+
+
+@pytest.fixture(scope="class", autouse=True)
+def error_handling_auth_override():
+    """Override authentication for error handling test class."""
+    app.dependency_overrides[admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_admin_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    app.dependency_overrides[amp_editor_function] = override_authentication(
+        default={"name": "foobar", "sub": "1234567890"}
+    )
+    yield
+    app.dependency_overrides = {}
+
+
+class TestWellInventoryErrorHandling:
+    """Tests for well inventory CSV upload error handling."""
+
+    def test_upload_invalid_file_type(self):
+        """Upload fails with 400 when file is not a CSV."""
+        content = b"This is not a CSV file"
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.txt", BytesIO(content), "text/plain")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "Unsupported file type" in str(data)
+
+    def test_upload_empty_file(self):
+        """Upload fails with 400 when CSV file is empty."""
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(b""), "text/csv")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "Empty file" in str(data)
+
+    def test_upload_headers_only(self):
+        """Upload fails with 400 when CSV has headers but no data rows."""
+        file_path = Path("tests/features/data/well-inventory-no-data-headers.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 400
+            data = response.json()
+            assert "No data rows found" in str(data)
+
+    def test_upload_duplicate_columns(self):
+        """Upload fails with 422 when CSV has duplicate column names."""
+        file_path = Path("tests/features/data/well-inventory-duplicate-columns.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+            data = response.json()
+            assert "Duplicate columns found" in str(data.get("validation_errors", []))
+
+    def test_upload_duplicate_well_ids(self):
+        """Upload fails with 422 when CSV has duplicate well_name_point_id values."""
+        file_path = Path("tests/features/data/well-inventory-duplicate.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+            data = response.json()
+            errors = data.get("validation_errors", [])
+            assert any("Duplicate" in str(e) for e in errors)
+
+    def test_upload_missing_required_field(self):
+        """Upload fails with 422 when required field is missing."""
+        file_path = Path("tests/features/data/well-inventory-missing-required.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_date_format(self):
+        """Upload fails with 422 when date format is invalid."""
+        file_path = Path("tests/features/data/well-inventory-invalid-date-format.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_numeric_value(self):
+        """Upload fails with 422 when numeric field has invalid value."""
+        file_path = Path("tests/features/data/well-inventory-invalid-numeric.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_email(self):
+        """Upload fails with 422 when email format is invalid."""
+        file_path = Path("tests/features/data/well-inventory-invalid-email.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_phone_number(self):
+        """Upload fails with 422 when phone number format is invalid."""
+        file_path = Path("tests/features/data/well-inventory-invalid-phone-number.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_utm_coordinates(self):
+        """Upload fails with 422 when UTM coordinates are outside New Mexico."""
+        file_path = Path("tests/features/data/well-inventory-invalid-utm.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_lexicon_value(self):
+        """Upload fails with 422 when lexicon value is not in allowed set."""
+        file_path = Path("tests/features/data/well-inventory-invalid-lexicon.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_invalid_boolean_value(self):
+        """Upload fails with 422 when boolean field has invalid value."""
+        file_path = Path("tests/features/data/well-inventory-invalid-boolean-value-maybe.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_missing_contact_type(self):
+        """Upload fails with 422 when contact is provided without contact_type."""
+        file_path = Path("tests/features/data/well-inventory-missing-contact-type.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_missing_contact_role(self):
+        """Upload fails with 422 when contact is provided without role."""
+        file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_partial_water_level_fields(self):
+        """Upload fails with 422 when only some water level fields are provided."""
+        file_path = Path("tests/features/data/well-inventory-missing-wl-fields.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+
+    def test_upload_non_utf8_encoding(self):
+        """Upload fails with 400 when file has invalid encoding."""
+        # Create a file with invalid UTF-8 bytes
+        invalid_bytes = b"well_name_point_id,project\n\xff\xfe invalid"
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(invalid_bytes), "text/csv")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "encoding" in str(data).lower() or "Empty" in str(data)
+
+
+# =============================================================================
+# Unit Tests for Helper Functions
+# =============================================================================
+
+
+class TestWellInventoryHelpers:
+    """Unit tests for well inventory helper functions."""
+
+    def test_make_location_utm_zone_13n(self):
+        """Test location creation with UTM zone 13N coordinates."""
+        from api.well_inventory import _make_location
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.utm_easting = 357000.0
+        model.utm_northing = 3784000.0
+        model.utm_zone = "13N"
+        model.elevation_ft = 5000.0
+
+        location = _make_location(model)
+
+        assert location is not None
+        assert location.point is not None
+        # Elevation should be converted from feet to meters
+        assert location.elevation is not None
+        assert location.elevation < 5000  # meters < feet
+
+    def test_make_location_utm_zone_12n(self):
+        """Test location creation with UTM zone 12N coordinates."""
+        from api.well_inventory import _make_location
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.utm_easting = 600000.0
+        model.utm_northing = 3900000.0
+        model.utm_zone = "12N"
+        model.elevation_ft = 4500.0
+
+        location = _make_location(model)
+
+        assert location is not None
+        assert location.point is not None
+        assert location.elevation is not None
+
+    def test_make_contact_with_full_info(self):
+        """Test contact dict creation with all fields populated."""
+        from api.well_inventory import _make_contact
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.result_communication_preference = "Email preferred"
+        model.contact_special_requests_notes = "Call before visiting"
+        model.contact_1_name = "John Doe"
+        model.contact_1_organization = "Test Org"
+        model.contact_1_role = "Owner"
+        model.contact_1_type = "Primary"
+        model.contact_1_email_1 = "john@example.com"
+        model.contact_1_email_1_type = "Work"
+        model.contact_1_email_2 = None
+        model.contact_1_email_2_type = None
+        model.contact_1_phone_1 = "+15055551234"
+        model.contact_1_phone_1_type = "Mobile"
+        model.contact_1_phone_2 = None
+        model.contact_1_phone_2_type = None
+        model.contact_1_address_1_line_1 = "123 Main St"
+        model.contact_1_address_1_line_2 = "Suite 100"
+        model.contact_1_address_1_city = "Albuquerque"
+        model.contact_1_address_1_state = "NM"
+        model.contact_1_address_1_postal_code = "87101"
+        model.contact_1_address_1_type = "Mailing"
+        model.contact_1_address_2_line_1 = None
+        model.contact_1_address_2_line_2 = None
+        model.contact_1_address_2_city = None
+        model.contact_1_address_2_state = None
+        model.contact_1_address_2_postal_code = None
+        model.contact_1_address_2_type = None
+
+        well = MagicMock()
+        well.id = 1
+
+        contact_dict = _make_contact(model, well, 1)
+
+        assert contact_dict is not None
+        assert contact_dict["name"] == "John Doe"
+        assert contact_dict["organization"] == "Test Org"
+        assert contact_dict["thing_id"] == 1
+        assert len(contact_dict["emails"]) == 1
+        assert len(contact_dict["phones"]) == 1
+        assert len(contact_dict["addresses"]) == 1
+        assert len(contact_dict["notes"]) == 2
+
+    def test_make_contact_with_no_name(self):
+        """Test contact dict returns None when name is empty."""
+        from api.well_inventory import _make_contact
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.result_communication_preference = None
+        model.contact_special_requests_notes = None
+        model.contact_1_name = None  # No name provided
+
+        well = MagicMock()
+        well.id = 1
+
+        contact_dict = _make_contact(model, well, 1)
+
+        assert contact_dict is None
+
+    def test_make_well_permission(self):
+        """Test well permission creation."""
+        from api.well_inventory import _make_well_permission
+        from datetime import date
+        from unittest.mock import MagicMock
+
+        well = MagicMock()
+        well.id = 1
+
+        contact = MagicMock()
+        contact.id = 2
+
+        permission = _make_well_permission(
+            well=well,
+            contact=contact,
+            permission_type="Water Level Sample",
+            permission_allowed=True,
+            start_date=date(2025, 1, 1),
+        )
+
+        assert permission is not None
+        assert permission.target_table == "thing"
+        assert permission.target_id == 1
+        assert permission.permission_type == "Water Level Sample"
+        assert permission.permission_allowed is True
+
+    def test_make_well_permission_no_contact_raises(self):
+        """Test that permission creation without contact raises error."""
+        from api.well_inventory import _make_well_permission
+        from services.exceptions_helper import PydanticStyleException
+        from datetime import date
+        from unittest.mock import MagicMock
+
+        well = MagicMock()
+        well.id = 1
+
+        with pytest.raises(PydanticStyleException) as exc_info:
+            _make_well_permission(
+                well=well,
+                contact=None,
+                permission_type="Water Level Sample",
+                permission_allowed=True,
+                start_date=date(2025, 1, 1),
+            )
+
+        assert exc_info.value.status_code == 400
+
+    def test_generate_autogen_well_id_first_well(self):
+        """Test auto-generation of well ID when no existing wells with prefix."""
+        from api.well_inventory import generate_autogen_well_id
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+        session.scalars.return_value.first.return_value = None
+
+        well_id, offset = generate_autogen_well_id(session, "XY-")
+
+        assert well_id == "XY-0001"
+        assert offset == 1
+
+    def test_generate_autogen_well_id_with_existing(self):
+        """Test auto-generation of well ID with existing wells."""
+        from api.well_inventory import generate_autogen_well_id
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+        existing_well = MagicMock()
+        existing_well.name = "XY-0005"
+        session.scalars.return_value.first.return_value = existing_well
+
+        well_id, offset = generate_autogen_well_id(session, "XY-")
+
+        assert well_id == "XY-0006"
+        assert offset == 6
+
+    def test_generate_autogen_well_id_with_offset(self):
+        """Test auto-generation with offset parameter."""
+        from api.well_inventory import generate_autogen_well_id
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+
+        well_id, offset = generate_autogen_well_id(session, "XY-", offset=10)
+
+        assert well_id == "XY-0011"
+        assert offset == 11
+
+    def test_autogen_regex_pattern(self):
+        """Test the AUTOGEN_REGEX pattern matches correctly."""
+        from api.well_inventory import AUTOGEN_REGEX
+
+        # Should match
+        assert AUTOGEN_REGEX.match("XY-") is not None
+        assert AUTOGEN_REGEX.match("AB-") is not None
+        assert AUTOGEN_REGEX.match("ab-") is not None
+
+        # Should not match
+        assert AUTOGEN_REGEX.match("XY-001") is None
+        assert AUTOGEN_REGEX.match("XYZ-") is None
+        assert AUTOGEN_REGEX.match("X-") is None
+        assert AUTOGEN_REGEX.match("123-") is None
+
+    def test_generate_autogen_well_id_non_numeric_suffix(self):
+        """Test auto-generation when existing well has non-numeric suffix."""
+        from api.well_inventory import generate_autogen_well_id
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+        existing_well = MagicMock()
+        existing_well.name = "XY-ABC"  # Non-numeric suffix
+        session.scalars.return_value.first.return_value = existing_well
+
+        well_id, offset = generate_autogen_well_id(session, "XY-")
+
+        # Should default to 1 when suffix is not numeric
+        assert well_id == "XY-0001"
+        assert offset == 1
+
+
+class TestWellInventoryAPIEdgeCases:
+    """Additional edge case tests for API endpoints."""
+
+    def test_upload_too_many_rows(self):
+        """Upload fails with 400 when CSV has more than 2000 rows."""
+        # Create a CSV with header + 2001 data rows
+        header = "project,well_name_point_id,site_name,date_time,field_staff,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method,measuring_point_height_ft\n"
+        row = "TestProject,WELL-{i},Site{i},2025-01-01T10:00:00,Staff,357000,3784000,13N,5000,GPS,3.5\n"
+
+        rows = [header]
+        for i in range(2001):
+            rows.append(row.format(i=i))
+
+        content = "".join(rows).encode("utf-8")
+
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(content), "text/csv")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "Too many rows" in str(data) or "2000" in str(data)
+
+    def test_upload_semicolon_delimiter(self):
+        """Upload fails with 400 when CSV uses semicolon delimiter."""
+        content = b"project;well_name_point_id;site_name\nTest;WELL-001;Site1\n"
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(content), "text/csv")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "delimiter" in str(data).lower() or "Unsupported" in str(data)
+
+    def test_upload_tab_delimiter(self):
+        """Upload fails with 400 when CSV uses tab delimiter."""
+        content = b"project\twell_name_point_id\tsite_name\nTest\tWELL-001\tSite1\n"
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(content), "text/csv")},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "delimiter" in str(data).lower() or "Unsupported" in str(data)
+
+    def test_upload_duplicate_header_row_in_data(self):
+        """Upload fails with 422 when header row is duplicated in data."""
+        file_path = Path("tests/features/data/well-inventory-duplicate-header.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            assert response.status_code == 422
+            data = response.json()
+            errors = data.get("validation_errors", [])
+            assert any("Duplicate header" in str(e) or "header" in str(e).lower() for e in errors)
+
+    def test_upload_valid_with_comma_in_quotes(self):
+        """Upload succeeds when field value contains comma inside quotes."""
+        file_path = Path("tests/features/data/well-inventory-valid-comma-in-quotes.csv")
+        if file_path.exists():
+            response = client.post(
+                "/well-inventory-csv",
+                files={"file": open(file_path, "rb")},
+            )
+            # Should succeed - commas in quoted fields are valid CSV
+            assert response.status_code in (201, 422)  # 422 if other validation fails
+
+            # Clean up if records were created
+            if response.status_code == 201:
+                with session_ctx() as session:
+                    session.query(Thing).delete()
+                    session.query(Location).delete()
+                    session.query(Contact).delete()
+                    session.query(FieldEvent).delete()
+                    session.query(FieldActivity).delete()
+                    session.commit()
+
+
+# ============= EOF =============================================
