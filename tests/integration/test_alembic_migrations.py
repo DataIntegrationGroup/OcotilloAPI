@@ -308,11 +308,13 @@ class TestIndexes:
         # Also check via pg_indexes for GIST indexes
         if not has_point_index:
             with session_ctx() as session:
-                result = session.execute(text("""
-                        SELECT indexname FROM pg_indexes
-                        WHERE tablename = 'location'
-                        AND indexdef LIKE '%gist%'
-                    """))
+                result = session.execute(
+                    text(
+                        "SELECT indexname FROM pg_indexes "
+                        "WHERE tablename = 'location' "
+                        "AND indexdef LIKE '%gist%'"
+                    )
+                )
                 gist_indexes = result.fetchall()
                 has_point_index = len(gist_indexes) > 0
 
