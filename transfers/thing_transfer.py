@@ -146,7 +146,7 @@ def transfer_rock_sample_locations(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Rock sample location",
+            "thing_type": "rock sample location",
             "release_status": _release_status(row),
         }
 
@@ -157,7 +157,7 @@ def transfer_diversion_of_surface_water(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Diversion of surface water, etc.",
+            "thing_type": "diversion of surface water, etc.",
             "release_status": _release_status(row),
         }
 
@@ -168,7 +168,7 @@ def transfer_lake_pond_reservoir(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Lake, pond or reservoir",
+            "thing_type": "lake, pond or reservoir",
             "release_status": _release_status(row),
         }
 
@@ -179,7 +179,7 @@ def transfer_soil_gas_sample_locations(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Soil gas sample location",
+            "thing_type": "soil gas sample location",
             "release_status": _release_status(row),
         }
 
@@ -190,7 +190,7 @@ def transfer_other_site_types(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Other",
+            "thing_type": "other",
             "release_status": _release_status(row),
         }
 
@@ -201,7 +201,7 @@ def transfer_outfall_wastewater_return_flow(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
-            "thing_type": "Outfall of wastewater or return flow",
+            "thing_type": "outfall of wastewater or return flow",
             "release_status": _release_status(row),
         }
 
