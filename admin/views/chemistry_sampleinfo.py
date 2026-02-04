@@ -29,7 +29,7 @@ FK Change (2026-01):
 """
 
 from starlette.requests import Request
-from starlette_admin import HasOne
+from starlette_admin.fields import HasOne
 
 from admin.views.base import OcotilloModelView
 
