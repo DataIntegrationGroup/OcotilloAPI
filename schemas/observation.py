@@ -33,6 +33,7 @@ from schemas import (
     UTCAwareDatetime,
 )
 from schemas.parameter import ParameterResponse
+from core.enums import Unit, GroundwaterLevelAccuracy
 
 # class GeothermalMixin:
 #     depth: float
@@ -75,6 +76,7 @@ class CreateBaseObservation(BaseCreateModel, ValidateObservation):
 class CreateGroundwaterLevelObservation(CreateBaseObservation):
     measuring_point_height: float
     groundwater_level_reason: str
+    groundwater_level_accuracy: GroundwaterLevelAccuracy
 
 
 class CreateWaterChemistryObservation(CreateBaseObservation):
@@ -118,6 +120,7 @@ class GroundwaterLevelObservationResponse(BaseObservationResponse):
     depth_to_water_bgs: float | None
     measuring_point_height: float | None
     groundwater_level_reason: str | None  # NULL from legacy data
+    groundwater_level_accuracy: GroundwaterLevelAccuracy | None
 
     @model_validator(mode="before")
     def calculate_depth_to_water_bgs(self: Self) -> Self:

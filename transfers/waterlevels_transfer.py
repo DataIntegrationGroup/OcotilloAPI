@@ -113,6 +113,25 @@ class WaterLevelTransferer(Transferer):
                 except KeyError as e:
                     continue
 
+                if not pd.isna(row.DataQuality):
+                    try:
+                        groundwater_level_accuracy = lexicon_mapper.map_value(
+                            f"LU_DataQuality:{row.DataQuality}"
+                        )
+                        if groundwater_level_accuracy == "None":
+                            # 0 maps to the string "None" in LU_DataQuality
+                            groundwater_level_accuracy = None
+                    except KeyError as e:
+                        self._capture_error(
+                            pointid=row.PointID,
+                            error=f"Unknown DataQuality value: {row.DataQuality}",
+                            table="WaterLevels",
+                            field="DataQuality",
+                        )
+                        continue
+                else:
+                    groundwater_level_accuracy = None
+
                 release_status = "public" if row.PublicRelease else "private"
 
                 # field event
@@ -162,13 +181,20 @@ class WaterLevelTransferer(Transferer):
                 session.add(sample)
 
                 # Observation
-                observation = self._make_observation(row, sample, dt_utc, glv)
+                observation = self._make_observation(
+                    row, sample, dt_utc, glv, groundwater_level_accuracy
+                )
                 session.add(observation)
 
             session.commit()
 
     def _make_observation(
-        self, row: pd.Series, sample: Sample, dt_utc: datetime, glv: str
+        self,
+        row: pd.Series,
+        sample: Sample,
+        dt_utc: datetime,
+        glv: str,
+        groundwater_level_accuracy: str | None,
     ) -> Observation:
         if pd.isna(row.MPHeight):
             if pd.notna(row.DepthToWater) and pd.notna(row.DepthToWaterBGS):
@@ -220,6 +246,7 @@ class WaterLevelTransferer(Transferer):
             unit="ft",
             measuring_point_height=measuring_point_height,
             groundwater_level_reason=glv,
+            groundwater_level_accuracy=groundwater_level_accuracy,
             nma_data_quality=data_quality,
         )
         return observation

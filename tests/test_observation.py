@@ -104,6 +104,7 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
         "sensor_id": sensor.id,
         "groundwater_level_reason": "Water level not affected",
         "unit": "ft",
+        "groundwater_level_accuracy": "Water level accurate to within two hundreths of a foot",
     }
     response = client.post("/observation/groundwater-level", json=payload)
     data = response.json()
@@ -122,6 +123,7 @@ def test_add_groundwater_level_observation(groundwater_level_sample, sensor):
         data["depth_to_water_bgs"]
         == payload["value"] - payload["measuring_point_height"]
     )
+    assert data["groundwater_level_accuracy"] == payload["groundwater_level_accuracy"]
 
     cleanup_post_test(Observation, data["id"])
 
@@ -331,6 +333,8 @@ def test_get_observation_by_id(
         assert data["release_status"] == obs.release_status
         if obs.parameter.id == _groundwater_level_parameter_id():
             assert data["depth_to_water_bgs"] == obs.value - obs.measuring_point_height
+            assert data["groundwater_level_reason"] == obs.groundwater_level_reason
+            assert data["groundwater_level_accuracy"] == obs.groundwater_level_accuracy
         else:
             assert data["depth_to_water_bgs"] is None
 
@@ -418,6 +422,10 @@ def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
     assert (
         data["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
+    )
+    assert (
+        data["groundwater_level_accuracy"]
+        == groundwater_level_observation.groundwater_level_accuracy
     )
 
 

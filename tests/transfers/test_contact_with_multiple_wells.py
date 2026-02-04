@@ -14,7 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 
-from db import ThingContactAssociation, Thing, Notes
+from db import ThingContactAssociation, Thing, Notes, Contact
 from db.engine import session_ctx
 from transfers.contact_transfer import ContactTransfer
 from transfers.well_transfer import WellTransferer
@@ -34,6 +34,10 @@ def test_multiple_wells():
 
     with session_ctx() as sess:
         assert sess.query(ThingContactAssociation).count() == 6
+
+        sess.query(Thing).delete()
+        sess.query(Contact).delete()
+        sess.commit()
 
 
 def test_owner_comment_creates_notes_for_primary_only():
@@ -68,6 +72,10 @@ def test_owner_comment_creates_notes_for_primary_only():
         )
         assert secondary_notes == []
 
+        sess.query(Thing).delete()
+        sess.query(Contact).delete()
+        sess.commit()
+
 
 def test_owner_comment_absent_skips_notes():
     point_id = "MG-016"
@@ -85,6 +93,10 @@ def test_owner_comment_absent_skips_notes():
             .count()
         )
         assert note_count == 0
+
+        sess.query(Thing).delete()
+        sess.query(Contact).delete()
+        sess.commit()
 
 
 # ============= EOF =============================================

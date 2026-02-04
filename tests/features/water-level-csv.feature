@@ -45,13 +45,15 @@ Feature: Bulk upload water level entries from CSV via CLI
       """
       oco water-levels bulk-upload --file ./water_levels.csv --output json
       """
-    Then the command exits with code 0
+    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
+    And the command exits with code 0
     And stdout should be valid JSON
     And stdout includes a summary containing:
       | summary_field                 | value |
       | total_rows_processed          | 2     |
       | total_rows_imported           | 2     |
-      | validation_errors_or_warnings | 0     |
+      | total_validation_errors_or_warnings | 0     |
     And stdout includes an array of created water level entry objects
     And stderr should be empty
 
@@ -60,7 +62,9 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my water level CSV file contains all required headers but in a different column order
     And the CSV includes required fields:
       | required field name   |
+      | field_staff           |
       | well_name_point_id    |
+      | field_event_date_time |
       | water_level_date_time |
       | measuring_person      |
       | sample_method         |
@@ -85,7 +89,9 @@ Feature: Bulk upload water level entries from CSV via CLI
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    Then the command exits with code 0
+    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
+    And the command exits with code 0
     And all water level entries are imported
     And stderr should be empty
 
@@ -150,11 +156,22 @@ Feature: Bulk upload water level entries from CSV via CLI
 
   @negative @validation @lexicon_values @BDMS-TBD
   Scenario: Upload fails due to invalid lexicon values
-    Given my CSV file contains invalid lexicon values for "measuring_person", "sample_method", "level_status", or "data_quality"
+    Given my CSV file contains invalid lexicon values for "sample_method", "level_status", or "data_quality"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
     And stderr should contain validation errors identifying the invalid field and row
+    And no water level entries are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when "measuring_person" does not match "field_staff," "field_staff_2," or "field_staff_3"
+    Given my CSV file contains a "measuring_person" value that does not match any of the provided "field_staff" values
+    When I run the CLI command:
+      """
+      oco water-levels bulk-upload --file ./water_levels.csv
+      """
+    Then the command exits with a non-zero exit code
+    And stderr should contain a validation error for the "measuring_person" field
     And no water level entries are imported

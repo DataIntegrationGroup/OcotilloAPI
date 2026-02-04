@@ -93,6 +93,10 @@
       "description": null
     },
     {
+      "name": "groundwater_level_accuracy",
+      "description": null
+    },
+    {
       "name": "group_type",
       "description": null
     },
@@ -710,6 +714,69 @@
     {
       "categories": [
         "data_quality"
+      ],
+      "term": "None",
+      "definition": "None"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accurate to within two hundreths of a foot",
+      "definition": "Water level accurate to within two hundreths of a foot"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accurate to within one foot",
+      "definition": "Water level accurate to within one foot"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accuracy not to nearest foot or water level not repeatable",
+      "definition": "Water level accuracy not to nearest foot or water level not repeatable"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accurate to nearest foot (USGS accuracy level)",
+      "definition": "Water level accurate to nearest foot (USGS accuracy level)"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accurate to nearest tenth of a foot (USGS accuracy level)",
+      "definition": "Water level accurate to nearest tenth of a foot (USGS accuracy level)"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accurate to nearest one-hundredth of a foot (USGS accuracy level)",
+      "definition": "Water level accurate to nearest one-hundredth of a foot (USGS accuracy level)"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accuracy not to nearest foot (USGS accuracy level)",
+      "definition": "Water level accuracy not to nearest foot (USGS accuracy level)"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
+      ],
+      "term": "Water level accuracy unknown (USGS accuracy level)",
+      "definition": "Water level accuracy unknown (USGS accuracy level)"
+    },
+    {
+      "categories": [
+        "groundwater_level_accuracy"
       ],
       "term": "None",
       "definition": "None"

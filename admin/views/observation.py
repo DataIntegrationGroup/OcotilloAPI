@@ -62,6 +62,7 @@ class ObservationAdmin(OcotilloModelView):
         "observation_datetime",
         "unit",
         "groundwater_level_reason",
+        "groundwater_level_accuracy",
         "release_status",
         "created_at",
     ]
@@ -79,6 +80,7 @@ class ObservationAdmin(OcotilloModelView):
         "unit",
         "measuring_point_height",
         "groundwater_level_reason",
+        "groundwater_level_accuracy",
         "notes",
         # Relationships (display as selects)
         "sample_id",
