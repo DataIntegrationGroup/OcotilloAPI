@@ -201,7 +201,11 @@ def test_make_observation_maps_data_quality():
     with patch("transfers.waterlevels_transfer.lexicon_mapper") as mapper:
         mapper.map_value.return_value = "Mapped Quality"
         observation = transfer._make_observation(
-            row, sample, datetime.datetime.now(datetime.timezone.utc), "Reason"
+            row,
+            sample,
+            datetime.datetime.now(datetime.timezone.utc),
+            "Reason",
+            "Water level accurate to within one foot",
         )
         mapper.map_value.assert_any_call("LU_DataQuality:U2")
         assert observation.nma_data_quality == "Mapped Quality"
