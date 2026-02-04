@@ -21,6 +21,19 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+from transfers.thing_transfer import (
+    transfer_rock_sample_locations,
+    transfer_springs,
+    transfer_perennial_streams,
+    transfer_ephemeral_streams,
+    transfer_met_stations,
+    transfer_diversion_of_surface_water,
+    transfer_lake_pond_reservoir,
+    transfer_soil_gas_sample_locations,
+    transfer_other_site_types,
+    transfer_outfall_wastewater_return_flow,
+)
+
 # Load .env file FIRST, before any database imports, to ensure correct port/database settings
 load_dotenv(override=True)
 
@@ -61,12 +74,6 @@ from transfers.well_transfer import (
     WellScreenTransferer,
 )
 from transfers.well_transfer_util import cleanup_locations
-from transfers.thing_transfer import (
-    transfer_springs,
-    transfer_perennial_stream,
-    transfer_ephemeral_stream,
-    transfer_met,
-)
 from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
 
 from transfers.asset_transfer import AssetTransferer
@@ -125,6 +132,12 @@ class TransferOptions:
     transfer_perennial_streams: bool
     transfer_ephemeral_streams: bool
     transfer_met_stations: bool
+    transfer_rock_sample_locations: bool
+    transfer_diversion_of_surface_water: bool
+    transfer_lake_pond_reservoir: bool
+    transfer_soil_gas_sample_locations: bool
+    transfer_other_site_types: bool
+    transfer_outfall_wastewater_return_flow: bool
 
 
 def load_transfer_options() -> TransferOptions:
@@ -168,6 +181,20 @@ def load_transfer_options() -> TransferOptions:
         transfer_perennial_streams=get_bool_env("TRANSFER_PERENNIAL_STREAMS", True),
         transfer_ephemeral_streams=get_bool_env("TRANSFER_EPHEMERAL_STREAMS", True),
         transfer_met_stations=get_bool_env("TRANSFER_MET_STATIONS", True),
+        transfer_rock_sample_locations=get_bool_env(
+            "TRANSFER_ROCK_SAMPLE_LOCATIONS", True
+        ),
+        transfer_diversion_of_surface_water=get_bool_env(
+            "TRANSFER_DIVERSION_OF_SURFACE_WATER", True
+        ),
+        transfer_lake_pond_reservoir=get_bool_env("TRANSFER_LAKE_POND_RESERVOIR", True),
+        transfer_soil_gas_sample_locations=get_bool_env(
+            "TRANSFER_SOIL_GAS_SAMPLE_LOCATIONS", True
+        ),
+        transfer_other_site_types=get_bool_env("TRANSFER_OTHER_SITE_TYPES", True),
+        transfer_outfall_wastewater_return_flow=get_bool_env(
+            "TRANSFER_OUTFALL_WASTEWATER_RETURN_FLOW", True
+        ),
     )
 
 
@@ -360,14 +387,37 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
         # These create Things and Locations that chemistry/other transfers depend on.
         # =========================================================================
         non_well_tasks = []
-        if transfer_options.transfer_springs:
-            non_well_tasks.append(("Springs", transfer_springs))
-        if transfer_options.transfer_perennial_streams:
-            non_well_tasks.append(("PerennialStreams", transfer_perennial_stream))
-        if transfer_options.transfer_ephemeral_streams:
-            non_well_tasks.append(("EphemeralStreams", transfer_ephemeral_stream))
-        if transfer_options.transfer_met_stations:
-            non_well_tasks.append(("MetStations", transfer_met))
+        transfer_functions = {
+            "transfer_springs": transfer_springs,
+            "transfer_perennial_streams": transfer_perennial_streams,
+            "transfer_ephemeral_streams": transfer_ephemeral_streams,
+            "transfer_met_stations": transfer_met_stations,
+            "transfer_rock_sample_locations": transfer_rock_sample_locations,
+            "transfer_diversion_of_surface_water": transfer_diversion_of_surface_water,
+            "transfer_lake_pond_reservoir": transfer_lake_pond_reservoir,
+            "transfer_soil_gas_sample_locations": transfer_soil_gas_sample_locations,
+            "transfer_other_site_types": transfer_other_site_types,
+            "transfer_outfall_wastewater_return_flow": (
+                transfer_outfall_wastewater_return_flow
+            ),
+        }
+
+        for attr, thing_type in (
+            ("springs", "Springs"),
+            ("perennial_streams", "PerennialStreams"),
+            ("ephemeral_streams", "EphemeralStreams"),
+            ("met_stations", "MetStations"),
+            ("rock_sample_locations", "RockSampleLocations"),
+            ("diversion_of_surface_water", "DiversionOfSurfaceWater"),
+            ("lake_pond_reservoir", "LakePondReservoir"),
+            ("soil_gas_sample_locations", "SoilGasSampleLocations"),
+            ("other_site_types", "OtherSiteTypes"),
+            ("outfall_wastewater_return_flow", "OutfallWastewaterReturnFlow"),
+        ):
+            attr_name = f"transfer_{attr}"
+            if getattr(transfer_options, attr_name):
+                transfer_func = transfer_functions[attr_name]
+                non_well_tasks.append((thing_type, transfer_func))
 
         if non_well_tasks:
             message("PHASE 1.5: NON-WELL LOCATION TYPES (PARALLEL)")
