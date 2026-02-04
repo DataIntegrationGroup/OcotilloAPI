@@ -570,7 +570,7 @@ class NMA_SurfaceWaterData(Base):
     """
     Legacy SurfaceWaterData table from AMPAPI.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a Thing child (linked via LocationId -> Thing.nma_pk_location).
     """
 
     __tablename__ = "NMA_SurfaceWaterData"
@@ -579,7 +579,10 @@ class NMA_SurfaceWaterData(Base):
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
     # FK
-    # FK not assigned.
+    # FK to Thing - required for all SurfaceWaterData records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Legacy PK (for audit)
     surface_id: Mapped[uuid.UUID] = mapped_column(
@@ -611,6 +614,18 @@ class NMA_SurfaceWaterData(Base):
     aq_class: Mapped[Optional[str]] = mapped_column("AqClass", String(50))
     source_notes: Mapped[Optional[str]] = mapped_column("SourceNotes", String(200))
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
+
+    # Relationships
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="surface_water_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_SurfaceWaterData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_SurfaceWaterData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_SurfaceWaterPhotos(Base):

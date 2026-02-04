@@ -53,6 +53,7 @@ if TYPE_CHECKING:
         NMA_HydraulicsData,
         NMA_Soil_Rock_Results,
         NMA_Stratigraphy,
+        NMA_SurfaceWaterData,
         NMA_WaterLevelsContinuous_Pressure_Daily,
     )
 
@@ -360,6 +361,12 @@ class Thing(
             cascade="all, delete-orphan",
             passive_deletes=True,
         )
+    )
+    surface_water_data: Mapped[List["NMA_SurfaceWaterData"]] = relationship(
+        "NMA_SurfaceWaterData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---

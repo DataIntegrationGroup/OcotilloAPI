@@ -23,7 +23,8 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_SurfaceWaterData
+from db import NMA_SurfaceWaterData, Thing
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
@@ -39,16 +40,43 @@ class SurfaceWaterDataTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._thing_id_by_location_id: dict[str, int] = {}
+        self._build_thing_id_cache()
+
+    def _build_thing_id_cache(self) -> None:
+        with session_ctx() as session:
+            things = session.query(Thing.id, Thing.nma_pk_location).all()
+            for thing_id, nma_pk_location in things:
+                if nma_pk_location:
+                    key = self._normalize_location_id(nma_pk_location)
+                    if key:
+                        self._thing_id_by_location_id[key] = thing_id
+        logger.info(
+            "Built Thing cache with %s location ids",
+            len(self._thing_id_by_location_id),
+        )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = read_csv(self.source_table, parse_dates=["DateMeasured"])
         return df, df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = self._dedupe_rows(
-            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
-            key="OBJECTID",
-        )
+        rows: list[dict[str, Any]] = []
+        skipped_missing_thing = 0
+        for raw in self.cleaned_df.to_dict("records"):
+            record = self._row_dict(raw)
+            if record is None:
+                skipped_missing_thing += 1
+                continue
+            rows.append(record)
+
+        rows = self._dedupe_rows(rows, key="OBJECTID")
+
+        if skipped_missing_thing:
+            logger.warning(
+                "Skipped %s SurfaceWaterData rows without matching Thing",
+                skipped_missing_thing,
+            )
 
         insert_stmt = insert(NMA_SurfaceWaterData)
         excluded = insert_stmt.excluded
@@ -61,6 +89,7 @@ class SurfaceWaterDataTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["OBJECTID"],
                 set_={
+                    "thing_id": excluded["thing_id"],
                     "LocationId": excluded.LocationId,
                     "PointID": excluded.PointID,
                     "OBJECTID": excluded.OBJECTID,
@@ -82,7 +111,7 @@ class SurfaceWaterDataTransferer(Transferer):
             session.commit()
             session.expunge_all()
 
-    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
@@ -102,8 +131,17 @@ class SurfaceWaterDataTransferer(Transferer):
         if hasattr(dt, "to_pydatetime"):
             dt = dt.to_pydatetime()
 
+        location_id = to_uuid(val("LocationId"))
+        thing_id = self._resolve_thing_id(location_id)
+        if thing_id is None:
+            logger.warning(
+                "Skipping SurfaceWaterData LocationId=%s - Thing not found",
+                location_id,
+            )
+            return None
+
         return {
-            "LocationId": to_uuid(val("LocationId")),
+            "LocationId": location_id,
             "SurfaceID": to_uuid(val("SurfaceID")),
             "PointID": val("PointID"),
             "OBJECTID": val("OBJECTID"),
@@ -119,6 +157,7 @@ class SurfaceWaterDataTransferer(Transferer):
             "AqClass": val("AqClass"),
             "SourceNotes": val("SourceNotes"),
             "DataSource": val("DataSource"),
+            "thing_id": thing_id,
         }
 
     def _dedupe_rows(
@@ -137,6 +176,16 @@ class SurfaceWaterDataTransferer(Transferer):
             else:
                 deduped[row_key] = row
         return list(deduped.values()) + passthrough
+
+    def _resolve_thing_id(self, location_id: Optional[uuid.UUID]) -> Optional[int]:
+        if location_id is None:
+            return None
+        key = self._normalize_location_id(str(location_id))
+        return self._thing_id_by_location_id.get(key)
+
+    @staticmethod
+    def _normalize_location_id(value: str) -> str:
+        return value.strip().lower()
 
 
 def run(batch_size: int = 1000) -> None:
