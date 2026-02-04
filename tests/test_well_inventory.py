@@ -615,7 +615,9 @@ class TestWellInventoryErrorHandling:
 
     def test_upload_invalid_boolean_value(self):
         """Upload fails with 422 when boolean field has invalid value."""
-        file_path = Path("tests/features/data/well-inventory-invalid-boolean-value-maybe.csv")
+        file_path = Path(
+            "tests/features/data/well-inventory-invalid-boolean-value-maybe.csv"
+        )
         if file_path.exists():
             response = client.post(
                 "/well-inventory-csv",
@@ -949,7 +951,10 @@ class TestWellInventoryAPIEdgeCases:
             assert response.status_code == 422
             data = response.json()
             errors = data.get("validation_errors", [])
-            assert any("Duplicate header" in str(e) or "header" in str(e).lower() for e in errors)
+            assert any(
+                "Duplicate header" in str(e) or "header" in str(e).lower()
+                for e in errors
+            )
 
     def test_upload_valid_with_comma_in_quotes(self):
         """Upload succeeds when field value contains comma inside quotes."""
