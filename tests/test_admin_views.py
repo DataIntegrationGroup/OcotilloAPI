@@ -60,9 +60,10 @@ class TestAdminViewsImport:
             except Exception as e:
                 failed_imports.append((full_name, str(e)))
 
-        assert not failed_imports, (
-            f"Failed to import admin view modules:\n"
-            + "\n".join(f"  {name}: {err}" for name, err in failed_imports)
+        assert (
+            not failed_imports
+        ), f"Failed to import admin view modules:\n" + "\n".join(
+            f"  {name}: {err}" for name, err in failed_imports
         )
 
     @pytest.mark.parametrize(
