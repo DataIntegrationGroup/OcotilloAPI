@@ -1,7 +1,7 @@
 """add thing_id to NMA_SurfaceWaterData
 
 Revision ID: c7f8a9b0c1d2
-Revises: 71a4c6b3d2e8
+Revises: d9f1e2c3b4a5
 Create Date: 2026-02-04 12:03:00.000000
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c7f8a9b0c1d2"
-down_revision: Union[str, Sequence[str], None] = "71a4c6b3d2e8"
+down_revision: Union[str, Sequence[str], None] = "d9f1e2c3b4a5"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
