@@ -25,6 +25,7 @@ from core.dependencies import (
     amp_viewer_function,
 )
 from db import (
+    Group,
     Location,
     LocationThingAssociation,
     Thing,
@@ -667,6 +668,31 @@ class TestWellInventoryErrorHandling:
         data = response.json()
         assert "encoding" in str(data).lower() or "Empty" in str(data)
 
+    def test_validation_error_structure_is_consistent(self):
+        """Validation errors have consistent structure with row, field, error keys."""
+        content = (
+            b"project,well_name_point_id,site_name,date_time,field_staff,"
+            b"utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method,"
+            b"measuring_point_height_ft\n"
+            b"Test,,Site1,2025-01-01T10:00:00,Staff,"
+            b"357000,3784000,13N,5000,GPS,3.5\n"
+        )
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": ("test.csv", BytesIO(content), "text/csv")},
+        )
+
+        assert response.status_code == 422
+        data = response.json()
+        errors = data.get("validation_errors", [])
+
+        assert len(errors) > 0, "Expected validation errors"
+
+        for error in errors:
+            assert "row" in error, f"Missing 'row' key in error: {error}"
+            assert "field" in error, f"Missing 'field' key in error: {error}"
+            assert "error" in error, f"Missing 'error' key in error: {error}"
+
 
 # =============================================================================
 # Unit Tests for Helper Functions
@@ -893,6 +919,34 @@ class TestWellInventoryHelpers:
         # Should default to 1 when suffix is not numeric
         assert well_id == "XY-0001"
         assert offset == 1
+
+    def test_group_query_with_multiple_conditions(self):
+        """Group query correctly uses SQLAlchemy and_() for multiple conditions."""
+        from db import Group
+        from sqlalchemy import select, and_
+
+        with session_ctx() as session:
+            # Create test group
+            test_group = Group(name="TestProject", group_type="Monitoring Plan")
+            session.add(test_group)
+            session.commit()
+
+            # Query using and_() - this is the pattern used in well_inventory.py
+            sql = select(Group).where(
+                and_(
+                    Group.group_type == "Monitoring Plan",
+                    Group.name == "TestProject",
+                )
+            )
+            found = session.scalars(sql).one_or_none()
+
+            assert found is not None, "and_() query should find the group"
+            assert found.name == "TestProject"
+            assert found.group_type == "Monitoring Plan"
+
+            # Clean up
+            session.delete(test_group)
+            session.commit()
 
 
 class TestWellInventoryAPIEdgeCases:
