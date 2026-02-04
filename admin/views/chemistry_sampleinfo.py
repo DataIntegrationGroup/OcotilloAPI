@@ -28,8 +28,6 @@ FK Change (2026-01):
 - thing_id: Integer FK to Thing.id
 """
 
-
-
 from starlette.requests import Request
 from starlette_admin.fields import HasOne
 
