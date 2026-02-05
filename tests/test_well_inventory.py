@@ -25,7 +25,6 @@ from core.dependencies import (
     amp_viewer_function,
 )
 from db import (
-    Group,
     Location,
     LocationThingAssociation,
     Thing,
@@ -87,8 +86,7 @@ def test_well_inventory_db_contents():
         "/well-inventory-csv",
         files={"file": open(file, "rb")},
     )
-    data = response.json()
-    print(data)
+
     assert (
         response.status_code == 201
     ), f"Unexpected status code: {response.status_code}"
