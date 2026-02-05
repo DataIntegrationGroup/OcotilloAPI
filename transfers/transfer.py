@@ -513,8 +513,6 @@ def _transfer_parallel(
         parallel_tasks_1.append(("LinkIdsLocation", LinkIdsLocationDataTransferer))
     if opts.transfer_groups:
         parallel_tasks_1.append(("Groups", ProjectGroupTransferer))
-    if opts.transfer_surface_water_photos:
-        parallel_tasks_1.append(("SurfaceWaterPhotos", SurfaceWaterPhotosTransferer))
     if opts.transfer_soil_rock_results:
         parallel_tasks_1.append(("SoilRockResults", SoilRockResultsTransferer))
     if opts.transfer_weather_photos:
@@ -599,8 +597,6 @@ def _transfer_parallel(
         metrics.location_link_ids_metrics(*results_map["LinkIdsLocation"])
     if "Groups" in results_map and results_map["Groups"]:
         metrics.group_metrics(*results_map["Groups"])
-    if "SurfaceWaterPhotos" in results_map and results_map["SurfaceWaterPhotos"]:
-        metrics.surface_water_photos_metrics(*results_map["SurfaceWaterPhotos"])
     if "SoilRockResults" in results_map and results_map["SoilRockResults"]:
         metrics.soil_rock_results_metrics(*results_map["SoilRockResults"])
     if "Assets" in results_map and results_map["Assets"]:
@@ -628,6 +624,11 @@ def _transfer_parallel(
         metrics.weather_data_metrics(*results_map["WeatherData"])
     if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
         metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
+
+    if opts.transfer_surface_water_photos:
+        message("TRANSFERRING SURFACE WATER PHOTOS")
+        results = _execute_transfer(SurfaceWaterPhotosTransferer, flags=flags)
+        metrics.surface_water_photos_metrics(*results)
 
     if opts.transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
