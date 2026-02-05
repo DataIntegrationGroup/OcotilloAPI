@@ -33,16 +33,14 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
     # Backfill thing_id based on LocationId -> Thing.nma_pk_location
-    op.execute(
-        """
+    op.execute("""
         UPDATE "NMA_WeatherData" wd
         SET thing_id = t.id
         FROM thing t
         WHERE t.nma_pk_location IS NOT NULL
           AND wd."LocationId" IS NOT NULL
           AND t.nma_pk_location = wd."LocationId"::text
-        """
-    )
+        """)
     # Remove any rows that cannot be linked to a Thing, then enforce NOT NULL
     op.execute('DELETE FROM "NMA_WeatherData" WHERE thing_id IS NULL')
     op.alter_column(
