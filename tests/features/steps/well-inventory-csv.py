@@ -88,60 +88,6 @@ def step_impl(context: Context):
     )
 
 
-# @then(
-#     "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value."
-# )
-# def step_impl(context: Context):
-#     """Converts all datetime strings in the CSV rows to timezone-aware datetime objects with Mountain Time offset."""
-#     for i, row in enumerate(context.rows):
-#         # Convert date_time field
-#         date_time_naive = datetime.fromisoformat(row["date_time"])
-#         date_time_aware = convert_dt_tz_naive_to_tz_aware(
-#             date_time_naive, "America/Denver"
-#         )
-#         row["date_time"] = date_time_aware.isoformat()
-
-#         # confirm correct time zone and offset
-#         if i == 0:
-#             # MST, offset -07:00
-#             assert date_time_aware.utcoffset() == timedelta(
-#                 hours=-7
-#             ), "date_time offset is not -07:00"
-#         else:
-#             # MDT, offset -06:00
-#             assert date_time_aware.utcoffset() == timedelta(
-#                 hours=-6
-#             ), "date_time offset is not -06:00"
-
-#         # confirm the time was not changed from what was provided
-#         assert (
-#             date_time_aware.replace(tzinfo=None) == date_time_naive
-#         ), "date_time value was changed during timezone assignment"
-
-#         # Convert water_level_date_time field if it exists
-#         if row.get("water_level_date_time", None):
-#             wl_date_time_naive = datetime.fromisoformat(row["water_level_date_time"])
-#             wl_date_time_aware = convert_dt_tz_naive_to_tz_aware(
-#                 wl_date_time_naive, "America/Denver"
-#             )
-#             row["water_level_date_time"] = wl_date_time_aware.isoformat()
-
-#             if wl_date_time_aware.dst():
-#                 # MDT, offset -06:00
-#                 assert wl_date_time_aware.utcoffset() == timedelta(
-#                     hours=-6
-#                 ), "water_level_date_time offset is not -06:00"
-#             else:
-#                 # MST, offset -07:00
-#                 assert wl_date_time_aware.utcoffset() == timedelta(
-#                     hours=-7
-#                 ), "water_level_date_time offset is not -07:00"
-
-#             assert (
-#                 wl_date_time_aware.replace(tzinfo=None) == wl_date_time_naive
-#             ), "water_level_date_time value was changed during timezone assignment"
-
-
 @then("the response includes a summary containing:")
 def step_impl(context: Context):
     response_json = context.response.json()
