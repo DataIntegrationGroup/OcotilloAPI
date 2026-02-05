@@ -6,19 +6,19 @@ from transfers import thing_transfer as tt
 @pytest.mark.parametrize(
     "func_name,site_code,thing_type",
     [
-        ("transfer_rock_sample_locations", "R", "Rock sample location"),
+        ("transfer_rock_sample_locations", "R", "rock sample location"),
         (
             "transfer_diversion_of_surface_water",
             "D",
-            "Diversion of surface water, etc.",
+            "diversion of surface water, etc.",
         ),
-        ("transfer_lake_pond_reservoir", "L", "Lake, pond or reservoir"),
-        ("transfer_soil_gas_sample_locations", "S", "Soil gas sample location"),
-        ("transfer_other_site_types", "OT", "Other"),
+        ("transfer_lake_pond_reservoir", "L", "lake, pond or reservoir"),
+        ("transfer_soil_gas_sample_locations", "S", "soil gas sample location"),
+        ("transfer_other_site_types", "OT", "other"),
         (
             "transfer_outfall_wastewater_return_flow",
             "O",
-            "Outfall of wastewater or return flow",
+            "outfall of wastewater or return flow",
         ),
     ],
 )

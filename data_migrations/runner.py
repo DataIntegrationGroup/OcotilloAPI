@@ -17,7 +17,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import (
     Boolean,
     Column,
@@ -27,7 +31,6 @@ from sqlalchemy import (
     Table,
     func,
     select,
-    text,
 )
 from sqlalchemy.orm import Session
 
@@ -117,12 +120,31 @@ def _is_applied(session: Session, migration: DataMigration) -> bool:
     return session.execute(stmt).scalar_one() > 0
 
 
-def _ensure_alembic_applied(session: Session, migration: DataMigration) -> None:
-    count = session.execute(
-        text("SELECT COUNT(*) FROM alembic_version WHERE version_num = :rev"),
-        {"rev": migration.alembic_revision},
-    ).scalar_one()
-    if count == 0:
+def _get_applied_alembic_revisions(session: Session) -> set[str]:
+    root = Path(__file__).resolve().parents[1]
+    cfg = Config(str(root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(root / "alembic"))
+
+    connection = session.connection()
+    context = MigrationContext.configure(connection)
+    heads = context.get_current_heads()
+    script = ScriptDirectory.from_config(cfg)
+
+    applied: set[str] = set()
+    for head in heads:
+        for rev in script.iterate_revisions(head, "base"):
+            applied.add(rev.revision)
+    return applied
+
+
+def _ensure_alembic_applied(
+    session: Session,
+    migration: DataMigration,
+    applied_revisions: set[str] | None = None,
+) -> None:
+    if applied_revisions is None:
+        applied_revisions = _get_applied_alembic_revisions(session)
+    if migration.alembic_revision not in applied_revisions:
         raise ValueError(
             f"Alembic revision {migration.alembic_revision} not applied for "
             f"data migration {migration.id}"
@@ -136,7 +158,8 @@ def run_migration(
     force: bool = False,
 ) -> bool:
     ensure_history_table(session)
-    _ensure_alembic_applied(session, migration)
+    applied_revisions = _get_applied_alembic_revisions(session)
+    _ensure_alembic_applied(session, migration, applied_revisions=applied_revisions)
 
     if not migration.is_repeatable and not force and _is_applied(session, migration):
         logger.info("Skipping data migration %s (already applied)", migration.id)
@@ -165,6 +188,8 @@ def run_all(
     force: bool = False,
     allowed_alembic_revisions: set[str] | None = None,
 ) -> list[str]:
+    if allowed_alembic_revisions is None:
+        allowed_alembic_revisions = _get_applied_alembic_revisions(session)
     ran = []
     for migration in list_migrations():
         if (
@@ -177,7 +202,9 @@ def run_all(
                 migration.alembic_revision,
             )
             continue
-        _ensure_alembic_applied(session, migration)
+        _ensure_alembic_applied(
+            session, migration, applied_revisions=allowed_alembic_revisions
+        )
         if migration.is_repeatable and not include_repeatable:
             logger.info(
                 "Skipping repeatable migration %s (include_repeatable=false)",

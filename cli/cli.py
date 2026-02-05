@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from enum import Enum
 from pathlib import Path
 
 import typer
@@ -25,6 +26,10 @@ water_levels = typer.Typer(help="Water-level utilities")
 data_migrations = typer.Typer(help="Data migration utilities")
 cli.add_typer(water_levels, name="water-levels")
 cli.add_typer(data_migrations, name="data-migrations")
+
+
+class OutputFormat(str, Enum):
+    json = "json"
 
 
 @cli.command("initialize-lexicon")
@@ -79,7 +84,7 @@ def water_levels_bulk_upload(
         readable=True,
         help="Path to CSV file containing water level rows",
     ),
-    output_format: str | None = typer.Option(
+    output_format: OutputFormat | None = typer.Option(
         None,
         "--output",
         help="Optional output format",
@@ -91,7 +96,7 @@ def water_levels_bulk_upload(
     # TODO: use the same helper function used by api to parse and upload a WL csv
     from cli.service_adapter import water_levels_csv
 
-    pretty_json = (output_format or "").lower() == "json"
+    pretty_json = output_format == OutputFormat.json
     water_levels_csv(file_path, pretty_json=pretty_json)
 
 
