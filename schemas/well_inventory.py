@@ -130,7 +130,7 @@ ContactRoleField: TypeAlias = Annotated[Optional[Role], BeforeValidator(blank_to
 OptionalFloat: TypeAlias = Annotated[
     Optional[float], BeforeValidator(empty_str_to_none)
 ]
-MonitoryFrequencyField: TypeAlias = Annotated[
+MonitoringFrequencyField: TypeAlias = Annotated[
     Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
 ]
 WellPurposeField: TypeAlias = Annotated[
@@ -249,7 +249,7 @@ class WellInventoryRow(BaseModel):
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
     well_hole_status: Optional[str] = None
-    monitoring_frequency: MonitoryFrequencyField = None
+    monitoring_frequency: MonitoringFrequencyField = None
 
     result_communication_preference: Optional[str] = None
     contact_special_requests_notes: Optional[str] = None

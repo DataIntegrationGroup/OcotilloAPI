@@ -25,7 +25,6 @@ from core.dependencies import (
     amp_viewer_function,
 )
 from db import (
-    Group,
     Location,
     LocationThingAssociation,
     Thing,
@@ -87,8 +86,7 @@ def test_well_inventory_db_contents():
         "/well-inventory-csv",
         files={"file": open(file, "rb")},
     )
-    data = response.json()
-    print(data)
+
     assert (
         response.status_code == 201
     ), f"Unexpected status code: {response.status_code}"
@@ -236,6 +234,18 @@ def test_well_inventory_db_contents():
                         file_content["datalogger_installation_permission"].lower()
                         == "true"
                     )
+
+            assert thing.well_status == file_content["well_hole_status"]
+            assert (
+                thing.datalogger_suitability_status == "Datalogger can be installed"
+                if file_content["datalogger_possible"].lower() == "true"
+                else "Datalogger cannot be installed"
+            )
+            assert (
+                thing.open_status == "Open"
+                if file_content["is_open"].lower() == "true"
+                else "Closed"
+            )
 
             # LOCATION AND RELATED RECORDS
             location_thing_association = (
