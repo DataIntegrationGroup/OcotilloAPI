@@ -28,6 +28,7 @@ from uuid import uuid4
 
 from db.engine import session_ctx
 from db.nma_legacy import NMA_WeatherData
+from db.thing import Thing
 
 
 def _next_object_id() -> int:
@@ -35,15 +36,25 @@ def _next_object_id() -> int:
     return -(uuid4().int % 2_000_000_000)
 
 
+def _attach_thing_with_location(session, water_well_thing):
+    location_id = uuid4()
+    thing = session.get(Thing, water_well_thing.id)
+    thing.nma_pk_location = str(location_id)
+    session.commit()
+    return thing, location_id
+
+
 # ===================== CREATE tests ==========================
-def test_create_weather_data_all_fields():
+def test_create_weather_data_all_fields(water_well_thing):
     """Test creating a weather data record with all migrated fields."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record = NMA_WeatherData(
             object_id=_next_object_id(),
-            location_id=uuid4(),
+            location_id=location_id,
             point_id="WX-1001",
             weather_id=uuid4(),
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -58,12 +69,15 @@ def test_create_weather_data_all_fields():
         session.commit()
 
 
-def test_create_weather_data_minimal():
+def test_create_weather_data_minimal(water_well_thing):
     """Test creating a weather data record with minimal fields."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1002",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -71,7 +85,7 @@ def test_create_weather_data_minimal():
 
         assert record.object_id is not None
         assert record.point_id == "WX-1002"
-        assert record.location_id is None
+        assert record.location_id is not None
         assert record.weather_id is None
 
         session.delete(record)
@@ -79,12 +93,15 @@ def test_create_weather_data_minimal():
 
 
 # ===================== READ tests ==========================
-def test_read_weather_data_by_object_id():
+def test_read_weather_data_by_object_id(water_well_thing):
     """Test reading a specific weather data record by OBJECTID."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1003",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -98,16 +115,21 @@ def test_read_weather_data_by_object_id():
         session.commit()
 
 
-def test_query_weather_data_by_point_id():
+def test_query_weather_data_by_point_id(water_well_thing):
     """Test querying weather data by point_id."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record1 = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1004",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         record2 = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1005",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add_all([record1, record2])
         session.commit()
@@ -126,12 +148,15 @@ def test_query_weather_data_by_point_id():
 
 
 # ===================== UPDATE tests ==========================
-def test_update_weather_data():
+def test_update_weather_data(water_well_thing):
     """Test updating a weather data record."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1006",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -151,12 +176,15 @@ def test_update_weather_data():
 
 
 # ===================== DELETE tests ==========================
-def test_delete_weather_data():
+def test_delete_weather_data(water_well_thing):
     """Test deleting a weather data record."""
     with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
         record = NMA_WeatherData(
             object_id=_next_object_id(),
             point_id="WX-1007",
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -178,6 +206,7 @@ def test_weather_data_has_all_migrated_columns():
         "point_id",
         "weather_id",
         "object_id",
+        "thing_id",
     ]
 
     for column in expected_columns:

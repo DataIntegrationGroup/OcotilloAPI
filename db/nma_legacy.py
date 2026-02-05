@@ -663,7 +663,7 @@ class NMA_WeatherData(Base):
     """
     Legacy WeatherData table from AMPAPI.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a Thing child and must link to a parent Thing.
     """
 
     __tablename__ = "NMA_WeatherData"
@@ -672,7 +672,9 @@ class NMA_WeatherData(Base):
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
     # FK
-    # FK not assigned.
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Legacy PK (for audit)
     weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -686,6 +688,18 @@ class NMA_WeatherData(Base):
 
     # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(10))
+
+    # Relationships
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="weather_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_WeatherData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_WeatherData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_WeatherPhotos(Base):
