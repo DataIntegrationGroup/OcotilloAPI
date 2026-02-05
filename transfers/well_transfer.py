@@ -342,6 +342,7 @@ class WellTransferer(Transferer):
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
+            well_data["nma_pk_location"] = row.LocationId
 
             well_data.pop("notes")
             well = Thing(**well_data)
@@ -718,6 +719,7 @@ class WellTransferer(Transferer):
             )
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
+            well_data["nma_pk_location"] = row.LocationId
             well_data.pop("notes", None)
 
             well = Thing(**well_data)
