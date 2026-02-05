@@ -82,7 +82,6 @@ def water_levels_bulk_upload(
     output_format: str | None = typer.Option(
         None,
         "--output",
-        case_sensitive=False,
         help="Optional output format",
     ),
 ):
