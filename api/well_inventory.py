@@ -559,6 +559,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_pump_depth=model.well_pump_depth_ft,
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
+        well_status=model.well_hole_status,
         notes=well_notes,
         well_purposes=well_purposes,
         monitoring_frequencies=monitoring_frequencies,
@@ -579,6 +580,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     - MonitoringFrequencyHistory
     - StatusHistory for status_type 'Open Status'
     - StatusHistory for status_type 'Datalogger Suitability Status'
+    - StatusHistory for status_type 'Well Status'
     """
     well = add_thing(
         session=session, data=well_data, user=user, thing_type="water well"
