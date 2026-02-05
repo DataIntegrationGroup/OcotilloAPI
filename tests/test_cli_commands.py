@@ -184,7 +184,6 @@ def test_water_levels_cli_persists_observations(
                 )
             )
             observations = session.scalars(stmt).all()
-            print(observations)
             assert (
                 len(observations) == 1
             ), "Expected one observation for the uploaded CSV"
