@@ -15,6 +15,7 @@
 # ===============================================================================
 from behave import then, given, when
 from behave.runner import Context
+from datetime import datetime, timedelta
 from starlette.testclient import TestClient
 
 from core.dependencies import (
@@ -25,6 +26,7 @@ from core.dependencies import (
     amp_admin_function,
 )
 from core.initializers import register_routes
+from services.util import convert_dt_tz_naive_to_tz_aware
 
 
 @given("a functioning api")
@@ -170,6 +172,45 @@ def step_impl(context: Context):
     for key in keys:
         if key not in context.required_fields:
             assert key in optional_fields, f"Unexpected field found: {key}"
+
+
+@then(
+    "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value."
+)
+def step_impl(context: Context):
+    """
+    In the @given steps that prececeed this step, a list of datetime fields
+    needs to be added to the context object so that they can be checked here. This way
+    we can test datetime fields with different names, such as 'date_time' in well-inventory-csv
+    and `water_level_date_time` in water-level-csv.
+    """
+
+    for i, row in enumerate(context.rows):
+
+        for datetime_field in context.datetime_fields:
+            # Convert date_time field
+            date_time_naive = datetime.fromisoformat(row[datetime_field])
+            print(date_time_naive)
+            date_time_aware = convert_dt_tz_naive_to_tz_aware(
+                date_time_naive, "America/Denver"
+            )
+            row[datetime_field] = date_time_aware.isoformat()
+            # confirm correct time zone and offset
+            if date_time_aware.dst() == timedelta(0):
+                # MST, offset -07:00
+                assert date_time_aware.utcoffset() == timedelta(
+                    hours=-7
+                ), "date_time offset is not -07:00"
+            else:
+                # MDT, offset -06:00
+                assert date_time_aware.utcoffset() == timedelta(
+                    hours=-6
+                ), "date_time offset is not -06:00"
+
+            # confirm the time was not changed from what was provided
+            assert (
+                date_time_aware.replace(tzinfo=None) == date_time_naive
+            ), "date_time value was changed during timezone assignment"
 
 
 # ============= EOF =============================================

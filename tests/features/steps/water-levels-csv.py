@@ -13,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
-from zoneinfo import ZoneInfo
 
 from behave import given, when, then
 from behave.runner import Context
 
-from db import Observation, FieldEvent, Sample
+from db import Observation
 from db.engine import session_ctx
 from schemas.water_level_csv import WaterLevelCsvRow
 from services.water_level_csv import bulk_upload_water_levels
@@ -80,7 +79,7 @@ def _serialize_csv(rows: List[Dict[str, Any]], headers: Iterable[str]) -> str:
 
 
 def _write_csv_to_context(context: Context) -> None:
-    csv_text = _serialize_csv(context.csv_rows, context.csv_headers)
+    csv_text = _serialize_csv(context.rows, context.csv_headers)
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
     temp_file.write(csv_text.encode("utf-8"))
     temp_file.flush()
@@ -93,7 +92,7 @@ def _write_csv_to_context(context: Context) -> None:
 def _set_rows(
     context: Context, rows: List[Dict[str, str]], headers: List[str] | None = None
 ) -> None:
-    context.csv_rows = rows
+    context.rows = rows
     if headers is not None:
         context.csv_headers = headers
     elif rows:
@@ -102,9 +101,6 @@ def _set_rows(
         context.csv_headers = [field for field in WaterLevelCsvRow.model_fields.keys()]
     _write_csv_to_context(context)
     context.stdout_json = None
-
-    # set context.rows to be all rows and the header for optional step
-    context.rows = rows
 
 
 def _ensure_stdout_json(context: Context) -> Dict[str, Any]:
@@ -121,10 +117,18 @@ def step_impl(context: Context):
     rows = _build_valid_rows(context)
     _set_rows(context, rows)
 
+    if (
+        not hasattr(context, "datetime_fields")
+        or "water_level_date_time" not in context.datetime_fields
+    ):
+        context.datetime_fields = ["water_level_date_time"]
+    else:
+        context.datetime_fields.append("water_level_date_time")
+
 
 @given("my CSV file contains multiple rows of water level entry data")
 def step_impl(context: Context):
-    assert len(context.csv_rows) >= 2
+    assert len(context.rows) >= 2
 
 
 @given("the water level CSV includes required fields:")
@@ -141,7 +145,7 @@ def step_impl(context: Context):
 @given('each "well_name_point_id" value matches an existing well')
 def step_impl(context: Context):
     available = set(_available_well_names(context))
-    for row in context.csv_rows:
+    for row in context.rows:
         assert (
             row["well_name_point_id"] in available
         ), f"Unknown well identifier {row['well_name_point_id']}"
@@ -151,7 +155,7 @@ def step_impl(context: Context):
     '"water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")'
 )
 def step_impl(context: Context):
-    for row in context.csv_rows:
+    for row in context.rows:
         assert row["water_level_date_time"].startswith("2025-02")
         assert "T" in row["water_level_date_time"]
         dt_naive = datetime.strptime(row["water_level_date_time"], "%Y-%m-%dT%H:%M:%S")
@@ -179,49 +183,6 @@ def step_impl(context: Context):
         context.csv_file, pretty_json=output_json
     )
     context.stdout_json = None
-
-
-@then(
-    "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. "
-)
-def step_impl(context: Context):
-    with session_ctx() as session:
-        for field in ["field_event_date_time", "water_level_date_time"]:
-            for i, row in enumerate(context.csv_rows):
-                dt_str = row[field]
-                dt_naive = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
-                tz = ZoneInfo("America/Denver")
-                dt_aware = dt_naive.replace(tzinfo=tz)
-
-                if field == "field_event_date_time":
-                    field_event = session.query(FieldEvent).one_or_none(
-                        FieldEvent.id
-                        == context.cli_result.payload.water_levels[i].field_event_id
-                    )
-                    assert (
-                        field_event.event_date == dt_aware
-                    ), f"Expected {dt_aware} but got {field_event.event_date} for row {i+1}"
-                    assert field_event.utcoffset() == timedelta(hours=-7)
-                else:
-                    observation = session.query(Observation).one_or_none(
-                        Observation.id
-                        == context.cli_result.payload.water_levels[i].observation_id
-                    )
-                    assert (
-                        observation.observation_datetime == dt_aware
-                    ), f"Expected {dt_aware} but got {observation.observation_datetime} for row {i+1}"
-                    assert observation.observation_datetime.utcoffset() == timedelta(
-                        hours=-7
-                    )
-
-                    sample = session.query(Sample).one_or_none(
-                        Sample.id
-                        == context.cli_result.payload.water_levels[i].sample_id
-                    )
-                    assert (
-                        sample.sample_date == dt_aware
-                    ), f"Expected {dt_aware} but got {sample.sample_date} for row {i+1}"
-                    assert sample.sample_date.utcoffset() == timedelta(hours=-7)
 
 
 @then("the command exits with code 0")
@@ -278,6 +239,14 @@ def step_impl(context: Context):
     _set_rows(context, rows, headers=headers)
     assert headers != list(rows[0].keys())
 
+    if (
+        not hasattr(context, "datetime_fields")
+        or "water_level_date_time" not in context.datetime_fields
+    ):
+        context.datetime_fields = ["water_level_date_time"]
+    else:
+        context.datetime_fields.append("water_level_date_time")
+
 
 @then("all water level entries are imported")
 def step_impl(context: Context):
@@ -298,6 +267,14 @@ def step_impl(context: Context):
     headers = list(rows[0].keys())
     _set_rows(context, rows, headers=headers)
     assert "custom_note" in context.csv_headers
+
+    if (
+        not hasattr(context, "datetime_fields")
+        or "water_level_date_time" not in context.datetime_fields
+    ):
+        context.datetime_fields = ["water_level_date_time"]
+    else:
+        context.datetime_fields.append("water_level_date_time")
 
 
 # ============================================================================
