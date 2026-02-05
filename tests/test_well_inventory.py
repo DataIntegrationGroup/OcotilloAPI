@@ -235,6 +235,18 @@ def test_well_inventory_db_contents():
                         == "true"
                     )
 
+            assert thing.well_status == file_content["well_hole_status"]
+            assert (
+                thing.datalogger_suitability_status == "Datalogger can be installed"
+                if file_content["datalogger_possible"].lower() == "true"
+                else "Datalogger cannot be installed"
+            )
+            assert (
+                thing.open_status == "Open"
+                if file_content["is_open"].lower() == "true"
+                else "Closed"
+            )
+
             # LOCATION AND RELATED RECORDS
             location_thing_association = (
                 session.query(LocationThingAssociation)
