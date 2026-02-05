@@ -19,8 +19,8 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from click.testing import CliRunner
 from sqlalchemy import select
+from typer.testing import CliRunner
 
 from cli.cli import cli
 from db import FieldActivity, FieldEvent, Observation, Sample
@@ -138,10 +138,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
