@@ -33,8 +33,7 @@ def upgrade() -> None:
         ["SurfaceID"],
         ondelete="CASCADE",
     )
-    op.execute(
-        """
+    op.execute("""
         DELETE FROM "NMA_SurfaceWaterPhotos" p
         WHERE p."SurfaceID" IS NULL
            OR NOT EXISTS (
@@ -42,8 +41,7 @@ def upgrade() -> None:
                 FROM "NMA_SurfaceWaterData" d
                 WHERE d."SurfaceID" = p."SurfaceID"
            )
-        """
-    )
+        """)
     op.alter_column(
         "NMA_SurfaceWaterPhotos",
         "SurfaceID",

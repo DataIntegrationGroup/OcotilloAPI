@@ -33,8 +33,7 @@ def upgrade() -> None:
         ["WeatherID"],
         ondelete="CASCADE",
     )
-    op.execute(
-        """
+    op.execute("""
         DELETE FROM "NMA_WeatherPhotos" p
         WHERE p."WeatherID" IS NULL
            OR NOT EXISTS (
@@ -42,8 +41,7 @@ def upgrade() -> None:
                 FROM "NMA_WeatherData" d
                 WHERE d."WeatherID" = p."WeatherID"
            )
-        """
-    )
+        """)
     op.alter_column(
         "NMA_WeatherPhotos",
         "WeatherID",
