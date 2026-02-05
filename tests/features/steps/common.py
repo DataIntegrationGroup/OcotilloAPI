@@ -190,7 +190,6 @@ def step_impl(context: Context):
         for datetime_field in context.datetime_fields:
             # Convert date_time field
             date_time_naive = datetime.fromisoformat(row[datetime_field])
-            print(date_time_naive)
             date_time_aware = convert_dt_tz_naive_to_tz_aware(
                 date_time_naive, "America/Denver"
             )
