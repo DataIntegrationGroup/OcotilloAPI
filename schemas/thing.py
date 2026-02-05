@@ -168,6 +168,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_pump_depth: float | None = None
     is_suitable_for_datalogger: bool | None = None
     is_open: bool | None = None
+    well_status: str | None = None
     formation_completion_code: FormationCode | None = None
     nma_formation_zone: str | None = None
 
