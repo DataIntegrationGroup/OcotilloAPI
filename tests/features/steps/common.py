@@ -179,7 +179,7 @@ def step_impl(context: Context):
 )
 def step_impl(context: Context):
     """
-    In the @given steps that prececeed this step, a list of datetime fields
+    In the @given steps that precede this step, a list of datetime fields
     needs to be added to the context object so that they can be checked here. This way
     we can test datetime fields with different names, such as 'date_time' in well-inventory-csv
     and `water_level_date_time` in water-level-csv.
