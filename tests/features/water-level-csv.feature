@@ -173,5 +173,5 @@ Feature: Bulk upload water level entries from CSV via CLI
       oco water-levels bulk-upload --file ./water_levels.csv
       """
     Then the command exits with a non-zero exit code
-    And stderr should contain a validation error for the "measuring_person" field
+    And stderr should contain validation errors identifying the invalid field and row
     And no water level entries are imported

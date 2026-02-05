@@ -382,4 +382,17 @@ def step_impl(context: Context):
     ]
 
 
+# ============================================================================
+# Scenario: Upload fails when "measuring_person" does not match "field_staff," "field_staff_2," or "field_staff_3"
+# ============================================================================
+@given(
+    'my CSV file contains a "measuring_person" value that does not match any of the provided "field_staff" values'
+)
+def step_impl(context: Context):
+    rows = _build_valid_rows(context, count=1)
+    rows[0]["measuring_person"] = "Unknown Person"
+    _set_rows(context, rows)
+    context.invalid_fields = ["measuring_person"]
+
+
 # ============= EOF =============================================
