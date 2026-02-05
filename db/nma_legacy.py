@@ -702,7 +702,7 @@ class NMA_WeatherData(Base):
 
     # Legacy PK (for audit)
     weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "WeatherID", UUID(as_uuid=True)
+        "WeatherID", UUID(as_uuid=True), unique=True
     )
 
     # Legacy FK (for audit)
@@ -715,6 +715,12 @@ class NMA_WeatherData(Base):
 
     # Relationships
     thing: Mapped["Thing"] = relationship("Thing", back_populates="weather_data")
+    weather_photos: Mapped[list["NMA_WeatherPhotos"]] = relationship(
+        "NMA_WeatherPhotos",
+        back_populates="weather_data",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):
@@ -730,7 +736,7 @@ class NMA_WeatherPhotos(Base):
     """
     Legacy WeatherPhotos table from NM_Aquifer.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a child of NMA_WeatherData via WeatherID.
     """
 
     __tablename__ = "NMA_WeatherPhotos"
@@ -741,20 +747,38 @@ class NMA_WeatherPhotos(Base):
     )
 
     # FK:
-    # FK not assigned.
+    weather_id: Mapped[uuid.UUID] = mapped_column(
+        "WeatherID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_WeatherData.WeatherID", ondelete="CASCADE"),
+        nullable=False,
+    )
 
     # Legacy PK (for audit):
     # Current `global_id` is also the original PK in the legacy DB
 
     # Legacy FK (for audit):
-    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "WeatherID", UUID(as_uuid=True)
-    )
+    # weather_id is also the legacy FK in the source table.
 
     # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
     ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
+    # Relationships
+    weather_data: Mapped["NMA_WeatherData"] = relationship(
+        "NMA_WeatherData", back_populates="weather_photos"
+    )
+
+    @validates("weather_id")
+    def validate_weather_id(self, key, value):
+        """Prevent orphan NMA_WeatherPhotos - must have a parent NMA_WeatherData."""
+        if value is None:
+            raise ValueError(
+                "NMA_WeatherPhotos requires a parent NMA_WeatherData "
+                "(weather_id cannot be None)"
+            )
+        return value
 
 
 class NMA_Soil_Rock_Results(Base):
