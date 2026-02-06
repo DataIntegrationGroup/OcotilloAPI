@@ -51,9 +51,9 @@ if TYPE_CHECKING:
         NMA_AssociatedData,
         NMA_Chemistry_SampleInfo,
         NMA_HydraulicsData,
-        NMA_Radionuclides,
         NMA_Soil_Rock_Results,
         NMA_Stratigraphy,
+        NMA_SurfaceWaterData,
         NMA_WaterLevelsContinuous_Pressure_Daily,
     )
 
@@ -339,14 +339,6 @@ class Thing(
         passive_deletes=True,
     )
 
-    # One-To-Many: A Thing can have many NMA_Radionuclides records (legacy NMA data).
-    radionuclides: Mapped[List["NMA_Radionuclides"]] = relationship(
-        "NMA_Radionuclides",
-        back_populates="thing",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
     # One-To-Many: A Thing can have many NMA_AssociatedData records (legacy NMA data).
     associated_data: Mapped[List["NMA_AssociatedData"]] = relationship(
         "NMA_AssociatedData",
@@ -369,6 +361,12 @@ class Thing(
             cascade="all, delete-orphan",
             passive_deletes=True,
         )
+    )
+    surface_water_data: Mapped[List["NMA_SurfaceWaterData"]] = relationship(
+        "NMA_SurfaceWaterData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # --- Association Proxies ---

@@ -80,22 +80,29 @@ class NMA_WaterLevelsContinuous_Pressure_Daily(Base):
     data and mirrors the original column names/types closely so transfer scripts
     can operate without further schema mapping.
 
-    Note: This table is OUT OF SCOPE for the UUID->Integer PK refactoring since
-    it's not a Thing child table.
     """
 
     __tablename__ = "NMA_WaterLevelsContinuous_Pressure_Daily"
 
+    # PK
     global_id: Mapped[uuid.UUID] = mapped_column(
         "GlobalID", UUID(as_uuid=True), primary_key=True
     )
-    object_id: Mapped[Optional[int]] = mapped_column(
-        "OBJECTID", Integer, autoincrement=True
-    )
-    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+
     # FK to Thing table - required for all WaterLevelsContinuous_Pressure_Daily records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Legacy PK
+    # Current `global_id` is also the original PK in the legacy DB
+
+    # Legacy FK (not officially assigned as FK in legacy DB, but was used to link to wells)
+    well_id: Mapped[Optional[uuid.UUID]] = mapped_column("WellID", UUID(as_uuid=True))
+
+    # Additional columns
+    object_id: Mapped[Optional[int]] = mapped_column(
+        "OBJECTID", Integer, autoincrement=True
     )
     point_id: Mapped[Optional[str]] = mapped_column("PointID", String(50))
     date_measured: Mapped[datetime] = mapped_column(
@@ -143,7 +150,19 @@ class NMA_view_NGWMN_WellConstruction(Base):
 
     __tablename__ = "NMA_view_NGWMN_WellConstruction"
 
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # FK
+    # FK is undefined, but not needed for view tables such as this.
+
+    # Legacy PK (for audit)
+    # Legacy PK does not exist. This is expected for view tables such as this
+
+    # Legacy FK (for audit)
+    # Legacy FK does not exist. This is expected for view tables such as this.
+
+    # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(50))
     casing_top: Mapped[Optional[float]] = mapped_column("CasingTop", Float)
     casing_bottom: Mapped[Optional[float]] = mapped_column("CasingBottom", Float)
@@ -172,8 +191,20 @@ class NMA_view_NGWMN_WaterLevels(Base):
 
     __tablename__ = "NMA_view_NGWMN_WaterLevels"
 
+    # PK
     point_id: Mapped[str] = mapped_column("PointID", String(50), primary_key=True)
     date_measured: Mapped[date] = mapped_column("DateMeasured", Date, primary_key=True)
+
+    # FK
+    # FK is undefined, but not needed for view tables such as this.
+
+    # Legacy PK (for audit)
+    # Legacy PK does not exist. This is expected for view tables such as this
+
+    # Legacy FK (for audit)
+    # Legacy FK does not exist. This is expected for view tables such as this.
+
+    # Additional columns
     depth_to_water_bgs: Mapped[Optional[float]] = mapped_column(
         "DepthToWaterBGS", Float
     )
@@ -194,7 +225,19 @@ class NMA_view_NGWMN_Lithology(Base):
 
     __tablename__ = "NMA_view_NGWMN_Lithology"
 
+    # PK
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    # FK
+    # FK is undefined, but not needed for view tables such as this.
+
+    # Legacy PK (for audit)
+    # Legacy PK does not exist. This is expected for view tables such as this
+
+    # Legacy FK (for audit)
+    # Legacy FK does not exist. This is expected for view tables such as this.
+
+    # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(50))
     lithology: Mapped[Optional[str]] = mapped_column("Lithology", String(50))
     term: Mapped[Optional[str]] = mapped_column("TERM", String(100))
@@ -221,29 +264,30 @@ class NMA_HydraulicsData(Base):
 
     __tablename__ = "NMA_HydraulicsData"
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # Legacy ID columns (renamed with nma_ prefix)
-    nma_well_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_WellID", UUID(as_uuid=True)
-    )
-    nma_point_id: Mapped[Optional[str]] = mapped_column("nma_PointID", String(50))
-    nma_object_id: Mapped[Optional[int]] = mapped_column(
-        "nma_OBJECTID", Integer, unique=True
-    )
-
-    # Data columns
-    data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
+    # FK to Thing - required for all HydraulicsData records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
+    nma_well_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_WellID", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    nma_point_id: Mapped[Optional[str]] = mapped_column("nma_PointID", String(50))
+    nma_object_id: Mapped[Optional[int]] = mapped_column(
+        "nma_OBJECTID", Integer, unique=True
+    )
+    data_source: Mapped[Optional[str]] = mapped_column("Data Source", String(255))
     cs_gal_d_ft: Mapped[Optional[float]] = mapped_column("Cs (gal/d/ft)", Float)
     hd_ft2_d: Mapped[Optional[float]] = mapped_column("HD (ft2/d)", Float)
     hl_day_1: Mapped[Optional[float]] = mapped_column("HL (day-1)", Float)
@@ -270,6 +314,7 @@ class NMA_HydraulicsData(Base):
         "Hydraulic Remarks", String(200)
     )
 
+    # Relationships
     thing: Mapped["Thing"] = relationship("Thing", back_populates="hydraulics_data")
 
     @validates("thing_id")
@@ -302,28 +347,29 @@ class NMA_Stratigraphy(Base):
         ),
     )
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # Legacy ID columns (renamed with nma_ prefix)
-    nma_well_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_WellID", UUID(as_uuid=True)
-    )
-    nma_point_id: Mapped[str] = mapped_column("nma_PointID", String(10), nullable=False)
-    nma_object_id: Mapped[Optional[int]] = mapped_column(
-        "nma_OBJECTID", Integer, unique=True
-    )
-
-    # FK to Thing
+    # FK to Thing table - required for all Stratigraphy records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
+    nma_well_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_WellID", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    nma_point_id: Mapped[str] = mapped_column("nma_PointID", String(10), nullable=False)
+    nma_object_id: Mapped[Optional[int]] = mapped_column(
+        "nma_OBJECTID", Integer, unique=True
+    )
     strat_top: Mapped[int] = mapped_column("StratTop", SmallInteger, nullable=False)
     strat_bottom: Mapped[int] = mapped_column(
         "StratBottom", SmallInteger, nullable=False
@@ -370,15 +416,25 @@ class NMA_Chemistry_SampleInfo(Base):
 
     __tablename__ = "NMA_Chemistry_SampleInfo"
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
+    # FK to Thing - required for all ChemistrySampleInfo records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Legacy PK (for audit)
     nma_sample_pt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_SamplePtID", UUID(as_uuid=True), unique=True, nullable=True
     )
 
-    # Legacy ID columns (renamed with nma_ prefix)
+    # Legacy FK (for audit)
+    nma_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_LocationId", UUID(as_uuid=True)
+    )
+
+    # Additional columns
     nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(18))
     nma_sample_point_id: Mapped[str] = mapped_column(
         "nma_SamplePointID", String(10), nullable=False
@@ -386,16 +442,6 @@ class NMA_Chemistry_SampleInfo(Base):
     nma_object_id: Mapped[Optional[int]] = mapped_column(
         "nma_OBJECTID", Integer, unique=True
     )
-    # Legacy LocationId UUID - kept for audit trail
-    nma_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_LocationId", UUID(as_uuid=True)
-    )
-
-    # FK to Thing - required for all ChemistrySampleInfo records
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
-    )
-
     collection_date: Mapped[Optional[datetime]] = mapped_column(
         "CollectionDate", DateTime
     )
@@ -481,29 +527,33 @@ class NMA_AssociatedData(Base):
 
     __tablename__ = "NMA_AssociatedData"
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_assoc_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_AssocID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # Legacy ID columns (renamed with nma_ prefix)
-    nma_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_LocationId", UUID(as_uuid=True), unique=True
-    )
-    nma_point_id: Mapped[Optional[str]] = mapped_column("nma_PointID", String(10))
-    nma_object_id: Mapped[Optional[int]] = mapped_column(
-        "nma_OBJECTID", Integer, unique=True
-    )
-
-    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
-    formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
+    # FK to Thing - required for all AssociatedData records
     thing_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
+    # Legacy PK (for audit)
+    nma_assoc_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_AssocID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
+    nma_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_LocationId", UUID(as_uuid=True), unique=True
+    )
+
+    # Additional columns
+    nma_point_id: Mapped[Optional[str]] = mapped_column("nma_PointID", String(10))
+    nma_object_id: Mapped[Optional[int]] = mapped_column(
+        "nma_OBJECTID", Integer, unique=True
+    )
+    notes: Mapped[Optional[str]] = mapped_column("Notes", String(255))
+    formation: Mapped[Optional[str]] = mapped_column("Formation", String(15))
+
+    # Relationships
     thing: Mapped["Thing"] = relationship("Thing", back_populates="associated_data")
 
     @validates("thing_id")
@@ -520,20 +570,32 @@ class NMA_SurfaceWaterData(Base):
     """
     Legacy SurfaceWaterData table from AMPAPI.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a Thing child (linked via LocationId -> Thing.nma_pk_location).
     """
 
     __tablename__ = "NMA_SurfaceWaterData"
 
-    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "LocationId", UUID(as_uuid=True)
+    # PK
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    # FK
+    # FK to Thing - required for all SurfaceWaterData records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
+
+    # Legacy PK (for audit)
     surface_id: Mapped[uuid.UUID] = mapped_column(
         "SurfaceID", UUID(as_uuid=True), nullable=False
     )
-    point_id: Mapped[str] = mapped_column("PointID", String(10))
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
+    # Legacy FK (for audit)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
     discharge: Mapped[Optional[str]] = mapped_column("Discharge", String(50))
     discharge_method: Mapped[Optional[str]] = mapped_column(
         "DischargeMethod", String(50)
@@ -553,6 +615,18 @@ class NMA_SurfaceWaterData(Base):
     source_notes: Mapped[Optional[str]] = mapped_column("SourceNotes", String(200))
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
+    # Relationships
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="surface_water_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_SurfaceWaterData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_SurfaceWaterData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
+
 
 class NMA_SurfaceWaterPhotos(Base):
     """
@@ -563,15 +637,26 @@ class NMA_SurfaceWaterPhotos(Base):
 
     __tablename__ = "NMA_SurfaceWaterPhotos"
 
-    surface_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "SurfaceID", UUID(as_uuid=True)
-    )
-    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
-    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
-    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    # PK
     global_id: Mapped[uuid.UUID] = mapped_column(
         "GlobalID", UUID(as_uuid=True), primary_key=True
     )
+
+    # FK
+    # FK not assigned.
+
+    # Legacy PK (for audit)
+    # Current `global_id` is also the original PK in the legacy DB
+
+    # Legacy FK (for audit)
+    surface_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "SurfaceID", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
 
 class NMA_WeatherData(Base):
@@ -583,14 +668,24 @@ class NMA_WeatherData(Base):
 
     __tablename__ = "NMA_WeatherData"
 
-    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "LocationId", UUID(as_uuid=True)
-    )
-    point_id: Mapped[str] = mapped_column("PointID", String(10))
+    # PK
+    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    # FK
+    # FK not assigned.
+
+    # Legacy PK (for audit)
     weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "WeatherID", UUID(as_uuid=True)
     )
-    object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
+
+    # Legacy FK (for audit)
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "LocationId", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    point_id: Mapped[str] = mapped_column("PointID", String(10))
 
 
 class NMA_WeatherPhotos(Base):
@@ -602,15 +697,26 @@ class NMA_WeatherPhotos(Base):
 
     __tablename__ = "NMA_WeatherPhotos"
 
-    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "WeatherID", UUID(as_uuid=True)
-    )
-    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
-    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
-    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+    # PK:
     global_id: Mapped[uuid.UUID] = mapped_column(
         "GlobalID", UUID(as_uuid=True), primary_key=True
     )
+
+    # FK:
+    # FK not assigned.
+
+    # Legacy PK (for audit):
+    # Current `global_id` is also the original PK in the legacy DB
+
+    # Legacy FK (for audit):
+    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "WeatherID", UUID(as_uuid=True)
+    )
+
+    # Additional columns
+    point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
+    ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
+    object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
 
 class NMA_Soil_Rock_Results(Base):
@@ -623,17 +729,28 @@ class NMA_Soil_Rock_Results(Base):
 
     __tablename__ = "NMA_Soil_Rock_Results"
 
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # FK to Thing
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Legacy PK (for audit)
+    # Legacy PK does not exist.
+
+    # Legacy FK (for audit) (not officially assigned as FK in legacy DB, but was used to link to wells)
     nma_point_id: Mapped[Optional[str]] = mapped_column("nma_Point_ID", String(255))
+
+    # Additional columns
     sample_type: Mapped[Optional[str]] = mapped_column("Sample Type", String(255))
     date_sampled: Mapped[Optional[str]] = mapped_column("Date Sampled", String(255))
     d13c: Mapped[Optional[float]] = mapped_column("d13C", Float)
     d18o: Mapped[Optional[float]] = mapped_column("d18O", Float)
     sampled_by: Mapped[Optional[str]] = mapped_column("Sampled by", String(255))
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
-    )
 
+    # Relationships
     thing: Mapped["Thing"] = relationship("Thing", back_populates="soil_rock_results")
 
     @validates("thing_id")
@@ -669,27 +786,27 @@ class NMA_MinorTraceChemistry(Base):
         ),
     )
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # New Integer FK to ChemistrySampleInfo
+    # FK to ChemistrySampleInfo table - required for all MinorTraceChemistry records
     chemistry_sample_info_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("NMA_Chemistry_SampleInfo.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    # Legacy UUID FK (for audit)
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
     nma_chemistry_sample_info_uuid: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_chemistry_sample_info_uuid", UUID(as_uuid=True), nullable=True
     )
 
-    # Legacy columns (sizes match database schema)
+    # Additional columns
     analyte: Mapped[Optional[str]] = mapped_column("analyte", String(50))
     symbol: Mapped[Optional[str]] = mapped_column("symbol", String(10))
     sample_value: Mapped[Optional[float]] = mapped_column("sample_value", Float)
@@ -712,6 +829,14 @@ class NMA_MinorTraceChemistry(Base):
         "NMA_Chemistry_SampleInfo", back_populates="minor_trace_chemistries"
     )
 
+    @validates("chemistry_sample_info_id")
+    def validate_chemistry_sample_info_id(self, key, value):
+        if value is None:
+            raise ValueError(
+                "NMA_MinorTraceChemistry requires a chemistry_sample_info_id"
+            )
+        return value
+
 
 class NMA_Radionuclides(Base):
     """
@@ -729,30 +854,27 @@ class NMA_Radionuclides(Base):
 
     __tablename__ = "NMA_Radionuclides"
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # FK to Thing
-    thing_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
-    )
-
-    # New Integer FK to ChemistrySampleInfo
+    # FK to ChemistrySampleInfo table - required for all Radionuclides records
     chemistry_sample_info_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("NMA_Chemistry_SampleInfo.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    # Legacy ID columns (renamed with nma_ prefix)
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
     nma_sample_pt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_SamplePtID", UUID(as_uuid=True), nullable=True
     )
+
+    # Additional columns
     nma_sample_point_id: Mapped[Optional[str]] = mapped_column(
         "nma_SamplePointID", String(10)
     )
@@ -760,8 +882,6 @@ class NMA_Radionuclides(Base):
         "nma_OBJECTID", Integer, unique=True
     )
     nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(25))
-
-    # Data columns
     analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
     symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
     sample_value: Mapped[Optional[float]] = mapped_column(
@@ -782,20 +902,10 @@ class NMA_Radionuclides(Base):
     volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
     analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
 
-    thing: Mapped["Thing"] = relationship("Thing", back_populates="radionuclides")
+    # Relationships
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="radionuclides"
     )
-    thing: Mapped["Thing"] = relationship("Thing")
-
-    @validates("thing_id")
-    def validate_thing_id(self, key, value):
-        """Prevent orphan NMA_Radionuclides - must have a parent Thing."""
-        if value is None:
-            raise ValueError(
-                "NMA_Radionuclides requires a parent Thing (thing_id cannot be None)"
-            )
-        return value
 
     @validates("chemistry_sample_info_id")
     def validate_chemistry_sample_info_id(self, key, value):
@@ -820,25 +930,27 @@ class NMA_MajorChemistry(Base):
 
     __tablename__ = "NMA_MajorChemistry"
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # New Integer FK to ChemistrySampleInfo
+    # FK to ChemistrySampleInfo table - required for all MajorChemistry records
     chemistry_sample_info_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("NMA_Chemistry_SampleInfo.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    # Legacy ID columns (renamed with nma_ prefix)
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
     nma_sample_pt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_SamplePtID", UUID(as_uuid=True), nullable=True
     )
+
+    # Additional columns
     nma_sample_point_id: Mapped[Optional[str]] = mapped_column(
         "nma_SamplePointID", String(10)
     )
@@ -846,8 +958,6 @@ class NMA_MajorChemistry(Base):
         "nma_OBJECTID", Integer, unique=True
     )
     nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(25))
-
-    # Data columns
     analyte: Mapped[Optional[str]] = mapped_column("Analyte", String(50))
     symbol: Mapped[Optional[str]] = mapped_column("Symbol", String(50))
     sample_value: Mapped[Optional[float]] = mapped_column(
@@ -866,6 +976,7 @@ class NMA_MajorChemistry(Base):
     volume_unit: Mapped[Optional[str]] = mapped_column("VolumeUnit", String(50))
     analyses_agency: Mapped[Optional[str]] = mapped_column("AnalysesAgency", String(50))
 
+    # Relationships
     chemistry_sample_info: Mapped["NMA_Chemistry_SampleInfo"] = relationship(
         "NMA_Chemistry_SampleInfo", back_populates="major_chemistries"
     )
@@ -909,15 +1020,10 @@ class NMA_FieldParameters(Base):
         Index("FieldParameters$nma_OBJECTID", "nma_OBJECTID", unique=True),
     )
 
-    # New Integer PK
+    # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Legacy UUID PK (now audit column)
-    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
-    )
-
-    # New Integer FK to ChemistrySampleInfo
+    # FK to ChemistrySampleInfo table - required for all FieldParameters records
     chemistry_sample_info_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey(
@@ -928,10 +1034,17 @@ class NMA_FieldParameters(Base):
         nullable=False,
     )
 
-    # Legacy ID columns (renamed with nma_ prefix)
+    # Legacy PK (for audit)
+    nma_global_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        "nma_GlobalID", UUID(as_uuid=True), unique=True, nullable=True
+    )
+
+    # Legacy FK (for audit)
     nma_sample_pt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         "nma_SamplePtID", UUID(as_uuid=True), nullable=True
     )
+
+    # Additional columns
     nma_sample_point_id: Mapped[Optional[str]] = mapped_column(
         "nma_SamplePointID", String(10)
     )
@@ -939,8 +1052,6 @@ class NMA_FieldParameters(Base):
         "nma_OBJECTID", Integer, Identity(start=1), nullable=False
     )
     nma_wclab_id: Mapped[Optional[str]] = mapped_column("nma_WCLab_ID", String(25))
-
-    # Data columns
     field_parameter: Mapped[Optional[str]] = mapped_column("FieldParameter", String(50))
     sample_value: Mapped[Optional[float]] = mapped_column(
         "SampleValue", Float, nullable=True

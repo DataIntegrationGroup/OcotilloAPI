@@ -77,6 +77,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
 
             payload = make_payload(row)
             thing_type = payload.pop("thing_type")
+            payload["nma_pk_location"] = row.LocationId
             thing = add_thing(session, payload, thing_type=thing_type)
             assoc = LocationThingAssociation()
             assoc.location = location
