@@ -394,6 +394,7 @@ async def well_inventory_csv(
                 if not group:
                     group = Group(name=project, group_type="Monitoring Plan")
                     session.add(group)
+                    session.flush()
 
                 for model in items:
                     try:
