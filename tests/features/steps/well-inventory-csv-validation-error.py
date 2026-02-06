@@ -21,9 +21,9 @@ from behave.runner import Context
 def _handle_validation_error(context, expected_errors):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
-    print(validation_errors)
-    n = len(validation_errors)
-    assert len(validation_errors) == n, f"Expected {n} validation error"
+    assert len(validation_errors) == len(
+        expected_errors
+    ), f"Expected {len(expected_errors)} validation errors, got {len(validation_errors)}"
     for v, e in zip(validation_errors, expected_errors):
         assert v["field"] == e["field"], f"Expected {e['field']} for {v['field']}"
         assert v["error"] == e["error"], f"Expected {e['error']} for {v['error']}"
