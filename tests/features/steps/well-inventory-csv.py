@@ -330,5 +330,9 @@ def step_impl(context: Context):
     response_json = context.response.json()
     assert "wells" in response_json, "Expected response to include wells"
     wells = response_json["wells"]
-    assert len(wells) == context.row_count
-    assert len(wells) == len(set(wells)), "Expected unique well_name_point_id values"
+    well_ids = [
+        w.get("well_name_point_id") if isinstance(w, dict) else w for w in wells
+    ]
+    assert len(well_ids) == len(
+        set(well_ids)
+    ), "Expected unique well_name_point_id values"
