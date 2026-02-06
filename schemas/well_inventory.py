@@ -309,7 +309,7 @@ class WellInventoryRow(BaseModel):
         if northern.upper() not in ("S", "N"):
             raise ValueError("Invalid utm zone. Must end in S or N. e.g 13N")
 
-        northern = self.utm_zone[-1] == "N"
+        northern = self.utm_zone[-1].upper() == "N"
         lat, lon = utm.to_latlon(
             self.utm_easting, self.utm_northing, zone, northern=northern
         )
