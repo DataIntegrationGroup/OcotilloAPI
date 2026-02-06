@@ -15,11 +15,41 @@
 # ===============================================================================
 from transfers.util import get_transferable_wells, read_csv
 
-df = read_csv("WellData")
-wells = get_transferable_wells(df)
-print(len(wells))
 
-mp = wells[wells["MPHeight"].notna()]
-print(len(mp))
+def analyze_transferable_wells(csv_name: str = "WellData") -> tuple[int, int]:
+    """
+    Analyze transferable wells from the given CSV source.
 
+    Parameters
+    ----------
+    csv_name : str, optional
+        The name or path of the CSV data source to read. Defaults to "WellData".
+
+    Returns
+    -------
+    tuple[int, int]
+        A tuple containing:
+        - the total number of transferable wells
+        - the number of transferable wells with a non-null MPHeight value
+    """
+    df = read_csv(csv_name)
+    wells = get_transferable_wells(df)
+    mp = wells[wells["MPHeight"].notna()]
+    return len(wells), len(mp)
+
+
+def main() -> None:
+    """
+    Entry point for manual execution.
+
+    Reads the default well data source, computes transferable wells and those
+    with MPHeight defined, and prints their counts.
+    """
+    total_wells, mp_wells = analyze_transferable_wells()
+    print(total_wells)
+    print(mp_wells)
+
+
+if __name__ == "__main__":
+    main()
 # ============= EOF =============================================
