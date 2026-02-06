@@ -92,6 +92,10 @@ def state_validator(v):
 
 
 def phone_validator(phone_number_str):
+    # Allow optional phone fields: treat None or blank as no value.
+    if phone_number_str is None:
+        return None
+
     phone_number_str = phone_number_str.strip()
     if phone_number_str:
         parsed_number = phonenumbers.parse(phone_number_str, "US")
