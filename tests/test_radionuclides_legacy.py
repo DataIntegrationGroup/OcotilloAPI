@@ -302,7 +302,7 @@ def test_radionuclides_fk_has_cascade():
 
 
 def test_radionuclides_back_populates_sample_info(water_well_thing):
-    """NMA_Radionuclides.chemistry_sample_info navigates back to sample info."""
+    """NMA_Radionuclides <-> NMA_Chemistry_SampleInfo back_populates works."""
     with session_ctx() as session:
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
@@ -323,6 +323,7 @@ def test_radionuclides_back_populates_sample_info(water_well_thing):
 
         assert record.chemistry_sample_info is not None
         assert record.chemistry_sample_info.id == sample_info.id
+        assert record in sample_info.radionuclides
 
         session.delete(record)
         session.delete(sample_info)
