@@ -292,7 +292,7 @@ def step_impl(context: Context):
 )
 def step_impl(context: Context):
     df = _get_valid_df(context)
-    df.loc[0]["well_name_point_id"] = '"well-name-point-id'
+    df.loc[0, "well_name_point_id"] = '"well-name-point-id'
     _set_content_from_df(context, df)
 
 
