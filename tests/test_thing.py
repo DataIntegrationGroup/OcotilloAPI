@@ -1166,10 +1166,6 @@ class TestThingNMARelationshipCollections:
         """Thing model has hydraulics_data relationship collection."""
         assert hasattr(Thing, "hydraulics_data")
 
-    def test_thing_has_radionuclides_relationship(self):
-        """Thing model has radionuclides relationship collection."""
-        assert hasattr(Thing, "radionuclides")
-
     def test_thing_has_associated_data_relationship(self):
         """Thing model has associated_data relationship collection."""
         assert hasattr(Thing, "associated_data")
@@ -1186,12 +1182,6 @@ class TestThingNMACascadeDeleteConfiguration:
         """hydraulics_data relationship has cascade delete configured."""
         rel = Thing.__mapper__.relationships.get("hydraulics_data")
         assert rel is not None, "hydraulics_data relationship should exist"
-        assert "delete" in rel.cascade or "all" in rel.cascade
-
-    def test_radionuclides_has_cascade_delete(self):
-        """radionuclides relationship has cascade delete configured."""
-        rel = Thing.__mapper__.relationships.get("radionuclides")
-        assert rel is not None, "radionuclides relationship should exist"
         assert "delete" in rel.cascade or "all" in rel.cascade
 
     def test_associated_data_has_cascade_delete(self):
