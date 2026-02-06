@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import time
+
 from pandas import isna
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -76,6 +77,7 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
 
             payload = make_payload(row)
             thing_type = payload.pop("thing_type")
+            payload["nma_pk_location"] = row.LocationId
             thing = add_thing(session, payload, thing_type=thing_type)
             assoc = LocationThingAssociation()
             assoc.location = location
@@ -93,48 +95,118 @@ def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -
     logger.info("Completed transfer: Things (%s)", site_type)
 
 
+def _release_status(row) -> str:
+    return "public" if row.PublicRelease else "private"
+
+
 def transfer_springs(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
             "thing_type": "spring",
-            "release_status": "public" if row.PublicRelease else "private",
+            "release_status": _release_status(row),
         }
 
     transfer_thing(session, "SP", make_payload, limit)
 
 
-def transfer_perennial_stream(session, limit=None):
+def transfer_perennial_streams(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
             "thing_type": "perennial stream",
-            "release_status": "public" if row.PublicRelease else "private",
+            "release_status": _release_status(row),
         }
 
     transfer_thing(session, "PS", make_payload, limit)
 
 
-def transfer_ephemeral_stream(session, limit=None):
+def transfer_ephemeral_streams(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
             "thing_type": "ephemeral stream",
-            "release_status": "public" if row.PublicRelease else "private",
+            "release_status": _release_status(row),
         }
 
     transfer_thing(session, "ES", make_payload, limit)
 
 
-def transfer_met(session, limit=None):
+def transfer_met_stations(session, limit=None):
     def make_payload(row):
         return {
             "name": row.PointID,
             "thing_type": "meteorological station",
-            "release_status": "public" if row.PublicRelease else "private",
+            "release_status": _release_status(row),
         }
 
     transfer_thing(session, "M", make_payload, limit)
+
+
+def transfer_rock_sample_locations(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "rock sample location",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "R", make_payload, limit)
+
+
+def transfer_diversion_of_surface_water(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "diversion of surface water, etc.",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "D", make_payload, limit)
+
+
+def transfer_lake_pond_reservoir(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "lake, pond or reservoir",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "L", make_payload, limit)
+
+
+def transfer_soil_gas_sample_locations(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "soil gas sample location",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "S", make_payload, limit)
+
+
+def transfer_other_site_types(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "other",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "OT", make_payload, limit)
+
+
+def transfer_outfall_wastewater_return_flow(session, limit=None):
+    def make_payload(row):
+        return {
+            "name": row.PointID,
+            "thing_type": "outfall of wastewater or return flow",
+            "release_status": _release_status(row),
+        }
+
+    transfer_thing(session, "O", make_payload, limit)
 
 
 # ============= EOF =============================================
