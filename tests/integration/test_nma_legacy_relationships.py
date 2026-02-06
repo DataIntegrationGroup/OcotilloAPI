@@ -251,20 +251,6 @@ class TestRelatedRecordsRequireWell:
                 session.add(record)
                 session.flush()
 
-    def test_radionuclides_requires_sample_info(self):
-        """
-        @radionuclides
-        Scenario: Radionuclide results require chemistry sample info
-        """
-        with session_ctx() as session:
-            with pytest.raises(ValueError, match="requires a chemistry_sample_info_id"):
-                record = NMA_Radionuclides(
-                    nma_sample_pt_id=uuid.uuid4(),
-                    chemistry_sample_info_id=None,  # This should raise ValueError
-                )
-                session.add(record)
-                session.flush()
-
     def test_associated_data_requires_well(self):
         """
         @associated-data
@@ -375,35 +361,6 @@ class TestRelationshipNavigation:
             assert len(well.stratigraphy_logs) >= 1
             assert any(s.nma_point_id == "NAVSTRAT1" for s in well.stratigraphy_logs)
 
-    def test_sample_info_navigates_to_radionuclides(self, well_for_relationships):
-        """Chemistry sample info can navigate to its radionuclide results."""
-        with session_ctx() as session:
-            well = session.merge(well_for_relationships)
-
-            # Create a chemistry sample for the thing (chemistry FKs to Thing)
-            chem_sample = NMA_Chemistry_SampleInfo(
-                nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id="NAVRAD01",  # Required, max 10 chars
-                thing_id=well.id,
-            )
-            session.add(chem_sample)
-            session.commit()
-            session.refresh(chem_sample)
-
-            # Create radionuclide record for this well using the chemistry_sample_info_id
-            radio = NMA_Radionuclides(
-                nma_global_id=uuid.uuid4(),
-                chemistry_sample_info_id=chem_sample.id,
-                nma_sample_pt_id=chem_sample.nma_sample_pt_id,
-            )
-            session.add(radio)
-            session.commit()
-            session.refresh(chem_sample)
-
-            # Navigate through relationship
-            assert hasattr(chem_sample, "radionuclides")
-            assert len(chem_sample.radionuclides) >= 1
-
     def test_well_navigates_to_associated_data(self, well_for_relationships):
         """Well can navigate to its associated data."""
         with session_ctx() as session:
@@ -442,6 +399,42 @@ class TestRelationshipNavigation:
             assert hasattr(well, "soil_rock_results")
             assert len(well.soil_rock_results) >= 1
             assert any(s.nma_point_id == "NAV-SOIL-01" for s in well.soil_rock_results)
+
+
+class TestChemistrySampleInfoNavigation:
+    """
+    @relationships
+    Scenario: Chemistry sample info can access its related records
+    """
+
+    def test_sample_info_navigates_to_radionuclides(self, well_for_relationships):
+        """Chemistry sample info can navigate to its radionuclide results."""
+        with session_ctx() as session:
+            well = session.merge(well_for_relationships)
+
+            # Create a chemistry sample for the thing (chemistry FKs to Thing)
+            chem_sample = NMA_Chemistry_SampleInfo(
+                nma_sample_pt_id=uuid.uuid4(),
+                nma_sample_point_id="NAVRAD01",  # Required, max 10 chars
+                thing_id=well.id,
+            )
+            session.add(chem_sample)
+            session.commit()
+            session.refresh(chem_sample)
+
+            # Create radionuclide record using the chemistry_sample_info_id
+            radio = NMA_Radionuclides(
+                nma_global_id=uuid.uuid4(),
+                chemistry_sample_info_id=chem_sample.id,
+                nma_sample_pt_id=chem_sample.nma_sample_pt_id,
+            )
+            session.add(radio)
+            session.commit()
+            session.refresh(chem_sample)
+
+            # Navigate through relationship
+            assert hasattr(chem_sample, "radionuclides")
+            assert len(chem_sample.radionuclides) >= 1
 
 
 # =============================================================================
@@ -680,3 +673,29 @@ class TestCascadeDelete:
             # Verify soil/rock results were also deleted
             orphan = session.get(NMA_Soil_Rock_Results, soil_id)
             assert orphan is None, "Soil/rock results should be deleted with well"
+
+
+# =============================================================================
+# Chemistry Children Require Sample Info
+# =============================================================================
+
+
+class TestChemistryChildrenRequireSampleInfo:
+    """
+    @radionuclides
+    Scenario: Chemistry children require a parent sample info
+    """
+
+    def test_radionuclides_requires_sample_info(self):
+        """
+        @radionuclides
+        Scenario: Radionuclide results require chemistry sample info
+        """
+        with session_ctx() as session:
+            with pytest.raises(ValueError, match="requires a chemistry_sample_info_id"):
+                record = NMA_Radionuclides(
+                    nma_sample_pt_id=uuid.uuid4(),
+                    chemistry_sample_info_id=None,  # This should raise ValueError
+                )
+                session.add(record)
+                session.flush()
