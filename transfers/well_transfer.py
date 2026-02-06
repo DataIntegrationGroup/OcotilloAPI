@@ -74,7 +74,7 @@ from transfers.well_transfer_util import (
 ADDED = []
 
 # these fields are excluded when the CreateWell model is dumped to a dict for Thing creation
-# these fields are still validated by the CreateWell model, but they are stored in related tables rather than as fields on the Thing itself
+# these fields are still validated by the CreateWell model, but they're stored in related tables rather than as fields on the Thing itself
 # so they need to be excluded when creating the Thing record
 EXCLUDED_FIELDS = [
     "location_id",
