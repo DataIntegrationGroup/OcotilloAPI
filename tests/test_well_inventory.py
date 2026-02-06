@@ -458,14 +458,14 @@ def test_well_inventory_db_contents():
                     assert participant.participant.name == file_content["field_staff_2"]
 
         # CLEAN UP THE DATABASE AFTER TESTING
-        session.query(Thing).delete()
-        session.query(ThingContactAssociation).delete()
-        session.query(Contact).delete()
-        session.query(LocationThingAssociation).delete()
-        session.query(Location).delete()
         session.query(FieldEventParticipant).delete()
         session.query(FieldActivity).delete()
         session.query(FieldEvent).delete()
+        session.query(ThingContactAssociation).delete()
+        session.query(LocationThingAssociation).delete()
+        session.query(Contact).delete()
+        session.query(Location).delete()
+        session.query(Thing).delete()
         session.commit()
 
 
