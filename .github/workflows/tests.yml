@@ -64,6 +64,9 @@ jobs:
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
+      
+      - name: Install Alembic
+        run: uv pip install alembic
 
       - name: Show Alembic heads
         run: alembic heads
