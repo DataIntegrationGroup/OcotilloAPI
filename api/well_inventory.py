@@ -335,8 +335,21 @@ async def well_inventory_csv(
             ],
         )
 
-    header = text.splitlines()[0]
-    dialect = csv.Sniffer().sniff(header)
+    try:
+        header = text.splitlines()[0]
+        dialect = csv.Sniffer().sniff(header)
+    except csv.Error:
+        # raise an error if sniffing fails, which likely means the header is not parseable as CSV
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "CSV parsing error",
+                    "type": "CSV parsing error",
+                }
+            ],
+        )
 
     if dialect.delimiter in (";", "\t"):
         raise PydanticStyleException(
