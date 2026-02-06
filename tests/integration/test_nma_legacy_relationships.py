@@ -251,16 +251,16 @@ class TestRelatedRecordsRequireWell:
                 session.add(record)
                 session.flush()
 
-    def test_radionuclides_requires_well(self):
+    def test_radionuclides_requires_sample_info(self):
         """
         @radionuclides
-        Scenario: Radionuclide results require a well
+        Scenario: Radionuclide results require chemistry sample info
         """
         with session_ctx() as session:
-            with pytest.raises(ValueError, match="requires a parent Thing"):
+            with pytest.raises(ValueError, match="requires a chemistry_sample_info_id"):
                 record = NMA_Radionuclides(
                     nma_sample_pt_id=uuid.uuid4(),
-                    thing_id=None,  # This should raise ValueError
+                    chemistry_sample_info_id=None,  # This should raise ValueError
                 )
                 session.add(record)
                 session.flush()
@@ -375,8 +375,8 @@ class TestRelationshipNavigation:
             assert len(well.stratigraphy_logs) >= 1
             assert any(s.nma_point_id == "NAVSTRAT1" for s in well.stratigraphy_logs)
 
-    def test_well_navigates_to_radionuclides(self, well_for_relationships):
-        """Well can navigate to its radionuclide results."""
+    def test_sample_info_navigates_to_radionuclides(self, well_for_relationships):
+        """Chemistry sample info can navigate to its radionuclide results."""
         with session_ctx() as session:
             well = session.merge(well_for_relationships)
 
@@ -395,15 +395,14 @@ class TestRelationshipNavigation:
                 nma_global_id=uuid.uuid4(),
                 chemistry_sample_info_id=chem_sample.id,
                 nma_sample_pt_id=chem_sample.nma_sample_pt_id,
-                thing_id=well.id,
             )
             session.add(radio)
             session.commit()
-            session.refresh(well)
+            session.refresh(chem_sample)
 
             # Navigate through relationship
-            assert hasattr(well, "radionuclides")
-            assert len(well.radionuclides) >= 1
+            assert hasattr(chem_sample, "radionuclides")
+            assert len(chem_sample.radionuclides) >= 1
 
     def test_well_navigates_to_associated_data(self, well_for_relationships):
         """Well can navigate to its associated data."""
@@ -597,7 +596,6 @@ class TestCascadeDelete:
                 nma_global_id=uuid.uuid4(),
                 chemistry_sample_info_id=chem_sample.id,
                 nma_sample_pt_id=chem_sample.nma_sample_pt_id,
-                thing_id=well.id,
             )
             session.add(radio)
             session.commit()
