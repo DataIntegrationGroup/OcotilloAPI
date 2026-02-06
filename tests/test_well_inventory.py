@@ -82,10 +82,11 @@ def test_well_inventory_db_contents():
         for row in reader:
             file_dict[row["well_name_point_id"]] = row
 
-    response = client.post(
-        "/well-inventory-csv",
-        files={"file": open(file, "rb")},
-    )
+    with open(file, "rb") as fh:
+        response = client.post(
+            "/well-inventory-csv",
+            files={"file": fh},
+        )
 
     assert (
         response.status_code == 201
