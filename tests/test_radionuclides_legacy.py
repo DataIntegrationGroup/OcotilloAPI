@@ -54,7 +54,6 @@ def test_create_radionuclides_all_fields(water_well_thing):
 
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
             nma_sample_pt_id=sample_info.nma_sample_pt_id,
             nma_sample_point_id=sample_info.nma_sample_point_id,
@@ -103,7 +102,6 @@ def test_create_radionuclides_minimal(water_well_thing):
 
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
@@ -136,7 +134,6 @@ def test_read_radionuclides_by_id(water_well_thing):
 
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
@@ -166,13 +163,11 @@ def test_query_radionuclides_by_nma_sample_point_id(water_well_thing):
 
         record1 = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
             nma_sample_point_id=sample_info.nma_sample_point_id,
         )
         record2 = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
             nma_sample_point_id="OTHER-PT",
         )
@@ -212,7 +207,6 @@ def test_update_radionuclides(water_well_thing):
 
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
@@ -246,7 +240,6 @@ def test_delete_radionuclides(water_well_thing):
 
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
-            thing_id=water_well_thing.id,
             chemistry_sample_info_id=sample_info.id,
         )
         session.add(record)
@@ -269,7 +262,6 @@ def test_radionuclides_has_all_migrated_columns():
     expected_columns = [
         "id",
         "nma_global_id",
-        "thing_id",
         "chemistry_sample_info_id",
         "nma_sample_pt_id",
         "nma_sample_point_id",
@@ -303,22 +295,19 @@ def test_radionuclides_table_name():
 
 
 def test_radionuclides_fk_has_cascade():
-    """NMA_Radionuclides.thing_id FK has ondelete=CASCADE."""
-    col = NMA_Radionuclides.__table__.c.thing_id
+    """NMA_Radionuclides.chemistry_sample_info_id FK has ondelete=CASCADE."""
+    col = NMA_Radionuclides.__table__.c.chemistry_sample_info_id
     fk = list(col.foreign_keys)[0]
     assert fk.ondelete == "CASCADE"
 
 
-def test_radionuclides_back_populates_thing(water_well_thing):
-    """NMA_Radionuclides.thing navigates back to Thing."""
+def test_radionuclides_back_populates_sample_info(water_well_thing):
+    """NMA_Radionuclides.chemistry_sample_info navigates back to sample info."""
     with session_ctx() as session:
-        well = session.merge(water_well_thing)
-
-        # Radionuclides requires a chemistry_sample_info (which FKs to Thing)
         sample_info = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid4(),
             nma_sample_point_id=_next_sample_point_id(),
-            thing_id=well.id,
+            thing_id=water_well_thing.id,
         )
         session.add(sample_info)
         session.commit()
@@ -327,14 +316,13 @@ def test_radionuclides_back_populates_thing(water_well_thing):
         record = NMA_Radionuclides(
             nma_global_id=uuid4(),
             chemistry_sample_info_id=sample_info.id,
-            thing_id=well.id,
         )
         session.add(record)
         session.commit()
         session.refresh(record)
 
-        assert record.thing is not None
-        assert record.thing.id == well.id
+        assert record.chemistry_sample_info is not None
+        assert record.chemistry_sample_info.id == sample_info.id
 
         session.delete(record)
         session.delete(sample_info)
