@@ -191,6 +191,9 @@ def add_thing(
         thing_type = get_thing_type_from_request(request)
 
     # Extract data for related tables
+    # Normalize Pydantic models to dictionaries so we can safely mutate with .pop()
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
 
     # ---------
     # BEGIN UNIVERSAL THING RELATED TABLES
