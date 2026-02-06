@@ -376,7 +376,7 @@ def add_thing(
             for n in notes:
                 thing_note = thing.add_note(n["content"], n["note_type"])
                 session.add(thing_note)
-            session.commit()
+            session.flush()
             session.refresh(thing)
 
         if alternate_ids:
