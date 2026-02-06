@@ -408,6 +408,7 @@ async def well_inventory_csv(
                                 "error": str(e),
                             }
                         )
+                        session.rollback()
                         continue
                     except DatabaseError as e:
                         logging.error(
@@ -420,6 +421,7 @@ async def well_inventory_csv(
                                 "error": "A database error occurred while importing this row.",
                             }
                         )
+                        session.rollback()
                         continue
 
                     wells.append(added)
