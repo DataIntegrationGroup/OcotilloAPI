@@ -287,7 +287,7 @@ def add_thing(
                     target_id=thing.id,
                     target_table="thing",
                     field_name="well_construction_method",
-                    origin_type=well_construction_method_source,
+                    origin_source=well_construction_method_source,
                 )
                 audit_add(user, dp)
                 session.add(dp)
