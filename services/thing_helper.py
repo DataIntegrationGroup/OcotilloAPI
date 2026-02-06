@@ -202,7 +202,20 @@ def add_thing(
     notes = data.pop("notes", None)
     alternate_ids = data.pop("alternate_ids", None)
     location_id = data.pop("location_id", None)
-    effective_start = data.get("first_visit_date")
+    first_visit_date = data.get("first_visit_date")
+    if first_visit_date is None:
+        effective_start = None
+    elif isinstance(first_visit_date, datetime):
+        # Ensure datetime is timezone-aware; default to UTC if naive
+        effective_start = (
+            first_visit_date
+            if first_visit_date.tzinfo is not None
+            else first_visit_date.replace(tzinfo=ZoneInfo("UTC"))
+        )
+    else:
+        # Interpret date-only values as midnight UTC on that date
+        dt = datetime.combine(first_visit_date, datetime.min.time())
+        effective_start = dt.replace(tzinfo=ZoneInfo("UTC"))
     group_id = data.pop("group_id", None)
     monitoring_frequencies = data.pop("monitoring_frequencies", None)
     datalogger_suitability_status = data.pop("is_suitable_for_datalogger", None)
