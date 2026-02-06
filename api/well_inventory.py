@@ -64,8 +64,10 @@ def _make_location(model) -> Location:
     # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
     if model.utm_zone == "13N":
         source_srid = SRID_UTM_ZONE_13N
-    else:
+    elif model.utm_zone == "12N":
         source_srid = SRID_UTM_ZONE_12N
+    else:
+        raise ValueError(f"Unsupported UTM zone: {model.utm_zone}")
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
