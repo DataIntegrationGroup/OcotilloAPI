@@ -1,6 +1,6 @@
 """
 Revision ID: 7b8c9d0e1f2a
-Revises: 71a4c6b3d2e8
+Revises: c7f8a9b0c1d2
 Create Date: 2026-02-02 00:00:00.000000
 
 Removes the is_suitable_for_datalogger column from the thing and thing_version tables.
@@ -8,7 +8,7 @@ Removes the is_suitable_for_datalogger column from the thing and thing_version t
 
 # revision identifiers, used by Alembic.
 revision = "7b8c9d0e1f2a"
-down_revision = "71a4c6b3d2e8"
+down_revision = "c7f8a9b0c1d2"
 branch_labels = None
 depends_on = None
 
