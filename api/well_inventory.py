@@ -218,13 +218,11 @@ def _make_row_models(rows, session):
             well_id = row.get("well_name_point_id")
             if not well_id:
                 raise ValueError("Field required")
-            print(f"Processing well_name_point_id: {well_id}")
             if AUTOGEN_REGEX.match(well_id):
                 well_id, offset = generate_autogen_well_id(session, well_id, offset)
                 row["well_name_point_id"] = well_id
 
             if well_id in seen_ids:
-                print(seen_ids)
                 raise ValueError("Duplicate value for well_name_point_id")
             seen_ids.add(well_id)
 
