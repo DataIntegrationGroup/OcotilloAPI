@@ -50,9 +50,7 @@ def empty_str_to_none(v):
 
 
 def blank_to_none(v):
-    if isinstance(v, str) and v.strip() == "":
-        return None
-    return v
+    return empty_str_to_none(v)
 
 
 def owner_default(v):
