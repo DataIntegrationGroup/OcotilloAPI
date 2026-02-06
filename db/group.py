@@ -56,9 +56,7 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
         "thing_associations", "thing"
     )
 
-    __table_args__ = (
-        UniqueConstraint("name", "group_type", name="uq_group_name_group_type"),
-    )
+    __table_args__ = (UniqueConstraint("name", name="uq_group_name"),)
 
 
 class GroupThingAssociation(Base, AutoBaseMixin):
