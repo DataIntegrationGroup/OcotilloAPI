@@ -64,8 +64,10 @@ def _make_location(model) -> Location:
     # TODO: this needs to be more sophisticated in the future. Likely more than 13N and 12N will be used
     if model.utm_zone == "13N":
         source_srid = SRID_UTM_ZONE_13N
-    else:
+    elif model.utm_zone == "12N":
         source_srid = SRID_UTM_ZONE_12N
+    else:
+        raise ValueError(f"Unsupported UTM zone: {model.utm_zone}")
 
     # Convert the point to a WGS84 coordinate system
     transformed_point = transform_srid(
@@ -178,7 +180,7 @@ def _make_well_permission(
 AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
 
 
-def generate_autogen_well_id(session, prefix: str, offset: int = 0) -> str:
+def generate_autogen_well_id(session, prefix: str, offset: int = 0) -> tuple[str, int]:
     # get the latest well_name_point_id that starts with the same prefix
     if not offset:
         latest_well = session.scalars(
@@ -335,8 +337,21 @@ async def well_inventory_csv(
             ],
         )
 
-    header = text.splitlines()[0]
-    dialect = csv.Sniffer().sniff(header)
+    try:
+        header = text.splitlines()[0]
+        dialect = csv.Sniffer().sniff(header)
+    except csv.Error:
+        # raise an error if sniffing fails, which likely means the header is not parseable as CSV
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": "CSV parsing error",
+                    "type": "CSV parsing error",
+                }
+            ],
+        )
 
     if dialect.delimiter in (";", "\t"):
         raise PydanticStyleException(
@@ -393,6 +408,7 @@ async def well_inventory_csv(
                                 "error": str(e),
                             }
                         )
+                        session.rollback()
                         continue
                     except DatabaseError as e:
                         logging.error(
@@ -405,6 +421,7 @@ async def well_inventory_csv(
                                 "error": "A database error occurred while importing this row.",
                             }
                         )
+                        session.rollback()
                         continue
 
                     wells.append(added)

@@ -132,6 +132,16 @@ class CreateBaseThing(BaseCreateModel):
         By using dummy values here we can avoid validation errors and then use the
         thing's id when creating the actual links.
         """
+        # In "before" mode `v` is the raw input, which may be None, a list of
+        # dicts, or already-parsed model instances (in some code paths).
+        if v is None:
+            return v
+
+        # Only process lists; for any other unexpected type, leave as-is and
+        # let normal validation handle errors if appropriate.
+        if not isinstance(v, list):
+            return v
+
         for alternate_id in v:
             alternate_id.thing_id = -1  # dummy value
         return v
