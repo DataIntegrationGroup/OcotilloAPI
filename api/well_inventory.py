@@ -178,7 +178,7 @@ def _make_well_permission(
 AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
 
 
-def generate_autogen_well_id(session, prefix: str, offset: int = 0) -> str:
+def generate_autogen_well_id(session, prefix: str, offset: int = 0) -> tuple[str, int]:
     # get the latest well_name_point_id that starts with the same prefix
     if not offset:
         latest_well = session.scalars(
