@@ -22,7 +22,7 @@ Schema notes:
 - All models use `id` (Integer, autoincrement) as PK
 - Legacy UUID columns renamed with `nma_` prefix (e.g., `nma_global_id`)
 - Legacy string columns renamed with `nma_` prefix (e.g., `nma_point_id`)
-- Chemistry samples FK to Location (not Thing)
+- Chemistry samples FK to Thing
 - Other NMA models (hydraulics, stratigraphy, etc.) FK to Thing
 - Chemistry children use `chemistry_sample_info_id` (Integer FK)
 """
@@ -34,7 +34,7 @@ from behave import given, when, then
 from behave.runner import Context
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from db import Location, Thing
+from db import Thing
 from db.engine import session_ctx
 from db.nma_legacy import (
     NMA_Chemistry_SampleInfo,
@@ -130,7 +130,7 @@ def step_then_find_by_locationid(context: Context):
 
 @when("I try to save chemistry sample information")
 def step_when_save_chemistry(context: Context):
-    """Attempt to save chemistry sample info without a location."""
+    """Attempt to save chemistry sample info without a well."""
     context.orphan_error = None
     context.record_saved = False
 
@@ -139,7 +139,7 @@ def step_when_save_chemistry(context: Context):
             chemistry = NMA_Chemistry_SampleInfo(
                 nma_sample_pt_id=uuid.uuid4(),
                 nma_sample_point_id="TEST001",
-                location_id=None,  # No parent location
+                thing_id=None,  # No parent well
                 collection_date=datetime.now(),
             )
             session.add(chemistry)
@@ -159,11 +159,11 @@ def step_then_well_required(context: Context):
 
 @then("orphaned chemistry records are not allowed")
 def step_then_no_orphan_chemistry(context: Context):
-    """Verify no orphan chemistry records exist (FK to Location)."""
+    """Verify no orphan chemistry records exist (FK to Thing)."""
     with session_ctx() as session:
         orphan_count = (
             session.query(NMA_Chemistry_SampleInfo)
-            .filter(NMA_Chemistry_SampleInfo.location_id.is_(None))
+            .filter(NMA_Chemistry_SampleInfo.thing_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan chemistry records"
@@ -256,38 +256,16 @@ def step_then_no_orphan_lithology(context: Context):
 
 @when("I try to save radionuclide results")
 def step_when_save_radionuclides(context: Context):
-    """Attempt to save radionuclide results without a well."""
+    """Attempt to save radionuclide results without chemistry sample info."""
     context.orphan_error = None
     context.record_saved = False
 
     try:
         with session_ctx() as session:
-            # First create a Location for the chemistry sample (chemistry FKs to Location)
-            location = Location(
-                point="POINT(-107.949533 33.809665)",
-                elevation=2464.9,
-                release_status="draft",
-            )
-            session.add(location)
-            session.commit()
-            session.refresh(location)
-
-            # Create chemistry sample info for the radionuclide
-            chemistry_sample = NMA_Chemistry_SampleInfo(
-                nma_sample_pt_id=uuid.uuid4(),
-                nma_sample_point_id="TEST001",
-                location_id=location.id,
-                collection_date=datetime.now(),
-            )
-            session.add(chemistry_sample)
-            session.commit()
-            session.refresh(chemistry_sample)
-
             radionuclide = NMA_Radionuclides(
                 nma_global_id=uuid.uuid4(),
-                thing_id=None,  # No parent well - this should fail
-                chemistry_sample_info_id=chemistry_sample.id,
-                nma_sample_pt_id=chemistry_sample.nma_sample_pt_id,
+                chemistry_sample_info_id=None,  # No parent sample info - should fail
+                nma_sample_pt_id=uuid.uuid4(),
                 analyte="U-238",
             )
             session.add(radionuclide)
@@ -304,7 +282,7 @@ def step_then_no_orphan_radionuclides(context: Context):
     with session_ctx() as session:
         orphan_count = (
             session.query(NMA_Radionuclides)
-            .filter(NMA_Radionuclides.thing_id.is_(None))
+            .filter(NMA_Radionuclides.chemistry_sample_info_id.is_(None))
             .count()
         )
         assert orphan_count == 0, f"Found {orphan_count} orphan radionuclide records"
@@ -397,26 +375,21 @@ def step_then_no_orphan_soil_rock(context: Context):
 def step_when_access_relationships(context: Context):
     """Access the well's relationships.
 
-    Note: Chemistry samples now FK to Location, not Thing.
-    Chemistry samples are accessed via Location.chemistry_sample_infos.
+    Note: Chemistry samples FK to Thing.
+    Chemistry samples are accessed via Thing.chemistry_sample_infos.
     """
     with session_ctx() as session:
         well = session.query(Thing).filter(Thing.id == context.test_well_id).first()
-        # Chemistry samples are now on Location, not Thing
-        # Access via the test location created in step_given_well_has_chemistry
-        location = None
-        if hasattr(context, "test_location_id"):
-            location = (
-                session.query(Location)
-                .filter(Location.id == context.test_location_id)
-                .first()
-            )
+        chemistry_samples = well.chemistry_sample_infos if well else []
+        radionuclides = [
+            radio for sample in chemistry_samples for radio in sample.radionuclides
+        ]
 
         context.well_relationships = {
-            "chemistry_samples": location.chemistry_sample_infos if location else [],
+            "chemistry_samples": chemistry_samples,
             "hydraulics_data": well.hydraulics_data,
             "lithology_logs": well.stratigraphy_logs,
-            "radionuclides": well.radionuclides,
+            "radionuclides": radionuclides,
             "associated_data": well.associated_data,
             "soil_rock_results": well.soil_rock_results,
         }
@@ -451,36 +424,21 @@ def step_then_relationships_correct(context: Context):
 
 @given("a well has chemistry sample records")
 def step_given_well_has_chemistry(context: Context):
-    """Create chemistry samples for a location associated with a well.
-
-    Note: Chemistry samples now FK to Location (not Thing).
-    This step creates a Location and associates chemistry samples with it.
-    """
+    """Create chemistry samples for a well."""
     if not hasattr(context, "test_well"):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        # Create a Location for chemistry samples
-        location = Location(
-            point="POINT(-107.949533 33.809665)",
-            elevation=2464.9,
-            release_status="draft",
-        )
-        session.add(location)
-        session.commit()
-        session.refresh(location)
-        context.test_location_id = location.id
-
         chemistry1 = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid.uuid4(),
             nma_sample_point_id="TEST001",
-            location_id=context.test_location_id,
+            thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
         chemistry2 = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid.uuid4(),
             nma_sample_point_id="TEST002",
-            location_id=context.test_location_id,
+            thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
         session.add_all([chemistry1, chemistry2])
@@ -537,26 +495,16 @@ def step_given_well_has_lithology(context: Context):
 def step_given_well_has_radionuclides(context: Context):
     """Create radionuclide results for a well.
 
-    Note: Chemistry samples FK to Location, Radionuclides FK to both Thing and ChemistrySampleInfo.
+    Note: Chemistry samples FK to Thing, Radionuclides FK to ChemistrySampleInfo.
     """
     if not hasattr(context, "test_well"):
         step_given_well_exists(context)
 
     with session_ctx() as session:
-        # Create a Location for the chemistry sample (chemistry FKs to Location)
-        location = Location(
-            point="POINT(-107.949533 33.809665)",
-            elevation=2464.9,
-            release_status="draft",
-        )
-        session.add(location)
-        session.commit()
-        session.refresh(location)
-
         chemistry_sample = NMA_Chemistry_SampleInfo(
             nma_sample_pt_id=uuid.uuid4(),
             nma_sample_point_id="TEST001",
-            location_id=location.id,
+            thing_id=context.test_well_id,
             collection_date=datetime.now(),
         )
         session.add(chemistry_sample)
@@ -565,7 +513,6 @@ def step_given_well_has_radionuclides(context: Context):
 
         radionuclide = NMA_Radionuclides(
             nma_global_id=uuid.uuid4(),
-            thing_id=context.test_well_id,
             chemistry_sample_info_id=chemistry_sample.id,
             nma_sample_pt_id=chemistry_sample.nma_sample_pt_id,
             analyte="U-238",
@@ -573,6 +520,7 @@ def step_given_well_has_radionuclides(context: Context):
         session.add(radionuclide)
         session.commit()
         context.radionuclide_results = radionuclide
+        context.radionuclide_results_id = radionuclide.id
 
 
 @given("a well has associated data")
@@ -624,17 +572,11 @@ def step_when_well_deleted(context: Context):
 
 @then("its chemistry samples are also deleted")
 def step_then_chemistry_deleted(context: Context):
-    """Verify chemistry samples are cascade deleted when Location is deleted.
-
-    Note: Chemistry samples now FK to Location (not Thing), so this step
-    verifies no chemistry samples exist for the test location.
-    """
+    """Verify chemistry samples are cascade deleted when Thing is deleted."""
     with session_ctx() as session:
-        # Chemistry samples FK to Location, not Thing
-        # When a Location is deleted, its chemistry samples cascade delete
         remaining = (
             session.query(NMA_Chemistry_SampleInfo)
-            .filter(NMA_Chemistry_SampleInfo.location_id == context.test_location_id)
+            .filter(NMA_Chemistry_SampleInfo.thing_id == context.test_well_id)
             .count()
         )
         assert remaining == 0, f"Expected 0 chemistry samples, found {remaining}"
@@ -668,12 +610,8 @@ def step_then_lithology_deleted(context: Context):
 def step_then_radionuclides_deleted(context: Context):
     """Verify radionuclide results are cascade deleted."""
     with session_ctx() as session:
-        remaining = (
-            session.query(NMA_Radionuclides)
-            .filter(NMA_Radionuclides.thing_id == context.test_well_id)
-            .count()
-        )
-        assert remaining == 0, f"Expected 0 radionuclide records, found {remaining}"
+        orphan = session.get(NMA_Radionuclides, context.radionuclide_results_id)
+        assert orphan is None, "Radionuclide record should be deleted with well"
 
 
 @then("its associated data is also deleted")
