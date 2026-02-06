@@ -2083,6 +2083,48 @@
     },
     {
       "categories": [
+        "thing_type"
+      ],
+      "term": "rock sample location",
+      "definition": "a location where rock samples are collected"
+    },
+    {
+      "categories": [
+        "thing_type"
+      ],
+      "term": "diversion of surface water, etc.",
+      "definition": "a diversion structure for surface water such as a ditch, canal, or intake"
+    },
+    {
+      "categories": [
+        "thing_type"
+      ],
+      "term": "lake, pond or reservoir",
+      "definition": "a natural or artificial standing body of water"
+    },
+    {
+      "categories": [
+        "thing_type"
+      ],
+      "term": "soil gas sample location",
+      "definition": "a location where soil gas samples are collected"
+    },
+    {
+      "categories": [
+        "thing_type"
+      ],
+      "term": "other",
+      "definition": "a thing type that does not fit other categories"
+    },
+    {
+      "categories": [
+        "thing_type"
+      ],
+      "term": "outfall of wastewater or return flow",
+      "definition": "a discharge point for wastewater or return flows"
+    },
+    {
+      "categories": [
         "groundwater_level_reason"
       ],
       "term": "Water level affected by atmospheric pressure",

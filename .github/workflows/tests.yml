@@ -65,6 +65,9 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      - name: Show Alembic heads
+        run: uv run alembic heads
+
       - name: Create test database
         run: |
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
