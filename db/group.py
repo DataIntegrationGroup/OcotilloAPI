@@ -57,7 +57,7 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("name", "group_type", name="uq_group_name_group_type"),
+        UniqueConstraint("name", name="uq_group_name"),
     )
 
 
