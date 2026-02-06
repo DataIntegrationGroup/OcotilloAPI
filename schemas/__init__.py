@@ -55,7 +55,10 @@ class BaseUpdateModel(BaseCreateModel):
 
 def past_or_today_validator(value: date | datetime) -> date | datetime:
     if isinstance(value, datetime):
-        if value > datetime.now(timezone.utc):
+        if value.tzinfo is None:
+            if value > datetime.now():
+                raise ValueError("Datetime must be in the past or present.")
+        elif value > datetime.now(timezone.utc):
             raise ValueError("Datetime must be in the past or present.")
     elif value > date.today():
         raise ValueError("Date must be today or in the past.")
