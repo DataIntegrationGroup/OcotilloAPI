@@ -114,7 +114,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         raise ValueError("Unable to parse CSV header")
 
     if dialect.delimiter != ",":
-        raise ValueError("CSV delimiter must be a comma")
+        raise ValueError(f"Unsupported delimiter '{dialect.delimiter}'")
 
     header = header.split(dialect.delimiter)
     counts = Counter(header)
