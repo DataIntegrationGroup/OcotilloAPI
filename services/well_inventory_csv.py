@@ -183,7 +183,9 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
 
     rows_imported = len(wells)
     rows_processed = len(rows)
-    error_rows = {e.get("row") for e in validation_errors if e.get("row") not in (None, 0)}
+    error_rows = {
+        e.get("row") for e in validation_errors if e.get("row") not in (None, 0)
+    }
     rows_with_validation_errors_or_warnings = len(error_rows)
 
     return {
