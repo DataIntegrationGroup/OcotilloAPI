@@ -21,6 +21,10 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
   right instance before running destructive suites.
 - When done, `deactivate` to exit the venv and avoid polluting other shells.
 
+## 3. Data migrations must be idempotent
+- Data migrations should be safe to re-run without creating duplicate rows or corrupting data.
+- Use upserts or duplicate checks and update source fields only after successful inserts.
+
 Following this playbook keeps ETL runs measured in seconds/minutes instead of hours. EOF
 
 ## Activate python venv

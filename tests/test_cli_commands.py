@@ -19,8 +19,8 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from click.testing import CliRunner
 from sqlalchemy import select
+from typer.testing import CliRunner
 
 from cli.cli import cli
 from db import FieldActivity, FieldEvent, Observation, Sample
