@@ -1,3 +1,3 @@
 field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
-Alice Lopez,AR0001,2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,45.2,approved,Initial measurement after irrigation shutdown
-Bernardo Chen,AR0002,2025-03-05T09:15:00-07:00,2025-03-05T11:10:00-07:00,Consultant,steel tape,1.8,rising,47.0,provisional,Follow-up visit; pump was off for 24h
+Alice Lopez,AR0001,2025-02-15T08:00:00,2025-02-15T10:30:00,Groundwater Team,electric tape,1.5,stable,45.2,approved,Initial measurement after irrigation shutdown
+Bernardo Chen,AR0002,2025-03-05T09:15:00,2025-03-05T11:10:00,Consultant,steel tape,1.8,rising,47.0,provisional,Follow-up visit; pump was off for 24h

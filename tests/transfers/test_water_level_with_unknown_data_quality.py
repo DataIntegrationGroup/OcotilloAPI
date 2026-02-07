@@ -34,3 +34,4 @@ def test_water_level_with_unknown_data_quality():
         session.query(Sample).delete()
         session.query(FieldActivity).delete()
         session.query(FieldEvent).delete()
+        session.commit()

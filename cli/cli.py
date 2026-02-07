@@ -83,7 +83,6 @@ def water_levels_bulk_upload(file_path: str, output_format: str | None):
     """
     parse and upload a csv
     """
-    # TODO: use the same helper function used by api to parse and upload a WL csv
     from cli.service_adapter import water_levels_csv
 
     pretty_json = (output_format or "").lower() == "json"

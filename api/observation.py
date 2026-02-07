@@ -41,7 +41,7 @@ from schemas.observation import (
     UpdateWaterChemistryObservation,
 )
 from schemas.transducer import TransducerObservationWithBlockResponse
-from schemas.water_level_csv import WaterLevelBulkUploadResponse
+from schemas.water_level_csv import WaterLevelBulkUploadPayload
 from services.crud_helper import model_deleter, model_adder
 from services.observation_helper import (
     get_observations,
@@ -90,8 +90,8 @@ async def add_water_chemistry_observation(
 
 @router.post(
     "/groundwater-level/bulk-upload",
-    response_model=WaterLevelBulkUploadResponse,
-    status_code=HTTP_200_OK,
+    response_model=WaterLevelBulkUploadPayload,
+    status_code=HTTP_201_CREATED,
 )
 async def bulk_upload_groundwater_levels(
     user: amp_admin_dependency,
@@ -107,7 +107,9 @@ async def bulk_upload_groundwater_levels(
     result = bulk_upload_water_levels(contents)
 
     if result.exit_code != 0:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=result.payload)
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST, detail=result.payload.model_dump()
+        )
 
     return result.payload
 

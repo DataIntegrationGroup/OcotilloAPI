@@ -220,9 +220,9 @@ def add_spring(context, session, location, name_num):
 
 
 @add_context_object_container("contacts")
-def add_contact(context, session):
+def add_contact(context, name, session):
     contact = Contact(
-        name="Test Contact",
+        name=name,
         role="Software Developer",
         organization="NMBGMR",
         release_status="draft",
@@ -535,7 +535,8 @@ def before_all(context):
             add_measuring_point_history(context, session, well=well)
         add_well_casing_material(context, session, well_1)
 
-        contact = add_contact(context, session)
+        for i in range(4):
+            add_contact(context, f"Test Contact {i}", session)
 
         for permission in [
             "Datalogger Installation",

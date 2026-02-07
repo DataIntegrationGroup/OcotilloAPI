@@ -1178,3 +1178,24 @@ def second_lexicon_triple(third_lexicon_term, fourth_lexicon_term):
         yield triple
         session.delete(triple)
         session.commit()
+
+
+@pytest.fixture()
+def water_level_bulk_upload_data(water_well_thing, contact, second_contact):
+    data = {
+        "well_name_point_id": water_well_thing.name,
+        "field_event_date_time": "2025-02-15T08:00:00",
+        "field_staff": contact.name,
+        "field_staff_2": second_contact.name,
+        "field_staff_3": "",
+        "water_level_date_time": "2025-02-15T10:30:00",
+        "measuring_person": contact.name,
+        "sample_method": "Electric tape measurement (E-probe)",
+        "mp_height": "1.5",
+        "level_status": "Water level not affected",
+        "depth_to_water_ft": "7",
+        "data_quality": "Water level accurate to within two hundreths of a foot",
+        "water_level_notes": "Initial measurement",
+    }
+    yield data
+    del data

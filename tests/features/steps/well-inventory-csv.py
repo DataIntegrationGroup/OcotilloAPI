@@ -1,9 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from behave import given, when, then
 from behave.runner import Context
-
-from services.util import convert_dt_tz_naive_to_tz_aware
 
 
 @given("valid lexicon values exist for:")
@@ -16,15 +14,6 @@ def step_impl_valid_lexicon_values(context: Context):
         assert response.status_code == 200, f"Invalid lexicon category: {row[0]}"
 
 
-@given("the CSV includes required fields:")
-def step_impl_csv_includes_required_fields(context: Context):
-    """Sets up the CSV file with multiple rows of well inventory data."""
-    context.required_fields = [row[0] for row in context.table]
-    keys = context.rows[0].keys()
-    for field in context.required_fields:
-        assert field in keys, f"Missing required field: {field}"
-
-
 @given('each "well_name_point_id" value is unique per row')
 def step_impl(context: Context):
     """Verifies that each "well_name_point_id" value is unique per row."""
@@ -35,16 +24,6 @@ def step_impl(context: Context):
                 f"Duplicate well_name_point_id: {row['well_name_point_id']}"
             )
         seen_ids.add(row["well_name_point_id"])
-
-
-@given("the CSV includes optional fields when available:")
-def step_impl(context: Context):
-    optional_fields = [row[0] for row in context.table]
-    keys = context.rows[0].keys()
-
-    for key in keys:
-        if key not in context.required_fields:
-            assert key in optional_fields, f"Unexpected field found: {key}"
 
 
 @given("the csv includes optional water level entry fields when available:")
@@ -67,23 +46,38 @@ def step_impl(context: Context):
         except ValueError as e:
             raise ValueError(f"Invalid date_time: {row['date_time']}") from e
 
+    if (
+        not hasattr(context, "datetime_fields")
+        or "date_time" not in context.datetime_fields
+    ):
+        context.datetime_fields = ["date_time"]
+    else:
+        context.datetime_fields.append("date_time")
 
+
+# TODO: implement when optional water levels are added to the well inventory csv testing data
 @given(
     'the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided'
 )
 def step_impl(context: Context):
     """Verifies that "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings."""
-    for row in context.rows:
-        if row.get("water_level_date_time", None):
-            try:
-                date_time = datetime.fromisoformat(row["water_level_date_time"])
-                assert (
-                    date_time.tzinfo is None
-                ), f"water_level_date_time should be timezone-naive: {row['water_level_date_time']}"
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid water_level_date_time: {row['water_level_date_time']}"
-                ) from e
+    pass
+    # for row in context.rows:
+    #     if row.get("water_level_date_time", None):
+    #         try:
+    #             date_time = datetime.fromisoformat(row["water_level_date_time"])
+    #             assert (
+    #                 date_time.tzinfo is None
+    #             ), f"water_level_date_time should be timezone-naive: {row['water_level_date_time']}"
+    #         except ValueError as e:
+    #             raise ValueError(
+    #                 f"Invalid water_level_date_time: {row['water_level_date_time']}"
+    #             ) from e
+
+    # if not hasattr(context, "datetime_fields") or "water_level_date_time" not in context.datetime_fields:
+    #     context.datetime_fields = ["water_level_date_time"]
+    # else:
+    #     context.datetime_fields.append("water_level_date_time")
 
 
 @when("I upload the file to the bulk upload endpoint")
@@ -92,60 +86,6 @@ def step_impl(context: Context):
         "/well-inventory-csv",
         files={"file": (context.file_name, context.file_content, context.file_type)},
     )
-
-
-@then(
-    "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value."
-)
-def step_impl(context: Context):
-    """Converts all datetime strings in the CSV rows to timezone-aware datetime objects with Mountain Time offset."""
-    for i, row in enumerate(context.rows):
-        # Convert date_time field
-        date_time_naive = datetime.fromisoformat(row["date_time"])
-        date_time_aware = convert_dt_tz_naive_to_tz_aware(
-            date_time_naive, "America/Denver"
-        )
-        row["date_time"] = date_time_aware.isoformat()
-
-        # confirm correct time zone and offset
-        if i == 0:
-            # MST, offset -07:00
-            assert date_time_aware.utcoffset() == timedelta(
-                hours=-7
-            ), "date_time offset is not -07:00"
-        else:
-            # MDT, offset -06:00
-            assert date_time_aware.utcoffset() == timedelta(
-                hours=-6
-            ), "date_time offset is not -06:00"
-
-        # confirm the time was not changed from what was provided
-        assert (
-            date_time_aware.replace(tzinfo=None) == date_time_naive
-        ), "date_time value was changed during timezone assignment"
-
-        # Convert water_level_date_time field if it exists
-        if row.get("water_level_date_time", None):
-            wl_date_time_naive = datetime.fromisoformat(row["water_level_date_time"])
-            wl_date_time_aware = convert_dt_tz_naive_to_tz_aware(
-                wl_date_time_naive, "America/Denver"
-            )
-            row["water_level_date_time"] = wl_date_time_aware.isoformat()
-
-            if wl_date_time_aware.dst():
-                # MDT, offset -06:00
-                assert wl_date_time_aware.utcoffset() == timedelta(
-                    hours=-6
-                ), "water_level_date_time offset is not -06:00"
-            else:
-                # MST, offset -07:00
-                assert wl_date_time_aware.utcoffset() == timedelta(
-                    hours=-7
-                ), "water_level_date_time offset is not -07:00"
-
-            assert (
-                wl_date_time_aware.replace(tzinfo=None) == wl_date_time_naive
-            ), "water_level_date_time value was changed during timezone assignment"
 
 
 @then("the response includes a summary containing:")
