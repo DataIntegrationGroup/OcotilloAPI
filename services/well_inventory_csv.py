@@ -133,50 +133,53 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
     else:
         models, validation_errors = _make_row_models(rows, session)
         if models and not validation_errors:
-            for project, items in groupby(
-                sorted(models, key=lambda x: x.project), key=lambda x: x.project
-            ):
-                # get project and add if does not exist
-                # BDMS-221 adds group_type
-                sql = select(Group).where(
-                    and_(Group.group_type == "Monitoring Plan", Group.name == project)
-                )
-                group = session.scalars(sql).one_or_none()
-                if not group:
-                    group = Group(name=project, group_type="Monitoring Plan")
-                    session.add(group)
-                    session.flush()
+            current_row_id = None
+            try:
+                for project, items in groupby(
+                    sorted(models, key=lambda x: x.project), key=lambda x: x.project
+                ):
+                    # get project and add if does not exist
+                    # BDMS-221 adds group_type
+                    sql = select(Group).where(
+                        and_(
+                            Group.group_type == "Monitoring Plan", Group.name == project
+                        )
+                    )
+                    group = session.scalars(sql).one_or_none()
+                    if not group:
+                        group = Group(name=project, group_type="Monitoring Plan")
+                        session.add(group)
+                        session.flush()
 
-                for model in items:
-                    try:
+                    for model in items:
+                        current_row_id = model.well_name_point_id
                         added = _add_csv_row(session, group, model, user)
-                        if added:
-                            session.commit()
-                    except ValueError as e:
-                        validation_errors.append(
-                            {
-                                "row": model.well_name_point_id,
-                                "field": "Invalid value",
-                                "error": str(e),
-                            }
-                        )
-                        session.rollback()
-                        continue
-                    except DatabaseError as e:
-                        logging.error(
-                            f"Database error while importing row '{model.well_name_point_id}': {e}"
-                        )
-                        validation_errors.append(
-                            {
-                                "row": model.well_name_point_id,
-                                "field": "Database error",
-                                "error": "A database error occurred while importing this row.",
-                            }
-                        )
-                        session.rollback()
-                        continue
-
-                    wells.append(added)
+                        wells.append(added)
+            except ValueError as e:
+                validation_errors.append(
+                    {
+                        "row": current_row_id or "unknown",
+                        "field": "Invalid value",
+                        "error": str(e),
+                    }
+                )
+                session.rollback()
+                wells = []
+            except DatabaseError as e:
+                logging.error(
+                    f"Database error while importing row '{current_row_id or 'unknown'}': {e}"
+                )
+                validation_errors.append(
+                    {
+                        "row": current_row_id or "unknown",
+                        "field": "Database error",
+                        "error": "A database error occurred while importing this row.",
+                    }
+                )
+                session.rollback()
+                wells = []
+            else:
+                session.commit()
 
     rows_imported = len(wells)
     rows_processed = len(rows)

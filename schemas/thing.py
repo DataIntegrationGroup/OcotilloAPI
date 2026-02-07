@@ -35,6 +35,7 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
+
 # -------- VALIDATE ----------
 
 
@@ -124,47 +125,8 @@ class CreateBaseThing(BaseCreateModel):
     alternate_ids: list[CreateThingIdLink] | None = None
     monitoring_frequencies: list[CreateMonitoringFrequency] | None = None
 
-    @field_validator("alternate_ids", mode="before")
-    def use_dummy_values(cls, v):
-        """
-        When alternate IDs are provided they are assumed to be the same as
-        the thing being created. This gets handled in the function services/thing_helper.py::add_thing.
-        By using dummy values here we can avoid validation errors and then use the
-        thing's id when creating the actual links.
-        """
-        # In "before" mode `v` is the raw input, which may be None, a list of
-        # dicts, or already-parsed model instances (in some code paths).
-        if v is None:
-            return v
 
-        # Only process lists; for any other unexpected type, leave as-is and
-        # let normal validation handle errors if appropriate.
-        if not isinstance(v, list):
-            return v
-
-        for alternate_id in v:
-        normalized: list = []
-        for alternate_id in v:
-            # If we already have a Pydantic model instance, set the attribute if possible.
-            if isinstance(alternate_id, BaseModel):
-                if hasattr(alternate_id, "thing_id"):
-                    setattr(alternate_id, "thing_id", -1)
-                    normalized.append(alternate_id)
-                else:
-                    data = alternate_id.model_dump()
-                    data["thing_id"] = -1
-                    normalized.append(data)
-            # If it's a plain dict, add the dummy thing_id key.
-            elif isinstance(alternate_id, dict):
-                data = dict(alternate_id)
-                data["thing_id"] = -1
-                normalized.append(data)
-            else:
-                # For any unexpected type, leave as-is and let normal validation
-                # handle potential errors.
-                normalized.append(alternate_id)
-
-        return normalized
+class CreateWell(CreateBaseThing, ValidateWell):
     """
     Schema for creating a well.
     """
