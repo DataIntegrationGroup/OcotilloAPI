@@ -81,19 +81,38 @@ def transform_srid(geometry, source_srid, target_srid):
 
 
 def convert_dt_tz_naive_to_tz_aware(
-    dt_naive: datetime, iana_timezone: str = "America/Denver"
-):
+    dt_naive: datetime,
+    iana_timezone: str = "America/Denver",
+    fold: int = 0,
+) -> datetime:
     """
     Adds a timezone to a timezone-naive datetime object using
-    the specified ZoneInfo string. Since the input datetime is naive,
-    it is assumed to already be in the specified timezone. This function
-    does not perform any conversion of the datetime value itself.
+    the specified ZoneInfo string.
+
+    Since the input datetime is naive, it is assumed to already represent
+    local time in the specified timezone. This function does not perform
+    any conversion of the datetime value itself; it only attaches timezone
+    information.
+
+    The ``fold`` parameter controls how DST-ambiguous times (such as during
+    a fall-back transition when the same local time occurs twice) are
+    disambiguated, following PEP 495:
+
+    - ``fold=0`` selects the first occurrence (typically DST).
+    - ``fold=1`` selects the second occurrence (typically standard time).
+
+    This function does not detect non-existent local times (e.g., during
+    a spring-forward transition); callers are responsible for ensuring
+    that ``dt_naive`` represents a valid local time in ``iana_timezone``.
     """
     if dt_naive.tzinfo is not None:
         raise ValueError("Input datetime must be timezone-naive.")
 
+    if fold not in (0, 1):
+        raise ValueError("fold must be 0 or 1.")
+
     tz = ZoneInfo(iana_timezone)
-    dt_aware = dt_naive.replace(tzinfo=tz)
+    dt_aware = dt_naive.replace(tzinfo=tz, fold=fold)
     return dt_aware
 
 
