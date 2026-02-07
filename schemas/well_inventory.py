@@ -304,12 +304,12 @@ class WellInventoryRow(BaseModel):
                 raise ValueError("All water level fields must be provided")
 
         # verify utm in NM
-        zone = int(self.utm_zone[:-1])
-        northern = self.utm_zone[-1]
-        if northern.upper() not in ("S", "N"):
-            raise ValueError("Invalid utm zone. Must end in S or N. e.g 13N")
+        utm_zone_value = (self.utm_zone or "").upper()
+        if utm_zone_value not in ("12N", "13N"):
+            raise ValueError("Invalid utm zone. Must be one of: 12N, 13N")
 
-        northern = self.utm_zone[-1].upper() == "N"
+        zone = int(utm_zone_value[:-1])
+        northern = True  # only northern hemisphere zones (12N, 13N) are supported
         lat, lon = utm.to_latlon(
             self.utm_easting, self.utm_northing, zone, northern=northern
         )
