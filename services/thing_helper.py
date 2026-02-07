@@ -40,7 +40,6 @@ from db import (
     MonitoringFrequencyHistory,
     StatusHistory,
 )
-
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
@@ -186,6 +185,7 @@ def add_thing(
     user: dict = None,
     request: Request | None = None,
     thing_type: str | None = None,  # to be used only for data transfers, not the API
+    commit: bool = True,
 ) -> Thing:
     if request is not None:
         thing_type = get_thing_type_from_request(request)
@@ -415,8 +415,10 @@ def add_thing(
         # ----------
         # END UNIVERSAL THING RELATED LOGIC
         # ----------
-
-        session.commit()
+        if commit:
+            session.commit()
+        else:
+            session.flush()
         session.refresh(thing)
 
         for note in thing.notes:

@@ -18,8 +18,7 @@ from typing import Optional, List, TYPE_CHECKING
 from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-from sqlalchemy.orm import relationship, Mapped
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from core.constants import SRID_WGS84
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
@@ -56,7 +55,9 @@ class Group(Base, AutoBaseMixin, ReleaseMixin):
         "thing_associations", "thing"
     )
 
-    __table_args__ = (UniqueConstraint("name", name="uq_group_name"),)
+    __table_args__ = (
+        UniqueConstraint("name", "group_type", name="uq_group_name_type"),
+    )
 
 
 class GroupThingAssociation(Base, AutoBaseMixin):

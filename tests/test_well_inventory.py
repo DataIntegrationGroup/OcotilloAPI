@@ -373,7 +373,7 @@ def test_well_inventory_db_contents():
                     # no second phone in test data
                     assert [(p.phone_number, p.phone_type) for p in contact.phones] == [
                         (
-                            f"+1{file_content["contact_2_phone_1"]}".replace("-", ""),
+                            f"+1{file_content['contact_2_phone_1']}".replace("-", ""),
                             file_content["contact_2_phone_1_type"],
                         ),
                     ]
@@ -715,7 +715,7 @@ class TestWellInventoryHelpers:
 
     def test_make_location_utm_zone_13n(self):
         """Test location creation with UTM zone 13N coordinates."""
-        from api.well_inventory import _make_location
+        from services.well_inventory_csv import _make_location
         from unittest.mock import MagicMock
 
         model = MagicMock()
@@ -734,7 +734,7 @@ class TestWellInventoryHelpers:
 
     def test_make_location_utm_zone_12n(self):
         """Test location creation with UTM zone 12N coordinates."""
-        from api.well_inventory import _make_location
+        from services.well_inventory_csv import _make_location
         from unittest.mock import MagicMock
 
         model = MagicMock()
@@ -751,7 +751,7 @@ class TestWellInventoryHelpers:
 
     def test_make_contact_with_full_info(self):
         """Test contact dict creation with all fields populated."""
-        from api.well_inventory import _make_contact
+        from services.well_inventory_csv import _make_contact
         from unittest.mock import MagicMock
 
         model = MagicMock()
@@ -798,7 +798,7 @@ class TestWellInventoryHelpers:
 
     def test_make_contact_with_no_name(self):
         """Test contact dict returns None when name is empty."""
-        from api.well_inventory import _make_contact
+        from services.well_inventory_csv import _make_contact
         from unittest.mock import MagicMock
 
         model = MagicMock()
@@ -815,7 +815,7 @@ class TestWellInventoryHelpers:
 
     def test_make_well_permission(self):
         """Test well permission creation."""
-        from api.well_inventory import _make_well_permission
+        from services.well_inventory_csv import _make_well_permission
         from datetime import date
         from unittest.mock import MagicMock
 
@@ -841,7 +841,7 @@ class TestWellInventoryHelpers:
 
     def test_make_well_permission_no_contact_raises(self):
         """Test that permission creation without contact raises error."""
-        from api.well_inventory import _make_well_permission
+        from services.well_inventory_csv import _make_well_permission
         from services.exceptions_helper import PydanticStyleException
         from datetime import date
         from unittest.mock import MagicMock
@@ -862,20 +862,20 @@ class TestWellInventoryHelpers:
 
     def test_generate_autogen_well_id_first_well(self):
         """Test auto-generation of well ID when no existing wells with prefix."""
-        from api.well_inventory import generate_autogen_well_id
+        from services.well_inventory_csv import _generate_autogen_well_id
         from unittest.mock import MagicMock
 
         session = MagicMock()
         session.scalars.return_value.first.return_value = None
 
-        well_id, offset = generate_autogen_well_id(session, "XY-")
+        well_id, offset = _generate_autogen_well_id(session, "XY-")
 
         assert well_id == "XY-0001"
         assert offset == 1
 
     def test_generate_autogen_well_id_with_existing(self):
         """Test auto-generation of well ID with existing wells."""
-        from api.well_inventory import generate_autogen_well_id
+        from services.well_inventory_csv import _generate_autogen_well_id
         from unittest.mock import MagicMock
 
         session = MagicMock()
@@ -883,26 +883,26 @@ class TestWellInventoryHelpers:
         existing_well.name = "XY-0005"
         session.scalars.return_value.first.return_value = existing_well
 
-        well_id, offset = generate_autogen_well_id(session, "XY-")
+        well_id, offset = _generate_autogen_well_id(session, "XY-")
 
         assert well_id == "XY-0006"
         assert offset == 6
 
     def test_generate_autogen_well_id_with_offset(self):
         """Test auto-generation with offset parameter."""
-        from api.well_inventory import generate_autogen_well_id
+        from services.well_inventory_csv import _generate_autogen_well_id
         from unittest.mock import MagicMock
 
         session = MagicMock()
 
-        well_id, offset = generate_autogen_well_id(session, "XY-", offset=10)
+        well_id, offset = _generate_autogen_well_id(session, "XY-", offset=10)
 
         assert well_id == "XY-0011"
         assert offset == 11
 
     def test_autogen_regex_pattern(self):
         """Test the AUTOGEN_REGEX pattern matches correctly."""
-        from api.well_inventory import AUTOGEN_REGEX
+        from services.well_inventory_csv import AUTOGEN_REGEX
 
         # Should match
         assert AUTOGEN_REGEX.match("XY-") is not None
@@ -917,7 +917,7 @@ class TestWellInventoryHelpers:
 
     def test_generate_autogen_well_id_non_numeric_suffix(self):
         """Test auto-generation when existing well has non-numeric suffix."""
-        from api.well_inventory import generate_autogen_well_id
+        from services.well_inventory_csv import _generate_autogen_well_id
         from unittest.mock import MagicMock
 
         session = MagicMock()
@@ -925,7 +925,7 @@ class TestWellInventoryHelpers:
         existing_well.name = "XY-ABC"  # Non-numeric suffix
         session.scalars.return_value.first.return_value = existing_well
 
-        well_id, offset = generate_autogen_well_id(session, "XY-")
+        well_id, offset = _generate_autogen_well_id(session, "XY-")
 
         # Should default to 1 when suffix is not numeric
         assert well_id == "XY-0001"

@@ -50,7 +50,9 @@ def get_db_contacts(
     return paginate(sql)
 
 
-def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Contact:
+def add_contact(
+    session: Session, data: CreateContact | dict, user: dict, commit: bool = True
+) -> Contact:
     """
     Add a new contact to the database.
     """
@@ -105,15 +107,16 @@ def add_contact(session: Session, data: CreateContact | dict, user: dict) -> Con
             audit_add(user, thing_contact_association)
             session.add(thing_contact_association)
 
-        session.flush()
-        session.commit()
-
         if notes_data is not None:
             for n in notes_data:
                 note = contact.add_note(n["content"], n["note_type"])
                 session.add(note)
 
-        session.commit()
+        if commit:
+            session.commit()
+        else:
+            session.flush()
+
         session.refresh(contact)
 
         for note in contact.notes:

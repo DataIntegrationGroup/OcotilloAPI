@@ -126,9 +126,7 @@ def register_routes(app):
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
     from api.ogc.router import router as ogc_router
-    from api.well_inventory import router as well_inventory_router
 
-    app.include_router(well_inventory_router)
     app.include_router(asset_router)
     app.include_router(admin_auth_router)
     app.include_router(author_router)
