@@ -488,6 +488,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         if alternate_id is not None:
             alternate_ids.append(
                 {
+                    "thing_id": -1,
                     "alternate_id": alternate_id,
                     "alternate_organization": alternate_organization,
                     "relation": "same_as",

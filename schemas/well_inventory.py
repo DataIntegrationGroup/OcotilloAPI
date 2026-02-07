@@ -16,7 +16,6 @@
 import re
 from datetime import datetime, date
 from typing import Optional, Annotated, TypeAlias
-from schemas import past_or_today_validator, PastOrTodayDatetime
 
 import phonenumbers
 import utm
@@ -40,6 +39,7 @@ from core.enums import (
     WellPurpose as WellPurposeEnum,
     MonitoringFrequency,
 )
+from schemas import past_or_today_validator, PastOrTodayDatetime
 from services.util import convert_dt_tz_naive_to_tz_aware
 
 
@@ -160,7 +160,6 @@ OptionalPastOrTodayDate: TypeAlias = Annotated[
 ]
 
 
-# ============= EOF =============================================
 class WellInventoryRow(BaseModel):
     # Required fields
     project: str
@@ -388,3 +387,6 @@ class WellInventoryRow(BaseModel):
                     )
 
         return self
+
+
+# ============= EOF =============================================
