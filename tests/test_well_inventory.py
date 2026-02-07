@@ -287,7 +287,7 @@ def test_well_inventory_db_contents():
                     # no second phone in test data
                     assert [(p.phone_number, p.phone_type) for p in contact.phones] == [
                         (
-                            f"+1{file_content["contact_1_phone_1"]}".replace("-", ""),
+                            f"+1{file_content['contact_1_phone_1']}".replace("-", ""),
                             file_content["contact_1_phone_1_type"],
                         ),
                     ]
