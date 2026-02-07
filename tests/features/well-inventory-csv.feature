@@ -140,7 +140,7 @@ Feature: Bulk upload well inventory from CSV
 #    And all optional date fields contain valid ISO 8601 timestamps when provided
 
     When I upload the file to the bulk upload endpoint
-    # assumes users are entering datetimes as Mountain Time becuase location is restricted to New Mexico
+    # assumes users are entering datetimes as Mountain Time because location is restricted to New Mexico
     Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value.
     And the system returns a 201 Created status code
     And the system should return a response in JSON format
