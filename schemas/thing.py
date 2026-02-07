@@ -143,11 +143,28 @@ class CreateBaseThing(BaseCreateModel):
             return v
 
         for alternate_id in v:
-            alternate_id["thing_id"] = -1  # dummy value
-        return v
+        normalized: list = []
+        for alternate_id in v:
+            # If we already have a Pydantic model instance, set the attribute if possible.
+            if isinstance(alternate_id, BaseModel):
+                if hasattr(alternate_id, "thing_id"):
+                    setattr(alternate_id, "thing_id", -1)
+                    normalized.append(alternate_id)
+                else:
+                    data = alternate_id.model_dump()
+                    data["thing_id"] = -1
+                    normalized.append(data)
+            # If it's a plain dict, add the dummy thing_id key.
+            elif isinstance(alternate_id, dict):
+                data = dict(alternate_id)
+                data["thing_id"] = -1
+                normalized.append(data)
+            else:
+                # For any unexpected type, leave as-is and let normal validation
+                # handle potential errors.
+                normalized.append(alternate_id)
 
-
-class CreateWell(CreateBaseThing, ValidateWell):
+        return normalized
     """
     Schema for creating a well.
     """
