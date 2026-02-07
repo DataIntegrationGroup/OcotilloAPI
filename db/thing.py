@@ -55,6 +55,7 @@ if TYPE_CHECKING:
         NMA_Stratigraphy,
         NMA_SurfaceWaterData,
         NMA_WaterLevelsContinuous_Pressure_Daily,
+        NMA_WeatherData,
     )
 
 
@@ -364,6 +365,12 @@ class Thing(
     )
     surface_water_data: Mapped[List["NMA_SurfaceWaterData"]] = relationship(
         "NMA_SurfaceWaterData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    weather_data: Mapped[List["NMA_WeatherData"]] = relationship(
+        "NMA_WeatherData",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,

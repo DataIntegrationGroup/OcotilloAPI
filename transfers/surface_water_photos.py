@@ -23,7 +23,8 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_SurfaceWaterPhotos
+from db import NMA_SurfaceWaterData, NMA_SurfaceWaterPhotos
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -37,6 +38,19 @@ class SurfaceWaterPhotosTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._surface_id_cache: set[str] = set()
+        self._build_surface_id_cache()
+
+    def _build_surface_id_cache(self) -> None:
+        with session_ctx() as session:
+            surface_ids = session.query(NMA_SurfaceWaterData.surface_id).all()
+            for (surface_id,) in surface_ids:
+                if surface_id:
+                    self._surface_id_cache.add(self._normalize_surface_id(surface_id))
+        logger.info(
+            "Built SurfaceWaterData cache with %s surface ids",
+            len(self._surface_id_cache),
+        )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
@@ -44,12 +58,24 @@ class SurfaceWaterPhotosTransferer(Transferer):
         return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        rows: list[dict[str, Any]] = []
+        skipped_missing_parent = 0
+        for raw in self.cleaned_df.to_dict("records"):
+            record = self._row_dict(raw)
+            if record is None:
+                skipped_missing_parent += 1
+                continue
+            rows.append(record)
         rows = self._dedupe_rows(rows, key="GlobalID")
 
         if not rows:
             logger.info("No SurfaceWaterPhotos rows to transfer")
             return
+        if skipped_missing_parent:
+            logger.warning(
+                "Skipped %s SurfaceWaterPhotos rows without matching SurfaceWaterData",
+                skipped_missing_parent,
+            )
 
         insert_stmt = insert(NMA_SurfaceWaterPhotos)
         excluded = insert_stmt.excluded
@@ -74,9 +100,16 @@ class SurfaceWaterPhotosTransferer(Transferer):
             session.execute(stmt)
         session.commit()
 
-    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
+        surface_id = self._uuid_val(row.get("SurfaceID"))
+        if surface_id is None or not self._has_surface_id(surface_id):
+            logger.warning(
+                "Skipping SurfaceWaterPhotos SurfaceID=%s - SurfaceWaterData not found",
+                surface_id,
+            )
+            return None
         return {
-            "SurfaceID": self._uuid_val(row.get("SurfaceID")),
+            "SurfaceID": surface_id,
             "PointID": row.get("PointID"),
             "OLEPath": row.get("OLEPath"),
             "OBJECTID": row.get("OBJECTID"),
@@ -106,6 +139,13 @@ class SurfaceWaterPhotosTransferer(Transferer):
             except ValueError:
                 return None
         return None
+
+    def _has_surface_id(self, surface_id: UUID) -> bool:
+        return self._normalize_surface_id(surface_id) in self._surface_id_cache
+
+    @staticmethod
+    def _normalize_surface_id(value: UUID) -> str:
+        return str(value).strip().lower()
 
 
 def run(batch_size: int = 1000) -> None:

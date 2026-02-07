@@ -586,7 +586,7 @@ class NMA_SurfaceWaterData(Base):
 
     # Legacy PK (for audit)
     surface_id: Mapped[uuid.UUID] = mapped_column(
-        "SurfaceID", UUID(as_uuid=True), nullable=False
+        "SurfaceID", UUID(as_uuid=True), nullable=False, unique=True
     )
 
     # Legacy FK (for audit)
@@ -617,6 +617,12 @@ class NMA_SurfaceWaterData(Base):
 
     # Relationships
     thing: Mapped["Thing"] = relationship("Thing", back_populates="surface_water_data")
+    surface_water_photos: Mapped[list["NMA_SurfaceWaterPhotos"]] = relationship(
+        "NMA_SurfaceWaterPhotos",
+        back_populates="surface_water_data",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     @validates("thing_id")
     def validate_thing_id(self, key, value):
@@ -632,7 +638,7 @@ class NMA_SurfaceWaterPhotos(Base):
     """
     Legacy SurfaceWaterPhotos table from NM_Aquifer.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a child of NMA_SurfaceWaterData via SurfaceID.
     """
 
     __tablename__ = "NMA_SurfaceWaterPhotos"
@@ -643,27 +649,45 @@ class NMA_SurfaceWaterPhotos(Base):
     )
 
     # FK
-    # FK not assigned.
+    surface_id: Mapped[uuid.UUID] = mapped_column(
+        "SurfaceID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_SurfaceWaterData.SurfaceID", ondelete="CASCADE"),
+        nullable=False,
+    )
 
     # Legacy PK (for audit)
     # Current `global_id` is also the original PK in the legacy DB
 
     # Legacy FK (for audit)
-    surface_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "SurfaceID", UUID(as_uuid=True)
-    )
+    # surface_id is also the legacy FK in the source table.
 
     # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
     ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
 
+    # Relationships
+    surface_water_data: Mapped["NMA_SurfaceWaterData"] = relationship(
+        "NMA_SurfaceWaterData", back_populates="surface_water_photos"
+    )
+
+    @validates("surface_id")
+    def validate_surface_id(self, key, value):
+        """Prevent orphan NMA_SurfaceWaterPhotos - must have a parent NMA_SurfaceWaterData."""
+        if value is None:
+            raise ValueError(
+                "NMA_SurfaceWaterPhotos requires a parent NMA_SurfaceWaterData "
+                "(surface_id cannot be None)"
+            )
+        return value
+
 
 class NMA_WeatherData(Base):
     """
     Legacy WeatherData table from AMPAPI.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a Thing child and must link to a parent Thing.
     """
 
     __tablename__ = "NMA_WeatherData"
@@ -672,11 +696,13 @@ class NMA_WeatherData(Base):
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
     # FK
-    # FK not assigned.
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Legacy PK (for audit)
     weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "WeatherID", UUID(as_uuid=True)
+        "WeatherID", UUID(as_uuid=True), unique=True
     )
 
     # Legacy FK (for audit)
@@ -687,12 +713,30 @@ class NMA_WeatherData(Base):
     # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(10))
 
+    # Relationships
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="weather_data")
+    weather_photos: Mapped[list["NMA_WeatherPhotos"]] = relationship(
+        "NMA_WeatherPhotos",
+        back_populates="weather_data",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_WeatherData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_WeatherData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
+
 
 class NMA_WeatherPhotos(Base):
     """
     Legacy WeatherPhotos table from NM_Aquifer.
 
-    Note: This table is OUT OF SCOPE for refactoring (not a Thing child).
+    Note: This table is a child of NMA_WeatherData via WeatherID.
     """
 
     __tablename__ = "NMA_WeatherPhotos"
@@ -703,20 +747,38 @@ class NMA_WeatherPhotos(Base):
     )
 
     # FK:
-    # FK not assigned.
+    weather_id: Mapped[uuid.UUID] = mapped_column(
+        "WeatherID",
+        UUID(as_uuid=True),
+        ForeignKey("NMA_WeatherData.WeatherID", ondelete="CASCADE"),
+        nullable=False,
+    )
 
     # Legacy PK (for audit):
     # Current `global_id` is also the original PK in the legacy DB
 
     # Legacy FK (for audit):
-    weather_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "WeatherID", UUID(as_uuid=True)
-    )
+    # weather_id is also the legacy FK in the source table.
 
     # Additional columns
     point_id: Mapped[str] = mapped_column("PointID", String(50), nullable=False)
     ole_path: Mapped[Optional[str]] = mapped_column("OLEPath", String(50))
     object_id: Mapped[Optional[int]] = mapped_column("OBJECTID", Integer, unique=True)
+
+    # Relationships
+    weather_data: Mapped["NMA_WeatherData"] = relationship(
+        "NMA_WeatherData", back_populates="weather_photos"
+    )
+
+    @validates("weather_id")
+    def validate_weather_id(self, key, value):
+        """Prevent orphan NMA_WeatherPhotos - must have a parent NMA_WeatherData."""
+        if value is None:
+            raise ValueError(
+                "NMA_WeatherPhotos requires a parent NMA_WeatherData "
+                "(weather_id cannot be None)"
+            )
+        return value
 
 
 class NMA_Soil_Rock_Results(Base):
