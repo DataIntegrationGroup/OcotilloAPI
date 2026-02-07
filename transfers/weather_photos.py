@@ -23,7 +23,8 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_WeatherPhotos
+from db import NMA_WeatherData, NMA_WeatherPhotos
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -37,6 +38,19 @@ class WeatherPhotosTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._weather_id_cache: set[str] = set()
+        self._build_weather_id_cache()
+
+    def _build_weather_id_cache(self) -> None:
+        with session_ctx() as session:
+            weather_ids = session.query(NMA_WeatherData.weather_id).all()
+            for (weather_id,) in weather_ids:
+                if weather_id:
+                    self._weather_id_cache.add(self._normalize_weather_id(weather_id))
+        logger.info(
+            "Built WeatherData cache with %s weather ids",
+            len(self._weather_id_cache),
+        )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
@@ -44,12 +58,24 @@ class WeatherPhotosTransferer(Transferer):
         return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
-        rows = [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+        rows: list[dict[str, Any]] = []
+        skipped_missing_parent = 0
+        for raw in self.cleaned_df.to_dict("records"):
+            record = self._row_dict(raw)
+            if record is None:
+                skipped_missing_parent += 1
+                continue
+            rows.append(record)
         rows = self._dedupe_rows(rows, key="GlobalID")
 
         if not rows:
             logger.info("No WeatherPhotos rows to transfer")
             return
+        if skipped_missing_parent:
+            logger.warning(
+                "Skipped %s WeatherPhotos rows without matching WeatherData",
+                skipped_missing_parent,
+            )
 
         insert_stmt = insert(NMA_WeatherPhotos)
         excluded = insert_stmt.excluded
@@ -74,9 +100,16 @@ class WeatherPhotosTransferer(Transferer):
             session.execute(stmt)
         session.commit()
 
-    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
+        weather_id = self._uuid_val(row.get("WeatherID"))
+        if weather_id is None or not self._has_weather_id(weather_id):
+            logger.warning(
+                "Skipping WeatherPhotos WeatherID=%s - WeatherData not found",
+                weather_id,
+            )
+            return None
         return {
-            "WeatherID": self._uuid_val(row.get("WeatherID")),
+            "WeatherID": weather_id,
             "PointID": row.get("PointID"),
             "OLEPath": row.get("OLEPath"),
             "OBJECTID": row.get("OBJECTID"),
@@ -106,6 +139,13 @@ class WeatherPhotosTransferer(Transferer):
             except ValueError:
                 return None
         return None
+
+    def _has_weather_id(self, weather_id: UUID) -> bool:
+        return self._normalize_weather_id(weather_id) in self._weather_id_cache
+
+    @staticmethod
+    def _normalize_weather_id(value: UUID) -> str:
+        return str(value).strip().lower()
 
 
 def run(batch_size: int = 1000) -> None:
