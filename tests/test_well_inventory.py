@@ -1,7 +1,7 @@
 """
-The feature tests for the well inventory csv upload tests if the API can
+The feature tests for the well inventory csv upload verify the CLI can
 successfully process a well inventory upload and create the appropriate
-response, but it does not verify that the database contents are correct.
+response, but they do not verify that the database contents are correct.
 
 This module contains tests that verify the correctness of the database
 contents after a well inventory upload.
@@ -9,21 +9,13 @@ contents after a well inventory upload.
 
 import csv
 from datetime import datetime
-from io import BytesIO
 from pathlib import Path
 
 import pytest
 from shapely import Point
 
+from cli.service_adapter import well_inventory_csv
 from core.constants import SRID_UTM_ZONE_13N, SRID_WGS84
-from core.dependencies import (
-    admin_function,
-    editor_function,
-    amp_admin_function,
-    amp_editor_function,
-    viewer_function,
-    amp_viewer_function,
-)
 from db import (
     Location,
     LocationThingAssociation,
@@ -35,31 +27,7 @@ from db import (
     FieldEventParticipant,
 )
 from db.engine import session_ctx
-from main import app
 from services.util import transform_srid, convert_ft_to_m
-from tests import client, override_authentication
-
-
-@pytest.fixture(scope="module", autouse=True)
-def override_authentication_dependency_fixture():
-    app.dependency_overrides[admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[editor_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[viewer_function] = override_authentication()
-    app.dependency_overrides[amp_admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_editor_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_viewer_function] = override_authentication()
-
-    yield
-
-    app.dependency_overrides = {}
 
 
 def test_well_inventory_db_contents():
@@ -73,6 +41,8 @@ def test_well_inventory_db_contents():
 
     file = Path("tests/features/data/well-inventory-valid.csv")
     assert file.exists(), "Test data file does not exist."
+    result = well_inventory_csv(file)
+    assert result.exit_code == 0, result.stderr
 
     # read file into dictionary to compare values with DB objects
     with open(file, "r", encoding="utf-8") as f:
@@ -81,16 +51,6 @@ def test_well_inventory_db_contents():
 
         for row in reader:
             file_dict[row["well_name_point_id"]] = row
-
-    with open(file, "rb") as fh:
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": fh},
-        )
-
-    assert (
-        response.status_code == 201
-    ), f"Unexpected status code: {response.status_code}"
 
     # Validate that specific records exist in the database and then clean up
     with session_ctx() as session:
@@ -475,211 +435,141 @@ def test_well_inventory_db_contents():
 # =============================================================================
 
 
-@pytest.fixture(scope="class", autouse=True)
-def error_handling_auth_override():
-    """Override authentication for error handling test class."""
-    app.dependency_overrides[admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[editor_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_admin_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    app.dependency_overrides[amp_editor_function] = override_authentication(
-        default={"name": "foobar", "sub": "1234567890"}
-    )
-    yield
-    app.dependency_overrides = {}
-
-
 class TestWellInventoryErrorHandling:
     """Tests for well inventory CSV upload error handling."""
 
-    def test_upload_invalid_file_type(self):
-        """Upload fails with 400 when file is not a CSV."""
-        content = b"This is not a CSV file"
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.txt", BytesIO(content), "text/plain")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "Unsupported file type" in str(data)
+    def test_upload_invalid_file_type(self, tmp_path):
+        """Upload fails when file is not a CSV."""
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("This is not a CSV file")
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "Unsupported file type" in result.stderr
 
-    def test_upload_empty_file(self):
-        """Upload fails with 400 when CSV file is empty."""
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(b""), "text/csv")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "Empty file" in str(data)
+    def test_upload_empty_file(self, tmp_path):
+        """Upload fails when CSV file is empty."""
+        file_path = tmp_path / "test.csv"
+        file_path.write_text("")
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "Empty file" in result.stderr
 
     def test_upload_headers_only(self):
-        """Upload fails with 400 when CSV has headers but no data rows."""
+        """Upload fails when CSV has headers but no data rows."""
         file_path = Path("tests/features/data/well-inventory-no-data-headers.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 400
-            data = response.json()
-            assert "No data rows found" in str(data)
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
+            assert "No data rows found" in result.stderr
 
     def test_upload_duplicate_columns(self):
-        """Upload fails with 422 when CSV has duplicate column names."""
+        """Upload fails when CSV has duplicate column names."""
         file_path = Path("tests/features/data/well-inventory-duplicate-columns.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
+            assert "Duplicate columns found" in str(
+                result.payload.get("validation_errors", [])
             )
-            assert response.status_code == 422
-            data = response.json()
-            assert "Duplicate columns found" in str(data.get("validation_errors", []))
 
     def test_upload_duplicate_well_ids(self):
-        """Upload fails with 422 when CSV has duplicate well_name_point_id values."""
+        """Upload fails when CSV has duplicate well_name_point_id values."""
         file_path = Path("tests/features/data/well-inventory-duplicate.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
-            data = response.json()
-            errors = data.get("validation_errors", [])
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
+            errors = result.payload.get("validation_errors", [])
             assert any("Duplicate" in str(e) for e in errors)
 
     def test_upload_missing_required_field(self):
-        """Upload fails with 422 when required field is missing."""
+        """Upload fails when required field is missing."""
         file_path = Path("tests/features/data/well-inventory-missing-required.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_date_format(self):
-        """Upload fails with 422 when date format is invalid."""
+        """Upload fails when date format is invalid."""
         file_path = Path("tests/features/data/well-inventory-invalid-date-format.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_numeric_value(self):
-        """Upload fails with 422 when numeric field has invalid value."""
+        """Upload fails when numeric field has invalid value."""
         file_path = Path("tests/features/data/well-inventory-invalid-numeric.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_email(self):
-        """Upload fails with 422 when email format is invalid."""
+        """Upload fails when email format is invalid."""
         file_path = Path("tests/features/data/well-inventory-invalid-email.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_phone_number(self):
-        """Upload fails with 422 when phone number format is invalid."""
+        """Upload fails when phone number format is invalid."""
         file_path = Path("tests/features/data/well-inventory-invalid-phone-number.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_utm_coordinates(self):
-        """Upload fails with 422 when UTM coordinates are outside New Mexico."""
+        """Upload fails when UTM coordinates are outside New Mexico."""
         file_path = Path("tests/features/data/well-inventory-invalid-utm.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_lexicon_value(self):
-        """Upload fails with 422 when lexicon value is not in allowed set."""
+        """Upload fails when lexicon value is not in allowed set."""
         file_path = Path("tests/features/data/well-inventory-invalid-lexicon.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_invalid_boolean_value(self):
-        """Upload fails with 422 when boolean field has invalid value."""
+        """Upload fails when boolean field has invalid value."""
         file_path = Path(
             "tests/features/data/well-inventory-invalid-boolean-value-maybe.csv"
         )
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_missing_contact_type(self):
-        """Upload fails with 422 when contact is provided without contact_type."""
+        """Upload fails when contact is provided without contact_type."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-type.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_missing_contact_role(self):
-        """Upload fails with 422 when contact is provided without role."""
+        """Upload fails when contact is provided without role."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
     def test_upload_partial_water_level_fields(self):
-        """Upload fails with 422 when only some water level fields are provided."""
+        """Upload fails when only some water level fields are provided."""
         file_path = Path("tests/features/data/well-inventory-missing-wl-fields.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
 
-    def test_upload_non_utf8_encoding(self):
-        """Upload fails with 400 when file has invalid encoding."""
-        # Create a file with invalid UTF-8 bytes
+    def test_upload_non_utf8_encoding(self, tmp_path):
+        """Upload fails when file has invalid encoding."""
         invalid_bytes = b"well_name_point_id,project\n\xff\xfe invalid"
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(invalid_bytes), "text/csv")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "encoding" in str(data).lower() or "Empty" in str(data)
+        file_path = tmp_path / "test.csv"
+        file_path.write_bytes(invalid_bytes)
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "encoding" in result.stderr.lower() or "Empty" in result.stderr
 
-    def test_validation_error_structure_is_consistent(self):
+    def test_validation_error_structure_is_consistent(self, tmp_path):
         """Validation errors have consistent structure with row, field, error keys."""
         content = (
             b"project,well_name_point_id,site_name,date_time,field_staff,"
@@ -688,14 +578,11 @@ class TestWellInventoryErrorHandling:
             b"Test,,Site1,2025-01-01T10:00:00,Staff,"
             b"357000,3784000,13N,5000,GPS,3.5\n"
         )
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(content), "text/csv")},
-        )
-
-        assert response.status_code == 422
-        data = response.json()
-        errors = data.get("validation_errors", [])
+        file_path = tmp_path / "test.csv"
+        file_path.write_bytes(content)
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        errors = result.payload.get("validation_errors", [])
 
         assert len(errors) > 0, "Expected validation errors"
 
@@ -963,8 +850,8 @@ class TestWellInventoryHelpers:
 class TestWellInventoryAPIEdgeCases:
     """Additional edge case tests for API endpoints."""
 
-    def test_upload_too_many_rows(self):
-        """Upload fails with 400 when CSV has more than 2000 rows."""
+    def test_upload_too_many_rows(self, tmp_path):
+        """Upload fails when CSV has more than 2000 rows."""
         # Create a CSV with header + 2001 data rows
         header = "project,well_name_point_id,site_name,date_time,field_staff,utm_easting,utm_northing,utm_zone,elevation_ft,elevation_method,measuring_point_height_ft\n"
         row = "TestProject,WELL-{i},Site{i},2025-01-01T10:00:00,Staff,357000,3784000,13N,5000,GPS,3.5\n"
@@ -975,47 +862,37 @@ class TestWellInventoryAPIEdgeCases:
 
         content = "".join(rows).encode("utf-8")
 
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(content), "text/csv")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "Too many rows" in str(data) or "2000" in str(data)
+        file_path = tmp_path / "well-inventory-too-many-rows.csv"
+        file_path.write_bytes(content)
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "Too many rows" in result.stderr or "2000" in result.stderr
 
-    def test_upload_semicolon_delimiter(self):
-        """Upload fails with 400 when CSV uses semicolon delimiter."""
+    def test_upload_semicolon_delimiter(self, tmp_path):
+        """Upload fails when CSV uses semicolon delimiter."""
         content = b"project;well_name_point_id;site_name\nTest;WELL-001;Site1\n"
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(content), "text/csv")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "delimiter" in str(data).lower() or "Unsupported" in str(data)
+        file_path = tmp_path / "test.csv"
+        file_path.write_bytes(content)
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "delimiter" in result.stderr.lower() or "Unsupported" in result.stderr
 
-    def test_upload_tab_delimiter(self):
-        """Upload fails with 400 when CSV uses tab delimiter."""
+    def test_upload_tab_delimiter(self, tmp_path):
+        """Upload fails when CSV uses tab delimiter."""
         content = b"project\twell_name_point_id\tsite_name\nTest\tWELL-001\tSite1\n"
-        response = client.post(
-            "/well-inventory-csv",
-            files={"file": ("test.csv", BytesIO(content), "text/csv")},
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "delimiter" in str(data).lower() or "Unsupported" in str(data)
+        file_path = tmp_path / "test.csv"
+        file_path.write_bytes(content)
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 1
+        assert "delimiter" in result.stderr.lower() or "Unsupported" in result.stderr
 
     def test_upload_duplicate_header_row_in_data(self):
-        """Upload fails with 422 when header row is duplicated in data."""
+        """Upload fails when header row is duplicated in data."""
         file_path = Path("tests/features/data/well-inventory-duplicate-header.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
-            assert response.status_code == 422
-            data = response.json()
-            errors = data.get("validation_errors", [])
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 1
+            errors = result.payload.get("validation_errors", [])
             assert any(
                 "Duplicate header" in str(e) or "header" in str(e).lower()
                 for e in errors
@@ -1025,15 +902,12 @@ class TestWellInventoryAPIEdgeCases:
         """Upload succeeds when field value contains comma inside quotes."""
         file_path = Path("tests/features/data/well-inventory-valid-comma-in-quotes.csv")
         if file_path.exists():
-            response = client.post(
-                "/well-inventory-csv",
-                files={"file": open(file_path, "rb")},
-            )
+            result = well_inventory_csv(file_path)
             # Should succeed - commas in quoted fields are valid CSV
-            assert response.status_code in (201, 422)  # 422 if other validation fails
+            assert result.exit_code in (0, 1)  # 1 if other validation fails
 
             # Clean up if records were created
-            if response.status_code == 201:
+            if result.exit_code == 0:
                 with session_ctx() as session:
                     session.query(Thing).delete()
                     session.query(Location).delete()

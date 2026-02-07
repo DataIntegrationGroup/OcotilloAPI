@@ -138,6 +138,11 @@ dev = [
   "faker>=25.0.0",
 ]
 
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.:DeprecationWarning:starlette_admin.*",
+]
+
 
 # timezone to use when rendering the date within the migration file
 # as well as the filename.

@@ -35,6 +35,7 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
+
 # -------- VALIDATE ----------
 
 
@@ -143,7 +144,7 @@ class CreateBaseThing(BaseCreateModel):
             return v
 
         for alternate_id in v:
-            alternate_id.thing_id = -1  # dummy value
+            alternate_id["thing_id"] = -1  # dummy value
         return v
 
 

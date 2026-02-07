@@ -28,6 +28,7 @@ from shapely import Point
 from sqlalchemy import select, and_
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from core.constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from db import (
@@ -45,6 +46,7 @@ from db.engine import session_ctx
 from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
+from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
 
@@ -286,8 +288,16 @@ def _make_well_permission(
     no PermissionHistory record is created and a 400 error is raised.
     """
     if contact is None:
-        raise ValueError(
-            f"Permission of type '{permission_type}' cannot be created without a contact."
+        raise PydanticStyleException(
+            HTTP_400_BAD_REQUEST,
+            detail=[
+                {
+                    "loc": [],
+                    "msg": f"Permission of type '{permission_type}' cannot be created without a contact.",
+                    "type": "Missing contact",
+                    "input": {"permission_type": permission_type},
+                }
+            ],
         )
 
     permission = PermissionHistory(
