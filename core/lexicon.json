@@ -101,6 +101,10 @@
       "description": null
     },
     {
+      "name": "level_status",
+      "description": null
+    },
+    {
       "name": "limit_type",
       "description": null
     },
@@ -221,7 +225,7 @@
       "description": null
     },
     {
-      "name": "origin_source",
+      "name": "origin_type",
       "description": null
     },
     {
@@ -1836,6 +1840,13 @@
       "categories": [
         "activity_type"
       ],
+      "term": "well inventory",
+      "definition": "well inventory"
+    },
+    {
+      "categories": [
+        "activity_type"
+      ],
       "term": "groundwater level",
       "definition": "groundwater level"
     },
@@ -2233,6 +2244,40 @@
     },
     {
       "categories": [
+        "status_type"
+      ],
+      "term": "Open Status",
+      "definition": "Defines if the well is open or closed."
+    },
+    {
+      "categories": [
+        "status_type"
+      ],
+      "term": "Datalogger Suitability Status",
+      "definition": "Defines if a datalogger can or cannot be installed at the well."
+    },
+    {
+      "categories": ["status_value"],
+      "term": "Open",
+      "definition": "The well is open."
+    },  
+    {
+      "categories": ["status_value"],
+      "term": "Closed",
+      "definition": "The well is closed."
+    },
+    {
+      "categories": ["status_value"],
+      "term": "Datalogger can be installed",
+      "definition": "A datalogger can be installed at the well"
+    },
+    {
+      "categories": ["status_value"],
+      "term": "Datalogger cannot be installed",
+      "definition": "A datalogger cannot be installed at the well"
+    },
+    {
+      "categories": [
         "status_value"
       ],
       "term": "Abandoned",
@@ -2356,6 +2401,27 @@
       ],
       "term": "Observed (required for F, N, and W water level status)",
       "definition": "Observed (required for F, N, and W water level status)"
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "stable",
+      "definition": "Water level is stable."
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "rising",
+      "definition": "Water level is rising."
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "falling",
+      "definition": "Water level is falling."
     },
     {
       "categories": [
@@ -7975,77 +8041,77 @@
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Reported by another agency",
       "definition": "Reported by another agency"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "From driller's log or well report",
       "definition": "From driller's log or well report"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Private geologist, consultant or univ associate",
       "definition": "Private geologist, consultant or univ associate"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Interpreted fr geophys logs by source agency",
       "definition": "Interpreted fr geophys logs by source agency"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Memory of owner, operator, driller",
       "definition": "Memory of owner, operator, driller"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Measured by source agency",
       "definition": "Measured by source agency"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Reported by owner of well",
       "definition": "Reported by owner of well"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Reported by person other than driller owner agency",
       "definition": "Reported by person other than driller owner agency"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Measured by NMBGMR staff",
       "definition": "Measured by NMBGMR staff"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Other",
       "definition": "Other"
     },
     {
       "categories": [
-        "origin_source"
+        "origin_type"
       ],
       "term": "Data Portal",
       "definition": "Data Portal"
@@ -8056,6 +8122,20 @@
       ],
       "term": "Access",
       "definition": "Access instructions, gate codes, permission requirements, etc."
+    },
+    {
+      "categories": [
+        "note_type"
+      ],
+      "term": "Directions",
+      "definition": "Notes about directions to a location."
+    },
+    {
+      "categories": [
+        "note_type"
+      ],
+      "term": "Communication",
+      "definition": "Notes about communication preferences/requests for a contact."
     },
     {
       "categories": [

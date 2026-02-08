@@ -263,7 +263,6 @@ def _build_feature(row, collection_id: str) -> dict[str, Any]:
             "well_pump_type": model.well_pump_type,
             "well_pump_depth": model.well_pump_depth,
             "formation_completion_code": model.formation_completion_code,
-            "is_suitable_for_datalogger": model.is_suitable_for_datalogger,
         }
         if collection_id == "wells":
             properties["well_purposes"] = [
@@ -281,6 +280,10 @@ def _build_feature(row, collection_id: str) -> dict[str, Any]:
                 }
                 for screen in (model.screens or [])
             ]
+            properties["open_status"] = model.open_status
+            properties["datalogger_suitability_status"] = (
+                model.datalogger_suitability_status
+            )
         if hasattr(model, "nma_formation_zone"):
             properties["nma_formation_zone"] = model.nma_formation_zone
     return {
@@ -350,7 +353,9 @@ def get_items(
             "well_pump_type": Thing.well_pump_type,
             "well_pump_depth": Thing.well_pump_depth,
             "formation_completion_code": Thing.formation_completion_code,
-            "is_suitable_for_datalogger": Thing.is_suitable_for_datalogger,
+            "well_status": Thing.well_status,
+            "open_status": Thing.open_status,
+            "datalogger_suitability_status": Thing.datalogger_suitability_status,
         }
         if hasattr(Thing, "nma_formation_zone"):
             column_map["nma_formation_zone"] = Thing.nma_formation_zone

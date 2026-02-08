@@ -37,7 +37,7 @@ def test_multiple_wells():
 
 
 def test_owner_comment_creates_notes_for_primary_only():
-    point_id = "MG-033"
+    point_id = "MG-043"
     _run_contact_transfer([point_id])
 
     with session_ctx() as sess:

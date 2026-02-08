@@ -27,6 +27,7 @@ from core.enums import (
     WellConstructionMethod,
     WellPumpType,
     FormationCode,
+    OriginType,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
@@ -42,6 +43,7 @@ class ValidateWell(BaseModel):
     hole_depth: float | None = None  # in feet
     well_casing_depth: float | None = None  # in feet
     measuring_point_height: float | None = None
+    well_pump_depth: float | None = None  # in feet
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -57,6 +59,12 @@ class ValidateWell(BaseModel):
                 raise ValueError(
                     "well casing depth must be less than or equal to hole depth"
                 )
+
+        if self.well_pump_depth is not None:
+            if self.well_depth is not None and self.well_pump_depth > self.well_depth:
+                raise ValueError("well pump depth must be less than well depth")
+            elif self.hole_depth is not None and self.well_pump_depth > self.hole_depth:
+                raise ValueError("well pump depth must be less than hole depth")
 
         # if self.measuring_point_height is not None:
         #     if (
@@ -92,6 +100,12 @@ class CreateThingIdLink(BaseModel):
     alternate_organization: str
 
 
+class CreateMonitoringFrequency(BaseModel):
+    monitoring_frequency: MonitoringFrequency
+    start_date: PastOrTodayDate
+    end_date: PastOrTodayDate | None = None
+
+
 class CreateBaseThing(BaseCreateModel):
     """
     Developer's notes
@@ -102,10 +116,13 @@ class CreateBaseThing(BaseCreateModel):
     e.g. POST /thing/water-well, POST /thing/spring determines the thing_type
     """
 
-    location_id: int | None
+    location_id: int | None = None
     group_id: int | None = None  # Optional group ID for the thing
     name: str  # Name of the thing
     first_visit_date: PastOrTodayDate | None = None  # Date of NMBGMR's first visit
+    notes: list[CreateNote] | None = None
+    alternate_ids: list[CreateThingIdLink] | None = None
+    monitoring_frequencies: list[CreateMonitoringFrequency] | None = None
 
 
 class CreateWell(CreateBaseThing, ValidateWell):
@@ -117,6 +134,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     well_depth: float | None = Field(
         default=None, gt=0, description="Well depth in feet"
     )
+    well_depth_source: OriginType | None = None
     hole_depth: float | None = Field(
         default=None, gt=0, description="Hole depth in feet"
     )
@@ -127,17 +145,18 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
-
     measuring_point_height: float = Field(description="Measuring point height in feet")
     measuring_point_description: str | None = None
-    notes: list[CreateNote] | None = None
     well_completion_date: PastOrTodayDate | None = None
     well_completion_date_source: str | None = None
     well_driller_name: str | None = None
     well_construction_method: WellConstructionMethod | None = None
     well_construction_method_source: str | None = None
     well_pump_type: WellPumpType | None = None
-    is_suitable_for_datalogger: bool | None
+    well_pump_depth: float | None = None
+    is_suitable_for_datalogger: bool | None = None
+    is_open: bool | None = None
+    well_status: str | None = None
     formation_completion_code: FormationCode | None = None
     nma_formation_zone: str | None = None
 
@@ -238,8 +257,9 @@ class WellResponse(BaseThingResponse):
     well_pump_type: WellPumpType | None
     well_pump_depth: float | None
     well_pump_depth_unit: str = "ft"
-    is_suitable_for_datalogger: bool | None
     well_status: str | None
+    open_status: str | None
+    datalogger_suitability_status: str | None
     measuring_point_height: float
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None

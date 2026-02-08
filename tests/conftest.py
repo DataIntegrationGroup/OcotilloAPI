@@ -444,6 +444,14 @@ def contact(water_well_thing):
         session.commit()
         session.refresh(association)
 
+        for content, note_type in [
+            ("Communication note", "Communication"),
+            ("General note", "General"),
+        ]:
+            note = contact.add_note(content, note_type)
+            session.add(note)
+        session.commit()
+
         yield contact
         session.delete(contact)
         session.delete(association)

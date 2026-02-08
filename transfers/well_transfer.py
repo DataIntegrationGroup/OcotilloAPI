@@ -73,6 +73,27 @@ from transfers.well_transfer_util import (
 
 ADDED = []
 
+# these fields are excluded when the CreateWell model is dumped to a dict for Thing creation
+# these fields are still validated by the CreateWell model, but they're stored in related tables rather than as fields on the Thing itself
+# so they need to be excluded when creating the Thing record
+EXCLUDED_FIELDS = [
+    "location_id",
+    "group_id",
+    "well_purposes",
+    "well_casing_materials",
+    "measuring_point_height",
+    "measuring_point_description",
+    "well_completion_date_source",
+    "well_construction_method_source",
+    "well_depth_source",
+    "alternate_ids",
+    "monitoring_frequencies",
+    "notes",
+    "is_suitable_for_datalogger",
+    "is_open",
+    "well_status",
+]
+
 
 class WellTransferer(Transferer):
     source_table = "WellData"
@@ -276,10 +297,6 @@ class WellTransferer(Transferer):
                     row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
                 )
 
-            is_suitable_for_datalogger = False
-            if notna(row.OpenWellLoggerOK):
-                is_suitable_for_datalogger = bool(row.OpenWellLoggerOK)
-
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
@@ -318,7 +335,6 @@ class WellTransferer(Transferer):
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -328,23 +344,11 @@ class WellTransferer(Transferer):
 
         well = None
         try:
-            well_data = data.model_dump(
-                exclude=[
-                    "location_id",
-                    "group_id",
-                    "well_purposes",
-                    "well_casing_materials",
-                    "measuring_point_height",
-                    "measuring_point_description",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                ]
-            )
+            well_data = data.model_dump(exclude=EXCLUDED_FIELDS)
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
             well_data["nma_pk_location"] = row.LocationId
 
-            well_data.pop("notes")
             well = Thing(**well_data)
             session.add(well)
 
@@ -423,6 +427,9 @@ class WellTransferer(Transferer):
         else:
             purposes = []
             for cui in cu:
+                if cui == "A":
+                    # skip "Open, unequipped well" as that gets mapped to the status_history table
+                    continue
                 p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
                 if p is not None:
                     purposes.append(p)
@@ -643,10 +650,6 @@ class WellTransferer(Transferer):
                     [],
                 )
 
-            is_suitable_for_datalogger = (
-                bool(row.OpenWellLoggerOK) if notna(row.OpenWellLoggerOK) else False
-            )
-
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
@@ -682,7 +685,6 @@ class WellTransferer(Transferer):
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
-                is_suitable_for_datalogger=is_suitable_for_datalogger,
             )
 
             CreateWell.model_validate(data)
@@ -705,18 +707,7 @@ class WellTransferer(Transferer):
         data: CreateWell = payload["data"]
         well = None
         try:
-            well_data = data.model_dump(
-                exclude=[
-                    "location_id",
-                    "group_id",
-                    "well_purposes",
-                    "well_casing_materials",
-                    "measuring_point_height",
-                    "measuring_point_description",
-                    "well_completion_date_source",
-                    "well_construction_method_source",
-                ]
-            )
+            well_data = data.model_dump(exclude=EXCLUDED_FIELDS)
             well_data["thing_type"] = "water well"
             well_data["nma_pk_welldata"] = row.WellID
             well_data["nma_pk_location"] = row.LocationId
@@ -875,6 +866,32 @@ class WellTransferer(Transferer):
                 )
             except KeyError:
                 pass
+
+        if notna(row.OpenWellLoggerOK):
+            if bool(row.OpenWellLoggerOK):
+                status_value = "Datalogger can be installed"
+            else:
+                status_value = "Datalogger cannot be installed"
+            status_history = StatusHistory(
+                status_type="Datalogger Suitability Status",
+                status_value=status_value,
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
+
+        if notna(row.CurrentUse) and "A" in row.CurrentUse:
+            status_history = StatusHistory(
+                status_type="Open Status",
+                status_value="Open",
+                reason=None,
+                start_date=datetime.now(tz=UTC),
+                target_id=target_id,
+                target_table=target_table,
+            )
+            session.add(status_history)
 
     def _step_parallel_complete(
         self,

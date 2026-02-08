@@ -98,6 +98,7 @@ dependencies = [
   "typing-inspection==0.4.1",
   "tzdata==2025.2",
   "urllib3==2.6.0",
+  "utm>=0.8.1",
   "uvicorn==0.38.0",
   "yarl==1.20.1",
 ]
@@ -136,6 +137,11 @@ dev = [
   "requests>=2.32.5",
   "pyhamcrest>=2.0.3",
   "faker>=25.0.0",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.:DeprecationWarning:starlette_admin.*",
 ]
 
 

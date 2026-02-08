@@ -14,8 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import date
-from typing import Any
-from typing import List
+from typing import List, Any
 
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
@@ -88,7 +87,7 @@ class GeoJSONGeometry(BaseModel):
 class GeoJSONUTMCoordinates(BaseModel):
     easting: float
     northing: float
-    utm_zone: int = 13
+    utm_zone: str = "13N"
     horizontal_datum: str = "NAD83"
 
     model_config = ConfigDict(

@@ -18,7 +18,6 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
-from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
     Thing,
@@ -32,7 +31,6 @@ from db import (
     TransducerObservationBlock,
     WellCasingMaterial,
     PermissionHistory,
-    Contact,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
@@ -46,9 +44,11 @@ from db import (
     ThingGeologicFormationAssociation,
     Base,
     Asset,
+    Contact,
     Sample,
 )
 from db.engine import session_ctx
+from transfers.transfer import _drop_and_rebuild_db
 
 
 def add_context_object_container(name):
@@ -104,7 +104,6 @@ def add_well(context, session, location, name_num):
         well_construction_method="Driven",
         well_pump_type="Submersible",
         well_pump_depth=8,
-        is_suitable_for_datalogger=True,
         formation_completion_code="000EXRV",
     )
 
@@ -504,10 +503,9 @@ def before_all(context):
     context.objects = {}
 
     rebuild = False
-    # rebuild = True
-    erase_data = True
+    erase_data = False
     if rebuild:
-        erase_and_rebuild_db()
+        _drop_and_rebuild_db()
     elif erase_data:
         with session_ctx() as session:
             for table in reversed(Base.metadata.sorted_tables):
@@ -533,6 +531,8 @@ def before_all(context):
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
+        for well in [well_1, well_2, well_3]:
+            add_measuring_point_history(context, session, well=well)
         add_well_casing_material(context, session, well_1)
 
         contact = add_contact(context, session)
@@ -583,14 +583,31 @@ def before_all(context):
                 target_table="thing",
             )
 
-        for value, start, end in (
-            ("Currently monitored", datetime(2020, 1, 1), datetime(2021, 1, 1)),
-            ("Not currently monitored", datetime(2021, 1, 1), None),
+        for value, status_type, start, end in (
+            (
+                "Currently monitored",
+                "Monitoring Status",
+                datetime(2020, 1, 1),
+                datetime(2021, 1, 1),
+            ),
+            (
+                "Not currently monitored",
+                "Monitoring Status",
+                datetime(2021, 1, 1),
+                None,
+            ),
+            ("Open", "Open Status", datetime(2020, 1, 1), None),
+            (
+                "Datalogger can be installed",
+                "Datalogger Suitability Status",
+                datetime(2020, 1, 1),
+                None,
+            ),
         ):
             add_status_history(
                 context,
                 session,
-                status_type="Monitoring Status",
+                status_type=status_type,
                 status_value=value,
                 start_date=start,
                 end_date=end,

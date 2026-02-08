@@ -1,9 +1,10 @@
 from typing import List
 
 from pydantic import BaseModel
+
+from core.enums import AquiferType, GeographicScale  # Import specific Enums
 from schemas import BaseResponseModel
 from schemas.validators import GeometryMixin
-from core.enums import AquiferType, GeographicScale  # Import specific Enums
 
 
 # ------ CREATE ----------

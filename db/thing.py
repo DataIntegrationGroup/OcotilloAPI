@@ -151,11 +151,6 @@ class Thing(
         nullable=True,
         comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
     )
-    # TODO: should this be required for every well in the database? AMMP review
-    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
-        nullable=True,
-        comment="Indicates if the well is suitable for datalogger installation.",
-    )
 
     # Spring-related columns
     spring_type: Mapped[str] = lexicon_term(
@@ -462,6 +457,32 @@ class Thing(
         """
         latest_status = retrieve_latest_polymorphic_history_table_record(
             self, "status_history", "Monitoring Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def open_status(self) -> str | None:
+        """
+        Returns the open status from the most recent status history entry
+        where status_type is "Open Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Open Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def datalogger_suitability_status(self) -> str | None:
+        """
+        Returns the datalogger installation status from the most recent status history entry
+        where status_type is "Datalogger Suitability Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Datalogger Suitability Status"
         )
         return latest_status.status_value if latest_status else None
 

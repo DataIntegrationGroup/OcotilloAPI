@@ -379,8 +379,7 @@ def _make_contact_and_assoc(
         from schemas.contact import CreateContact
 
         contact = CreateContact(**data)
-        contact_data = contact.model_dump()
-        contact_data.pop("thing_id")
+        contact_data = contact.model_dump(exclude=["thing_id", "notes"])
         contact = Contact(**contact_data)
         session.add(contact)
 

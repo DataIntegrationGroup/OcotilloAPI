@@ -125,6 +125,14 @@ class Contact(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
         UniqueConstraint("name", "organization", name="uq_contact_name_organization"),
     )
 
+    @property
+    def communication_notes(self):
+        return self._get_notes("Communication")
+
+    @property
+    def general_notes(self):
+        return self._get_notes("General")
+
 
 class IncompleteNMAPhone(Base, AutoBaseMixin):
     """

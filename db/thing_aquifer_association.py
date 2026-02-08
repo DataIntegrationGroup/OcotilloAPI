@@ -8,7 +8,6 @@ the many-to-many relationship between a Thing and an AquiferSystem.
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
-
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin

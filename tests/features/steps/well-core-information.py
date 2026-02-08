@@ -294,7 +294,7 @@ def step_impl(context):
     ] == {
         "easting": point_utm_zone_13.x,
         "northing": point_utm_zone_13.y,
-        "utm_zone": 13,
+        "utm_zone": "13N",
         "horizontal_datum": "NAD83",
     }
 
