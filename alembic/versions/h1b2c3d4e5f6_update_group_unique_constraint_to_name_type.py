@@ -33,18 +33,14 @@ def _drop_name_only_unique_constraints() -> None:
 
 def _ensure_no_duplicate_name_group_type_pairs() -> None:
     bind = op.get_bind()
-    duplicate = bind.execute(
-        sa.text(
-            """
+    duplicate = bind.execute(sa.text("""
             SELECT name, group_type, COUNT(*) AS cnt
             FROM "group"
             WHERE group_type IS NOT NULL
             GROUP BY name, group_type
             HAVING COUNT(*) > 1
             LIMIT 1
-            """
-        )
-    ).first()
+            """)).first()
     if duplicate:
         raise RuntimeError(
             "Cannot create uq_group_name_type: duplicate (name, group_type) rows exist."
@@ -53,17 +49,13 @@ def _ensure_no_duplicate_name_group_type_pairs() -> None:
 
 def _ensure_no_duplicate_names() -> None:
     bind = op.get_bind()
-    duplicate = bind.execute(
-        sa.text(
-            """
+    duplicate = bind.execute(sa.text("""
             SELECT name, COUNT(*) AS cnt
             FROM "group"
             GROUP BY name
             HAVING COUNT(*) > 1
             LIMIT 1
-            """
-        )
-    ).first()
+            """)).first()
     if duplicate:
         raise RuntimeError(
             "Cannot recreate uq_group_name: duplicate group names exist."
