@@ -1,16 +1,18 @@
 @backend
+@cli
 @BDMS-TBD
 @production
-Feature: Bulk upload well inventory from CSV
+Feature: Bulk upload well inventory from CSV via CLI
   As a hydrogeologist or data specialist
   I want to upload a CSV file containing well inventory data for multiple wells
   So that well records can be created efficiently and accurately in the system
 
+
   Background:
-    Given a functioning api
+    Given a functioning cli
     And valid lexicon values exist for:
       | lexicon category      |
-      | contact_role          |
+      | role                  |
       | contact_type          |
       | phone_type            |
       | email_type            |
@@ -18,7 +20,7 @@ Feature: Bulk upload well inventory from CSV
       | elevation_method      |
       | well_pump_type        |
       | well_purpose          |
-      | well_hole_status      |
+      | status_value          |
       | monitoring_frequency  |
       | sample_method         |
       | level_status          |
@@ -117,7 +119,7 @@ Feature: Bulk upload well inventory from CSV
       | measuring_point_description       |
       | well_purpose                      |
       | well_purpose_2                    |
-      | well_hole_status                  |
+      | well_status                  |
       | monitoring_frequency              |
       | sampling_scenario_notes           |
       | well_measuring_notes              |
@@ -139,10 +141,10 @@ Feature: Bulk upload well inventory from CSV
 #    And all optional numeric fields contain valid numeric values when provided
 #    And all optional date fields contain valid ISO 8601 timestamps when provided
 
-    When I upload the file to the bulk upload endpoint
+    When I run the well inventory bulk upload command
     # assumes users are entering datetimes as Mountain Time because location is restricted to New Mexico
     Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value.
-    And the system returns a 201 Created status code
+    And the command exits with code 0
     And the system should return a response in JSON format
 #    And null values in the response are represented as JSON null
     And the response includes a summary containing:
@@ -168,24 +170,24 @@ Feature: Bulk upload well inventory from CSV
       | elevation_ft            |
       | elevation_method        |
       | measuring_point_height_ft |
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 201 Created status code
+    When I run the well inventory bulk upload command
+    Then the command exits with code 0
     And the system should return a response in JSON format
     And all wells are imported
 
   @positive @validation @extra_columns @BDMS-TBD
   Scenario: Upload succeeds when CSV contains extra, unknown columns
     Given my CSV file contains extra columns but is otherwise valid
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 201 Created status code
+    When I run the well inventory bulk upload command
+    Then the command exits with code 0
     And the system should return a response in JSON format
     And all wells are imported
 
   @positive @validation @autogenerate_ids @BDMS-TBD
   Scenario: Upload succeeds and system auto-generates well_name_point_id when prefixed with "XY-
     Given my CSV file contains all valid columns but uses "XY-" prefix for well_name_point_id values
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 201 Created status code
+    When I run the well inventory bulk upload command
+    Then the command exits with code 0
     And the system should return a response in JSON format
     And all wells are imported with system-generated unique well_name_point_id values
 
@@ -195,8 +197,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @transactional_import @BDMS-TBD
   Scenario: No wells are imported when any row fails validation
     Given my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error for the row missing "well_name_point_id"
     And no wells are imported
@@ -204,8 +206,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid postal code format
     Given my CSV file contains a row  that has an invalid postal code format in contact_1_address_1_postal_code
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid postal code format
     And no wells are imported
@@ -213,8 +215,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with a invalid phone number format
     Given my CSV file contains a row with a contact with a phone number that is not in the valid format
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid phone number format
     And no wells are imported
@@ -222,8 +224,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with a invalid email format
     Given my CSV file contains a row with a contact with an email that is not in the valid format
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid email format
     And no wells are imported
@@ -231,8 +233,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact without a contact_role
     Given my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "contact_role" field
     And no wells are imported
@@ -240,8 +242,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact without a "contact_type"
     Given my CSV file contains a row with a contact but is missing the required "contact_type" field for that contact
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "contact_type" value
     And no wells are imported
@@ -249,8 +251,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact with an invalid "contact_type"
     Given my CSV file contains a row with a contact_type value that is not in the valid lexicon for "contact_type"
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "contact_type" value
     And no wells are imported
@@ -258,8 +260,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact with an email without an email_type
     Given my CSV file contains a row with a contact with an email but is missing the required "email_type" field for that email
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "email_type" value
     And no wells are imported
@@ -267,8 +269,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact with a phone without a phone_type
     Given my CSV file contains a row with a contact with a phone but is missing the required "phone_type" field for that phone
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "phone_type" value
     And no wells are imported
@@ -276,8 +278,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has contact with an address without an address_type
     Given my CSV file contains a row with a contact with an address but is missing the required "address_type" field for that address
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "address_type" value
     And no wells are imported
@@ -285,8 +287,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has utm_easting utm_northing and utm_zone values that are not within New Mexico
     Given my CSV file contains a row with utm_easting utm_northing and utm_zone values that are not within New Mexico
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid UTM coordinates
     And no wells are imported
@@ -294,8 +296,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when required fields are missing
     Given my CSV file contains rows missing a required field "well_name_point_id"
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes validation errors for all rows missing required fields
     And the response identifies the row and field for each error
@@ -304,8 +306,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @required_fields @BDMS-TBD
   Scenario Outline: Upload fails when a required field is missing
     Given my CSV file contains a row missing the required "<required_field>" field
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error for the "<required_field>" field
     And no wells are imported
@@ -328,8 +330,8 @@ Feature: Bulk upload well inventory from CSV
   Scenario: Upload fails due to invalid boolean field values
     Given my CSV file contains a row with an invalid boolean value "maybe" in the "is_open" field
 #    And my CSV file contains other boolean fields such as "sample_possible" with valid boolean values
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid boolean value for the "is_open" field
     And no wells are imported
@@ -337,8 +339,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when duplicate well_name_point_id values are present
     Given my CSV file contains one or more duplicate "well_name_point_id" values
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes validation errors indicating duplicated values
     And each error identifies the row and field
     And no wells are imported
@@ -346,24 +348,24 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid lexicon values
     Given my CSV file contains invalid lexicon values for "contact_role" or other lexicon fields
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
     And no wells are imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid date formats
     Given my CSV file contains invalid ISO 8601 date values in the "date_time" or "date_drilled" field
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
     And no wells are imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid numeric fields
     Given my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "utm_easting"
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
     And no wells are imported
 
@@ -375,8 +377,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @file_format @limits @BDMS-TBD
   Scenario: Upload fails when the CSV exceeds the maximum allowed number of rows
     Given my CSV file contains more rows than the configured maximum for bulk upload
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 400 status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes an error message indicating the row limit was exceeded
     And no wells are imported
@@ -384,24 +386,24 @@ Feature: Bulk upload well inventory from CSV
   @negative @file_format @BDMS-TBD
   Scenario: Upload fails when file type is unsupported
     Given I have a non-CSV file
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 400 status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes an error message indicating unsupported file type
     And no wells are imported
 
   @negative @file_format @BDMS-TBD
   Scenario: Upload fails when the CSV file is empty
     Given my CSV file is empty
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 400 status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes an error message indicating an empty file
     And no wells are imported
 
   @negative @file_format @BDMS-TBD
   Scenario: Upload fails when CSV contains only headers
     Given my CSV file contains column headers but no data rows
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 400 status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the response includes an error indicating that no data rows were found
     And no wells are imported
 
@@ -412,8 +414,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @header_row @BDMS-TBD
   Scenario: Upload fails when a header row is repeated in the middle of the file
     Given my CSV file contains a valid but duplicate header row
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating a repeated header row
     And no wells are imported
@@ -422,8 +424,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @header_row @BDMS-TBD
   Scenario: Upload fails when the header row contains duplicate column names
     Given my CSV file header row contains the "contact_1_email_1" column name more than once
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating duplicate header names
     And no wells are imported
@@ -437,8 +439,8 @@ Feature: Bulk upload well inventory from CSV
   Scenario Outline: Upload fails when CSV uses an unsupported delimiter
     Given my file is named with a .csv extension
     And my file uses "<delimiter_description>" as the field delimiter instead of commas
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 400 status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes an error message indicating an unsupported delimiter
     And no wells are imported
@@ -453,8 +455,8 @@ Feature: Bulk upload well inventory from CSV
     Given my CSV file header row contains all required columns
     And my CSV file contains a data row where the "site_name" field value includes a comma and is enclosed in quotes
 #    And all other required fields are populated with valid values
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 201 Created status code
+    When I run the well inventory bulk upload command
+    Then the command exits with code 0
     And the system should return a response in JSON format
     And all wells are imported
 #
@@ -462,8 +464,8 @@ Feature: Bulk upload well inventory from CSV
 #  Scenario: Upload fails when numeric fields are provided in Excel scientific notation format
 #    Given my CSV file contains a numeric-required field such as "utm_easting"
 #    And Excel has exported the "utm_easting" value in scientific notation (for example "1.2345E+06")
-#    When I upload the file to the bulk upload endpoint
-#    Then the system returns a 422 Unprocessable Entity status code
+#    When I run the well inventory bulk upload command
+#    Then the command exits with a non-zero exit code
 #    And the system should return a response in JSON format
 #    And the response includes a validation error indicating an invalid numeric format for "utm_easting"
 #    And no wells are imported
@@ -476,8 +478,8 @@ Feature: Bulk upload well inventory from CSV
   @negative @validation @BDMS-TBD
   Scenario: Water level entry fields are all required if any are filled
     Given my csv file contains a row where some but not all water level entry fields are filled
-    When I upload the file to the bulk upload endpoint
-    Then the system returns a 422 Unprocessable Entity status code
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes validation errors for each missing water level entry field
     And no wells are imported

@@ -249,7 +249,7 @@ class WellInventoryRow(BaseModel):
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
-    well_hole_status: Optional[str] = None
+    well_status: Optional[str] = None
     monitoring_frequency: MonitoringFrequencyField = None
 
     result_communication_preference: Optional[str] = None

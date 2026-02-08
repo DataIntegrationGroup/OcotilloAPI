@@ -101,6 +101,10 @@
       "description": null
     },
     {
+      "name": "level_status",
+      "description": null
+    },
+    {
       "name": "limit_type",
       "description": null
     },
@@ -2397,6 +2401,27 @@
       ],
       "term": "Observed (required for F, N, and W water level status)",
       "definition": "Observed (required for F, N, and W water level status)"
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "stable",
+      "definition": "Water level is stable."
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "rising",
+      "definition": "Water level is rising."
+    },
+    {
+      "categories": [
+        "level_status"
+      ],
+      "term": "falling",
+      "definition": "Water level is falling."
     },
     {
       "categories": [

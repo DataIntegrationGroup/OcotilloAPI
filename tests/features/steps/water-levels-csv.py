@@ -174,11 +174,6 @@ def step_impl(context: Context):
     context.stdout_json = None
 
 
-@then("the command exits with code 0")
-def step_impl(context: Context):
-    assert context.cli_result.exit_code == 0, context.cli_result.stderr
-
-
 @then("stdout should be valid JSON")
 def step_impl(context: Context):
     _ensure_stdout_json(context)
@@ -261,11 +256,6 @@ def step_impl(context: Context):
     rows[2]["well_name_point_id"] = ""
     _set_rows(context, rows)
     context.missing_field = "well_name_point_id"
-
-
-@then("the command exits with a non-zero exit code")
-def step_impl(context: Context):
-    assert context.cli_result.exit_code != 0
 
 
 @then(

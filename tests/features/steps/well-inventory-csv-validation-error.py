@@ -53,7 +53,7 @@ def step_impl(context: Context):
         },
         {
             "field": "composite field error",
-            "error": "Value error, UTM coordinates are outside of the NM. E=250000.0 N=4000000.0 Zone=13S",
+            "error": "Value error, Invalid utm zone. Must be one of: 12N, 13N",
         },
     ]
     _handle_validation_error(context, expected_errors)

@@ -1,19 +1,27 @@
+import json
+import tempfile
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from behave import given, when, then
 from behave.runner import Context
+from sqlalchemy import select
 
+from cli.service_adapter import well_inventory_csv
+from db.engine import session_ctx
+from db.lexicon import LexiconCategory
 from services.util import convert_dt_tz_naive_to_tz_aware
 
 
 @given("valid lexicon values exist for:")
 def step_impl_valid_lexicon_values(context: Context):
-    for row in context.table:
-        response = context.client.get(
-            "/lexicon/category",
-            params={"name": row[0]},
-        )
-        assert response.status_code == 200, f"Invalid lexicon category: {row[0]}"
+    with session_ctx() as session:
+        for row in context.table:
+            category = row[0]
+            found = session.scalars(
+                select(LexiconCategory).where(LexiconCategory.name == category)
+            ).one_or_none()
+            assert found is not None, f"Invalid lexicon category: {category}"
 
 
 @given("the CSV includes required fields:")
@@ -87,11 +95,48 @@ def step_impl(context: Context):
 
 
 @when("I upload the file to the bulk upload endpoint")
+@when("I run the well inventory bulk upload command")
 def step_impl(context: Context):
-    context.response = context.client.post(
-        "/well-inventory-csv",
-        files={"file": (context.file_name, context.file_content, context.file_type)},
-    )
+    suffix = Path(getattr(context, "file_name", "upload.csv")).suffix or ".csv"
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as fp:
+        fp.write(context.file_content)
+        temp_path = Path(fp.name)
+
+    try:
+        context.upload_file_path = temp_path
+        context.cli_result = well_inventory_csv(temp_path)
+        context.response = _WellInventoryCliResponse(context.cli_result)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+class _WellInventoryCliResponse:
+    def __init__(self, cli_result):
+        self._cli_result = cli_result
+        self.headers = {"Content-Type": "application/json"}
+        self._json = self._normalize_payload(cli_result.payload)
+        self.status_code = self._infer_status_code(
+            cli_result.payload, cli_result.exit_code
+        )
+        self.text = json.dumps(self._json)
+
+    @staticmethod
+    def _infer_status_code(payload: dict, exit_code: int) -> int:
+        if exit_code == 0:
+            return 201
+        if payload.get("validation_errors"):
+            return 422
+        return 400
+
+    @staticmethod
+    def _normalize_payload(payload: dict) -> dict:
+        # Keep feature assertions API-compatible while execution happens via CLI.
+        if "detail" in payload and isinstance(payload["detail"], str):
+            return {"detail": [{"msg": payload["detail"]}]}
+        return payload
+
+    def json(self):
+        return self._json
 
 
 @then(

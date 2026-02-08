@@ -196,7 +196,7 @@ def test_well_inventory_db_contents():
                         == "true"
                     )
 
-            assert thing.well_status == file_content["well_hole_status"]
+            assert thing.well_status == file_content["well_status"]
             assert (
                 thing.datalogger_suitability_status == "Datalogger can be installed"
                 if file_content["datalogger_possible"].lower() == "true"
@@ -546,7 +546,7 @@ class TestWellInventoryErrorHandling:
             result = well_inventory_csv(file_path)
             assert result.exit_code == 1
 
-    def test_upload_missing_contact_role(self):
+    def test_upload_missing_contact_type(self):
         """Upload fails when contact is provided without role."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
         if file_path.exists():

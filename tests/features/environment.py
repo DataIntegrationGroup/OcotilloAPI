@@ -18,7 +18,6 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
-from core.initializers import erase_and_rebuild_db
 from db import (
     Location,
     Thing,
@@ -49,6 +48,7 @@ from db import (
     Sample,
 )
 from db.engine import session_ctx
+from transfers.transfer import _drop_and_rebuild_db
 
 
 def add_context_object_container(name):
@@ -502,10 +502,10 @@ def add_geologic_formation(context, session, formation_code, well):
 def before_all(context):
     context.objects = {}
 
-    rebuild = True
+    rebuild = False
     erase_data = False
     if rebuild:
-        erase_and_rebuild_db()
+        _drop_and_rebuild_db()
     elif erase_data:
         with session_ctx() as session:
             for table in reversed(Base.metadata.sorted_tables):

@@ -371,7 +371,7 @@
 #         well_pump_depth=model.well_pump_depth_ft,
 #         is_suitable_for_datalogger=model.datalogger_possible,
 #         is_open=model.is_open,
-#         well_status=model.well_hole_status,
+#         well_status=model.well_status,
 #         notes=well_notes,
 #         well_purposes=well_purposes,
 #         monitoring_frequencies=monitoring_frequencies,
