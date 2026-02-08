@@ -55,25 +55,23 @@ class RadionuclidesTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        # Cache: legacy UUID -> (Integer id, thing_id)
-        self._sample_info_cache: dict[UUID, tuple[int, int]] = {}
+        # Cache: legacy UUID -> Integer chemistry_sample_info_id
+        self._sample_info_cache: dict[UUID, int] = {}
         self._build_sample_info_cache()
 
     def _build_sample_info_cache(self) -> None:
-        """Build cache of nma_sample_pt_id -> (id, thing_id) for FK lookups."""
+        """Build cache of nma_sample_pt_id -> chemistry_sample_info_id for FK lookups."""
         with session_ctx() as session:
             sample_infos = (
                 session.query(
                     NMA_Chemistry_SampleInfo.nma_sample_pt_id,
                     NMA_Chemistry_SampleInfo.id,
-                    NMA_Chemistry_SampleInfo.thing_id,
                 )
                 .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
                 .all()
             )
             self._sample_info_cache = {
-                nma_sample_pt_id: (csi_id, thing_id)
-                for nma_sample_pt_id, csi_id, thing_id in sample_infos
+                nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
             }
         logger.info(
             f"Built ChemistrySampleInfo cache with {len(self._sample_info_cache)} entries"
@@ -105,7 +103,6 @@ class RadionuclidesTransferer(Transferer):
     def _transfer_hook(self, session: Session) -> None:
         row_dicts = []
         skipped_global_id = 0
-        skipped_thing_id = 0
         for row in self.cleaned_df.to_dict("records"):
             row_dict = self._row_dict(row)
             if row_dict is None:
@@ -114,13 +111,6 @@ class RadionuclidesTransferer(Transferer):
                 skipped_global_id += 1
                 logger.warning(
                     "Skipping Radionuclides nma_SamplePtID=%s - nma_GlobalID missing or invalid",
-                    row_dict.get("nma_SamplePtID"),
-                )
-                continue
-            if row_dict.get("thing_id") is None:
-                skipped_thing_id += 1
-                logger.warning(
-                    "Skipping Radionuclides nma_SamplePtID=%s - Thing not found",
                     row_dict.get("nma_SamplePtID"),
                 )
                 continue
@@ -137,12 +127,6 @@ class RadionuclidesTransferer(Transferer):
                 "Skipped %s Radionuclides records without valid nma_GlobalID",
                 skipped_global_id,
             )
-        if skipped_thing_id > 0:
-            logger.warning(
-                "Skipped %s Radionuclides records without valid Thing",
-                skipped_thing_id,
-            )
-
         rows = self._dedupe_rows(row_dicts, key="nma_GlobalID")
         insert_stmt = insert(NMA_Radionuclides)
         excluded = insert_stmt.excluded
@@ -156,7 +140,6 @@ class RadionuclidesTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["nma_GlobalID"],
                 set_={
-                    "thing_id": excluded.thing_id,
                     "chemistry_sample_info_id": excluded.chemistry_sample_info_id,
                     "nma_SamplePtID": excluded.nma_SamplePtID,
                     "nma_SamplePointID": excluded.nma_SamplePointID,
@@ -220,10 +203,8 @@ class RadionuclidesTransferer(Transferer):
             )
             return None
 
-        # Look up Integer FK and thing_id from cache
-        cache_entry = self._sample_info_cache.get(legacy_sample_pt_id)
-        chemistry_sample_info_id = cache_entry[0] if cache_entry else None
-        thing_id = cache_entry[1] if cache_entry else None
+        # Look up Integer FK from cache
+        chemistry_sample_info_id = self._sample_info_cache.get(legacy_sample_pt_id)
 
         nma_global_id = self._uuid_val(val("GlobalID"))
 
@@ -231,7 +212,6 @@ class RadionuclidesTransferer(Transferer):
             # Legacy UUID PK -> nma_global_id (unique audit column)
             "nma_GlobalID": nma_global_id,
             # FKs
-            "thing_id": thing_id,
             "chemistry_sample_info_id": chemistry_sample_info_id,
             # Legacy ID columns (renamed with nma_ prefix)
             "nma_SamplePtID": legacy_sample_pt_id,
