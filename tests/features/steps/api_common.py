@@ -43,7 +43,6 @@ def step_given_api_is_running(context):
         """
 
         def closure():
-            # print("Overriding authentication")
             return default
 
         return closure
