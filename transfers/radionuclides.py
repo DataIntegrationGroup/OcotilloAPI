@@ -156,7 +156,6 @@ class RadionuclidesTransferer(Transferer):
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
                 index_elements=["nma_GlobalID"],
                 set_={
-                    "thing_id": excluded.thing_id,
                     "chemistry_sample_info_id": excluded.chemistry_sample_info_id,
                     "nma_SamplePtID": excluded.nma_SamplePtID,
                     "nma_SamplePointID": excluded.nma_SamplePointID,
