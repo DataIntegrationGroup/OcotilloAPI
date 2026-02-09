@@ -55,7 +55,7 @@ class RadionuclidesTransferer(ChemistryTransferer):
         self._parse_dates = ["AnalysisDate"]
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table, parse_dates=["AnalysisDate"])
+        input_df = read_csv(self.source_table, parse_dates=self._parse_dates)
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
 
