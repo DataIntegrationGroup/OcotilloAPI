@@ -219,16 +219,6 @@ class MinorTraceChemistryTransferer(Transferer):
         }
         return row_dict
 
-    def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
-        deduped = {}
-        for row in rows:
-            key = row.get("nma_GlobalID")
-            if key is None:
-                continue
-            deduped[key] = row
-        return list(deduped.values())
-
     def _safe_str(self, row, attr: str) -> Optional[str]:
         """Safely get a string value, returning None for NaN."""
         val = getattr(row, attr, None)

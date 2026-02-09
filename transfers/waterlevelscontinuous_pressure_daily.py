@@ -148,21 +148,6 @@ class NMA_WaterLevelsContinuous_Pressure_DailyTransferer(Transferer):
             "CONDDL (mS/cm)": val("CONDDL (mS/cm)"),
         }
 
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped = {}
-        for row in rows:
-            gid = row.get(key)
-            if gid is None:
-                continue
-            deduped[gid] = row
-        return list(deduped.values())
-
 
 def run(batch_size: int = 1000) -> None:
     """Entrypoint to execute the transfer."""

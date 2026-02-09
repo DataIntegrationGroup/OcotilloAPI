@@ -30,20 +30,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Optional
-from uuid import UUID
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, NMA_Radionuclides
-from db.engine import session_ctx
+from db import NMA_Radionuclides
 from transfers.logger import logger
-from transfers.transferer import Transferer
+from transfers.transferer import ChemistryTransferer
 from transfers.util import read_csv
 
 
-class RadionuclidesTransferer(Transferer):
+class RadionuclidesTransferer(ChemistryTransferer):
     """
     Transfer for the legacy Radionuclides table.
 
@@ -54,56 +52,17 @@ class RadionuclidesTransferer(Transferer):
 
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
-        self.batch_size = batch_size
-        # Cache: legacy UUID -> Integer chemistry_sample_info_id
-        self._sample_info_cache: dict[UUID, int] = {}
-        self._build_sample_info_cache()
-
-    def _build_sample_info_cache(self) -> None:
-        """Build cache of nma_sample_pt_id -> chemistry_sample_info_id for FK lookups."""
-        with session_ctx() as session:
-            sample_infos = (
-                session.query(
-                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
-                    NMA_Chemistry_SampleInfo.id,
-                )
-                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
-                .all()
-            )
-            self._sample_info_cache = {
-                nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
-            }
-        logger.info(
-            f"Built ChemistrySampleInfo cache with {len(self._sample_info_cache)} entries"
-        )
+        self._parse_dates = ["AnalysisDate"]
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, parse_dates=["AnalysisDate"])
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
 
-    def _filter_to_valid_sample_infos(self, df: pd.DataFrame) -> pd.DataFrame:
-        valid_sample_pt_ids = set(self._sample_info_cache.keys())
-        mask = df["SamplePtID"].apply(
-            lambda value: self._uuid_val(value) in valid_sample_pt_ids
-        )
-        before_count = len(df)
-        filtered_df = df[mask].copy()
-        after_count = len(filtered_df)
-
-        if before_count > after_count:
-            skipped = before_count - after_count
-            logger.warning(
-                f"Filtered out {skipped} Radionuclides records without matching "
-                f"ChemistrySampleInfo ({after_count} valid, {skipped} orphan records prevented)"
-            )
-
-        return filtered_df
-
     def _transfer_hook(self, session: Session) -> None:
         row_dicts = []
         skipped_global_id = 0
-        for row in self.cleaned_df.to_dict("records"):
+        for row in self.cleaned_df.itertuples():
             row_dict = self._row_dict(row)
             if row_dict is None:
                 continue
@@ -162,43 +121,22 @@ class RadionuclidesTransferer(Transferer):
             session.commit()
             session.expunge_all()
 
-    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
-        def val(key: str) -> Optional[Any]:
-            v = row.get(key)
-            if pd.isna(v):
-                return None
-            return v
-
-        def float_val(key: str) -> Optional[float]:
-            v = val(key)
-            if v is None:
-                return None
-            try:
-                return float(v)
-            except (TypeError, ValueError):
-                return None
-
-        def int_val(key: str) -> Optional[int]:
-            v = val(key)
-            if v is None:
-                return None
-            try:
-                return int(v)
-            except (TypeError, ValueError):
-                return None
-
-        analysis_date = val("AnalysisDate")
+    def _row_dict(self, row: Any) -> Optional[dict[str, Any]]:
+        analysis_date = getattr(row, "AnalysisDate", None)
+        if analysis_date is None or pd.isna(analysis_date):
+            analysis_date = None
         if hasattr(analysis_date, "to_pydatetime"):
             analysis_date = analysis_date.to_pydatetime()
         if isinstance(analysis_date, datetime):
             analysis_date = analysis_date.replace(tzinfo=None)
 
         # Get legacy UUID FK
-        legacy_sample_pt_id = self._uuid_val(val("SamplePtID"))
+        sample_pt_raw = getattr(row, "SamplePtID", None)
+        legacy_sample_pt_id = self._uuid_val(sample_pt_raw)
         if legacy_sample_pt_id is None:
             self._capture_error(
-                val("SamplePtID"),
-                f"Invalid SamplePtID: {val('SamplePtID')}",
+                sample_pt_raw,
+                f"Invalid SamplePtID: {sample_pt_raw}",
                 "SamplePtID",
             )
             return None
@@ -206,7 +144,8 @@ class RadionuclidesTransferer(Transferer):
         # Look up Integer FK from cache
         chemistry_sample_info_id = self._sample_info_cache.get(legacy_sample_pt_id)
 
-        nma_global_id = self._uuid_val(val("GlobalID"))
+        global_id_raw = getattr(row, "GlobalID", None)
+        nma_global_id = self._uuid_val(global_id_raw)
 
         return {
             # Legacy UUID PK -> nma_global_id (unique audit column)
@@ -215,49 +154,22 @@ class RadionuclidesTransferer(Transferer):
             "chemistry_sample_info_id": chemistry_sample_info_id,
             # Legacy ID columns (renamed with nma_ prefix)
             "nma_SamplePtID": legacy_sample_pt_id,
-            "nma_SamplePointID": val("SamplePointID"),
-            "nma_OBJECTID": val("OBJECTID"),
-            "nma_WCLab_ID": val("WCLab_ID"),
+            "nma_SamplePointID": self._safe_str(row, "SamplePointID"),
+            "nma_OBJECTID": self._safe_int(row, "OBJECTID"),
+            "nma_WCLab_ID": self._safe_str(row, "WCLab_ID"),
             # Data columns
-            "Analyte": val("Analyte"),
-            "Symbol": val("Symbol"),
-            "SampleValue": float_val("SampleValue"),
-            "Units": val("Units"),
-            "Uncertainty": float_val("Uncertainty"),
-            "AnalysisMethod": val("AnalysisMethod"),
+            "Analyte": self._safe_str(row, "Analyte"),
+            "Symbol": self._safe_str(row, "Symbol"),
+            "SampleValue": self._safe_float(row, "SampleValue"),
+            "Units": self._safe_str(row, "Units"),
+            "Uncertainty": self._safe_float(row, "Uncertainty"),
+            "AnalysisMethod": self._safe_str(row, "AnalysisMethod"),
             "AnalysisDate": analysis_date,
-            "Notes": val("Notes"),
-            "Volume": int_val("Volume"),
-            "VolumeUnit": val("VolumeUnit"),
-            "AnalysesAgency": val("AnalysesAgency"),
+            "Notes": self._safe_str(row, "Notes"),
+            "Volume": self._safe_int(row, "Volume"),
+            "VolumeUnit": self._safe_str(row, "VolumeUnit"),
+            "AnalysesAgency": self._safe_str(row, "AnalysesAgency"),
         }
-
-    def _uuid_val(self, value: Any) -> Optional[UUID]:
-        if value is None or pd.isna(value):
-            return None
-        if isinstance(value, UUID):
-            return value
-        if isinstance(value, str):
-            try:
-                return UUID(value)
-            except ValueError:
-                return None
-        return None
-
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped = {}
-        for row in rows:
-            row_key = row.get(key)
-            if row_key is None:
-                continue
-            deduped[row_key] = row
-        return list(deduped.values())
 
 
 def run(batch_size: int = 1000) -> None:

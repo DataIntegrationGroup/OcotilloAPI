@@ -70,7 +70,7 @@ class SurfaceWaterDataTransferer(Transferer):
                 continue
             rows.append(record)
 
-        rows = self._dedupe_rows(rows, key="OBJECTID")
+        rows = self._dedupe_rows(rows, key="OBJECTID", include_missing=True)
 
         if skipped_missing_thing:
             logger.warning(
@@ -159,23 +159,6 @@ class SurfaceWaterDataTransferer(Transferer):
             "DataSource": val("DataSource"),
             "thing_id": thing_id,
         }
-
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped: dict[Any, dict[str, Any]] = {}
-        passthrough: list[dict[str, Any]] = []
-        for row in rows:
-            row_key = row.get(key)
-            if row_key is None:
-                passthrough.append(row)
-            else:
-                deduped[row_key] = row
-        return list(deduped.values()) + passthrough
 
     def _resolve_thing_id(self, location_id: Optional[uuid.UUID]) -> Optional[int]:
         if location_id is None:

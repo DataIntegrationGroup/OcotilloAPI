@@ -48,6 +48,7 @@ class WeatherDataTransferer(Transferer):
         rows = self._dedupe_rows(
             [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
             key="OBJECTID",
+            include_missing=True,
         )
 
         insert_stmt = insert(NMA_WeatherData)
@@ -93,23 +94,6 @@ class WeatherDataTransferer(Transferer):
             "WeatherID": to_uuid(val("WeatherID")),
             "OBJECTID": val("OBJECTID"),
         }
-
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped: dict[Any, dict[str, Any]] = {}
-        passthrough: list[dict[str, Any]] = []
-        for row in rows:
-            row_key = row.get(key)
-            if row_key is None:
-                passthrough.append(row)
-            else:
-                deduped[row_key] = row
-        return list(deduped.values()) + passthrough
 
 
 def run(batch_size: int = 1000) -> None:

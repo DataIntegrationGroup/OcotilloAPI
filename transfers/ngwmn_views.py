@@ -50,7 +50,9 @@ class _BaseNGWMNTransferer(Transferer):
 
     def _transfer_hook(self, session: Session) -> None:
         rows = self._dedupe_rows(
-            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")]
+            [self._row_dict(row) for row in self.cleaned_df.to_dict("records")],
+            key=self._conflict_columns(),
+            include_missing=True,
         )
 
         for i in range(0, len(rows), self.batch_size):
@@ -102,25 +104,6 @@ class _BaseNGWMNTransferer(Transferer):
 
     def _upsert_set_clause(self) -> dict[str, Any]:
         raise NotImplementedError("_upsert_set_clause must be implemented")
-
-    def _dedupe_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch on conflict columns to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        keys = self._conflict_columns()
-        deduped: dict[tuple, dict[str, Any]] = {}
-        passthrough: list[dict[str, Any]] = []
-
-        for row in rows:
-            key_tuple = tuple(row.get(k) for k in keys)
-            # If any part of the conflict key is missing, don't dedupe—let it pass through.
-            if any(k is None for k in key_tuple):
-                passthrough.append(row)
-            else:
-                deduped[key_tuple] = row
-
-        return list(deduped.values()) + passthrough
 
 
 class NGWMNWellConstructionTransferer(_BaseNGWMNTransferer):

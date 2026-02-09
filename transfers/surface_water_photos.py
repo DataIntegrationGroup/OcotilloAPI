@@ -83,18 +83,6 @@ class SurfaceWaterPhotosTransferer(Transferer):
             "GlobalID": self._uuid_val(row.get("GlobalID")),
         }
 
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
-        deduped = {}
-        for row in rows:
-            global_id = row.get(key)
-            if global_id is None:
-                continue
-            deduped[global_id] = row
-        return list(deduped.values())
-
     def _uuid_val(self, value: Any) -> Optional[UUID]:
         if value is None or pd.isna(value):
             return None

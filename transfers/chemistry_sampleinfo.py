@@ -361,21 +361,6 @@ class ChemistrySampleInfoTransferer(Transferer):
             "SampleNotes": str_val("SampleNotes"),
         }
 
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped = {}
-        for row in rows:
-            oid = row.get(key)
-            if oid is None:
-                continue
-            deduped[oid] = row
-        return list(deduped.values())
-
 
 def run(batch_size: int = 1000) -> None:
     """Entrypoint to execute the transfer."""
