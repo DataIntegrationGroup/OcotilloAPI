@@ -322,9 +322,8 @@ class ChemistryTransferer(Transferer):
         """
         valid_sample_pt_ids = set(self._sample_info_cache.keys())
         before_count = len(df)
-        mask = df["SamplePtID"].apply(
-            lambda value: self._uuid_val(value) in valid_sample_pt_ids
-        )
+        parsed_sample_pt_ids = df["SamplePtID"].map(self._uuid_val)
+        mask = parsed_sample_pt_ids.isin(valid_sample_pt_ids)
         filtered_df = df[mask].copy()
         inverted_df = df[~mask].copy()
         if not inverted_df.empty:
