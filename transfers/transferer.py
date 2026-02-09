@@ -160,9 +160,13 @@ class Transferer(object):
             else:
                 row_key = tuple(row.get(k) for k in key_list)
 
-            if row_key is None or (
-                isinstance(row_key, tuple) and any(k is None for k in row_key)
-            ):
+            # Treat None and any pd.isna(...) value (e.g., NaN) as missing keys
+            if isinstance(row_key, tuple):
+                is_missing = any(pd.isna(k) for k in row_key)
+            else:
+                is_missing = pd.isna(row_key)
+
+            if is_missing:
                 if include_missing:
                     passthrough.append(row)
                 continue
