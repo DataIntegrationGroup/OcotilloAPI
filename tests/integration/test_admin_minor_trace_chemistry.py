@@ -104,6 +104,7 @@ def minor_trace_chemistry_record():
         chemistry = NMA_MinorTraceChemistry(
             nma_global_id=uuid.uuid4(),
             chemistry_sample_info_id=sample_info.id,  # Integer FK
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Arsenic",
             symbol="As",
             sample_value=0.005,

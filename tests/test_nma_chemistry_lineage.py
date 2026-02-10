@@ -401,6 +401,7 @@ def test_assign_sample_info_to_mtc(shared_thing):
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,  # OO: assign object
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Pb",
         )
         session.add(mtc)
@@ -433,6 +434,7 @@ def test_append_mtc_to_sample_info(shared_thing):
 
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Fe",
         )
         sample_info.minor_trace_chemistries.append(mtc)
@@ -454,6 +456,7 @@ def test_mtc_requires_chemistry_sample_info():
     with session_ctx() as session:
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
+            nma_sample_point_id=_next_sample_point_id(),
             analyte="Cu",
             # No chemistry_sample_info_id - should fail
         )
@@ -487,6 +490,7 @@ def test_full_lineage_navigation(shared_thing):
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Zn",
         )
         session.add(mtc)
@@ -524,6 +528,7 @@ def test_reverse_lineage_navigation(shared_thing):
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Mn",
         )
         session.add(mtc)
@@ -560,6 +565,7 @@ def test_cascade_delete_sample_info_deletes_mtc(shared_thing):
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Cd",
         )
         session.add(mtc)
@@ -681,11 +687,13 @@ def test_multiple_mtc_per_sample_info(shared_thing):
         mtc1 = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="As",
         )
         mtc2 = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="Pb",
         )
         session.add_all([mtc1, mtc2])
