@@ -134,6 +134,8 @@ def test_nma_minor_trace_chemistry_columns():
         "id",  # Integer PK
         "nma_global_id",  # Legacy UUID
         "chemistry_sample_info_id",  # Integer FK
+        "nma_sample_pt_id",  # Legacy UUID FK
+        "nma_sample_point_id",  # Legacy sample point id
         # from legacy
         "analyte",
         "sample_value",
@@ -173,6 +175,8 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_thing):
         mtc = NMA_MinorTraceChemistry(
             nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_pt_id=sample_info.nma_sample_pt_id,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="As",
             sample_value=0.015,
             units="mg/L",
@@ -193,6 +197,8 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_thing):
         assert mtc.id is not None  # Integer PK
         assert mtc.nma_global_id is not None  # Legacy UUID
         assert mtc.chemistry_sample_info_id == sample_info.id  # Integer FK
+        assert mtc.nma_sample_pt_id == sample_info.nma_sample_pt_id
+        assert mtc.nma_sample_point_id == sample_info.nma_sample_point_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
         assert mtc.units == "mg/L"

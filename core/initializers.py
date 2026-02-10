@@ -168,6 +168,7 @@ def init_lexicon(path: str = None) -> None:
             )
 
         association_rows = []
+        seen_links = set()
         for term_dict in terms:
             term_id = existing_terms.get(term_dict["term"])
             if term_id is None:
@@ -177,8 +178,9 @@ def init_lexicon(path: str = None) -> None:
                 if category_id is None:
                     continue
                 key = (term_id, category_id)
-                if key in existing_links:
+                if key in existing_links or key in seen_links:
                     continue
+                seen_links.add(key)
                 association_rows.append(
                     {"term_id": term_id, "category_id": category_id}
                 )

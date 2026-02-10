@@ -314,7 +314,7 @@ class ChemistryTransferer(Transferer):
         )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table, parse_dates=self._parse_dates)
+        input_df = self._read_csv(self.source_table, parse_dates=self._parse_dates)
         cleaned_df = self._filter_to_valid_sample_infos(input_df)
         return input_df, cleaned_df
 
@@ -332,10 +332,10 @@ class ChemistryTransferer(Transferer):
         inverted_df = df[~mask].copy()
         if not inverted_df.empty:
             for _, row in inverted_df.iterrows():
-                pointid = row["SamplePointID"]
+                sample_pt_id = row.get("SamplePtID")
                 self._capture_error(
-                    pointid,
-                    f"No matching ChemistrySampleInfo for SamplePtID: {pointid}",
+                    sample_pt_id,
+                    f"No matching ChemistrySampleInfo for SamplePtID: {sample_pt_id}",
                     "SamplePtID",
                 )
 
@@ -343,8 +343,9 @@ class ChemistryTransferer(Transferer):
 
         if before_count > after_count:
             skipped = before_count - after_count
+            table_name = self.source_table or self.__class__.__name__
             logger.warning(
-                f"Filtered out {skipped} FieldParameters records without matching "
+                f"Filtered out {skipped} {table_name} records without matching "
                 f"ChemistrySampleInfo ({after_count} valid, {skipped} orphan records prevented)"
             )
 
