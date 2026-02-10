@@ -262,6 +262,10 @@ python -m transfers.transfer
 
 Configure the `.env` file with the appropriate credentials before running transfers.
 
+If contact transfers fail with `OwnerKey normalization collisions`, add or update
+`transfers/data/owners_ownerkey_mapper.json` to map inconsistent `OwnerKey` values
+to a single canonical spelling before re-running the transfer.
+
 To drop the existing schema and rebuild from migrations before transferring data, set:
 
 ```bash

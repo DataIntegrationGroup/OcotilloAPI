@@ -57,6 +57,13 @@ class ContactTransfer(ThingBasedTransferer):
         with open(co_to_org_mapper_path, "r") as f:
             self._co_to_org_mapper = json.load(f)
 
+        ownerkey_mapper_path = get_transfers_data_path("owners_ownerkey_mapper.json")
+        try:
+            with open(ownerkey_mapper_path, "r") as f:
+                self._ownerkey_mapper = json.load(f)
+        except FileNotFoundError:
+            self._ownerkey_mapper = {}
+
         self._added = []
 
     def calculate_missing_organizations(self):
@@ -78,7 +85,67 @@ class ContactTransfer(ThingBasedTransferer):
         locdf = read_csv("Location")
         ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
-        odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
+        owner_key_col = next(
+            col for col in odf.columns if col.lower().endswith("ownerkey")
+        )
+        link_owner_key_col = next(
+            col for col in ldf.columns if col.lower().endswith("ownerkey")
+        )
+
+        if self._ownerkey_mapper:
+            odf["ownerkey_canonical"] = odf[owner_key_col].map(
+                lambda v: self._ownerkey_mapper.get(v, v)
+            )
+            ldf["ownerkey_canonical"] = ldf[link_owner_key_col].map(
+                lambda v: self._ownerkey_mapper.get(v, v)
+            )
+        else:
+            odf["ownerkey_canonical"] = odf[owner_key_col]
+            ldf["ownerkey_canonical"] = ldf[link_owner_key_col]
+
+        odf["ownerkey_norm"] = (
+            odf["ownerkey_canonical"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.casefold()
+            .replace({"": pd.NA})
+        )
+        ldf["ownerkey_norm"] = (
+            ldf["ownerkey_canonical"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.casefold()
+            .replace({"": pd.NA})
+        )
+
+        collisions = (
+            ldf.groupby("ownerkey_norm")["ownerkey_canonical"]
+            .nunique(dropna=True)
+            .loc[lambda s: s > 1]
+        )
+        if not collisions.empty:
+            examples = []
+            for key in collisions.index[:10]:
+                variants = (
+                    ldf.loc[ldf["ownerkey_norm"] == key, "ownerkey_canonical"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+                examples.append(f"{key} -> {sorted(variants)}")
+            logger.critical(
+                "OwnerKey normalization collision(s) detected in OwnerLink. "
+                "Resolve these before proceeding. Examples: %s",
+                "; ".join(examples),
+            )
+            raise ValueError(
+                "OwnerKey normalization collisions detected in OwnerLink. "
+                "Fix source data or update owners_ownerkey_mapper.json."
+            )
+
+        odf = odf.join(ldf.set_index("ownerkey_norm"), on="ownerkey_norm")
 
         odf = replace_nans(odf)
 
