@@ -10,7 +10,6 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "e71807682f57"
@@ -23,10 +22,6 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.add_column(
         "NMA_MinorTraceChemistry",
-        sa.Column("nma_SamplePtID", postgresql.UUID(as_uuid=True), nullable=False),
-    )
-    op.add_column(
-        "NMA_MinorTraceChemistry",
         sa.Column("nma_SamplePointID", sa.String(length=10), nullable=False),
     )
 
@@ -34,4 +29,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column("NMA_MinorTraceChemistry", "nma_SamplePointID")
-    op.drop_column("NMA_MinorTraceChemistry", "nma_SamplePtID")

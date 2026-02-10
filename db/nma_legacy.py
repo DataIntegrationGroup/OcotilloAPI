@@ -774,7 +774,6 @@ class NMA_MinorTraceChemistry(Base):
     - nma_global_id: Original UUID PK, now UNIQUE for audit
     - chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
     - nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
-    - nma_sample_pt_id: Legacy UUID FK (SamplePtID) for audit
     - nma_sample_point_id: Legacy SamplePointID string
     - nma_wclab_id: Legacy WCLab_ID string (audit)
     """
@@ -809,9 +808,6 @@ class NMA_MinorTraceChemistry(Base):
     )
 
     # Additional columns
-    nma_sample_pt_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        "nma_SamplePtID", UUID(as_uuid=True), nullable=False
-    )
     nma_sample_point_id: Mapped[Optional[str]] = mapped_column(
         "nma_SamplePointID", String(10), nullable=False
     )

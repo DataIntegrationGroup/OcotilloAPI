@@ -25,7 +25,6 @@ Updated for Integer PK schema:
 - nma_global_id: Legacy UUID PK (GlobalID), UNIQUE for audit
 - chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
 - nma_chemistry_sample_info_uuid: Legacy UUID FK for audit
-- nma_sample_pt_id: Legacy UUID FK (SamplePtID) for audit
 - nma_sample_point_id: Legacy SamplePointID string
 """
 
@@ -149,7 +148,6 @@ class MinorTraceChemistryTransferer(Transferer):
                 set_={
                     "chemistry_sample_info_id": excluded.chemistry_sample_info_id,
                     "nma_chemistry_sample_info_uuid": excluded.nma_chemistry_sample_info_uuid,
-                    "nma_SamplePtID": excluded.nma_SamplePtID,
                     "nma_SamplePointID": excluded.nma_SamplePointID,
                     "sample_value": excluded.sample_value,
                     "units": excluded.units,
@@ -216,7 +214,6 @@ class MinorTraceChemistryTransferer(Transferer):
             "chemistry_sample_info_id": chemistry_sample_info_id,
             # Legacy UUID FK for audit
             "nma_chemistry_sample_info_uuid": legacy_sample_pt_id,
-            "nma_SamplePtID": legacy_sample_pt_id,
             "nma_SamplePointID": sample_point_id,
             # Data columns
             "analyte": self._safe_str(row, "Analyte"),
