@@ -116,10 +116,7 @@ class MinorTraceChemistryTransferer(Transferer):
 
         Uses ON CONFLICT DO UPDATE on nma_GlobalID (the legacy UUID PK, now UNIQUE).
         """
-        limit = self.flags.get("LIMIT", 0)
         df = self.cleaned_df
-        if limit > 0:
-            df = df.head(limit)
 
         # Convert rows to dicts
         row_dicts = []
