@@ -16,13 +16,18 @@
 from pathlib import Path
 
 from fastapi_pagination import add_pagination
-from sqlalchemy import text
+from sqlalchemy import text, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
 
 from db import Base
 from db.engine import session_ctx
+from db.lexicon import (
+    LexiconCategory,
+    LexiconTerm,
+    LexiconTermCategoryAssociation,
+)
 from db.parameter import Parameter
-from services.lexicon_helper import add_lexicon_term, add_lexicon_category
 
 
 def init_parameter(path: str = None) -> None:
@@ -77,33 +82,112 @@ def init_lexicon(path: str = None) -> None:
 
         default_lexicon = json.load(f)
 
-    # populate lexicon
-
     with session_ctx() as session:
         terms = default_lexicon["terms"]
         categories = default_lexicon["categories"]
-        for category in categories:
-            try:
-                add_lexicon_category(session, category["name"], category["description"])
-            except DatabaseError as e:
-                print(f"Failed to add category {category['name']}: error: {e}")
-                session.rollback()
-                continue
+        category_names = [category["name"] for category in categories]
+        existing_categories = dict(
+            session.execute(
+                select(LexiconCategory.name, LexiconCategory.id).where(
+                    LexiconCategory.name.in_(category_names)
+                )
+            ).all()
+        )
+        category_rows = [
+            {"name": category["name"], "description": category["description"]}
+            for category in categories
+            if category["name"] not in existing_categories
+        ]
+        if category_rows:
+            session.execute(
+                insert(LexiconCategory)
+                .values(category_rows)
+                .on_conflict_do_nothing(index_elements=["name"])
+            )
+            session.commit()
+            existing_categories = dict(
+                session.execute(
+                    select(LexiconCategory.name, LexiconCategory.id).where(
+                        LexiconCategory.name.in_(category_names)
+                    )
+                ).all()
+            )
 
+        term_names = [term_dict["term"] for term_dict in terms]
+        existing_terms = dict(
+            session.execute(
+                select(LexiconTerm.term, LexiconTerm.id).where(
+                    LexiconTerm.term.in_(term_names)
+                )
+            ).all()
+        )
+        term_rows = [
+            {"term": term_dict["term"], "definition": term_dict["definition"]}
+            for term_dict in terms
+            if term_dict["term"] not in existing_terms
+        ]
+        if term_rows:
+            session.execute(
+                insert(LexiconTerm)
+                .values(term_rows)
+                .on_conflict_do_nothing(index_elements=["term"])
+            )
+            session.commit()
+            existing_terms = dict(
+                session.execute(
+                    select(LexiconTerm.term, LexiconTerm.id).where(
+                        LexiconTerm.term.in_(term_names)
+                    )
+                ).all()
+            )
+
+        term_ids = [existing_terms.get(term_name) for term_name in term_names]
+        category_ids = [
+            existing_categories.get(category_name) for category_name in category_names
+        ]
+        existing_links = set()
+        if term_ids and category_ids:
+            existing_links = set(
+                session.execute(
+                    select(
+                        LexiconTermCategoryAssociation.term_id,
+                        LexiconTermCategoryAssociation.category_id,
+                    ).where(
+                        LexiconTermCategoryAssociation.term_id.in_(
+                            [term_id for term_id in term_ids if term_id is not None]
+                        ),
+                        LexiconTermCategoryAssociation.category_id.in_(
+                            [
+                                category_id
+                                for category_id in category_ids
+                                if category_id is not None
+                            ]
+                        ),
+                    )
+                ).all()
+            )
+
+        association_rows = []
         for term_dict in terms:
-            try:
-                add_lexicon_term(
-                    session,
-                    term_dict["term"],
-                    term_dict["definition"],
-                    term_dict["categories"],
-                )
-            except DatabaseError as e:
-                print(
-                    f"Failed to add term {term_dict['term']}: {term_dict['definition']} error: {e}"
+            term_id = existing_terms.get(term_dict["term"])
+            if term_id is None:
+                continue
+            for category in term_dict["categories"]:
+                category_id = existing_categories.get(category)
+                if category_id is None:
+                    continue
+                key = (term_id, category_id)
+                if key in existing_links:
+                    continue
+                association_rows.append(
+                    {"term_id": term_id, "category_id": category_id}
                 )
 
-                session.rollback()
+        if association_rows:
+            session.execute(
+                insert(LexiconTermCategoryAssociation).values(association_rows)
+            )
+            session.commit()
 
 
 def register_routes(app):

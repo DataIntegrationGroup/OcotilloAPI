@@ -100,7 +100,7 @@ class HydraulicsDataTransferer(Transferer):
                 f"(orphan prevention)"
             )
 
-        rows = self._dedupe_rows(row_dicts, key="nma_GlobalID")
+        rows = self._dedupe_rows(row_dicts)
 
         insert_stmt = insert(NMA_HydraulicsData)
         excluded = insert_stmt.excluded
@@ -197,21 +197,6 @@ class HydraulicsDataTransferer(Transferer):
             "k (darcy)": val("k (darcy)"),
             "Data Source": val("Data Source"),
         }
-
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped = {}
-        for row in rows:
-            gid = row.get(key)
-            if gid is None:
-                continue
-            deduped[gid] = row
-        return list(deduped.values())
 
 
 def run(batch_size: int = 1000) -> None:
