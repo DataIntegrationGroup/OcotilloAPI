@@ -39,6 +39,25 @@ from transfers.util import (
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
+def _select_ownerkey_col(df: DataFrame, source_name: str) -> str:
+    exact = next((col for col in df.columns if col.lower() == "ownerkey"), None)
+    if exact:
+        return exact
+
+    candidates = [col for col in df.columns if col.lower().endswith("ownerkey")]
+    if not candidates:
+        raise ValueError(
+            f"No owner key column found in {source_name}; expected a column named "
+            "'OwnerKey' (case-insensitive) or ending with 'OwnerKey'."
+        )
+    if len(candidates) > 1:
+        raise ValueError(
+            f"Multiple owner key-like columns found in {source_name}: {candidates}. "
+            "Please disambiguate."
+        )
+    return candidates[0]
+
+
 class ContactTransfer(ThingBasedTransferer):
     source_table = "OwnersData"
 
@@ -85,12 +104,8 @@ class ContactTransfer(ThingBasedTransferer):
         locdf = read_csv("Location")
         ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
-        owner_key_col = next(
-            col for col in odf.columns if col.lower().endswith("ownerkey")
-        )
-        link_owner_key_col = next(
-            col for col in ldf.columns if col.lower().endswith("ownerkey")
-        )
+        owner_key_col = _select_ownerkey_col(odf, "OwnersData")
+        link_owner_key_col = _select_ownerkey_col(ldf, "OwnerLink")
 
         if self._ownerkey_mapper:
             odf["ownerkey_canonical"] = odf[owner_key_col].map(
