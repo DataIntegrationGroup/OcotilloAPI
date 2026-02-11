@@ -81,6 +81,10 @@ class ContactTransfer(ThingBasedTransferer):
             with open(ownerkey_mapper_path, "r") as f:
                 self._ownerkey_mapper = json.load(f)
         except FileNotFoundError:
+            logger.warning(
+                "Owner key mapper file not found at '%s'; proceeding with empty owner key mapping.",
+                ownerkey_mapper_path,
+            )
             self._ownerkey_mapper = {}
 
         self._added = []
