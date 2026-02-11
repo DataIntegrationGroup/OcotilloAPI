@@ -145,7 +145,11 @@ class ContactTransfer(ThingBasedTransferer):
                 "Fix source data or update owners_ownerkey_mapper.json."
             )
 
-        odf = odf.join(ldf.set_index("ownerkey_norm"), on="ownerkey_norm")
+        ldf_join = ldf.set_index("ownerkey_norm")
+        overlap_cols = [col for col in ldf_join.columns if col in odf.columns]
+        if overlap_cols:
+            ldf_join = ldf_join.drop(columns=overlap_cols, errors="ignore")
+        odf = odf.join(ldf_join, on="ownerkey_norm")
 
         odf = replace_nans(odf)
 
