@@ -112,11 +112,11 @@ class ContactTransfer(ThingBasedTransferer):
         link_owner_key_col = _select_ownerkey_col(ldf, "OwnerLink")
 
         if self._ownerkey_mapper:
-            odf["ownerkey_canonical"] = odf[owner_key_col].map(
-                lambda v: self._ownerkey_mapper.get(v, v)
+            odf["ownerkey_canonical"] = odf[owner_key_col].replace(
+                self._ownerkey_mapper
             )
-            ldf["ownerkey_canonical"] = ldf[link_owner_key_col].map(
-                lambda v: self._ownerkey_mapper.get(v, v)
+            ldf["ownerkey_canonical"] = ldf[link_owner_key_col].replace(
+                self._ownerkey_mapper
             )
         else:
             odf["ownerkey_canonical"] = odf[owner_key_col]
