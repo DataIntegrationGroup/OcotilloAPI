@@ -40,9 +40,15 @@ from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
 def _select_ownerkey_col(df: DataFrame, source_name: str) -> str:
-    exact = next((col for col in df.columns if col.lower() == "ownerkey"), None)
-    if exact:
-        return exact
+    exact_matches = [col for col in df.columns if col.lower() == "ownerkey"]
+    if len(exact_matches) == 1:
+        return exact_matches[0]
+    if len(exact_matches) > 1:
+        raise ValueError(
+            f"Multiple 'OwnerKey' columns found in {source_name}: {exact_matches}. "
+            "Column names differing only by case are ambiguous; please "
+            "disambiguate."
+        )
 
     candidates = [col for col in df.columns if col.lower().endswith("ownerkey")]
     if not candidates:
