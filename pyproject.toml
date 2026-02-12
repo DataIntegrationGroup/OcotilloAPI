@@ -75,7 +75,7 @@ dependencies = [
   "pyjwt==2.11.0",
   "pyproj==3.7.2",
   "pyshp==2.3.1",
-  "pytest==8.4.1",
+  "pytest==9.0.2",
   "pytest-cov==6.2.1",
   "python-dateutil==2.9.0.post0",
   "python-jose>=3.5.0",
