@@ -27,12 +27,26 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.pulls.createReview({
+            const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
-              event: "APPROVE"
             });
+
+            const alreadyApprovedByBot = reviews.some(
+              (review) =>
+                review.state === "APPROVED" &&
+                review.user?.login === "github-actions[bot]"
+            );
+
+            if (!alreadyApprovedByBot) {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                event: "APPROVE",
+              });
+            }
 
       # Enable GitHub auto-merge; it will merge once required checks (your Test Suite) are green
       - name: Enable auto-merge (squash)
