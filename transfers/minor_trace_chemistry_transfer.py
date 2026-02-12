@@ -145,7 +145,7 @@ class MinorTraceChemistryTransferer(Transferer):
                 set_={
                     "chemistry_sample_info_id": excluded.chemistry_sample_info_id,
                     "nma_chemistry_sample_info_uuid": excluded.nma_chemistry_sample_info_uuid,
-                    "nma_SamplePointID": excluded.nma_SamplePointID,
+                    "nma_sample_point_id": excluded.nma_sample_point_id,
                     "sample_value": excluded.sample_value,
                     "units": excluded.units,
                     "symbol": excluded.symbol,
