@@ -211,7 +211,7 @@ class MinorTraceChemistryTransferer(Transferer):
             "chemistry_sample_info_id": chemistry_sample_info_id,
             # Legacy UUID FK for audit
             "nma_chemistry_sample_info_uuid": legacy_sample_pt_id,
-            "nma_SamplePointID": sample_point_id,
+            "nma_sample_point_id": sample_point_id,
             # Data columns
             "analyte": self._safe_str(row, "Analyte"),
             "sample_value": self._safe_float(row, "SampleValue"),
