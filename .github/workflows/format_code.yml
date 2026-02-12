@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
           cache: "pip"
       - name: Run flake8
-        uses: py-actions/flake8@v1
+        uses: py-actions/flake8@v2
         with:
           ignore: "F401,E501"
           args: "--exit-zero --select=E"
