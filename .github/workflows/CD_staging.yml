@@ -61,7 +61,7 @@ jobs:
                 secure: always
                 script: auto
             env_variables:
-              MODE: "production"
+              MODE: "staging"
               DB_DRIVER: "cloudsql"
               CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
               CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
@@ -74,6 +74,7 @@ jobs:
               AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
               AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
               SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
+              APITALLY_CLIENT_ID: "${{ secrets.APITALLY_CLIENT_ID }}"
             EOF
 
         - name: Deploy to Google Cloud

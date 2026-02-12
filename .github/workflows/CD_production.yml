@@ -73,6 +73,7 @@ jobs:
               AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
               AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
               SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
+              APITALLY_CLIENT_ID: "${{ secrets.APITALLY_CLIENT_ID }}"
             EOF
 
         - name: Deploy to Google Cloud
