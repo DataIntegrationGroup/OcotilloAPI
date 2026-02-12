@@ -58,13 +58,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-APITALLY_API_URL = os.environ.get("APITALLY_CLIENT_ID")
-if APITALLY_API_URL:
+APITALLY_CLIENT_ID = os.environ.get("APITALLY_CLIENT_ID")
+if APITALLY_CLIENT_ID:
     from apitally.fastapi import ApitallyMiddleware
 
     app.add_middleware(
         ApitallyMiddleware,
-        client_id=APITALLY_API_URL,
+        client_id=APITALLY_CLIENT_ID,
         env=os.environ.get("MODE"),  # "production" or "staging"
         # Optionally enable and configure request logging
         enable_request_logging=True,
