@@ -808,7 +808,7 @@ class NMA_MinorTraceChemistry(Base):
     )
 
     # Additional columns
-    nma_sample_point_id: Mapped[Optional[str]] = mapped_column(
+    nma_sample_point_id: Mapped[str] = mapped_column(
         "nma_SamplePointID", String(10), nullable=False
     )
     analyte: Mapped[Optional[str]] = mapped_column("analyte", String(50))
