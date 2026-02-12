@@ -39,6 +39,31 @@ from transfers.util import (
 from transfers.util import read_csv, filter_to_valid_point_ids, replace_nans
 
 
+def _select_ownerkey_col(df: DataFrame, source_name: str) -> str:
+    exact_matches = [col for col in df.columns if col.lower() == "ownerkey"]
+    if len(exact_matches) == 1:
+        return exact_matches[0]
+    if len(exact_matches) > 1:
+        raise ValueError(
+            f"Multiple 'OwnerKey' columns found in {source_name}: {exact_matches}. "
+            "Column names differing only by case are ambiguous; please "
+            "disambiguate."
+        )
+
+    candidates = [col for col in df.columns if col.lower().endswith("ownerkey")]
+    if not candidates:
+        raise ValueError(
+            f"No owner key column found in {source_name}; expected a column named "
+            "'OwnerKey' (case-insensitive) or ending with 'OwnerKey'."
+        )
+    if len(candidates) > 1:
+        raise ValueError(
+            f"Multiple owner key-like columns found in {source_name}: {candidates}. "
+            "Please disambiguate."
+        )
+    return candidates[0]
+
+
 class ContactTransfer(ThingBasedTransferer):
     source_table = "OwnersData"
 
@@ -56,6 +81,17 @@ class ContactTransfer(ThingBasedTransferer):
         )
         with open(co_to_org_mapper_path, "r") as f:
             self._co_to_org_mapper = json.load(f)
+
+        ownerkey_mapper_path = get_transfers_data_path("owners_ownerkey_mapper.json")
+        try:
+            with open(ownerkey_mapper_path, "r") as f:
+                self._ownerkey_mapper = json.load(f)
+        except FileNotFoundError:
+            logger.warning(
+                "Owner key mapper file not found at '%s'; proceeding with empty owner key mapping.",
+                ownerkey_mapper_path,
+            )
+            self._ownerkey_mapper = {}
 
         self._added = []
 
@@ -78,7 +114,67 @@ class ContactTransfer(ThingBasedTransferer):
         locdf = read_csv("Location")
         ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
 
-        odf = odf.join(ldf.set_index("OwnerKey"), on="OwnerKey")
+        owner_key_col = _select_ownerkey_col(odf, "OwnersData")
+        link_owner_key_col = _select_ownerkey_col(ldf, "OwnerLink")
+
+        if self._ownerkey_mapper:
+            odf["ownerkey_canonical"] = odf[owner_key_col].replace(
+                self._ownerkey_mapper
+            )
+            ldf["ownerkey_canonical"] = ldf[link_owner_key_col].replace(
+                self._ownerkey_mapper
+            )
+        else:
+            odf["ownerkey_canonical"] = odf[owner_key_col]
+            ldf["ownerkey_canonical"] = ldf[link_owner_key_col]
+
+        odf["ownerkey_norm"] = (
+            odf["ownerkey_canonical"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.casefold()
+            .replace({"": pd.NA})
+        )
+        ldf["ownerkey_norm"] = (
+            ldf["ownerkey_canonical"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.casefold()
+            .replace({"": pd.NA})
+        )
+
+        collisions = (
+            ldf.groupby("ownerkey_norm")["ownerkey_canonical"]
+            .nunique(dropna=True)
+            .loc[lambda s: s > 1]
+        )
+        if not collisions.empty:
+            examples = []
+            for key in collisions.index[:10]:
+                variants = (
+                    ldf.loc[ldf["ownerkey_norm"] == key, "ownerkey_canonical"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+                examples.append(f"{key} -> {sorted(variants)}")
+            logger.critical(
+                "OwnerKey normalization collision(s) detected in OwnerLink. "
+                "Resolve these before proceeding. Examples: %s",
+                "; ".join(examples),
+            )
+            raise ValueError(
+                "OwnerKey normalization collisions detected in OwnerLink. "
+                "Fix source data or update owners_ownerkey_mapper.json."
+            )
+
+        ldf_join = ldf.set_index("ownerkey_norm")
+        overlap_cols = [col for col in ldf_join.columns if col in odf.columns]
+        if overlap_cols:
+            ldf_join = ldf_join.drop(columns=overlap_cols, errors="ignore")
+        odf = odf.join(ldf_join, on="ownerkey_norm")
 
         odf = replace_nans(odf)
 
