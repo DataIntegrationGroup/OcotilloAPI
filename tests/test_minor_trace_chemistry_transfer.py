@@ -36,7 +36,7 @@ def test_row_to_dict_includes_wclab_id():
 
     row_dict = transfer._row_to_dict(row)
     assert row_dict["nma_WCLab_ID"] == "LAB-123"
-    assert row_dict["nma_SamplePointID"] == "POINT-1"
+    assert row_dict["nma_sample_point_id"] == "POINT-1"
 
 
 def test_row_to_dict_missing_sample_point_id_returns_none_and_captures_error():
