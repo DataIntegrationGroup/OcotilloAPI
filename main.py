@@ -65,7 +65,7 @@ if APITALLY_CLIENT_ID:
     app.add_middleware(
         ApitallyMiddleware,
         client_id=APITALLY_CLIENT_ID,
-        env=os.environ.get("MODE"),  # "production" or "staging"
+        env=os.environ.get("ENVIRONMENT"),  # "production" or "staging"
         # Optionally enable and configure request logging
         enable_request_logging=True,
         log_request_headers=True,

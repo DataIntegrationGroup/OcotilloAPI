@@ -61,6 +61,7 @@ jobs:
                 script: auto
             env_variables:
               MODE: "production"
+              ENVIRONMENT: "production"
               DB_DRIVER: "cloudsql"
               CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
               CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
