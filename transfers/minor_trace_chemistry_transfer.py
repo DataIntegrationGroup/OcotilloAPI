@@ -178,7 +178,7 @@ class MinorTraceChemistryTransferer(Transferer):
         sample_point_id = self._safe_str(row, "SamplePointID")
         if sample_point_id is None:
             self._capture_error(
-                getattr(row, "SamplePointID", None),
+                legacy_sample_pt_id,
                 f"Missing SamplePointID for SamplePtID: {legacy_sample_pt_id}",
                 "SamplePointID",
             )
