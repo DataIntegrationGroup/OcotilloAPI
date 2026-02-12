@@ -46,6 +46,8 @@ def upgrade() -> None:
         existing_type=sa.String(length=10),
         server_default=None,
     )
+
+
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column("NMA_MinorTraceChemistry", "nma_SamplePointID")
