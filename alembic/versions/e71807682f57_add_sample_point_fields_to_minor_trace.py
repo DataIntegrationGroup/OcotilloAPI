@@ -27,7 +27,7 @@ def upgrade() -> None:
             "nma_SamplePointID",
             sa.String(length=10),
             nullable=True,
-            server_default="",
+            server_default=sa.text("''"),
         ),
     )
 
