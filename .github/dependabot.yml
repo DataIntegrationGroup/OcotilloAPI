@@ -41,6 +41,8 @@ updates:
       - "github-actions"
     groups:
       gha-minor-and-patch:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
