@@ -57,10 +57,7 @@ class FieldParametersTransferer(ChemistryTransferer):
 
         Uses ON CONFLICT DO UPDATE on nma_GlobalID (legacy UUID PK, now UNIQUE).
         """
-        limit = self.flags.get("LIMIT", 0)
         df = self.cleaned_df
-        if limit > 0:
-            df = df.head(limit)
 
         row_dicts = []
         for row in df.itertuples():

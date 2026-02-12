@@ -38,7 +38,6 @@ from sqlalchemy.orm import Session
 from db import NMA_Radionuclides
 from transfers.logger import logger
 from transfers.transferer import ChemistryTransferer
-from transfers.util import read_csv
 
 
 class RadionuclidesTransferer(ChemistryTransferer):
@@ -50,14 +49,9 @@ class RadionuclidesTransferer(ChemistryTransferer):
 
     source_table = "Radionuclides"
 
-    def __init__(self, *args, batch_size: int = 1000, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._parse_dates = ["AnalysisDate"]
-
-    def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        input_df = read_csv(self.source_table, parse_dates=self._parse_dates)
-        cleaned_df = self._filter_to_valid_sample_infos(input_df)
-        return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
         row_dicts = []
