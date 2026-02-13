@@ -15,13 +15,13 @@ concurrency:
 
 env:
   # ---------------- GUARDRAILS ----------------
-  ALLOWED_JIRA_PROJECT_KEYS: "ABC,DEF"        # comma-separated
+  ALLOWED_JIRA_PROJECT_KEYS: "BDMS"        # comma-separated
   ALLOWED_ISSUE_TYPES: "Story,Bug,Task"       # comma-separated
   REQUIRED_LABEL: "codex"                     # require this label on the Jira issue
   REQUIRED_CUSTOM_FIELD_ID: ""                # optional; e.g. "customfield_12345" (leave empty to disable)
 
   # ---------------- BRANCH/PR ----------------
-  BASE_BRANCH: "main"
+  BASE_BRANCH: "staging"
   BRANCH_PREFIX: "jira"
   MAX_TITLE_SLUG_LEN: "40"
 
@@ -38,7 +38,7 @@ jobs:
   implement:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-
+    environment: staging
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
