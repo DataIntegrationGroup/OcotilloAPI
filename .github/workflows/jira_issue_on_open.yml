@@ -53,6 +53,32 @@ jobs:
           import os
           from pathlib import Path
 
+          def text_to_adf(text: str) -> dict:
+            lines = text.splitlines()
+            if not lines:
+              lines = ["(No issue body provided)"]
+
+            content = []
+            for idx, line in enumerate(lines):
+              if line:
+                content.append({"type": "text", "text": line})
+              if idx < len(lines) - 1:
+                content.append({"type": "hardBreak"})
+
+            if not content:
+              content = [{"type": "text", "text": "(No issue body provided)"}]
+
+            return {
+              "type": "doc",
+              "version": 1,
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": content,
+                }
+              ],
+            }
+
           issue_title = os.environ["ISSUE_TITLE"]
           issue_body = os.environ.get("ISSUE_BODY", "") or ""
           issue_url = os.environ["ISSUE_URL"]
@@ -86,7 +112,7 @@ jobs:
             if isinstance(override_fields, dict):
               custom_fields.update(override_fields)
 
-          description = (
+          description_text = (
             f"GitHub issue: {issue_repo}#{issue_number}\\n"
             f"URL: {issue_url}\\n\\n"
             f"{issue_body if issue_body else '(No issue body provided)'}"
@@ -96,7 +122,7 @@ jobs:
             "project": {"key": os.environ["JIRA_PROJECT_KEY"]},
             "issuetype": {"name": os.environ["JIRA_ISSUE_TYPE"]},
             "summary": issue_title,
-            "description": description,
+            "description": text_to_adf(description_text),
             "labels": labels,
           }
           if components:
