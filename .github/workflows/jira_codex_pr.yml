@@ -76,9 +76,9 @@ jobs:
       - name: Verify tooling exists
         run: |
           set -euo pipefail
-          uv run --with black black --version
-          uv run --with flake8 flake8 --version
-          uv run --with pytest pytest --version
+          uv run black --version
+          uv run flake8 --version
+          uv run pytest --version
 
       - name: Read Jira key
         id: jira
