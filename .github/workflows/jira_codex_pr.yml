@@ -243,10 +243,16 @@ jobs:
             git checkout -B "$BRANCH" "origin/$BASE_BRANCH"
           fi
 
+      - name: Prepare Codex home
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/codex-home"
+
       - name: Run Codex to implement ticket
         uses: openai/codex-action@94bb7a052e529936e5260a35838e61b190855739 # v1
         with:
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-home: ${{ runner.temp }}/codex-home
           prompt: |
             You are implementing Jira ticket ${{ steps.jira.outputs.JIRA_KEY }} in this repository.
 
