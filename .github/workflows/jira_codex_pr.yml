@@ -95,12 +95,13 @@ jobs:
         id: issue
         env:
           JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
-          JIRA_BEARER_TOKEN: ${{ secrets.JIRA_BEARER_TOKEN || secrets.JIRA_API_TOKEN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
           MAX_DESC_CHARS: ${{ env.MAX_DESC_CHARS }}
         run: |
           set -euo pipefail
-          for v in JIRA_BASE_URL JIRA_BEARER_TOKEN JIRA_KEY; do
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
             if [ -z "${!v:-}" ]; then
               echo "Missing required Jira configuration: $v"
               exit 1
@@ -123,7 +124,7 @@ jobs:
           ISSUE_URL="$API_BASE_URL/issue/$JIRA_KEY"
 
           HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
-            -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -o jira.json \
             -w "%{http_code}" \
@@ -389,12 +390,13 @@ jobs:
       - name: Comment back on Jira with PR link
         env:
           JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
-          JIRA_BEARER_TOKEN: ${{ secrets.JIRA_BEARER_TOKEN || secrets.JIRA_API_TOKEN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
           PR_URL: ${{ steps.pr.outputs.PR_URL }}
         run: |
           set -euo pipefail
-          for v in JIRA_BASE_URL JIRA_BEARER_TOKEN JIRA_KEY; do
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
             if [ -z "${!v:-}" ]; then
               echo "Missing required Jira configuration: $v"
               exit 1
@@ -438,7 +440,7 @@ jobs:
 
           COMMENT_URL="$API_BASE_URL/issue/$JIRA_KEY/comment"
           HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
-            -H "Authorization: Bearer $JIRA_BEARER_TOKEN" \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             -X POST \
