@@ -101,9 +101,27 @@ jobs:
           MAX_DESC_CHARS: ${{ env.MAX_DESC_CHARS }}
         run: |
           set -euo pipefail
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
+            if [ -z "${!v:-}" ]; then
+              echo "Missing required Jira configuration: $v"
+              exit 1
+            fi
+          done
+
+          case "$JIRA_BASE_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "JIRA_BASE_URL must include scheme and host (e.g., https://your-domain.atlassian.net)"
+              exit 1
+              ;;
+          esac
+
+          JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+          ISSUE_URL="$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY"
+
           curl -fsS --retry 3 --retry-all-errors -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
-            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY" > jira.json
+            "$ISSUE_URL" > jira.json
 
           SUMMARY=$(jq -r '.fields.summary // empty' jira.json)
           ISSUE_TYPE=$(jq -r '.fields.issuetype.name // empty' jira.json)
@@ -363,6 +381,23 @@ jobs:
           PR_URL: ${{ steps.pr.outputs.PR_URL }}
         run: |
           set -euo pipefail
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
+            if [ -z "${!v:-}" ]; then
+              echo "Missing required Jira configuration: $v"
+              exit 1
+            fi
+          done
+
+          case "$JIRA_BASE_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "JIRA_BASE_URL must include scheme and host (e.g., https://your-domain.atlassian.net)"
+              exit 1
+              ;;
+          esac
+
+          JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+
           if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
             echo "No PR URL found; skipping Jira comment."
             exit 0
