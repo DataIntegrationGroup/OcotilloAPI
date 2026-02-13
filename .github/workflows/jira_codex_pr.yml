@@ -117,11 +117,25 @@ jobs:
           esac
 
           JIRA_BASE_URL="${JIRA_BASE_URL%/}"
-          ISSUE_URL="$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY"
+          case "$JIRA_BASE_URL" in
+            */rest/api/3) API_BASE_URL="$JIRA_BASE_URL" ;;
+            *) API_BASE_URL="$JIRA_BASE_URL/rest/api/3" ;;
+          esac
+          ISSUE_URL="$API_BASE_URL/issue/$JIRA_KEY"
 
-          curl -fsS --retry 3 --retry-all-errors -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
-            "$ISSUE_URL" > jira.json
+            -o jira.json \
+            -w "%{http_code}" \
+            "$ISSUE_URL")
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to fetch Jira issue. HTTP $HTTP_CODE"
+            echo "Request URL: $ISSUE_URL"
+            echo "Response body:"
+            cat jira.json
+            exit 1
+          fi
 
           SUMMARY=$(jq -r '.fields.summary // empty' jira.json)
           ISSUE_TYPE=$(jq -r '.fields.issuetype.name // empty' jira.json)
@@ -397,6 +411,10 @@ jobs:
           esac
 
           JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+          case "$JIRA_BASE_URL" in
+            */rest/api/3) API_BASE_URL="$JIRA_BASE_URL" ;;
+            *) API_BASE_URL="$JIRA_BASE_URL/rest/api/3" ;;
+          esac
 
           if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
             echo "No PR URL found; skipping Jira comment."
@@ -419,9 +437,20 @@ jobs:
             }
           }')
 
-          curl -fsS --retry 3 --retry-all-errors -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+          COMMENT_URL="$API_BASE_URL/issue/$JIRA_KEY/comment"
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             -X POST \
             --data "$payload" \
-            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/comment" > /dev/null
+            -o jira_comment_response.json \
+            -w "%{http_code}" \
+            "$COMMENT_URL")
+
+          if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to post Jira comment. HTTP $HTTP_CODE"
+            echo "Request URL: $COMMENT_URL"
+            echo "Response body:"
+            cat jira_comment_response.json
+            exit 1
+          fi
