@@ -1,0 +1,392 @@
+# .github/workflows/jira-codex-pr.yml
+name: Implement Jira ticket with Codex and open/update PR (uv + python)
+
+on:
+  repository_dispatch:
+    types: [jira_implement]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: jira-${{ github.event.client_payload.jira_key }}
+  cancel-in-progress: false
+
+env:
+  # ---------------- GUARDRAILS ----------------
+  ALLOWED_JIRA_PROJECT_KEYS: "ABC,DEF"        # comma-separated
+  ALLOWED_ISSUE_TYPES: "Story,Bug,Task"       # comma-separated
+  REQUIRED_LABEL: "codex"                     # require this label on the Jira issue
+  REQUIRED_CUSTOM_FIELD_ID: ""                # optional; e.g. "customfield_12345" (leave empty to disable)
+
+  # ---------------- BRANCH/PR ----------------
+  BASE_BRANCH: "main"
+  BRANCH_PREFIX: "jira"
+  MAX_TITLE_SLUG_LEN: "40"
+
+  # ---------------- PYTHON/UV ----------------
+  PYTHON_VERSION: "3.13"
+  MAX_DESC_CHARS: "8000"
+
+  # Commands (run inside uv env)
+  FORMAT_COMMAND: "uv run black ."
+  LINT_COMMAND: "uv run flake8"
+  TEST_COMMAND: "uv run pytest -q"
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure jq exists
+        run: |
+          set -euo pipefail
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv (with cache)
+        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        with:
+          enable-cache: true
+
+      - name: Ensure uv.lock exists (determinism)
+        run: |
+          set -euo pipefail
+          test -f uv.lock || (echo "uv.lock missing; commit it for deterministic CI." && exit 1)
+
+      - name: Sync dependencies (pyproject/uv.lock)
+        run: |
+          set -euo pipefail
+          uv sync --all-extras --dev
+
+      - name: Verify tooling exists
+        run: |
+          set -euo pipefail
+          uv run black --version
+          uv run flake8 --version
+          uv run pytest --version
+
+      - name: Read Jira key
+        id: jira
+        run: |
+          set -euo pipefail
+          KEY="${{ github.event.client_payload.jira_key }}"
+          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+            echo "Missing jira_key in dispatch payload."
+            exit 1
+          fi
+          echo "JIRA_KEY=$KEY" >> $GITHUB_OUTPUT
+
+      - name: Fetch Jira issue JSON
+        id: issue
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          MAX_DESC_CHARS: ${{ env.MAX_DESC_CHARS }}
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --retry-all-errors -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Accept: application/json" \
+            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY" > jira.json
+
+          SUMMARY=$(jq -r '.fields.summary // empty' jira.json)
+          ISSUE_TYPE=$(jq -r '.fields.issuetype.name // empty' jira.json)
+          PROJECT_KEY=$(jq -r '.fields.project.key // empty' jira.json)
+
+          if [ -z "$SUMMARY" ] || [ -z "$ISSUE_TYPE" ] || [ -z "$PROJECT_KEY" ]; then
+            echo "Missing one of: summary, issuetype, project.key"
+            exit 1
+          fi
+
+          LABELS=$(jq -r '.fields.labels[]? // empty' jira.json | tr '\n' ',' | sed 's/,$//')
+          DESC=$(jq -c '.fields.description // {}' jira.json)
+          DESC_TRIMMED="${DESC:0:${MAX_DESC_CHARS}}"
+
+          {
+            echo "SUMMARY<<EOF"
+            echo "$SUMMARY"
+            echo "EOF"
+            echo "ISSUE_TYPE<<EOF"
+            echo "$ISSUE_TYPE"
+            echo "EOF"
+            echo "PROJECT_KEY<<EOF"
+            echo "$PROJECT_KEY"
+            echo "EOF"
+            echo "LABELS<<EOF"
+            echo "$LABELS"
+            echo "EOF"
+            echo "DESC<<EOF"
+            echo "$DESC_TRIMMED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Guardrails - allowlists
+        env:
+          PROJECT_KEY: ${{ steps.issue.outputs.PROJECT_KEY }}
+          ISSUE_TYPE: ${{ steps.issue.outputs.ISSUE_TYPE }}
+          LABELS: ${{ steps.issue.outputs.LABELS }}
+          REQUIRED_LABEL: ${{ env.REQUIRED_LABEL }}
+          ALLOWED_JIRA_PROJECT_KEYS: ${{ env.ALLOWED_JIRA_PROJECT_KEYS }}
+          ALLOWED_ISSUE_TYPES: ${{ env.ALLOWED_ISSUE_TYPES }}
+        run: |
+          set -euo pipefail
+
+          echo "$ALLOWED_JIRA_PROJECT_KEYS" | tr ',' '\n' | grep -Fxq "$PROJECT_KEY" || {
+            echo "Project $PROJECT_KEY not allowed (allowed: $ALLOWED_JIRA_PROJECT_KEYS)."
+            exit 1
+          }
+
+          echo "$ALLOWED_ISSUE_TYPES" | tr ',' '\n' | grep -Fxq "$ISSUE_TYPE" || {
+            echo "Issue type $ISSUE_TYPE not allowed (allowed: $ALLOWED_ISSUE_TYPES)."
+            exit 1
+          }
+
+          if [ -n "$REQUIRED_LABEL" ]; then
+            echo "$LABELS" | tr ',' '\n' | grep -Fxq "$REQUIRED_LABEL" || {
+              echo "Required label '$REQUIRED_LABEL' not present."
+              exit 1
+            }
+          fi
+
+      - name: Guardrails - optional required custom field
+        if: ${{ env.REQUIRED_CUSTOM_FIELD_ID != '' }}
+        env:
+          FIELD_ID: ${{ env.REQUIRED_CUSTOM_FIELD_ID }}
+        run: |
+          set -euo pipefail
+          VAL=$(jq -r --arg f "$FIELD_ID" '.fields[$f] // empty' jira.json)
+          if [ -z "$VAL" ] || [ "$VAL" = "false" ]; then
+            echo "Required Jira field $FIELD_ID not set."
+            exit 1
+          fi
+
+      - name: Compute branch name
+        id: branch
+        env:
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          SUMMARY: ${{ steps.issue.outputs.SUMMARY }}
+          BRANCH_PREFIX: ${{ env.BRANCH_PREFIX }}
+          MAX_TITLE_SLUG_LEN: ${{ env.MAX_TITLE_SLUG_LEN }}
+        run: |
+          set -euo pipefail
+          SAFE=$(echo "$SUMMARY" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9 -' | tr ' ' '-' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+          SAFE=$(echo "$SAFE" | cut -c1-"$MAX_TITLE_SLUG_LEN")
+          if [ -z "$SAFE" ]; then
+            SAFE="ticket"
+          fi
+          BRANCH="${BRANCH_PREFIX}/${JIRA_KEY}-${SAFE}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Ensure branch exists (idempotent)
+        env:
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_BRANCH"
+          git fetch origin "$BRANCH" || true
+
+          if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+            echo "Branch exists on origin. Checking it out."
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            echo "Creating new branch from $BASE_BRANCH."
+            git checkout -B "$BRANCH" "origin/$BASE_BRANCH"
+          fi
+
+      - name: Run Codex to implement ticket
+        uses: openai/codex-action@94bb7a052e529936e5260a35838e61b190855739 # v1
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          prompt: |
+            You are implementing Jira ticket ${{ steps.jira.outputs.JIRA_KEY }} in this repository.
+
+            Ticket metadata:
+            - Title: ${{ steps.issue.outputs.SUMMARY }}
+            - Type: ${{ steps.issue.outputs.ISSUE_TYPE }}
+            - Project: ${{ steps.issue.outputs.PROJECT_KEY }}
+            - Description (ADF/JSON): ${{ steps.issue.outputs.DESC }}
+
+            Scope & guardrails:
+            - Minimal, well-scoped change set; avoid refactors unless necessary.
+            - Do NOT touch secrets, credentials, or CI config unless explicitly required.
+            - Avoid these paths unless absolutely necessary:
+              - .github/
+              - infra/
+              - terraform/
+              - k8s/
+              - deploy/
+              - helm/
+
+            Python repo conventions (must follow):
+            - Format: black .
+            - Lint: flake8
+            - Tests: pytest -q
+            - Add/update tests when behavior changes.
+            - Keep style consistent with existing code.
+
+            Before finishing:
+            - Ensure black, flake8, and pytest pass in this workflow environment.
+
+            Operational constraints:
+            - Implement changes directly in the checked-out branch.
+            - Do not create additional branches.
+            - Do not rewrite git history.
+
+      - name: Enforce forbidden paths policy
+        env:
+          LABELS: ${{ steps.issue.outputs.LABELS }}
+        run: |
+          set -euo pipefail
+          FORBIDDEN_REGEX='^(\.github/|infra/|terraform/|k8s/|deploy/|helm/)'
+          ALLOW_LABEL="codex-allow-infra"
+
+          if echo "$LABELS" | tr ',' '\n' | grep -Fxq "$ALLOW_LABEL"; then
+            echo "Override label present ($ALLOW_LABEL); skipping forbidden-path check."
+            exit 0
+          fi
+
+          git fetch origin "$BASE_BRANCH"
+          CHANGED=$(git diff --name-only "origin/$BASE_BRANCH...HEAD" || true)
+
+          if echo "$CHANGED" | grep -E "$FORBIDDEN_REGEX"; then
+            echo "Forbidden paths modified. Add label '$ALLOW_LABEL' on Jira issue to allow."
+            echo "$CHANGED" | sed 's/^/ - /'
+            exit 1
+          fi
+
+      - name: Run format, lint, tests
+        env:
+          FORMAT_COMMAND: ${{ env.FORMAT_COMMAND }}
+          LINT_COMMAND: ${{ env.LINT_COMMAND }}
+          TEST_COMMAND: ${{ env.TEST_COMMAND }}
+        run: |
+          set -euo pipefail
+          eval "$FORMAT_COMMAND"
+          eval "$LINT_COMMAND"
+          eval "$TEST_COMMAND"
+
+      - name: Ensure there is a diff (fail-fast)
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep .; then
+            echo "Changes detected."
+          else
+            echo "No changes produced; failing to avoid empty PR."
+            exit 1
+          fi
+
+      - name: Commit & push (idempotent)
+        env:
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          SUMMARY: ${{ steps.issue.outputs.SUMMARY }}
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m "${JIRA_KEY}: ${SUMMARY}" || echo "Nothing new to commit."
+          git push --set-upstream origin "$BRANCH"
+
+      - name: Create or update PR (idempotent)
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          SUMMARY: ${{ steps.issue.outputs.SUMMARY }}
+        run: |
+          set -euo pipefail
+
+          EXISTING=$(gh pr list --head "$BRANCH" --json number,state,url --jq '.[0] // empty')
+
+          BODY_FILE="$(mktemp)"
+          cat > "$BODY_FILE" <<EOF
+          Automated implementation via Codex.
+
+          Jira: ${JIRA_KEY}
+
+          CI:
+          - black
+          - flake8
+          - pytest
+
+          Notes:
+          - Forbidden paths are blocked unless Jira has label: codex-allow-infra
+          EOF
+
+          if [ -n "$EXISTING" ]; then
+            NUM=$(echo "$EXISTING" | jq -r '.number')
+            STATE=$(echo "$EXISTING" | jq -r '.state')
+            URL=$(echo "$EXISTING" | jq -r '.url')
+
+            echo "Found existing PR #$NUM ($STATE): $URL"
+
+            if [ "$STATE" = "CLOSED" ]; then
+              gh pr reopen "$NUM"
+            fi
+
+            gh pr edit "$NUM" --title "${JIRA_KEY}: ${SUMMARY}" --body-file "$BODY_FILE" --base "$BASE_BRANCH"
+
+            echo "PR_URL=$URL" >> $GITHUB_OUTPUT
+            echo "PR_NUMBER=$NUM" >> $GITHUB_OUTPUT
+          else
+            URL=$(gh pr create \
+              --title "${JIRA_KEY}: ${SUMMARY}" \
+              --body-file "$BODY_FILE" \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH")
+            echo "Created PR: $URL"
+            echo "PR_URL=$URL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment back on Jira with PR link
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          PR_URL: ${{ steps.pr.outputs.PR_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
+            echo "No PR URL found; skipping Jira comment."
+            exit 0
+          fi
+
+          payload=$(jq -n --arg url "$PR_URL" '{
+            body: {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    {type: "text", text: "PR created/updated: "},
+                    {type: "text", text: $url, marks: [{type: "link", attrs: {href: $url}}]}
+                  ]
+                }
+              ]
+            }
+          }')
+
+          curl -fsS --retry 3 --retry-all-errors -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            --data "$payload" \
+            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/comment" > /dev/null
