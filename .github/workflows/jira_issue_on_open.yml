@@ -113,8 +113,8 @@ jobs:
               custom_fields.update(override_fields)
 
           description_text = (
-            f"GitHub issue: {issue_repo}#{issue_number}\\n"
-            f"URL: {issue_url}\\n\\n"
+            f"GitHub issue: {issue_repo}#{issue_number}\n"
+            f"URL: {issue_url}\n\n"
             f"{issue_body if issue_body else '(No issue body provided)'}"
           )
 
