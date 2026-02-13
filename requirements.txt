@@ -394,8 +394,8 @@ email-validator==2.3.0 \
     --hash=sha256:9fc05c37f2f6cf439ff414f8fc46d917929974a82244c20eb10231ba60c54426
     # via ocotilloapi
 fastapi==0.128.0 \
-    --hash=sha256:6314385777a507bb19b34bd064829fddaea0eea54436deb632b5de587554055c \
-    --hash=sha256:72e188f01f360e2f59da51c8822cbe4bca210c35daaae6321b1b724109101c00
+    --hash=sha256:1cc179e1cef10a6be60ffe429f79b829dce99d8de32d7acb7e6c8dfdf7f2645a \
+    --hash=sha256:aebd93f9716ee3b4f4fcfe13ffb7cf308d99c9f3ab5622d8877441072561582d
     # via
     #   apitally
     #   fastapi-pagination
