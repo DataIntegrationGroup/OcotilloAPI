@@ -123,7 +123,8 @@ jobs:
           esac
           ISSUE_URL="$API_BASE_URL/issue/$JIRA_KEY"
 
-          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -o jira.json \
             -w "%{http_code}" \
@@ -438,7 +439,8 @@ jobs:
           }')
 
           COMMENT_URL="$API_BASE_URL/issue/$JIRA_KEY/comment"
-          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             -X POST \
