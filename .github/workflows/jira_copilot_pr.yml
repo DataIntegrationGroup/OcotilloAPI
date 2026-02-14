@@ -1,0 +1,401 @@
+# .github/workflows/jira-copilot-pr.yml
+name: Assign Jira ticket to Copilot and track implementation
+
+on:
+  repository_dispatch:
+    types: [jira_implement]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: jira-${{ github.event.client_payload.jira_key }}
+  cancel-in-progress: false
+
+env:
+  # ---------------- GUARDRAILS ----------------
+  ALLOWED_JIRA_PROJECT_KEYS: "BDMS"           # comma-separated
+  ALLOWED_ISSUE_TYPES: "Story,Bug,Task"       # comma-separated
+  REQUIRED_LABEL: "copilot"                   # require this label on the Jira issue
+  REQUIRED_CUSTOM_FIELD_ID: ""                # optional; e.g. "customfield_12345" (leave empty to disable)
+
+  # ---------------- COPILOT TARGET ----------------
+  BASE_BRANCH: "staging"
+  MAX_DESC_CHARS: "8000"
+
+  # Optional model hints. Leave empty to use Copilot default.
+  COPILOT_CUSTOM_AGENT: ""
+  COPILOT_MODEL: ""
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    # Keep existing environment so current Jira secrets/vars continue to work.
+    environment: jira-codex
+    timeout-minutes: 30
+    steps:
+      - name: Ensure jq and gh exist
+        run: |
+          set -euo pipefail
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh CLI is required on runner."
+            exit 1
+          fi
+
+      - name: Read Jira key
+        id: jira
+        run: |
+          set -euo pipefail
+          KEY="${{ github.event.client_payload.jira_key }}"
+          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+            echo "Missing jira_key in dispatch payload."
+            exit 1
+          fi
+          echo "JIRA_KEY=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Jira issue JSON
+        id: issue
+        env:
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          MAX_DESC_CHARS: ${{ env.MAX_DESC_CHARS }}
+        run: |
+          set -euo pipefail
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
+            if [ -z "${!v:-}" ]; then
+              echo "Missing required Jira configuration: $v"
+              exit 1
+            fi
+          done
+
+          case "$JIRA_BASE_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "JIRA_BASE_URL must include scheme and host (e.g., https://your-domain.atlassian.net)"
+              exit 1
+              ;;
+          esac
+
+          JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+          case "$JIRA_BASE_URL" in
+            */rest/api/3) API_BASE_URL="$JIRA_BASE_URL" ;;
+            *) API_BASE_URL="$JIRA_BASE_URL/rest/api/3" ;;
+          esac
+          ISSUE_URL="$API_BASE_URL/issue/$JIRA_KEY"
+
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Accept: application/json" \
+            -o jira.json \
+            -w "%{http_code}" \
+            "$ISSUE_URL")
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to fetch Jira issue. HTTP $HTTP_CODE"
+            echo "Request URL: $ISSUE_URL"
+            echo "Response body:"
+            cat jira.json
+            exit 1
+          fi
+
+          SUMMARY=$(jq -r '.fields.summary // empty' jira.json)
+          ISSUE_TYPE=$(jq -r '.fields.issuetype.name // empty' jira.json)
+          PROJECT_KEY=$(jq -r '.fields.project.key // empty' jira.json)
+
+          if [ -z "$SUMMARY" ] || [ -z "$ISSUE_TYPE" ] || [ -z "$PROJECT_KEY" ]; then
+            echo "Missing one of: summary, issuetype, project.key"
+            exit 1
+          fi
+
+          LABELS=$(jq -r '.fields.labels[]? // empty' jira.json | tr '\n' ',' | sed 's/,$//')
+          DESC=$(jq -c '.fields.description // {}' jira.json)
+          DESC_TRIMMED="${DESC:0:${MAX_DESC_CHARS}}"
+
+          {
+            echo "SUMMARY<<EOF"
+            echo "$SUMMARY"
+            echo "EOF"
+            echo "ISSUE_TYPE<<EOF"
+            echo "$ISSUE_TYPE"
+            echo "EOF"
+            echo "PROJECT_KEY<<EOF"
+            echo "$PROJECT_KEY"
+            echo "EOF"
+            echo "LABELS<<EOF"
+            echo "$LABELS"
+            echo "EOF"
+            echo "DESC<<EOF"
+            echo "$DESC_TRIMMED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Guardrails - allowlists
+        env:
+          PROJECT_KEY: ${{ steps.issue.outputs.PROJECT_KEY }}
+          ISSUE_TYPE: ${{ steps.issue.outputs.ISSUE_TYPE }}
+          LABELS: ${{ steps.issue.outputs.LABELS }}
+          REQUIRED_LABEL: ${{ env.REQUIRED_LABEL }}
+          ALLOWED_JIRA_PROJECT_KEYS: ${{ env.ALLOWED_JIRA_PROJECT_KEYS }}
+          ALLOWED_ISSUE_TYPES: ${{ env.ALLOWED_ISSUE_TYPES }}
+        run: |
+          set -euo pipefail
+
+          echo "$ALLOWED_JIRA_PROJECT_KEYS" | tr ',' '\n' | grep -Fxq "$PROJECT_KEY" || {
+            echo "Project $PROJECT_KEY not allowed (allowed: $ALLOWED_JIRA_PROJECT_KEYS)."
+            exit 1
+          }
+
+          echo "$ALLOWED_ISSUE_TYPES" | tr ',' '\n' | grep -Fxq "$ISSUE_TYPE" || {
+            echo "Issue type $ISSUE_TYPE not allowed (allowed: $ALLOWED_ISSUE_TYPES)."
+            exit 1
+          }
+
+          if [ -n "$REQUIRED_LABEL" ]; then
+            echo "$LABELS" | tr ',' '\n' | grep -Fxq "$REQUIRED_LABEL" || {
+              echo "Required label '$REQUIRED_LABEL' not present."
+              exit 1
+            }
+          fi
+
+      - name: Guardrails - optional required custom field
+        if: ${{ env.REQUIRED_CUSTOM_FIELD_ID != '' }}
+        env:
+          FIELD_ID: ${{ env.REQUIRED_CUSTOM_FIELD_ID }}
+        run: |
+          set -euo pipefail
+          VAL=$(jq -r --arg f "$FIELD_ID" '.fields[$f] // empty' jira.json)
+          if [ -z "$VAL" ] || [ "$VAL" = "false" ]; then
+            echo "Required Jira field $FIELD_ID not set."
+            exit 1
+          fi
+
+      - name: Build Copilot instructions
+        id: copilot
+        env:
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          SUMMARY: ${{ steps.issue.outputs.SUMMARY }}
+          ISSUE_TYPE: ${{ steps.issue.outputs.ISSUE_TYPE }}
+          PROJECT_KEY: ${{ steps.issue.outputs.PROJECT_KEY }}
+          DESC: ${{ steps.issue.outputs.DESC }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+        run: |
+          set -euo pipefail
+
+          ISSUE_TITLE="${JIRA_KEY}: ${SUMMARY}"
+          {
+            echo "ISSUE_TITLE<<EOF"
+            echo "$ISSUE_TITLE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          cat > copilot_instructions.txt <<TXT
+          Implement Jira ticket ${JIRA_KEY} in this repository.
+
+          Ticket metadata:
+          - Title: ${SUMMARY}
+          - Type: ${ISSUE_TYPE}
+          - Project: ${PROJECT_KEY}
+          - Description (ADF/JSON): ${DESC}
+
+          Scope and guardrails:
+          - Minimal, well-scoped change set; avoid refactors unless necessary.
+          - Do not touch secrets, credentials, or CI config unless explicitly required.
+          - Avoid these paths unless absolutely necessary:
+            - .github/
+            - infra/
+            - terraform/
+            - k8s/
+            - deploy/
+            - helm/
+
+          Python repo conventions:
+          - Format with black.
+          - Lint with flake8.
+          - Run pytest -q.
+          - Add/update tests when behavior changes.
+          - Keep style consistent with existing code.
+
+          Operational constraints:
+          - Base branch: ${BASE_BRANCH}
+          - Open a pull request with a clear summary and test notes.
+          TXT
+
+      - name: Create or update GitHub issue for Copilot task
+        id: gh_issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ steps.copilot.outputs.ISSUE_TITLE }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+        run: |
+          set -euo pipefail
+
+          BODY_FILE="$(mktemp)"
+          cat > "$BODY_FILE" <<EOF_ISSUE
+          Jira ticket: [${JIRA_KEY}](${JIRA_BASE_URL%/}/browse/${JIRA_KEY})
+
+          Base branch: ${BASE_BRANCH}
+
+          Copilot instructions:
+
+          \`\`\`
+          $(cat copilot_instructions.txt)
+          \`\`\`
+          EOF_ISSUE
+
+          EXISTING_JSON=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state all \
+            --search "\"$ISSUE_TITLE\" in:title" \
+            --json number,title,state,url \
+            --jq 'map(select(.title == env.ISSUE_TITLE))[0] // empty')
+
+          if [ -n "$EXISTING_JSON" ]; then
+            NUMBER=$(echo "$EXISTING_JSON" | jq -r '.number')
+            STATE=$(echo "$EXISTING_JSON" | jq -r '.state')
+            URL=$(echo "$EXISTING_JSON" | jq -r '.url')
+
+            if [ "$STATE" = "CLOSED" ]; then
+              gh issue reopen "$NUMBER" --repo "$GITHUB_REPOSITORY"
+            fi
+
+            gh issue edit "$NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body-file "$BODY_FILE"
+
+            echo "GH_ISSUE_NUMBER=$NUMBER" >> "$GITHUB_OUTPUT"
+            echo "GH_ISSUE_URL=$URL" >> "$GITHUB_OUTPUT"
+          else
+            URL=$(gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body-file "$BODY_FILE")
+
+            NUMBER=$(basename "$URL")
+            echo "GH_ISSUE_NUMBER=$NUMBER" >> "$GITHUB_OUTPUT"
+            echo "GH_ISSUE_URL=$URL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Assign issue to Copilot coding agent
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_TOKEN }}
+          GH_ISSUE_NUMBER: ${{ steps.gh_issue.outputs.GH_ISSUE_NUMBER }}
+          BASE_BRANCH: ${{ env.BASE_BRANCH }}
+          COPILOT_CUSTOM_AGENT: ${{ env.COPILOT_CUSTOM_AGENT }}
+          COPILOT_MODEL: ${{ env.COPILOT_MODEL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "Missing COPILOT_ASSIGN_TOKEN secret."
+            echo "Use a user token that can assign Copilot to issues (per GitHub docs)."
+            exit 1
+          fi
+
+          jq -n \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg base "$BASE_BRANCH" \
+            --arg instr "$(cat copilot_instructions.txt)" \
+            --arg custom_agent "$COPILOT_CUSTOM_AGENT" \
+            --arg model "$COPILOT_MODEL" \
+            '{
+              assignees: ["copilot-swe-agent[bot]"],
+              agent_assignment: (
+                {
+                  target_repo: $repo,
+                  base_branch: $base,
+                  custom_instructions: $instr
+                }
+                + (if $custom_agent != "" then {custom_agent: $custom_agent} else {} end)
+                + (if $model != "" then {model: $model} else {} end)
+              )
+            }' > assign_payload.json
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/issues/${GH_ISSUE_NUMBER}/assignees" \
+            --input assign_payload.json >/tmp/copilot_assign_response.json
+
+          echo "Copilot assignment response:"
+          cat /tmp/copilot_assign_response.json
+
+      - name: Comment back on Jira with GitHub task link
+        env:
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_KEY: ${{ steps.jira.outputs.JIRA_KEY }}
+          GH_ISSUE_URL: ${{ steps.gh_issue.outputs.GH_ISSUE_URL }}
+        run: |
+          set -euo pipefail
+          for v in JIRA_BASE_URL JIRA_EMAIL JIRA_API_TOKEN JIRA_KEY; do
+            if [ -z "${!v:-}" ]; then
+              echo "Missing required Jira configuration: $v"
+              exit 1
+            fi
+          done
+
+          case "$JIRA_BASE_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "JIRA_BASE_URL must include scheme and host (e.g., https://your-domain.atlassian.net)"
+              exit 1
+              ;;
+          esac
+
+          JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+          case "$JIRA_BASE_URL" in
+            */rest/api/3) API_BASE_URL="$JIRA_BASE_URL" ;;
+            *) API_BASE_URL="$JIRA_BASE_URL/rest/api/3" ;;
+          esac
+
+          if [ -z "$GH_ISSUE_URL" ] || [ "$GH_ISSUE_URL" = "null" ]; then
+            echo "No GitHub issue URL found; skipping Jira comment."
+            exit 0
+          fi
+
+          payload=$(jq -n --arg url "$GH_ISSUE_URL" '{
+            body: {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    {type: "text", text: "Copilot task started: "},
+                    {type: "text", text: $url, marks: [{type: "link", attrs: {href: $url}}]}
+                  ]
+                }
+              ]
+            }
+          }')
+
+          COMMENT_URL="$API_BASE_URL/issue/$JIRA_KEY/comment"
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            --data "$payload" \
+            -o jira_comment_response.json \
+            -w "%{http_code}" \
+            "$COMMENT_URL")
+
+          if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to post Jira comment. HTTP $HTTP_CODE"
+            echo "Request URL: $COMMENT_URL"
+            echo "Response body:"
+            cat jira_comment_response.json
+            exit 1
+          fi
