@@ -325,6 +325,11 @@ class WaterLevelTransferer(Transferer):
                         dq_code,
                         row.GlobalID,
                     )
+                    self._capture_error(
+                        row.PointID,
+                        f"Mapped DataQuality '{dq_code}' to NaN; stored NULL",
+                        "DataQuality",
+                    )
                     data_quality = None
                 else:
                     mapped_quality_text = str(mapped_quality).strip()
@@ -338,10 +343,20 @@ class WaterLevelTransferer(Transferer):
                             dq_code,
                             row.GlobalID,
                         )
+                        self._capture_error(
+                            row.PointID,
+                            f"Mapped DataQuality '{dq_code}' to empty value; stored NULL",
+                            "DataQuality",
+                        )
                         data_quality = None
             except KeyError:
                 logger.warning(
                     f"{SPACE_6}Unknown DataQuality code '{dq_code}' for WaterLevels record {row.GlobalID}"
+                )
+                self._capture_error(
+                    row.PointID,
+                    f"Unknown DataQuality code '{dq_code}'",
+                    "DataQuality",
                 )
 
             # TODO: after sensors have been added to the database update sensor_id (or sensor) for waterlevels that come from db sensors (like e probes?)
