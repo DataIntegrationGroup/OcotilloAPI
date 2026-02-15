@@ -139,7 +139,9 @@ def well_inventory_csv(
                 field = err.get("field", "unknown")
                 message = err.get("error") or err.get("msg") or "validation error"
                 prefix = typer.style("    ! ", fg=typer.colors.BRIGHT_YELLOW)
-                field_part = typer.style(f"{field}:", fg=typer.colors.BRIGHT_YELLOW, bold=True)
+                field_part = typer.style(
+                    f"{field}:", fg=typer.colors.BRIGHT_YELLOW, bold=True
+                )
                 message_part = typer.style(f" {message}", fg=typer.colors.BRIGHT_YELLOW)
                 typer.echo(f"{prefix}{field_part}{message_part}")
                 shown += 1
