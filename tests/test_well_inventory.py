@@ -483,46 +483,46 @@ class TestWellInventoryErrorHandling:
     def test_upload_blank_well_name_point_id_autogenerates(self, tmp_path):
         """Upload succeeds when well_name_point_id is blank and auto-generates IDs."""
         source_path = Path("tests/features/data/well-inventory-valid.csv")
-        if source_path.exists():
-            with open(source_path, "r", encoding="utf-8", newline="") as rf:
-                reader = csv.DictReader(rf)
-                rows = list(reader)
-                fieldnames = reader.fieldnames
+        assert source_path.exists(), "Test data file does not exist."
+        with open(source_path, "r", encoding="utf-8", newline="") as rf:
+            reader = csv.DictReader(rf)
+            rows = list(reader)
+            fieldnames = reader.fieldnames
 
-            for row in rows:
-                row["well_name_point_id"] = ""
+        for row in rows:
+            row["well_name_point_id"] = ""
 
-            file_path = tmp_path / "well-inventory-blank-point-id.csv"
-            with open(file_path, "w", encoding="utf-8", newline="") as wf:
-                writer = csv.DictWriter(wf, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(rows)
+        file_path = tmp_path / "well-inventory-blank-point-id.csv"
+        with open(file_path, "w", encoding="utf-8", newline="") as wf:
+            writer = csv.DictWriter(wf, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
 
-            result = well_inventory_csv(file_path)
-            assert result.exit_code == 0
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 0
 
     def test_upload_reuses_existing_contact_name_organization(self, tmp_path):
         """Upload succeeds when rows repeat contact name+organization values."""
         source_path = Path("tests/features/data/well-inventory-valid.csv")
-        if source_path.exists():
-            with open(source_path, "r", encoding="utf-8", newline="") as rf:
-                reader = csv.DictReader(rf)
-                rows = list(reader)
-                fieldnames = reader.fieldnames
+        assert source_path.exists(), "Test data file does not exist."
+        with open(source_path, "r", encoding="utf-8", newline="") as rf:
+            reader = csv.DictReader(rf)
+            rows = list(reader)
+            fieldnames = reader.fieldnames
 
-            # Force duplicate contact identity across rows.
-            if len(rows) >= 2:
-                rows[1]["contact_1_name"] = rows[0]["contact_1_name"]
-                rows[1]["contact_1_organization"] = rows[0]["contact_1_organization"]
+        # Force duplicate contact identity across rows.
+        if len(rows) >= 2:
+            rows[1]["contact_1_name"] = rows[0]["contact_1_name"]
+            rows[1]["contact_1_organization"] = rows[0]["contact_1_organization"]
 
-            file_path = tmp_path / "well-inventory-duplicate-contact-name-org.csv"
-            with open(file_path, "w", encoding="utf-8", newline="") as wf:
-                writer = csv.DictWriter(wf, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(rows)
+        file_path = tmp_path / "well-inventory-duplicate-contact-name-org.csv"
+        with open(file_path, "w", encoding="utf-8", newline="") as wf:
+            writer = csv.DictWriter(wf, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
 
-            result = well_inventory_csv(file_path)
-            assert result.exit_code == 0
+        result = well_inventory_csv(file_path)
+        assert result.exit_code == 0
 
     def test_upload_invalid_date_format(self):
         """Upload fails when date format is invalid."""

@@ -187,7 +187,6 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                         "row": current_row_id or "unknown",
                         "field": "Invalid value",
                         "error": str(e),
-                        "value": current_row_id,
                     }
                 )
                 session.rollback()
@@ -201,7 +200,6 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                         "row": current_row_id or "unknown",
                         "field": "Database error",
                         "error": "A database error occurred while importing this row.",
-                        "value": current_row_id,
                     }
                 )
                 session.rollback()
