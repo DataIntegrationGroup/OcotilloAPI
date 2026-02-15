@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from collections import defaultdict
+import os
+from collections import Counter, defaultdict
 from enum import Enum
 from pathlib import Path
-from textwrap import wrap
+from textwrap import shorten, wrap
 
 import typer
 from dotenv import load_dotenv
@@ -34,8 +35,56 @@ class OutputFormat(str, Enum):
     json = "json"
 
 
+class ThemeMode(str, Enum):
+    auto = "auto"
+    light = "light"
+    dark = "dark"
+
+
+def _resolve_theme(theme: ThemeMode) -> ThemeMode:
+    if theme != ThemeMode.auto:
+        return theme
+
+    env_theme = os.environ.get("OCO_THEME", "").strip().lower()
+    if env_theme in (ThemeMode.light.value, ThemeMode.dark.value):
+        return ThemeMode(env_theme)
+
+    colorfgbg = os.environ.get("COLORFGBG", "")
+    if colorfgbg:
+        try:
+            bg = int(colorfgbg.split(";")[-1])
+            return ThemeMode.light if bg >= 8 else ThemeMode.dark
+        except (TypeError, ValueError):
+            pass
+
+    return ThemeMode.dark
+
+
+def _palette(theme: ThemeMode) -> dict[str, str]:
+    mode = _resolve_theme(theme)
+    if mode == ThemeMode.light:
+        return {
+            "ok": typer.colors.GREEN,
+            "issue": typer.colors.RED,
+            "accent": typer.colors.BLUE,
+            "muted": typer.colors.BLACK,
+            "field": typer.colors.RED,
+        }
+    return {
+        "ok": typer.colors.GREEN,
+        "issue": typer.colors.MAGENTA,
+        "accent": typer.colors.BRIGHT_BLUE,
+        "muted": typer.colors.BRIGHT_BLACK,
+        "field": typer.colors.BRIGHT_YELLOW,
+    }
+
+
 @cli.command("initialize-lexicon")
-def initialize_lexicon():
+def initialize_lexicon(
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
     from core.initializers import init_lexicon
 
     init_lexicon()
@@ -49,7 +98,10 @@ def associate_assets_command(
         file_okay=False,
         dir_okay=True,
         readable=True,
-    )
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
 ):
     from cli.service_adapter import associate_assets
 
@@ -64,7 +116,10 @@ def well_inventory_csv(
         file_okay=True,
         dir_okay=False,
         readable=True,
-    )
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
 ):
     """
     parse and upload a csv to database
@@ -77,39 +132,88 @@ def well_inventory_csv(
     summary = payload.get("summary", {})
     validation_errors = payload.get("validation_errors", [])
     detail = payload.get("detail")
+    colors = _palette(theme)
 
     if result.exit_code == 0:
-        typer.secho("[WELL INVENTORY IMPORT] SUCCESS", fg=typer.colors.GREEN, bold=True)
+        typer.secho("[WELL INVENTORY IMPORT] SUCCESS", fg=colors["ok"], bold=True)
     else:
         typer.secho(
             "[WELL INVENTORY IMPORT] COMPLETED WITH ISSUES",
-            fg=typer.colors.BRIGHT_YELLOW,
+            fg=colors["issue"],
             bold=True,
         )
-    typer.secho("=" * 72, fg=typer.colors.BRIGHT_BLUE)
+    typer.secho("=" * 72, fg=colors["accent"])
 
     if summary:
         processed = summary.get("total_rows_processed", 0)
         imported = summary.get("total_rows_imported", 0)
         rows_with_issues = summary.get("validation_errors_or_warnings", 0)
-        typer.secho("SUMMARY", fg=typer.colors.BRIGHT_BLUE, bold=True)
-        typer.echo(
-            f"Summary: processed={processed} imported={imported} rows_with_issues={rows_with_issues}"
+        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
+        label_width = 16
+        value_width = 8
+        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
+        typer.secho(
+            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
+            fg=colors["accent"],
         )
-        typer.secho(f"  processed        : {processed}", fg=typer.colors.CYAN)
-        typer.secho(f"  imported         : {imported}", fg=typer.colors.GREEN)
-        issue_color = (
-            typer.colors.BRIGHT_YELLOW if rows_with_issues else typer.colors.GREEN
+        typer.secho(
+            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
+            fg=colors["ok"],
         )
-        typer.secho(f"  rows_with_issues : {rows_with_issues}", fg=issue_color)
+        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
+        typer.secho(
+            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
+            fg=issue_color,
+        )
+        typer.echo()
 
     if validation_errors:
-        typer.secho("VALIDATION", fg=typer.colors.BRIGHT_BLUE, bold=True)
+        typer.secho("VALIDATION", fg=colors["accent"], bold=True)
         typer.secho(
             f"Validation errors: {len(validation_errors)}",
-            fg=typer.colors.BRIGHT_YELLOW,
+            fg=colors["issue"],
             bold=True,
         )
+        common_errors = Counter()
+        for err in validation_errors:
+            field = err.get("field", "unknown")
+            message = err.get("error") or err.get("msg") or "validation error"
+            common_errors[(field, message)] += 1
+
+        if common_errors:
+            typer.secho(
+                "Most common validation errors:", fg=colors["accent"], bold=True
+            )
+            field_width = 28
+            count_width = 5
+            error_width = 100
+            typer.secho(
+                f"  {'#':>2} | {'field':<{field_width}} | {'count':>{count_width}} | error",
+                fg=colors["muted"],
+                bold=True,
+            )
+            typer.secho(
+                "  " + "-" * (2 + 3 + field_width + 3 + count_width + 3 + error_width),
+                fg=colors["muted"],
+            )
+            for idx, ((field, message), count) in enumerate(
+                common_errors.most_common(5), start=1
+            ):
+                error_one_line = shorten(
+                    str(message).replace("\n", " "),
+                    width=error_width,
+                    placeholder="...",
+                )
+                field_text = shorten(str(field), width=field_width, placeholder="...")
+                field_part = typer.style(
+                    f"{field_text:<{field_width}}", fg=colors["field"], bold=True
+                )
+                count_part = f"{int(count):>{count_width}}"
+                idx_part = typer.style(f"{idx:>2}", fg=colors["issue"])
+                error_part = typer.style(error_one_line, fg=colors["issue"])
+                typer.echo(f"  {idx_part} | {field_part} | {count_part} | {error_part}")
+            typer.echo()
+
         grouped_errors = defaultdict(list)
         for err in validation_errors:
             row = err.get("row", "?")
@@ -130,14 +234,11 @@ def well_inventory_csv(
 
             row_errors = grouped_errors[row]
             if not first_group:
-                typer.secho(
-                    "  " + "-" * 56,
-                    fg=typer.colors.BRIGHT_BLACK,
-                )
+                typer.secho("  " + "-" * 56, fg=colors["muted"])
             first_group = False
             typer.secho(
                 f"  Row {row} ({len(row_errors)} issue{'s' if len(row_errors) != 1 else ''})",
-                fg=typer.colors.CYAN,
+                fg=colors["accent"],
                 bold=True,
             )
 
@@ -153,42 +254,35 @@ def well_inventory_csv(
                     str(message),
                     width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
                 ) or [""]
-                prefix = typer.style(prefix_raw, fg=typer.colors.BRIGHT_YELLOW)
-                field_part = f"\033[1;38;5;208m{field_raw}\033[0m"
-                first_msg_part = typer.style(
-                    msg_chunks[0], fg=typer.colors.BRIGHT_YELLOW
-                )
+                prefix = typer.style(prefix_raw, fg=colors["issue"])
+                field_part = typer.style(field_raw, fg=colors["field"], bold=True)
+                first_msg_part = typer.style(msg_chunks[0], fg=colors["issue"])
                 typer.echo(f"{prefix}{field_part} {first_msg_part}")
                 msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
                 for chunk in msg_chunks[1:]:
-                    typer.secho(f"{msg_indent}{chunk}", fg=typer.colors.BRIGHT_YELLOW)
+                    typer.secho(f"{msg_indent}{chunk}", fg=colors["issue"])
                 if input_value is not None:
-                    input_prefix = "       input="
+                    input_prefix = "       input: "
                     input_chunks = wrap(
                         str(input_value), width=max(20, 200 - len(input_prefix))
                     ) or [""]
-                    typer.secho(
-                        f"{input_prefix}{input_chunks[0]}", fg=typer.colors.BRIGHT_WHITE
-                    )
+                    typer.echo(f"{input_prefix}{input_chunks[0]}")
                     input_indent = " " * len(input_prefix)
                     for chunk in input_chunks[1:]:
-                        typer.secho(
-                            f"{input_indent}{chunk}", fg=typer.colors.BRIGHT_WHITE
-                        )
+                        typer.echo(f"{input_indent}{chunk}")
                 shown += 1
             typer.echo()
 
         if len(validation_errors) > shown:
             typer.secho(
                 f"... and {len(validation_errors) - shown} more validation errors",
-                fg=typer.colors.YELLOW,
+                fg=colors["issue"],
             )
-
     if detail:
-        typer.secho("ERRORS", fg=typer.colors.BRIGHT_BLUE, bold=True)
-        typer.secho(f"Error: {detail}", fg=typer.colors.BRIGHT_YELLOW, bold=True)
+        typer.secho("ERRORS", fg=colors["accent"], bold=True)
+        typer.secho(f"Error: {detail}", fg=colors["issue"], bold=True)
 
-    typer.secho("=" * 72, fg=typer.colors.BRIGHT_BLUE)
+    typer.secho("=" * 72, fg=colors["accent"])
 
     raise typer.Exit(result.exit_code)
 
@@ -209,6 +303,9 @@ def water_levels_bulk_upload(
         "--output",
         help="Optional output format",
     ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
 ):
     """
     parse and upload a csv
@@ -221,7 +318,11 @@ def water_levels_bulk_upload(
 
 
 @data_migrations.command("list")
-def data_migrations_list():
+def data_migrations_list(
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
     from data_migrations.registry import list_migrations
 
     migrations = list_migrations()
@@ -234,7 +335,11 @@ def data_migrations_list():
 
 
 @data_migrations.command("status")
-def data_migrations_status():
+def data_migrations_status(
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
     from db.engine import session_ctx
     from data_migrations.runner import get_status
 
@@ -258,6 +363,9 @@ def data_migrations_run(
     force: bool = typer.Option(
         False, "--force", help="Re-run even if already applied."
     ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
 ):
     from db.engine import session_ctx
     from data_migrations.runner import run_migration_by_id
@@ -276,6 +384,9 @@ def data_migrations_run_all(
     ),
     force: bool = typer.Option(
         False, "--force", help="Re-run non-repeatable migrations."
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
 ):
     from db.engine import session_ctx
@@ -296,6 +407,9 @@ def alembic_upgrade_and_data(
     ),
     force: bool = typer.Option(
         False, "--force", help="Re-run non-repeatable migrations."
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
     ),
 ):
     from alembic import command

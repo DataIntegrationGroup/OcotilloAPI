@@ -92,7 +92,7 @@ def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
 
     assert result.exit_code == 0, result.output
     assert Path(captured["path"]) == inventory_file
-    assert "Summary: processed=1 imported=1 rows_with_issues=0" in result.output
+    assert "[WELL INVENTORY IMPORT] SUCCESS" in result.output
 
 
 def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_path):
@@ -134,13 +134,12 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
     result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
 
     assert result.exit_code == 1
-    assert "Summary: processed=2 imported=0 rows_with_issues=2" in result.output
     assert "Validation errors: 2" in result.output
     assert (
         "Row 1 (1 issue)" in result.output
         and "1. contact_1_phone_1: Invalid phone" in result.output
     ) or "- row=1 field=contact_1_phone_1: Invalid phone" in result.output
-    assert "input=555-INVALID" in result.output
+    assert "input: 555-INVALID" in result.output
 
 
 def test_water_levels_bulk_upload_default_output(monkeypatch, tmp_path):
@@ -201,10 +200,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
