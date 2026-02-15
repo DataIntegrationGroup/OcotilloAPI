@@ -216,6 +216,18 @@ def step_impl(context: Context):
 
     # Start from two valid rows, add a third valid row, then blank only well_name_point_id.
     df = pd.concat([df, df.iloc[[0]].copy()], ignore_index=True)
+    # Ensure copied row does not violate unique contact constraints.
+    if "field_staff" in df.columns:
+        df.loc[2, "field_staff"] = "AutoGen Staff 3"
+    if "field_staff_2" in df.columns:
+        df.loc[2, "field_staff_2"] = "AutoGen Staff 3B"
+    if "field_staff_3" in df.columns:
+        df.loc[2, "field_staff_3"] = "AutoGen Staff 3C"
+    if "contact_1_name" in df.columns:
+        df.loc[2, "contact_1_name"] = "AutoGen Contact 3A"
+    if "contact_2_name" in df.columns:
+        df.loc[2, "contact_2_name"] = "AutoGen Contact 3B"
+
     df.loc[2, "well_name_point_id"] = ""
 
     _set_content_from_df(context, df)

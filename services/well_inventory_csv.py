@@ -34,6 +34,7 @@ from db import (
     Contact,
     PermissionHistory,
     Thing,
+    ThingContactAssociation,
 )
 from db.engine import session_ctx
 from pydantic import ValidationError
@@ -647,7 +648,33 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     for idx in (1, 2):
         contact_dict = _make_contact(model, well, idx)
         if contact_dict:
-            contact = add_contact(session, contact_dict, user=user, commit=False)
+            existing_contact = session.scalars(
+                select(Contact).where(
+                    and_(
+                        Contact.name == contact_dict.get("name"),
+                        Contact.organization == contact_dict.get("organization"),
+                    )
+                )
+            ).one_or_none()
+
+            if existing_contact:
+                association = session.scalars(
+                    select(ThingContactAssociation).where(
+                        and_(
+                            ThingContactAssociation.thing_id == well.id,
+                            ThingContactAssociation.contact_id == existing_contact.id,
+                        )
+                    )
+                ).one_or_none()
+                if not association:
+                    session.add(
+                        ThingContactAssociation(
+                            thing_id=well.id, contact_id=existing_contact.id
+                        )
+                    )
+                contact = existing_contact
+            else:
+                contact = add_contact(session, contact_dict, user=user, commit=False)
 
             # Use the first created contact for permissions if available
             if contact_for_permissions is None:
