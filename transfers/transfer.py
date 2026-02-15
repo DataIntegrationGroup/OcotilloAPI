@@ -20,7 +20,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
-
 from transfers.thing_transfer import (
     transfer_rock_sample_locations,
     transfer_springs,
@@ -216,13 +215,16 @@ def transfer_context(name: str, *, pad: int = 10):
         logger.info("Finished %s", name)
 
 
-def _execute_transfer(klass, flags: dict = None):
-    """Execute a single transfer class. Thread-safe since each creates its own session."""
+def _get_test_pointids():
     pointids = None
     if os.getenv("TRANSFER_TEST_POINTIDS"):
         pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+    return pointids
 
-    transferer = klass(flags=flags, pointids=pointids)
+
+def _execute_transfer(klass, flags: dict = None):
+    """Execute a single transfer class. Thread-safe since each creates its own session."""
+    transferer = klass(flags=flags, pointids=_get_test_pointids())
     transferer.transfer()
     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
@@ -372,7 +374,7 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
         use_parallel_wells = get_bool_env("TRANSFER_PARALLEL_WELLS", True)
         if use_parallel_wells:
             logger.info("Using PARALLEL wells transfer")
-            transferer = WellTransferer(flags=flags)
+            transferer = WellTransferer(flags=flags, pointids=_get_test_pointids())
             transferer.transfer_parallel()
             results = (transferer.input_df, transferer.cleaned_df, transferer.errors)
         else:
