@@ -649,23 +649,27 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         contact_dict = _make_contact(model, well, idx)
         if contact_dict:
             existing_contact = session.scalars(
-                select(Contact).where(
+                select(Contact)
+                .where(
                     and_(
                         Contact.name == contact_dict.get("name"),
                         Contact.organization == contact_dict.get("organization"),
                     )
                 )
-            ).one_or_none()
+                .order_by(Contact.id.asc())
+            ).first()
 
             if existing_contact:
                 association = session.scalars(
-                    select(ThingContactAssociation).where(
+                    select(ThingContactAssociation)
+                    .where(
                         and_(
                             ThingContactAssociation.thing_id == well.id,
                             ThingContactAssociation.contact_id == existing_contact.id,
                         )
                     )
-                ).one_or_none()
+                    .order_by(ThingContactAssociation.id.asc())
+                ).first()
                 if not association:
                     session.add(
                         ThingContactAssociation(

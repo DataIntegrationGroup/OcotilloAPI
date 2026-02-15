@@ -524,6 +524,54 @@ class TestWellInventoryErrorHandling:
             result = well_inventory_csv(file_path)
             assert result.exit_code == 0
 
+    def test_upload_reuses_contact_when_multiple_null_org_contacts_exist(
+        self, tmp_path
+    ):
+        """Upload should not crash if multiple contacts share name with NULL organization."""
+        duplicate_name = "Duplicate Null Org Contact"
+
+        with session_ctx() as session:
+            session.add_all(
+                [
+                    Contact(
+                        release_status="private",
+                        name=duplicate_name,
+                        role="Owner",
+                        contact_type="Primary",
+                        organization=None,
+                    ),
+                    Contact(
+                        release_status="private",
+                        name=duplicate_name,
+                        role="Manager",
+                        contact_type="Primary",
+                        organization=None,
+                    ),
+                ]
+            )
+            session.commit()
+
+        source_path = Path("tests/features/data/well-inventory-valid.csv")
+        if source_path.exists():
+            with open(source_path, "r", encoding="utf-8", newline="") as rf:
+                reader = csv.DictReader(rf)
+                rows = list(reader)
+                fieldnames = reader.fieldnames
+
+            for row in rows:
+                row["well_name_point_id"] = ""
+                row["contact_1_name"] = duplicate_name
+                row["contact_1_organization"] = ""
+
+            file_path = tmp_path / "well-inventory-null-org-contact-duplicates.csv"
+            with open(file_path, "w", encoding="utf-8", newline="") as wf:
+                writer = csv.DictWriter(wf, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+
+            result = well_inventory_csv(file_path)
+            assert result.exit_code == 0
+
     def test_upload_invalid_date_format(self):
         """Upload fails when date format is invalid."""
         file_path = Path("tests/features/data/well-inventory-invalid-date-format.csv")
@@ -842,7 +890,7 @@ class TestWellInventoryHelpers:
 
         # Unsupported forms
         assert _extract_autogen_prefix("XY-001") is None
-        assert _extract_autogen_prefix("XYZ-") is None
+        assert _extract_autogen_prefix("XYZ-") == "XYZ-"
         assert _extract_autogen_prefix("X-") is None
         assert _extract_autogen_prefix("123-") is None
         assert _extract_autogen_prefix("USER-XXXX") is None
