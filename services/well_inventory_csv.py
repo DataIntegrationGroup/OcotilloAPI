@@ -55,7 +55,7 @@ AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
 AUTOGEN_TOKEN_REGEX = re.compile(r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$")
 
 
-def _extract_autogen_prefix(well_id: str) -> str | None:
+def _extract_autogen_prefix(well_id: str | None) -> str | None:
     """
     Return normalized auto-generation prefix when a placeholder token is provided.
 
