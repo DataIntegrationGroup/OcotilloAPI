@@ -18,30 +18,30 @@ from behave import when, then
 
 
 @when('the user requests things with type "water well"')
-def step_impl(context):
+def step_when_the_user_requests_things_with_type_water_well(context):
     context.response = context.client.get("/thing/water-well")
 
 
 @then("the response should include at least one thing")
-def step_impl(context):
+def step_then_the_response_should_include_at_least_one_thing(context):
     data = context.response.json()
     context.data = data["items"]
     assert len(context.data) > 0
 
 
 @then('the response should only include things of type "water well"')
-def step_impl(context):
+def step_then_the_response_should_only_include_things_of_type_water_well(context):
     for d in context.data:
         assert d["thing_type"] == "water well"
 
 
 @when('the user requests things with type "spring"')
-def step_impl(context):
+def step_when_the_user_requests_things_with_type_spring(context):
     context.response = context.client.get("/thing/spring")
 
 
 @then('the response should only include things of type "spring"')
-def step_impl(context):
+def step_then_the_response_should_only_include_things_of_type_spring(context):
     for d in context.data:
         assert d["thing_type"] == "spring"
 

@@ -34,7 +34,7 @@ def _handle_validation_error(context, expected_errors):
 @then(
     'the response includes a validation error indicating the missing "address_type" value'
 )
-def step_impl(context: Context):
+def step_step_step(context: Context):
     expected_errors = [
         {
             "field": "composite field error",
@@ -45,7 +45,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes a validation error indicating the invalid UTM coordinates")
-def step_impl(context: Context):
+def step_then_the_response_includes_a_validation_error_indicating_the_invalid_utm(
+    context: Context,
+):
     expected_errors = [
         {
             "field": "composite field error",
@@ -62,7 +64,7 @@ def step_impl(context: Context):
 @then(
     'the response includes a validation error indicating an invalid "contact_type" value'
 )
-def step_impl(context):
+def step_step_step_2(context):
     expected_errors = [
         {
             "field": "contact_1_type",
@@ -75,7 +77,7 @@ def step_impl(context):
 @then(
     'the response includes a validation error indicating the missing "email_type" value'
 )
-def step_impl(context):
+def step_step_step_3(context):
     expected_errors = [
         {
             "field": "composite field error",
@@ -88,7 +90,7 @@ def step_impl(context):
 @then(
     'the response includes a validation error indicating the missing "phone_type" value'
 )
-def step_impl(context):
+def step_step_step_4(context):
     expected_errors = [
         {
             "field": "composite field error",
@@ -101,7 +103,7 @@ def step_impl(context):
 @then(
     'the response includes a validation error indicating the missing "contact_role" field'
 )
-def step_impl(context):
+def step_step_step_5(context):
     expected_errors = [
         {
             "field": "composite field error",
@@ -114,7 +116,7 @@ def step_impl(context):
 @then(
     "the response includes a validation error indicating the invalid postal code format"
 )
-def step_impl(context):
+def step_step_step_6(context):
     expected_errors = [
         {
             "field": "contact_1_address_1_postal_code",
@@ -127,7 +129,7 @@ def step_impl(context):
 @then(
     "the response includes a validation error indicating the invalid phone number format"
 )
-def step_impl(context):
+def step_step_step_7(context):
     expected_errors = [
         {
             "field": "contact_1_phone_1",
@@ -138,7 +140,9 @@ def step_impl(context):
 
 
 @then("the response includes a validation error indicating the invalid email format")
-def step_impl(context):
+def step_then_the_response_includes_a_validation_error_indicating_the_invalid_email(
+    context,
+):
     expected_errors = [
         {
             "field": "contact_1_email_1",
@@ -151,7 +155,7 @@ def step_impl(context):
 @then(
     'the response includes a validation error indicating the missing "contact_type" value'
 )
-def step_impl(context):
+def step_step_step_8(context):
     expected_errors = [
         {
             "field": "composite field error",
@@ -162,13 +166,17 @@ def step_impl(context):
 
 
 @then("the response includes a validation error indicating a repeated header row")
-def step_impl(context: Context):
+def step_then_the_response_includes_a_validation_error_indicating_a_repeated_header(
+    context: Context,
+):
     expected_errors = [{"field": "header", "error": "Duplicate header row"}]
     _handle_validation_error(context, expected_errors)
 
 
 @then("the response includes a validation error indicating duplicate header names")
-def step_impl(context: Context):
+def step_then_the_response_includes_a_validation_error_indicating_duplicate_header_names(
+    context: Context,
+):
 
     expected_errors = [
         {"field": "['contact_1_email_1']", "error": "Duplicate columns found"}
@@ -179,7 +187,7 @@ def step_impl(context: Context):
 @then(
     'the response includes a validation error indicating an invalid boolean value for the "is_open" field'
 )
-def step_impl(context: Context):
+def step_step_step_9(context: Context):
     expected_errors = [
         {
             "field": "is_open",
@@ -192,7 +200,7 @@ def step_impl(context: Context):
 @then(
     "the response includes validation errors for each missing water level entry field"
 )
-def step_impl(context):
+def step_step_step_10(context):
     expected_errors = [
         {
             "field": "composite field error",

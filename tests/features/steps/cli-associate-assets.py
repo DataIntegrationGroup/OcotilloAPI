@@ -11,16 +11,15 @@ from pathlib import Path
 
 from behave import given, when, then
 from behave.runner import Context
-from sqlalchemy import select
-
 from cli.service_adapter import associate_assets
 from db import Thing, Asset
 from db.engine import session_ctx
 from services.gcs_helper import get_storage_bucket
+from sqlalchemy import select
 
 
 @given('a local directory named "asset_import_batch"')
-def step_impl(context: Context):
+def step_given_a_local_directory_named_asset_import_batch(context: Context):
     context.source_directory = (
         Path("tests") / "features" / "data" / "asset_import_batch"
     )
@@ -29,7 +28,9 @@ def step_impl(context: Context):
 
 
 @given('the directory contains a manifest file named "manifest.txt"')
-def step_impl(context: Context):
+def step_given_the_directory_contains_a_manifest_file_named_manifest_txt(
+    context: Context,
+):
     context.manifest_file = context.source_directory / "manifest.txt"
     assert context.manifest_file.exists()
 
@@ -37,7 +38,7 @@ def step_impl(context: Context):
 @given(
     "the manifest file is a 2-column CSV with headers asset_file_name and thing_name"
 )
-def step_impl(context: Context):
+def step_step_step(context: Context):
     header = ["asset_file_name", "thing_name"]
     with open(context.manifest_file) as f:
         reader = csv.DictReader(f)
@@ -48,7 +49,9 @@ def step_impl(context: Context):
 
 
 @given("the directory contains a set of asset files referenced in the manifest")
-def step_impl(context: Context):
+def step_given_the_directory_contains_a_set_of_asset_files_referenced_in(
+    context: Context,
+):
     for a in context.asset_file_names:
         p = context.source_directory / a
         assert p.exists()
@@ -60,7 +63,9 @@ def step_impl(context: Context):
 
 
 @given('the manifest contains a row for "{asset_file_name}" with thing "{thing_name}"')
-def step_impl(context: Context, asset_file_name, thing_name):
+def step_given_the_manifest_contains_a_row_for_asset_file_name_with(
+    context: Context, asset_file_name, thing_name
+):
     with open(context.manifest_file) as f:
         reader = csv.DictReader(f)
         for r in reader:
@@ -72,7 +77,9 @@ def step_impl(context: Context, asset_file_name, thing_name):
 
 
 @given('the directory contains a asset file named "{asset_file_name}"')
-def step_impl(context: Context, asset_file_name):
+def step_given_the_directory_contains_a_asset_file_named_asset_file_name(
+    context: Context, asset_file_name
+):
     for path in context.source_directory.iterdir():
         if path.name == asset_file_name:
             break
@@ -81,13 +88,15 @@ def step_impl(context: Context, asset_file_name):
 
 
 @when('I run the "associate_assets" command on the directory')
-def step_impl(context: Context):
+def step_when_i_run_the_associate_assets_command_on_the_directory(context: Context):
     uris = associate_assets(context.source_directory)
     context.uris = uris
 
 
 @then('the app should upload "{asset_file_name}" to Google Cloud Storage')
-def step_impl(context: Context, asset_file_name):
+def step_then_the_app_should_upload_asset_file_name_to_google_cloud(
+    context: Context, asset_file_name
+):
     bucket = get_storage_bucket()
     head, ext = asset_file_name.split(".")
     for uri in context.uris:
@@ -104,7 +113,7 @@ def step_impl(context: Context, asset_file_name):
 @then(
     'the app should create an association between the uploaded asset and thing "{thing_name}"'
 )
-def step_impl(context: Context, thing_name):
+def step_step_step_2(context: Context, thing_name):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.name == thing_name)
         thing = session.scalars(sql).one_or_none()
@@ -125,18 +134,22 @@ def step_impl(context: Context, thing_name):
 @given(
     'the manifest contains a row for "missing-asset.jpg" with a valid thing_name and asset_type'
 )
-def step_impl(context: Context):
+def step_step_step_3(context: Context):
     context.manifest_file = context.source_directory / "manifest-missing-asset.txt"
     assert context.manifest_file.exists()
 
 
 @given('the directory does not contain a file named "missing-asset.jpg"')
-def step_impl(context: Context):
+def step_given_the_directory_does_not_contain_a_file_named_missing_asset(
+    context: Context,
+):
     assert not (context.source_directory / "missing-asset.jpg").exists()
 
 
 @then("each photo listed in the manifest should be uploaded exactly once to GCS")
-def step_impl(context: Context):
+def step_then_each_photo_listed_in_the_manifest_should_be_uploaded_exactly(
+    context: Context,
+):
     bucket = get_storage_bucket()
     for uri in context.uris:
         blob = uri.split("/")[-1]
@@ -146,7 +159,7 @@ def step_impl(context: Context):
 @then(
     "each uploaded photo should be associated exactly once to its corresponding thing"
 )
-def step_impl(context: Context):
+def step_step_step_4(context: Context):
     with session_ctx() as session:
         for uri in context.uris:
             sql = select(Asset).where(Asset.uri == uri)
@@ -159,7 +172,7 @@ def step_impl(context: Context):
 @when(
     'I run the "associate photos" command on the same directory again with the same manifest'
 )
-def step_impl(context: Context):
+def step_step_step_5(context: Context):
     uris = associate_assets(context.source_directory)
     context.uris = uris
 

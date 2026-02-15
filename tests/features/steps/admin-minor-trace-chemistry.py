@@ -18,10 +18,9 @@ Step definitions for Minor Trace Chemistry admin view tests.
 These are fast integration tests - no HTTP calls, direct module testing.
 """
 
+from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 from behave import when, then
 from behave.runner import Context
-
-from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 
 ADMIN_IDENTITY = MinorTraceChemistryAdmin.identity
 ADMIN_BASE_URL = f"/admin/{ADMIN_IDENTITY}"
@@ -42,7 +41,7 @@ def _ensure_admin_mounted(context):
 
 
 @when("I check the registered admin views")
-def step_impl(context: Context):
+def step_when_i_check_the_registered_admin_views(context: Context):
     from admin.config import create_admin
     from fastapi import FastAPI
 
@@ -52,7 +51,9 @@ def step_impl(context: Context):
 
 
 @then('"{view_name}" should be in the list of admin views')
-def step_impl(context: Context, view_name: str):
+def step_then_view_name_should_be_in_the_list_of_admin_views(
+    context: Context, view_name: str
+):
     assert view_name in context.admin_views, (
         f"Expected '{view_name}' to be registered in admin views. "
         f"Found: {context.admin_views}"
@@ -60,7 +61,9 @@ def step_impl(context: Context, view_name: str):
 
 
 @then("the Minor Trace Chemistry admin view should not allow create")
-def step_impl(context: Context):
+def step_then_the_minor_trace_chemistry_admin_view_should_not_allow_create(
+    context: Context,
+):
     from db.nma_legacy import NMA_MinorTraceChemistry
 
     view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
@@ -68,7 +71,9 @@ def step_impl(context: Context):
 
 
 @then("the Minor Trace Chemistry admin view should not allow edit")
-def step_impl(context: Context):
+def step_then_the_minor_trace_chemistry_admin_view_should_not_allow_edit(
+    context: Context,
+):
     from db.nma_legacy import NMA_MinorTraceChemistry
 
     view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
@@ -76,7 +81,9 @@ def step_impl(context: Context):
 
 
 @then("the Minor Trace Chemistry admin view should not allow delete")
-def step_impl(context: Context):
+def step_then_the_minor_trace_chemistry_admin_view_should_not_allow_delete(
+    context: Context,
+):
     from db.nma_legacy import NMA_MinorTraceChemistry
 
     view = MinorTraceChemistryAdmin(NMA_MinorTraceChemistry)
@@ -84,13 +91,15 @@ def step_impl(context: Context):
 
 
 @when("I request the Minor Trace Chemistry admin list page")
-def step_impl(context: Context):
+def step_when_i_request_the_minor_trace_chemistry_admin_list_page(context: Context):
     _ensure_admin_mounted(context)
     context.response = context.client.get(f"{ADMIN_BASE_URL}/list")
 
 
 @when("I request the Minor Trace Chemistry admin detail page for an existing record")
-def step_impl(context: Context):
+def step_when_i_request_the_minor_trace_chemistry_admin_detail_page_for(
+    context: Context,
+):
     _ensure_admin_mounted(context)
     from db.engine import session_ctx
     from db.nma_legacy import NMA_MinorTraceChemistry
@@ -107,14 +116,18 @@ def step_impl(context: Context):
 
 
 @then("the response status should be {status_code:d}")
-def step_impl(context: Context, status_code: int):
+def step_then_the_response_status_should_be_status_code_d(
+    context: Context, status_code: int
+):
     assert (
         context.response.status_code == status_code
     ), f"Expected status {status_code}, got {context.response.status_code}"
 
 
 @then("the Minor Trace Chemistry admin view should have these fields configured:")
-def step_impl(context: Context):
+def step_then_the_minor_trace_chemistry_admin_view_should_have_these_fields(
+    context: Context,
+):
     from admin.views.minor_trace_chemistry import MinorTraceChemistryAdmin
 
     expected_fields = [row["field"] for row in context.table]

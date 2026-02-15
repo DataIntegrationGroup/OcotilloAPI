@@ -1,7 +1,6 @@
 from behave import then
-from geoalchemy2.shape import to_shape
-
 from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
+from geoalchemy2.shape import to_shape
 from services.util import (
     transform_srid,
     convert_m_to_ft,
@@ -10,7 +9,7 @@ from services.util import (
 
 
 @then("the response should be in JSON format")
-def step_impl(context):
+def step_then_the_response_should_be_in_json_format(context):
     assert context.response["Content-Type"] == "application/json"
 
 
@@ -20,14 +19,14 @@ def step_impl(context):
 
 
 @then("the response should include the well name (point ID) (i.e. NM-1234)")
-def step_impl(context):
+def step_then_the_response_should_include_the_well_name_point_id_i(context):
     assert "name" in context.water_well_data
 
     assert context.water_well_data["name"] == context.objects["wells"][0].name
 
 
 @then("the response should include the project(s) or group(s) associated with the well")
-def step_impl(context):
+def step_then_the_response_should_include_the_project_s_or_group_s(context):
     assert "groups" in context.water_well_data
 
     assert (
@@ -54,7 +53,7 @@ def step_impl(context):
 
 
 @then("the response should include the purpose of the well (current use)")
-def step_impl(context):
+def step_then_the_response_should_include_the_purpose_of_the_well_current(context):
     assert "well_purposes" in context.water_well_data
 
     assert "Domestic" in context.water_well_data["well_purposes"]
@@ -73,7 +72,7 @@ def step_impl(context):
 @then(
     "the response should include the well hole status of the well as the status of the hole in the ground (from previous Status field)"
 )
-def step_impl(context):
+def step_step_step(context):
     assert "well_status" in context.water_well_data
 
     well_status_record = retrieve_latest_polymorphic_history_table_record(
@@ -83,7 +82,7 @@ def step_impl(context):
 
 
 @then("the response should include the monitoring frequency (new field)")
-def step_impl(context):
+def step_then_the_response_should_include_the_monitoring_frequency_new_field(context):
     assert "monitoring_frequencies" in context.water_well_data
 
     assert len(context.water_well_data["monitoring_frequencies"]) == 1
@@ -97,7 +96,7 @@ def step_impl(context):
 @then(
     "the response should include whether the well is currently being monitored with status text if applicable (from previous MonitoringStatus field)"
 )
-def step_impl(context):
+def step_step_step_2(context):
     assert "monitoring_status" in context.water_well_data
 
     monitoring_status_record = retrieve_latest_polymorphic_history_table_record(
@@ -115,7 +114,7 @@ def step_impl(context):
 
 
 @then("the response should include the release status of the well record")
-def step_impl(context):
+def step_then_the_response_should_include_the_release_status_of_the_well(context):
     assert "release_status" in context.water_well_data
 
     assert (
@@ -130,7 +129,7 @@ def step_impl(context):
 
 
 @then("the response should include the hole depth in feet")
-def step_impl(context):
+def step_then_the_response_should_include_the_hole_depth_in_feet(context):
     assert "hole_depth" in context.water_well_data
     assert "hole_depth_unit" in context.water_well_data
 
@@ -141,7 +140,7 @@ def step_impl(context):
 
 
 @then("the response should include the well depth in feet")
-def step_impl(context):
+def step_then_the_response_should_include_the_well_depth_in_feet(context):
     assert "well_depth" in context.water_well_data
     assert "well_depth_unit" in context.water_well_data
 
@@ -152,7 +151,7 @@ def step_impl(context):
 
 
 @then("the response should include the source of the well depth information")
-def step_impl(context):
+def step_then_the_response_should_include_the_source_of_the_well_depth(context):
     assert "well_depth_source" in context.water_well_data
 
     data_provenance_records = context.objects["data_provenance"]
@@ -174,7 +173,9 @@ def step_impl(context):
 
 
 @then("the response should include the description of the measuring point")
-def step_impl(context):
+def step_then_the_response_should_include_the_description_of_the_measuring_point(
+    context,
+):
     assert "measuring_point_description" in context.water_well_data
 
     assert (
@@ -184,7 +185,7 @@ def step_impl(context):
 
 
 @then("the response should include the measuring point height in feet")
-def step_impl(context):
+def step_then_the_response_should_include_the_measuring_point_height_in_feet(context):
     assert "measuring_point_height" in context.water_well_data
     assert "measuring_point_height_unit" in context.water_well_data
 
@@ -202,7 +203,7 @@ def step_impl(context):
 @then(
     "the response should include location information in GeoJSON spec format RFC 7946"
 )
-def step_impl(context):
+def step_step_step_3(context):
     assert "current_location" in context.water_well_data
     assert "type" in context.water_well_data["current_location"]
     assert "geometry" in context.water_well_data["current_location"]
@@ -216,7 +217,7 @@ def step_impl(context):
 @then(
     'the response should include a geometry object with type "Point" and coordinates array [longitude, latitude, elevation]'
 )
-def step_impl(context):
+def step_step_step_4(context):
     point_wkb = context.objects["locations"][0].point
     point_wkt = to_shape(point_wkb)
     latitude = point_wkt.y
@@ -232,7 +233,7 @@ def step_impl(context):
 @then(
     "the response should include the elevation in feet with vertical datum NAVD88 in the properties"
 )
-def step_impl(context):
+def step_step_step_5(context):
     assert "elevation" in context.water_well_data["current_location"]["properties"]
     assert "elevation_unit" in context.water_well_data["current_location"]["properties"]
     assert "vertical_datum" in context.water_well_data["current_location"]["properties"]
@@ -256,7 +257,7 @@ def step_impl(context):
 @then(
     "the response should include the elevation method (i.e. interpolated from digital elevation model) in the properties"
 )
-def step_impl(context):
+def step_step_step_6(context):
     assert (
         "elevation_method" in context.water_well_data["current_location"]["properties"]
     )
@@ -279,7 +280,7 @@ def step_impl(context):
 @then(
     "the response should include the UTM coordinates with datum NAD83 in the properties"
 )
-def step_impl(context):
+def step_step_step_7(context):
 
     assert (
         "utm_coordinates" in context.water_well_data["current_location"]["properties"]
@@ -307,7 +308,7 @@ def step_impl(context):
 @then(
     "the response should include any alternate IDs for the well like the NMBGMR site_name (i.e. John Smith Well), USGS site number, or the OSE well ID and OSE well tag ID"
 )
-def step_impl(context):
+def step_step_step_8(context):
     assert "alternate_ids" in context.water_well_data
 
     assert len(context.water_well_data["alternate_ids"]) == 3

@@ -14,14 +14,13 @@
 # limitations under the License.
 # ===============================================================================
 from behave import when, then, given
-from sqlalchemy import select
-
 from db import Thing, TransducerObservation
 from db.engine import session_ctx
+from sqlalchemy import select
 
 
 @given("the system has valid well and transducer data in the database")
-def step_impl(context):
+def step_given_the_system_has_valid_well_and_transducer_data_in_the(context):
     with session_ctx() as session:
         sql = select(Thing).where(Thing.thing_type == "water well")
         wells = session.execute(sql).unique().scalars().all()
@@ -33,27 +32,29 @@ def step_impl(context):
 
 
 @when("the user requests transducer data for a non-existing well")
-def step_impl(context):
+def step_when_the_user_requests_transducer_data_for_a_non_existing_well(context):
     context.response = context.client.get(
         "/observation/transducer-groundwater-level?thing_id=9999"
     )
 
 
 @when("the user requests transducer data for a well")
-def step_impl(context):
+def step_when_the_user_requests_transducer_data_for_a_well(context):
     context.response = context.client.get(
         f"/observation/transducer-groundwater-level?thing_id={context.objects['wells'][0].id}",
     )
 
 
 @then("each page should be an array of transducer data")
-def step_impl(context):
+def step_then_each_page_should_be_an_array_of_transducer_data(context):
     data = context.response.json()
     assert len(data["items"]) > 0, "Expected at least one transducer data entry"
 
 
 @then("each transducer data entry should include a timestamp, value, status")
-def step_impl(context):
+def step_then_each_transducer_data_entry_should_include_a_timestamp_value_status(
+    context,
+):
     data = context.response.json()
     items = data["items"][0]
     item = items["observation"]
@@ -69,7 +70,7 @@ def step_impl(context):
 
 
 @then("the timestamp should be in ISO 8601 format")
-def step_impl(context):
+def step_then_the_timestamp_should_be_in_iso_8601_format(context):
     # assert that time stamp is in ISO 8601 format
     from datetime import datetime
 
@@ -80,12 +81,12 @@ def step_impl(context):
 
 
 @then("the value should be a numeric type")
-def step_impl(context):
+def step_then_the_value_should_be_a_numeric_type(context):
     assert isinstance(context.value, (int, float))
 
 
 @then('the status should be one of "approved", "not reviewed"')
-def step_impl(context):
+def step_then_the_status_should_be_one_of_approved_not_reviewed(context):
     assert context.status in (
         "approved",
         "not reviewed",
