@@ -19,12 +19,12 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from sqlalchemy import select
-from typer.testing import CliRunner
-
 from cli.cli import cli
+from cli.service_adapter import WellInventoryResult
 from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
+from sqlalchemy import select
+from typer.testing import CliRunner
 
 
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
@@ -70,14 +70,63 @@ def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
 
     def fake_well_inventory(file_path):
         captured["path"] = file_path
+        return WellInventoryResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            payload={
+                "summary": {
+                    "total_rows_processed": 1,
+                    "total_rows_imported": 1,
+                    "validation_errors_or_warnings": 0,
+                },
+                "validation_errors": [],
+                "wells": [{}],
+            },
+        )
 
     monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
 
     runner = CliRunner()
     result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert Path(captured["path"]) == inventory_file
+    assert "Summary: processed=1 imported=1 rows_with_issues=0" in result.output
+
+
+def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_path):
+    inventory_file = tmp_path / "inventory.csv"
+    inventory_file.write_text("header\nvalue\n")
+
+    def fake_well_inventory(_file_path):
+        return WellInventoryResult(
+            exit_code=1,
+            stdout="",
+            stderr="",
+            payload={
+                "summary": {
+                    "total_rows_processed": 2,
+                    "total_rows_imported": 0,
+                    "validation_errors_or_warnings": 2,
+                },
+                "validation_errors": [
+                    {"row": 1, "field": "contact_1_phone_1", "error": "Invalid phone"},
+                    {"row": 2, "field": "date_time", "error": "Invalid datetime"},
+                ],
+                "wells": [],
+            },
+        )
+
+    monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
+
+    assert result.exit_code == 1
+    assert "Summary: processed=2 imported=0 rows_with_issues=2" in result.output
+    assert "Validation errors: 2" in result.output
+    assert "- row=1 field=contact_1_phone_1: Invalid phone" in result.output
 
 
 def test_water_levels_bulk_upload_default_output(monkeypatch, tmp_path):
@@ -138,10 +187,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"

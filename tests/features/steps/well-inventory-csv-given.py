@@ -24,11 +24,15 @@ from behave.runner import Context
 
 def _set_file_content(context: Context, name):
     path = Path("tests") / "features" / "data" / name
+    _set_file_content_from_path(context, path, name)
+
+
+def _set_file_content_from_path(context: Context, path: Path, name: str | None = None):
     context.file_path = path
     with open(path, "r") as f:
-        context.file_name = name
+        context.file_name = name or path.name
         context.file_content = f.read()
-        if name.endswith(".csv"):
+        if context.file_name.endswith(".csv"):
             context.rows = list(csv.DictReader(context.file_content.splitlines()))
             context.row_count = len(context.rows)
             context.file_type = "text/csv"
@@ -55,6 +59,17 @@ def step_impl(context: Context):
 @given("a valid CSV file for bulk well inventory upload")
 def step_impl_valid_csv_file(context: Context):
     _set_file_content(context, "well-inventory-valid.csv")
+
+
+@given("I use the real user-entered well inventory CSV file")
+def step_impl_real_user_csv(context: Context):
+    path = (
+        Path("tests")
+        / "features"
+        / "data"
+        / "well-inventory-real-user-entered-data.csv"
+    )
+    _set_file_content_from_path(context, path)
 
 
 @given('my CSV file contains rows missing a required field "well_name_point_id"')

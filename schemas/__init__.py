@@ -16,6 +16,7 @@
 from datetime import datetime, timezone, date
 from typing import Annotated
 
+from core.enums import ReleaseStatus
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -25,8 +26,6 @@ from pydantic import (
 from pydantic.functional_validators import AfterValidator
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
-
-from core.enums import ReleaseStatus
 
 DT_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -53,7 +52,12 @@ class BaseUpdateModel(BaseCreateModel):
     release_status: ReleaseStatus | None = None
 
 
-def past_or_today_validator(value: date | datetime) -> date | datetime:
+def past_or_today_validator(
+    value: date | datetime | None,
+) -> date | datetime | None:
+    if value is None:
+        return None
+
     if isinstance(value, datetime):
         if value.tzinfo is None:
             if value > datetime.now():

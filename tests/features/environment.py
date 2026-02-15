@@ -16,8 +16,6 @@
 import random
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
-
 from db import (
     Location,
     Thing,
@@ -48,6 +46,8 @@ from db import (
     Sample,
 )
 from db.engine import session_ctx
+from services.util import get_bool_env
+from sqlalchemy import select
 from transfers.transfer import _drop_and_rebuild_db
 
 
@@ -502,7 +502,7 @@ def add_geologic_formation(context, session, formation_code, well):
 def before_all(context):
     context.objects = {}
 
-    rebuild = False
+    rebuild = get_bool_env("DROP_AND_REBUILD_DB")
     erase_data = False
     if rebuild:
         _drop_and_rebuild_db()
