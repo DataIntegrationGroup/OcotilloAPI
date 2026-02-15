@@ -212,7 +212,13 @@ def step_impl(context: Context):
     'my CSV file contains 3 rows of data with 2 valid rows and 1 row with a blank "well_name_point_id"'
 )
 def step_impl(context: Context):
-    _set_file_content(context, "well-inventory-invalid-partial.csv")
+    df = _get_valid_df(context)
+
+    # Start from two valid rows, add a third valid row, then blank only well_name_point_id.
+    df = pd.concat([df, df.iloc[[0]].copy()], ignore_index=True)
+    df.loc[2, "well_name_point_id"] = ""
+
+    _set_content_from_df(context, df)
 
 
 @given('my CSV file contains a row missing the required "{required_field}" field')
@@ -259,6 +265,8 @@ def _set_content_from_df(context: Context, df: pd.DataFrame, delimiter: str = ",
     df.to_csv(buffer, index=False, sep=delimiter)
     context.file_content = buffer.getvalue()
     context.rows = list(csv.DictReader(context.file_content.splitlines()))
+    context.row_count = len(context.rows)
+    context.file_type = "text/csv"
 
 
 @given("my CSV file contains more rows than the configured maximum for bulk upload")
