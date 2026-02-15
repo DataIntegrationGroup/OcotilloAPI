@@ -480,10 +480,24 @@ class TestWellInventoryErrorHandling:
             errors = result.payload.get("validation_errors", [])
             assert any("Duplicate" in str(e) for e in errors)
 
-    def test_upload_blank_well_name_point_id_autogenerates(self):
+    def test_upload_blank_well_name_point_id_autogenerates(self, tmp_path):
         """Upload succeeds when well_name_point_id is blank and auto-generates IDs."""
-        file_path = Path("tests/features/data/well-inventory-missing-required.csv")
-        if file_path.exists():
+        source_path = Path("tests/features/data/well-inventory-valid.csv")
+        if source_path.exists():
+            with open(source_path, "r", encoding="utf-8", newline="") as rf:
+                reader = csv.DictReader(rf)
+                rows = list(reader)
+                fieldnames = reader.fieldnames
+
+            for row in rows:
+                row["well_name_point_id"] = ""
+
+            file_path = tmp_path / "well-inventory-blank-point-id.csv"
+            with open(file_path, "w", encoding="utf-8", newline="") as wf:
+                writer = csv.DictWriter(wf, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(rows)
+
             result = well_inventory_csv(file_path)
             assert result.exit_code == 0
 
