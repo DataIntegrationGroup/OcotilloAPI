@@ -138,9 +138,9 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
     assert "Validation errors: 2" in result.output
     assert (
         "Row 1 (1 issue)" in result.output
-        and "! contact_1_phone_1: Invalid phone" in result.output
+        and "1. contact_1_phone_1: Invalid phone" in result.output
     ) or "- row=1 field=contact_1_phone_1: Invalid phone" in result.output
-    assert "input='555-INVALID'" in result.output
+    assert "input=555-INVALID" in result.output
 
 
 def test_water_levels_bulk_upload_default_output(monkeypatch, tmp_path):
