@@ -135,10 +135,8 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
 
     assert result.exit_code == 1
     assert "Validation errors: 2" in result.output
-    assert (
-        "Row 1 (1 issue)" in result.output
-        and "1. contact_1_phone_1: Invalid phone" in result.output
-    ) or "- row=1 field=contact_1_phone_1: Invalid phone" in result.output
+    assert "Row 1 (1 issue)" in result.output
+    assert "1. contact_1_phone_1: Invalid phone" in result.output
     assert "input: 555-INVALID" in result.output
 
 
