@@ -16,6 +16,7 @@
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
+from textwrap import wrap
 
 import typer
 from dotenv import load_dotenv
@@ -120,13 +121,20 @@ def well_inventory_csv(
             except (TypeError, ValueError):
                 return (1, str(row_value))
 
-        max_errors_to_show = 100
+        max_errors_to_show = 1000
         shown = 0
+        first_group = True
         for row in sorted(grouped_errors.keys(), key=_row_sort_key):
             if shown >= max_errors_to_show:
                 break
 
             row_errors = grouped_errors[row]
+            if not first_group:
+                typer.secho(
+                    "  " + "-" * 56,
+                    fg=typer.colors.BRIGHT_BLACK,
+                )
+            first_group = False
             typer.secho(
                 f"  Row {row} ({len(row_errors)} issue{'s' if len(row_errors) != 1 else ''})",
                 fg=typer.colors.CYAN,
@@ -138,11 +146,37 @@ def well_inventory_csv(
                     break
                 field = err.get("field", "unknown")
                 message = err.get("error") or err.get("msg") or "validation error"
-                prefix = typer.style("    ! ", fg=typer.colors.BRIGHT_YELLOW)
-                field_part = f"\033[1;38;5;208m{field}:\033[0m"
-                message_part = typer.style(f" {message}", fg=typer.colors.BRIGHT_YELLOW)
-                typer.echo(f"{prefix}{field_part}{message_part}")
+                input_value = err.get("value")
+                prefix_raw = "    ! "
+                field_raw = f"{field}:"
+                msg_chunks = wrap(
+                    str(message),
+                    width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
+                ) or [""]
+                prefix = typer.style(prefix_raw, fg=typer.colors.BRIGHT_YELLOW)
+                field_part = f"\033[1;38;5;208m{field_raw}\033[0m"
+                first_msg_part = typer.style(
+                    msg_chunks[0], fg=typer.colors.BRIGHT_YELLOW
+                )
+                typer.echo(f"{prefix}{field_part} {first_msg_part}")
+                msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
+                for chunk in msg_chunks[1:]:
+                    typer.secho(f"{msg_indent}{chunk}", fg=typer.colors.BRIGHT_YELLOW)
+                if input_value is not None:
+                    input_prefix = "      input="
+                    input_chunks = wrap(
+                        str(input_value), width=max(20, 200 - len(input_prefix))
+                    ) or [""]
+                    typer.secho(
+                        f"{input_prefix}{input_chunks[0]}", fg=typer.colors.BRIGHT_WHITE
+                    )
+                    input_indent = " " * len(input_prefix)
+                    for chunk in input_chunks[1:]:
+                        typer.secho(
+                            f"{input_indent}{chunk}", fg=typer.colors.BRIGHT_WHITE
+                        )
                 shown += 1
+            typer.echo()
 
         if len(validation_errors) > shown:
             typer.secho(
@@ -208,11 +242,18 @@ def well_inventory_csv(
 
         max_errors_to_show = 100
         shown = 0
+        first_group = True
         for row in sorted(grouped_errors.keys(), key=_row_sort_key):
             if shown >= max_errors_to_show:
                 break
 
             row_errors = grouped_errors[row]
+            if not first_group:
+                typer.secho(
+                    "  " + "-" * 56,
+                    fg=typer.colors.BRIGHT_BLACK,
+                )
+            first_group = False
             typer.secho(
                 f"  Row {row} ({len(row_errors)} issue{'s' if len(row_errors) != 1 else ''})",
                 fg=typer.colors.CYAN,
@@ -224,13 +265,39 @@ def well_inventory_csv(
                     break
                 field = err.get("field", "unknown")
                 message = err.get("error") or err.get("msg") or "validation error"
-                prefix = typer.style("    ! ", fg=typer.colors.BRIGHT_YELLOW)
+                input_value = err.get("value")
+                prefix_raw = "    ! "
+                field_raw = f"{field}:"
+                msg_chunks = wrap(
+                    str(message),
+                    width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
+                ) or [""]
+                prefix = typer.style(prefix_raw, fg=typer.colors.BRIGHT_YELLOW)
                 field_part = typer.style(
-                    f"{field}:", fg=typer.colors.BRIGHT_YELLOW, bold=True
+                    field_raw, fg=typer.colors.BRIGHT_YELLOW, bold=True
                 )
-                message_part = typer.style(f" {message}", fg=typer.colors.BRIGHT_YELLOW)
-                typer.echo(f"{prefix}{field_part}{message_part}")
+                first_msg_part = typer.style(
+                    msg_chunks[0], fg=typer.colors.BRIGHT_YELLOW
+                )
+                typer.echo(f"{prefix}{field_part} {first_msg_part}")
+                msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
+                for chunk in msg_chunks[1:]:
+                    typer.secho(f"{msg_indent}{chunk}", fg=typer.colors.BRIGHT_YELLOW)
+                if input_value is not None:
+                    input_prefix = "      input="
+                    input_chunks = wrap(
+                        str(input_value), width=max(20, 200 - len(input_prefix))
+                    ) or [""]
+                    typer.secho(
+                        f"{input_prefix}{input_chunks[0]}", fg=typer.colors.BRIGHT_WHITE
+                    )
+                    input_indent = " " * len(input_prefix)
+                    for chunk in input_chunks[1:]:
+                        typer.secho(
+                            f"{input_indent}{chunk}", fg=typer.colors.BRIGHT_WHITE
+                        )
                 shown += 1
+            typer.echo()
 
         if len(validation_errors) > shown:
             typer.secho(

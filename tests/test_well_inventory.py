@@ -12,8 +12,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from shapely import Point
-
 from cli.service_adapter import well_inventory_csv
 from core.constants import SRID_UTM_ZONE_13N, SRID_WGS84
 from db import (
@@ -28,6 +26,7 @@ from db import (
 )
 from db.engine import session_ctx
 from services.util import transform_srid, convert_ft_to_m
+from shapely import Point
 
 
 def test_well_inventory_db_contents():
@@ -481,12 +480,12 @@ class TestWellInventoryErrorHandling:
             errors = result.payload.get("validation_errors", [])
             assert any("Duplicate" in str(e) for e in errors)
 
-    def test_upload_missing_required_field(self):
-        """Upload fails when required field is missing."""
+    def test_upload_blank_well_name_point_id_autogenerates(self):
+        """Upload succeeds when well_name_point_id is blank and auto-generates IDs."""
         file_path = Path("tests/features/data/well-inventory-missing-required.csv")
         if file_path.exists():
             result = well_inventory_csv(file_path)
-            assert result.exit_code == 1
+            assert result.exit_code == 0
 
     def test_upload_invalid_date_format(self):
         """Upload fails when date format is invalid."""
@@ -787,20 +786,30 @@ class TestWellInventoryHelpers:
         assert well_id == "XY-0011"
         assert offset == 11
 
-    def test_autogen_regex_pattern(self):
-        """Test the AUTOGEN_REGEX pattern matches correctly."""
-        from services.well_inventory_csv import AUTOGEN_REGEX
+    def test_extract_autogen_prefix_pattern(self):
+        """Test auto-generation prefix extraction for supported placeholders."""
+        from services.well_inventory_csv import _extract_autogen_prefix
 
-        # Should match
-        assert AUTOGEN_REGEX.match("XY-") is not None
-        assert AUTOGEN_REGEX.match("AB-") is not None
-        assert AUTOGEN_REGEX.match("ab-") is not None
+        # Existing supported form
+        assert _extract_autogen_prefix("XY-") == "XY-"
+        assert _extract_autogen_prefix("AB-") == "AB-"
 
-        # Should not match
-        assert AUTOGEN_REGEX.match("XY-001") is None
-        assert AUTOGEN_REGEX.match("XYZ-") is None
-        assert AUTOGEN_REGEX.match("X-") is None
-        assert AUTOGEN_REGEX.match("123-") is None
+        # New supported form (2-3 uppercase letter prefixes)
+        assert _extract_autogen_prefix("WL-XXXX") == "WL-"
+        assert _extract_autogen_prefix("SAC-XXXX") == "SAC-"
+        assert _extract_autogen_prefix("ABC -xxxx") == "ABC-"
+
+        # Blank values use default prefix
+        assert _extract_autogen_prefix("") == "NM-"
+        assert _extract_autogen_prefix("   ") == "NM-"
+
+        # Unsupported forms
+        assert _extract_autogen_prefix("XY-001") is None
+        assert _extract_autogen_prefix("XYZ-") is None
+        assert _extract_autogen_prefix("X-") is None
+        assert _extract_autogen_prefix("123-") is None
+        assert _extract_autogen_prefix("USER-XXXX") is None
+        assert _extract_autogen_prefix("wl-xxxx") is None
 
     def test_generate_autogen_well_id_non_numeric_suffix(self):
         """Test auto-generation when existing well has non-numeric suffix."""

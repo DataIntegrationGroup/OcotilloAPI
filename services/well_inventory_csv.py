@@ -23,13 +23,6 @@ from io import StringIO
 from itertools import groupby
 from typing import Set
 
-from pydantic import ValidationError
-from shapely import Point
-from sqlalchemy import select, and_
-from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
-from starlette.status import HTTP_400_BAD_REQUEST
-
 from core.constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from db import (
     Group,
@@ -43,14 +36,45 @@ from db import (
     Thing,
 )
 from db.engine import session_ctx
+from pydantic import ValidationError
 from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
+from shapely import Point
+from sqlalchemy import select, and_
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
+from starlette.status import HTTP_400_BAD_REQUEST
 
-AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
+AUTOGEN_DEFAULT_PREFIX = "NM-"
+AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2}-$")
+AUTOGEN_TOKEN_REGEX = re.compile(r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$")
+
+
+def _extract_autogen_prefix(well_id: str) -> str | None:
+    """
+    Return normalized auto-generation prefix when a placeholder token is provided.
+
+    Supported forms:
+    - ``XY-`` (existing behavior)
+    - ``WL-XXXX`` / ``SAC-XXXX`` / ``ABC-XXXX`` (2-3 uppercase letter prefixes)
+    - blank value (uses default ``NM-`` prefix)
+    """
+    value = (well_id or "").strip()
+    if not value:
+        return AUTOGEN_DEFAULT_PREFIX
+
+    if AUTOGEN_PREFIX_REGEX.match(value):
+        return value
+
+    token_match = AUTOGEN_TOKEN_REGEX.match(value)
+    if token_match:
+        return f"{token_match.group('prefix')}-"
+
+    return None
 
 
 def import_well_inventory_csv(*args, **kw) -> dict:
@@ -127,6 +151,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                 "row": 0,
                 "field": f"{duplicates}",
                 "error": "Duplicate columns found",
+                "value": duplicates,
             }
         ]
 
@@ -161,6 +186,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                         "row": current_row_id or "unknown",
                         "field": "Invalid value",
                         "error": str(e),
+                        "value": current_row_id,
                     }
                 )
                 session.rollback()
@@ -174,6 +200,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                         "row": current_row_id or "unknown",
                         "field": "Database error",
                         "error": "A database error occurred while importing this row.",
+                        "value": current_row_id,
                     }
                 )
                 session.rollback()
@@ -354,11 +381,14 @@ def _make_row_models(rows, session):
                 raise ValueError("Duplicate header row")
 
             well_id = row.get("well_name_point_id")
-            if not well_id:
-                raise ValueError("Field required")
-            if AUTOGEN_REGEX.match(well_id):
-                well_id, offset = _generate_autogen_well_id(session, well_id, offset)
+            autogen_prefix = _extract_autogen_prefix(well_id)
+            if autogen_prefix:
+                well_id, offset = _generate_autogen_well_id(
+                    session, autogen_prefix, offset
+                )
                 row["well_name_point_id"] = well_id
+            elif not well_id:
+                raise ValueError("Field required")
 
             if well_id in seen_ids:
                 raise ValueError("Duplicate value for well_name_point_id")
@@ -394,8 +424,13 @@ def _make_row_models(rows, session):
             else:
                 error_msg = "Invalid value"
 
+            if field == "header":
+                value = ",".join(row.keys())
+            else:
+                value = row.get(field)
+
             validation_errors.append(
-                {"row": idx + 1, "field": field, "error": error_msg}
+                {"row": idx + 1, "field": field, "error": error_msg, "value": value}
             )
     return models, validation_errors
 

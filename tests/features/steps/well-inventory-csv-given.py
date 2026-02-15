@@ -209,7 +209,7 @@ def step_impl(context: Context):
 
 
 @given(
-    'my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"'
+    'my CSV file contains 3 rows of data with 2 valid rows and 1 row with a blank "well_name_point_id"'
 )
 def step_impl(context: Context):
     _set_file_content(context, "well-inventory-invalid-partial.csv")
@@ -312,11 +312,12 @@ def step_impl(context: Context):
 
 
 @given(
-    'my CSV file contains all valid columns but uses "XY-" prefix for well_name_point_id values'
+    'my CSV file contains all valid columns but uses uppercase "-xxxx" placeholders and blank values for well_name_point_id'
 )
 def step_impl(context: Context):
     df = _get_valid_df(context)
-    df["well_name_point_id"] = df["well_name_point_id"].apply(lambda x: "XY-")
+    df.loc[0, "well_name_point_id"] = ""
+    df.loc[1, "well_name_point_id"] = "SAC-xxxx"
 
     # change contact name
     df.loc[0, "contact_1_name"] = "Contact 1"

@@ -111,8 +111,18 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
                     "validation_errors_or_warnings": 2,
                 },
                 "validation_errors": [
-                    {"row": 1, "field": "contact_1_phone_1", "error": "Invalid phone"},
-                    {"row": 2, "field": "date_time", "error": "Invalid datetime"},
+                    {
+                        "row": 1,
+                        "field": "contact_1_phone_1",
+                        "error": "Invalid phone",
+                        "value": "555-INVALID",
+                    },
+                    {
+                        "row": 2,
+                        "field": "date_time",
+                        "error": "Invalid datetime",
+                        "value": "1/12/2026 14:37",
+                    },
                 ],
                 "wells": [],
             },
@@ -130,6 +140,7 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
         "Row 1 (1 issue)" in result.output
         and "! contact_1_phone_1: Invalid phone" in result.output
     ) or "- row=1 field=contact_1_phone_1: Invalid phone" in result.output
+    assert "input='555-INVALID'" in result.output
 
 
 def test_water_levels_bulk_upload_default_output(monkeypatch, tmp_path):
@@ -190,10 +201,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
