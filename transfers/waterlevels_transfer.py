@@ -41,6 +41,7 @@ from transfers.util import (
     filter_by_valid_measuring_agency,
     lexicon_mapper,
     get_transfers_data_path,
+    replace_nans,
 )
 
 # constants
@@ -94,6 +95,7 @@ class WaterLevelTransferer(Transferer):
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, dtype={"MeasuredBy": str})
+        input_df = replace_nans(input_df)
         cleaned_df = filter_to_valid_point_ids(input_df)
         cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
         logger.info(
@@ -314,7 +316,29 @@ class WaterLevelTransferer(Transferer):
         if dq_raw and pd.notna(dq_raw):
             dq_code = str(dq_raw).strip()
             try:
-                data_quality = lexicon_mapper.map_value(f"LU_DataQuality:{dq_code}")
+                mapped_quality = lexicon_mapper.map_value(f"LU_DataQuality:{dq_code}")
+                if pd.isna(mapped_quality):
+                    logger.warning(
+                        "%sMapped DataQuality '%s' to NaN for WaterLevels record %s; "
+                        "storing NULL to satisfy FK",
+                        SPACE_6,
+                        dq_code,
+                        row.GlobalID,
+                    )
+                    data_quality = None
+                else:
+                    mapped_quality_text = str(mapped_quality).strip()
+                    if mapped_quality_text and mapped_quality_text.lower() != "nan":
+                        data_quality = mapped_quality_text
+                    else:
+                        logger.warning(
+                            "%sMapped DataQuality '%s' to empty value for WaterLevels "
+                            "record %s; storing NULL to satisfy FK",
+                            SPACE_6,
+                            dq_code,
+                            row.GlobalID,
+                        )
+                        data_quality = None
             except KeyError:
                 logger.warning(
                     f"{SPACE_6}Unknown DataQuality code '{dq_code}' for WaterLevels record {row.GlobalID}"
