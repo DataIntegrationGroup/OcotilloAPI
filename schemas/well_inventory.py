@@ -112,6 +112,7 @@ def phone_validator(phone_number_str):
     # Explicitly return None for empty strings after stripping.
     return None
 
+
 def email_validator_function(email_str):
     if email_str:
         try:
