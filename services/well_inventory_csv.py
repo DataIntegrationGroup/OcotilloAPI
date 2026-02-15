@@ -380,6 +380,9 @@ def _make_row_models(rows, session):
             if all(key == row.get(key) for key in row.keys()):
                 raise ValueError("Duplicate header row")
 
+            if "well_name_point_id" not in row:
+                raise ValueError("Field required")
+
             well_id = row.get("well_name_point_id")
             autogen_prefix = _extract_autogen_prefix(well_id)
             if autogen_prefix:

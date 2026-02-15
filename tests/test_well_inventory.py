@@ -811,6 +811,20 @@ class TestWellInventoryHelpers:
         assert _extract_autogen_prefix("USER-XXXX") is None
         assert _extract_autogen_prefix("wl-xxxx") is None
 
+    def test_make_row_models_missing_well_name_point_id_column_errors(self):
+        """Missing well_name_point_id column should fail validation (blank cell is separate)."""
+        from unittest.mock import MagicMock
+
+        from services.well_inventory_csv import _make_row_models
+
+        rows = [{"project": "ProjectA", "site_name": "Site1"}]
+        models, validation_errors = _make_row_models(rows, MagicMock())
+
+        assert models == []
+        assert len(validation_errors) == 1
+        assert validation_errors[0]["field"] == "well_name_point_id"
+        assert validation_errors[0]["error"] == "Field required"
+
     def test_generate_autogen_well_id_non_numeric_suffix(self):
         """Test auto-generation when existing well has non-numeric suffix."""
         from services.well_inventory_csv import _generate_autogen_well_id
