@@ -51,7 +51,7 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_400_BAD_REQUEST
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
-AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2}-$")
+AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
 AUTOGEN_TOKEN_REGEX = re.compile(r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$")
 
 
