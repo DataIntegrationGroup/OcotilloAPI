@@ -2262,9 +2262,9 @@
       "definition": "The well is open."
     },
     {
-        "categories": ["status_value"],
-        "term": "Open (unequipped)",
-        "definition": "The well is open and unequipped."
+      "categories": ["status_value"],
+      "term": "Open (unequipped)",
+      "definition": "The well is open and unequipped."
     },
     {
       "categories": ["status_value"],
