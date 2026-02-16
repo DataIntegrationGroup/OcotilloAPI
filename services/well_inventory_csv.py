@@ -74,6 +74,15 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
     if not value:
         return AUTOGEN_DEFAULT_PREFIX
 
+    if AUTOGEN_PREFIX_REGEX.match(value):
+        return value
+
+    token_match = AUTOGEN_TOKEN_REGEX.match(value)
+    if token_match:
+        return f"{token_match.group('prefix')}-"
+
+    return None
+
 
 AUTOGEN_REGEX = re.compile(r"^[A-Za-z]{2}-$")
 
