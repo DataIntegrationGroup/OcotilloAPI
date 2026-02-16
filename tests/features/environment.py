@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============== ================================================================
+import os
 import random
 from datetime import datetime, timedelta
 
+from alembic import command
+from alembic.config import Config
+from core.initializers import init_lexicon, init_parameter
 from db import (
     Location,
     Thing,
@@ -40,15 +44,14 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
-    Base,
     Asset,
     Contact,
     Sample,
+    Base,
 )
 from db.engine import session_ctx
-from services.util import get_bool_env
+from db.initialization import recreate_public_schema, sync_search_vector_triggers
 from sqlalchemy import select
-from transfers.transfer import _drop_and_rebuild_db
 
 
 def add_context_object_container(name):
@@ -499,24 +502,26 @@ def add_geologic_formation(context, session, formation_code, well):
     return formation
 
 
+def _alembic_config() -> Config:
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    cfg = Config(os.path.join(root, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+    return cfg
+
+
+def _initialize_test_schema() -> None:
+    with session_ctx() as session:
+        recreate_public_schema(session)
+    command.upgrade(_alembic_config(), "head")
+    with session_ctx() as session:
+        sync_search_vector_triggers(session)
+    init_lexicon()
+    init_parameter()
+
+
 def before_all(context):
     context.objects = {}
-
-    rebuild_raw = get_bool_env("DROP_AND_REBUILD_DB")
-    rebuild = rebuild_raw if isinstance(rebuild_raw, bool) else False
-    erase_data = False
-    if rebuild:
-        _drop_and_rebuild_db()
-    elif erase_data:
-        with session_ctx() as session:
-            for table in reversed(Base.metadata.sorted_tables):
-                if table.name in ("alembic_version", "parameter"):
-                    continue
-                elif table.name.startswith("lexicon"):
-                    continue
-
-                session.execute(table.delete())
-            session.commit()
+    _initialize_test_schema()
 
     with session_ctx() as session:
 

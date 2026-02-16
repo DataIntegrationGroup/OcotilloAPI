@@ -11,10 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  run-tests:
+  unit-tests:
     runs-on: ubuntu-latest
 
-    # Set shared env vars ONCE here for all steps
     env:
       MODE: development
       POSTGRES_HOST: localhost
@@ -56,11 +55,20 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v6.2.0
         with:
           python-version-file: "pyproject.toml"
+
+      - name: Cache project virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
@@ -76,13 +84,74 @@ jobs:
       - name: Run tests
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
 
-      - name: Run BDD tests
-        run: |
-          uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
-
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  bdd-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      MODE: development
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ocotilloapi_test
+      DB_DRIVER: postgres
+      BASE_URL: http://localhost:8000
+      SESSION_SECRET_KEY: supersecretkeyforunittests
+      AUTHENTIK_DISABLE_AUTHENTICATION: 1
+
+    services:
+      postgis:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Cache project virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Show Alembic heads
+        run: uv run alembic heads
+
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
+
+      - name: Run BDD tests
+        run: uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture

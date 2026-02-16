@@ -24,10 +24,12 @@ These tests verify that:
 import datetime
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from db import Sample
+from transfers.well_transfer import _normalize_completion_date
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
 
@@ -205,6 +207,37 @@ def test_make_observation_maps_data_quality():
         )
         mapper.map_value.assert_any_call("LU_DataQuality:U2")
         assert observation.nma_data_quality == "Mapped Quality"
+
+
+def test_normalize_completion_date_drops_time_from_datetime():
+    value = datetime.datetime(2024, 7, 3, 14, 15, 16)
+    normalized, parse_failed = _normalize_completion_date(value)
+    assert normalized == datetime.date(2024, 7, 3)
+    assert parse_failed is False
+
+
+def test_normalize_completion_date_drops_time_from_timestamp_and_string():
+    ts_value = pd.Timestamp("2021-05-06 23:59:00")
+    str_value = "2021-05-06 23:59:00.000"
+    normalized_ts, parse_failed_ts = _normalize_completion_date(ts_value)
+    normalized_str, parse_failed_str = _normalize_completion_date(str_value)
+    assert normalized_ts == datetime.date(2021, 5, 6)
+    assert normalized_str == datetime.date(2021, 5, 6)
+    assert parse_failed_ts is False
+    assert parse_failed_str is False
+
+
+def test_normalize_completion_date_handles_numpy_datetime64():
+    value = np.datetime64("2020-01-02T03:04:05")
+    normalized, parse_failed = _normalize_completion_date(value)
+    assert normalized == datetime.date(2020, 1, 2)
+    assert parse_failed is False
+
+
+def test_normalize_completion_date_invalid_returns_none_and_parse_failed():
+    normalized, parse_failed = _normalize_completion_date("not-a-date")
+    assert normalized is None
+    assert parse_failed is True
 
 
 def test_get_dt_utc_respects_time_datum():
