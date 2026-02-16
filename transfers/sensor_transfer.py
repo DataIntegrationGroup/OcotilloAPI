@@ -195,7 +195,7 @@ class SensorTransferer(ThingBasedTransferer):
         recording_interval_unit = "hour"
         try:
             recording_interval = int(row.RecordingInterval)
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             # try to calculate recording interval from measurements
             estimator = self._get_estimator(sensor_type)
             recording_interval, unit, error = estimator.estimate_recording_interval(
