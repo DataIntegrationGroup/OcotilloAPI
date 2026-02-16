@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, UTC
 from zoneinfo import ZoneInfo
 
+import numpy as np
 import pandas as pd
 from pandas import isna, notna
 from pydantic import ValidationError
@@ -95,25 +96,40 @@ EXCLUDED_FIELDS = [
 ]
 
 
-def _normalize_completion_date(value):
-    if value is None or pd.isna(value):
-        return None
+def _normalize_completion_date(value) -> tuple[date | None, bool]:
+    try:
+        if value is None or pd.isna(value):
+            return None, False
+    except (TypeError, ValueError):
+        pass
 
     if isinstance(value, pd.Timestamp):
-        return value.date()
+        return value.date(), False
+
+    if isinstance(value, np.datetime64):
+        return pd.Timestamp(value).date(), False
 
     if isinstance(value, datetime):
-        return value.date()
+        return value.date(), False
 
     if isinstance(value, date):
-        return value
+        return value, False
 
     if isinstance(value, str):
-        parsed = pd.to_datetime(value.strip(), errors="coerce")
-        if not pd.isna(parsed):
-            return parsed.date()
+        stripped = value.strip()
+        if not stripped:
+            return None, False
 
-    return value
+        parsed = pd.to_datetime(stripped, errors="coerce")
+        if not pd.isna(parsed):
+            return parsed.date(), False
+        return None, True
+
+    parsed = pd.to_datetime(value, errors="coerce")
+    if not pd.isna(parsed):
+        return parsed.date(), False
+
+    return None, True
 
 
 class WellTransferer(Transferer):
@@ -545,6 +561,16 @@ class WellTransferer(Transferer):
                     except IndexError:
                         pass
 
+            completion_date, completion_date_parse_failed = _normalize_completion_date(
+                row.CompletionDate
+            )
+            if completion_date_parse_failed:
+                self._capture_error(
+                    row.PointID,
+                    f"Invalid CompletionDate value: {row.CompletionDate!r}",
+                    "CompletionDate",
+                )
+
             data = CreateWell(
                 location_id=0,
                 name=row.PointID,
@@ -563,7 +589,7 @@ class WellTransferer(Transferer):
                     if row.Notes
                     else []
                 ),
-                well_completion_date=_normalize_completion_date(row.CompletionDate),
+                well_completion_date=completion_date,
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,
