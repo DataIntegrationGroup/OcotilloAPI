@@ -396,29 +396,6 @@ class WellTransferer(Transferer):
     #
     #         return
     #
-    #     assoc = LocationThingAssociation(
-    #         effective_start=datetime.now(tz=ZoneInfo("UTC"))
-    #     )
-    #
-    #     assoc.location = location
-    #     assoc.thing = well
-    #     session.add(assoc)
-    #
-    #     if isna(row.AquiferType):
-    #         if self.verbose:
-    #             logger.info(
-    #                 f"No AquiferType for {well.name}. Skipping aquifer association."
-    #             )
-    #     else:
-    #         if self.verbose:
-    #             logger.info(f"Trying to associate aquifer for {well.name}")
-    #         try:
-    #             self._add_aquifers(session, row, well)
-    #         except Exception as e:
-    #             logger.critical(
-    #                 f"Error creating aquifer association for {well.name}: {e}"
-    #             )
-
     def _extract_well_purposes(self, row) -> list[str]:
         cu = row.CurrentUse
 
