@@ -176,7 +176,7 @@ jobs:
           echo "jira_browse_url=${JIRA_BASE_URL}/browse/${JIRA_KEY}" >> "$GITHUB_OUTPUT"
 
       - name: Comment Jira link back on the GitHub issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           JIRA_KEY: ${{ steps.jira.outputs.jira_key }}
           JIRA_URL: ${{ steps.jira.outputs.jira_browse_url }}
