@@ -44,11 +44,6 @@ from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
-from shapely import Point
-from sqlalchemy import select, and_
-from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
-from starlette.status import HTTP_400_BAD_REQUEST
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
 AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
