@@ -184,8 +184,8 @@ Feature: Bulk upload well inventory from CSV via CLI
     And all wells are imported
 
   @positive @validation @autogenerate_ids @BDMS-TBD
-  Scenario: Upload succeeds and system auto-generates well_name_point_id when prefixed with "XY-
-    Given my CSV file contains all valid columns but uses "XY-" prefix for well_name_point_id values
+  Scenario: Upload succeeds and system auto-generates well_name_point_id for uppercase prefix placeholders and blanks
+    Given my CSV file contains all valid columns but uses uppercase "-xxxx" placeholders and blank values for well_name_point_id
     When I run the well inventory bulk upload command
     Then the command exits with code 0
     And the system should return a response in JSON format
@@ -194,14 +194,13 @@ Feature: Bulk upload well inventory from CSV via CLI
   ###########################################################################
   # NEGATIVE VALIDATION SCENARIOS
   ###########################################################################
-  @negative @validation @transactional_import @BDMS-TBD
-  Scenario: No wells are imported when any row fails validation
-    Given my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"
+  @positive @validation @autogenerate_ids @BDMS-TBD
+  Scenario: Blank well_name_point_id values are auto-generated with the default prefix
+    Given my CSV file contains 3 rows of data with 2 valid rows and 1 row with a blank "well_name_point_id"
     When I run the well inventory bulk upload command
-    Then the command exits with a non-zero exit code
+    Then the command exits with code 0
     And the system should return a response in JSON format
-    And the response includes a validation error for the row missing "well_name_point_id"
-    And no wells are imported
+    And all wells are imported with system-generated unique well_name_point_id values
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid postal code format
@@ -291,16 +290,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid UTM coordinates
-    And no wells are imported
-
-  @negative @validation @BDMS-TBD
-  Scenario: Upload fails when required fields are missing
-    Given my CSV file contains rows missing a required field "well_name_point_id"
-    When I run the well inventory bulk upload command
-    Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
-    And the response includes validation errors for all rows missing required fields
-    And the response identifies the row and field for each error
     And no wells are imported
 
   @negative @validation @required_fields @BDMS-TBD

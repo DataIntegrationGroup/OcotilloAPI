@@ -19,12 +19,12 @@ import textwrap
 import uuid
 from pathlib import Path
 
-from sqlalchemy import select
-from typer.testing import CliRunner
-
 from cli.cli import cli
+from cli.service_adapter import WellInventoryResult
 from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
+from sqlalchemy import select
+from typer.testing import CliRunner
 
 
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
@@ -70,14 +70,74 @@ def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
 
     def fake_well_inventory(file_path):
         captured["path"] = file_path
+        return WellInventoryResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            payload={
+                "summary": {
+                    "total_rows_processed": 1,
+                    "total_rows_imported": 1,
+                    "validation_errors_or_warnings": 0,
+                },
+                "validation_errors": [],
+                "wells": [{}],
+            },
+        )
 
     monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
 
     runner = CliRunner()
     result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert Path(captured["path"]) == inventory_file
+    assert "[WELL INVENTORY IMPORT] SUCCESS" in result.output
+
+
+def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_path):
+    inventory_file = tmp_path / "inventory.csv"
+    inventory_file.write_text("header\nvalue\n")
+
+    def fake_well_inventory(_file_path):
+        return WellInventoryResult(
+            exit_code=1,
+            stdout="",
+            stderr="",
+            payload={
+                "summary": {
+                    "total_rows_processed": 2,
+                    "total_rows_imported": 0,
+                    "validation_errors_or_warnings": 2,
+                },
+                "validation_errors": [
+                    {
+                        "row": 1,
+                        "field": "contact_1_phone_1",
+                        "error": "Invalid phone",
+                        "value": "555-INVALID",
+                    },
+                    {
+                        "row": 2,
+                        "field": "date_time",
+                        "error": "Invalid datetime",
+                        "value": "1/12/2026 14:37",
+                    },
+                ],
+                "wells": [],
+            },
+        )
+
+    monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
+
+    assert result.exit_code == 1
+    assert "Validation errors: 2" in result.output
+    assert "Row 1 (1 issue)" in result.output
+    assert "1. contact_1_phone_1: Invalid phone" in result.output
+    assert "input: 555-INVALID" in result.output
 
 
 def test_water_levels_bulk_upload_default_output(monkeypatch, tmp_path):

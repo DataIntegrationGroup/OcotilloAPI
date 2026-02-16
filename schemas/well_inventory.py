@@ -19,15 +19,6 @@ from typing import Optional, Annotated, TypeAlias
 
 import phonenumbers
 import utm
-from pydantic import (
-    BaseModel,
-    model_validator,
-    BeforeValidator,
-    validate_email,
-    AfterValidator,
-    field_validator,
-)
-
 from core.constants import STATE_CODES
 from core.enums import (
     ElevationMethod,
@@ -38,6 +29,15 @@ from core.enums import (
     AddressType,
     WellPurpose as WellPurposeEnum,
     MonitoringFrequency,
+)
+from phonenumbers import NumberParseException
+from pydantic import (
+    BaseModel,
+    model_validator,
+    BeforeValidator,
+    validate_email,
+    AfterValidator,
+    field_validator,
 )
 from schemas import past_or_today_validator, PastOrTodayDatetime
 from services.util import convert_dt_tz_naive_to_tz_aware
@@ -96,14 +96,21 @@ def phone_validator(phone_number_str):
 
     phone_number_str = phone_number_str.strip()
     if phone_number_str:
-        parsed_number = phonenumbers.parse(phone_number_str, "US")
+        try:
+            parsed_number = phonenumbers.parse(phone_number_str, "US")
+        except NumberParseException as e:
+            raise ValueError(f"Invalid phone number. {phone_number_str}") from e
+
         if phonenumbers.is_valid_number(parsed_number):
             formatted_number = phonenumbers.format_number(
                 parsed_number, phonenumbers.PhoneNumberFormat.E164
             )
             return formatted_number
-        else:
-            raise ValueError(f"Invalid phone number. {phone_number_str}")
+
+        raise ValueError(f"Invalid phone number. {phone_number_str}")
+
+    # Explicitly return None for empty strings after stripping.
+    return None
 
 
 def email_validator_function(email_str):

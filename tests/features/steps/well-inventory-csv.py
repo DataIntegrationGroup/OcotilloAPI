@@ -5,12 +5,11 @@ from pathlib import Path
 
 from behave import given, when, then
 from behave.runner import Context
-from sqlalchemy import select
-
 from cli.service_adapter import well_inventory_csv
 from db.engine import session_ctx
 from db.lexicon import LexiconCategory
 from services.util import convert_dt_tz_naive_to_tz_aware
+from sqlalchemy import select
 
 
 @given("valid lexicon values exist for:")
@@ -34,7 +33,7 @@ def step_impl_csv_includes_required_fields(context: Context):
 
 
 @given('each "well_name_point_id" value is unique per row')
-def step_impl(context: Context):
+def step_given_each_well_name_point_id_value_is_unique_per_row(context: Context):
     """Verifies that each "well_name_point_id" value is unique per row."""
     seen_ids = set()
     for row in context.rows:
@@ -46,7 +45,7 @@ def step_impl(context: Context):
 
 
 @given("the CSV includes optional fields when available:")
-def step_impl(context: Context):
+def step_given_the_csv_includes_optional_fields_when_available(context: Context):
     optional_fields = [row[0] for row in context.table]
     keys = context.rows[0].keys()
 
@@ -56,7 +55,9 @@ def step_impl(context: Context):
 
 
 @given("the csv includes optional water level entry fields when available:")
-def step_impl(context: Context):
+def step_given_the_csv_includes_optional_water_level_entry_fields_when_available(
+    context: Context,
+):
     optional_fields = [row[0] for row in context.table]
     context.water_level_optional_fields = optional_fields
 
@@ -64,7 +65,7 @@ def step_impl(context: Context):
 @given(
     'the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")'
 )
-def step_impl(context: Context):
+def step_step_step(context: Context):
     """Verifies that "date_time" values are valid ISO 8601 timezone-naive datetime strings."""
     for row in context.rows:
         try:
@@ -79,7 +80,7 @@ def step_impl(context: Context):
 @given(
     'the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided'
 )
-def step_impl(context: Context):
+def step_step_step_2(context: Context):
     """Verifies that "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings."""
     for row in context.rows:
         if row.get("water_level_date_time", None):
@@ -96,7 +97,7 @@ def step_impl(context: Context):
 
 @when("I upload the file to the bulk upload endpoint")
 @when("I run the well inventory bulk upload command")
-def step_impl(context: Context):
+def step_when_i_run_the_well_inventory_bulk_upload_command(context: Context):
     suffix = Path(getattr(context, "file_name", "upload.csv")).suffix or ".csv"
     with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as fp:
         fp.write(context.file_content)
@@ -142,7 +143,7 @@ class _WellInventoryCliResponse:
 @then(
     "all datetime objects are assigned the correct Mountain Time timezone offset based on the date value."
 )
-def step_impl(context: Context):
+def step_step_step_3(context: Context):
     """Converts all datetime strings in the CSV rows to timezone-aware datetime objects with Mountain Time offset."""
     for i, row in enumerate(context.rows):
         # Convert date_time field
@@ -194,7 +195,7 @@ def step_impl(context: Context):
 
 
 @then("the response includes a summary containing:")
-def step_impl(context: Context):
+def step_then_the_response_includes_a_summary_containing(context: Context):
     response_json = context.response.json()
     summary = response_json.get("summary", {})
     for row in context.table:
@@ -207,7 +208,7 @@ def step_impl(context: Context):
 
 
 @then("the response includes an array of created well objects")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_array_of_created_well_objects(context: Context):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
     assert (
@@ -216,7 +217,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes validation errors for all rows missing required fields")
-def step_impl(context: Context):
+def step_then_the_response_includes_validation_errors_for_all_rows_missing_required(
+    context: Context,
+):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
     assert len(validation_errors) == len(
@@ -231,7 +234,9 @@ def step_impl(context: Context):
 
 
 @then("the response identifies the row and field for each error")
-def step_impl(context: Context):
+def step_then_the_response_identifies_the_row_and_field_for_each_error(
+    context: Context,
+):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
     for error in validation_errors:
@@ -240,14 +245,16 @@ def step_impl(context: Context):
 
 
 @then("no wells are imported")
-def step_impl(context: Context):
+def step_then_no_wells_are_imported(context: Context):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
     assert len(wells) == 0, "Expected no wells to be imported"
 
 
 @then("the response includes validation errors indicating duplicated values")
-def step_impl(context: Context):
+def step_then_the_response_includes_validation_errors_indicating_duplicated_values(
+    context: Context,
+):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
 
@@ -263,7 +270,7 @@ def step_impl(context: Context):
 
 
 @then("each error identifies the row and field")
-def step_impl(context: Context):
+def step_then_each_error_identifies_the_row_and_field(context: Context):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
     for error in validation_errors:
@@ -272,7 +279,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes validation errors identifying the invalid field and row")
-def step_impl(context: Context):
+def step_then_the_response_includes_validation_errors_identifying_the_invalid_field_and(
+    context: Context,
+):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
     for error in validation_errors:
@@ -281,7 +290,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes an error message indicating unsupported file type")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_error_message_indicating_unsupported_file_type(
+    context: Context,
+):
     response_json = context.response.json()
     assert "detail" in response_json, "Expected response to include an detail object"
     assert (
@@ -290,7 +301,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes an error message indicating an empty file")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_error_message_indicating_an_empty_file(
+    context: Context,
+):
     response_json = context.response.json()
     assert "detail" in response_json, "Expected response to include an detail object"
     assert (
@@ -299,7 +312,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes an error indicating that no data rows were found")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_error_indicating_that_no_data_rows(
+    context: Context,
+):
     response_json = context.response.json()
     assert "detail" in response_json, "Expected response to include an detail object"
     assert (
@@ -308,7 +323,7 @@ def step_impl(context: Context):
 
 
 @then("all wells are imported")
-def step_impl(context: Context):
+def step_then_all_wells_are_imported(context: Context):
     response_json = context.response.json()
     assert "wells" in response_json, "Expected response to include wells"
     assert len(response_json["wells"]) == context.row_count
@@ -317,7 +332,7 @@ def step_impl(context: Context):
 @then(
     'the response includes a validation error for the row missing "well_name_point_id"'
 )
-def step_impl(context: Context):
+def step_step_step_4(context: Context):
     response_json = context.response.json()
     assert "summary" in response_json, "Expected summary in response"
     summary = response_json["summary"]
@@ -343,7 +358,9 @@ def step_impl(context: Context):
 
 
 @then('the response includes a validation error for the "{required_field}" field')
-def step_impl(context: Context, required_field: str):
+def step_then_the_response_includes_a_validation_error_for_the_required_field(
+    context: Context, required_field: str
+):
     response_json = context.response.json()
     assert "validation_errors" in response_json, "Expected validation errors"
     vs = response_json["validation_errors"]
@@ -352,7 +369,9 @@ def step_impl(context: Context, required_field: str):
 
 
 @then("the response includes an error message indicating the row limit was exceeded")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_error_message_indicating_the_row_limit(
+    context: Context,
+):
     response_json = context.response.json()
     assert "detail" in response_json, "Expected response to include an detail object"
     assert (
@@ -361,7 +380,9 @@ def step_impl(context: Context):
 
 
 @then("the response includes an error message indicating an unsupported delimiter")
-def step_impl(context: Context):
+def step_then_the_response_includes_an_error_message_indicating_an_unsupported_delimiter(
+    context: Context,
+):
     response_json = context.response.json()
     assert "detail" in response_json, "Expected response to include an detail object"
     assert (
@@ -371,7 +392,9 @@ def step_impl(context: Context):
 
 
 @then("all wells are imported with system-generated unique well_name_point_id values")
-def step_impl(context: Context):
+def step_then_all_wells_are_imported_with_system_generated_unique_well_name(
+    context: Context,
+):
     response_json = context.response.json()
     assert "wells" in response_json, "Expected response to include wells"
     wells = response_json["wells"]
