@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 import os
+import re
 from collections import Counter, defaultdict
 from enum import Enum
 from pathlib import Path
@@ -313,8 +314,202 @@ def water_levels_bulk_upload(
     # TODO: use the same helper function used by api to parse and upload a WL csv
     from cli.service_adapter import water_levels_csv
 
+    colors = _palette(theme)
+    source = Path(file_path)
+    if not source.exists() or not source.is_file():
+        typer.secho(
+            f"File not found: {source}",
+            fg=colors["issue"],
+            bold=True,
+            err=True,
+        )
+        raise typer.Exit(1)
+
     pretty_json = output_format == OutputFormat.json
-    water_levels_csv(file_path, pretty_json=pretty_json)
+    try:
+        result = water_levels_csv(file_path, pretty_json=pretty_json)
+    except (FileNotFoundError, PermissionError, IsADirectoryError) as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1)
+
+    # Backward compatibility for tests/mocks that return only an int.
+    if isinstance(result, int):
+        raise typer.Exit(result)
+
+    if output_format == OutputFormat.json:
+        typer.echo(result.stdout)
+        raise typer.Exit(result.exit_code)
+
+    payload = result.payload if isinstance(result.payload, dict) else {}
+    summary = payload.get("summary", {})
+    validation_errors = payload.get("validation_errors", [])
+
+    if result.exit_code == 0:
+        typer.secho("[WATER LEVEL IMPORT] SUCCESS", fg=colors["ok"], bold=True)
+    else:
+        typer.secho(
+            "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
+            fg=colors["issue"],
+            bold=True,
+        )
+    typer.secho("=" * 72, fg=colors["accent"])
+
+    parsed_validation: list[tuple[str | None, str, str]] = []
+    for entry in validation_errors:
+        if isinstance(entry, dict):
+            row_value = entry.get("row")
+            row = str(row_value) if row_value is not None else None
+            field = str(entry.get("field") or "error").strip()
+            message = str(
+                entry.get("error") or entry.get("msg") or "validation error"
+            ).strip()
+            parsed_validation.append((row, field, message))
+            continue
+
+        text = str(entry).strip()
+        m = re.match(r"^Row\s+(\d+):\s*(.+)$", text)
+        if not m:
+            parsed_validation.append((None, "error", text))
+            continue
+
+        row = m.group(1)
+        detail = m.group(2).strip()
+        if " - " in detail:
+            field, message = detail.split(" - ", 1)
+        elif req := re.match(r"^Missing required field '([^']+)'$", detail):
+            field = req.group(1).strip()
+            message = "Missing required field"
+        else:
+            field, message = "error", detail
+        parsed_validation.append((row, field.strip(), message.strip()))
+
+    if summary:
+        processed = summary.get("total_rows_processed", 0)
+        imported = summary.get("total_rows_imported", 0)
+        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
+        typer.secho("SUMMARY", fg=colors["accent"], bold=True)
+        label_width = 16
+        value_width = 8
+        typer.secho("  " + "-" * (label_width + 3 + value_width), fg=colors["muted"])
+        typer.secho(
+            f"  {'processed':<{label_width}} | {processed:>{value_width}}",
+            fg=colors["accent"],
+        )
+        typer.secho(
+            f"  {'imported':<{label_width}} | {imported:>{value_width}}",
+            fg=colors["ok"],
+        )
+        issue_color = colors["issue"] if rows_with_issues else colors["ok"]
+        typer.secho(
+            f"  {'rows_with_issues':<{label_width}} | {rows_with_issues:>{value_width}}",
+            fg=issue_color,
+        )
+        typer.echo()
+
+    if parsed_validation:
+        summary_counts: Counter[tuple[str, str]] = Counter(
+            (field, message) for _row, field, message in parsed_validation
+        )
+
+        if summary_counts:
+            typer.secho("VALIDATION SUMMARY", fg=colors["accent"], bold=True)
+            field_width = 28
+            count_width = 5
+            error_width = 100
+            typer.secho(
+                f"  {'#':>2} | {'field':<{field_width}} | {'count':>{count_width}} | error",
+                fg=colors["muted"],
+                bold=True,
+            )
+            typer.secho(
+                "  " + "-" * (2 + 3 + field_width + 3 + count_width + 3 + error_width),
+                fg=colors["muted"],
+            )
+            for idx, ((field, message), count) in enumerate(
+                summary_counts.most_common(5), start=1
+            ):
+                field_text = shorten(str(field), width=field_width, placeholder="...")
+                error_one_line = shorten(
+                    str(message).replace("\\n", " "),
+                    width=error_width,
+                    placeholder="...",
+                )
+                idx_part = typer.style(f"{idx:>2}", fg=colors["issue"])
+                field_part = typer.style(
+                    f"{field_text:<{field_width}}", fg=colors["field"], bold=True
+                )
+                count_part = f"{int(count):>{count_width}}"
+                error_part = typer.style(error_one_line, fg=colors["issue"])
+                typer.echo(f"  {idx_part} | {field_part} | {count_part} | {error_part}")
+            typer.echo()
+
+    if validation_errors:
+        typer.secho("VALIDATION", fg=colors["accent"], bold=True)
+        typer.secho(
+            f"Validation errors: {len(validation_errors)}",
+            fg=colors["issue"],
+            bold=True,
+        )
+
+        row_grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        generic_errors: list[str] = []
+        for row, field, message in parsed_validation:
+            if row is None:
+                if field and field != "error":
+                    generic_errors.append(f"{field}: {message}")
+                else:
+                    generic_errors.append(message)
+                continue
+            row_grouped[row].append((field, message))
+
+        max_errors_to_show = 10
+        shown = 0
+        first_group = True
+        for row in sorted(
+            row_grouped.keys(), key=lambda r: int(r) if str(r).isdigit() else 10**9
+        ):
+            if shown >= max_errors_to_show:
+                break
+            if not first_group:
+                typer.secho("  " + "-" * 56, fg=colors["muted"])
+            first_group = False
+            errors = row_grouped[row]
+            typer.secho(
+                f"  Row {row} ({len(errors)} issue{'s' if len(errors) != 1 else ''})",
+                fg=colors["accent"],
+                bold=True,
+            )
+            for idx, (field, message) in enumerate(errors, start=1):
+                if shown >= max_errors_to_show:
+                    break
+                prefix_raw = f"    {idx}. "
+                field_raw = f"{field}:"
+                msg_chunks = wrap(
+                    str(message),
+                    width=max(20, 200 - len(prefix_raw) - len(field_raw) - 1),
+                ) or [""]
+                prefix = typer.style(prefix_raw, fg=colors["issue"])
+                field_part = typer.style(field_raw, fg=colors["field"], bold=True)
+                first_msg_part = typer.style(msg_chunks[0], fg=colors["issue"])
+                typer.echo(f"{prefix}{field_part} {first_msg_part}")
+                msg_indent = " " * (len(prefix_raw) + len(field_raw) + 1)
+                for chunk in msg_chunks[1:]:
+                    typer.secho(f"{msg_indent}{chunk}", fg=colors["issue"])
+                shown += 1
+            typer.echo()
+
+        for entry in generic_errors[: max(0, max_errors_to_show - shown)]:
+            typer.secho(f"  - {entry}", fg=colors["issue"])
+            shown += 1
+
+        if len(validation_errors) > shown:
+            typer.secho(
+                f"... and {len(validation_errors) - shown} more validation errors",
+                fg=colors["issue"],
+            )
+
+    typer.secho("=" * 72, fg=colors["accent"])
+    raise typer.Exit(result.exit_code)
 
 
 @data_migrations.command("list")
