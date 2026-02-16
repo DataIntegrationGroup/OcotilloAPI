@@ -830,8 +830,9 @@ class WellTransferer(Transferer):
                     )
 
         if notna(row.Status):
+            sv = row.Status.strip()
             try:
-                status_value = lexicon_mapper.map_value(f"LU_Status:{row.Status}")
+                status_value = lexicon_mapper.map_value(f"LU_Status:{sv}")
                 session.add(
                     StatusHistory(
                         status_type="Well Status",
@@ -843,7 +844,7 @@ class WellTransferer(Transferer):
                     )
                 )
             except KeyError:
-                pass
+                self._capture_error(well.name, f"Unknown status code: {sv}", "Status")
 
         if notna(row.OpenWellLoggerOK):
             if bool(row.OpenWellLoggerOK):
