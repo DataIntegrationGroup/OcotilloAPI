@@ -59,11 +59,27 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
     - ``WL-XXXX`` / ``SAC-XXXX`` / ``ABC-XXXX`` (2-3 uppercase letter prefixes)
     - blank value (uses default ``NM-`` prefix)
     """
+    # Normalize input
     value = (well_id or "").strip()
+
+    # Blank / missing value -> use default prefix
     if not value:
         return AUTOGEN_DEFAULT_PREFIX
 
+    # Direct prefix form, e.g. "XY-" or "ABC-"
     if AUTOGEN_PREFIX_REGEX.match(value):
+        # Ensure normalized trailing dash and uppercase
+        prefix = value[:-1].upper()
+        return f"{prefix}-"
+
+    # Token form, e.g. "WL-XXXX", "SAC-xxxx", with optional spaces around "-"
+    m = AUTOGEN_TOKEN_REGEX.match(value)
+    if m:
+        prefix = m.group("prefix").upper()
+        return f"{prefix}-"
+
+    # Unsupported pattern: not an auto-generation placeholder
+    return None
         return value
 
     token_match = AUTOGEN_TOKEN_REGEX.match(value)
