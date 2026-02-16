@@ -18,7 +18,7 @@ import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, UTC
+from datetime import date, datetime, UTC
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -93,6 +93,27 @@ EXCLUDED_FIELDS = [
     "is_open",
     "well_status",
 ]
+
+
+def _normalize_completion_date(value):
+    if value is None or pd.isna(value):
+        return None
+
+    if isinstance(value, pd.Timestamp):
+        return value.date()
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    if isinstance(value, str):
+        parsed = pd.to_datetime(value.strip(), errors="coerce")
+        if not pd.isna(parsed):
+            return parsed.date()
+
+    return value
 
 
 class WellTransferer(Transferer):
@@ -279,123 +300,6 @@ class WellTransferer(Transferer):
             cleaned_df = cleaned_df[cleaned_df["PointID"].isin(self.pointids)]
         return input_df, cleaned_df
 
-    # def _step(self, session: Session, df: pd.DataFrame, i: int, row: pd.Series):
-    #
-    #     try:
-    #         first_visit_date = get_first_visit_date(row)
-    #         well_purposes = (
-    #             [] if isna(row.CurrentUse) else self._extract_well_purposes(row)
-    #         )
-    #         well_casing_materials = (
-    #             [] if isna(row.CasingDescription) else extract_casing_materials(row)
-    #         )
-    #         well_pump_type = extract_well_pump_type(row)
-    #
-    #         wcm = None
-    #         if notna(row.ConstructionMethod):
-    #             wcm = self._get_lexicon_value(
-    #                 row, f"LU_ConstructionMethod:{row.ConstructionMethod}", "Unknown"
-    #             )
-    #
-    #         mpheight = row.MPHeight
-    #         mpheight_description = row.MeasuringPoint
-    #         if mpheight is None:
-    #             mphs = self._measuring_point_estimator.estimate_measuring_point_height(
-    #                 row
-    #             )
-    #             if mphs:
-    #                 try:
-    #                     mpheight = mphs[0][0]
-    #                     mpheight_description = mphs[1][0]
-    #                 except IndexError:
-    #                     if self.verbose:
-    #                         logger.warning(
-    #                             f"Measuring point height estimation failed for well {row.PointID}, {mphs}"
-    #                         )
-    #
-    #         data = CreateWell(
-    #             location_id=0,
-    #             name=row.PointID,
-    #             first_visit_date=first_visit_date,
-    #             hole_depth=row.HoleDepth,
-    #             well_depth=row.WellDepth,
-    #             well_casing_diameter=(
-    #                 row.CasingDiameter * 12 if row.CasingDiameter else None
-    #             ),
-    #             well_casing_depth=row.CasingDepth,
-    #             release_status="public" if row.PublicRelease else "private",
-    #             measuring_point_height=mpheight,
-    #             measuring_point_description=mpheight_description,
-    #             notes=(
-    #                 [{"content": row.Notes, "note_type": "General"}]
-    #                 if row.Notes
-    #                 else []
-    #             ),
-    #             well_completion_date=row.CompletionDate,
-    #             well_driller_name=row.DrillerName,
-    #             well_construction_method=wcm,
-    #             well_pump_type=well_pump_type,
-    #         )
-    #
-    #         CreateWell.model_validate(data)
-    #     except ValidationError as e:
-    #         self._capture_validation_error(row.PointID, e)
-    #         return
-    #
-    #     well = None
-    #     try:
-    #         well_data = data.model_dump(exclude=EXCLUDED_FIELDS)
-    #         well_data["thing_type"] = "water well"
-    #         well_data["nma_pk_welldata"] = row.WellID
-    #         well_data["nma_pk_location"] = row.LocationId
-    #
-    #         well = Thing(**well_data)
-    #         session.add(well)
-    #
-    #         if well_purposes:
-    #             for wp in well_purposes:
-    #                 # TODO: add validation logic here
-    #                 if wp in WellPurposeEnum:
-    #                     wp_obj = WellPurpose(thing=well, purpose=wp)
-    #                     session.add(wp_obj)
-    #                 else:
-    #                     logger.critical(f"{well.name}. Invalid well purpose: {wp}")
-    #
-    #         if well_casing_materials:
-    #             for wcm in well_casing_materials:
-    #                 # TODO: add validation logic here
-    #                 if wcm in WellCasingMaterialEnum:
-    #                     wcm_obj = WellCasingMaterial(thing=well, material=wcm)
-    #                     session.add(wcm_obj)
-    #                 else:
-    #                     logger.critical(
-    #                         f"{well.name}. Invalid well casing material: {wcm}"
-    #                     )
-    #     except Exception as e:
-    #         if well is not None:
-    #             session.expunge(well)
-    #
-    #         self._capture_error(row.PointID, str(e), "UnknownField")
-    #
-    #         logger.critical(f"Error creating well for {row.PointID}: {e}")
-    #         return
-    #
-    #     try:
-    #         location, elevation_method, notes = make_location(
-    #             row, self._cached_elevations
-    #         )
-    #         session.add(location)
-    #         # session.flush()
-    #         self._added_locations[row.PointID] = (elevation_method, notes)
-    #     except Exception as e:
-    #         import traceback
-    #
-    #         traceback.print_exc()
-    #         self._capture_error(row.PointID, str(e), str(e), "Location")
-    #         logger.critical(f"Error making location for {row.PointID}: {e}")
-    #
-    #         return
-    #
     def _extract_well_purposes(self, row) -> list[str]:
         cu = row.CurrentUse
 
@@ -659,7 +563,7 @@ class WellTransferer(Transferer):
                     if row.Notes
                     else []
                 ),
-                well_completion_date=row.CompletionDate,
+                well_completion_date=_normalize_completion_date(row.CompletionDate),
                 well_driller_name=row.DrillerName,
                 well_construction_method=wcm,
                 well_pump_type=well_pump_type,

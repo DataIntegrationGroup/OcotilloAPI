@@ -28,6 +28,7 @@ import pandas as pd
 import pytest
 
 from db import Sample
+from transfers.well_transfer import _normalize_completion_date
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
 
@@ -205,6 +206,18 @@ def test_make_observation_maps_data_quality():
         )
         mapper.map_value.assert_any_call("LU_DataQuality:U2")
         assert observation.nma_data_quality == "Mapped Quality"
+
+
+def test_normalize_completion_date_drops_time_from_datetime():
+    value = datetime.datetime(2024, 7, 3, 14, 15, 16)
+    assert _normalize_completion_date(value) == datetime.date(2024, 7, 3)
+
+
+def test_normalize_completion_date_drops_time_from_timestamp_and_string():
+    ts_value = pd.Timestamp("2021-05-06 23:59:00")
+    str_value = "2021-05-06 23:59:00.000"
+    assert _normalize_completion_date(ts_value) == datetime.date(2021, 5, 6)
+    assert _normalize_completion_date(str_value) == datetime.date(2021, 5, 6)
 
 
 def test_get_dt_utc_respects_time_datum():

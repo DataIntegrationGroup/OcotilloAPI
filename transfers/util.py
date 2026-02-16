@@ -57,6 +57,38 @@ NMA_COORDINATE_ACCURACY = {
 }
 
 
+DEFINED_RECORDING_INTERVALS = {
+    "SA-0174": (1, "hour"),
+    "SO-0140": (0.25, "hour"),
+    "SO-0145": (0.25, "hour"),
+    "SO-0146": (0.25, "hour"),
+    "SO-0148": (0.25, "hour"),
+    "SO-0160": (0.25, "hour"),
+    "SO-0163": (0.25, "hour"),
+    "SO-0165": (0.25, "hour"),
+    "SO-0166": (0.25, "hour"),
+    "SO-0175": (0.25, "hour"),
+    "SO-0177": (0.25, "hour"),
+    "SO-0189": (0.25, "hour"),
+    "SO-0191": (0.25, "hour"),
+    "SO-0194": (0.25, "hour"),
+    "SO-0200": (0.25, "hour"),
+    "SO-0204": (0.25, "hour"),
+    "SO-0224": (0.25, "hour"),
+    "SO-0238": (0.25, "hour"),
+    "SO-0247": (0.25, "hour"),
+    "SO-0249": (0.25, "hour"),
+    "SO-0261": (0.25, "hour"),
+    "SM-0055": (6.0, "hour"),
+    "SM-0259": (12, "hour"),
+    "HS-038": (12, "hour"),
+    "EB-220": (12, "hour"),
+    "SO-0144": (0.25, "hour"),
+    "SO-0142": (0.25, "hour"),
+    "SO-0190": (0.25, "hour"),
+}
+
+
 class MeasuringPointEstimator:
     def __init__(self):
         df = read_csv("WaterLevels")
@@ -123,6 +155,12 @@ class MeasuringPointEstimator:
         return mphs, mph_descs, start_dates, end_dates
 
 
+def _get_defined_recording_interval(pointid: str) -> tuple[int, str] | None:
+    if pointid in DEFINED_RECORDING_INTERVALS:
+        return DEFINED_RECORDING_INTERVALS[pointid]
+    return None
+
+
 class SensorParameterEstimator:
     def __init__(self, sensor_type: str):
         if sensor_type == "Pressure Transducer":
@@ -156,7 +194,16 @@ class SensorParameterEstimator:
         installation_date: datetime = None,
         removal_date: datetime = None,
     ) -> tuple[int | None, str | None, str | None]:
+        """
+        return estimated recording interval, unit, and error message if applicable
+        """
         point_id = record.PointID
+
+        # get statically defined recording interval provided by Ethan
+        ri = _get_defined_recording_interval(point_id)
+        if ri is not None:
+            return ri[0], ri[1], None
+
         cdf = self._get_values(point_id)
         if len(cdf) == 0:
             return None, None, f"No measurements found for PointID: {point_id}"
