@@ -28,6 +28,7 @@ from db import (
 )
 from db.engine import session_ctx
 from services.util import transform_srid, convert_ft_to_m
+from services.well_inventory_csv import AUTOGEN_REGEX
 
 
 def test_well_inventory_db_contents():
@@ -787,9 +788,31 @@ class TestWellInventoryHelpers:
         assert well_id == "XY-0011"
         assert offset == 11
 
-    def test_autogen_regex_pattern(self):
-        """Test the AUTOGEN_REGEX pattern matches correctly."""
-        from services.well_inventory_csv import AUTOGEN_REGEX
+    def test_extract_autogen_prefix_pattern(self):
+        """Test auto-generation prefix extraction for supported placeholders."""
+        from services.well_inventory_csv import _extract_autogen_prefix
+
+        # Existing supported form
+        assert _extract_autogen_prefix("XY-") == "XY-"
+        assert _extract_autogen_prefix("AB-") == "AB-"
+
+        # New supported form (2-3 uppercase letter prefixes)
+        assert _extract_autogen_prefix("WL-XXXX") == "WL-"
+        assert _extract_autogen_prefix("SAC-XXXX") == "SAC-"
+        assert _extract_autogen_prefix("ABC -xxxx") == "ABC-"
+
+        # Blank values use default prefix
+        assert _extract_autogen_prefix("") == "NM-"
+        assert _extract_autogen_prefix("   ") == "NM-"
+
+        # Unsupported forms
+        assert _extract_autogen_prefix("XY-001") is None
+        assert _extract_autogen_prefix("XYZ-") == "XYZ-"
+        assert _extract_autogen_prefix("ABCD-") is None
+        assert _extract_autogen_prefix("X-") is None
+        assert _extract_autogen_prefix("123-") is None
+        assert _extract_autogen_prefix("USER-XXXX") is None
+        assert _extract_autogen_prefix("wl-xxxx") is None
 
         # Should match
         assert AUTOGEN_REGEX.match("XY-") is not None

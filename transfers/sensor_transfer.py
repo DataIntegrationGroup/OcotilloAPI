@@ -195,14 +195,14 @@ class SensorTransferer(ThingBasedTransferer):
         recording_interval_unit = "hour"
         try:
             recording_interval = int(row.RecordingInterval)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
             # try to calculate recording interval from measurements
             estimator = self._get_estimator(sensor_type)
             recording_interval, unit, error = estimator.estimate_recording_interval(
                 row, installation_date, removal_date
             )
 
-            if recording_interval:
+            if recording_interval is None:
                 recording_interval_unit = unit
                 logger.info(
                     f"name={sensor.name}, serial_no={sensor.serial_no}. "
@@ -218,9 +218,11 @@ class SensorTransferer(ThingBasedTransferer):
                 logger.critical(
                     f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
                 )
+
                 self._capture_error(
                     pointid,
-                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
+                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. "
+                    f"error=Could not estimate recording interval. estimator error: {error}",
                     "RecordingInterval",
                 )
 
