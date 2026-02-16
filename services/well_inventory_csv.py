@@ -84,10 +84,6 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
         prefix = m.group("prefix").upper()
         return f"{prefix}-"
 
-    # Unsupported pattern: not an auto-generation placeholder
-    return None
-        return value
-
     token_match = AUTOGEN_TOKEN_REGEX.match(value)
     if token_match:
         return f"{token_match.group('prefix')}-"
