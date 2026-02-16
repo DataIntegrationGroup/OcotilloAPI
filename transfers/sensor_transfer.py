@@ -202,7 +202,7 @@ class SensorTransferer(ThingBasedTransferer):
                 row, installation_date, removal_date
             )
 
-            if recording_interval:
+            if recording_interval is not None:
                 recording_interval_unit = unit
                 logger.info(
                     f"name={sensor.name}, serial_no={sensor.serial_no}. "
@@ -218,9 +218,11 @@ class SensorTransferer(ThingBasedTransferer):
                 logger.critical(
                     f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
                 )
+
                 self._capture_error(
                     pointid,
-                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
+                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. "
+                    f"error=Could not estimate recording interval. estimator error: {error}",
                     "RecordingInterval",
                 )
 

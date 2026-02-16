@@ -23,6 +23,12 @@ from io import StringIO
 from itertools import groupby
 from typing import Set
 
+from shapely import Point
+from sqlalchemy import select, and_
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
+from starlette.status import HTTP_400_BAD_REQUEST
+
 from core.constants import SRID_UTM_ZONE_13N, SRID_UTM_ZONE_12N, SRID_WGS84
 from db import (
     Group,
@@ -44,11 +50,6 @@ from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
 from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
-from shapely import Point
-from sqlalchemy import select, and_
-from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
-from starlette.status import HTTP_400_BAD_REQUEST
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
 AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
@@ -64,12 +65,24 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
     - ``WL-XXXX`` / ``SAC-XXXX`` / ``ABC-XXXX`` (2-3 uppercase letter prefixes)
     - blank value (uses default ``NM-`` prefix)
     """
+    # Normalize input
     value = (well_id or "").strip()
+
+    # Blank / missing value -> use default prefix
     if not value:
         return AUTOGEN_DEFAULT_PREFIX
 
+    # Direct prefix form, e.g. "XY-" or "ABC-"
     if AUTOGEN_PREFIX_REGEX.match(value):
-        return value
+        # Ensure normalized trailing dash and uppercase
+        prefix = value[:-1].upper()
+        return f"{prefix}-"
+
+    # Token form, e.g. "WL-XXXX", "SAC-xxxx", with optional spaces around "-"
+    m = AUTOGEN_TOKEN_REGEX.match(value)
+    if m:
+        prefix = m.group("prefix").upper()
+        return f"{prefix}-"
 
     token_match = AUTOGEN_TOKEN_REGEX.match(value)
     if token_match:
