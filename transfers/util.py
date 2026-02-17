@@ -765,6 +765,14 @@ class LexiconMapper:
                 return default
             raise KeyError(f"No mapping found for {value}")
 
+    def valid_values_for_type(self, lu_type: str) -> list[str]:
+        prefix = f"{lu_type}:"
+        return [
+            v.split(":", 1)[1]
+            for v in self._make_lu_to_lexicon_mapper()
+            if v.startswith(prefix)
+        ]
+
     def _make_lu_to_lexicon_mapper(self) -> dict[str, str]:
         """
         Lookup tables intentionally skipped (kept for documentation only)

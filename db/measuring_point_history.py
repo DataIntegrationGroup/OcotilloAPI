@@ -14,7 +14,7 @@ only be updated when a well is first installed, physically modified
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, Date, Text, Numeric
+from sqlalchemy import Integer, ForeignKey, Date, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
@@ -39,6 +39,13 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
         Numeric,
         nullable=False,
         comment="The official, surveyed height of the measuring point relative to ground surface (in feet).",
+    )
+    measuring_point_height_is_assumed: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="True when measuring point height is assumed/defaulted rather than explicitly measured.",
     )
     measuring_point_description: Mapped[str] = mapped_column(
         Text,

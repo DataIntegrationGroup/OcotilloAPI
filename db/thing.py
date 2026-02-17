@@ -125,7 +125,6 @@ class Thing(
         info={"unit": "feet below ground surface"},
         comment="Depth of the well casing from ground surface to the bottom of the casing (in feet).",
     )
-
     well_completion_date: Mapped[date] = mapped_column(
         nullable=True, comment="the date the well was completed if known"
     )
@@ -498,6 +497,8 @@ class Thing(
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
+            if not sorted_measuring_point_history:
+                return 0
             return sorted_measuring_point_history[0].measuring_point_height
         else:
             return None

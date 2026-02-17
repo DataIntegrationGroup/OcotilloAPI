@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+import math
 from zoneinfo import ZoneInfo
 
 from fastapi import Request, HTTPException
@@ -193,7 +194,9 @@ def add_thing(
     # Extract data for related tables
     # Normalize Pydantic models to dictionaries so we can safely mutate with .pop()
     if isinstance(data, BaseModel):
-        data = data.model_dump()
+        # Preserve "unset" semantics so defaults (e.g., measuring_point_height=0)
+        # don't mask whether a value was actually provided by the caller.
+        data = data.model_dump(exclude_unset=True)
 
     # ---------
     # BEGIN UNIVERSAL THING RELATED TABLES
@@ -232,6 +235,8 @@ def add_thing(
 
     # measuring point info
     measuring_point_height = data.pop("measuring_point_height", None)
+    if isinstance(measuring_point_height, float) and math.isnan(measuring_point_height):
+        measuring_point_height = None
     measuring_point_description = data.pop("measuring_point_description", None)
 
     # data provenance info
@@ -263,17 +268,21 @@ def add_thing(
 
         if thing_type == WATER_WELL_THING_TYPE:
 
-            # Create MeasuringPointHistory record if measuring_point_height provided
-            if measuring_point_height is not None:
-                measuring_point_history = MeasuringPointHistory(
-                    thing_id=thing.id,
-                    measuring_point_height=measuring_point_height,
-                    measuring_point_description=measuring_point_description,
-                    start_date=datetime.now(tz=ZoneInfo("UTC")),
-                    end_date=None,
-                )
-                audit_add(user, measuring_point_history)
-                session.add(measuring_point_history)
+            # Always create a MeasuringPointHistory record for water wells.
+            # If the value is missing, default to 0 and mark as assumed.
+            measuring_point_height_is_assumed = measuring_point_height is None
+            measuring_point_history = MeasuringPointHistory(
+                thing_id=thing.id,
+                measuring_point_height=(
+                    0 if measuring_point_height is None else measuring_point_height
+                ),
+                measuring_point_height_is_assumed=measuring_point_height_is_assumed,
+                measuring_point_description=measuring_point_description,
+                start_date=datetime.now(tz=ZoneInfo("UTC")),
+                end_date=None,
+            )
+            audit_add(user, measuring_point_history)
+            session.add(measuring_point_history)
 
             if well_completion_date_source is not None:
                 dp = DataProvenance(

@@ -145,7 +145,10 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
-    measuring_point_height: float = Field(description="Measuring point height in feet")
+    measuring_point_height: float | None = Field(
+        default=0, description="Measuring point height in feet"
+    )
+    measuring_point_height_is_assumed: bool = False
     measuring_point_description: str | None = None
     well_completion_date: PastOrTodayDate | None = None
     well_completion_date_source: str | None = None
@@ -261,6 +264,7 @@ class WellResponse(BaseThingResponse):
     open_status: str | None
     datalogger_suitability_status: str | None
     measuring_point_height: float
+    measuring_point_height_is_assumed: bool = False
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []

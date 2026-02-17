@@ -84,6 +84,7 @@ EXCLUDED_FIELDS = [
     "well_casing_materials",
     "measuring_point_height",
     "measuring_point_description",
+    "measuring_point_height_is_assumed",
     "well_completion_date_source",
     "well_construction_method_source",
     "well_depth_source",
@@ -548,7 +549,7 @@ class WellTransferer(Transferer):
                     [],
                 )
 
-            mpheight = row.MPHeight
+            mpheight = row.MPHeight if notna(row.MPHeight) else None
             mpheight_description = row.MeasuringPoint
             if mpheight is None:
                 mphs = self._measuring_point_estimator.estimate_measuring_point_height(
@@ -718,11 +719,26 @@ class WellTransferer(Transferer):
 
     def _add_histories(self, session: Session, row, well: Thing) -> None:
         mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
-        for mph, mph_desc, start_date, end_date in zip(*mphs):
+        heights, descriptions, start_dates, end_dates = mphs
+        is_assumed = not notna(row.MPHeight)
+
+        # Always persist at least one measuring point history record.
+        if not heights:
+            heights = [0]
+            descriptions = [
+                "Defaulted to 0 because measuring point height was not provided."
+            ]
+            start_dates = [datetime.now(tz=UTC)]
+            end_dates = [None]
+
+        for mph, mph_desc, start_date, end_date in zip(
+            heights, descriptions, start_dates, end_dates
+        ):
             session.add(
                 MeasuringPointHistory(
                     thing_id=well.id,
                     measuring_point_height=mph,
+                    measuring_point_height_is_assumed=is_assumed,
                     measuring_point_description=mph_desc,
                     start_date=start_date,
                     end_date=end_date,
@@ -774,6 +790,10 @@ class WellTransferer(Transferer):
                     )
                 )
             except KeyError:
+                print(
+                    f"Unknown status code '{sv}' for well {well.name}. Skipping status history record."
+                )
+                print(lexicon_mapper.valid_values_for_type("LU_Status"))
                 self._capture_error(well.name, f"Unknown status code: {sv}", "Status")
 
         if notna(row.OpenWellLoggerOK):

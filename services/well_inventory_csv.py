@@ -585,7 +585,6 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         monitoring_frequencies=monitoring_frequencies,
         alternate_ids=alternate_ids,
     )
-    well_data = data.model_dump()
 
     """
     Developer's notes
@@ -605,7 +604,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     """
     well = add_thing(
         session=session,
-        data=well_data,
+        data=data,
         user=user,
         thing_type="water well",
         commit=False,
