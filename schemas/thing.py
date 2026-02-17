@@ -339,8 +339,7 @@ class SpringResponse(BaseThingResponse):
 
 
 class ThingResponse(WellResponse, SpringResponse):
-    # required fields for wells that don't apply to other thing types
-    measuring_point_height: float | None
+    pass
 
 
 class WellScreenResponse(BaseResponseModel):
