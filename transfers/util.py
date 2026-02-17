@@ -106,11 +106,17 @@ class MeasuringPointEstimator:
     ) -> tuple[float, str, datetime | None, datetime | None]:
         mph = row.MPHeight
         mph_desc = row.MeasuringPoint
+        # Treat NaN as missing the same as None.
+        if notna(mph):
+            mph_is_missing = False
+        else:
+            mph = None
+            mph_is_missing = True
         try:
             df = self._grouped.get_group(row.PointID)
         except KeyError:
             df = None
-        if mph is None:
+        if mph_is_missing:
             if self.verbose:
                 logger.info(
                     f"No MPHeight found for PointID: {row.PointID}. Estimating from measurements."

@@ -25,7 +25,8 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import Thing, WellScreen, ThingIdLink
+from db import Thing, WellScreen, ThingIdLink, MeasuringPointHistory
+from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
 from schemas.location import LocationResponse
@@ -186,6 +187,65 @@ def test_add_water_well_with_measuring_point(location, group):
     assert data["name"] == payload["name"]
     assert data["measuring_point_height"] == 2.5
     assert data["measuring_point_description"] == "top of casing"
+
+    cleanup_post_test(Thing, data["id"])
+
+
+def test_add_water_well_missing_measuring_point_height_sets_assumed(location, group):
+    payload = {
+        "location_id": location.id,
+        "group_id": group.id,
+        "release_status": "draft",
+        "name": "Test Well Missing MP Height",
+    }
+
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["measuring_point_height"] == 0
+    assert data["measuring_point_height_is_assumed"] is True
+
+    with session_ctx() as session:
+        mph = (
+            session.query(MeasuringPointHistory)
+            .filter(
+                MeasuringPointHistory.thing_id == data["id"],
+                MeasuringPointHistory.end_date.is_(None),
+            )
+            .one()
+        )
+        assert float(mph.measuring_point_height) == 0.0
+        assert mph.measuring_point_height_is_assumed is True
+
+    cleanup_post_test(Thing, data["id"])
+
+
+def test_add_water_well_explicit_measuring_point_height_not_assumed(location, group):
+    payload = {
+        "location_id": location.id,
+        "group_id": group.id,
+        "release_status": "draft",
+        "name": "Test Well Explicit MP Height",
+        "measuring_point_height": 2.5,
+    }
+
+    response = client.post("/thing/water-well", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["measuring_point_height"] == 2.5
+    assert data["measuring_point_height_is_assumed"] is False
+
+    with session_ctx() as session:
+        mph = (
+            session.query(MeasuringPointHistory)
+            .filter(
+                MeasuringPointHistory.thing_id == data["id"],
+                MeasuringPointHistory.end_date.is_(None),
+            )
+            .one()
+        )
+        assert float(mph.measuring_point_height) == 2.5
+        assert mph.measuring_point_height_is_assumed is False
 
     cleanup_post_test(Thing, data["id"])
 

@@ -14,7 +14,7 @@ only be updated when a well is first installed, physically modified
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, ForeignKey, Date, Text, Numeric, Boolean
+from sqlalchemy import Integer, ForeignKey, Date, Text, Numeric, Boolean, false
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin
@@ -44,7 +44,7 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
         Boolean,
         nullable=False,
         default=False,
-        server_default="false",
+        server_default=false(),
         comment="True when measuring point height is assumed/defaulted rather than explicitly measured.",
     )
     measuring_point_description: Mapped[str] = mapped_column(
