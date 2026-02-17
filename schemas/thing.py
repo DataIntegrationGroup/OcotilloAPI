@@ -269,7 +269,7 @@ class WellResponse(BaseThingResponse):
     aquifers: list[dict] = []
     water_notes: list[NoteResponse] = []
     construction_notes: list[NoteResponse] = []
-    permissions: list[PermissionHistoryResponse]
+    permissions: list[PermissionHistoryResponse] = []
     formation_completion_code: FormationCode | None
     nma_formation_zone: str | None
 
