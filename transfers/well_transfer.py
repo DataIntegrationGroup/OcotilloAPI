@@ -790,10 +790,15 @@ class WellTransferer(Transferer):
                     )
                 )
             except KeyError:
-                print(
-                    f"Unknown status code '{sv}' for well {well.name}. Skipping status history record."
+                logger.warning(
+                    "Unknown status code '%s' for well %s. Skipping status history record.",
+                    sv,
+                    well.name,
                 )
-                print(lexicon_mapper.valid_values_for_type("LU_Status"))
+                logger.warning(
+                    "Valid status codes for LU_Status: %s",
+                    lexicon_mapper.valid_values_for_type("LU_Status"),
+                )
                 self._capture_error(well.name, f"Unknown status code: {sv}", "Status")
 
         if notna(row.OpenWellLoggerOK):
