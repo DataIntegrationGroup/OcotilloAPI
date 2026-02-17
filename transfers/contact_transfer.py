@@ -328,7 +328,7 @@ def _add_first_contact(
 
 def _safe_make_name(
     first: str | None, last: str | None, ownerkey: str, organization: str | None
-) -> str:
+) -> str | None:
     name = _make_name(first, last)
     if name is None and organization is None:
         logger.warning(
@@ -476,14 +476,31 @@ def _make_contact_and_assoc(
     session: Session, data: dict, thing: Thing, added: list
 ) -> tuple[Contact, bool]:
     new_contact = True
-    if (data["name"], data["organization"]) in added:
+    contact = None
+
+    # Prefer OwnerKey-based dedupe so fallback names don't split the same owner
+    # into multiple contacts when some rows have real names and others do not.
+    owner_key = data.get("nma_pk_owners")
+    contact_type = data.get("contact_type")
+    if owner_key and contact_type:
+        contact = (
+            session.query(Contact)
+            .filter_by(nma_pk_owners=owner_key, contact_type=contact_type)
+            .first()
+        )
+        if contact is not None:
+            new_contact = False
+
+    if contact is None and (data["name"], data["organization"]) in added:
         contact = (
             session.query(Contact)
             .filter_by(name=data["name"], organization=data["organization"])
             .first()
         )
-        new_contact = False
-    else:
+        if contact is not None:
+            new_contact = False
+
+    if contact is None:
 
         from schemas.contact import CreateContact
 
