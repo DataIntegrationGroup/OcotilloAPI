@@ -232,7 +232,7 @@ def _add_first_contact(
     role = "Owner"
     release_status = "private"
 
-    name = _make_name(row.FirstName, row.LastName)
+    name = _safe_make_name(row.FirstName, row.LastName, row.OwnerKey, organization)
 
     contact_data = {
         "thing_id": thing.id,
@@ -324,6 +324,19 @@ def _add_first_contact(
             contact.addresses.append(address)
 
     return contact
+
+
+def _safe_make_name(
+    first: str | None, last: str | None, ownerkey: str, organization: str | None
+) -> str:
+    name = _make_name(first, last)
+    if name is None and organization is None:
+        logger.warning(
+            f"Missing both first and last name and organization for OwnerKey {ownerkey}; "
+            f"using OwnerKey as fallback name."
+        )
+        return ownerkey
+    return name
 
 
 def _add_second_contact(

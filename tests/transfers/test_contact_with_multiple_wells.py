@@ -22,7 +22,7 @@ from transfers.well_transfer import WellTransferer
 
 def _run_contact_transfer(pointids: list[str]):
     wt = WellTransferer(pointids=pointids)
-    wt.transfer()
+    wt.transfer_parallel()
 
     ct = ContactTransfer(pointids=pointids)
     ct.transfer()
