@@ -1,4 +1,4 @@
-"""Move measuring_point_height_is_assumed from thing to measuring_point_history.
+"""Add measuring_point_height_is_assumed to measuring_point_history.
 
 Revision ID: c4d5e6f7a8b9
 Revises: e71807682f57
