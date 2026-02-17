@@ -148,7 +148,6 @@ class CreateWell(CreateBaseThing, ValidateWell):
     measuring_point_height: float | None = Field(
         default=0, description="Measuring point height in feet"
     )
-    measuring_point_height_is_assumed: bool = False
     measuring_point_description: str | None = None
     well_completion_date: PastOrTodayDate | None = None
     well_completion_date_source: str | None = None

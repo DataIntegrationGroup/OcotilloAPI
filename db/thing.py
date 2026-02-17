@@ -520,6 +520,23 @@ class Thing(
             return None
 
     @property
+    def measuring_point_height_is_assumed(self) -> bool | None:
+        """
+        Returns whether the most recent measuring point height is assumed.
+
+        Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        if self.thing_type == "water well":
+            sorted_measuring_point_history = sorted(
+                self.measuring_points, key=lambda x: x.start_date, reverse=True
+            )
+            if not sorted_measuring_point_history:
+                return True
+            return sorted_measuring_point_history[0].measuring_point_height_is_assumed
+        else:
+            return None
+
+    @property
     def well_depth_source(self) -> str | None:
         return self._get_data_provenance_attribute("well_depth", "origin_type")
 
