@@ -263,7 +263,7 @@ class WellResponse(BaseThingResponse):
     open_status: str | None
     datalogger_suitability_status: str | None
     measuring_point_height: float | None = None
-    measuring_point_height_is_assumed: bool = False | None
+    measuring_point_height_is_assumed: bool | None = None
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []
