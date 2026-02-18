@@ -58,7 +58,6 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
-    UniqueConstraint,
     text,
     Identity,
     Index,
@@ -779,13 +778,6 @@ class NMA_MinorTraceChemistry(Base):
     """
 
     __tablename__ = "NMA_MinorTraceChemistry"
-    __table_args__ = (
-        UniqueConstraint(
-            "chemistry_sample_info_id",
-            "analyte",
-            name="uq_minor_trace_chemistry_sample_analyte",
-        ),
-    )
 
     # PK
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
