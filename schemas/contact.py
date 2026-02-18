@@ -150,6 +150,7 @@ class CreateContact(BaseCreateModel, ValidateContact):
     organization: str | None = None
     role: Role
     contact_type: ContactType = "Primary"
+    nma_pk_owners: str | None = None
     # description: str | None = None
     # email: str | None = None
     # phone: str | None = None

@@ -14,15 +14,18 @@
 # limitations under the License.
 # ===============================================================================
 
-from db import ThingContactAssociation, Thing, Notes
+from types import SimpleNamespace
+from uuid import uuid4
+
+from db import ThingContactAssociation, Thing, Notes, Contact
 from db.engine import session_ctx
-from transfers.contact_transfer import ContactTransfer
+from transfers.contact_transfer import ContactTransfer, _add_first_contact
 from transfers.well_transfer import WellTransferer
 
 
 def _run_contact_transfer(pointids: list[str]):
     wt = WellTransferer(pointids=pointids)
-    wt.transfer()
+    wt.transfer_parallel()
 
     ct = ContactTransfer(pointids=pointids)
     ct.transfer()
@@ -85,6 +88,133 @@ def test_owner_comment_absent_skips_notes():
             .count()
         )
         assert note_count == 0
+
+
+def test_ownerkey_fallback_name_when_name_and_org_missing(water_well_thing):
+    with session_ctx() as sess:
+        thing = sess.get(Thing, water_well_thing.id)
+        row = SimpleNamespace(
+            FirstName=None,
+            LastName=None,
+            OwnerKey="Fallback OwnerKey Name",
+            Email=None,
+            CtctPhone=None,
+            Phone=None,
+            CellPhone=None,
+            StreetAddress=None,
+            Address2=None,
+            City=None,
+            State=None,
+            Zip=None,
+            MailingAddress=None,
+            MailCity=None,
+            MailState=None,
+            MailZipCode=None,
+            PhysicalAddress=None,
+            PhysicalCity=None,
+            PhysicalState=None,
+            PhysicalZipCode=None,
+        )
+
+        # Should not raise "Either name or organization must be provided."
+        contact = _add_first_contact(
+            sess, row=row, thing=thing, organization=None, added=[]
+        )
+        sess.flush()
+
+        assert contact is not None
+        assert contact.name == "Fallback OwnerKey Name"
+        assert contact.organization is None
+
+
+def test_ownerkey_dedupes_when_fallback_name_differs(water_well_thing):
+    owner_key = f"OwnerKey-{uuid4()}"
+    with session_ctx() as sess:
+        first_thing = sess.get(Thing, water_well_thing.id)
+        second_thing = Thing(
+            name=f"Second Well {uuid4()}",
+            thing_type="water well",
+            release_status="draft",
+        )
+        sess.add(second_thing)
+        sess.flush()
+
+        complete_row = SimpleNamespace(
+            FirstName="Casey",
+            LastName="Owner",
+            OwnerKey=owner_key,
+            Email=None,
+            CtctPhone=None,
+            Phone=None,
+            CellPhone=None,
+            StreetAddress=None,
+            Address2=None,
+            City=None,
+            State=None,
+            Zip=None,
+            MailingAddress=None,
+            MailCity=None,
+            MailState=None,
+            MailZipCode=None,
+            PhysicalAddress=None,
+            PhysicalCity=None,
+            PhysicalState=None,
+            PhysicalZipCode=None,
+        )
+        fallback_row = SimpleNamespace(
+            FirstName=None,
+            LastName=None,
+            OwnerKey=owner_key,
+            Email=None,
+            CtctPhone=None,
+            Phone=None,
+            CellPhone=None,
+            StreetAddress=None,
+            Address2=None,
+            City=None,
+            State=None,
+            Zip=None,
+            MailingAddress=None,
+            MailCity=None,
+            MailState=None,
+            MailZipCode=None,
+            PhysicalAddress=None,
+            PhysicalCity=None,
+            PhysicalState=None,
+            PhysicalZipCode=None,
+        )
+
+        added = []
+        first_contact = _add_first_contact(
+            sess, row=complete_row, thing=first_thing, organization=None, added=added
+        )
+        assert first_contact is not None
+        assert first_contact.name == "Casey Owner"
+
+        second_contact = _add_first_contact(
+            sess, row=fallback_row, thing=second_thing, organization=None, added=added
+        )
+        sess.flush()
+
+        # Reused existing contact; no duplicate fallback-name contact created.
+        assert second_contact is None
+        contacts = (
+            sess.query(Contact)
+            .filter(
+                Contact.nma_pk_owners == owner_key,
+                Contact.contact_type == "Primary",
+            )
+            .all()
+        )
+        assert len(contacts) == 1
+        assert contacts[0].name == "Casey Owner"
+
+        assoc_count = (
+            sess.query(ThingContactAssociation)
+            .filter(ThingContactAssociation.contact_id == contacts[0].id)
+            .count()
+        )
+        assert assoc_count == 2
 
 
 # ============= EOF =============================================
