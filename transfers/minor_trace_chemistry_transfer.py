@@ -114,8 +114,7 @@ class MinorTraceChemistryTransferer(Transferer):
         """
         Override transfer hook to use batch upsert for idempotent transfers.
 
-        Uses ON CONFLICT DO UPDATE on (chemistry_sample_info_id, analyte),
-        matching uq_minor_trace_chemistry_sample_analyte.
+        Uses ON CONFLICT DO UPDATE on nma_GlobalID (legacy UUID PK, now UNIQUE).
         """
         df = self.cleaned_df
 
@@ -130,12 +129,8 @@ class MinorTraceChemistryTransferer(Transferer):
             logger.warning("No valid rows to transfer")
             return
 
-        # Dedupe by the same logical key used by the table unique constraint.
-        rows = self._dedupe_rows(
-            row_dicts,
-            key=["chemistry_sample_info_id", "analyte"],
-            include_missing=True,
-        )
+        # Dedupe by legacy UUID PK (nma_GlobalID) to match upsert conflict key.
+        rows = self._dedupe_rows(row_dicts)
         logger.info(f"Upserting {len(rows)} MinorTraceChemistry records")
 
         insert_stmt = insert(NMA_MinorTraceChemistry)
@@ -144,13 +139,14 @@ class MinorTraceChemistryTransferer(Transferer):
         for i in range(0, len(rows), self.batch_size):
             chunk = rows[i : i + self.batch_size]
             logger.info(f"Upserting batch {i}-{i+len(chunk)-1} ({len(chunk)} rows)")
-            # Upsert on unique logical key (chemistry_sample_info_id, analyte)
+            # Upsert on nma_GlobalID (legacy UUID PK, now UNIQUE)
             stmt = insert_stmt.values(chunk).on_conflict_do_update(
-                index_elements=["chemistry_sample_info_id", "analyte"],
+                index_elements=["nma_GlobalID"],
                 set_={
                     "chemistry_sample_info_id": excluded.chemistry_sample_info_id,
                     "nma_chemistry_sample_info_uuid": excluded.nma_chemistry_sample_info_uuid,
                     "nma_SamplePointID": excluded.nma_SamplePointID,
+                    "analyte": excluded.analyte,
                     "sample_value": excluded.sample_value,
                     "units": excluded.units,
                     "symbol": excluded.symbol,
