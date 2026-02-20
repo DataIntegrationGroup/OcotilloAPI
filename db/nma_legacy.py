@@ -578,9 +578,9 @@ class NMA_SurfaceWaterData(Base):
     object_id: Mapped[int] = mapped_column("OBJECTID", Integer, primary_key=True)
 
     # FK
-    # FK to Thing - optional when legacy rows cannot be mapped to a Thing.
-    thing_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=True
+    # FK to Thing - required for all SurfaceWaterData records
+    thing_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("thing.id", ondelete="CASCADE"), nullable=False
     )
 
     # Legacy PK (for audit)
@@ -615,9 +615,16 @@ class NMA_SurfaceWaterData(Base):
     data_source: Mapped[Optional[str]] = mapped_column("DataSource", String(255))
 
     # Relationships
-    thing: Mapped[Optional["Thing"]] = relationship(
-        "Thing", back_populates="surface_water_data"
-    )
+    thing: Mapped["Thing"] = relationship("Thing", back_populates="surface_water_data")
+
+    @validates("thing_id")
+    def validate_thing_id(self, key, value):
+        """Prevent orphan NMA_SurfaceWaterData - must have a parent Thing."""
+        if value is None:
+            raise ValueError(
+                "NMA_SurfaceWaterData requires a parent Thing (thing_id cannot be None)"
+            )
+        return value
 
 
 class NMA_SurfaceWaterPhotos(Base):
