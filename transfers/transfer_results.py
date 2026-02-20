@@ -10,7 +10,6 @@ from transfers.transfer_results_specs import (
 )
 from transfers.transfer_results_types import *  # noqa: F401,F403
 
-
 __all__ = [
     "TransferResultsBuilder",
     "TransferComparisonSpec",
