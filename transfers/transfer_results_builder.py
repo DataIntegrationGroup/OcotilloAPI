@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,6 @@ from transfers.util import (
     replace_nans,
     get_transferable_wells,
 )
-import os
 
 
 def _normalize_key(value: Any) -> str | None:
@@ -79,9 +79,11 @@ class TransferResultsBuilder:
         if spec.source_filter:
             source_df = spec.source_filter(source_df)
         comparison_df = source_df
+        if spec.agreed_filter:
+            comparison_df = spec.agreed_filter(comparison_df)
         enabled = self._is_enabled(spec)
         if not enabled:
-            comparison_df = source_df.iloc[0:0]
+            comparison_df = comparison_df.iloc[0:0]
         elif spec.transfer_name == "WellData":
             comparison_df = self._agreed_welldata_df()
 
@@ -179,9 +181,8 @@ class TransferResultsBuilder:
         ]
         for name in sorted(comparison.results.keys()):
             r = comparison.results[name]
-            missing_agreed = r.agreed_transfer_row_count - r.destination_row_count
             lines.append(
                 f"| {name} | {r.source_csv} | {r.source_row_count} | {r.agreed_transfer_row_count} | "
-                f"{r.destination_model} | {r.destination_row_count} | {missing_agreed} |"
+                f"{r.destination_model} | {r.destination_row_count} | {r.missing_in_destination_count} |"
             )
         path.write_text("\n".join(lines) + "\n")

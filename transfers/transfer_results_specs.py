@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Callable
+from uuid import UUID
 
 import pandas as pd
 
@@ -29,6 +31,15 @@ from db import (
     Sensor,
     Thing,
     WellScreen,
+    Location,
+    LocationThingAssociation,
+)
+from db.engine import session_ctx
+from transfers.contact_transfer import (
+    _get_organization,
+    _make_name,
+    _safe_make_name,
+    _select_ownerkey_col,
 )
 from transfers.transfer_results_types import (
     AssociatedDataTransferResult,
@@ -66,6 +77,13 @@ from transfers.transfer_results_types import (
     WellDataTransferResult,
     WellScreensTransferResult,
 )
+from transfers.util import (
+    filter_by_valid_measuring_agency,
+    filter_to_valid_point_ids,
+    get_transfers_data_path,
+    read_csv,
+    replace_nans,
+)
 
 
 @dataclass(frozen=True)
@@ -77,6 +95,7 @@ class TransferComparisonSpec:
     destination_model: Any
     destination_key_column: str
     source_filter: Callable[[pd.DataFrame], pd.DataFrame] | None = None
+    agreed_filter: Callable[[pd.DataFrame], pd.DataFrame] | None = None
     destination_where: Callable[[Any], Any] | None = None
     option_field: str | None = None
 
@@ -88,6 +107,297 @@ def _location_site_filter(site_type: str) -> Callable[[pd.DataFrame], pd.DataFra
         return df[df["SiteType"] == site_type]
 
     return _f
+
+
+def _chemistry_sampleinfo_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror ChemistrySampleInfoTransferer filters:
+    # 1) valid LocationId that resolves to a Thing via LocationThingAssociation
+    # 2) valid UUID SamplePtID
+    if "LocationId" not in df.columns or "SamplePtID" not in df.columns:
+        return df.iloc[0:0]
+
+    with session_ctx() as session:
+        rows = (
+            session.query(Location.nma_pk_location)
+            .join(
+                LocationThingAssociation,
+                Location.id == LocationThingAssociation.location_id,
+            )
+            .filter(Location.nma_pk_location.isnot(None))
+            .all()
+        )
+        valid_location_ids = {
+            str(nma_pk_location).strip().lower() for (nma_pk_location,) in rows
+        }
+
+    def _normalize_location(value: Any) -> str | None:
+        if pd.isna(value):
+            return None
+        text = str(value).strip().lower()
+        return text or None
+
+    def _is_valid_uuid(value: Any) -> bool:
+        if pd.isna(value):
+            return False
+        try:
+            UUID(str(value))
+        except (TypeError, ValueError):
+            return False
+        return True
+
+    location_mask = df["LocationId"].apply(_normalize_location).isin(valid_location_ids)
+    sample_pt_mask = df["SamplePtID"].apply(_is_valid_uuid)
+    return df[location_mask & sample_pt_mask].copy()
+
+
+def _chemistry_child_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror ChemistryTransferer._filter_to_valid_sample_infos:
+    # keep only rows whose SamplePtID resolves to an existing ChemistrySampleInfo.
+    if "SamplePtID" not in df.columns:
+        return df.iloc[0:0]
+
+    with session_ctx() as session:
+        rows = (
+            session.query(NMA_Chemistry_SampleInfo.nma_sample_pt_id)
+            .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+            .all()
+        )
+        valid_sample_pt_ids = {sample_pt_id for (sample_pt_id,) in rows}
+
+    def _uuid_or_none(value: Any) -> UUID | None:
+        if pd.isna(value):
+            return None
+        try:
+            return UUID(str(value))
+        except (TypeError, ValueError):
+            return None
+
+    sample_pt_mask = df["SamplePtID"].map(_uuid_or_none).isin(valid_sample_pt_ids)
+    return df[sample_pt_mask].copy()
+
+
+def _waterlevels_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror WaterLevelTransferer._get_dfs filtering stage.
+    cleaned_df = replace_nans(df.copy())
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
+    cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
+    return cleaned_df
+
+
+def _stratigraphy_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror StratigraphyLegacyTransferer._get_dfs filtering stage.
+    cleaned_df = replace_nans(df.copy())
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
+    return cleaned_df
+
+
+def _hydraulics_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror HydraulicsDataTransferer._filter_to_valid_things:
+    # keep only rows whose PointID exists in Thing.name.
+    if "PointID" not in df.columns:
+        return df.iloc[0:0]
+
+    with session_ctx() as session:
+        thing_names = {
+            name
+            for (name,) in session.query(Thing.name)
+            .filter(Thing.name.isnot(None))
+            .all()
+        }
+
+    return df[df["PointID"].isin(thing_names)].copy()
+
+
+def _ngwmn_waterlevels_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror NGWMNWaterLevelsTransferer dedupe key:
+    # conflict columns are (PointID, DateMeasured), with later rows winning.
+    if "PointID" not in df.columns or "DateMeasured" not in df.columns:
+        return df.iloc[0:0]
+
+    dedupe_df = df.copy()
+    dedupe_df["_pointid_norm"] = dedupe_df["PointID"].astype(str)
+    parsed_dates = pd.to_datetime(dedupe_df["DateMeasured"], errors="coerce")
+    dedupe_df["_date_measured_norm"] = parsed_dates.dt.date
+    # Match transfer _dedupe_rows(..., include_missing=True):
+    # rows with missing key parts are not deduped.
+    missing_key_mask = (
+        dedupe_df["_pointid_norm"].isna() | dedupe_df["_date_measured_norm"].isna()
+    )
+    non_missing = dedupe_df.loc[~missing_key_mask].drop_duplicates(
+        subset=["_pointid_norm", "_date_measured_norm"], keep="last"
+    )
+    missing = dedupe_df.loc[missing_key_mask]
+    out = pd.concat([non_missing, missing], axis=0)
+    return out.drop(columns=["_pointid_norm", "_date_measured_norm"])
+
+
+def _ngwmn_wellconstruction_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror NGWMNWellConstructionTransferer dedupe key:
+    # conflict columns are (PointID, CasingTop, ScreenTop), with later rows winning.
+    required = {"PointID", "CasingTop", "ScreenTop"}
+    if not required.issubset(df.columns):
+        return df.iloc[0:0]
+
+    def _float_or_none(value: Any) -> float | None:
+        if value is None or pd.isna(value):
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            import re
+
+            match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", value)
+            if match:
+                try:
+                    return float(match.group(0))
+                except ValueError:
+                    return None
+        return None
+
+    dedupe_df = df.copy()
+    dedupe_df["_pointid_norm"] = dedupe_df["PointID"].astype(str)
+    dedupe_df["_casing_top_norm"] = dedupe_df["CasingTop"].map(_float_or_none)
+    dedupe_df["_screen_top_norm"] = dedupe_df["ScreenTop"].map(_float_or_none)
+    # Match transfer _dedupe_rows(..., include_missing=True):
+    # rows with missing key parts are not deduped.
+    missing_key_mask = (
+        dedupe_df["_pointid_norm"].isna()
+        | dedupe_df["_casing_top_norm"].isna()
+        | dedupe_df["_screen_top_norm"].isna()
+    )
+    non_missing = dedupe_df.loc[~missing_key_mask].drop_duplicates(
+        subset=["_pointid_norm", "_casing_top_norm", "_screen_top_norm"],
+        keep="last",
+    )
+    missing = dedupe_df.loc[missing_key_mask]
+    out = pd.concat([non_missing, missing], axis=0)
+    return out.drop(columns=["_pointid_norm", "_casing_top_norm", "_screen_top_norm"])
+
+
+def _load_json_mapping(path: str) -> dict[str, str]:
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def _ownersdata_agreed_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror ContactTransfer fan-out:
+    # one OwnersData source row can produce 0/1/2 Contact rows.
+    odf = df.drop(["OBJECTID", "GlobalID"], axis=1, errors="ignore")
+    ldf = read_csv("OwnerLink").drop(["OBJECTID", "GlobalID"], axis=1, errors="ignore")
+    locdf = read_csv("Location")
+    ldf = ldf.join(locdf.set_index("LocationId"), on="LocationId")
+
+    owner_key_col = _select_ownerkey_col(odf, "OwnersData")
+    link_owner_key_col = _select_ownerkey_col(ldf, "OwnerLink")
+
+    ownerkey_mapper = _load_json_mapping(
+        str(get_transfers_data_path("owners_ownerkey_mapper.json"))
+    )
+    org_mapper = _load_json_mapping(
+        str(get_transfers_data_path("owners_organization_mapper.json"))
+    )
+
+    if ownerkey_mapper:
+        odf["ownerkey_canonical"] = odf[owner_key_col].replace(ownerkey_mapper)
+        ldf["ownerkey_canonical"] = ldf[link_owner_key_col].replace(ownerkey_mapper)
+    else:
+        odf["ownerkey_canonical"] = odf[owner_key_col]
+        ldf["ownerkey_canonical"] = ldf[link_owner_key_col]
+
+    odf["ownerkey_norm"] = (
+        odf["ownerkey_canonical"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .str.casefold()
+        .replace({"": pd.NA})
+    )
+    ldf["ownerkey_norm"] = (
+        ldf["ownerkey_canonical"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .str.casefold()
+        .replace({"": pd.NA})
+    )
+
+    ldf_join = ldf.set_index("ownerkey_norm")
+    overlap_cols = [col for col in ldf_join.columns if col in odf.columns]
+    if overlap_cols:
+        ldf_join = ldf_join.drop(columns=overlap_cols, errors="ignore")
+    odf = odf.join(ldf_join, on="ownerkey_norm")
+
+    odf = replace_nans(odf)
+    odf = filter_to_valid_point_ids(odf)
+
+    # Emulate ContactTransfer + _make_contact_and_assoc semantics:
+    # 1) dedupe by (OwnerKey, ContactType)
+    # 2) then dedupe by (name, organization) via in-memory "added" list
+    # 3) only successful CreateContact payloads count as agreed.
+    agreed_rows: list[dict[str, Any]] = []
+    created_owner_type: set[tuple[str, str]] = set()
+    added_name_org: set[tuple[str | None, str | None]] = set()
+
+    ordered = odf.sort_values(by=["PointID"], kind="stable")
+
+    def _record_new_contact(
+        owner_key: Any,
+        contact_type: str,
+        name: str | None,
+        organization: str | None,
+    ) -> bool:
+        if name is None and organization is None:
+            return False
+
+        owner_key_text = None if owner_key is None else str(owner_key)
+        owner_type_key = None
+        if owner_key_text:
+            owner_type_key = (owner_key_text, contact_type)
+
+        if owner_type_key and owner_type_key in created_owner_type:
+            return False
+
+        name_org_key = (name, organization)
+        if name_org_key in added_name_org:
+            return False
+
+        if owner_type_key:
+            created_owner_type.add(owner_type_key)
+        added_name_org.add(name_org_key)
+        agreed_rows.append({"OwnerKey": owner_key})
+        return True
+
+    for row in ordered.itertuples():
+        owner_key = getattr(row, owner_key_col, None)
+        organization = _get_organization(row, org_mapper)
+
+        primary_name = _safe_make_name(
+            getattr(row, "FirstName", None),
+            getattr(row, "LastName", None),
+            owner_key,
+            organization,
+        )
+        _record_new_contact(owner_key, "Primary", primary_name, organization)
+
+        has_secondary_input = not all(
+            [
+                getattr(row, "SecondFirstName", None) is None,
+                getattr(row, "SecondLastName", None) is None,
+                getattr(row, "SecondCtctEmail", None) is None,
+                getattr(row, "SecondCtctPhone", None) is None,
+            ]
+        )
+        if has_secondary_input:
+            secondary_name = _make_name(
+                getattr(row, "SecondFirstName", None),
+                getattr(row, "SecondLastName", None),
+            )
+            _record_new_contact(owner_key, "Secondary", secondary_name, organization)
+
+    return pd.DataFrame(agreed_rows, columns=["OwnerKey"])
 
 
 TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
@@ -116,6 +426,8 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "OwnerKey",
         Contact,
         "nma_pk_owners",
+        agreed_filter=_ownersdata_agreed_filter,
+        destination_where=lambda m: m.nma_pk_owners.is_not(None),
         option_field="transfer_contacts",
     ),
     TransferComparisonSpec(
@@ -125,6 +437,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         Observation,
         "nma_pk_waterlevels",
+        agreed_filter=_waterlevels_filter,
         option_field="transfer_waterlevels",
     ),
     TransferComparisonSpec(
@@ -197,6 +510,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_HydraulicsData,
         "nma_global_id",
+        agreed_filter=_hydraulics_filter,
         option_field="transfer_hydraulics_data",
     ),
     TransferComparisonSpec(
@@ -206,6 +520,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "SamplePtID",
         NMA_Chemistry_SampleInfo,
         "nma_sample_pt_id",
+        agreed_filter=_chemistry_sampleinfo_filter,
         option_field="transfer_chemistry_sampleinfo",
     ),
     TransferComparisonSpec(
@@ -215,6 +530,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "PointID",
         NMA_view_NGWMN_WellConstruction,
         "point_id",
+        agreed_filter=_ngwmn_wellconstruction_filter,
         option_field="transfer_ngwmn_views",
     ),
     TransferComparisonSpec(
@@ -224,6 +540,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "PointID",
         NMA_view_NGWMN_WaterLevels,
         "point_id",
+        agreed_filter=_ngwmn_waterlevels_filter,
         option_field="transfer_ngwmn_views",
     ),
     TransferComparisonSpec(
@@ -260,6 +577,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_Stratigraphy,
         "nma_global_id",
+        agreed_filter=_stratigraphy_filter,
         option_field="transfer_nma_stratigraphy",
     ),
     TransferComparisonSpec(
@@ -269,6 +587,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_MajorChemistry,
         "nma_global_id",
+        agreed_filter=_chemistry_child_filter,
         option_field="transfer_major_chemistry",
     ),
     TransferComparisonSpec(
@@ -278,6 +597,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_Radionuclides,
         "nma_global_id",
+        agreed_filter=_chemistry_child_filter,
         option_field="transfer_radionuclides",
     ),
     TransferComparisonSpec(
@@ -287,6 +607,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_MinorTraceChemistry,
         "nma_global_id",
+        agreed_filter=_chemistry_child_filter,
         option_field="transfer_minor_trace_chemistry",
     ),
     TransferComparisonSpec(
@@ -296,6 +617,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_FieldParameters,
         "nma_global_id",
+        agreed_filter=_chemistry_child_filter,
         option_field="transfer_field_parameters",
     ),
     TransferComparisonSpec(

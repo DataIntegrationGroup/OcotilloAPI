@@ -108,7 +108,7 @@ dependencies = [
 package = true
 
 [tool.setuptools]
-packages = ["alembic", "cli", "core", "db", "schemas", "services"]
+packages = ["alembic", "cli", "core", "db", "schemas", "services", "transfers"]
 
 [project.scripts]
 oco = "cli.cli:cli"

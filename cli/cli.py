@@ -109,6 +109,33 @@ def associate_assets_command(
     associate_assets(root_directory)
 
 
+@cli.command("transfer-results")
+def transfer_results(
+    summary_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "transfer_results_summary.md",
+        "--summary-path",
+        help="Output path for markdown summary table.",
+    ),
+    sample_limit: int = typer.Option(
+        25,
+        "--sample-limit",
+        min=1,
+        help="Max missing/extra key samples stored per transfer.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from transfers.transfer_results_builder import TransferResultsBuilder
+
+    builder = TransferResultsBuilder(sample_limit=sample_limit)
+    results = builder.build()
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    TransferResultsBuilder.write_summary(summary_path, results)
+    typer.echo(f"Wrote comparison summary: {summary_path}")
+    typer.echo(f"Transfer comparisons: {len(results.results)}")
+
+
 @cli.command("well-inventory-csv")
 def well_inventory_csv(
     file_path: str = typer.Argument(
