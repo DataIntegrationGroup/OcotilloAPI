@@ -7,6 +7,7 @@ import pandas as pd
 from sqlalchemy import select, func
 
 from db.engine import session_ctx
+from transfers.transfer import load_transfer_options
 from transfers.transfer_results_specs import (
     TRANSFER_COMPARISON_SPECS,
     TransferComparisonSpec,
@@ -15,7 +16,12 @@ from transfers.transfer_results_types import (
     TransferComparisonResults,
     TransferResult,
 )
-from transfers.util import read_csv
+from transfers.util import (
+    read_csv,
+    replace_nans,
+    get_transferable_wells,
+)
+import os
 
 
 def _normalize_key(value: Any) -> str | None:
@@ -56,6 +62,8 @@ class TransferResultsBuilder:
 
     def __init__(self, sample_limit: int = 25):
         self.sample_limit = sample_limit
+        self.transfer_options = load_transfer_options()
+        self.transfer_limit = int(os.getenv("TRANSFER_LIMIT", "1000"))
 
     def build(self) -> TransferComparisonResults:
         results: dict[str, TransferResult] = {}
@@ -70,16 +78,18 @@ class TransferResultsBuilder:
         source_df = read_csv(spec.source_csv)
         if spec.source_filter:
             source_df = spec.source_filter(source_df)
-        source_series = _normalized_series(source_df, spec.source_key_column)
+        comparison_df = source_df
+        enabled = self._is_enabled(spec)
+        if not enabled:
+            comparison_df = source_df.iloc[0:0]
+        elif spec.transfer_name == "WellData":
+            comparison_df = self._agreed_welldata_df()
+
+        source_series = _normalized_series(comparison_df, spec.source_key_column)
         source_keys = set(source_series.unique().tolist())
         source_keyed_row_count = int(source_series.shape[0])
         source_duplicate_key_row_count = source_keyed_row_count - len(source_keys)
-        agreed_transfer_row_count = int(len(source_df))
-        if spec.agreed_row_counter is not None:
-            try:
-                agreed_transfer_row_count = int(spec.agreed_row_counter())
-            except Exception:
-                agreed_transfer_row_count = int(len(source_df))
+        agreed_transfer_row_count = int(len(comparison_df))
 
         model = spec.destination_model
         key_col = getattr(model, spec.destination_key_column)
@@ -134,20 +144,44 @@ class TransferResultsBuilder:
             extra_in_destination_sample=extra[: self.sample_limit],
         )
 
+    def _is_enabled(self, spec: TransferComparisonSpec) -> bool:
+        if not spec.option_field:
+            return True
+        return bool(getattr(self.transfer_options, spec.option_field, True))
+
+    def _agreed_welldata_df(self) -> pd.DataFrame:
+        wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+        ldf = read_csv("Location")
+        ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1, errors="ignore")
+        wdf = wdf.join(ldf.set_index("LocationId"), on="LocationId")
+        wdf = wdf[wdf["SiteType"] == "GW"]
+        wdf = wdf[wdf["Easting"].notna() & wdf["Northing"].notna()]
+        wdf = replace_nans(wdf)
+
+        cleaned_df = get_transferable_wells(wdf)
+
+        dupes = cleaned_df["PointID"].duplicated(keep=False)
+        if dupes.any():
+            dup_ids = set(cleaned_df.loc[dupes, "PointID"])
+            cleaned_df = cleaned_df[~cleaned_df["PointID"].isin(dup_ids)]
+
+        if self.transfer_limit > 0:
+            cleaned_df = cleaned_df.head(self.transfer_limit)
+        return cleaned_df
+
     @staticmethod
     def write_summary(path: Path, comparison: TransferComparisonResults) -> None:
         lines = [
             f"generated_at={comparison.generated_at}",
             "",
-            "| Transfer | Source CSV | Source Rows | Agreed Rows | Dest Model | Dest Rows | Missing Agreed | Matched | Missing | Extra |",
-            "|---|---|---:|---:|---|---:|---:|---:|---:|---:|",
+            "| Transfer | Source CSV | Source Rows | Agreed Rows | Dest Model | Dest Rows | Missing Agreed |",
+            "|---|---|---:|---:|---|---:|---:|",
         ]
         for name in sorted(comparison.results.keys()):
             r = comparison.results[name]
             missing_agreed = r.agreed_transfer_row_count - r.destination_row_count
             lines.append(
                 f"| {name} | {r.source_csv} | {r.source_row_count} | {r.agreed_transfer_row_count} | "
-                f"{r.destination_model} | {r.destination_row_count} | {missing_agreed} | "
-                f"{r.matched_key_count} | {r.missing_in_destination_count} | {r.extra_in_destination_count} |"
+                f"{r.destination_model} | {r.destination_row_count} | {missing_agreed} |"
             )
         path.write_text("\n".join(lines) + "\n")

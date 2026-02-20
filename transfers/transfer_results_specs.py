@@ -5,33 +5,6 @@ from typing import Any, Callable
 
 import pandas as pd
 
-from transfers.associated_data import AssociatedDataTransferer
-from transfers.chemistry_sampleinfo import ChemistrySampleInfoTransferer
-from transfers.contact_transfer import ContactTransfer
-from transfers.field_parameters_transfer import FieldParametersTransferer
-from transfers.group_transfer import ProjectGroupTransferer
-from transfers.hydraulicsdata import HydraulicsDataTransferer
-from transfers.major_chemistry import MajorChemistryTransferer
-from transfers.minor_trace_chemistry_transfer import MinorTraceChemistryTransferer
-from transfers.ngwmn_views import (
-    NGWMNLithologyTransferer,
-    NGWMNWaterLevelsTransferer,
-    NGWMNWellConstructionTransferer,
-)
-from transfers.radionuclides import RadionuclidesTransferer
-from transfers.sensor_transfer import SensorTransferer
-from transfers.soil_rock_results import SoilRockResultsTransferer
-from transfers.stratigraphy_legacy import StratigraphyLegacyTransferer
-from transfers.surface_water_data import SurfaceWaterDataTransferer
-from transfers.surface_water_photos import SurfaceWaterPhotosTransferer
-from transfers.util import read_csv
-from transfers.waterlevels_transfer import WaterLevelTransferer
-from transfers.waterlevelscontinuous_pressure_daily import (
-    NMA_WaterLevelsContinuous_Pressure_DailyTransferer,
-)
-from transfers.weather_data import WeatherDataTransferer
-from transfers.weather_photos import WeatherPhotosTransferer
-from transfers.well_transfer import WellScreenTransferer, WellTransferer
 from db import (
     Contact,
     Group,
@@ -105,7 +78,7 @@ class TransferComparisonSpec:
     destination_key_column: str
     source_filter: Callable[[pd.DataFrame], pd.DataFrame] | None = None
     destination_where: Callable[[Any], Any] | None = None
-    agreed_row_counter: Callable[[], int] | None = None
+    option_field: str | None = None
 
 
 def _location_site_filter(site_type: str) -> Callable[[pd.DataFrame], pd.DataFrame]:
@@ -117,19 +90,6 @@ def _location_site_filter(site_type: str) -> Callable[[pd.DataFrame], pd.DataFra
     return _f
 
 
-def _agreed_rows_from_transferer(transferer_cls) -> int:
-    transferer = transferer_cls()
-    _, cleaned_df = transferer._get_dfs()
-    return int(len(cleaned_df))
-
-
-def _agreed_rows_location(site_type: str) -> int:
-    df = read_csv("Location")
-    df = df[df["SiteType"] == site_type]
-    df = df[df["Easting"].notna() & df["Northing"].notna()]
-    return int(len(df))
-
-
 TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
     TransferComparisonSpec(
         "WellData",
@@ -139,7 +99,6 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         Thing,
         "nma_pk_welldata",
         destination_where=lambda m: m.thing_type == "water well",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(WellTransferer),
     ),
     TransferComparisonSpec(
         "WellScreens",
@@ -148,7 +107,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         WellScreen,
         "nma_pk_wellscreens",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(WellScreenTransferer),
+        option_field="transfer_screens",
     ),
     TransferComparisonSpec(
         "OwnersData",
@@ -157,7 +116,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "OwnerKey",
         Contact,
         "nma_pk_owners",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(ContactTransfer),
+        option_field="transfer_contacts",
     ),
     TransferComparisonSpec(
         "WaterLevels",
@@ -166,7 +125,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         Observation,
         "nma_pk_waterlevels",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(WaterLevelTransferer),
+        option_field="transfer_waterlevels",
     ),
     TransferComparisonSpec(
         "Equipment",
@@ -175,7 +134,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         Sensor,
         "nma_pk_equipment",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(SensorTransferer),
+        option_field="transfer_sensors",
     ),
     TransferComparisonSpec(
         "Projects",
@@ -184,7 +143,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "Project",
         Group,
         "name",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(ProjectGroupTransferer),
+        option_field="transfer_groups",
     ),
     TransferComparisonSpec(
         "SurfaceWaterPhotos",
@@ -193,9 +152,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_SurfaceWaterPhotos,
         "global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            SurfaceWaterPhotosTransferer
-        ),
+        option_field="transfer_surface_water_photos",
     ),
     TransferComparisonSpec(
         "Soil_Rock_Results",
@@ -204,9 +161,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "Point_ID",
         NMA_Soil_Rock_Results,
         "nma_point_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            SoilRockResultsTransferer
-        ),
+        option_field="transfer_soil_rock_results",
     ),
     TransferComparisonSpec(
         "WeatherPhotos",
@@ -215,9 +170,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_WeatherPhotos,
         "global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            WeatherPhotosTransferer
-        ),
+        option_field="transfer_weather_photos",
     ),
     TransferComparisonSpec(
         "AssociatedData",
@@ -226,9 +179,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "AssocID",
         NMA_AssociatedData,
         "nma_assoc_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            AssociatedDataTransferer
-        ),
+        option_field="transfer_associated_data",
     ),
     TransferComparisonSpec(
         "SurfaceWaterData",
@@ -237,9 +188,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "OBJECTID",
         NMA_SurfaceWaterData,
         "object_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            SurfaceWaterDataTransferer
-        ),
+        option_field="transfer_surface_water_data",
     ),
     TransferComparisonSpec(
         "HydraulicsData",
@@ -248,9 +197,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_HydraulicsData,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            HydraulicsDataTransferer
-        ),
+        option_field="transfer_hydraulics_data",
     ),
     TransferComparisonSpec(
         "Chemistry_SampleInfo",
@@ -259,9 +206,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "SamplePtID",
         NMA_Chemistry_SampleInfo,
         "nma_sample_pt_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            ChemistrySampleInfoTransferer
-        ),
+        option_field="transfer_chemistry_sampleinfo",
     ),
     TransferComparisonSpec(
         "view_NGWMN_WellConstruction",
@@ -270,9 +215,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "PointID",
         NMA_view_NGWMN_WellConstruction,
         "point_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            NGWMNWellConstructionTransferer
-        ),
+        option_field="transfer_ngwmn_views",
     ),
     TransferComparisonSpec(
         "view_NGWMN_WaterLevels",
@@ -281,9 +224,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "PointID",
         NMA_view_NGWMN_WaterLevels,
         "point_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            NGWMNWaterLevelsTransferer
-        ),
+        option_field="transfer_ngwmn_views",
     ),
     TransferComparisonSpec(
         "view_NGWMN_Lithology",
@@ -292,9 +233,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "PointID",
         NMA_view_NGWMN_Lithology,
         "point_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            NGWMNLithologyTransferer
-        ),
+        option_field="transfer_ngwmn_views",
     ),
     TransferComparisonSpec(
         "WaterLevelsContinuous_Pressure_Daily",
@@ -303,9 +242,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_WaterLevelsContinuous_Pressure_Daily,
         "global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            NMA_WaterLevelsContinuous_Pressure_DailyTransferer
-        ),
+        option_field="transfer_pressure_daily",
     ),
     TransferComparisonSpec(
         "WeatherData",
@@ -314,7 +251,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "OBJECTID",
         NMA_WeatherData,
         "object_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(WeatherDataTransferer),
+        option_field="transfer_weather_data",
     ),
     TransferComparisonSpec(
         "Stratigraphy",
@@ -323,9 +260,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_Stratigraphy,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            StratigraphyLegacyTransferer
-        ),
+        option_field="transfer_nma_stratigraphy",
     ),
     TransferComparisonSpec(
         "MajorChemistry",
@@ -334,9 +269,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_MajorChemistry,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            MajorChemistryTransferer
-        ),
+        option_field="transfer_major_chemistry",
     ),
     TransferComparisonSpec(
         "Radionuclides",
@@ -345,9 +278,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_Radionuclides,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            RadionuclidesTransferer
-        ),
+        option_field="transfer_radionuclides",
     ),
     TransferComparisonSpec(
         "MinorandTraceChemistry",
@@ -356,9 +287,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_MinorTraceChemistry,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            MinorTraceChemistryTransferer
-        ),
+        option_field="transfer_minor_trace_chemistry",
     ),
     TransferComparisonSpec(
         "FieldParameters",
@@ -367,9 +296,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         NMA_FieldParameters,
         "nma_global_id",
-        agreed_row_counter=lambda: _agreed_rows_from_transferer(
-            FieldParametersTransferer
-        ),
+        option_field="transfer_field_parameters",
     ),
     TransferComparisonSpec(
         "Springs",
@@ -380,7 +307,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("SP"),
         destination_where=lambda m: m.thing_type == "spring",
-        agreed_row_counter=lambda: _agreed_rows_location("SP"),
+        option_field="transfer_springs",
     ),
     TransferComparisonSpec(
         "PerennialStreams",
@@ -391,7 +318,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("PS"),
         destination_where=lambda m: m.thing_type == "perennial stream",
-        agreed_row_counter=lambda: _agreed_rows_location("PS"),
+        option_field="transfer_perennial_streams",
     ),
     TransferComparisonSpec(
         "EphemeralStreams",
@@ -402,7 +329,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("ES"),
         destination_where=lambda m: m.thing_type == "ephemeral stream",
-        agreed_row_counter=lambda: _agreed_rows_location("ES"),
+        option_field="transfer_ephemeral_streams",
     ),
     TransferComparisonSpec(
         "MetStations",
@@ -413,7 +340,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("M"),
         destination_where=lambda m: m.thing_type == "meteorological station",
-        agreed_row_counter=lambda: _agreed_rows_location("M"),
+        option_field="transfer_met_stations",
     ),
     TransferComparisonSpec(
         "RockSampleLocations",
@@ -424,7 +351,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("R"),
         destination_where=lambda m: m.thing_type == "rock sample location",
-        agreed_row_counter=lambda: _agreed_rows_location("R"),
+        option_field="transfer_rock_sample_locations",
     ),
     TransferComparisonSpec(
         "DiversionOfSurfaceWater",
@@ -435,7 +362,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("D"),
         destination_where=lambda m: m.thing_type == "diversion of surface water, etc.",
-        agreed_row_counter=lambda: _agreed_rows_location("D"),
+        option_field="transfer_diversion_of_surface_water",
     ),
     TransferComparisonSpec(
         "LakePondReservoir",
@@ -446,7 +373,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("L"),
         destination_where=lambda m: m.thing_type == "lake, pond or reservoir",
-        agreed_row_counter=lambda: _agreed_rows_location("L"),
+        option_field="transfer_lake_pond_reservoir",
     ),
     TransferComparisonSpec(
         "SoilGasSampleLocations",
@@ -457,7 +384,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("S"),
         destination_where=lambda m: m.thing_type == "soil gas sample location",
-        agreed_row_counter=lambda: _agreed_rows_location("S"),
+        option_field="transfer_soil_gas_sample_locations",
     ),
     TransferComparisonSpec(
         "OtherSiteTypes",
@@ -468,7 +395,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "nma_pk_location",
         source_filter=_location_site_filter("OT"),
         destination_where=lambda m: m.thing_type == "other",
-        agreed_row_counter=lambda: _agreed_rows_location("OT"),
+        option_field="transfer_other_site_types",
     ),
     TransferComparisonSpec(
         "OutfallWastewaterReturnFlow",
@@ -480,6 +407,6 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         source_filter=_location_site_filter("O"),
         destination_where=lambda m: m.thing_type
         == "outfall of wastewater or return flow",
-        agreed_row_counter=lambda: _agreed_rows_location("O"),
+        option_field="transfer_outfall_wastewater_return_flow",
     ),
 ]
