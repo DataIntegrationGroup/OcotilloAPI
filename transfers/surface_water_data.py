@@ -62,9 +62,23 @@ class SurfaceWaterDataTransferer(Transferer):
 
     def _transfer_hook(self, session: Session) -> None:
         rows: list[dict[str, Any]] = []
+        skipped_missing_thing = 0
         for raw in self.cleaned_df.to_dict("records"):
             record = self._row_dict(raw)
+            if record is None:
+                skipped_missing_thing += 1
+                continue
             rows.append(record)
+
+        if skipped_missing_thing:
+            logger.warning(
+                "Skipped %s SurfaceWaterData rows without matching Thing",
+                skipped_missing_thing,
+            )
+
+        if not rows:
+            logger.info("No SurfaceWaterData rows to transfer")
+            return
 
         rows = self._dedupe_rows(rows, key="OBJECTID", include_missing=True)
 
@@ -101,7 +115,7 @@ class SurfaceWaterDataTransferer(Transferer):
             session.commit()
             session.expunge_all()
 
-    def _row_dict(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _row_dict(self, row: dict[str, Any]) -> Optional[dict[str, Any]]:
         def val(key: str) -> Optional[Any]:
             v = row.get(key)
             if pd.isna(v):
@@ -123,6 +137,14 @@ class SurfaceWaterDataTransferer(Transferer):
 
         location_id = to_uuid(val("LocationId"))
         thing_id = self._resolve_thing_id(location_id)
+        if thing_id is None:
+            logger.warning(
+                "Skipping SurfaceWaterData OBJECTID=%s PointID=%s LocationId=%s - Thing not found",
+                val("OBJECTID"),
+                val("PointID"),
+                location_id,
+            )
+            return None
 
         return {
             "LocationId": location_id,
