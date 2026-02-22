@@ -1,5 +1,5 @@
 Address.postal_code is nullable
-Thing measuring_point_height is nullable
+MeasuringPointHistory.measuring_point_height is nullable
 ValidateWell, depth validation removed
 Deployment.installation_date is nullable
 CreateWellScreen depth validation removed
