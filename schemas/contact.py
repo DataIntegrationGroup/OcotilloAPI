@@ -24,7 +24,6 @@ from core.enums import Role, ContactType, PhoneType, EmailType, AddressType
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
 from schemas.notes import CreateNote, NoteResponse
 
-
 # -------- VALIDATORS ----------
 
 
