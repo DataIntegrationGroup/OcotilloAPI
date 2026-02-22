@@ -421,6 +421,7 @@
         "elevation_method",
         "sample_method",
         "coordinate_method",
+        "well_construction_method",
         "well_purpose",
         "status",
         "organization",

@@ -188,9 +188,9 @@ class Address(Base, AutoBaseMixin, ReleaseMixin):
     )
     address_line_1: Mapped[str] = mapped_column(String(255), nullable=False)
     address_line_2: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    city: Mapped[str] = mapped_column(String(100), nullable=False)
-    state: Mapped[str] = mapped_column(String(50), nullable=False)
-    postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    postal_code: Mapped[str] = mapped_column(String(20), nullable=True)
     country: Mapped[str] = mapped_column(
         String(50), default="United States", nullable=False
     )

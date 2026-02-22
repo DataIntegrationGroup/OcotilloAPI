@@ -19,6 +19,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import pandas as pd
+from sqlalchemy import insert
+from sqlalchemy.exc import DatabaseError, SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from db import (
     Thing,
     ThingContactAssociation,
@@ -31,9 +35,6 @@ from db import (
     Parameter,
 )
 from db.engine import session_ctx
-from sqlalchemy import insert
-from sqlalchemy.exc import DatabaseError, SQLAlchemyError
-from sqlalchemy.orm import Session
 from transfers.transferer import Transferer
 from transfers.util import (
     filter_to_valid_point_ids,
@@ -149,7 +150,7 @@ class WaterLevelTransferer(Transferer):
             "rows_created": 0,
             "rows_skipped_dt": 0,
             "rows_skipped_reason": 0,
-            "rows_skipped_contacts": 0,
+            "rows_missing_participants": 0,
             "rows_well_destroyed": 0,
             "field_events_created": 0,
             "field_activities_created": 0,
@@ -175,9 +176,6 @@ class WaterLevelTransferer(Transferer):
             thing_id = self._thing_id_by_pointid.get(pointid)
             if thing_id is None:
                 stats["groups_skipped_missing_thing"] += 1
-                logger.warning(
-                    "Skipping PointID=%s because Thing was not found", pointid
-                )
                 self._capture_error(pointid, "Thing not found", "PointID")
                 continue
 
@@ -219,12 +217,7 @@ class WaterLevelTransferer(Transferer):
                 )
 
                 if not field_event_participants:
-                    stats["rows_skipped_contacts"] += 1
-                    logger.warning(
-                        "Skipping %s because no field event participants were found",
-                        self._row_context(row),
-                    )
-                    continue
+                    stats["rows_missing_participants"] += 1
 
                 is_destroyed = (
                     glv
@@ -406,29 +399,14 @@ class WaterLevelTransferer(Transferer):
                 stats["groups_processed"] += 1
             except DatabaseError as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "Failed committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
                 self._capture_database_error(pointid, e)
             except SQLAlchemyError as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "SQLAlchemy failure committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
-                self._capture_error(pointid, str(e), "UnknownField")
+                self._capture_error(pointid, str(e), "SQLAlchemyError")
             except Exception as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "Unexpected failure committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
                 self._capture_error(pointid, str(e), "UnknownField")
 
@@ -673,9 +651,9 @@ class WaterLevelTransferer(Transferer):
                     self._last_contacts_reused_count += 1
 
         if len(field_event_participants) == 0:
-            logger.critical(
-                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}, "
-                f"therefore no field event, field activity, sample, and observation can be made. Skipping."
+            logger.warning(
+                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}; "
+                f"continuing with nullable field_event_participant_id."
             )
 
         return field_event_participants
@@ -690,7 +668,7 @@ class WaterLevelTransferer(Transferer):
     def _log_transfer_summary(self, stats: dict[str, int]) -> None:
         logger.info(
             "WaterLevels summary: groups total=%s processed=%s skipped_missing_thing=%s failed_commit=%s "
-            "rows total=%s created=%s skipped_dt=%s skipped_reason=%s skipped_contacts=%s well_destroyed=%s "
+            "rows total=%s created=%s skipped_dt=%s skipped_reason=%s missing_participants=%s well_destroyed=%s "
             "field_events=%s activities=%s samples=%s observations=%s contacts_created=%s contacts_reused=%s",
             stats["groups_total"],
             stats["groups_processed"],
@@ -700,7 +678,7 @@ class WaterLevelTransferer(Transferer):
             stats["rows_created"],
             stats["rows_skipped_dt"],
             stats["rows_skipped_reason"],
-            stats["rows_skipped_contacts"],
+            stats["rows_missing_participants"],
             stats["rows_well_destroyed"],
             stats["field_events_created"],
             stats["field_activities_created"],

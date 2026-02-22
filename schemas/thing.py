@@ -35,6 +35,7 @@ from schemas.location import LocationGeoJSONResponse
 from schemas.notes import NoteResponse, CreateNote
 from schemas.permission_history import PermissionHistoryResponse
 
+
 # -------- VALIDATE ----------
 
 
@@ -47,6 +48,9 @@ class ValidateWell(BaseModel):
 
     @model_validator(mode="after")
     def validate_values(self):
+        # todo: reenable depth validation. removed for transfer
+        return self
+
         if self.hole_depth is not None:
             if self.well_depth is not None and self.well_depth > self.hole_depth:
                 raise ValueError(
@@ -65,25 +69,6 @@ class ValidateWell(BaseModel):
                 raise ValueError("well pump depth must be less than well depth")
             elif self.hole_depth is not None and self.well_pump_depth > self.hole_depth:
                 raise ValueError("well pump depth must be less than hole depth")
-
-        # if self.measuring_point_height is not None:
-        #     if (
-        #         self.hole_depth is not None
-        #         and self.measuring_point_height >= self.hole_depth
-        #     ):
-        #         raise ValueError("measuring point height must be less than hole depth")
-        #     elif (
-        #         self.well_casing_depth is not None
-        #         and self.measuring_point_height >= self.well_casing_depth
-        #     ):
-        #         raise ValueError(
-        #             "measuring point height must be less than well casing depth"
-        #         )
-        #     elif (
-        #         self.well_depth is not None
-        #         and self.measuring_point_height >= self.well_depth
-        #     ):
-        #         raise ValueError("measuring point height must be less than well depth")
 
         return self
 
@@ -145,7 +130,9 @@ class CreateWell(CreateBaseThing, ValidateWell):
         default=None, gt=0, description="Well casing depth in feet"
     )
     well_casing_materials: list[CasingMaterial] | None = None
-    measuring_point_height: float = Field(description="Measuring point height in feet")
+    measuring_point_height: float | None = Field(
+        default=None, description="Measuring point height in feet"
+    )
     measuring_point_description: str | None = None
     well_completion_date: PastOrTodayDate | None = None
     well_completion_date_source: str | None = None
@@ -177,18 +164,26 @@ class CreateWellScreen(BaseCreateModel):
     thing_id: int
     aquifer_system_id: int | None = None
     geologic_formation_id: int | None = None
-    screen_depth_bottom: float = Field(gt=0, description="Screen depth bottom in feet")
-    screen_depth_top: float = Field(gt=0, description="Screen depth top in feet")
+    screen_depth_bottom: float | None = Field(
+        default=None, ge=0, description="Screen depth bottom in feet"
+    )
+    screen_depth_top: float | None = Field(
+        default=None, ge=0, description="Screen depth top in feet"
+    )
     screen_type: ScreenType | None = None
     screen_description: str | None = None
 
     # validate that screen depth bottom is greater than top
     @model_validator(mode="after")
     def check_depths(self):
-        if self.screen_depth_bottom < self.screen_depth_top:
-            raise ValueError(
-                "screen_depth_bottom must be greater than screen_depth_top"
-            )
+        # todo: reenable depth validation. removed for transfer
+        return self
+
+        if self.screen_depth_bottom or self.screen_depth_top:
+            if self.screen_depth_bottom < self.screen_depth_top:
+                raise ValueError(
+                    "screen_depth_bottom must be greater than screen_depth_top"
+                )
         return self
 
 
@@ -260,7 +255,7 @@ class WellResponse(BaseThingResponse):
     well_status: str | None
     open_status: str | None
     datalogger_suitability_status: str | None
-    measuring_point_height: float
+    measuring_point_height: float | None
     measuring_point_height_unit: str = "ft"
     measuring_point_description: str | None
     aquifers: list[dict] = []
@@ -352,9 +347,9 @@ class WellScreenResponse(BaseResponseModel):
     aquifer_type: str | None = None
     geologic_formation_id: int | None = None
     geologic_formation: str | None = None
-    screen_depth_bottom: float
+    screen_depth_bottom: float | None = None
     screen_depth_bottom_unit: str = "ft"
-    screen_depth_top: float
+    screen_depth_top: float | None = None
     screen_depth_top_unit: str = "ft"
     screen_type: str | None = None
     screen_description: str | None = None

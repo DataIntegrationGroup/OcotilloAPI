@@ -33,7 +33,7 @@ class Deployment(Base, AutoBaseMixin, ReleaseMixin):
     )
 
     # --- Columns ---
-    installation_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    installation_date: Mapped[Date | None] = mapped_column(Date, nullable=True)
     removal_date: Mapped[Date] = mapped_column(Date, nullable=True)
     recording_interval: Mapped[int] = mapped_column(Integer, nullable=True)
     recording_interval_units: Mapped[str] = lexicon_term(nullable=True)

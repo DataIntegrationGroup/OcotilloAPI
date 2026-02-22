@@ -594,10 +594,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     geologic_formation_id: Mapped[int] = mapped_column(
         ForeignKey("geologic_formation.id", ondelete="SET NULL"), nullable=True
     )
-    screen_depth_top: Mapped[float] = mapped_column(
+    screen_depth_top: Mapped[float | None] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
-    screen_depth_bottom: Mapped[float] = mapped_column(
+    screen_depth_bottom: Mapped[float | None] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
     screen_type: Mapped[str] = lexicon_term(nullable=True)  # e.g., "PVC", "Steel", etc.

@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import select
+
 from core.initializers import init_lexicon, init_parameter
 from db import (
     Location,
@@ -51,7 +53,7 @@ from db import (
 )
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from sqlalchemy import select
+from services.util import get_bool_env
 
 
 def add_context_object_container(name):
@@ -521,6 +523,10 @@ def _initialize_test_schema() -> None:
 
 def before_all(context):
     context.objects = {}
+
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
+
     _initialize_test_schema()
 
     with session_ctx() as session:
@@ -711,6 +717,9 @@ def before_all(context):
 
 
 def after_all(context):
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
+
     with session_ctx() as session:
         for table in reversed(Base.metadata.sorted_tables):
             if table.name in ("alembic_version", "parameter"):
@@ -731,6 +740,10 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
+
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
+
     # runs after EVERY scenario
     # e.g. clean up temp files, close db sessions
     if scenario.name.startswith(

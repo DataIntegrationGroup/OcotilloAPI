@@ -91,7 +91,7 @@ class ValidateSample(BaseModel):
 # -------- CREATE ----------
 class CreateSample(BaseCreateModel, ValidateSample):
     field_activity_id: int
-    field_event_participant_id: int
+    field_event_participant_id: int | None = None
     sample_date: Annotated[AwareDatetime, PastDatetime()]
     sample_name: str
     sample_matrix: SampleMatrix
@@ -130,7 +130,7 @@ class SampleResponse(BaseResponseModel):
     thing: ThingResponse
     field_event: FieldEventResponse
     field_activity: FieldActivityResponse
-    contact: ContactResponse
+    contact: ContactResponse | None
     sample_date: UTCAwareDatetime
     sample_name: str
     sample_matrix: SampleMatrix

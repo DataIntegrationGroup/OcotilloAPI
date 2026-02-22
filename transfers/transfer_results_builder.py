@@ -7,7 +7,11 @@ from typing import Any
 import pandas as pd
 from sqlalchemy import select, func
 
+from db import Deployment, Sensor, Thing
 from db.engine import session_ctx
+from transfers.sensor_transfer import (
+    EQUIPMENT_TO_SENSOR_TYPE_MAP,
+)
 from transfers.transfer import load_transfer_options
 from transfers.transfer_results_specs import (
     TRANSFER_COMPARISON_SPECS,
@@ -18,10 +22,24 @@ from transfers.transfer_results_types import (
     TransferResult,
 )
 from transfers.util import (
+    SensorParameterEstimator,
     read_csv,
     replace_nans,
     get_transferable_wells,
 )
+
+
+def _model_column(model: Any, token: str) -> Any:
+    if hasattr(model, token):
+        return getattr(model, token)
+    table = model.__table__
+    if token in table.c:
+        return table.c[token]
+    token_norm = token.casefold()
+    for col in table.c:
+        if col.key.casefold() == token_norm or col.name.casefold() == token_norm:
+            return col
+    raise AttributeError(f"{model.__name__} has no column '{token}'")
 
 
 def _normalize_key(value: Any) -> str | None:
@@ -57,6 +75,96 @@ def _normalized_series(df: pd.DataFrame, key_col: str) -> pd.Series:
     return s.astype(str)
 
 
+def _normalize_date_like(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except TypeError:
+        pass
+    dt = pd.to_datetime(value, errors="coerce")
+    if pd.isna(dt):
+        return ""
+    return dt.date().isoformat()
+
+
+def _parse_legacy_datetime_date(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return pd.to_datetime(text, format="%Y-%m-%d %H:%M:%S.%f").date().isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
+def _equipment_source_series(df: pd.DataFrame) -> pd.Series:
+    required = {"PointID", "SerialNo", "DateInstalled", "DateRemoved"}
+    if not required.issubset(df.columns):
+        return pd.Series([], dtype=object)
+
+    estimators: dict[str, SensorParameterEstimator] = {}
+    keys: list[str] = []
+    for row in df.itertuples(index=False):
+        pointid = _normalize_key(getattr(row, "PointID", None)) or ""
+        serial = _normalize_key(getattr(row, "SerialNo", None)) or ""
+
+        installed = _parse_legacy_datetime_date(getattr(row, "DateInstalled", None))
+        if installed is None:
+            equipment_type = getattr(row, "EquipmentType", None)
+            sensor_type = EQUIPMENT_TO_SENSOR_TYPE_MAP.get(equipment_type)
+            if sensor_type:
+                estimator = estimators.get(sensor_type)
+                if estimator is None:
+                    estimator = SensorParameterEstimator(sensor_type)
+                    estimators[sensor_type] = estimator
+                estimated = estimator.estimate_installation_date(row)
+                installed = _normalize_date_like(estimated)
+            else:
+                installed = ""
+
+        removed = _parse_legacy_datetime_date(getattr(row, "DateRemoved", None))
+        if removed is None:
+            removed = ""
+
+        keys.append(f"{pointid}|{serial}|{installed}|{removed}")
+    return pd.Series(keys, dtype=object)
+
+
+def _equipment_destination_series(session) -> pd.Series:
+    sql = (
+        select(
+            Thing.name.label("point_id"),
+            Sensor.serial_no.label("serial_no"),
+            Deployment.installation_date.label("installed"),
+            Deployment.removal_date.label("removed"),
+        )
+        .select_from(Deployment)
+        .join(Thing, Deployment.thing_id == Thing.id)
+        .join(Sensor, Deployment.sensor_id == Sensor.id)
+        .where(Thing.name.is_not(None))
+        .where(Sensor.serial_no.is_not(None))
+    )
+    rows = session.execute(sql).all()
+    if not rows:
+        return pd.Series([], dtype=object)
+    pointid = pd.Series([_normalize_key(r.point_id) or "" for r in rows], dtype=object)
+    serial = pd.Series([_normalize_key(r.serial_no) or "" for r in rows], dtype=object)
+    installed = pd.Series(
+        [_normalize_date_like(r.installed) for r in rows], dtype=object
+    )
+    removed = pd.Series([_normalize_date_like(r.removed) for r in rows], dtype=object)
+    return pointid + "|" + serial + "|" + installed + "|" + removed
+
+
 class TransferResultsBuilder:
     """Compare transfer input CSV keys to destination database keys per transfer."""
 
@@ -87,29 +195,45 @@ class TransferResultsBuilder:
         elif spec.transfer_name == "WellData":
             comparison_df = self._agreed_welldata_df()
 
-        source_series = _normalized_series(comparison_df, spec.source_key_column)
+        if spec.transfer_name == "Equipment":
+            source_series = _equipment_source_series(comparison_df)
+        else:
+            source_series = _normalized_series(comparison_df, spec.source_key_column)
         source_keys = set(source_series.unique().tolist())
         source_keyed_row_count = int(source_series.shape[0])
         source_duplicate_key_row_count = source_keyed_row_count - len(source_keys)
         agreed_transfer_row_count = int(len(comparison_df))
 
         model = spec.destination_model
-        key_col = getattr(model, spec.destination_key_column)
+        destination_model_name = model.__name__
+        destination_key_column = spec.destination_key_column
         with session_ctx() as session:
-            key_sql = select(key_col).where(key_col.is_not(None))
-            count_sql = select(func.count()).select_from(model)
+            if spec.transfer_name == "Equipment":
+                count_sql = select(func.count()).select_from(Deployment)
+                count_sql = count_sql.join(Thing, Deployment.thing_id == Thing.id)
+                count_sql = count_sql.join(Sensor, Deployment.sensor_id == Sensor.id)
+                count_sql = count_sql.where(Thing.name.is_not(None))
+                count_sql = count_sql.where(Sensor.serial_no.is_not(None))
+                destination_series = _equipment_destination_series(session)
+                destination_row_count = int(session.execute(count_sql).scalar_one())
+                destination_model_name = "Deployment"
+                destination_key_column = "thing.name|sensor.serial_no|deployment.installation_date|deployment.removal_date"
+            else:
+                key_col = _model_column(model, spec.destination_key_column)
+                key_sql = select(key_col).where(key_col.is_not(None))
+                count_sql = select(func.count()).select_from(model)
 
-            if spec.destination_where:
-                where_clause = spec.destination_where(model)
-                key_sql = key_sql.where(where_clause)
-                count_sql = count_sql.where(where_clause)
+                if spec.destination_where:
+                    where_clause = spec.destination_where(model)
+                    key_sql = key_sql.where(where_clause)
+                    count_sql = count_sql.where(where_clause)
 
-            raw_dest_keys = session.execute(key_sql).scalars().all()
-            destination_row_count = int(session.execute(count_sql).scalar_one())
+                raw_dest_keys = session.execute(key_sql).scalars().all()
+                destination_series = pd.Series(
+                    [_normalize_key(v) for v in raw_dest_keys], dtype=object
+                ).dropna()
+                destination_row_count = int(session.execute(count_sql).scalar_one())
 
-        destination_series = pd.Series(
-            [_normalize_key(v) for v in raw_dest_keys], dtype=object
-        ).dropna()
         if destination_series.empty:
             destination_series = pd.Series([], dtype=object)
         else:
@@ -123,13 +247,18 @@ class TransferResultsBuilder:
 
         missing = sorted(source_keys - destination_keys)
         extra = sorted(destination_keys - source_keys)
+        transferred_agreed_row_count = int(source_series.isin(destination_keys).sum())
+        missing_agreed_row_count = max(
+            agreed_transfer_row_count - transferred_agreed_row_count,
+            0,
+        )
 
         return spec.result_cls(
             transfer_name=spec.transfer_name,
             source_csv=spec.source_csv,
             source_key_column=spec.source_key_column,
-            destination_model=model.__name__,
-            destination_key_column=spec.destination_key_column,
+            destination_model=destination_model_name,
+            destination_key_column=destination_key_column,
             source_row_count=len(source_df),
             agreed_transfer_row_count=agreed_transfer_row_count,
             source_keyed_row_count=source_keyed_row_count,
@@ -142,6 +271,8 @@ class TransferResultsBuilder:
             matched_key_count=len(source_keys & destination_keys),
             missing_in_destination_count=len(missing),
             extra_in_destination_count=len(extra),
+            transferred_agreed_row_count=transferred_agreed_row_count,
+            missing_agreed_row_count=missing_agreed_row_count,
             missing_in_destination_sample=missing[: self.sample_limit],
             extra_in_destination_sample=extra[: self.sample_limit],
         )

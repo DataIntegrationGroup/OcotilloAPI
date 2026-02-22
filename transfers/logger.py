@@ -21,14 +21,20 @@ from pathlib import Path
 
 from services.gcs_helper import get_storage_bucket
 
-root = Path("logs")
-if not os.getcwd().endswith("transfers"):
-    root = Path("transfers") / root
+_context = os.environ.get("OCO_LOG_CONTEXT", "transfer").strip().lower() or "transfer"
 
-if not os.path.exists(root):
-    os.mkdir(root)
+if _context == "cli":
+    root = Path("cli") / "logs"
+    _prefix = "cli"
+else:
+    root = Path("logs")
+    if not os.getcwd().endswith("transfers"):
+        root = Path("transfers") / root
+    _prefix = "transfer"
 
-log_filename = f"transfer_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
+root.mkdir(parents=True, exist_ok=True)
+
+log_filename = f"{_prefix}_{datetime.now():%Y-%m-%dT%H_%M_%S}.log"
 log_path = root / log_filename
 
 
@@ -53,9 +59,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 def save_log_to_bucket():
     bucket = get_storage_bucket()
-    blob = bucket.blob(f"transfer_logs/{log_filename}")
+    bucket_folder = "transfer_logs" if _context != "cli" else "cli_logs"
+    blob = bucket.blob(f"{bucket_folder}/{log_filename}")
     blob.upload_from_filename(log_path)
-    logger.info(f"Uploaded log to gs://{bucket.name}/transfer_logs/{log_filename}")
+    logger.info(f"Uploaded log to gs://{bucket.name}/{bucket_folder}/{log_filename}")
 
 
 # ============= EOF =============================================

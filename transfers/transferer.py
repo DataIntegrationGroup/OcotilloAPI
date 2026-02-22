@@ -329,16 +329,6 @@ class ChemistryTransferer(Transferer):
         parsed_sample_pt_ids = df["SamplePtID"].map(self._uuid_val)
         mask = parsed_sample_pt_ids.isin(valid_sample_pt_ids)
         filtered_df = df[mask].copy()
-        inverted_df = df[~mask].copy()
-        if not inverted_df.empty:
-            for _, row in inverted_df.iterrows():
-                sample_pt_id = row.get("SamplePtID")
-                self._capture_error(
-                    sample_pt_id,
-                    f"No matching ChemistrySampleInfo for SamplePtID: {sample_pt_id}",
-                    "SamplePtID",
-                )
-
         after_count = len(filtered_df)
 
         if before_count > after_count:

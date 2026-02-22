@@ -22,6 +22,8 @@ class TransferResult:
     matched_key_count: int = 0
     missing_in_destination_count: int = 0
     extra_in_destination_count: int = 0
+    transferred_agreed_row_count: int = 0
+    missing_agreed_row_count: int = 0
     missing_in_destination_sample: list[str] = field(default_factory=list)
     extra_in_destination_sample: list[str] = field(default_factory=list)
 

@@ -7,7 +7,7 @@ from schemas.sensor import SensorResponse
 class DeploymentResponse(BaseResponseModel):
     thing_id: int
     sensor: SensorResponse
-    installation_date: date
+    installation_date: date | None
     removal_date: date | None
     recording_interval: int | None
     recording_interval_units: str | None

@@ -37,7 +37,6 @@ from db import (
 from db.engine import session_ctx
 from transfers.contact_transfer import (
     _get_organization,
-    _make_name,
     _safe_make_name,
     _select_ownerkey_col,
 )
@@ -78,9 +77,12 @@ from transfers.transfer_results_types import (
     WellScreensTransferResult,
 )
 from transfers.util import (
+    filter_non_transferred_wells,
     filter_by_valid_measuring_agency,
     filter_to_valid_point_ids,
+    get_transferable_wells,
     get_transfers_data_path,
+    lexicon_mapper,
     read_csv,
     replace_nans,
 )
@@ -181,7 +183,85 @@ def _waterlevels_filter(df: pd.DataFrame) -> pd.DataFrame:
     cleaned_df = replace_nans(df.copy())
     cleaned_df = filter_to_valid_point_ids(cleaned_df)
     cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
+
+    # Mirror WaterLevelTransferer behavior for observation creation:
+    # rows whose mapped LevelStatus indicates a destroyed well only create
+    # FieldEvent notes and intentionally do not create observations.
+    def _is_destroyed(level_status: Any) -> bool:
+        if pd.isna(level_status):
+            return False
+
+        value = level_status
+        if value == "X?":
+            value = "X"
+        mapped = lexicon_mapper.map_value(f"LU_LevelStatus:{value}")
+        return (
+            mapped
+            == "Well was destroyed (no subsequent water levels should be recorded)"
+        )
+
+    if "LevelStatus" in cleaned_df.columns:
+        cleaned_df = cleaned_df[~cleaned_df["LevelStatus"].map(_is_destroyed)]
+
     return cleaned_df
+
+
+def _equipment_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror SensorTransferer._get_dfs filtering stage.
+    cleaned_df = df.copy()
+    cleaned_df.columns = cleaned_df.columns.str.replace(" ", "_")
+    if "SerialNo" in cleaned_df.columns:
+        cleaned_df = cleaned_df[cleaned_df["SerialNo"].notna()]
+    else:
+        return cleaned_df.iloc[0:0]
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
+    cleaned_df = replace_nans(cleaned_df)
+    return cleaned_df
+
+
+def _wellscreens_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror WellChunkTransferer._get_dfs used by WellScreenTransferer.
+    cleaned_df = replace_nans(df.copy())
+    cleaned_df = filter_to_valid_point_ids(cleaned_df)
+    return cleaned_df
+
+
+def _welldata_filter(df: pd.DataFrame) -> pd.DataFrame:
+    # Mirror WellTransferer._get_dfs filtering stage.
+    if "LocationId" not in df.columns:
+        return df.iloc[0:0]
+
+    cleaned_df = df.copy()
+    ldf = read_csv("Location")
+    ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1, errors="ignore")
+    cleaned_df = cleaned_df.join(ldf.set_index("LocationId"), on="LocationId")
+
+    if "SiteType" in cleaned_df.columns:
+        cleaned_df = cleaned_df[cleaned_df["SiteType"] == "GW"]
+    else:
+        return cleaned_df.iloc[0:0]
+
+    if "Easting" in cleaned_df.columns and "Northing" in cleaned_df.columns:
+        cleaned_df = cleaned_df[
+            cleaned_df["Easting"].notna() & cleaned_df["Northing"].notna()
+        ]
+    else:
+        return cleaned_df.iloc[0:0]
+
+    cleaned_df = replace_nans(cleaned_df)
+    cleaned_df = get_transferable_wells(cleaned_df)
+    cleaned_df = filter_non_transferred_wells(cleaned_df)
+
+    if "PointID" not in cleaned_df.columns:
+        return cleaned_df.iloc[0:0]
+
+    # Match WellTransferer behavior: skip every duplicated PointID.
+    dupes = cleaned_df["PointID"].duplicated(keep=False)
+    if dupes.any():
+        dup_ids = set(cleaned_df.loc[dupes, "PointID"])
+        cleaned_df = cleaned_df[~cleaned_df["PointID"].isin(dup_ids)]
+
+    return cleaned_df.sort_values(by=["PointID"])
 
 
 def _stratigraphy_filter(df: pd.DataFrame) -> pd.DataFrame:
@@ -379,6 +459,7 @@ def _ownersdata_agreed_filter(df: pd.DataFrame) -> pd.DataFrame:
             getattr(row, "LastName", None),
             owner_key,
             organization,
+            fallback_suffix="primary",
         )
         _record_new_contact(owner_key, "Primary", primary_name, organization)
 
@@ -391,9 +472,12 @@ def _ownersdata_agreed_filter(df: pd.DataFrame) -> pd.DataFrame:
             ]
         )
         if has_secondary_input:
-            secondary_name = _make_name(
+            secondary_name = _safe_make_name(
                 getattr(row, "SecondFirstName", None),
                 getattr(row, "SecondLastName", None),
+                owner_key,
+                organization,
+                fallback_suffix="secondary",
             )
             _record_new_contact(owner_key, "Secondary", secondary_name, organization)
 
@@ -408,6 +492,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "WellID",
         Thing,
         "nma_pk_welldata",
+        agreed_filter=_welldata_filter,
         destination_where=lambda m: m.thing_type == "water well",
     ),
     TransferComparisonSpec(
@@ -417,6 +502,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         WellScreen,
         "nma_pk_wellscreens",
+        agreed_filter=_wellscreens_filter,
         option_field="transfer_screens",
     ),
     TransferComparisonSpec(
@@ -447,6 +533,7 @@ TRANSFER_COMPARISON_SPECS: list[TransferComparisonSpec] = [
         "GlobalID",
         Sensor,
         "nma_pk_equipment",
+        agreed_filter=_equipment_filter,
         option_field="transfer_sensors",
     ),
     TransferComparisonSpec(

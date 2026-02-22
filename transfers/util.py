@@ -126,6 +126,7 @@ class MeasuringPointEstimator:
                 # try to estimate mpheight from measurements
                 for m in df.itertuples():
                     mphi = m.DepthToWater - m.DepthToWaterBGS
+                    mphi = _round_sig_figs(mphi, 2)
                     start_date = m.DateMeasured
                     if mphi not in mphs:
                         if notna(mphi):
@@ -153,6 +154,28 @@ class MeasuringPointEstimator:
             end_dates.append(None)
 
         return mphs, mph_descs, start_dates, end_dates
+
+
+def _round_sig_figs(value: float, sig_figs: int) -> float:
+    if value is None:
+        return value
+    try:
+        if pd.isna(value):
+            return value
+    except TypeError:
+        pass
+
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return value
+
+    if not math.isfinite(numeric):
+        return value
+
+    if numeric == 0:
+        return 0.0
+    return round(numeric, sig_figs - int(math.floor(math.log10(abs(numeric)))) - 1)
 
 
 def _get_defined_recording_interval(pointid: str) -> tuple[int, str] | None:

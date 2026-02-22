@@ -37,7 +37,7 @@ class MeasuringPointHistory(Base, AutoBaseMixin, ReleaseMixin):
     # --- Columns ---
     measuring_point_height: Mapped[float] = mapped_column(
         Numeric,
-        nullable=False,
+        nullable=True,
         comment="The official, surveyed height of the measuring point relative to ground surface (in feet).",
     )
     measuring_point_description: Mapped[str] = mapped_column(

@@ -188,9 +188,12 @@ class WellTransferer(Transferer):
         all_errors = []
         errors_lock = threading.Lock()
         aquifers_lock = threading.Lock()
+        progress_lock = threading.Lock()
+        transferred_count = 0
 
         def process_batch(batch_idx: int, batch_df: pd.DataFrame) -> dict:
             """Process a batch of wells in a separate thread with its own session."""
+            nonlocal transferred_count
             batch_errors = []
             batch_start = time.time()
 
@@ -206,7 +209,7 @@ class WellTransferer(Transferer):
                     for i, row in enumerate(batch_df.itertuples()):
                         try:
                             # Process single well with all dependent objects
-                            self._step_parallel_complete(
+                            transferred = self._step_parallel_complete(
                                 session,
                                 row,
                                 local_aquifers,
@@ -214,6 +217,15 @@ class WellTransferer(Transferer):
                                 batch_errors,
                                 aquifers_lock,
                             )
+                            if transferred:
+                                with progress_lock:
+                                    transferred_count += 1
+                                    logger.info(
+                                        "[%s/%s] Transferred PointID=%s",
+                                        transferred_count,
+                                        n,
+                                        row.PointID,
+                                    )
                         except Exception as e:
                             self._log_exception(
                                 getattr(row, "PointID", "Unknown"),
@@ -321,12 +333,19 @@ class WellTransferer(Transferer):
 
         if isna(cu):
             return []
+
+        cu = cu.strip()
+        if not cu:
+            return []
         else:
             purposes = []
             for cui in cu:
                 if cui == "A":
                     # skip "Open, unequipped well" as that gets mapped to the status_history table
                     continue
+                if cui == ",":
+                    continue
+
                 p = self._get_lexicon_value(row, f"LU_CurrentUse:{cui}")
                 if p is not None:
                     purposes.append(p)
@@ -718,6 +737,7 @@ class WellTransferer(Transferer):
 
     def _add_histories(self, session: Session, row, well: Thing) -> None:
         mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+        added_measuring_point = False
         for mph, mph_desc, start_date, end_date in zip(*mphs):
             session.add(
                 MeasuringPointHistory(
@@ -726,6 +746,21 @@ class WellTransferer(Transferer):
                     measuring_point_description=mph_desc,
                     start_date=start_date,
                     end_date=end_date,
+                )
+            )
+            added_measuring_point = True
+
+        # Preserve transfer intent even when no MP height can be measured/estimated.
+        if not added_measuring_point:
+            raw_desc = getattr(row, "MeasuringPoint", None)
+            mp_desc = None if isna(raw_desc) else raw_desc
+            session.add(
+                MeasuringPointHistory(
+                    thing_id=well.id,
+                    measuring_point_height=None,
+                    measuring_point_description=mp_desc,
+                    start_date=datetime.now(tz=UTC).date(),
+                    end_date=None,
                 )
             )
 
@@ -810,22 +845,22 @@ class WellTransferer(Transferer):
         local_formations: dict,
         batch_errors: list,
         aquifers_lock: threading.Lock,
-    ):
+    ) -> bool:
         """
         Process a single well with ALL dependent objects in one pass.
         Combines _step_parallel and _after_hook_chunk for maximum parallelization.
         """
         payload = self._build_well_payload(row)
         if not payload:
-            return
+            return False
 
         well = self._persist_well(session, row, payload, batch_errors)
         if well is None:
-            return
+            return False
 
         location_result = self._persist_location(session, row, batch_errors)
         if not location_result:
-            return
+            return False
         location, elevation_method, location_note_payload = location_result
 
         assoc = LocationThingAssociation(
@@ -873,6 +908,7 @@ class WellTransferer(Transferer):
             session, row, well, location, location_note_payload, elevation_method
         )
         self._add_histories(session, row, well)
+        return True
 
     def _get_lexicon_value_safe(self, row, value, default, errors_list):
         """Thread-safe version of _get_lexicon_value."""
@@ -1028,7 +1064,6 @@ class WellScreenTransferer(WellChunkTransferer):
             "thing_id": db_item.id,
             "screen_depth_top": row.ScreenTop,
             "screen_depth_bottom": row.ScreenBottom,
-            # "screen_type": row.ScreenType,
             "screen_description": row.ScreenDescription,
             "release_status": "draft",
             "nma_pk_wellscreens": row.GlobalID,
@@ -1037,26 +1072,11 @@ class WellScreenTransferer(WellChunkTransferer):
             # TODO: add validation logic here to ensure no overlapping screens for the same well
             CreateWellScreen.model_validate(well_screen_data)
         except ValidationError as e:
-            logger.critical(
-                f"Validation error for row {i} with PointID {row.PointID}: {e.errors()}"
-            )
             self._capture_validation_error(row.PointID, e)
             return
 
         well_screen = WellScreen(**well_screen_data)
         session.add(well_screen)
-
-
-# def transfer_wells(flags: dict = None):
-#     transferer = WellTransferer(flags=flags)
-#     transferer.transfer()
-#     return transferer.input_df, transferer.cleaned_df, transferer.errors
-#
-#
-# def transfer_wellscreens(flags: dict = None):
-#     transferer = WellScreenTransferer(flags=flags)
-#     transferer.chunk_transfer()
-#     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
 
 # ============= EOF =============================================
