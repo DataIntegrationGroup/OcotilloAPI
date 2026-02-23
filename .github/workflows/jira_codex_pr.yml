@@ -249,7 +249,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/codex-home"
 
       - name: Run Codex to implement ticket
-        uses: openai/codex-action@94bb7a052e529936e5260a35838e61b190855739 # v1
+        uses: openai/codex-action@086169432f1d2ab2f4057540b1754d550f6a1189 # v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           codex-home: ${{ runner.temp }}/codex-home
