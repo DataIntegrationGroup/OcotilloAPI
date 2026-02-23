@@ -330,9 +330,6 @@ def _add_first_contact(
         contact_by_name_org,
     )
 
-    if not new:
-        return None
-
     if row.Email:
         raw_email = str(row.Email).strip()
         if _looks_like_phone_in_email_field(raw_email):
@@ -349,9 +346,9 @@ def _add_first_contact(
             )
             if phone:
                 if complete:
-                    contact.phones.append(phone)
+                    _append_phone_if_missing(contact, phone)
                 else:
-                    contact.incomplete_nma_phones.append(phone)
+                    _append_incomplete_phone_if_missing(contact, phone)
         else:
             email = _make_email(
                 "first",
@@ -361,7 +358,7 @@ def _add_first_contact(
                 release_status=release_status,
             )
             if email:
-                contact.emails.append(email)
+                _append_email_if_missing(contact, email)
 
     if row.Phone:
         phone, complete = _make_phone(
@@ -373,9 +370,9 @@ def _add_first_contact(
         )
         if phone:
             if complete:
-                contact.phones.append(phone)
+                _append_phone_if_missing(contact, phone)
             else:
-                contact.incomplete_nma_phones.append(phone)
+                _append_incomplete_phone_if_missing(contact, phone)
 
     if row.CellPhone:
         phone, complete = _make_phone(
@@ -387,9 +384,9 @@ def _add_first_contact(
         )
         if phone:
             if complete:
-                contact.phones.append(phone)
+                _append_phone_if_missing(contact, phone)
             else:
-                contact.incomplete_nma_phones.append(phone)
+                _append_incomplete_phone_if_missing(contact, phone)
 
     if row.MailingAddress:
         address = _make_address(
@@ -404,7 +401,7 @@ def _add_first_contact(
             release_status=release_status,
         )
         if address:
-            contact.addresses.append(address)
+            _append_address_if_missing(contact, address)
 
     if row.PhysicalAddress:
         address = _make_address(
@@ -419,9 +416,9 @@ def _add_first_contact(
             release_status=release_status,
         )
         if address:
-            contact.addresses.append(address)
+            _append_address_if_missing(contact, address)
 
-    return contact
+    return contact if new else None
 
 
 def _safe_make_name(
@@ -452,7 +449,7 @@ def _add_second_contact(
     added: set[tuple[str | None, str | None]],
     contact_by_owner_type: dict[tuple[str, str], Contact],
     contact_by_name_org: dict[tuple[str | None, str | None], Contact],
-) -> None:
+) -> Contact | None:
     if all(
         [
             getattr(row, f"Second{f}") is None
@@ -492,9 +489,6 @@ def _add_second_contact(
         contact_by_owner_type,
         contact_by_name_org,
     )
-    if not new:
-        return
-
     if row.SecondCtctEmail:
         raw_email = str(row.SecondCtctEmail).strip()
         if _looks_like_phone_in_email_field(raw_email):
@@ -511,9 +505,9 @@ def _add_second_contact(
             )
             if phone:
                 if complete:
-                    contact.phones.append(phone)
+                    _append_phone_if_missing(contact, phone)
                 else:
-                    contact.incomplete_nma_phones.append(phone)
+                    _append_incomplete_phone_if_missing(contact, phone)
         else:
             email = _make_email(
                 "second",
@@ -523,7 +517,7 @@ def _add_second_contact(
                 release_status=release_status,
             )
             if email:
-                contact.emails.append(email)
+                _append_email_if_missing(contact, email)
 
     if row.SecondCtctPhone:
         phone, complete = _make_phone(
@@ -535,9 +529,11 @@ def _add_second_contact(
         )
         if phone:
             if complete:
-                contact.phones.append(phone)
+                _append_phone_if_missing(contact, phone)
             else:
-                contact.incomplete_nma_phones.append(phone)
+                _append_incomplete_phone_if_missing(contact, phone)
+
+    return contact if new else None
 
 
 # helpers
@@ -633,6 +629,68 @@ def _make_address(first_second: str, ownerkey: str, kind: str, **kw) -> Address 
         )
 
 
+def _norm_text(value) -> str:
+    return str(value).strip().casefold() if value is not None else ""
+
+
+def _phone_digits(value) -> str:
+    if value is None:
+        return ""
+    return re.sub(r"\D", "", str(value))
+
+
+def _append_email_if_missing(contact: Contact, email: Email) -> None:
+    new_key = (_norm_text(email.email), _norm_text(email.email_type))
+    existing = {
+        (_norm_text(e.email), _norm_text(e.email_type)) for e in (contact.emails or [])
+    }
+    if new_key not in existing:
+        contact.emails.append(email)
+
+
+def _append_phone_if_missing(contact: Contact, phone: Phone) -> None:
+    new_key = (_phone_digits(phone.phone_number), _norm_text(phone.phone_type))
+    existing = {
+        (_phone_digits(p.phone_number), _norm_text(p.phone_type))
+        for p in (contact.phones or [])
+    }
+    if new_key not in existing:
+        contact.phones.append(phone)
+
+
+def _append_incomplete_phone_if_missing(
+    contact: Contact, phone: IncompleteNMAPhone
+) -> None:
+    new_key = _phone_digits(phone.phone_number)
+    existing = {
+        _phone_digits(p.phone_number) for p in (contact.incomplete_nma_phones or [])
+    }
+    if new_key not in existing:
+        contact.incomplete_nma_phones.append(phone)
+
+
+def _append_address_if_missing(contact: Contact, address: Address) -> None:
+    new_key = (
+        _norm_text(address.address_line_1),
+        _norm_text(address.city),
+        _norm_text(address.state),
+        _norm_text(address.postal_code),
+        _norm_text(address.address_type),
+    )
+    existing = {
+        (
+            _norm_text(a.address_line_1),
+            _norm_text(a.city),
+            _norm_text(a.state),
+            _norm_text(a.postal_code),
+            _norm_text(a.address_type),
+        )
+        for a in (contact.addresses or [])
+    }
+    if new_key not in existing:
+        contact.addresses.append(address)
+
+
 def _make_contact_and_assoc(
     session: Session,
     data: dict,
@@ -646,13 +704,17 @@ def _make_contact_and_assoc(
 
     owner_key = data.get("nma_pk_owners")
     contact_type = data.get("contact_type")
+    organization = data.get("organization")
+    # Prefer owner-key/type identity. Allow name/org reuse when organization is
+    # present (stable identity) or when owner key is unavailable.
+    allow_name_org_fallback = (not bool(owner_key)) or bool(organization)
     if owner_key and contact_type:
         contact = contact_by_owner_type.get((owner_key, contact_type))
         if contact is not None:
             new_contact = False
 
     name_org_key = (data["name"], data["organization"])
-    if contact is None and name_org_key in added:
+    if contact is None and allow_name_org_fallback:
         contact = contact_by_name_org.get(name_org_key)
         if contact is not None:
             new_contact = False
@@ -664,15 +726,28 @@ def _make_contact_and_assoc(
         contact_data = contact.model_dump(exclude=["thing_id", "notes"])
         contact = Contact(**contact_data)
         session.add(contact)
-        if owner_key and contact_type:
-            contact_by_owner_type[(owner_key, contact_type)] = contact
         contact_by_name_org[name_org_key] = contact
         added.add(name_org_key)
 
-    assoc = ThingContactAssociation()
-    assoc.thing = thing
-    assoc.contact = contact
-    session.add(assoc)
+    if owner_key and contact_type:
+        contact_by_owner_type[(owner_key, contact_type)] = contact
+
+    assoc_exists = False
+    if contact.id is not None:
+        assoc_exists = (
+            session.query(ThingContactAssociation.id)
+            .filter(
+                ThingContactAssociation.thing_id == thing.id,
+                ThingContactAssociation.contact_id == contact.id,
+            )
+            .first()
+            is not None
+        )
+    if not assoc_exists:
+        assoc = ThingContactAssociation()
+        assoc.thing = thing
+        assoc.contact = contact
+        session.add(assoc)
 
     return contact, new_contact
 

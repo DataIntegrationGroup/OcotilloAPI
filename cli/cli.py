@@ -44,6 +44,11 @@ class ThemeMode(str, Enum):
     dark = "dark"
 
 
+class SmokePopulation(str, Enum):
+    all = "all"
+    agreed = "agreed"
+
+
 def _resolve_theme(theme: ThemeMode) -> ThemeMode:
     if theme != ThemeMode.auto:
         return theme
@@ -276,6 +281,107 @@ def compare_duplicated_welldata(
             f"- {row.pointid}: rows={row.duplicate_row_count}, "
             f"differing_columns={row.differing_column_count}"
         )
+
+
+@cli.command("well-smoke-test")
+def well_smoke_test(
+    sample_size: int = typer.Option(
+        25,
+        "--sample-size",
+        min=1,
+        help="Number of wells to sample.",
+    ),
+    population: SmokePopulation = typer.Option(
+        SmokePopulation.agreed,
+        "--population",
+        help="Sample from all wells or transfer-agreed wells.",
+    ),
+    all_wells: bool = typer.Option(
+        False,
+        "--all-wells/--sampled",
+        help="Check all wells in the selected population instead of sampling.",
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        help="Random seed for deterministic sampling.",
+    ),
+    detail_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "well_smoke_test_detail.csv",
+        "--detail-path",
+        help="Output CSV path for per-well per-entity smoke-test rows.",
+    ),
+    summary_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "well_smoke_test_summary.json",
+        "--summary-path",
+        help="Output JSON path for smoke-test summary.",
+    ),
+    fail_on_mismatch: bool = typer.Option(
+        False,
+        "--fail-on-mismatch/--no-fail-on-mismatch",
+        help="Exit with code 1 if any mismatches are found.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from transfers.smoke_test import (
+        SmokePopulation as SmokePopulationModel,
+        run_well_smoke_test,
+        write_smoke_outputs,
+    )
+
+    payload = run_well_smoke_test(
+        sample_size=sample_size,
+        population=SmokePopulationModel(population.value),
+        seed=seed,
+        all_wells=all_wells,
+    )
+    write_smoke_outputs(payload, detail_path=detail_path, summary_path=summary_path)
+
+    sampled_wells = payload.get("sampled_wells", 0)
+    mismatch_count = payload.get("mismatch_count", 0)
+    value_mismatch_count = payload.get("value_mismatch_count", 0)
+    fail_count = payload.get("well_fail_count", 0)
+    typer.echo(
+        f"Smoke test complete: sampled_wells={sampled_wells}, "
+        f"presence_mismatches={mismatch_count}, "
+        f"value_mismatches={value_mismatch_count}, "
+        f"failed_wells={fail_count}"
+    )
+    typer.echo(f"Wrote detail: {detail_path}")
+    typer.echo(f"Wrote summary: {summary_path}")
+
+    if mismatch_count or value_mismatch_count:
+        failed_wells = payload.get("failed_wells", [])[:20]
+        typer.echo(f"Sample failed wells (up to 20): {failed_wells}")
+
+    if value_mismatch_count:
+        entity_results = payload.get("entity_results", [])
+        value_mismatches = [
+            r
+            for r in entity_results
+            if r.get("value_status") not in {"MATCH", "NOT_APPLICABLE"}
+        ]
+        typer.echo("\nValue mismatches:")
+        for row in value_mismatches[:100]:
+            pointid = row.get("pointid")
+            entity = row.get("entity")
+            status = row.get("value_status")
+            missing = row.get("missing_value_sample") or []
+            extra = row.get("extra_value_sample") or []
+            typer.echo(
+                f"- {pointid} | {entity} | {status} | "
+                f"missing={missing[:3]} | extra={extra[:3]}"
+            )
+        if len(value_mismatches) > 100:
+            typer.echo(
+                f"... truncated {len(value_mismatches) - 100} additional value mismatches"
+            )
+
+    if mismatch_count or value_mismatch_count:
+        if fail_on_mismatch:
+            raise typer.Exit(code=1)
 
 
 @cli.command("well-inventory-csv")
