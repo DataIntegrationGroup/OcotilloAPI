@@ -18,13 +18,15 @@ from __future__ import annotations
 import textwrap
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
+
+from sqlalchemy import select
+from typer.testing import CliRunner
 
 from cli.cli import cli
 from cli.service_adapter import WellInventoryResult
 from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
-from sqlalchemy import select
-from typer.testing import CliRunner
 
 
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
@@ -93,6 +95,50 @@ def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     assert Path(captured["path"]) == inventory_file
     assert "[WELL INVENTORY IMPORT] SUCCESS" in result.output
+
+
+def test_transfer_results_command_writes_summary(monkeypatch, tmp_path):
+    captured: dict[str, object] = {}
+
+    class FakeBuilder:
+        def __init__(self, sample_limit: int = 25):
+            captured["sample_limit"] = sample_limit
+
+        def build(self):
+            captured["built"] = True
+            return SimpleNamespace(
+                results={"WellData": object(), "WaterLevels": object()}
+            )
+
+        @staticmethod
+        def write_summary(path, comparison):
+            captured["summary_path"] = Path(path)
+            captured["result_count"] = len(comparison.results)
+
+    monkeypatch.setattr(
+        "transfers.transfer_results_builder.TransferResultsBuilder", FakeBuilder
+    )
+
+    summary_path = tmp_path / "metrics" / "summary.md"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "transfer-results",
+            "--summary-path",
+            str(summary_path),
+            "--sample-limit",
+            "11",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured["sample_limit"] == 11
+    assert captured["built"] is True
+    assert captured["summary_path"] == summary_path
+    assert captured["result_count"] == 2
+    assert f"Wrote comparison summary: {summary_path}" in result.output
+    assert "Transfer comparisons: 2" in result.output
 
 
 def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_path):

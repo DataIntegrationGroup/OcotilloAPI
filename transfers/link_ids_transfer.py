@@ -16,8 +16,10 @@
 import re
 
 import pandas as pd
+from sqlalchemy import insert
 
 from db import Thing, ThingIdLink
+from transfers.transferer import chunk_by_size
 from transfers.util import (
     filter_to_valid_point_ids,
     logger,
@@ -31,47 +33,78 @@ from transfers.well_transfer import WellChunkTransferer
 class LinkIdsWellDataTransferer(WellChunkTransferer):
     source_table = "WellData"
     source_dtypes = {"OSEWellID": str, "OSEWelltagID": str}
+    _ose_wellid_regex = re.compile(r"^[A-Z]{1,3}-\d{3,6}$")
 
-    def _chunk_step(self, session, dr, i, row, db_item):
-        if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
-            return
+    def _transfer_hook(self, session):
+        df = self._get_df_to_iterate()
+        for ci, chunk in enumerate(chunk_by_size(df, self.chunk_size)):
+            thing_id_by_pointid = {
+                name: thing_id
+                for name, thing_id in session.query(Thing.name, Thing.id)
+                .filter(Thing.name.in_(chunk.PointID.tolist()))
+                .all()
+            }
+            logger.info(
+                "Processing LinkIdsWellData chunk %s, %s rows, %s db items",
+                ci,
+                len(chunk),
+                len(thing_id_by_pointid),
+            )
 
-        for aid, klass, regex in (
-            (row.OSEWellID, "OSEPOD", r"^[A-Z]{1,3}-\d{3,6}"),
-            (
-                row.OSEWelltagID,
-                "OSEWellTagID",
-                r"",
-            ),  # TODO: need to figure out regex for this field
-        ):
-            if pd.isna(aid):
-                # logger.warning(f"{klass} is null for {row.PointID}")
-                continue
+            rows_to_insert: list[dict] = []
+            for row in chunk.itertuples(index=False):
+                thing_id = thing_id_by_pointid.get(row.PointID)
+                if thing_id is None:
+                    self._missing_db_item_warning(row)
+                    continue
 
-            # RULE: exclude any id that == 'X', '?'
-            if aid.strip().lower() in ("x", "?", "exempt"):
-                logger.critical(
-                    f'{klass} is "X", "?", or "exempt", id={aid} for {row.PointID}'
-                )
-                continue
+                if pd.isna(row.OSEWellID) and pd.isna(row.OSEWelltagID):
+                    continue
 
-            if regex and not re.match(regex, aid):
-                logger.critical(
-                    f"{klass} id does not match regex {regex}, id={aid} for {row.PointID}"
-                )
-                continue
+                for aid, relation, regex in (
+                    (row.OSEWellID, "OSEPOD", self._ose_wellid_regex),
+                    (row.OSEWelltagID, "OSEWellTagID", None),
+                ):
+                    if pd.isna(aid):
+                        continue
 
-            # TODO: add guards for null values
-            link_id = ThingIdLink()
-            link_id.thing = db_item
-            link_id.relation = klass
-            link_id.alternate_id = aid
-            link_id.alternate_organization = "NMOSE"
+                    aid_text = str(aid).strip()
+                    if not aid_text:
+                        continue
 
-            # does link_id need a class  e.g.
-            # link_id.alternate_id_class = klass
+                    # RULE: exclude any id that == 'X', '?', or 'exempt'
+                    if aid_text.casefold() in ("x", "?", "exempt"):
+                        logger.critical(
+                            '%s is "X", "?", or "exempt", id=%s for %s',
+                            relation,
+                            aid_text,
+                            row.PointID,
+                        )
+                        continue
 
-            session.add(link_id)
+                    if regex and not regex.match(aid_text):
+                        logger.critical(
+                            "%s id does not match regex %s, id=%s for %s",
+                            relation,
+                            regex.pattern,
+                            aid_text,
+                            row.PointID,
+                        )
+                        continue
+
+                    rows_to_insert.append(
+                        {
+                            "thing_id": thing_id,
+                            "relation": relation,
+                            "alternate_id": aid_text,
+                            "alternate_organization": "NMOSE",
+                        }
+                    )
+
+            if rows_to_insert:
+                session.execute(insert(ThingIdLink), rows_to_insert)
+            session.commit()
+            session.expunge_all()
 
 
 class LinkIdsLocationDataTransferer(WellChunkTransferer):
@@ -105,31 +138,65 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
         cleaned_df = filter_to_valid_point_ids(ldf)
         return input_df, cleaned_df
 
+    def _transfer_hook(self, session):
+        df = self._get_df_to_iterate()
+        for ci, chunk in enumerate(chunk_by_size(df, self.chunk_size)):
+            thing_id_by_pointid = {
+                name: thing_id
+                for name, thing_id in session.query(Thing.name, Thing.id)
+                .filter(Thing.name.in_(chunk.PointID.tolist()))
+                .all()
+            }
+            logger.info(
+                "Processing LinkIdsLocationData chunk %s, %s rows, %s db items",
+                ci,
+                len(chunk),
+                len(thing_id_by_pointid),
+            )
+
+            rows_to_insert: list[dict] = []
+            for row in chunk.itertuples(index=False):
+                thing_id = thing_id_by_pointid.get(row.PointID)
+                if thing_id is None:
+                    self._missing_db_item_warning(row)
+                    continue
+
+                for func in (
+                    self._add_link_alternate_site_id,
+                    self._add_link_site_id,
+                    self._add_link_plss,
+                ):
+                    link_row = func(row, thing_id)
+                    if link_row:
+                        rows_to_insert.append(link_row)
+
+            if rows_to_insert:
+                session.execute(insert(ThingIdLink), rows_to_insert)
+            session.commit()
+            session.expunge_all()
+
     def _chunk_step(self, session, df, i, row, db_item):
-        logger.info(
-            f"Processing PointID: {row.PointID}, "
-            f"Thing ID: {db_item.id}, "
-            f"AlternateSiteID={row.AlternateSiteID}, "
-            f"AlternateSiteID2={row.AlternateSiteID2}"
-        )
+        # Kept for compatibility; bulk path uses _transfer_hook.
         for func in (
             self._add_link_alternate_site_id,
             self._add_link_site_id,
             self._add_link_plss,
         ):
-            link = func(row, db_item)
+            link = func(row, db_item.id)
             if link:
-                session.add(link)
+                session.execute(insert(ThingIdLink), [link])
 
-    def _add_link_alternate_site_id(self, row: pd.Series, thing: Thing):
+    def _add_link_alternate_site_id(self, row: pd.Series, thing_id: int):
         if not row.AlternateSiteID:
             return
 
         return _make_thing_id_link(
-            thing, row.AlternateSiteID, extract_organization(str(row.AlternateSiteID))
+            thing_id,
+            row.AlternateSiteID,
+            extract_organization(str(row.AlternateSiteID)),
         )
 
-    def _add_link_site_id(self, row, thing):
+    def _add_link_site_id(self, row, thing_id: int):
         if not row.SiteID:
             return
 
@@ -143,9 +210,9 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
             )
             return
 
-        return _make_thing_id_link(thing, row.SiteID, "USGS")
+        return _make_thing_id_link(thing_id, row.SiteID, "USGS")
 
-    def _add_link_plss(self, row, thing):
+    def _add_link_plss(self, row, thing_id: int):
         township = row.Township
         township_direction = row.TownshipDirection
         _range = row.Range
@@ -167,18 +234,18 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
             logger.critical(f"alternate id {alternate_id} is not a valid PLSS")
             return
 
-        return _make_thing_id_link(thing, alternate_id, "PLSS")
+        return _make_thing_id_link(thing_id, alternate_id, "PLSS")
 
 
 def _make_thing_id_link(
-    thing, alternate_id, alternate_organization, relation="same_as"
+    thing_id: int, alternate_id, alternate_organization, relation="same_as"
 ):
-    return ThingIdLink(
-        thing=thing,
-        relation=relation,
-        alternate_id=alternate_id,
-        alternate_organization=alternate_organization,
-    )
+    return {
+        "thing_id": thing_id,
+        "relation": relation,
+        "alternate_id": alternate_id,
+        "alternate_organization": alternate_organization,
+    }
 
 
 # ============= EOF =============================================

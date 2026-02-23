@@ -70,13 +70,17 @@ class SurfaceWaterDataTransferer(Transferer):
                 continue
             rows.append(record)
 
-        rows = self._dedupe_rows(rows, key="OBJECTID", include_missing=True)
-
         if skipped_missing_thing:
             logger.warning(
                 "Skipped %s SurfaceWaterData rows without matching Thing",
                 skipped_missing_thing,
             )
+
+        if not rows:
+            logger.info("No SurfaceWaterData rows to transfer")
+            return
+
+        rows = self._dedupe_rows(rows, key="OBJECTID", include_missing=True)
 
         insert_stmt = insert(NMA_SurfaceWaterData)
         excluded = insert_stmt.excluded
@@ -135,7 +139,9 @@ class SurfaceWaterDataTransferer(Transferer):
         thing_id = self._resolve_thing_id(location_id)
         if thing_id is None:
             logger.warning(
-                "Skipping SurfaceWaterData LocationId=%s - Thing not found",
+                "Skipping SurfaceWaterData OBJECTID=%s PointID=%s LocationId=%s - Thing not found",
+                val("OBJECTID"),
+                val("PointID"),
                 location_id,
             )
             return None

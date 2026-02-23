@@ -421,6 +421,7 @@
         "elevation_method",
         "sample_method",
         "coordinate_method",
+        "well_construction_method",
         "well_purpose",
         "status",
         "organization",
@@ -3701,6 +3702,13 @@
       ],
       "term": "Commonwealth Conservancy",
       "definition": "Commonwealth Conservancy"
+    },
+    {
+      "categories": [
+        "organization"
+      ],
+      "term": "Costilla MDWCA",
+      "definition": "Costilla MDWCA"
     },
     {
       "categories": [

@@ -54,6 +54,30 @@ def test_measuring_point_estimator_handles_missing_point(monkeypatch):
     assert mph_descs == []
 
 
+def test_measuring_point_estimator_rounds_estimated_height_to_two_sig_figs(monkeypatch):
+    monkeypatch.setattr(
+        "transfers.util.read_csv", lambda name: _mock_waterlevels_df().copy()
+    )
+    estimator = MeasuringPointEstimator()
+    row = SimpleNamespace(PointID="A", MPHeight=None, MeasuringPoint=None)
+
+    mphs, _, _, _ = estimator.estimate_measuring_point_height(row)
+
+    assert mphs[0] == 1.2
+
+
+def test_measuring_point_estimator_keeps_explicit_height_unrounded(monkeypatch):
+    monkeypatch.setattr(
+        "transfers.util.read_csv", lambda name: _mock_waterlevels_df().copy()
+    )
+    estimator = MeasuringPointEstimator()
+    row = SimpleNamespace(PointID="A", MPHeight=1.234, MeasuringPoint="top of casing")
+
+    mphs, _, _, _ = estimator.estimate_measuring_point_height(row)
+
+    assert mphs == [1.234]
+
+
 def _mock_waterlevels_df():
     return pd.DataFrame(
         {
@@ -63,7 +87,7 @@ def _mock_waterlevels_df():
                 "2024-01-01",
                 "2023-12-01",
             ],
-            "DepthToWater": [10.0, 11.0, 5.0],
+            "DepthToWater": [10.0, 11.234, 5.0],
             "DepthToWaterBGS": [9.0, 10.0, 4.5],
         }
     )

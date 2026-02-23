@@ -123,10 +123,12 @@ class CreateAddress(BaseCreateModel):
     # todo: use a postal API to validate address and suggest corrections
     address_line_1: str  # Required (e.g., "123 Main St")
     address_line_2: str | None = None  # Optional (e.g., "Apt 4B", "Suite 200")
-    city: str
+    city: str | None = None
     # todo: add validation.  Should state be required? what about foreign addresses?
-    state: str = "NM"  # Default to New Mexico
-    postal_code: str
+    state: str | None = "NM"  # Default to New Mexico
+
+    # todo: make postal code required?
+    postal_code: str | None = None
     country: str = "United States"  # Default to United States
     address_type: AddressType = "Primary"
 
@@ -193,9 +195,9 @@ class AddressResponse(BaseItemResponse):
 
     address_line_1: str
     address_line_2: str | None = None
-    city: str
-    state: str
-    postal_code: str
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
     country: str
     address_type: AddressType
 

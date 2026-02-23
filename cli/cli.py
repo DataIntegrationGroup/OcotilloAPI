@@ -20,10 +20,12 @@ from enum import Enum
 from pathlib import Path
 from textwrap import shorten, wrap
 
+import pandas as pd
 import typer
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")
 water_levels = typer.Typer(help="Water-level utilities")
@@ -40,6 +42,11 @@ class ThemeMode(str, Enum):
     auto = "auto"
     light = "light"
     dark = "dark"
+
+
+class SmokePopulation(str, Enum):
+    all = "all"
+    agreed = "agreed"
 
 
 def _resolve_theme(theme: ThemeMode) -> ThemeMode:
@@ -107,6 +114,274 @@ def associate_assets_command(
     from cli.service_adapter import associate_assets
 
     associate_assets(root_directory)
+
+
+@cli.command("transfer-results")
+def transfer_results(
+    summary_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "transfer_results_summary.md",
+        "--summary-path",
+        help="Output path for markdown summary table.",
+    ),
+    sample_limit: int = typer.Option(
+        25,
+        "--sample-limit",
+        min=1,
+        help="Max missing/extra key samples stored per transfer.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from transfers.transfer_results_builder import TransferResultsBuilder
+
+    builder = TransferResultsBuilder(sample_limit=sample_limit)
+    results = builder.build()
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    TransferResultsBuilder.write_summary(summary_path, results)
+    typer.echo(f"Wrote comparison summary: {summary_path}")
+    typer.echo(f"Transfer comparisons: {len(results.results)}")
+
+
+@cli.command("compare-duplicated-welldata")
+def compare_duplicated_welldata(
+    pointid: list[str] = typer.Option(
+        None,
+        "--pointid",
+        help="Optional PointID filter. Repeat --pointid for multiple values.",
+    ),
+    apply_transfer_filters: bool = typer.Option(
+        True,
+        "--apply-transfer-filters/--no-apply-transfer-filters",
+        help=(
+            "Apply WellTransferer-like pre-filters (GW + coordinates + transferable), "
+            "excluding DB-dependent non-transferred filtering."
+        ),
+    ),
+    summary_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "welldata_duplicate_comparison_summary.csv",
+        "--summary-path",
+        help="Output CSV path for duplicate PointID summary.",
+    ),
+    detail_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "welldata_duplicate_comparison_detail.csv",
+        "--detail-path",
+        help="Output CSV path for row x differing-column detail values.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from transfers.util import get_transferable_wells, read_csv, replace_nans
+
+    df = read_csv("WellData", dtype={"OSEWelltagID": str})
+
+    if apply_transfer_filters:
+        if "LocationId" in df.columns:
+            ldf = read_csv("Location")
+            ldf = ldf.drop(["PointID", "SSMA_TimeStamp"], axis=1, errors="ignore")
+            df = df.join(ldf.set_index("LocationId"), on="LocationId")
+
+        if "SiteType" in df.columns:
+            df = df[df["SiteType"] == "GW"]
+
+        if "Easting" in df.columns and "Northing" in df.columns:
+            df = df[df["Easting"].notna() & df["Northing"].notna()]
+
+        df = replace_nans(df)
+        df = get_transferable_wells(df)
+    else:
+        df = replace_nans(df)
+
+    if pointid:
+        requested = {pid.strip() for pid in pointid if pid and pid.strip()}
+        df = df[df["PointID"].isin(requested)]
+
+    if "PointID" not in df.columns:
+        typer.echo("WellData has no PointID column after filtering.")
+        raise typer.Exit(code=1)
+
+    dup_mask = df["PointID"].duplicated(keep=False)
+    dup_df = df.loc[dup_mask].copy()
+
+    summary_rows: list[dict] = []
+    detail_rows: list[dict] = []
+
+    if not dup_df.empty:
+        for pid, group in dup_df.groupby("PointID", sort=True):
+            diff_cols: list[str] = []
+            for col in group.columns:
+                series = group[col]
+                non_null = series[~series.isna()]
+                if non_null.empty:
+                    continue
+                if len({str(v) for v in non_null}) > 1:
+                    diff_cols.append(col)
+
+            summary_rows.append(
+                {
+                    "pointid": pid,
+                    "duplicate_row_count": int(len(group)),
+                    "differing_column_count": int(len(diff_cols)),
+                    "differing_columns": "|".join(diff_cols),
+                }
+            )
+
+            normalized = group.reset_index(drop=False).rename(
+                columns={"index": "source_row_index"}
+            )
+            for row_num, row in normalized.iterrows():
+                for col in diff_cols:
+                    value = row.get(col, None)
+                    detail_rows.append(
+                        {
+                            "pointid": pid,
+                            "row_number": int(row_num),
+                            "source_row_index": int(row["source_row_index"]),
+                            "column": col,
+                            "value": value,
+                        }
+                    )
+
+    summary_df = pd.DataFrame(summary_rows)
+    if not summary_df.empty:
+        summary_df = summary_df.sort_values(
+            by=["duplicate_row_count", "pointid"], ascending=[False, True]
+        )
+
+    detail_df = pd.DataFrame(detail_rows)
+    if not detail_df.empty:
+        detail_df = detail_df.sort_values(
+            by=["pointid", "row_number", "column"], ascending=[True, True, True]
+        )
+
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    detail_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_df.to_csv(summary_path, index=False)
+    detail_df.to_csv(detail_path, index=False)
+
+    if summary_df.empty:
+        typer.echo("No duplicated WellData PointIDs found for current filters.")
+        typer.echo(f"Wrote empty summary: {summary_path}")
+        typer.echo(f"Wrote empty detail: {detail_path}")
+        return
+
+    total_dup_rows = int(len(dup_df))
+    total_dup_pointids = int(summary_df["pointid"].nunique())
+    typer.echo(
+        f"Found {total_dup_pointids} duplicated PointIDs across {total_dup_rows} rows."
+    )
+    typer.echo(f"Wrote summary: {summary_path}")
+    typer.echo(f"Wrote detail: {detail_path}")
+
+    preview = summary_df.head(20)
+    typer.echo("\nTop duplicate PointIDs:")
+    for row in preview.itertuples(index=False):
+        typer.echo(
+            f"- {row.pointid}: rows={row.duplicate_row_count}, "
+            f"differing_columns={row.differing_column_count}"
+        )
+
+
+@cli.command("well-smoke-test")
+def well_smoke_test(
+    sample_size: int = typer.Option(
+        25,
+        "--sample-size",
+        min=1,
+        help="Number of wells to sample.",
+    ),
+    population: SmokePopulation = typer.Option(
+        SmokePopulation.agreed,
+        "--population",
+        help="Sample from all wells or transfer-agreed wells.",
+    ),
+    all_wells: bool = typer.Option(
+        False,
+        "--all-wells/--sampled",
+        help="Check all wells in the selected population instead of sampling.",
+    ),
+    seed: int = typer.Option(
+        42,
+        "--seed",
+        help="Random seed for deterministic sampling.",
+    ),
+    detail_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "well_smoke_test_detail.csv",
+        "--detail-path",
+        help="Output CSV path for per-well per-entity smoke-test rows.",
+    ),
+    summary_path: Path = typer.Option(
+        Path("transfers") / "metrics" / "well_smoke_test_summary.json",
+        "--summary-path",
+        help="Output JSON path for smoke-test summary.",
+    ),
+    fail_on_mismatch: bool = typer.Option(
+        False,
+        "--fail-on-mismatch/--no-fail-on-mismatch",
+        help="Exit with code 1 if any mismatches are found.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from transfers.smoke_test import (
+        SmokePopulation as SmokePopulationModel,
+        run_well_smoke_test,
+        write_smoke_outputs,
+    )
+
+    payload = run_well_smoke_test(
+        sample_size=sample_size,
+        population=SmokePopulationModel(population.value),
+        seed=seed,
+        all_wells=all_wells,
+    )
+    write_smoke_outputs(payload, detail_path=detail_path, summary_path=summary_path)
+
+    sampled_wells = payload.get("sampled_wells", 0)
+    mismatch_count = payload.get("mismatch_count", 0)
+    value_mismatch_count = payload.get("value_mismatch_count", 0)
+    fail_count = payload.get("well_fail_count", 0)
+    typer.echo(
+        f"Smoke test complete: sampled_wells={sampled_wells}, "
+        f"presence_mismatches={mismatch_count}, "
+        f"value_mismatches={value_mismatch_count}, "
+        f"failed_wells={fail_count}"
+    )
+    typer.echo(f"Wrote detail: {detail_path}")
+    typer.echo(f"Wrote summary: {summary_path}")
+
+    if mismatch_count or value_mismatch_count:
+        failed_wells = payload.get("failed_wells", [])[:20]
+        typer.echo(f"Sample failed wells (up to 20): {failed_wells}")
+
+    if value_mismatch_count:
+        entity_results = payload.get("entity_results", [])
+        value_mismatches = [
+            r
+            for r in entity_results
+            if r.get("value_status") not in {"MATCH", "NOT_APPLICABLE"}
+        ]
+        typer.echo("\nValue mismatches:")
+        for row in value_mismatches[:100]:
+            pointid = row.get("pointid")
+            entity = row.get("entity")
+            status = row.get("value_status")
+            missing = row.get("missing_value_sample") or []
+            extra = row.get("extra_value_sample") or []
+            typer.echo(
+                f"- {pointid} | {entity} | {status} | "
+                f"missing={missing[:3]} | extra={extra[:3]}"
+            )
+        if len(value_mismatches) > 100:
+            typer.echo(
+                f"... truncated {len(value_mismatches) - 100} additional value mismatches"
+            )
+
+    if mismatch_count or value_mismatch_count:
+        if fail_on_mismatch:
+            raise typer.Exit(code=1)
 
 
 @cli.command("well-inventory-csv")

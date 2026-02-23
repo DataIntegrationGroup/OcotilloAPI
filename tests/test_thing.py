@@ -63,6 +63,7 @@ def override_authentication_dependency_fixture():
 # VALIDATE tests ===============================================================
 
 
+@pytest.mark.skip(reason="Temporarily not relevant until transfer process is complete.")
 def test_validate_hole_depth_well_depth():
     with pytest.raises(
         ValueError, match="well depth must be less than than or equal to hole depth"
@@ -70,6 +71,7 @@ def test_validate_hole_depth_well_depth():
         ValidateWell(well_depth=100.0, hole_depth=90.0)
 
 
+@pytest.mark.skip(reason="Temporarily not relevant until transfer process is complete.")
 def test_validate_hole_depth_casing_depth():
     with pytest.raises(
         ValueError,

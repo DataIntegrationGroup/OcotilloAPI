@@ -166,16 +166,10 @@ class SensorTransferer(ThingBasedTransferer):
             estimator = self._get_estimator(sensor_type)
             installation_date = estimator.estimate_installation_date(row)
             if not installation_date:
-                logger.critical(
-                    f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
-                    f"SerialNo: {row.SerialNo} PointID: {pointid}"
+                logger.warning(
+                    f"Installation Date is None. Proceeding with NULL deployment installation date. "
+                    f"Sensor: {row.ID}, SerialNo: {row.SerialNo} PointID: {pointid}"
                 )
-                self._capture_error(
-                    pointid,
-                    f"row.SerialNo={row.SerialNo}. Installation Date cannot be None",
-                    "DateInstalled",
-                )
-                return
             else:
                 logger.warning(
                     f"Estimated installation date={installation_date} for {pointid}"
@@ -204,10 +198,6 @@ class SensorTransferer(ThingBasedTransferer):
 
             if recording_interval is not None:
                 recording_interval_unit = unit
-                logger.info(
-                    f"name={sensor.name}, serial_no={sensor.serial_no}. "
-                    f"estimated recording interval: {recording_interval} {unit}"
-                )
                 self._capture_error(
                     pointid,
                     f"Estimated recording interval={recording_interval} {unit}. Is this correct?",
@@ -215,10 +205,6 @@ class SensorTransferer(ThingBasedTransferer):
                 )
 
             else:
-                logger.critical(
-                    f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
-                )
-
                 self._capture_error(
                     pointid,
                     f"name={sensor.name}, row.SerialNo={row.SerialNo}. "

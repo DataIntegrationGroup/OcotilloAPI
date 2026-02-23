@@ -19,6 +19,10 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import pandas as pd
+from sqlalchemy import insert
+from sqlalchemy.exc import DatabaseError, SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from db import (
     Thing,
     ThingContactAssociation,
@@ -31,9 +35,6 @@ from db import (
     Parameter,
 )
 from db.engine import session_ctx
-from sqlalchemy import insert
-from sqlalchemy.exc import DatabaseError, SQLAlchemyError
-from sqlalchemy.orm import Session
 from transfers.transferer import Transferer
 from transfers.util import (
     filter_to_valid_point_ids,
@@ -93,7 +94,7 @@ class WaterLevelTransferer(Transferer):
         with open(path, "r") as f:
             self._measured_by_mapper = json.load(f)
 
-        self._created_contacts = {}
+        self._created_contact_id_by_key: dict[tuple[str, str], int] = {}
         self._thing_id_by_pointid: dict[str, int] = {}
         self._owner_contact_id_by_pointid: dict[str, int] = {}
         self._build_caches()
@@ -149,7 +150,7 @@ class WaterLevelTransferer(Transferer):
             "rows_created": 0,
             "rows_skipped_dt": 0,
             "rows_skipped_reason": 0,
-            "rows_skipped_contacts": 0,
+            "rows_missing_participants": 0,
             "rows_well_destroyed": 0,
             "field_events_created": 0,
             "field_activities_created": 0,
@@ -175,9 +176,6 @@ class WaterLevelTransferer(Transferer):
             thing_id = self._thing_id_by_pointid.get(pointid)
             if thing_id is None:
                 stats["groups_skipped_missing_thing"] += 1
-                logger.warning(
-                    "Skipping PointID=%s because Thing was not found", pointid
-                )
                 self._capture_error(pointid, "Thing not found", "PointID")
                 continue
 
@@ -208,7 +206,7 @@ class WaterLevelTransferer(Transferer):
 
                 release_status = "public" if row.PublicRelease else "private"
 
-                field_event_participants = self._get_field_event_participants(
+                field_event_participant_ids = self._get_field_event_participant_ids(
                     session, row
                 )
                 stats["contacts_created"] += getattr(
@@ -218,13 +216,8 @@ class WaterLevelTransferer(Transferer):
                     self, "_last_contacts_reused_count", 0
                 )
 
-                if not field_event_participants:
-                    stats["rows_skipped_contacts"] += 1
-                    logger.warning(
-                        "Skipping %s because no field event participants were found",
-                        self._row_context(row),
-                    )
-                    continue
+                if not field_event_participant_ids:
+                    stats["rows_missing_participants"] += 1
 
                 is_destroyed = (
                     glv
@@ -243,7 +236,7 @@ class WaterLevelTransferer(Transferer):
                         "dt_utc": dt_utc,
                         "glv": glv,
                         "release_status": release_status,
-                        "participants": field_event_participants,
+                        "participant_ids": field_event_participant_ids,
                         "is_destroyed": is_destroyed,
                     }
                 )
@@ -280,11 +273,13 @@ class WaterLevelTransferer(Transferer):
                 participant_rows: list[dict[str, Any]] = []
                 lead_row_pos_by_prepared_idx: dict[int, int] = {}
                 for prepared_idx, prep in enumerate(prepared_rows):
-                    for participant_idx, participant in enumerate(prep["participants"]):
+                    for participant_idx, participant_id in enumerate(
+                        prep["participant_ids"]
+                    ):
                         participant_rows.append(
                             {
                                 "field_event_id": field_event_ids[prepared_idx],
-                                "contact_id": participant.id,
+                                "contact_id": participant_id,
                                 "participant_role": (
                                     "Lead" if participant_idx == 0 else "Participant"
                                 ),
@@ -406,29 +401,14 @@ class WaterLevelTransferer(Transferer):
                 stats["groups_processed"] += 1
             except DatabaseError as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "Failed committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
                 self._capture_database_error(pointid, e)
             except SQLAlchemyError as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "SQLAlchemy failure committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
-                self._capture_error(pointid, str(e), "UnknownField")
+                self._capture_error(pointid, str(e), "SQLAlchemyError")
             except Exception as e:
                 stats["groups_failed_commit"] += 1
-                logger.exception(
-                    "Unexpected failure committing WaterLevels group for PointID=%s: %s",
-                    pointid,
-                    e,
-                )
                 session.rollback()
                 self._capture_error(pointid, str(e), "UnknownField")
 
@@ -600,10 +580,10 @@ class WaterLevelTransferer(Transferer):
             raise ValueError(f"Unknown groundwater level reason: {glv}")
         return glv
 
-    def _get_field_event_participants(self, session, row) -> list[Contact]:
+    def _get_field_event_participant_ids(self, session, row) -> list[int]:
         self._last_contacts_created_count = 0
         self._last_contacts_reused_count = 0
-        field_event_participants = []
+        field_event_participant_ids: list[int] = []
         measured_by = None if pd.isna(row.MeasuredBy) else row.MeasuredBy
 
         if measured_by not in ["Owner", "Owner report", "Well owner"]:
@@ -612,35 +592,58 @@ class WaterLevelTransferer(Transferer):
                 contact_info = get_contacts_info(
                     row, measured_by, self._measured_by_mapper
                 )
+                contacts_to_create: list[dict[str, Any]] = []
+                missing_keys: list[tuple[str, str]] = []
                 for name, organization, role in contact_info:
-                    if (name, organization) in self._created_contacts:
-                        contact = self._created_contacts[(name, organization)]
+                    key = (name, organization)
+                    contact_id = self._created_contact_id_by_key.get(key)
+                    if contact_id is not None:
+                        field_event_participant_ids.append(contact_id)
                         self._last_contacts_reused_count += 1
                     else:
-                        try:
-                            # create new contact if not already created
-                            contact = Contact(
-                                name=name,
-                                role=role,
-                                contact_type="Field Event Participant",
-                                organization=organization,
-                                nma_pk_waterlevels=row.GlobalID,
-                            )
-                            session.add(contact)
+                        contacts_to_create.append(
+                            {
+                                "name": name,
+                                "role": role,
+                                "contact_type": "Field Event Participant",
+                                "organization": organization,
+                                "nma_pk_waterlevels": row.GlobalID,
+                            }
+                        )
+                        missing_keys.append(key)
 
-                            logger.info(
-                                f"{SPACE_2}Created contact: | Name {contact.name} | Role {contact.role} | Organization {contact.organization} | nma_pk_waterlevels {contact.nma_pk_waterlevels}"
+                if contacts_to_create:
+                    try:
+                        created_contact_ids = (
+                            session.execute(
+                                insert(Contact).returning(Contact.id),
+                                contacts_to_create,
                             )
-
-                            self._created_contacts[(name, organization)] = contact
+                            .scalars()
+                            .all()
+                        )
+                    except Exception as e:
+                        logger.critical(
+                            "Contact insert failed for PointID=%s, GlobalID=%s: %s",
+                            row.PointID,
+                            row.GlobalID,
+                            str(e),
+                        )
+                    else:
+                        for key, created_contact_id, payload in zip(
+                            missing_keys, created_contact_ids, contacts_to_create
+                        ):
+                            self._created_contact_id_by_key[key] = created_contact_id
+                            field_event_participant_ids.append(created_contact_id)
                             self._last_contacts_created_count += 1
-                        except Exception as e:
-                            logger.critical(
-                                f"Contact cannot be created: Name {name} | Role {role} | Organization {organization} because of the following: {str(e)}"
+                            logger.info(
+                                "%sCreated contact: | Name %s | Role %s | Organization %s | nma_pk_waterlevels %s",
+                                SPACE_2,
+                                payload["name"],
+                                payload["role"],
+                                payload["organization"],
+                                payload["nma_pk_waterlevels"],
                             )
-                            continue
-
-                    field_event_participants.append(contact)
         else:
             owner_contact_id = self._owner_contact_id_by_pointid.get(row.PointID)
             if owner_contact_id is None:
@@ -655,30 +658,16 @@ class WaterLevelTransferer(Transferer):
                     "MeasuredBy",
                 )
             else:
-                contact = session.get(Contact, owner_contact_id)
-                if contact is None:
-                    logger.warning(
-                        "Owner contact id=%s not found for PointID=%s; cannot use owner fallback for %s",
-                        owner_contact_id,
-                        row.PointID,
-                        self._row_context(row),
-                    )
-                    self._capture_error(
-                        row.PointID,
-                        f"owner contact id {owner_contact_id} not found",
-                        "MeasuredBy",
-                    )
-                else:
-                    field_event_participants.append(contact)
-                    self._last_contacts_reused_count += 1
+                field_event_participant_ids.append(owner_contact_id)
+                self._last_contacts_reused_count += 1
 
-        if len(field_event_participants) == 0:
-            logger.critical(
-                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}, "
-                f"therefore no field event, field activity, sample, and observation can be made. Skipping."
+        if len(field_event_participant_ids) == 0:
+            logger.warning(
+                f"No contacts can be associated with the WaterLevels record with GlobalID {row.GlobalID}; "
+                f"continuing with nullable field_event_participant_id."
             )
 
-        return field_event_participants
+        return field_event_participant_ids
 
     def _row_context(self, row: Any) -> str:
         return (
@@ -690,7 +679,7 @@ class WaterLevelTransferer(Transferer):
     def _log_transfer_summary(self, stats: dict[str, int]) -> None:
         logger.info(
             "WaterLevels summary: groups total=%s processed=%s skipped_missing_thing=%s failed_commit=%s "
-            "rows total=%s created=%s skipped_dt=%s skipped_reason=%s skipped_contacts=%s well_destroyed=%s "
+            "rows total=%s created=%s skipped_dt=%s skipped_reason=%s missing_participants=%s well_destroyed=%s "
             "field_events=%s activities=%s samples=%s observations=%s contacts_created=%s contacts_reused=%s",
             stats["groups_total"],
             stats["groups_processed"],
@@ -700,7 +689,7 @@ class WaterLevelTransferer(Transferer):
             stats["rows_created"],
             stats["rows_skipped_dt"],
             stats["rows_skipped_reason"],
-            stats["rows_skipped_contacts"],
+            stats["rows_missing_participants"],
             stats["rows_well_destroyed"],
             stats["field_events_created"],
             stats["field_activities_created"],

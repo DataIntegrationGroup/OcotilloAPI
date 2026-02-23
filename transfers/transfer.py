@@ -20,6 +20,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
+
 from transfers.thing_transfer import (
     transfer_rock_sample_locations,
     transfer_springs,
@@ -698,9 +699,10 @@ def main():
     profile_artifacts = transfer_all(metrics)
 
     metrics.close()
-    metrics.save_to_storage_bucket()
-    save_log_to_bucket()
-    upload_profile_artifacts(profile_artifacts)
+    if get_bool_env("SAVE_TO_BUCKET", False):
+        metrics.save_to_storage_bucket()
+        save_log_to_bucket()
+        upload_profile_artifacts(profile_artifacts)
     message("END--------------------------------------")
 
 

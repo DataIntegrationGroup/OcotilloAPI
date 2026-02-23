@@ -45,6 +45,7 @@ transfers/logs/*
 run_bdd-local.sh
 .pre-commit-config.local.yaml
 .serena/
+cli/logs
 
 # deployment files
 app.yaml
