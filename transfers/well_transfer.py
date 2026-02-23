@@ -569,16 +569,9 @@ class WellTransferer(Transferer):
 
             mpheight = row.MPHeight
             mpheight_description = row.MeasuringPoint
-            if mpheight is None:
-                mphs = self._measuring_point_estimator.estimate_measuring_point_height(
-                    row
-                )
-                if mphs:
-                    try:
-                        mpheight = mphs[0][0]
-                        mpheight_description = mphs[1][0]
-                    except IndexError:
-                        pass
+            if mpheight is None or isna(mpheight):
+                # Treat missing/NaN MPHeight as unknown during migration.
+                mpheight = None
 
             completion_date, completion_date_parse_failed = _normalize_completion_date(
                 row.CompletionDate
@@ -736,22 +729,9 @@ class WellTransferer(Transferer):
                 )
 
     def _add_histories(self, session: Session, row, well: Thing) -> None:
-        mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
-        added_measuring_point = False
-        for mph, mph_desc, start_date, end_date in zip(*mphs):
-            session.add(
-                MeasuringPointHistory(
-                    thing_id=well.id,
-                    measuring_point_height=mph,
-                    measuring_point_description=mph_desc,
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-            )
-            added_measuring_point = True
-
-        # Preserve transfer intent even when no MP height can be measured/estimated.
-        if not added_measuring_point:
+        raw_mpheight = getattr(row, "MPHeight", None)
+        if raw_mpheight is None or isna(raw_mpheight):
+            # No estimator for NaN/missing MPHeight; persist NULL history row.
             raw_desc = getattr(row, "MeasuringPoint", None)
             mp_desc = None if isna(raw_desc) else raw_desc
             session.add(
@@ -763,6 +743,34 @@ class WellTransferer(Transferer):
                     end_date=None,
                 )
             )
+        else:
+            mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+            added_measuring_point = False
+            for mph, mph_desc, start_date, end_date in zip(*mphs):
+                session.add(
+                    MeasuringPointHistory(
+                        thing_id=well.id,
+                        measuring_point_height=mph,
+                        measuring_point_description=mph_desc,
+                        start_date=start_date,
+                        end_date=end_date,
+                    )
+                )
+                added_measuring_point = True
+
+            # Preserve transfer intent even when no MP height can be measured/estimated.
+            if not added_measuring_point:
+                raw_desc = getattr(row, "MeasuringPoint", None)
+                mp_desc = None if isna(raw_desc) else raw_desc
+                session.add(
+                    MeasuringPointHistory(
+                        thing_id=well.id,
+                        measuring_point_height=None,
+                        measuring_point_description=mp_desc,
+                        start_date=datetime.now(tz=UTC).date(),
+                        end_date=None,
+                    )
+                )
 
         target_id = well.id
         target_table = "thing"

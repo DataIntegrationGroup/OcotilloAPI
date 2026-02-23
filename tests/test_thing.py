@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import timezone
+from datetime import date, timezone
 
 import pytest
 
@@ -25,7 +25,8 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import Thing, WellScreen, ThingIdLink
+from db import MeasuringPointHistory, Thing, ThingIdLink, WellScreen
+from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
 from schemas.location import LocationResponse
@@ -83,6 +84,46 @@ def test_validate_hole_depth_casing_depth():
 def test_update_well_allows_nma_formation_zone():
     payload = UpdateWell(nma_formation_zone="FZ-001")
     assert payload.nma_formation_zone == "FZ-001"
+
+
+def test_measuring_point_properties_skip_null_history():
+    with session_ctx() as session:
+        well = Thing(
+            name="Null MP Height Well",
+            thing_type="water well",
+            release_status="draft",
+        )
+        session.add(well)
+        session.commit()
+        session.refresh(well)
+
+        old_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=2.5,
+            measuring_point_description="old mp",
+            start_date=date(2020, 1, 1),
+            end_date=None,
+            release_status="draft",
+        )
+        new_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=None,
+            measuring_point_description=None,
+            start_date=date(2021, 1, 1),
+            end_date=None,
+            release_status="draft",
+        )
+        session.add_all([old_history, new_history])
+        session.commit()
+        session.refresh(well)
+
+        assert well.measuring_point_height == 2.5
+        assert well.measuring_point_description == "old mp"
+
+        session.delete(new_history)
+        session.delete(old_history)
+        session.delete(well)
+        session.commit()
 
 
 # this is not a valid test because measuring_point_height is not related to hole_depth
