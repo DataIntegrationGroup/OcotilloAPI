@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 import time
-from threading import Lock
 from types import SimpleNamespace
 
 from pandas import isna
@@ -32,16 +31,15 @@ from transfers.util import (
 )
 
 _LOCATION_DF_CACHE = None
-_LOCATION_DF_LOCK = Lock()
 
 
 def _get_location_df():
     global _LOCATION_DF_CACHE
+    # transfer_thing is executed in a session-scoped, non-threaded transfer flow.
+    # Keep a simple module-level cache and avoid lock complexity here.
     if _LOCATION_DF_CACHE is None:
-        with _LOCATION_DF_LOCK:
-            if _LOCATION_DF_CACHE is None:
-                df = read_csv("Location")
-                _LOCATION_DF_CACHE = replace_nans(df)
+        df = read_csv("Location")
+        _LOCATION_DF_CACHE = replace_nans(df)
     return _LOCATION_DF_CACHE
 
 
