@@ -59,7 +59,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Set up uv (with cache)
-        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
+        uses: astral-sh/setup-uv@04224aa8caab79e9c08d41c1ef06d6394aafe6a0 # v4
         with:
           enable-cache: true
 
