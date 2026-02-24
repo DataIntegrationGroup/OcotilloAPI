@@ -237,6 +237,6 @@ GitHub Actions workflows (`.github/workflows/`):
 ## Additional Resources
 
 - **API Docs**: `http://localhost:8000/docs` (Swagger UI) or `/redoc` (ReDoc)
-- **OGC API**: `http://localhost:8000/ogc` for OGC API - Features endpoints
+- **OGC API**: `http://localhost:8000/oapi` for OGC API - Features endpoints
 - **CLI**: `oco --help` for Ocotillo CLI commands
 - **Sentry**: Error tracking and performance monitoring integrated

@@ -1,0 +1,104 @@
+server:
+  bind:
+    host: 0.0.0.0
+    port: 8000
+  url: {server_url}
+  mimetype: application/json; charset=UTF-8
+  encoding: utf-8
+  language: en-US
+  limits:
+    default_items: 10
+    max_items: 10000
+  map:
+    url: https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png
+    attribution: "© OpenStreetMap contributors"
+
+logging:
+  level: INFO
+
+metadata:
+  identification:
+    title: Ocotillo OGC API
+    description: OGC API - Features backed by PostGIS and pygeoapi
+    keywords: [features, ogcapi, postgis, pygeoapi]
+    terms_of_service: https://example.com/terms
+    url: https://example.com
+  license:
+    name: CC-BY 4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+  provider:
+    name: NMBGMR
+    url: https://geoinfo.nmt.edu
+  contact:
+    name: API Support
+    email: support@example.com
+
+resources:
+  locations:
+    type: collection
+    title: Locations
+    description: Sample locations
+    keywords: [locations]
+    extents:
+      spatial:
+        bbox: [-180.0, -90.0, 180.0, 90.0]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password}
+          search_path: [public]
+        id_field: id
+        table: location
+        geom_field: point
+
+  wells:
+    type: collection
+    title: Wells
+    description: Things filtered to water wells
+    keywords: [wells]
+    extents:
+      spatial:
+        bbox: [-180.0, -90.0, 180.0, 90.0]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password}
+          search_path: [public]
+        id_field: id
+        table: ogc_wells
+        geom_field: point
+
+  springs:
+    type: collection
+    title: Springs
+    description: Things filtered to springs
+    keywords: [springs]
+    extents:
+      spatial:
+        bbox: [-180.0, -90.0, 180.0, 90.0]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password}
+          search_path: [public]
+        id_field: id
+        table: ogc_springs
+        geom_field: point

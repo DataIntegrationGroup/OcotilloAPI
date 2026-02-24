@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from core.initializers import register_routes
+from core.initializers import configure_admin, configure_middleware, register_routes
 
 load_dotenv()
 DSN = os.environ.get("SENTRY_DSN")
@@ -27,53 +27,17 @@ if DSN:
         send_default_pii=True,
     )
 
-
-from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-
 from core.app import app
 
-register_routes(app)
 
-# Session middleware is required for the admin auth flow (request.session access).
-SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY")
-if not SESSION_SECRET_KEY:
-    raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
+def create_app():
+    register_routes(app)
+    configure_middleware(app)
+    configure_admin(app)
+    return app
 
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
-# ========== Starlette Admin Interface ==========
-# Mount admin interface at /admin
-# This provides a web-based UI for managing database records (replaces MS Access)
-from admin import create_admin
-
-create_admin(app)
-# ==============================================
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-APITALLY_CLIENT_ID = os.environ.get("APITALLY_CLIENT_ID")
-if APITALLY_CLIENT_ID:
-    from apitally.fastapi import ApitallyMiddleware
-
-    app.add_middleware(
-        ApitallyMiddleware,
-        client_id=APITALLY_CLIENT_ID,
-        env=os.environ.get("ENVIRONMENT"),  # "production" or "staging"
-        # Optionally enable and configure request logging
-        enable_request_logging=True,
-        log_request_headers=True,
-        log_request_body=True,
-        log_response_body=True,
-        capture_logs=True,
-        capture_traces=False,  # requires instrumentation
-    )
+app = create_app()
 
 
 if __name__ == "__main__":
