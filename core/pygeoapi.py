@@ -42,7 +42,6 @@ def _write_config(path: Path) -> None:
     port = os.environ.get("POSTGRES_PORT", "5432")
     dbname = os.environ.get("POSTGRES_DB", "postgres")
     user = (os.environ.get("POSTGRES_USER") or "").strip()
-    password = os.environ.get("POSTGRES_PASSWORD", "")
     template = _template_path().read_text(encoding="utf-8")
     config = template.format(
         server_url=_server_url(),
@@ -50,7 +49,8 @@ def _write_config(path: Path) -> None:
         postgres_port=port,
         postgres_db=dbname,
         postgres_user=user,
-        postgres_password=password,
+        # Avoid storing the actual password in clear text; resolve from env at runtime.
+        postgres_password="${POSTGRES_PASSWORD}",
     )
     path.write_text(config, encoding="utf-8")
 
