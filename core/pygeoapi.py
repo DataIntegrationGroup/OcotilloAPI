@@ -74,9 +74,7 @@ def _required_tables_exist() -> bool:
 
 def _create_supporting_views() -> None:
     with session_ctx() as session:
-        session.execute(
-            text(
-                """
+        session.execute(text("""
                 CREATE OR REPLACE VIEW ogc_wells AS
                 WITH latest_location AS (
                     SELECT DISTINCT ON (lta.thing_id)
@@ -110,12 +108,8 @@ def _create_supporting_views() -> None:
                 JOIN latest_location AS ll ON ll.thing_id = t.id
                 JOIN location AS l ON l.id = ll.location_id
                 WHERE t.thing_type = 'water well'
-                """
-            )
-        )
-        session.execute(
-            text(
-                """
+                """))
+        session.execute(text("""
                 CREATE OR REPLACE VIEW ogc_springs AS
                 WITH latest_location AS (
                     SELECT DISTINCT ON (lta.thing_id)
@@ -139,9 +133,7 @@ def _create_supporting_views() -> None:
                 JOIN latest_location AS ll ON ll.thing_id = t.id
                 JOIN location AS l ON l.id = ll.location_id
                 WHERE t.thing_type = 'spring'
-                """
-            )
-        )
+                """))
         session.commit()
 
 
