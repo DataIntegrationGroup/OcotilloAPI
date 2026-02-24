@@ -18,9 +18,19 @@ def _template_path() -> Path:
 
 
 def _mount_path() -> str:
-    path = os.environ.get("PYGEOAPI_MOUNT_PATH", "/oapi").strip()
+    # Read and sanitize the configured mount path, defaulting to "/oapi".
+    path = (os.environ.get("PYGEOAPI_MOUNT_PATH", "/oapi") or "").strip()
+
+    # Treat empty or root ("/") values as invalid and fall back to the default.
+    if path in {"", "/"}:
+        path = "/oapi"
+
+    # Ensure a single leading slash.
     if not path.startswith("/"):
-        return f"/{path}"
+        path = f"/{path}"
+
+    # Remove any trailing slashes so "/oapi/" and "oapi/" both become "/oapi".
+    path = path.rstrip("/")
     return path
 
 
