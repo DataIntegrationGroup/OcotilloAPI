@@ -51,7 +51,7 @@ resources:
           port: {postgres_port}
           dbname: {postgres_db}
           user: {postgres_user}
-          password: {postgres_password}
+          password: ${{POSTGRES_PASSWORD}}
           search_path: [public]
         id_field: id
         table: location
@@ -74,7 +74,7 @@ resources:
           port: {postgres_port}
           dbname: {postgres_db}
           user: {postgres_user}
-          password: {postgres_password}
+          password: ${{POSTGRES_PASSWORD}}
           search_path: [public]
         id_field: id
         table: ogc_latest_depth_to_water_wells
@@ -97,7 +97,7 @@ resources:
           port: {postgres_port}
           dbname: {postgres_db}
           user: {postgres_user}
-          password: {postgres_password}
+          password: ${{POSTGRES_PASSWORD}}
           search_path: [public]
         id_field: id
         table: ogc_avg_tds_wells

@@ -213,7 +213,6 @@ def _thing_collections_block(
     port: str,
     dbname: str,
     user: str,
-    password: str,
 ) -> str:
     blocks = []
     for collection in THING_COLLECTIONS:
@@ -235,7 +234,7 @@ def _thing_collections_block(
           port: {port}
           dbname: {dbname}
           user: {user}
-          password: {password}
+          password: ${{POSTGRES_PASSWORD}}
           search_path: [public]
         id_field: id
         table: ogc_{collection["id"]}
@@ -255,13 +254,11 @@ def _write_config(path: Path) -> None:
         postgres_port=port,
         postgres_db=dbname,
         postgres_user=user,
-        postgres_password="${POSTGRES_PASSWORD}",
         thing_collections_block=_thing_collections_block(
             host=host,
             port=port,
             dbname=dbname,
             user=user,
-            password="${POSTGRES_PASSWORD}",
         ),
     )
     path.write_text(config, encoding="utf-8")
