@@ -218,8 +218,7 @@ def _thing_collections_block(
     blocks = []
     for collection in THING_COLLECTIONS:
         keywords = ", ".join(collection["keywords"])
-        blocks.append(
-            f"""  {collection["id"]}:
+        blocks.append(f"""  {collection["id"]}:
     type: collection
     title: {collection["title"]}
     description: {collection["description"]}
@@ -240,8 +239,7 @@ def _thing_collections_block(
           search_path: [public]
         id_field: id
         table: ogc_{collection["id"]}
-        geom_field: point"""
-        )
+        geom_field: point""")
     return "\n\n".join(blocks)
 
 
@@ -347,9 +345,7 @@ def _create_supporting_views() -> None:
         for collection in THING_COLLECTIONS:
             session.execute(text(f'DROP VIEW IF EXISTS ogc_{collection["id"]}'))
             thing_type = collection["thing_type"].replace("'", "''")
-            session.execute(
-                text(
-                    f"""
+            session.execute(text(f"""
                 CREATE OR REPLACE VIEW ogc_{collection["id"]} AS
                 WITH latest_location AS (
                     SELECT DISTINCT ON (lta.thing_id)
@@ -384,14 +380,10 @@ def _create_supporting_views() -> None:
                 JOIN latest_location AS ll ON ll.thing_id = t.id
                 JOIN location AS l ON l.id = ll.location_id
                 WHERE t.thing_type = '{thing_type}'
-                """
-                )
-            )
+                """))
         if _required_depth_tables_exist():
             session.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
-            session.execute(
-                text(
-                    """
+            session.execute(text("""
                     CREATE OR REPLACE VIEW ogc_latest_depth_to_water_wells AS
                     WITH latest_location AS (
                         SELECT DISTINCT ON (lta.thing_id)
@@ -440,14 +432,10 @@ def _create_supporting_views() -> None:
                     JOIN latest_location AS ll ON ll.thing_id = t.id
                     JOIN location AS l ON l.id = ll.location_id
                     WHERE ro.rn = 1
-                    """
-                )
-            )
+                    """))
         else:
             session.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
-            session.execute(
-                text(
-                    """
+            session.execute(text("""
                     CREATE OR REPLACE VIEW ogc_latest_depth_to_water_wells AS
                     SELECT
                         t.id AS id,
@@ -463,14 +451,10 @@ def _create_supporting_views() -> None:
                     JOIN location_thing_association AS lta ON lta.thing_id = t.id
                     JOIN location AS l ON l.id = lta.location_id
                     WHERE FALSE
-                    """
-                )
-            )
+                    """))
         if _required_tds_tables_exist():
             session.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
-            session.execute(
-                text(
-                    """
+            session.execute(text("""
                     CREATE OR REPLACE VIEW ogc_avg_tds_wells AS
                     WITH latest_location AS (
                         SELECT DISTINCT ON (lta.thing_id)
@@ -517,14 +501,10 @@ def _create_supporting_views() -> None:
                     JOIN latest_location AS ll ON ll.thing_id = t.id
                     JOIN location AS l ON l.id = ll.location_id
                     GROUP BY t.id, t.name, t.thing_type, l.point
-                    """
-                )
-            )
+                    """))
         else:
             session.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
-            session.execute(
-                text(
-                    """
+            session.execute(text("""
                     CREATE OR REPLACE VIEW ogc_avg_tds_wells AS
                     SELECT
                         t.id AS id,
@@ -539,9 +519,7 @@ def _create_supporting_views() -> None:
                     JOIN location_thing_association AS lta ON lta.thing_id = t.id
                     JOIN location AS l ON l.id = lta.location_id
                     WHERE FALSE
-                    """
-                )
-            )
+                    """))
         session.commit()
 
 
