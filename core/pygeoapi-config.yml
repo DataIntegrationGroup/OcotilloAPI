@@ -37,11 +37,11 @@ resources:
   locations:
     type: collection
     title: Locations
-    description: Sample locations
+    description: Geographic monitoring locations and site coordinates used by Ocotillo features.
     keywords: [locations]
     extents:
       spatial:
-        bbox: [-180.0, -90.0, 180.0, 90.0]
+        bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -57,14 +57,14 @@ resources:
         table: location
         geom_field: point
 
-  wells:
+  latest_depth_to_water_wells:
     type: collection
-    title: Wells
-    description: Things filtered to water wells
-    keywords: [wells]
+    title: Latest Depth to Water (Wells)
+    description: Most recent depth-to-water observation for each water well.
+    keywords: [wells, groundwater-level, depth-to-water, latest]
     extents:
       spatial:
-        bbox: [-180.0, -90.0, 180.0, 90.0]
+        bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -77,17 +77,17 @@ resources:
           password: {postgres_password}
           search_path: [public]
         id_field: id
-        table: ogc_wells
+        table: ogc_latest_depth_to_water_wells
         geom_field: point
 
-  springs:
+  avg_tds_wells:
     type: collection
-    title: Springs
-    description: Things filtered to springs
-    keywords: [springs]
+    title: Average TDS (Wells)
+    description: Average total dissolved solids (TDS) from major chemistry results for each water well.
+    keywords: [wells, chemistry, tds, total-dissolved-solids, average]
     extents:
       spatial:
-        bbox: [-180.0, -90.0, 180.0, 90.0]
+        bbox: [-109.05, 31.33, -103.00, 37.00]
         crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
     providers:
       - type: feature
@@ -100,5 +100,7 @@ resources:
           password: {postgres_password}
           search_path: [public]
         id_field: id
-        table: ogc_springs
+        table: ogc_avg_tds_wells
         geom_field: point
+
+{thing_collections_block}
