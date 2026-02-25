@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from sqlalchemy import select, func
 
-from db import Deployment, Sensor, Thing
+from db import Deployment, PermissionHistory, Sensor, Thing, ThingContactAssociation
 from db.engine import session_ctx
 from transfers.sensor_transfer import (
     EQUIPMENT_TO_SENSOR_TYPE_MAP,
@@ -165,6 +165,76 @@ def _equipment_destination_series(session) -> pd.Series:
     return pointid + "|" + serial + "|" + installed + "|" + removed
 
 
+def _permissions_source_series(session) -> pd.Series:
+    wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
+    wdf = replace_nans(wdf)
+    if "PointID" not in wdf.columns:
+        return pd.Series([], dtype=object)
+
+    eligible_rows = (
+        session.query(Thing.name)
+        .join(ThingContactAssociation, ThingContactAssociation.thing_id == Thing.id)
+        .filter(Thing.thing_type == "water well")
+        .filter(Thing.name.is_not(None))
+        .distinct()
+        .all()
+    )
+    eligible_pointids = {name for (name,) in eligible_rows if name}
+    if not eligible_pointids:
+        return pd.Series([], dtype=object)
+
+    rows: list[str] = []
+    for row in wdf.itertuples(index=False):
+        pointid = getattr(row, "PointID", None)
+        if pointid not in eligible_pointids:
+            continue
+
+        sample_ok = getattr(row, "SampleOK", None)
+        if sample_ok is not None:
+            rows.append(
+                f"{_normalize_key(pointid)}|Water Chemistry Sample|{bool(sample_ok)}"
+            )
+
+        monitor_ok = getattr(row, "MonitorOK", None)
+        if monitor_ok is not None:
+            rows.append(
+                f"{_normalize_key(pointid)}|Water Level Sample|{bool(monitor_ok)}"
+            )
+
+    if not rows:
+        return pd.Series([], dtype=object)
+    return pd.Series(rows, dtype=object)
+
+
+def _permissions_destination_series(session) -> pd.Series:
+    sql = (
+        select(
+            Thing.name.label("point_id"),
+            PermissionHistory.permission_type.label("permission_type"),
+            PermissionHistory.permission_allowed.label("permission_allowed"),
+        )
+        .select_from(PermissionHistory)
+        .join(Thing, Thing.id == PermissionHistory.target_id)
+        .where(PermissionHistory.target_table == "thing")
+        .where(
+            PermissionHistory.permission_type.in_(
+                ("Water Chemistry Sample", "Water Level Sample")
+            )
+        )
+        .where(Thing.name.is_not(None))
+    )
+    rows = session.execute(sql).all()
+    if not rows:
+        return pd.Series([], dtype=object)
+    return pd.Series(
+        [
+            f"{_normalize_key(r.point_id)}|{r.permission_type}|{bool(r.permission_allowed)}"
+            for r in rows
+        ],
+        dtype=object,
+    )
+
+
 class TransferResultsBuilder:
     """Compare transfer input CSV keys to destination database keys per transfer."""
 
@@ -183,6 +253,9 @@ class TransferResultsBuilder:
         )
 
     def _build_one(self, spec: TransferComparisonSpec) -> TransferResult:
+        if spec.transfer_name == "Permissions":
+            return self._build_permissions(spec)
+
         source_df = read_csv(spec.source_csv)
         if spec.source_filter:
             source_df = spec.source_filter(source_df)
@@ -260,6 +333,78 @@ class TransferResultsBuilder:
             destination_model=destination_model_name,
             destination_key_column=destination_key_column,
             source_row_count=len(source_df),
+            agreed_transfer_row_count=agreed_transfer_row_count,
+            source_keyed_row_count=source_keyed_row_count,
+            source_key_count=len(source_keys),
+            source_duplicate_key_row_count=source_duplicate_key_row_count,
+            destination_row_count=destination_row_count,
+            destination_keyed_row_count=destination_keyed_row_count,
+            destination_key_count=len(destination_keys),
+            destination_duplicate_key_row_count=destination_duplicate_key_row_count,
+            matched_key_count=len(source_keys & destination_keys),
+            missing_in_destination_count=len(missing),
+            extra_in_destination_count=len(extra),
+            transferred_agreed_row_count=transferred_agreed_row_count,
+            missing_agreed_row_count=missing_agreed_row_count,
+            missing_in_destination_sample=missing[: self.sample_limit],
+            extra_in_destination_sample=extra[: self.sample_limit],
+        )
+
+    def _build_permissions(self, spec: TransferComparisonSpec) -> TransferResult:
+        source_df = read_csv(spec.source_csv, dtype={"OSEWelltagID": str})
+        source_row_count = len(source_df)
+        enabled = self._is_enabled(spec)
+
+        with session_ctx() as session:
+            source_series = (
+                _permissions_source_series(session)
+                if enabled
+                else pd.Series([], dtype=object)
+            )
+            source_keys = set(source_series.unique().tolist())
+            source_keyed_row_count = int(source_series.shape[0])
+            source_duplicate_key_row_count = source_keyed_row_count - len(source_keys)
+            agreed_transfer_row_count = source_keyed_row_count
+
+            destination_series = _permissions_destination_series(session)
+            destination_row_count = int(
+                session.execute(
+                    select(func.count())
+                    .select_from(PermissionHistory)
+                    .where(PermissionHistory.target_table == "thing")
+                    .where(
+                        PermissionHistory.permission_type.in_(
+                            ("Water Chemistry Sample", "Water Level Sample")
+                        )
+                    )
+                ).scalar_one()
+            )
+
+        if destination_series.empty:
+            destination_series = pd.Series([], dtype=object)
+        else:
+            destination_series = destination_series.astype(str)
+
+        destination_keys = set(destination_series.unique().tolist())
+        destination_keyed_row_count = int(destination_series.shape[0])
+        destination_duplicate_key_row_count = destination_keyed_row_count - len(
+            destination_keys
+        )
+        missing = sorted(source_keys - destination_keys)
+        extra = sorted(destination_keys - source_keys)
+        transferred_agreed_row_count = int(source_series.isin(destination_keys).sum())
+        missing_agreed_row_count = max(
+            agreed_transfer_row_count - transferred_agreed_row_count,
+            0,
+        )
+
+        return spec.result_cls(
+            transfer_name=spec.transfer_name,
+            source_csv=spec.source_csv,
+            source_key_column=spec.source_key_column,
+            destination_model="PermissionHistory",
+            destination_key_column=spec.destination_key_column,
+            source_row_count=source_row_count,
             agreed_transfer_row_count=agreed_transfer_row_count,
             source_keyed_row_count=source_keyed_row_count,
             source_key_count=len(source_keys),
