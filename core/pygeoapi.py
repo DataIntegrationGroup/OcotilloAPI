@@ -264,6 +264,13 @@ def _write_config(path: Path) -> None:
             user=user,
         ),
     )
+    # NOTE: The generated file `.pygeoapi/pygeoapi-config.yml` contains database
+    # connection details (host, port, dbname, user). Although the password is
+    # expected to be provided via environment variables at runtime by pygeoapi,
+    # this file should still be treated as sensitive configuration:
+    #   * Do not commit it to version control.
+    #   * Do not expose it in logs, error messages, or diagnostics.
+    #   * Ensure filesystem permissions restrict access appropriately.
     path.write_text(config, encoding="utf-8")
 
 
