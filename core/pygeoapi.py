@@ -209,8 +209,7 @@ def _thing_collections_block(
     blocks = []
     for collection in THING_COLLECTIONS:
         keywords = ", ".join(collection["keywords"])
-        blocks.append(
-            f"""  {collection["id"]}:
+        blocks.append(f"""  {collection["id"]}:
     type: collection
     title: {collection["title"]}
     description: {collection["description"]}
@@ -231,8 +230,7 @@ def _thing_collections_block(
           search_path: [public]
         id_field: id
         table: ogc_{collection["id"]}
-        geom_field: point"""
-        )
+        geom_field: point""")
     return "\n\n".join(blocks)
 
 
