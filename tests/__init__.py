@@ -28,25 +28,10 @@ os.environ["POSTGRES_PORT"] = "5432"
 os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 from fastapi.testclient import TestClient
-from fastapi_pagination import add_pagination
-from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import register_routes
 from db import Parameter, Base
 from db.engine import session_ctx
-from core.app import app
-
-register_routes(app)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_pagination(app)
+from main import app
 
 client = TestClient(app)
 

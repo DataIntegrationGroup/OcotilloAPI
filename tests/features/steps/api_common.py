@@ -21,7 +21,6 @@ from core.dependencies import (
     admin_function,
     amp_admin_function,
 )
-from core.initializers import register_routes
 from starlette.testclient import TestClient
 
 
@@ -31,9 +30,7 @@ def step_given_api_is_running(context):
     Ensures the API app is initialized and client is ready.
     Behave will keep 'context' across steps, allowing us to reuse response data.
     """
-    from core.app import app
-
-    register_routes(app)
+    from main import app
 
     def override_authentication(default=True):
         """

@@ -24,10 +24,6 @@ from fastapi.openapi.docs import (
 )
 from fastapi.openapi.utils import get_openapi
 
-from .initializers import (
-    register_routes,
-    erase_and_rebuild_db,
-)
 from .settings import settings
 
 
@@ -41,7 +37,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         seed_all(10, skip_if_exists=True)
 
-    register_routes(app)
     yield
 
 
