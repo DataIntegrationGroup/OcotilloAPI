@@ -66,6 +66,15 @@ def erase_and_rebuild_db():
         session.execute(text("DROP SCHEMA public CASCADE"))
         session.execute(text("CREATE SCHEMA public"))
         session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        pg_cron_available = session.execute(
+            text(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
+                ")"
+            )
+        ).scalar()
+        if pg_cron_available:
+            session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
         session.commit()
         Base.metadata.drop_all(session.bind)
         Base.metadata.create_all(session.bind)

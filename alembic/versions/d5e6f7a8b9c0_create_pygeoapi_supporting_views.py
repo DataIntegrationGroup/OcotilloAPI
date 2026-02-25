@@ -16,6 +16,9 @@ revision: str = "d5e6f7a8b9c0"
 down_revision: Union[str, Sequence[str], None] = "c4d5e6f7a8b9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+REFRESH_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
+REFRESH_JOB_NAME = "refresh_pygeoapi_matviews_nightly"
+REFRESH_SCHEDULE = "0 3 * * *"
 
 THING_COLLECTIONS = [
     ("wells", "water well"),
@@ -109,7 +112,7 @@ def _create_latest_depth_view() -> str:
                 o.observation_datetime,
                 o.value,
                 o.measuring_point_height,
-                (o.value - o.measuring_point_height) AS depth_to_water_bgs,
+                (o.value - COALESCE(o.measuring_point_height, 0)) AS depth_to_water_bgs,
                 ROW_NUMBER() OVER (
                     PARTITION BY fe.thing_id
                     ORDER BY o.observation_datetime DESC, o.id DESC
@@ -123,7 +126,6 @@ def _create_latest_depth_view() -> str:
                 t.thing_type = 'water well'
                 AND fa.activity_type = 'groundwater level'
                 AND o.value IS NOT NULL
-                AND o.measuring_point_height IS NOT NULL
         )
         SELECT
             t.id AS id,
@@ -140,26 +142,6 @@ def _create_latest_depth_view() -> str:
         JOIN latest_location AS ll ON ll.thing_id = t.id
         JOIN location AS l ON l.id = ll.location_id
         WHERE ro.rn = 1
-    """
-
-
-def _create_latest_depth_fallback_view() -> str:
-    return """
-        CREATE MATERIALIZED VIEW ogc_latest_depth_to_water_wells AS
-        SELECT
-            t.id AS id,
-            t.name,
-            t.thing_type,
-            NULL::integer AS observation_id,
-            NULL::timestamptz AS observation_datetime,
-            NULL::double precision AS depth_to_water_reference,
-            NULL::double precision AS measuring_point_height,
-            NULL::double precision AS depth_to_water_bgs,
-            l.point
-        FROM thing AS t
-        JOIN location_thing_association AS lta ON lta.thing_id = t.id
-        JOIN location AS l ON l.id = lta.location_id
-        WHERE FALSE
     """
 
 
@@ -214,28 +196,69 @@ def _create_avg_tds_view() -> str:
     """
 
 
-def _create_avg_tds_fallback_view() -> str:
-    return """
-        CREATE MATERIALIZED VIEW ogc_avg_tds_wells AS
-        SELECT
-            t.id AS id,
-            t.name,
-            t.thing_type,
-            NULL::integer AS tds_observation_count,
-            NULL::double precision AS avg_tds_value,
-            NULL::timestamptz AS first_tds_observation_datetime,
-            NULL::timestamptz AS latest_tds_observation_datetime,
-            l.point
-        FROM thing AS t
-        JOIN location_thing_association AS lta ON lta.thing_id = t.id
-        JOIN location AS l ON l.id = lta.location_id
-        WHERE FALSE
-    """
-
-
 def _drop_view_or_materialized_view(view_name: str) -> None:
     op.execute(text(f"DROP VIEW IF EXISTS {view_name}"))
     op.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}"))
+
+
+def _create_refresh_function() -> str:
+    return f"""
+        CREATE OR REPLACE FUNCTION public.{REFRESH_FUNCTION_NAME}()
+        RETURNS void
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+            REFRESH MATERIALIZED VIEW public.ogc_latest_depth_to_water_wells;
+            REFRESH MATERIALIZED VIEW public.ogc_avg_tds_wells;
+        END;
+        $$;
+    """
+
+
+def _schedule_refresh_job() -> str:
+    return f"""
+        DO $do$
+        DECLARE
+            existing_job_id bigint;
+        BEGIN
+            SELECT jobid INTO existing_job_id
+            FROM cron.job
+            WHERE jobname = '{REFRESH_JOB_NAME}';
+
+            IF existing_job_id IS NOT NULL THEN
+                PERFORM cron.unschedule(existing_job_id);
+            END IF;
+
+            PERFORM cron.schedule(
+                '{REFRESH_JOB_NAME}',
+                '{REFRESH_SCHEDULE}',
+                $cmd$SELECT public.{REFRESH_FUNCTION_NAME}();$cmd$
+            );
+        END
+        $do$;
+    """
+
+
+def _unschedule_refresh_job() -> str:
+    return f"""
+        DO $do$
+        DECLARE
+            existing_job_id bigint;
+        BEGIN
+            IF to_regclass('cron.job') IS NULL THEN
+                RETURN;
+            END IF;
+
+            SELECT jobid INTO existing_job_id
+            FROM cron.job
+            WHERE jobname = '{REFRESH_JOB_NAME}';
+
+            IF existing_job_id IS NOT NULL THEN
+                PERFORM cron.unschedule(existing_job_id);
+            END IF;
+        END
+        $do$;
+    """
 
 
 def upgrade() -> None:
@@ -252,6 +275,20 @@ def upgrade() -> None:
             f"tables are missing: {missing_tables_str}"
         )
 
+    pg_cron_available = bind.execute(
+        text(
+            "SELECT EXISTS ("
+            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
+            ")"
+        )
+    ).scalar()
+    if not pg_cron_available:
+        raise RuntimeError(
+            "Cannot schedule nightly pygeoapi materialized view refresh job: "
+            "pg_cron extension is not available on this PostgreSQL server."
+        )
+    op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
+
     for view_id, thing_type in THING_COLLECTIONS:
         safe_view_id = _safe_view_id(view_id)
         op.execute(text(f"DROP VIEW IF EXISTS ogc_{safe_view_id}"))
@@ -259,44 +296,47 @@ def upgrade() -> None:
 
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     required_depth = {"observation", "sample", "field_activity", "field_event"}
-    if required_depth.issubset(existing_tables):
-        op.execute(text(_create_latest_depth_view()))
-        op.execute(
-            text(
-                "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
-                "'Latest depth-to-water per well view for pygeoapi.'"
-            )
+    if not required_depth.issubset(existing_tables):
+        missing_depth_tables = sorted(
+            t for t in required_depth if t not in existing_tables
         )
-    else:
-        op.execute(text(_create_latest_depth_fallback_view()))
-        op.execute(
-            text(
-                "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
-                "'STUB VIEW: required source tables (observation/sample/field_activity/field_event) were missing at migration time; this view intentionally returns zero rows.'"
-            )
+        missing_depth_tables_str = ", ".join(missing_depth_tables)
+        raise RuntimeError(
+            "Cannot create ogc_latest_depth_to_water_wells. The following required "
+            f"tables are missing: {missing_depth_tables_str}"
         )
+    op.execute(text(_create_latest_depth_view()))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
+            "'Latest depth-to-water per well view for pygeoapi.'"
+        )
+    )
 
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
-    if required_tds.issubset(existing_tables):
-        op.execute(text(_create_avg_tds_view()))
-        op.execute(
-            text(
-                "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
-                "'Average TDS per well from major chemistry results for pygeoapi.'"
-            )
+    if not required_tds.issubset(existing_tables):
+        missing_tds_tables = sorted(t for t in required_tds if t not in existing_tables)
+        missing_tds_tables_str = ", ".join(missing_tds_tables)
+        raise RuntimeError(
+            "Cannot create ogc_avg_tds_wells. The following required "
+            f"tables are missing: {missing_tds_tables_str}"
         )
-    else:
-        op.execute(text(_create_avg_tds_fallback_view()))
-        op.execute(
-            text(
-                "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
-                "'STUB VIEW: required source tables (NMA_MajorChemistry/NMA_Chemistry_SampleInfo) were missing at migration time; this view intentionally returns zero rows.'"
-            )
+    op.execute(text(_create_avg_tds_view()))
+    op.execute(
+        text(
+            "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
+            "'Average TDS per well from major chemistry results for pygeoapi.'"
         )
+    )
+
+    op.execute(text(_create_refresh_function()))
+    op.execute(text(_schedule_refresh_job()))
 
 
 def downgrade() -> None:
+    op.execute(text(_unschedule_refresh_job()))
+    op.execute(text(f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"))
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     for view_id, _ in THING_COLLECTIONS:

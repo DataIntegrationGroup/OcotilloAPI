@@ -29,6 +29,89 @@ from db import FieldActivity, FieldEvent, Observation, Sample
 from db.engine import session_ctx
 
 
+def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
+    executed_sql: list[str] = []
+    commit_called = {"value": False}
+
+    class FakeSession:
+        def execute(self, stmt):
+            executed_sql.append(str(stmt))
+
+        def commit(self):
+            commit_called["value"] = True
+
+    class _FakeCtx:
+        def __enter__(self):
+            return FakeSession()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr("db.engine.session_ctx", lambda: _FakeCtx())
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["refresh-pygeoapi-materialized-views"])
+
+    assert result.exit_code == 0, result.output
+    assert executed_sql == [
+        "REFRESH MATERIALIZED VIEW ogc_latest_depth_to_water_wells",
+        "REFRESH MATERIALIZED VIEW ogc_avg_tds_wells",
+    ]
+    assert commit_called["value"] is True
+    assert "Refreshed 2 materialized view(s)." in result.output
+
+
+def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch):
+    executed_sql: list[str] = []
+
+    class FakeSession:
+        def execute(self, stmt):
+            executed_sql.append(str(stmt))
+
+        def commit(self):
+            return None
+
+    class _FakeCtx:
+        def __enter__(self):
+            return FakeSession()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr("db.engine.session_ctx", lambda: _FakeCtx())
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "refresh-pygeoapi-materialized-views",
+            "--view",
+            "ogc_avg_tds_wells",
+            "--concurrently",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert executed_sql == [
+        "REFRESH MATERIALIZED VIEW CONCURRENTLY ogc_avg_tds_wells",
+    ]
+
+
+def test_refresh_pygeoapi_materialized_views_rejects_invalid_identifier():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "refresh-pygeoapi-materialized-views",
+            "--view",
+            "ogc_avg_tds_wells;drop table thing",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Invalid SQL identifier" in result.output
+
+
 def test_initialize_lexicon_invokes_initializer(monkeypatch):
     called = {"count": 0}
 
@@ -244,10 +327,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
