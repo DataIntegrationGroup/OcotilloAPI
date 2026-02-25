@@ -38,6 +38,7 @@ _RESULT_CLASS_NAMES = [
     "WellData",
     "WellScreens",
     "OwnersData",
+    "Permissions",
     "WaterLevels",
     "Equipment",
     "Projects",
