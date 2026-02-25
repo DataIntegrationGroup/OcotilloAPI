@@ -27,14 +27,14 @@ if DSN:
         send_default_pii=True,
     )
 
-from core.app import app
-
 
 def create_app():
-    register_routes(app)
-    configure_middleware(app)
-    configure_admin(app)
-    return app
+    from core.app import app as core_app
+
+    register_routes(core_app)
+    configure_middleware(core_app)
+    configure_admin(core_app)
+    return core_app
 
 
 app = create_app()

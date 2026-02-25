@@ -43,6 +43,11 @@ jobs:
             CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
             CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
             CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
+            PYGEOAPI_POSTGRES_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
+            PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
+            PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
             CLOUD_SQL_IAM_AUTH: true
           run: |
             uv run alembic upgrade head
@@ -66,6 +71,11 @@ jobs:
               CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
               CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
               CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+              PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
+              PYGEOAPI_POSTGRES_USER: "${{ secrets.CLOUD_SQL_USER }}"
+              PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
+              PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
+              PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.CLOUD_SQL_PASSWORD }}"
               CLOUD_SQL_IAM_AUTH: true
               GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
               GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"

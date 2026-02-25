@@ -1,8 +1,10 @@
 import os
+import textwrap
 from importlib.util import find_spec
 from pathlib import Path
 
 from fastapi import FastAPI
+import yaml
 
 THING_COLLECTIONS = [
     {
@@ -162,10 +164,6 @@ THING_COLLECTIONS = [
 ]
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 def _template_path() -> Path:
     return Path(__file__).resolve().parent / "pygeoapi-config.yml"
 
@@ -195,7 +193,9 @@ def _server_url() -> str:
 
 
 def _pygeoapi_dir() -> Path:
-    path = _project_root() / ".pygeoapi"
+    # Use instance-local ephemeral storage by default (GAE-safe).
+    runtime_dir = (os.environ.get("PYGEOAPI_RUNTIME_DIR") or "").strip()
+    path = Path(runtime_dir) if runtime_dir else Path("/tmp/pygeoapi")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -205,51 +205,69 @@ def _thing_collections_block(
     port: str,
     dbname: str,
     user: str,
+    password_placeholder: str,
 ) -> str:
-    blocks = []
+    resources: dict[str, dict] = {}
     for collection in THING_COLLECTIONS:
-        keywords = ", ".join(collection["keywords"])
-        blocks.append(f"""  {collection["id"]}:
-    type: collection
-    title: {collection["title"]}
-    description: {collection["description"]}
-    keywords: [{keywords}]
-    extents:
-      spatial:
-        bbox: [-109.05, 31.33, -103.00, 37.00]
-        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
-    providers:
-      - type: feature
-        name: PostgreSQL
-        data:
-          host: {host}
-          port: {port}
-          dbname: {dbname}
-          user: {user}
-          password: ${{POSTGRES_PASSWORD}}
-          search_path: [public]
-        id_field: id
-        table: ogc_{collection["id"]}
-        geom_field: point""")
-    return "\n\n".join(blocks)
+        resources[collection["id"]] = {
+            "type": "collection",
+            "title": collection["title"],
+            "description": collection["description"],
+            "keywords": collection["keywords"],
+            "extents": {
+                "spatial": {
+                    "bbox": [-109.05, 31.33, -103.00, 37.00],
+                    "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                }
+            },
+            "providers": [
+                {
+                    "type": "feature",
+                    "name": "PostgreSQL",
+                    "data": {
+                        "host": host,
+                        "port": port,
+                        "dbname": dbname,
+                        "user": user,
+                        "password": password_placeholder,
+                        "search_path": ["public"],
+                    },
+                    "id_field": "id",
+                    "table": f"ogc_{collection['id']}",
+                    "geom_field": "point",
+                }
+            ],
+        }
+
+    block = yaml.safe_dump(
+        resources,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=False,
+    ).rstrip()
+    return textwrap.indent(block, "  ")
+
+
+def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
+    host = (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip() or "127.0.0.1"
+    port = (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip() or "5432"
+    dbname = (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip() or "postgres"
+    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip()
+    if not user:
+        raise RuntimeError(
+            "PYGEOAPI_POSTGRES_USER must be set and non-empty to generate the "
+            "pygeoapi configuration."
+        )
+    if os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is None:
+        raise RuntimeError(
+            "PYGEOAPI_POSTGRES_PASSWORD must be set to "
+            "generate the pygeoapi configuration."
+        )
+    return host, port, dbname, user, "${PYGEOAPI_POSTGRES_PASSWORD}"
 
 
 def _write_config(path: Path) -> None:
-    host = os.environ.get("POSTGRES_HOST", "127.0.0.1")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    dbname = os.environ.get("POSTGRES_DB", "postgres")
-    raw_user = os.environ.get("POSTGRES_USER")
-    if raw_user is None or not raw_user.strip():
-        raise RuntimeError(
-            "POSTGRES_USER environment variable must be set and non-empty to "
-            "generate the pygeoapi configuration."
-        )
-    if os.environ.get("POSTGRES_PASSWORD") is None:
-        raise RuntimeError(
-            "POSTGRES_PASSWORD environment variable must be set to generate "
-            "the pygeoapi configuration."
-        )
-    user = raw_user.strip()
+    host, port, dbname, user, password_placeholder = _pygeoapi_db_settings()
     template = _template_path().read_text(encoding="utf-8")
     config = template.format(
         server_url=_server_url(),
@@ -257,11 +275,13 @@ def _write_config(path: Path) -> None:
         postgres_port=port,
         postgres_db=dbname,
         postgres_user=user,
+        postgres_password_env=password_placeholder,
         thing_collections_block=_thing_collections_block(
             host=host,
             port=port,
             dbname=dbname,
             user=user,
+            password_placeholder=password_placeholder,
         ),
     )
     # NOTE: The generated file `.pygeoapi/pygeoapi-config.yml` contains database

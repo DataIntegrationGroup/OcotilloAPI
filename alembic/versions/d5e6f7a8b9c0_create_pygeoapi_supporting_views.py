@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import inspect, text
+import re
 
 # revision identifiers, used by Alembic.
 revision: str = "d5e6f7a8b9c0"
@@ -42,10 +43,17 @@ THING_COLLECTIONS = [
 ]
 
 
+def _safe_view_id(view_id: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", view_id):
+        raise ValueError(f"Unsafe view id: {view_id!r}")
+    return view_id
+
+
 def _create_thing_view(view_id: str, thing_type: str) -> str:
+    safe_view_id = _safe_view_id(view_id)
     escaped_thing_type = thing_type.replace("'", "''")
     return f"""
-        CREATE VIEW ogc_{view_id} AS
+        CREATE VIEW ogc_{safe_view_id} AS
         WITH latest_location AS (
             SELECT DISTINCT ON (lta.thing_id)
                 lta.thing_id,
@@ -236,26 +244,52 @@ def upgrade() -> None:
         )
 
     for view_id, thing_type in THING_COLLECTIONS:
-        op.execute(text(f"DROP VIEW IF EXISTS ogc_{view_id}"))
+        safe_view_id = _safe_view_id(view_id)
+        op.execute(text(f"DROP VIEW IF EXISTS ogc_{safe_view_id}"))
         op.execute(text(_create_thing_view(view_id, thing_type)))
 
     op.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
     required_depth = {"observation", "sample", "field_activity", "field_event"}
     if required_depth.issubset(set(inspector.get_table_names(schema="public"))):
         op.execute(text(_create_latest_depth_view()))
+        op.execute(
+            text(
+                "COMMENT ON VIEW ogc_latest_depth_to_water_wells IS "
+                "'Latest depth-to-water per well view for pygeoapi.'"
+            )
+        )
     else:
         op.execute(text(_create_latest_depth_fallback_view()))
+        op.execute(
+            text(
+                "COMMENT ON VIEW ogc_latest_depth_to_water_wells IS "
+                "'STUB VIEW: required source tables (observation/sample/field_activity/field_event) were missing at migration time; this view intentionally returns zero rows.'"
+            )
+        )
 
     op.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
     if required_tds.issubset(set(inspector.get_table_names(schema="public"))):
         op.execute(text(_create_avg_tds_view()))
+        op.execute(
+            text(
+                "COMMENT ON VIEW ogc_avg_tds_wells IS "
+                "'Average TDS per well from major chemistry results for pygeoapi.'"
+            )
+        )
     else:
         op.execute(text(_create_avg_tds_fallback_view()))
+        op.execute(
+            text(
+                "COMMENT ON VIEW ogc_avg_tds_wells IS "
+                "'STUB VIEW: required source tables (NMA_MajorChemistry/NMA_Chemistry_SampleInfo) were missing at migration time; this view intentionally returns zero rows.'"
+            )
+        )
 
 
 def downgrade() -> None:
     op.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
     op.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
     for view_id, _ in THING_COLLECTIONS:
-        op.execute(text(f"DROP VIEW IF EXISTS ogc_{view_id}"))
+        safe_view_id = _safe_view_id(view_id)
+        op.execute(text(f"DROP VIEW IF EXISTS ogc_{safe_view_id}"))
