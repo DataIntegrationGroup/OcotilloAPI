@@ -5,11 +5,11 @@ Revises: c4d5e6f7a8b9
 Create Date: 2026-02-25 12:00:00.000000
 """
 
+import re
 from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import inspect, text
-import re
 
 # revision identifiers, used by Alembic.
 revision: str = "d5e6f7a8b9c0"
@@ -92,7 +92,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
 
 def _create_latest_depth_view() -> str:
     return """
-        CREATE VIEW ogc_latest_depth_to_water_wells AS
+        CREATE MATERIALIZED VIEW ogc_latest_depth_to_water_wells AS
         WITH latest_location AS (
             SELECT DISTINCT ON (lta.thing_id)
                 lta.thing_id,
@@ -145,7 +145,7 @@ def _create_latest_depth_view() -> str:
 
 def _create_latest_depth_fallback_view() -> str:
     return """
-        CREATE VIEW ogc_latest_depth_to_water_wells AS
+        CREATE MATERIALIZED VIEW ogc_latest_depth_to_water_wells AS
         SELECT
             t.id AS id,
             t.name,
@@ -165,7 +165,7 @@ def _create_latest_depth_fallback_view() -> str:
 
 def _create_avg_tds_view() -> str:
     return """
-        CREATE VIEW ogc_avg_tds_wells AS
+        CREATE MATERIALIZED VIEW ogc_avg_tds_wells AS
         WITH latest_location AS (
             SELECT DISTINCT ON (lta.thing_id)
                 lta.thing_id,
@@ -216,7 +216,7 @@ def _create_avg_tds_view() -> str:
 
 def _create_avg_tds_fallback_view() -> str:
     return """
-        CREATE VIEW ogc_avg_tds_wells AS
+        CREATE MATERIALIZED VIEW ogc_avg_tds_wells AS
         SELECT
             t.id AS id,
             t.name,
@@ -231,6 +231,11 @@ def _create_avg_tds_fallback_view() -> str:
         JOIN location AS l ON l.id = lta.location_id
         WHERE FALSE
     """
+
+
+def _drop_view_or_materialized_view(view_name: str) -> None:
+    op.execute(text(f"DROP VIEW IF EXISTS {view_name}"))
+    op.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}"))
 
 
 def upgrade() -> None:
@@ -252,13 +257,13 @@ def upgrade() -> None:
         op.execute(text(f"DROP VIEW IF EXISTS ogc_{safe_view_id}"))
         op.execute(text(_create_thing_view(view_id, thing_type)))
 
-    op.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
+    _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     required_depth = {"observation", "sample", "field_activity", "field_event"}
     if required_depth.issubset(existing_tables):
         op.execute(text(_create_latest_depth_view()))
         op.execute(
             text(
-                "COMMENT ON VIEW ogc_latest_depth_to_water_wells IS "
+                "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
                 "'Latest depth-to-water per well view for pygeoapi.'"
             )
         )
@@ -266,18 +271,18 @@ def upgrade() -> None:
         op.execute(text(_create_latest_depth_fallback_view()))
         op.execute(
             text(
-                "COMMENT ON VIEW ogc_latest_depth_to_water_wells IS "
+                "COMMENT ON MATERIALIZED VIEW ogc_latest_depth_to_water_wells IS "
                 "'STUB VIEW: required source tables (observation/sample/field_activity/field_event) were missing at migration time; this view intentionally returns zero rows.'"
             )
         )
 
-    op.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
+    _drop_view_or_materialized_view("ogc_avg_tds_wells")
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
     if required_tds.issubset(existing_tables):
         op.execute(text(_create_avg_tds_view()))
         op.execute(
             text(
-                "COMMENT ON VIEW ogc_avg_tds_wells IS "
+                "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
                 "'Average TDS per well from major chemistry results for pygeoapi.'"
             )
         )
@@ -285,15 +290,15 @@ def upgrade() -> None:
         op.execute(text(_create_avg_tds_fallback_view()))
         op.execute(
             text(
-                "COMMENT ON VIEW ogc_avg_tds_wells IS "
+                "COMMENT ON MATERIALIZED VIEW ogc_avg_tds_wells IS "
                 "'STUB VIEW: required source tables (NMA_MajorChemistry/NMA_Chemistry_SampleInfo) were missing at migration time; this view intentionally returns zero rows.'"
             )
         )
 
 
 def downgrade() -> None:
-    op.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
-    op.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
+    _drop_view_or_materialized_view("ogc_avg_tds_wells")
+    _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     for view_id, _ in THING_COLLECTIONS:
         safe_view_id = _safe_view_id(view_id)
         op.execute(text(f"DROP VIEW IF EXISTS ogc_{safe_view_id}"))
