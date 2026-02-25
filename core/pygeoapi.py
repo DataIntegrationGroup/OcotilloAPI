@@ -238,7 +238,18 @@ def _write_config(path: Path) -> None:
     host = os.environ.get("POSTGRES_HOST", "127.0.0.1")
     port = os.environ.get("POSTGRES_PORT", "5432")
     dbname = os.environ.get("POSTGRES_DB", "postgres")
-    user = (os.environ.get("POSTGRES_USER") or "").strip()
+    raw_user = os.environ.get("POSTGRES_USER")
+    if raw_user is None or not raw_user.strip():
+        raise RuntimeError(
+            "POSTGRES_USER environment variable must be set and non-empty to "
+            "generate the pygeoapi configuration."
+        )
+    if os.environ.get("POSTGRES_PASSWORD") is None:
+        raise RuntimeError(
+            "POSTGRES_PASSWORD environment variable must be set to generate "
+            "the pygeoapi configuration."
+        )
+    user = raw_user.strip()
     template = _template_path().read_text(encoding="utf-8")
     config = template.format(
         server_url=_server_url(),
