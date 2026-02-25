@@ -106,6 +106,7 @@ class TransferOptions:
     transfer_screens: bool
     transfer_sensors: bool
     transfer_contacts: bool
+    transfer_permissions: bool
     transfer_waterlevels: bool
     transfer_pressure: bool
     transfer_acoustic: bool
@@ -147,6 +148,7 @@ def load_transfer_options() -> TransferOptions:
         transfer_screens=get_bool_env("TRANSFER_WELL_SCREENS", True),
         transfer_sensors=get_bool_env("TRANSFER_SENSORS", True),
         transfer_contacts=get_bool_env("TRANSFER_CONTACTS", True),
+        transfer_permissions=get_bool_env("TRANSFER_PERMISSIONS", True),
         transfer_waterlevels=get_bool_env("TRANSFER_WATERLEVELS", True),
         transfer_pressure=get_bool_env("TRANSFER_WATERLEVELS_PRESSURE", True),
         transfer_acoustic=get_bool_env("TRANSFER_WATERLEVELS_ACOUSTIC", True),
@@ -570,9 +572,6 @@ def _transfer_parallel(
         )
         futures[future] = "StratigraphyNew"
 
-        future = executor.submit(_execute_permissions_with_timing, "Permissions")
-        futures[future] = "Permissions"
-
         # Collect results
         for future in as_completed(futures):
             name = futures[future]
@@ -631,6 +630,17 @@ def _transfer_parallel(
         metrics.weather_data_metrics(*results_map["WeatherData"])
     if "WeatherPhotos" in results_map and results_map["WeatherPhotos"]:
         metrics.weather_photos_metrics(*results_map["WeatherPhotos"])
+
+    if opts.transfer_permissions:
+        # Permissions require contact associations; run after group 1 completes.
+        try:
+            result_name, result, elapsed = _execute_permissions_with_timing(
+                "Permissions"
+            )
+            results_map[result_name] = result
+            logger.info(f"Task {result_name} completed in {elapsed:.2f}s")
+        except Exception as e:
+            logger.critical(f"Task Permissions failed: {e}")
 
     if opts.transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
