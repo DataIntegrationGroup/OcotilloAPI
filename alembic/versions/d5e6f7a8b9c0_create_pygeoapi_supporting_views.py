@@ -238,9 +238,13 @@ def upgrade() -> None:
     inspector = inspect(bind)
 
     required_core = {"thing", "location", "location_thing_association"}
-    if not required_core.issubset(set(inspector.get_table_names(schema="public"))):
+    existing_tables = set(inspector.get_table_names(schema="public"))
+    if not required_core.issubset(existing_tables):
+        missing_tables = sorted(t for t in required_core if t not in existing_tables)
+        missing_tables_str = ", ".join(missing_tables)
         raise RuntimeError(
-            "Cannot create pygeoapi supporting views: required core tables are missing"
+            "Cannot create pygeoapi supporting views. The following required core "
+            f"tables are missing: {missing_tables_str}"
         )
 
     for view_id, thing_type in THING_COLLECTIONS:
@@ -250,7 +254,7 @@ def upgrade() -> None:
 
     op.execute(text("DROP VIEW IF EXISTS ogc_latest_depth_to_water_wells"))
     required_depth = {"observation", "sample", "field_activity", "field_event"}
-    if required_depth.issubset(set(inspector.get_table_names(schema="public"))):
+    if required_depth.issubset(existing_tables):
         op.execute(text(_create_latest_depth_view()))
         op.execute(
             text(
@@ -269,7 +273,7 @@ def upgrade() -> None:
 
     op.execute(text("DROP VIEW IF EXISTS ogc_avg_tds_wells"))
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
-    if required_tds.issubset(set(inspector.get_table_names(schema="public"))):
+    if required_tds.issubset(existing_tables):
         op.execute(text(_create_avg_tds_view()))
         op.execute(
             text(

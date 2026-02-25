@@ -37,7 +37,7 @@ resources:
   locations:
     type: collection
     title: Locations
-    description: Geographic monitoring locations and site coordinates used by Ocotillo features.
+    description: Geographic locations and site coordinates used by Ocotillo features.
     keywords: [locations]
     extents:
       spatial:
@@ -60,8 +60,8 @@ resources:
   latest_depth_to_water_wells:
     type: collection
     title: Latest Depth to Water (Wells)
-    description: Most recent depth-to-water observation for each water well.
-    keywords: [wells, groundwater-level, depth-to-water, latest]
+    description: Most recent depth-to-water below ground surface observation for each water well.
+    keywords: [water-wells, groundwater-level, depth-to-water-bgs, latest]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
@@ -82,9 +82,9 @@ resources:
 
   avg_tds_wells:
     type: collection
-    title: Average TDS (Wells)
+    title: Average TDS (Water Wells)
     description: Average total dissolved solids (TDS) from major chemistry results for each water well.
-    keywords: [wells, chemistry, tds, total-dissolved-solids, average]
+    keywords: [water-wells, chemistry, tds, total-dissolved-solids, average]
     extents:
       spatial:
         bbox: [-109.05, 31.33, -103.00, 37.00]
