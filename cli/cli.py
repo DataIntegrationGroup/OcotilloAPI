@@ -948,22 +948,22 @@ def refresh_pygeoapi_materialized_views(
     from db.engine import engine, session_ctx
 
     target_views = tuple(view) if view else PYGEOAPI_MATERIALIZED_VIEWS
+    # Validate all view names before opening any DB connections or sessions.
+    safe_views = tuple(_validate_sql_identifier(v) for v in target_views)
 
     if concurrently:
         # PostgreSQL requires REFRESH MATERIALIZED VIEW CONCURRENTLY to run
         # outside of a transaction block, so we use an AUTOCOMMIT connection
         # instead of a Session (which would wrap the call in a transaction).
         with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            for view_name in target_views:
-                safe_view = _validate_sql_identifier(view_name)
+            for safe_view in safe_views:
                 conn.execute(
                     text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {safe_view}")
                 )
     else:
         # Non-concurrent refresh can safely run inside a transaction.
         with session_ctx() as session:
-            for view_name in target_views:
-                safe_view = _validate_sql_identifier(view_name)
+            for safe_view in safe_views:
                 session.execute(text(f"REFRESH MATERIALIZED VIEW {safe_view}"))
             session.commit()
 
