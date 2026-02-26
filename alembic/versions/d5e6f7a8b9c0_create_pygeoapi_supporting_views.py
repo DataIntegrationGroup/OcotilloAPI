@@ -208,9 +208,19 @@ def _create_refresh_function() -> str:
         RETURNS void
         LANGUAGE plpgsql
         AS $$
+        DECLARE
+            matview_record record;
+            matview_fqname text;
         BEGIN
-            REFRESH MATERIALIZED VIEW public.ogc_latest_depth_to_water_wells;
-            REFRESH MATERIALIZED VIEW public.ogc_avg_tds_wells;
+            FOR matview_record IN
+                SELECT schemaname, matviewname
+                FROM pg_matviews
+                WHERE schemaname = 'public'
+                  AND matviewname LIKE 'ogc_%'
+            LOOP
+                matview_fqname := format('%I.%I', matview_record.schemaname, matview_record.matviewname);
+                EXECUTE format('REFRESH MATERIALIZED VIEW %s', matview_fqname);
+            END LOOP;
         END;
         $$;
     """
