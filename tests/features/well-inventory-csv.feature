@@ -35,18 +35,15 @@ Feature: Bulk upload well inventory from CSV via CLI
       | required field name     |
       | project                 |
       | well_name_point_id      |
-      | site_name               |
       | date_time               |
       | field_staff             |
       | utm_easting             |
       | utm_northing            |
       | utm_zone                |
-      | elevation_ft            |
-      | elevation_method        |
-      | measuring_point_height_ft |
     And each "well_name_point_id" value is unique per row
     And the CSV includes optional fields when available:
       | optional field name               |
+      | site_name                         |
       | field_staff_2                     |
       | field_staff_3                     |
       | contact_1_name                    |
@@ -110,21 +107,30 @@ Feature: Bulk upload well inventory from CSV via CLI
       | completion_source                 |
       | total_well_depth_ft               |
       | historic_depth_to_water_ft        |
+      | historical_notes                  |
       | depth_source                      |
       | well_pump_type                    |
       | well_pump_depth_ft                |
       | is_open                           |
       | datalogger_possible               |
       | casing_diameter_ft                |
+      | elevation_ft                      |
+      | elevation_method                  |
+      | measuring_point_height_ft         |
       | measuring_point_description       |
       | well_purpose                      |
       | well_purpose_2                    |
-      | well_status                  |
+      | well_hole_status                  |
+      | well_status                       |
       | monitoring_frequency              |
+      | monitoring_status                 |
       | sampling_scenario_notes           |
+      | well_notes                        |
+      | well_measuring_notes              |
+      | water_notes                       |
       | well_measuring_notes              |
       | sample_possible                   |
-     And the csv includes optional water level entry fields when available:
+    And the csv includes optional water level entry fields when available:
       | water_level_entry fields          |
       | measuring_person                  |
       | sample_method                     |
@@ -132,10 +138,10 @@ Feature: Bulk upload well inventory from CSV via CLI
       | mp_height                         |
       | level_status                      |
       | depth_to_water_ft                 |
-      | data_quality                      |  
+      | data_quality                      |
       | water_level_notes                 |
-     And the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
-     And the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided
+    And the required "date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
+    And the optional "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00") when provided
 
 #    And all optional lexicon fields contain valid lexicon values when provided
 #    And all optional numeric fields contain valid numeric values when provided
@@ -161,15 +167,11 @@ Feature: Bulk upload well inventory from CSV via CLI
       | required field name     |
       | project                 |
       | well_name_point_id      |
-      | site_name               |
       | date_time               |
       | field_staff             |
       | utm_easting             |
       | utm_northing            |
       | utm_zone                |
-      | elevation_ft            |
-      | elevation_method        |
-      | measuring_point_height_ft |
     When I run the well inventory bulk upload command
     Then the command exits with code 0
     And the system should return a response in JSON format
@@ -204,7 +206,7 @@ Feature: Bulk upload well inventory from CSV via CLI
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid postal code format
-    Given my CSV file contains a row  that has an invalid postal code format in contact_1_address_1_postal_code
+    Given my CSV file contains a row that has an invalid postal code format in contact_1_address_1_postal_code
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
@@ -212,7 +214,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has a contact with a invalid phone number format
+  Scenario: Upload fails when a row has a contact with an invalid phone number format
     Given my CSV file contains a row with a contact with a phone number that is not in the valid format
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -221,7 +223,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has a contact with a invalid email format
+  Scenario: Upload fails when a row has a contact with an invalid email format
     Given my CSV file contains a row with a contact with an email that is not in the valid format
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -230,7 +232,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact without a contact_role
+  Scenario: Upload fails when a row has a contact without a contact_role
     Given my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -239,7 +241,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact without a "contact_type"
+  Scenario: Upload fails when a row has a contact without a "contact_type"
     Given my CSV file contains a row with a contact but is missing the required "contact_type" field for that contact
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -248,7 +250,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact with an invalid "contact_type"
+  Scenario: Upload fails when a row has a contact with an invalid "contact_type"
     Given my CSV file contains a row with a contact_type value that is not in the valid lexicon for "contact_type"
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -257,7 +259,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact with an email without an email_type
+  Scenario: Upload fails when a row has a contact with an email without an email_type
     Given my CSV file contains a row with a contact with an email but is missing the required "email_type" field for that email
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -266,7 +268,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact with a phone without a phone_type
+  Scenario: Upload fails when a row has a contact with a phone without a phone_type
     Given my CSV file contains a row with a contact with a phone but is missing the required "phone_type" field for that phone
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
@@ -275,12 +277,57 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
   @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has contact with an address without an address_type
+  Scenario: Upload fails when a row has a contact with an address without an address_type
     Given my CSV file contains a row with a contact with an address but is missing the required "address_type" field for that address
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "address_type" value
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has a contact with an invalid "address_type"
+    Given my CSV file contains a row with an address_type value that is not one of: Work, Personal, Mailing, Physical
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating an invalid "address_type" value
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has a contact with an invalid state abbreviation
+    Given my CSV file contains a row with a state value that is not a valid 2-letter US state abbreviation
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating an invalid state value
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has an invalid well_hole_status value
+    Given my CSV file contains a row with a well_hole_status value that is not one of: "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used"
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating an invalid "well_hole_status" value
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has an invalid monitoring_status value
+    Given my CSV file contains a row with a monitoring_status value that is not one of: "Open", "Open (unequipped)", "Closed", "Datalogger can be installed", "Datalogger cannot be installed", "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used", "Currently monitored", "Not currently monitored"
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating an invalid "monitoring_status" value
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has an invalid well_pump_type value
+    Given my CSV file contains a row with a well_pump_type value that is not one of: "Submersible", "Jet", "Line Shaft", "Hand"
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating an invalid "well_pump_type" value
     And no wells are imported
 
   @negative @validation @BDMS-TBD
@@ -290,6 +337,24 @@ Feature: Bulk upload well inventory from CSV via CLI
     Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid UTM coordinates
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when a row has a contact with neither contact_name nor contact_organization
+    Given my CSV file contains a row with contact fields filled but both "contact_1_name" and "contact_1_organization" are blank
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided
+    And no wells are imported
+
+  @negative @validation @BDMS-TBD
+  Scenario: Upload fails when water_level_date_time is missing but depth_to_water_ft is provided
+    Given my CSV file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank
+    When I run the well inventory bulk upload command
+    Then the command exits with a non-zero exit code
+    And the system should return a response in JSON format
+    And the response includes a validation error indicating that "water_level_date_time" is required when "depth_to_water_ft" is provided
     And no wells are imported
 
   @negative @validation @required_fields @BDMS-TBD
@@ -305,15 +370,11 @@ Feature: Bulk upload well inventory from CSV via CLI
       | required_field              |
       | project                     |
       | well_name_point_id          |
-      | site_name                   |
       | date_time                   |
       | field_staff                 |
       | utm_easting                 |
       | utm_northing                |
       | utm_zone                    |
-      | elevation_ft                |
-      | elevation_method            |
-      | measuring_point_height_ft   |
 
   @negative @validation @boolean_fields @BDMS-TBD
   Scenario: Upload fails due to invalid boolean field values
@@ -359,9 +420,9 @@ Feature: Bulk upload well inventory from CSV via CLI
     And no wells are imported
 
 
-#  ###########################################################################
-#  # FILE FORMAT SCENARIOS
-#  ###########################################################################
+  ###########################################################################
+  # FILE FORMAT SCENARIOS
+  ###########################################################################
 
   @negative @file_format @limits @BDMS-TBD
   Scenario: Upload fails when the CSV exceeds the maximum allowed number of rows
@@ -409,7 +470,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     And the response includes a validation error indicating a repeated header row
     And no wells are imported
 
-
   @negative @validation @header_row @BDMS-TBD
   Scenario: Upload fails when the header row contains duplicate column names
     Given my CSV file header row contains the "contact_1_email_1" column name more than once
@@ -418,7 +478,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     And the system should return a response in JSON format
     And the response includes a validation error indicating duplicate header names
     And no wells are imported
-
 
   ###########################################################################
   # DELIMITER & QUOTING / EXCEL-RELATED SCENARIOS
@@ -448,27 +507,18 @@ Feature: Bulk upload well inventory from CSV via CLI
     Then the command exits with code 0
     And the system should return a response in JSON format
     And all wells are imported
-#
-#  @negative @validation @numeric @excel @BDMS-TBD
-#  Scenario: Upload fails when numeric fields are provided in Excel scientific notation format
-#    Given my CSV file contains a numeric-required field such as "utm_easting"
-#    And Excel has exported the "utm_easting" value in scientific notation (for example "1.2345E+06")
-#    When I run the well inventory bulk upload command
-#    Then the command exits with a non-zero exit code
-#    And the system should return a response in JSON format
-#    And the response includes a validation error indicating an invalid numeric format for "utm_easting"
-#    And no wells are imported
 
-###########################################################################
+  ###########################################################################
   # WATER LEVEL ENTRY VALIDATION
-###########################################################################
+  ###########################################################################
 
- # if one water level entry field is filled, then all are required
+  # water_level_date_time is required only when depth_to_water_ft is provided
+  # all other water level fields are optional and independent
   @negative @validation @BDMS-TBD
-  Scenario: Water level entry fields are all required if any are filled
-    Given my csv file contains a row where some but not all water level entry fields are filled
+  Scenario: Upload fails when depth_to_water_ft is provided but water_level_date_time is missing
+    Given my csv file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the system should return a response in JSON format
-    And the response includes validation errors for each missing water level entry field
+    And the response includes a validation error indicating that "water_level_date_time" is required when "depth_to_water_ft" is provided
     And no wells are imported
