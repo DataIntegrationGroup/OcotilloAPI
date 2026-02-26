@@ -33,6 +33,7 @@ from db import (
     Contact,
     FieldEventParticipant,
     Parameter,
+    Notes,
 )
 from db.engine import session_ctx
 from transfers.transferer import Transferer
@@ -158,6 +159,7 @@ class WaterLevelTransferer(Transferer):
             "observations_created": 0,
             "contacts_created": 0,
             "contacts_reused": 0,
+            "notes_created": 0,
         }
 
         gwd = self.cleaned_df.groupby(["PointID"])
@@ -395,6 +397,26 @@ class WaterLevelTransferer(Transferer):
                 if observation_rows:
                     session.execute(insert(Observation), observation_rows)
                     stats["observations_created"] += len(observation_rows)
+
+                # Site Notes (legacy)
+                site_notes = {
+                    prep["row"].SiteNotes
+                    for prep in prepared_rows
+                    if hasattr(prep["row"], "SiteNotes")
+                    and prep["row"].SiteNotes
+                    and str(prep["row"].SiteNotes).strip()
+                }
+                for note_content in site_notes:
+                    session.add(
+                        Notes(
+                            target_table="thing",
+                            target_id=thing_id,
+                            note_type="Site Notes (legacy)",
+                            content=str(note_content).strip(),
+                            release_status="public",
+                        )
+                    )
+                    stats["notes_created"] += 1
 
                 session.commit()
                 session.expunge_all()
