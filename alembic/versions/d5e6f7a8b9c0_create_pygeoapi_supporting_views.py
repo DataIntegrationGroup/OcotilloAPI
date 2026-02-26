@@ -202,6 +202,19 @@ def _drop_view_or_materialized_view(view_name: str) -> None:
     op.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}"))
 
 
+def _create_matview_indexes() -> None:
+    # Required so REFRESH MATERIALIZED VIEW CONCURRENTLY can run.
+    op.execute(
+        text(
+            "CREATE UNIQUE INDEX ux_ogc_latest_depth_to_water_wells_id "
+            "ON ogc_latest_depth_to_water_wells (id)"
+        )
+    )
+    op.execute(
+        text("CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)")
+    )
+
+
 def _create_refresh_function() -> str:
     return f"""
         CREATE OR REPLACE FUNCTION public.{REFRESH_FUNCTION_NAME}()
@@ -340,6 +353,7 @@ def upgrade() -> None:
             "'Average TDS per well from major chemistry results for pygeoapi.'"
         )
     )
+    _create_matview_indexes()
 
     op.execute(text(_create_refresh_function()))
     op.execute(text(_schedule_refresh_job()))
