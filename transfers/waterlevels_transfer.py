@@ -399,20 +399,32 @@ class WaterLevelTransferer(Transferer):
                     stats["observations_created"] += len(observation_rows)
 
                 # Site Notes (legacy)
-                site_notes = {
-                    prep["row"].SiteNotes
-                    for prep in prepared_rows
-                    if hasattr(prep["row"], "SiteNotes")
-                    and prep["row"].SiteNotes
-                    and str(prep["row"].SiteNotes).strip()
-                }
-                for note_content in site_notes:
+                # If there are duplicate notes for a single point ID, we only create one note.
+                # However, if some duplicates are "time stamped" (meaning they are attached to
+                # rows with different dates), we should ideally preserve that context.
+                # The current implementation prepends the date to the note content
+                # to ensure that duplicate content from different dates remains distinct.
+                unique_notes: dict[str, datetime] = {}
+                for prep in prepared_rows:
+                    if hasattr(prep["row"], "SiteNotes") and prep["row"].SiteNotes:
+                        content = str(prep["row"].SiteNotes).strip()
+                        if content:
+                            dt = prep["dt_utc"]
+                            # We keep all notes that have different content OR different dates
+                            # Actually, if content is same but date is different, we want to see it.
+                            # So we key by (content, date)
+                            key = (content, dt.date())
+                            if key not in unique_notes:
+                                unique_notes[key] = dt
+
+                for (content, _), dt in unique_notes.items():
+                    date_prefix = dt.strftime("%Y-%m-%d")
                     session.add(
                         Notes(
                             target_table="thing",
                             target_id=thing_id,
                             note_type="Site Notes (legacy)",
-                            content=str(note_content).strip(),
+                            content=f"{date_prefix}: {content}",
                             release_status="public",
                         )
                     )
