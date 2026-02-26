@@ -112,6 +112,7 @@ def _create_latest_depth_view() -> str:
                 o.observation_datetime,
                 o.value,
                 o.measuring_point_height,
+                -- Treat NULL measuring_point_height as 0 when computing depth_to_water_bgs
                 (o.value - COALESCE(o.measuring_point_height, 0)) AS depth_to_water_bgs,
                 ROW_NUMBER() OVER (
                     PARTITION BY fe.thing_id
