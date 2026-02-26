@@ -211,6 +211,7 @@ class BaseThingResponse(BaseResponseModel):
     monitoring_frequencies: list[MonitoringFrequencyResponse] = []
     general_notes: list[NoteResponse] = []
     sampling_procedure_notes: list[NoteResponse] = []
+    site_notes: list[NoteResponse] = []
 
     @field_validator("monitoring_frequencies", mode="before")
     def remove_records_with_end_date(cls, monitoring_frequencies):
