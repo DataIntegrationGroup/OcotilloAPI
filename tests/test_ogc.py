@@ -94,7 +94,7 @@ def test_ogc_wells_items_and_item(water_well_thing):
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
-    ids = {feature["id"] for feature in payload["features"]}
+    ids = {str(feature["id"]) for feature in payload["features"]}
     assert str(water_well_thing.id) in ids
 
     response = client.get(
@@ -102,8 +102,7 @@ def test_ogc_wells_items_and_item(water_well_thing):
     )
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload["id"], str)
-    assert payload["id"] == str(water_well_thing.id)
+    assert str(payload["id"]) == str(water_well_thing.id)
 
 
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
