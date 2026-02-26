@@ -45,6 +45,16 @@ THING_COLLECTIONS = [
     ("test_wells", "test well"),
 ]
 
+LATEST_LOCATION_CTE = """
+SELECT DISTINCT ON (lta.thing_id)
+    lta.thing_id,
+    lta.location_id,
+    lta.effective_start
+FROM location_thing_association AS lta
+WHERE lta.effective_end IS NULL
+ORDER BY lta.thing_id, lta.effective_start DESC
+""".strip()
+
 
 def _safe_view_id(view_id: str) -> str:
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", view_id):
@@ -58,13 +68,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
     return f"""
         CREATE VIEW ogc_{safe_view_id} AS
         WITH latest_location AS (
-            SELECT DISTINCT ON (lta.thing_id)
-                lta.thing_id,
-                lta.location_id,
-                lta.effective_start
-            FROM location_thing_association AS lta
-            WHERE lta.effective_end IS NULL
-            ORDER BY lta.thing_id, lta.effective_start DESC
+{LATEST_LOCATION_CTE}
         )
         SELECT
             t.id,
@@ -94,16 +98,10 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
 
 
 def _create_latest_depth_view() -> str:
-    return """
+    return f"""
         CREATE MATERIALIZED VIEW ogc_latest_depth_to_water_wells AS
         WITH latest_location AS (
-            SELECT DISTINCT ON (lta.thing_id)
-                lta.thing_id,
-                lta.location_id,
-                lta.effective_start
-            FROM location_thing_association AS lta
-            WHERE lta.effective_end IS NULL
-            ORDER BY lta.thing_id, lta.effective_start DESC
+{LATEST_LOCATION_CTE}
         ),
         ranked_obs AS (
             SELECT
@@ -147,16 +145,10 @@ def _create_latest_depth_view() -> str:
 
 
 def _create_avg_tds_view() -> str:
-    return """
+    return f"""
         CREATE MATERIALIZED VIEW ogc_avg_tds_wells AS
         WITH latest_location AS (
-            SELECT DISTINCT ON (lta.thing_id)
-                lta.thing_id,
-                lta.location_id,
-                lta.effective_start
-            FROM location_thing_association AS lta
-            WHERE lta.effective_end IS NULL
-            ORDER BY lta.thing_id, lta.effective_start DESC
+{LATEST_LOCATION_CTE}
         ),
         tds_obs AS (
             SELECT
