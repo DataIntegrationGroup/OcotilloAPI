@@ -73,8 +73,12 @@ def erase_and_rebuild_db():
                 ")"
             )
         ).scalar()
-        if pg_cron_available:
-            session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
+        if not pg_cron_available:
+            raise RuntimeError(
+                "Cannot erase and rebuild database: pg_cron extension is not "
+                "available on this PostgreSQL server."
+            )
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
         session.commit()
         Base.metadata.drop_all(session.bind)
         Base.metadata.create_all(session.bind)

@@ -169,18 +169,18 @@ def _template_path() -> Path:
 
 
 def _mount_path() -> str:
-    # Read and sanitize the configured mount path, defaulting to "/oapi".
-    path = (os.environ.get("PYGEOAPI_MOUNT_PATH", "/oapi") or "").strip()
+    # Read and sanitize the configured mount path, defaulting to "/ogcapi".
+    path = (os.environ.get("PYGEOAPI_MOUNT_PATH", "/ogcapi") or "").strip()
 
     # Treat empty or root ("/") values as invalid and fall back to the default.
     if path in {"", "/"}:
-        path = "/oapi"
+        path = "/ogcapi"
 
     # Ensure a single leading slash.
     if not path.startswith("/"):
         path = f"/{path}"
 
-    # Remove any trailing slashes so "/oapi/" and "oapi/" both become "/oapi".
+    # Remove any trailing slashes so "/ogcapi/" and "ogcapi/" both become "/ogcapi".
     path = path.rstrip("/")
     return path
 
@@ -311,7 +311,7 @@ def mount_pygeoapi(app: FastAPI) -> None:
         return
     if find_spec("pygeoapi") is None:
         raise RuntimeError(
-            "pygeoapi is not installed. Rebuild/sync dependencies so /oapi can be mounted."
+            "pygeoapi is not installed. Rebuild/sync dependencies so /ogcapi can be mounted."
         )
 
     pygeoapi_dir = _pygeoapi_dir()

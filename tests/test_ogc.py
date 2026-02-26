@@ -56,7 +56,7 @@ def override_authentication_dependency_fixture():
 
 
 def test_ogc_landing():
-    response = client.get("/oapi")
+    response = client.get("/ogcapi")
     assert response.status_code == 200
     payload = response.json()
     assert payload["title"]
@@ -64,7 +64,7 @@ def test_ogc_landing():
 
 
 def test_ogc_conformance():
-    response = client.get("/oapi/conformance")
+    response = client.get("/ogcapi/conformance")
     assert response.status_code == 200
     payload = response.json()
     assert "conformsTo" in payload
@@ -72,17 +72,17 @@ def test_ogc_conformance():
 
 
 def test_ogc_collections():
-    response = client.get("/oapi/collections")
+    response = client.get("/ogcapi/collections")
     assert response.status_code == 200
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
-    assert {"locations", "wells", "springs"}.issubset(ids)
+    assert {"locations", "water_wells", "springs"}.issubset(ids)
 
 
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_locations_items_bbox(location):
     bbox = "-107.95,33.80,-107.94,33.81"
-    response = client.get(f"/oapi/collections/locations/items?bbox={bbox}")
+    response = client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
     assert response.status_code == 200
     payload = response.json()
     assert payload["type"] == "FeatureCollection"
@@ -90,24 +90,27 @@ def test_ogc_locations_items_bbox(location):
 
 
 def test_ogc_wells_items_and_item(water_well_thing):
-    response = client.get("/oapi/collections/wells/items?limit=20")
+    response = client.get("/ogcapi/collections/water_wells/items?limit=20")
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
-    ids = {int(feature["id"]) for feature in payload["features"]}
-    assert water_well_thing.id in ids
+    ids = {feature["id"] for feature in payload["features"]}
+    assert str(water_well_thing.id) in ids
 
-    response = client.get(f"/oapi/collections/wells/items/{water_well_thing.id}")
+    response = client.get(
+        f"/ogcapi/collections/water_wells/items/{water_well_thing.id}"
+    )
     assert response.status_code == 200
     payload = response.json()
-    assert int(payload["id"]) == water_well_thing.id
+    assert isinstance(payload["id"], str)
+    assert payload["id"] == str(water_well_thing.id)
 
 
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_polygon_within_filter(location):
     polygon = "POLYGON((-107.95 33.80,-107.94 33.80,-107.94 33.81,-107.95 33.81,-107.95 33.80))"
     response = client.get(
-        "/oapi/collections/locations/items",
+        "/ogcapi/collections/locations/items",
         params={
             "filter": f"WITHIN(geometry,{polygon})",
             "filter-lang": "cql2-text",
