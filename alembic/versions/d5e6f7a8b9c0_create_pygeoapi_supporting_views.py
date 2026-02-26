@@ -46,14 +46,14 @@ THING_COLLECTIONS = [
 ]
 
 LATEST_LOCATION_CTE = """
-            SELECT DISTINCT ON (lta.thing_id)
-                lta.thing_id,
-                lta.location_id,
-                lta.effective_start
-            FROM location_thing_association AS lta
-            WHERE lta.effective_end IS NULL
-            ORDER BY lta.thing_id, lta.effective_start DESC
-"""
+SELECT DISTINCT ON (lta.thing_id)
+    lta.thing_id,
+    lta.location_id,
+    lta.effective_start
+FROM location_thing_association AS lta
+WHERE lta.effective_end IS NULL
+ORDER BY lta.thing_id, lta.effective_start DESC
+""".strip()
 
 
 def _safe_view_id(view_id: str) -> str:
