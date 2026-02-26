@@ -3,8 +3,8 @@ import textwrap
 from importlib.util import find_spec
 from pathlib import Path
 
-from fastapi import FastAPI
 import yaml
+from fastapi import FastAPI
 
 THING_COLLECTIONS = [
     {
@@ -284,10 +284,12 @@ def _write_config(path: Path) -> None:
             password_placeholder=password_placeholder,
         ),
     )
-    # NOTE: The generated file `.pygeoapi/pygeoapi-config.yml` contains database
-    # connection details (host, port, dbname, user). Although the password is
-    # expected to be provided via environment variables at runtime by pygeoapi,
-    # this file should still be treated as sensitive configuration:
+    # NOTE: The generated runtime config file at
+    # `${PYGEOAPI_RUNTIME_DIR}/pygeoapi-config.yml` (default:
+    # `/tmp/pygeoapi/pygeoapi-config.yml`) contains database connection details
+    # (host, port, dbname, user). Although the password is expected to be
+    # provided via environment variables at runtime by pygeoapi, this file
+    # should still be treated as sensitive configuration:
     #   * Do not commit it to version control.
     #   * Do not expose it in logs, error messages, or diagnostics.
     #   * Ensure filesystem permissions restrict access appropriately.

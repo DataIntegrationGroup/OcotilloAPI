@@ -27,31 +27,31 @@ supports research, field operations, and public data delivery for the Bureau of 
 
 ## 🗺️ OGC API - Features
 
-The API exposes OGC API - Features endpoints under `/oapi` using `pygeoapi`.
+The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
 
 ### Landing & metadata
 
 ```bash
-curl http://localhost:8000/oapi
-curl http://localhost:8000/oapi/conformance
-curl http://localhost:8000/oapi/collections
-curl http://localhost:8000/oapi/collections/locations
+curl http://localhost:8000/ogcapi
+curl http://localhost:8000/ogcapi/conformance
+curl http://localhost:8000/ogcapi/collections
+curl http://localhost:8000/ogcapi/collections/locations
 ```
 
 ### Items (GeoJSON)
 
 ```bash
-curl "http://localhost:8000/oapi/collections/locations/items?limit=10&offset=0"
-curl "http://localhost:8000/oapi/collections/wells/items?limit=5"
-curl "http://localhost:8000/oapi/collections/springs/items?limit=5"
-curl "http://localhost:8000/oapi/collections/locations/items/123"
+curl "http://localhost:8000/ogcapi/collections/locations/items?limit=10&offset=0"
+curl "http://localhost:8000/ogcapi/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/springs/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/locations/items/123"
 ```
 
 ### BBOX + datetime filters
 
 ```bash
-curl "http://localhost:8000/oapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
-curl "http://localhost:8000/oapi/collections/wells/items?datetime=2020-01-01/2024-01-01"
+curl "http://localhost:8000/ogcapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogcapi/collections/wells/items?datetime=2020-01-01/2024-01-01"
 ```
 
 ### Polygon filter (CQL2 text)
@@ -59,13 +59,13 @@ curl "http://localhost:8000/oapi/collections/wells/items?datetime=2020-01-01/202
 Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
 
 ```bash
-curl "http://localhost:8000/oapi/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+curl "http://localhost:8000/ogcapi/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
 ```
 
 ### OpenAPI UI
 
 ```bash
-curl "http://localhost:8000/oapi/openapi?ui=swagger"
+curl "http://localhost:8000/ogcapi/openapi?ui=swagger"
 ```
     
 

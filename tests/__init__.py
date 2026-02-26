@@ -26,6 +26,8 @@ load_dotenv(override=True)
 os.environ["POSTGRES_PORT"] = "5432"
 # Always use test database, never dev
 os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+# Keep `main:app` importable in clean test environments without a local `.env`.
+os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")
 
 from fastapi.testclient import TestClient
 
