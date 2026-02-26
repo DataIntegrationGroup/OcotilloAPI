@@ -8,7 +8,7 @@ import yaml
 
 THING_COLLECTIONS = [
     {
-        "id": "wells",
+        "id": "water_wells",
         "title": "Water Wells",
         "thing_type": "water well",
         "description": "Groundwater wells used for monitoring, production, and hydrogeologic investigations.",
