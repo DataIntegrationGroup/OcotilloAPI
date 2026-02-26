@@ -1,4 +1,5 @@
 import os
+import re
 import textwrap
 from importlib.util import find_spec
 from pathlib import Path
@@ -182,6 +183,21 @@ def _mount_path() -> str:
 
     # Remove any trailing slashes so "/ogcapi/" and "ogcapi/" both become "/ogcapi".
     path = path.rstrip("/")
+
+    # Disallow traversal/current-directory segments.
+    segments = [segment for segment in path.split("/") if segment]
+    if any(segment in {".", ".."} for segment in segments):
+        raise ValueError(
+            "Invalid PYGEOAPI_MOUNT_PATH: traversal segments are not allowed."
+        )
+
+    # Allow only slash-delimited segments of alphanumerics, underscore, or hyphen.
+    if not re.fullmatch(r"/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*", path):
+        raise ValueError(
+            "Invalid PYGEOAPI_MOUNT_PATH: only letters, numbers, underscores, "
+            "hyphens, and slashes are allowed."
+        )
+
     return path
 
 
