@@ -73,16 +73,15 @@ def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch
         def execute(self, stmt):
             executed_sql.append(str(stmt))
 
-    class _FakeConnCtx:
         def __enter__(self):
-            return FakeConnection()
+            return self
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
     class FakeEngine:
         def connect(self):
-            return _FakeConnCtx()
+            return FakeConnection()
 
     monkeypatch.setattr("db.engine.engine", FakeEngine())
 
