@@ -21,7 +21,7 @@ REFRESH_JOB_NAME = "refresh_pygeoapi_matviews_nightly"
 REFRESH_SCHEDULE = "0 3 * * *"
 
 THING_COLLECTIONS = [
-    ("wells", "water well"),
+    ("water_wells", "water well"),
     ("springs", "spring"),
     ("abandoned_wells", "abandoned well"),
     ("artesian_wells", "artesian well"),
