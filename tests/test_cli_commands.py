@@ -63,22 +63,28 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
 
 def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch):
     executed_sql: list[str] = []
+    execution_options: list[dict[str, object]] = []
 
-    class FakeSession:
+    class FakeConnection:
+        def execution_options(self, **kwargs):
+            execution_options.append(kwargs)
+            return self
+
         def execute(self, stmt):
             executed_sql.append(str(stmt))
 
-        def commit(self):
-            return None
-
-    class _FakeCtx:
+    class _FakeConnCtx:
         def __enter__(self):
-            return FakeSession()
+            return FakeConnection()
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr("db.engine.session_ctx", lambda: _FakeCtx())
+    class FakeEngine:
+        def connect(self):
+            return _FakeConnCtx()
+
+    monkeypatch.setattr("db.engine.engine", FakeEngine())
 
     runner = CliRunner()
     result = runner.invoke(
@@ -92,6 +98,7 @@ def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch
     )
 
     assert result.exit_code == 0, result.output
+    assert execution_options == [{"isolation_level": "AUTOCOMMIT"}]
     assert executed_sql == [
         "REFRESH MATERIALIZED VIEW CONCURRENTLY ogc_avg_tds_wells",
     ]
@@ -327,10 +334,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
