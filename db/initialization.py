@@ -25,7 +25,12 @@ APP_READ_GRANT_SQL = text("""
 def _parse_app_read_members() -> list[str]:
     members = os.environ.get("APP_READ_MEMBERS", "")
     parsed = [member.strip() for member in members.split(",") if member.strip()]
-    # pygeoapi should always inherit the default read role.
+    # NOTE: The "pygeoapi" database role is always added to APP_READ_MEMBERS.
+    # This ensures the pygeoapi integration consistently inherits the default
+    # read role ("app_read"), even if administrators do not list it explicitly
+    # in the APP_READ_MEMBERS environment variable. When reviewing database
+    # permissions or configuring roles, be aware that "pygeoapi" will always
+    # receive read access via app_read if the role exists in the database.
     if "pygeoapi" not in {member.lower() for member in parsed}:
         parsed.append("pygeoapi")
     return parsed
