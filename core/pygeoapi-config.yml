@@ -1,0 +1,106 @@
+server:
+  bind:
+    host: 0.0.0.0
+    port: 8000
+  url: {server_url}
+  mimetype: application/json; charset=UTF-8
+  encoding: utf-8
+  language: en-US
+  limits:
+    default_items: 10
+    max_items: 10000
+  map:
+    url: https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png
+    attribution: "© OpenStreetMap contributors"
+
+logging:
+  level: INFO
+
+metadata:
+  identification:
+    title: Ocotillo OGC API
+    description: OGC API - Features backed by PostGIS and pygeoapi
+    keywords: [features, ogcapi, postgis, pygeoapi]
+    terms_of_service: https://example.com/terms
+    url: https://example.com
+  license:
+    name: CC-BY 4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+  provider:
+    name: NMBGMR
+    url: https://geoinfo.nmt.edu
+  contact:
+    name: API Support
+    email: support@example.com
+
+resources:
+  locations:
+    type: collection
+    title: Locations
+    description: Geographic locations and site coordinates used by Ocotillo features.
+    keywords: [locations]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: location
+        geom_field: point
+
+  latest_depth_to_water_wells:
+    type: collection
+    title: Latest Depth to Water (Wells)
+    description: Most recent depth-to-water below ground surface observation for each water well.
+    keywords: [water-wells, groundwater-level, depth-to-water-bgs, latest]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_latest_depth_to_water_wells
+        geom_field: point
+
+  avg_tds_wells:
+    type: collection
+    title: Average TDS (Water Wells)
+    description: Average total dissolved solids (TDS) from major chemistry results for each water well.
+    keywords: [water-wells, chemistry, tds, total-dissolved-solids, average]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_avg_tds_wells
+        geom_field: point
+
+{thing_collections_block}

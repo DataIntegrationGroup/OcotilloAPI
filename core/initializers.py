@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from pathlib import Path
+import os
 
 from fastapi_pagination import add_pagination
 from sqlalchemy import text, select
@@ -65,6 +66,19 @@ def erase_and_rebuild_db():
         session.execute(text("DROP SCHEMA public CASCADE"))
         session.execute(text("CREATE SCHEMA public"))
         session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        pg_cron_available = session.execute(
+            text(
+                "SELECT EXISTS ("
+                "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
+                ")"
+            )
+        ).scalar()
+        if not pg_cron_available:
+            raise RuntimeError(
+                "Cannot erase and rebuild database: pg_cron extension is not "
+                "available on this PostgreSQL server."
+            )
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
         session.commit()
         Base.metadata.drop_all(session.bind)
         Base.metadata.create_all(session.bind)
@@ -193,6 +207,9 @@ def init_lexicon(path: str = None) -> None:
 
 
 def register_routes(app):
+    if getattr(app.state, "routes_registered", False):
+        return
+
     from admin.auth_routes import router as admin_auth_router
     from api.group import router as group_router
     from api.contact import router as contact_router
@@ -211,7 +228,7 @@ def register_routes(app):
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
-    from api.ogc.router import router as ogc_router
+    from core.pygeoapi import mount_pygeoapi
 
     app.include_router(asset_router)
     app.include_router(admin_auth_router)
@@ -219,7 +236,7 @@ def register_routes(app):
     app.include_router(contact_router)
     app.include_router(geospatial_router)
     app.include_router(group_router)
-    app.include_router(ogc_router)
+    mount_pygeoapi(app)
     app.include_router(lexicon_router)
     app.include_router(location_router)
     app.include_router(observation_router)
@@ -230,6 +247,58 @@ def register_routes(app):
     app.include_router(thing_router)
     app.include_router(ngwmn_router)
     add_pagination(app)
+    app.state.routes_registered = True
+
+
+def configure_middleware(app):
+    from starlette.middleware.cors import CORSMiddleware
+    from starlette.middleware.sessions import SessionMiddleware
+
+    if not getattr(app.state, "session_middleware_configured", False):
+        session_secret_key = os.environ.get("SESSION_SECRET_KEY")
+        if not session_secret_key:
+            raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
+        app.add_middleware(SessionMiddleware, secret_key=session_secret_key)
+        app.state.session_middleware_configured = True
+
+    if not getattr(app.state, "cors_middleware_configured", False):
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        app.state.cors_middleware_configured = True
+
+    apitally_client_id = os.environ.get("APITALLY_CLIENT_ID")
+    if apitally_client_id and not getattr(
+        app.state, "apitally_middleware_configured", False
+    ):
+        from apitally.fastapi import ApitallyMiddleware
+
+        app.add_middleware(
+            ApitallyMiddleware,
+            client_id=apitally_client_id,
+            env=os.environ.get("ENVIRONMENT"),
+            enable_request_logging=True,
+            log_request_headers=True,
+            log_request_body=True,
+            log_response_body=True,
+            capture_logs=True,
+            capture_traces=False,
+        )
+        app.state.apitally_middleware_configured = True
+
+
+def configure_admin(app):
+    if getattr(app.state, "admin_configured", False):
+        return
+
+    from admin import create_admin
+
+    create_admin(app)
+    app.state.admin_configured = True
 
 
 # ============= EOF =============================================

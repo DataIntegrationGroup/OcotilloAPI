@@ -5,7 +5,7 @@ This directory contains FastAPI route modules grouped by resource/domain.
 ## Structure
 
 - One module per domain (for example `thing.py`, `contact.py`, `observation.py`)
-- `api/ogc/` contains OGC-specific endpoints
+- OGC API - Features is mounted via `pygeoapi` (see `core/pygeoapi.py`)
 
 ## Guidelines
 

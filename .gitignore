@@ -46,6 +46,6 @@ run_bdd-local.sh
 .pre-commit-config.local.yaml
 .serena/
 cli/logs
-
+.pygeoapi/
 # deployment files
 app.yaml

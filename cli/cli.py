@@ -24,7 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
-load_dotenv()
+# CLI should honor local `.env` values, even if shell/container vars already exist.
+load_dotenv(override=True)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")
@@ -49,6 +50,12 @@ class SmokePopulation(str, Enum):
     agreed = "agreed"
 
 
+PYGEOAPI_MATERIALIZED_VIEWS = (
+    "ogc_latest_depth_to_water_wells",
+    "ogc_avg_tds_wells",
+)
+
+
 def _resolve_theme(theme: ThemeMode) -> ThemeMode:
     if theme != ThemeMode.auto:
         return theme
@@ -66,6 +73,12 @@ def _resolve_theme(theme: ThemeMode) -> ThemeMode:
             pass
 
     return ThemeMode.dark
+
+
+def _validate_sql_identifier(identifier: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
+        raise typer.BadParameter(f"Invalid SQL identifier: {identifier!r}")
+    return identifier
 
 
 def _palette(theme: ThemeMode) -> dict[str, str]:
@@ -912,6 +925,49 @@ def alembic_upgrade_and_data(
             allowed_alembic_revisions=applied_revisions,
         )
     typer.echo(f"applied {len(ran)} migration(s)")
+
+
+@cli.command("refresh-pygeoapi-materialized-views")
+def refresh_pygeoapi_materialized_views(
+    view: list[str] = typer.Option(
+        None,
+        "--view",
+        help=(
+            "Materialized view name(s) to refresh. Repeat --view for multiple. "
+            "Defaults to all pygeoapi materialized views."
+        ),
+    ),
+    concurrently: bool = typer.Option(
+        False,
+        "--concurrently/--no-concurrently",
+        help="Use REFRESH MATERIALIZED VIEW CONCURRENTLY.",
+    ),
+):
+    from sqlalchemy import text
+
+    from db.engine import engine, session_ctx
+
+    target_views = tuple(view) if view else PYGEOAPI_MATERIALIZED_VIEWS
+    # Validate all view names before opening any DB connections or sessions.
+    safe_views = tuple(_validate_sql_identifier(v) for v in target_views)
+
+    if concurrently:
+        # PostgreSQL requires REFRESH MATERIALIZED VIEW CONCURRENTLY to run
+        # outside of a transaction block, so we use an AUTOCOMMIT connection
+        # instead of a Session (which would wrap the call in a transaction).
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            for safe_view in safe_views:
+                conn.execute(
+                    text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {safe_view}")
+                )
+    else:
+        # Non-concurrent refresh can safely run inside a transaction.
+        with session_ctx() as session:
+            for safe_view in safe_views:
+                session.execute(text(f"REFRESH MATERIALIZED VIEW {safe_view}"))
+            session.commit()
+
+    typer.echo(f"Refreshed {len(target_views)} materialized view(s).")
 
 
 if __name__ == "__main__":

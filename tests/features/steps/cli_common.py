@@ -23,7 +23,6 @@ from core.dependencies import (
     admin_function,
     amp_admin_function,
 )
-from core.initializers import register_routes
 
 
 @given("a functioning cli")
@@ -32,9 +31,7 @@ def step_given_cli_is_running(context):
     Initializes app/auth context needed by CLI-backed feature tests
     that still perform DB-backed assertions.
     """
-    from core.app import app
-
-    register_routes(app)
+    from main import app
 
     def override_authentication(default=True):
         def closure():

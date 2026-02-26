@@ -26,27 +26,14 @@ load_dotenv(override=True)
 os.environ["POSTGRES_PORT"] = "5432"
 # Always use test database, never dev
 os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+# Keep `main:app` importable in clean test environments without a local `.env`.
+os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")
 
 from fastapi.testclient import TestClient
-from fastapi_pagination import add_pagination
-from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import register_routes
 from db import Parameter, Base
 from db.engine import session_ctx
-from core.app import app
-
-register_routes(app)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_pagination(app)
+from main import app
 
 client = TestClient(app)
 

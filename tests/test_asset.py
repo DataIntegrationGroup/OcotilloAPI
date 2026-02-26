@@ -19,7 +19,7 @@ from unittest.mock import patch
 import pytest
 
 from api.asset import get_storage_bucket
-from core.app import app
+from main import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
 from schemas import DT_FMT
