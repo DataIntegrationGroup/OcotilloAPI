@@ -953,9 +953,7 @@ def refresh_pygeoapi_materialized_views(
         # PostgreSQL requires REFRESH MATERIALIZED VIEW CONCURRENTLY to run
         # outside of a transaction block, so we use an AUTOCOMMIT connection
         # instead of a Session (which would wrap the call in a transaction).
-        with engine.connect().execution_options(
-            isolation_level="AUTOCOMMIT"
-        ) as conn:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
             for view_name in target_views:
                 safe_view = _validate_sql_identifier(view_name)
                 conn.execute(
@@ -966,9 +964,7 @@ def refresh_pygeoapi_materialized_views(
         with session_ctx() as session:
             for view_name in target_views:
                 safe_view = _validate_sql_identifier(view_name)
-                session.execute(
-                    text(f"REFRESH MATERIALIZED VIEW {safe_view}")
-                )
+                session.execute(text(f"REFRESH MATERIALIZED VIEW {safe_view}"))
             session.commit()
 
     typer.echo(f"Refreshed {len(target_views)} materialized view(s).")
