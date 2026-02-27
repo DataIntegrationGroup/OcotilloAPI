@@ -8243,6 +8243,13 @@
     },
     {
       "categories": [
+        "well_pump_type"
+      ],
+      "term": "Windmill",
+      "definition": "Windmill"
+    },
+    {
+      "categories": [
         "permission_type"
       ],
       "term": "Water Level Sample",
