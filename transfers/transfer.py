@@ -38,6 +38,19 @@ from transfers.thing_transfer import (
 # environment variables already set by the runtime (e.g., Cloud Run jobs).
 load_dotenv(override=False)
 
+# In managed runtime environments, DB_DRIVER is occasionally omitted while
+# CLOUD_SQL_* vars are present. Default to cloudsql in that case to avoid
+# silently falling back to localhost/postgres settings.
+if (
+    not (os.getenv("DB_DRIVER") or "").strip()
+    and (os.getenv("CLOUD_SQL_INSTANCE_NAME") or "").strip()
+):
+    os.environ["DB_DRIVER"] = "cloudsql"
+
+# Cloud SQL should use IAM auth by default unless explicitly disabled.
+if (os.getenv("DB_DRIVER") or "").strip().lower() == "cloudsql":
+    os.environ.setdefault("CLOUD_SQL_IAM_AUTH", "true")
+
 from alembic import command
 from alembic.config import Config
 
@@ -690,20 +703,30 @@ def _transfer_parallel(
 def main():
     message("START--------------------------------------")
 
-    # Display database configuration for verification
-    db_name = os.getenv("POSTGRES_DB", "postgres")
-    db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = os.getenv("POSTGRES_PORT", "5432")
-    message(f"Database Configuration: {db_host}:{db_port}/{db_name}")
+    db_driver = (os.getenv("DB_DRIVER") or "").strip().lower()
+    if db_driver == "cloudsql":
+        db_name = os.getenv("CLOUD_SQL_DATABASE", "")
+        instance_name = os.getenv("CLOUD_SQL_INSTANCE_NAME", "")
+        iam_auth = os.getenv("CLOUD_SQL_IAM_AUTH", "")
+        message(
+            "Database Configuration: "
+            f"driver=cloudsql instance={instance_name} db={db_name} iam_auth={iam_auth}"
+        )
+    else:
+        # Display database configuration for verification
+        db_name = os.getenv("POSTGRES_DB", "postgres")
+        db_host = os.getenv("POSTGRES_HOST", "localhost")
+        db_port = os.getenv("POSTGRES_PORT", "5432")
+        message(f"Database Configuration: {db_host}:{db_port}/{db_name}")
 
-    # Double-check we're using the development database
-    if db_name != "ocotilloapi_dev":
-        message(f"WARNING: Using database '{db_name}' instead of 'ocotilloapi_dev'")
-        if db_name in ("ocotilloapi_test", "nmsamplelocations_test"):
-            raise ValueError(
-                "ERROR: Cannot run transfer on test database! "
-                "Set POSTGRES_DB=ocotilloapi_dev in .env file"
-            )
+        # Double-check we're using the development database
+        if db_name != "ocotilloapi_dev":
+            message(f"WARNING: Using database '{db_name}' instead of 'ocotilloapi_dev'")
+            if db_name in ("ocotilloapi_test", "nmsamplelocations_test"):
+                raise ValueError(
+                    "ERROR: Cannot run transfer on test database! "
+                    "Set POSTGRES_DB=ocotilloapi_dev in .env file"
+                )
 
     metrics = Metrics()
 
