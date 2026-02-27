@@ -234,22 +234,33 @@ def _create_refresh_function() -> str:
 def _schedule_refresh_job() -> str:
     return f"""
         DO $do$
-        DECLARE
-            existing_job_id bigint;
         BEGIN
-            SELECT jobid INTO existing_job_id
-            FROM cron.job
-            WHERE jobname = '{REFRESH_JOB_NAME}';
-
-            IF existing_job_id IS NOT NULL THEN
-                PERFORM cron.unschedule(existing_job_id);
-            END IF;
+            BEGIN
+                -- Avoid direct SELECT on cron.job because managed Postgres
+                -- environments may deny access to the cron schema table.
+                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
+            EXCEPTION
+                WHEN undefined_function THEN
+                    NULL;
+                WHEN invalid_parameter_value THEN
+                    NULL;
+                WHEN insufficient_privilege THEN
+                    RAISE NOTICE
+                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
+                        '{REFRESH_JOB_NAME}';
+                    RETURN;
+            END;
 
             PERFORM cron.schedule(
                 '{REFRESH_JOB_NAME}',
                 '{REFRESH_SCHEDULE}',
                 $cmd$SELECT public.{REFRESH_FUNCTION_NAME}();$cmd$
             );
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE NOTICE
+                    'Skipping pg_cron schedule for % due to insufficient privileges.',
+                    '{REFRESH_JOB_NAME}';
         END
         $do$;
     """
@@ -258,20 +269,19 @@ def _schedule_refresh_job() -> str:
 def _unschedule_refresh_job() -> str:
     return f"""
         DO $do$
-        DECLARE
-            existing_job_id bigint;
         BEGIN
-            IF to_regclass('cron.job') IS NULL THEN
-                RETURN;
-            END IF;
-
-            SELECT jobid INTO existing_job_id
-            FROM cron.job
-            WHERE jobname = '{REFRESH_JOB_NAME}';
-
-            IF existing_job_id IS NOT NULL THEN
-                PERFORM cron.unschedule(existing_job_id);
-            END IF;
+            BEGIN
+                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
+            EXCEPTION
+                WHEN undefined_function THEN
+                    NULL;
+                WHEN invalid_parameter_value THEN
+                    NULL;
+                WHEN insufficient_privilege THEN
+                    RAISE NOTICE
+                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
+                        '{REFRESH_JOB_NAME}';
+            END;
         END
         $do$;
     """
