@@ -69,8 +69,9 @@ async def get_async_engine():
 
         instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
         user = os.environ.get("CLOUD_SQL_USER")
+        password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
         ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         connect_kwargs = {
@@ -79,11 +80,10 @@ async def get_async_engine():
             "enable_iam_auth": use_iam_auth,
             "ip_type": ip_type,
         }
-        if not use_iam_auth:
-            raise RuntimeError(
-                "CLOUD_SQL_IAM_AUTH must be true when DB_DRIVER=cloudsql."
-            )
-        connect_kwargs["password"] = get_iam_login_token()
+        if use_iam_auth:
+            connect_kwargs["password"] = get_iam_login_token()
+        else:
+            connect_kwargs["password"] = password
 
         connection = connector.connect_async(instance_name, "asyncpg", **connect_kwargs)
 
@@ -106,8 +106,9 @@ if driver == "cloudsql":
     def init_connection_pool(connector):
         instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
         user = os.environ.get("CLOUD_SQL_USER")
+        password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
         ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         def getconn():
@@ -117,11 +118,10 @@ if driver == "cloudsql":
                 "ip_type": ip_type,
                 "enable_iam_auth": use_iam_auth,
             }
-            if not use_iam_auth:
-                raise RuntimeError(
-                    "CLOUD_SQL_IAM_AUTH must be true when DB_DRIVER=cloudsql."
-                )
-            connect_kwargs["password"] = get_iam_login_token()
+            if use_iam_auth:
+                connect_kwargs["password"] = get_iam_login_token()
+            else:
+                connect_kwargs["password"] = password
 
             conn = connector.connect(
                 instance_name,  # The Cloud SQL instance name
