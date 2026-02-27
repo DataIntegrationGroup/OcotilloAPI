@@ -244,6 +244,10 @@ def _schedule_refresh_job() -> str:
                     NULL;
                 WHEN invalid_parameter_value THEN
                     NULL;
+                WHEN internal_error THEN
+                    -- Some pg_cron builds raise internal_error when the named
+                    -- job does not exist. Treat this as already-unscheduled.
+                    NULL;
                 WHEN insufficient_privilege THEN
                     RAISE NOTICE
                         'Skipping pg_cron unschedule for % due to insufficient privileges.',
@@ -276,6 +280,8 @@ def _unschedule_refresh_job() -> str:
                 WHEN undefined_function THEN
                     NULL;
                 WHEN invalid_parameter_value THEN
+                    NULL;
+                WHEN internal_error THEN
                     NULL;
                 WHEN insufficient_privilege THEN
                     RAISE NOTICE
