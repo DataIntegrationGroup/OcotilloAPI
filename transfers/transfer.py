@@ -34,8 +34,9 @@ from transfers.thing_transfer import (
     transfer_outfall_wastewater_return_flow,
 )
 
-# Load .env file FIRST, before any database imports, to ensure correct port/database settings
-load_dotenv(override=True)
+# Load .env file FIRST, before any database imports. Do not override
+# environment variables already set by the runtime (e.g., Cloud Run jobs).
+load_dotenv(override=False)
 
 from alembic import command
 from alembic.config import Config
