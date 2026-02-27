@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 
-import asyncio
 import copy
 import getpass
 import os
@@ -24,7 +23,7 @@ from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine,
 )
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import (
     sessionmaker,
 )
@@ -72,7 +71,7 @@ async def get_async_engine():
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
         ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         connect_kwargs = {
@@ -109,7 +108,7 @@ if driver == "cloudsql":
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
         ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         def getconn():

@@ -59,7 +59,7 @@ def build_database_url():
         user = os.environ.get("CLOUD_SQL_USER", "")
         password = os.environ.get("CLOUD_SQL_PASSWORD", "")
         database = os.environ.get("CLOUD_SQL_DATABASE", "")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
         # Host is provided by connector, so leave blank.
         if use_iam_auth:
             return f"postgresql+pg8000://{user}@/{database}"
@@ -122,7 +122,7 @@ def run_migrations_online() -> None:
         user = os.environ.get("CLOUD_SQL_USER")
         password = os.environ.get("CLOUD_SQL_PASSWORD")
         database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", True)
         ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
         connector = Connector()
