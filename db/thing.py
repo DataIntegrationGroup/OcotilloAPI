@@ -435,6 +435,10 @@ class Thing(
         return self._get_notes("Construction")
 
     @property
+    def site_notes(self):
+        return self._get_notes("Site Notes (legacy)")
+
+    @property
     def well_status(self) -> str | None:
         """
         Returns the well status from the most recent status history entry

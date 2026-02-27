@@ -8208,6 +8208,13 @@
     },
     {
       "categories": [
+        "note_type"
+      ],
+      "term": "Site Notes (legacy)",
+      "definition": "Legacy site notes field from WaterLevels"
+    },
+    {
+      "categories": [
         "well_pump_type"
       ],
       "term": "Submersible",
