@@ -47,41 +47,37 @@ jobs:
           run: |
             uv run alembic upgrade head
 
-        - name: Create app.yaml
+        - name: Ensure envsubst is available
           run: |
-            cat <<EOF > app.yaml
-            service: ocotillo-api
-            runtime: python313
-            entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
-            instance_class: F4
-            service_account: "${{ secrets.CLOUD_SQL_USER }}.gserviceaccount.com"
-            handlers:
-              - url: /.*
-                secure: always
-                script: auto
-            env_variables:
-              MODE: "production"
-              ENVIRONMENT: "production"
-              DB_DRIVER: "cloudsql"
-              CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
-              CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
-              CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
-              PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
-              PYGEOAPI_POSTGRES_USER: "${{ secrets.PYGEOAPI_POSTGRES_USER }}"
-              PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
-              PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
-              PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.PYGEOAPI_POSTGRES_PASSWORD }}"
-              PYGEOAPI_SERVER_URL: "${{ vars.PYGEOAPI_SERVER_URL }}"
-              CLOUD_SQL_IAM_AUTH: true
-              GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
-              GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
-              AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
-              AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
-              AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
-              AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
-              SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
-              APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
-            EOF
+            if ! command -v envsubst >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y gettext-base
+            fi
+
+        - name: Render app.yaml
+          env:
+            SERVICE_NAME: "ocotillo-api"
+            ENVIRONMENT: "production"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            PYGEOAPI_POSTGRES_DB: "${{ vars.CLOUD_SQL_DATABASE }}"
+            PYGEOAPI_POSTGRES_USER: "${{ secrets.PYGEOAPI_POSTGRES_USER }}"
+            PYGEOAPI_POSTGRES_HOST: "${{ vars.PYGEOAPI_POSTGRES_HOST || '127.0.0.1' }}"
+            PYGEOAPI_POSTGRES_PORT: "${{ vars.PYGEOAPI_POSTGRES_PORT || '5432' }}"
+            PYGEOAPI_POSTGRES_PASSWORD: "${{ secrets.PYGEOAPI_POSTGRES_PASSWORD }}"
+            PYGEOAPI_SERVER_URL: "${{ vars.PYGEOAPI_SERVER_URL }}"
+            CLOUD_SQL_IAM_AUTH: "true"
+            GCS_SERVICE_ACCOUNT_KEY: "${{ secrets.GCS_SERVICE_ACCOUNT_KEY }}"
+            GCS_BUCKET_NAME: "${{ vars.GCS_BUCKET_NAME }}"
+            AUTHENTIK_URL: "${{ vars.AUTHENTIK_URL }}"
+            AUTHENTIK_CLIENT_ID: "${{ vars.AUTHENTIK_CLIENT_ID }}"
+            AUTHENTIK_AUTHORIZE_URL: "${{ vars.AUTHENTIK_AUTHORIZE_URL }}"
+            AUTHENTIK_TOKEN_URL: "${{ vars.AUTHENTIK_TOKEN_URL }}"
+            SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
+            APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
+          run: |
+            envsubst < .github/app.template.yaml > app.yaml
 
         - name: Deploy to Google Cloud
           run: |
