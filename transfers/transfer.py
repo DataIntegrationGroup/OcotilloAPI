@@ -47,10 +47,6 @@ if (
 ):
     os.environ["DB_DRIVER"] = "cloudsql"
 
-# Cloud SQL should use IAM auth by default unless explicitly disabled.
-if (os.getenv("DB_DRIVER") or "").strip().lower() == "cloudsql":
-    os.environ.setdefault("CLOUD_SQL_IAM_AUTH", "true")
-
 from alembic import command
 from alembic.config import Config
 
