@@ -79,11 +79,18 @@ def upgrade() -> None:
     )
 
     # Drop stale thing_id column from NMA_Radionuclides (model no longer defines it;
-    # relationships go through NMA_Chemistry_SampleInfo.thing_id instead)
-    op.drop_constraint(
-        'NMA_Radionuclides_thing_id_fkey', 'NMA_Radionuclides', type_='foreignkey',
-    )
-    op.drop_column('NMA_Radionuclides', 'thing_id')
+    # relationships go through NMA_Chemistry_SampleInfo.thing_id instead).
+    # Guard against environments where the column was already removed.
+    conn = op.get_bind()
+    has_thing_id = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'NMA_Radionuclides' AND column_name = 'thing_id'"
+    )).scalar()
+    if has_thing_id:
+        op.drop_constraint(
+            'NMA_Radionuclides_thing_id_fkey', 'NMA_Radionuclides', type_='foreignkey',
+        )
+        op.drop_column('NMA_Radionuclides', 'thing_id')
 
 
 def downgrade() -> None:

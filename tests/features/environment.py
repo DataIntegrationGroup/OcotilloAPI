@@ -754,15 +754,20 @@ def after_scenario(context, scenario):
                 created = context._backfill_created
 
                 # Delete in FK order: Notes → Observations → Samples → FieldActivities → FieldEvents → NMA rows
-                # First, delete Notes linked to observations we created
-                obs_ids = [
-                    row[0]
-                    for row in session.execute(
-                        select(Observation.id).where(
-                            Observation.nma_pk_chemistryresults.isnot(None)
-                        )
-                    ).all()
-                ]
+                # Scope to observations linked to this scenario's samples
+                scenario_sample_ids = created.get("sample_ids", [])
+                obs_ids = []
+                if scenario_sample_ids:
+                    obs_ids = [
+                        row[0]
+                        for row in session.execute(
+                            select(Observation.id).where(
+                                Observation.sample_id.in_(scenario_sample_ids)
+                            )
+                        ).all()
+                    ]
+
+                # Delete Notes linked to those observations
                 if obs_ids:
                     for note in session.query(Notes).filter(
                         Notes.target_table == "observation",
@@ -770,11 +775,11 @@ def after_scenario(context, scenario):
                     ).all():
                         session.delete(note)
 
-                # Delete observations created by backfill
-                for obs in session.query(Observation).filter(
-                    Observation.nma_pk_chemistryresults.isnot(None)
-                ).all():
-                    session.delete(obs)
+                # Delete the observations themselves
+                for oid in obs_ids:
+                    obs = session.get(Observation, oid)
+                    if obs:
+                        session.delete(obs)
 
                 # Delete NMA_Radionuclides created in this scenario
                 for rid in created.get("nma_radionuclide_ids", []):

@@ -6,7 +6,7 @@
 # e.g. state, county, quad_name,etc. It will also be used to handle data refactors/corrections in the future.
 
 # Load environment variables from .env and run the staging backfill.
-# Usage: ./run_backfill.sh [--batch-size N]
+# Usage: ./run_backfill.sh
 
 # github workflow equivalent: for reference only
 #- name: Run backfill script on staging database
@@ -38,5 +38,4 @@ set +a
 
 uv run alembic upgrade head
 
-# Forward any args (e.g., --batch-size 500)
-python -m transfers.backfill.backfill "$@"
+python -m transfers.backfill.backfill
