@@ -30,20 +30,17 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from services.util import get_bool_env
+from transfers.backfill.chemistry_backfill import backfill_radionuclides
 from transfers.logger import logger
 
 
 def run(batch_size: int = 1000) -> None:
     """
     Execute all backfill steps in a deterministic order.
-
-    Currently, no concrete backfill steps are registered. This function is kept
-    as a stable orchestration entry point (used by CD/CLI) and will be wired
-    up to real backfill steps in future refactoring work.
     """
-    # NOTE: Intentionally empty; this serves as a placeholder until concrete
-    # backfill steps are implemented and registered in this tuple.
-    steps = ()
+    steps = (
+        ("Radionuclides", backfill_radionuclides, "BACKFILL_RADIONUCLIDES"),
+    )
     for name, fn, flag in steps:
         if not get_bool_env(flag, True):
             logger.info(f"Skipping backfill: {name} ({flag}=false)")

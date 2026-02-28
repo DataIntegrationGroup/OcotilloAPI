@@ -861,6 +861,13 @@
       "categories": [
         "unit"
       ],
+      "term": "pCi/L",
+      "definition": "Picocuries per Liter"
+    },
+    {
+      "categories": [
+        "unit"
+      ],
       "term": "mW/m\u00b2",
       "definition": "milliwatts per square meter"
     },
@@ -8212,6 +8219,13 @@
       ],
       "term": "Site Notes (legacy)",
       "definition": "Legacy site notes field from WaterLevels"
+    },
+    {
+      "categories": [
+        "note_type"
+      ],
+      "term": "Chemistry Observation",
+      "definition": "Notes from chemistry observation results"
     },
     {
       "categories": [

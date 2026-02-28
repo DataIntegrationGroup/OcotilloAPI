@@ -37,6 +37,25 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
 
     # NM_Aquifer fields for audits
     nma_pk_waterlevels: Mapped[str] = mapped_column(nullable=True)
+    nma_pk_chemistryresults: Mapped[str] = mapped_column(
+        nullable=True,
+        unique=True,
+        comment="NM_Aquifer GlobalID for chemistry results — transfer audit and idempotent upsert key",
+    )
+
+    # Chemistry-specific columns
+    detect_flag: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment="True=detected, False=below detection limit (legacy Symbol '<'), None=no qualifier",
+    )
+    uncertainty: Mapped[float] = mapped_column(
+        nullable=True,
+        comment="Measurement uncertainty for the observation value",
+    )
+    analysis_agency: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="Agency or lab that performed the analysis",
+    )
 
     # --- Foreign Keys ---
     sample_id: Mapped[int] = mapped_column(

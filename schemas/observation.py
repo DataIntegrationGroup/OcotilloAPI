@@ -112,6 +112,10 @@ class BaseObservationResponse(BaseResponseModel):
     value: float | None
     unit: Unit
     nma_data_quality: str | None = None
+    nma_pk_chemistryresults: str | None = None
+    detect_flag: bool | None = None
+    uncertainty: float | None = None
+    analysis_agency: str | None = None
 
 
 class GroundwaterLevelObservationResponse(BaseObservationResponse):

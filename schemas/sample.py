@@ -139,6 +139,9 @@ class SampleResponse(BaseResponseModel):
     notes: str | None
     depth_top: float | None
     depth_bottom: float | None
+    nma_pk_chemistrysample: str | None = None
+    volume: float | None = None
+    volume_unit: str | None = None
 
 
 # ============= EOF =============================================

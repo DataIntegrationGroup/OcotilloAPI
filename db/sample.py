@@ -89,6 +89,21 @@ class Sample(Base, AutoBaseMixin, ReleaseMixin):
         nullable=True,
         comment="NM_Aquifer primary key for waterlevels - to be used for transfer audits",
     )
+    nma_pk_chemistrysample: Mapped[str] = mapped_column(
+        nullable=True,
+        unique=True,
+        comment="NM_Aquifer SamplePtID for chemistry samples — transfer audit key",
+    )
+
+    # Chemistry sample attributes
+    volume: Mapped[float] = mapped_column(
+        nullable=True,
+        comment="Volume of the sample collected",
+    )
+    volume_unit: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="Unit for the sample volume (e.g. mL, L)",
+    )
 
     # --- Relationship Definitions ---
     field_activity: Mapped["FieldActivity"] = relationship(back_populates="samples")

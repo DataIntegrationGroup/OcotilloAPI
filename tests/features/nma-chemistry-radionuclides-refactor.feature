@@ -78,6 +78,7 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
       | 0C354D8D-5404-41CE-9C95-002213371C4F | 77F1E3CF-A961-440E-966C-DD2E3675044B | GB      | 5           | pCi/L| 2005-01-18   | E900.0           |
       | 095DA2E3-79E3-4BF2-B096-025C6D9A64B7 | BC50F55E-5BF1-471D-931D-03501081B4FD | Ra228   | 2.6         | pCi/L| 2003-11-26   | EPA 904.0 Mod    |
     And a Sample record exists with nma_pk_chemistrysample "77F1E3CF-A961-440E-966C-DD2E3675044B"
+    And a Sample record exists with nma_pk_chemistrysample "BC50F55E-5BF1-471D-931D-03501081B4FD"
     When I run the Radionuclides backfill job
     Then the Observation for GlobalID "0C354D8D-5404-41CE-9C95-002213371C4F" should set analysis_method_name to "E900.0"
     And the Observation for GlobalID "095DA2E3-79E3-4BF2-B096-025C6D9A64B7" should set analysis_method_name to "EPA 904.0 Mod"
@@ -123,6 +124,7 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
       | field        | value                               |
       | GlobalID     | 76F3A993-A29B-413B-83E0-00ADF51D15A2 |
       | SamplePtID   | 7758D992-0394-42B1-BE96-734FCACB6412 |
+      | Analyte      | Radium-226                          |
       | SamplePointID| EB-490A                             |
       | OBJECTID     | 333                                 |
       | WCLab_ID     | null                                |
