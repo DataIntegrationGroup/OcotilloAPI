@@ -118,9 +118,9 @@ def _get_observation_by_globalid(session, global_id: str) -> Observation:
             Observation.nma_pk_chemistryresults == global_id.lower()
         )
     ).scalar_one_or_none()
-    assert obs is not None, (
-        f"No Observation found with nma_pk_chemistryresults='{global_id.lower()}'"
-    )
+    assert (
+        obs is not None
+    ), f"No Observation found with nma_pk_chemistryresults='{global_id.lower()}'"
     return obs
 
 
@@ -171,8 +171,14 @@ def step_given_lexicon_terms_exist(context: Context):
         # In production these would be pre-seeded via a vocabulary
         # preparation step.
         test_analytes = (
-            "GB", "Uranium", "GA", "Ra228", "Uranium-238",
-            "Radium-226", "Nitrate", "Unknown",
+            "GB",
+            "Uranium",
+            "GA",
+            "Ra228",
+            "Uranium-238",
+            "Radium-226",
+            "Nitrate",
+            "Unknown",
         )
         for analyte in test_analytes:
             existing = session.execute(
@@ -196,7 +202,10 @@ def step_given_multi_radionuclides(context: Context):
     """Create multiple NMA_Radionuclides rows from a horizontal Behave table."""
     _ensure_backfill_tracking(context)
     for row in context.table:
-        fields = {heading: _parse_table_value(row[heading]) for heading in context.table.headings}
+        fields = {
+            heading: _parse_table_value(row[heading])
+            for heading in context.table.headings
+        }
         _create_radionuclide_from_fields(context, fields)
 
 
@@ -321,12 +330,13 @@ def step_when_run_backfill_again(context: Context):
 def step_then_observation_count(context: Context, n: int, global_id: str):
     with session_ctx() as session:
         count = session.execute(
-            select(Observation)
-            .where(Observation.nma_pk_chemistryresults == global_id.lower())
+            select(Observation).where(
+                Observation.nma_pk_chemistryresults == global_id.lower()
+            )
         ).all()
-        assert len(count) == n, (
-            f"Expected {n} Observation(s) for GlobalID {global_id}, found {len(count)}"
-        )
+        assert (
+            len(count) == n
+        ), f"Expected {n} Observation(s) for GlobalID {global_id}, found {len(count)}"
         if len(count) == 1:
             context._last_observation = count[0][0]
 
@@ -356,9 +366,9 @@ def step_then_observation_datetime(context: Context, date_str: str):
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc)
         actual_date = dt.strftime("%Y-%m-%d")
-        assert actual_date == date_str, (
-            f"Expected observation_datetime={date_str}, got {actual_date}"
-        )
+        assert (
+            actual_date == date_str
+        ), f"Expected observation_datetime={date_str}, got {actual_date}"
 
 
 @then("the Observation should set value to {value}")
@@ -367,9 +377,7 @@ def step_then_observation_value(context: Context, value: str):
     expected = float(value)
     with session_ctx() as session:
         obs = session.merge(obs)
-        assert obs.value == expected, (
-            f"Expected value={expected}, got {obs.value}"
-        )
+        assert obs.value == expected, f"Expected value={expected}, got {obs.value}"
 
 
 @then('the Observation should set unit to "{unit}"')
@@ -390,9 +398,9 @@ def step_then_parameter_exists(context: Context, name: str, matrix: str):
                 Parameter.parameter_name == name, Parameter.matrix == matrix
             )
         ).scalar_one_or_none()
-        assert param is not None, (
-            f"No Parameter found with parameter_name='{name}' and matrix='{matrix}'"
-        )
+        assert (
+            param is not None
+        ), f"No Parameter found with parameter_name='{name}' and matrix='{matrix}'"
         context._last_parameter = param
 
 
@@ -405,12 +413,12 @@ def step_then_observation_refs_parameter(context: Context, name: str, matrix: st
         obs = session.merge(obs)
         param = session.get(Parameter, obs.parameter_id)
         assert param is not None, "Observation must reference a Parameter"
-        assert param.parameter_name == name, (
-            f"Expected parameter_name='{name}', got '{param.parameter_name}'"
-        )
-        assert param.matrix == matrix, (
-            f"Expected matrix='{matrix}', got '{param.matrix}'"
-        )
+        assert (
+            param.parameter_name == name
+        ), f"Expected parameter_name='{name}', got '{param.parameter_name}'"
+        assert (
+            param.matrix == matrix
+        ), f"Expected matrix='{matrix}', got '{param.matrix}'"
 
 
 @then('the Observation should set analysis_method_name to "{method}"')
@@ -418,14 +426,14 @@ def step_then_observation_analysis_method(context: Context, method: str):
     obs = context._last_observation
     with session_ctx() as session:
         obs = session.merge(obs)
-        assert obs.analysis_method_id is not None, (
-            "Observation should have an analysis_method_id"
-        )
+        assert (
+            obs.analysis_method_id is not None
+        ), "Observation should have an analysis_method_id"
         am = session.get(AnalysisMethod, obs.analysis_method_id)
         assert am is not None, "AnalysisMethod should exist"
-        assert am.analysis_method_name == method, (
-            f"Expected analysis_method_name='{method}', got '{am.analysis_method_name}'"
-        )
+        assert (
+            am.analysis_method_name == method
+        ), f"Expected analysis_method_name='{method}', got '{am.analysis_method_name}'"
 
 
 @then("the Observation should set uncertainty to {value}")
@@ -434,9 +442,9 @@ def step_then_observation_uncertainty(context: Context, value: str):
     expected = float(value)
     with session_ctx() as session:
         obs = session.merge(obs)
-        assert obs.uncertainty == expected, (
-            f"Expected uncertainty={expected}, got {obs.uncertainty}"
-        )
+        assert (
+            obs.uncertainty == expected
+        ), f"Expected uncertainty={expected}, got {obs.uncertainty}"
 
 
 @then('the Observation should set analysis_agency to "{agency}"')
@@ -444,9 +452,9 @@ def step_then_observation_analysis_agency(context: Context, agency: str):
     obs = context._last_observation
     with session_ctx() as session:
         obs = session.merge(obs)
-        assert obs.analysis_agency == agency, (
-            f"Expected analysis_agency='{agency}', got '{obs.analysis_agency}'"
-        )
+        assert (
+            obs.analysis_agency == agency
+        ), f"Expected analysis_agency='{agency}', got '{obs.analysis_agency}'"
 
 
 # --- GlobalID-variant steps ---
@@ -484,17 +492,15 @@ def step_then_obs_by_gid_refs_thing(context: Context, global_id: str):
 @then(
     'the Observation for GlobalID "{global_id}" should set analysis_method_name to "{method}"'
 )
-def step_then_obs_by_gid_analysis_method(
-    context: Context, global_id: str, method: str
-):
+def step_then_obs_by_gid_analysis_method(context: Context, global_id: str, method: str):
     with session_ctx() as session:
         obs = _get_observation_by_globalid(session, global_id)
         assert obs.analysis_method_id is not None
         am = session.get(AnalysisMethod, obs.analysis_method_id)
         assert am is not None
-        assert am.analysis_method_name == method, (
-            f"Expected analysis_method_name='{method}', got '{am.analysis_method_name}'"
-        )
+        assert (
+            am.analysis_method_name == method
+        ), f"Expected analysis_method_name='{method}', got '{am.analysis_method_name}'"
 
 
 @then(
@@ -511,16 +517,14 @@ def step_then_obs_by_gid_refs_parameter(
         assert param.matrix == matrix
 
 
-@then(
-    'the Observation for GlobalID "{global_id}" should set detect_flag to {flag}'
-)
+@then('the Observation for GlobalID "{global_id}" should set detect_flag to {flag}')
 def step_then_obs_by_gid_detect_flag(context: Context, global_id: str, flag: str):
     expected = flag.lower() == "true"
     with session_ctx() as session:
         obs = _get_observation_by_globalid(session, global_id)
-        assert obs.detect_flag == expected, (
-            f"Expected detect_flag={expected}, got {obs.detect_flag}"
-        )
+        assert (
+            obs.detect_flag == expected
+        ), f"Expected detect_flag={expected}, got {obs.detect_flag}"
 
 
 @then(
@@ -530,9 +534,9 @@ def step_then_obs_by_gid_no_extra_columns(context: Context, global_id: str):
     with session_ctx() as session:
         obs = _get_observation_by_globalid(session, global_id)
         for attr in ("nma_sample_point_id", "nma_object_id", "nma_wclab_id"):
-            assert not hasattr(obs, attr), (
-                f"Observation should not have attribute '{attr}'"
-            )
+            assert not hasattr(
+                obs, attr
+            ), f"Observation should not have attribute '{attr}'"
 
 
 # --- Sample volume steps ---
@@ -541,27 +545,31 @@ def step_then_sample_volume(context: Context, value: str):
     expected = float(value)
     with session_ctx() as session:
         # Find the sample that was just modified
-        samples = session.execute(
-            select(Sample).where(Sample.volume.isnot(None))
-        ).scalars().all()
+        samples = (
+            session.execute(select(Sample).where(Sample.volume.isnot(None)))
+            .scalars()
+            .all()
+        )
         assert len(samples) >= 1, "Expected at least one Sample with volume set"
         sample = samples[-1]
-        assert sample.volume == expected, (
-            f"Expected volume={expected}, got {sample.volume}"
-        )
+        assert (
+            sample.volume == expected
+        ), f"Expected volume={expected}, got {sample.volume}"
 
 
 @then('the Sample should set volume_unit to "{unit}"')
 def step_then_sample_volume_unit(context: Context, unit: str):
     with session_ctx() as session:
-        samples = session.execute(
-            select(Sample).where(Sample.volume_unit.isnot(None))
-        ).scalars().all()
+        samples = (
+            session.execute(select(Sample).where(Sample.volume_unit.isnot(None)))
+            .scalars()
+            .all()
+        )
         assert len(samples) >= 1, "Expected at least one Sample with volume_unit set"
         sample = samples[-1]
-        assert sample.volume_unit == unit, (
-            f"Expected volume_unit='{unit}', got '{sample.volume_unit}'"
-        )
+        assert (
+            sample.volume_unit == unit
+        ), f"Expected volume_unit='{unit}', got '{sample.volume_unit}'"
 
 
 # --- Notes steps ---
@@ -603,14 +611,12 @@ def step_then_notes_exist(context: Context):
 )
 def step_then_skipped_orphans(context: Context, n: int):
     assert context.backfill_result is not None, "Backfill result not found on context"
-    assert context.backfill_result.skipped_orphans == n, (
-        f"Expected {n} skipped orphans, got {context.backfill_result.skipped_orphans}"
-    )
+    assert (
+        context.backfill_result.skipped_orphans == n
+    ), f"Expected {n} skipped orphans, got {context.backfill_result.skipped_orphans}"
 
 
-@then(
-    'no Observation record should exist with nma_pk_chemistryresults "{global_id}"'
-)
+@then('no Observation record should exist with nma_pk_chemistryresults "{global_id}"')
 def step_then_no_observation(context: Context, global_id: str):
     with session_ctx() as session:
         count = session.execute(
@@ -618,9 +624,9 @@ def step_then_no_observation(context: Context, global_id: str):
                 Observation.nma_pk_chemistryresults == global_id.lower()
             )
         ).all()
-        assert len(count) == 0, (
-            f"Expected 0 Observations for GlobalID {global_id}, found {len(count)}"
-        )
+        assert (
+            len(count) == 0
+        ), f"Expected 0 Observations for GlobalID {global_id}, found {len(count)}"
 
 
 # ---------------------------------------------------------------------------
@@ -661,8 +667,12 @@ def _create_radionuclide_from_fields(context: Context, fields: dict):
             ).replace(tzinfo=timezone.utc)
 
         # Parse numeric fields
-        sample_value = float(fields["SampleValue"]) if fields.get("SampleValue") else None
-        uncertainty_val = float(fields["Uncertainty"]) if fields.get("Uncertainty") else None
+        sample_value = (
+            float(fields["SampleValue"]) if fields.get("SampleValue") else None
+        )
+        uncertainty_val = (
+            float(fields["Uncertainty"]) if fields.get("Uncertainty") else None
+        )
         volume_val = int(fields["Volume"]) if fields.get("Volume") else None
 
         rad = NMA_Radionuclides(

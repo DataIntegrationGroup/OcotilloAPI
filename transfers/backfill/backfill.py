@@ -35,9 +35,7 @@ from transfers.logger import logger
 
 def run() -> None:
     """Execute all backfill steps in a deterministic order."""
-    steps = (
-        ("Radionuclides", backfill_radionuclides, "BACKFILL_RADIONUCLIDES"),
-    )
+    steps = (("Radionuclides", backfill_radionuclides, "BACKFILL_RADIONUCLIDES"),)
     for name, fn, flag in steps:
         if not get_bool_env(flag, True):
             logger.info(f"Skipping backfill: {name} ({flag}=false)")

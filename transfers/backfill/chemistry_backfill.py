@@ -90,9 +90,7 @@ def _get_or_create_analysis_method(
 ) -> AnalysisMethod:
     """Return existing AnalysisMethod or create a new one."""
     am = session.execute(
-        select(AnalysisMethod).where(
-            AnalysisMethod.analysis_method_code == method_code
-        )
+        select(AnalysisMethod).where(AnalysisMethod.analysis_method_code == method_code)
     ).scalar_one_or_none()
     if am is None:
         am = AnalysisMethod(
@@ -141,8 +139,7 @@ def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
     legacy_rows = session.execute(
         select(NMA_Radionuclides, NMA_Chemistry_SampleInfo.nma_sample_pt_id).join(
             NMA_Chemistry_SampleInfo,
-            NMA_Radionuclides.chemistry_sample_info_id
-            == NMA_Chemistry_SampleInfo.id,
+            NMA_Radionuclides.chemistry_sample_info_id == NMA_Chemistry_SampleInfo.id,
         )
     ).all()
 

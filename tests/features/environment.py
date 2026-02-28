@@ -769,10 +769,14 @@ def after_scenario(context, scenario):
 
                 # Delete Notes linked to those observations
                 if obs_ids:
-                    for note in session.query(Notes).filter(
-                        Notes.target_table == "observation",
-                        Notes.target_id.in_(obs_ids),
-                    ).all():
+                    for note in (
+                        session.query(Notes)
+                        .filter(
+                            Notes.target_table == "observation",
+                            Notes.target_id.in_(obs_ids),
+                        )
+                        .all()
+                    ):
                         session.delete(note)
 
                 # Delete the observations themselves
