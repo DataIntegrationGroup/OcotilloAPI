@@ -546,9 +546,11 @@ def step_then_sample_volume(context: Context, value: str):
     scenario_sample_ids = context._backfill_created.get("sample_ids", [])
     assert scenario_sample_ids, "No sample_ids tracked for this scenario"
     with session_ctx() as session:
-        sample = session.execute(
-            select(Sample).where(Sample.id.in_(scenario_sample_ids))
-        ).scalars().first()
+        sample = (
+            session.execute(select(Sample).where(Sample.id.in_(scenario_sample_ids)))
+            .scalars()
+            .first()
+        )
         assert sample is not None, "No Sample found for this scenario"
         assert (
             sample.volume == expected
@@ -560,9 +562,11 @@ def step_then_sample_volume_unit(context: Context, unit: str):
     scenario_sample_ids = context._backfill_created.get("sample_ids", [])
     assert scenario_sample_ids, "No sample_ids tracked for this scenario"
     with session_ctx() as session:
-        sample = session.execute(
-            select(Sample).where(Sample.id.in_(scenario_sample_ids))
-        ).scalars().first()
+        sample = (
+            session.execute(select(Sample).where(Sample.id.in_(scenario_sample_ids)))
+            .scalars()
+            .first()
+        )
         assert sample is not None, "No Sample found for this scenario"
         assert (
             sample.volume_unit == unit
