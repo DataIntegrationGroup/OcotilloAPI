@@ -543,15 +543,13 @@ def step_then_obs_by_gid_no_extra_columns(context: Context, global_id: str):
 @then("the Sample should set volume to {value}")
 def step_then_sample_volume(context: Context, value: str):
     expected = float(value)
+    scenario_sample_ids = context._backfill_created.get("sample_ids", [])
+    assert scenario_sample_ids, "No sample_ids tracked for this scenario"
     with session_ctx() as session:
-        # Find the sample that was just modified
-        samples = (
-            session.execute(select(Sample).where(Sample.volume.isnot(None)))
-            .scalars()
-            .all()
-        )
-        assert len(samples) >= 1, "Expected at least one Sample with volume set"
-        sample = samples[-1]
+        sample = session.execute(
+            select(Sample).where(Sample.id.in_(scenario_sample_ids))
+        ).scalars().first()
+        assert sample is not None, "No Sample found for this scenario"
         assert (
             sample.volume == expected
         ), f"Expected volume={expected}, got {sample.volume}"
@@ -559,14 +557,13 @@ def step_then_sample_volume(context: Context, value: str):
 
 @then('the Sample should set volume_unit to "{unit}"')
 def step_then_sample_volume_unit(context: Context, unit: str):
+    scenario_sample_ids = context._backfill_created.get("sample_ids", [])
+    assert scenario_sample_ids, "No sample_ids tracked for this scenario"
     with session_ctx() as session:
-        samples = (
-            session.execute(select(Sample).where(Sample.volume_unit.isnot(None)))
-            .scalars()
-            .all()
-        )
-        assert len(samples) >= 1, "Expected at least one Sample with volume_unit set"
-        sample = samples[-1]
+        sample = session.execute(
+            select(Sample).where(Sample.id.in_(scenario_sample_ids))
+        ).scalars().first()
+        assert sample is not None, "No Sample found for this scenario"
         assert (
             sample.volume_unit == unit
         ), f"Expected volume_unit='{unit}', got '{sample.volume_unit}'"

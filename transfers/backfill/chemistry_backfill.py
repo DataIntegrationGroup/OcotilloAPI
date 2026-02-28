@@ -127,7 +127,7 @@ def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
 
     # Track existing observation keys so we know insert vs update
     existing_keys = set(
-        row[0]
+        row[0].lower() if row[0] else row[0]
         for row in session.execute(
             select(Observation.nma_pk_chemistryresults).where(
                 Observation.nma_pk_chemistryresults.isnot(None)
