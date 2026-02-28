@@ -49,8 +49,15 @@ def run(batch_size: int = 1000) -> None:
             logger.info(f"Skipping backfill: {name} ({flag}=false)")
             continue
         logger.info(f"Starting backfill: {name}")
-        fn(batch_size)
-        logger.info(f"Completed backfill: {name}")
+        result = fn(batch_size)
+        logger.info(
+            f"Completed backfill: {name} — "
+            f"inserted={result.inserted} updated={result.updated} "
+            f"skipped_orphans={result.skipped_orphans} errors={len(result.errors)}"
+        )
+        if result.errors:
+            for err in result.errors:
+                logger.warning(f"  {name}: {err}")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -69,7 +76,7 @@ if __name__ == "__main__":
     try:
         run(batch_size=args.batch_size)
     except Exception as exc:
-        logger.critical(f"Backfill orchestration failed: {exc}")
+        logger.critical("Backfill orchestration failed", exc_info=True)
         sys.exit(1)
 
 # ============= EOF =============================================
