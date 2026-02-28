@@ -28,7 +28,6 @@ from datetime import timezone
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from db.analysis_method import AnalysisMethod
@@ -285,10 +284,11 @@ def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
                         session.add(note)
 
             savepoint.commit()
-        except SQLAlchemyError as exc:
+        except Exception as exc:
             savepoint.rollback()
+            logger.exception("Row GlobalID=%s failed", global_id_str)
             result.errors.append(
-                f"Row GlobalID={global_id_str}: {exc}"
+                f"Row GlobalID={global_id_str}: {type(exc).__name__}: {exc}"
             )
             continue
 

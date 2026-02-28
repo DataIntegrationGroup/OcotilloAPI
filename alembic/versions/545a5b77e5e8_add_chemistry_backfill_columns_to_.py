@@ -87,9 +87,11 @@ def upgrade() -> None:
         "WHERE table_name = 'NMA_Radionuclides' AND column_name = 'thing_id'"
     )).scalar()
     if has_thing_id:
-        op.drop_constraint(
-            'NMA_Radionuclides_thing_id_fkey', 'NMA_Radionuclides', type_='foreignkey',
-        )
+        # FK name may differ across environments; look it up dynamically.
+        fks = sa.inspect(conn).get_foreign_keys('NMA_Radionuclides')
+        for fk in fks:
+            if 'thing_id' in fk['constrained_columns'] and fk.get('name'):
+                op.drop_constraint(fk['name'], 'NMA_Radionuclides', type_='foreignkey')
         op.drop_column('NMA_Radionuclides', 'thing_id')
 
 

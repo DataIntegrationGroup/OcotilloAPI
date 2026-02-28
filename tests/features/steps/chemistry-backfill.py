@@ -169,7 +169,7 @@ def step_given_lexicon_terms_exist(context: Context):
 
         # Test-only analyte names used by scenarios — seed if absent.
         # In production these would be pre-seeded via a vocabulary
-        # preparation step (see issue #XXX).
+        # preparation step.
         test_analytes = (
             "GB", "Uranium", "GA", "Ra228", "Uranium-238",
             "Radium-226", "Nitrate", "Unknown",
@@ -277,13 +277,16 @@ def step_given_sample_with_chemistry_key(context: Context, sample_pt_id: str):
 def _track_created_analysis_methods(context: Context):
     """Record AnalysisMethod IDs created by the backfill for cleanup."""
     _ensure_backfill_tracking(context)
+    scenario_sample_ids = context._backfill_created.get("sample_ids", [])
+    if not scenario_sample_ids:
+        return
     with session_ctx() as session:
-        # Find methods referenced by backfill-created observations
+        # Scope to observations linked to this scenario's samples only
         obs_am_ids = [
             row[0]
             for row in session.execute(
                 select(Observation.analysis_method_id).where(
-                    Observation.nma_pk_chemistryresults.isnot(None),
+                    Observation.sample_id.in_(scenario_sample_ids),
                     Observation.analysis_method_id.isnot(None),
                 )
             ).all()
