@@ -51,6 +51,11 @@ from db import (
     Sample,
     Base,
 )
+from db.analysis_method import AnalysisMethod
+from db.field import FieldEvent, FieldActivity
+from db.nma_legacy import NMA_Radionuclides, NMA_Chemistry_SampleInfo
+from db.notes import Notes
+from db.observation import Observation
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
 from services.util import get_bool_env
@@ -741,15 +746,107 @@ def before_scenario(context, scenario):
 
 def after_scenario(context, scenario):
 
+    # Chemistry backfill cleanup — runs regardless of DROP_AND_REBUILD_DB
+    # because the backfill steps create their own fixture data.
+    if hasattr(context, "_backfill_created"):
+        try:
+            with session_ctx() as session:
+                created = context._backfill_created
+
+                # Delete in FK order: Notes → Observations → Samples → FieldActivities → FieldEvents → NMA rows
+                # First, delete Notes linked to observations we created
+                obs_ids = [
+                    row[0]
+                    for row in session.execute(
+                        select(Observation.id).where(
+                            Observation.nma_pk_chemistryresults.isnot(None)
+                        )
+                    ).all()
+                ]
+                if obs_ids:
+                    for note in session.query(Notes).filter(
+                        Notes.target_table == "observation",
+                        Notes.target_id.in_(obs_ids),
+                    ).all():
+                        session.delete(note)
+
+                # Delete observations created by backfill
+                for obs in session.query(Observation).filter(
+                    Observation.nma_pk_chemistryresults.isnot(None)
+                ).all():
+                    session.delete(obs)
+
+                # Delete NMA_Radionuclides created in this scenario
+                for rid in created.get("nma_radionuclide_ids", []):
+                    row = session.get(NMA_Radionuclides, rid)
+                    if row:
+                        session.delete(row)
+
+                # Delete NMA_Chemistry_SampleInfo created in this scenario
+                for sid in created.get("nma_sampleinfo_ids", []):
+                    row = session.get(NMA_Chemistry_SampleInfo, sid)
+                    if row:
+                        session.delete(row)
+
+                # Delete Samples (cascades to observations already deleted)
+                for sid in created.get("sample_ids", []):
+                    row = session.get(Sample, sid)
+                    if row:
+                        session.delete(row)
+
+                # Delete FieldActivities
+                for faid in created.get("field_activity_ids", []):
+                    row = session.get(FieldActivity, faid)
+                    if row:
+                        session.delete(row)
+
+                # Delete FieldEvents
+                for feid in created.get("field_event_ids", []):
+                    row = session.get(FieldEvent, feid)
+                    if row:
+                        session.delete(row)
+
+                # Clean up AnalysisMethods created during this scenario's backfill
+                for amid in created.get("analysis_method_ids", []):
+                    row = session.get(AnalysisMethod, amid)
+                    if row:
+                        session.delete(row)
+
+                # Delete Things (wells) created by _ensure_well
+                for wid in created.get("well_ids", []):
+                    # Delete LocationThingAssociation first
+                    session.execute(
+                        LocationThingAssociation.__table__.delete().where(
+                            LocationThingAssociation.thing_id == wid
+                        )
+                    )
+                    row = session.get(Thing, wid)
+                    if row:
+                        session.delete(row)
+
+                # Delete Locations created by _ensure_well
+                for lid in created.get("location_ids", []):
+                    row = session.get(Location, lid)
+                    if row:
+                        session.delete(row)
+
+                session.commit()
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).error(
+                "Chemistry backfill cleanup failed for scenario '%s'",
+                scenario.name,
+                exc_info=True,
+            )
+
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return
 
-    # runs after EVERY scenario
-    # e.g. clean up temp files, close db sessions
+    # runs after EVERY scenario (only when DROP_AND_REBUILD_DB is set)
     if scenario.name.startswith(
         "Successfully upload and associate assets from a valid manifest"
     ):
-        # delete all the assets uploaded for this scenario
         with session_ctx() as session:
             for uri in context.uris:
                 sql = select(Asset).where(Asset.uri == uri)
@@ -757,7 +854,6 @@ def after_scenario(context, scenario):
                 session.delete(asset)
             session.commit()
     elif "cleanup_samples" in scenario.tags:
-        # delete all samples created during happy path tests
         with session_ctx() as session:
             samples = session.query(Sample).all()
             for sample in samples:
