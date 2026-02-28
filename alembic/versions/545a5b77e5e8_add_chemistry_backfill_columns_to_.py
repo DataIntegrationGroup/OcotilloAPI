@@ -88,10 +88,17 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove chemistry backfill columns."""
-    # Restore NMA_Radionuclides.thing_id
+    # Restore NMA_Radionuclides.thing_id (add nullable, backfill, then enforce)
     op.add_column('NMA_Radionuclides', sa.Column(
-        'thing_id', sa.Integer(), nullable=False,
+        'thing_id', sa.Integer(), nullable=True,
     ))
+    op.execute(
+        'UPDATE "NMA_Radionuclides" r '
+        'SET thing_id = csi.thing_id '
+        'FROM "NMA_Chemistry_SampleInfo" csi '
+        'WHERE r.chemistry_sample_info_id = csi.id'
+    )
+    op.alter_column('NMA_Radionuclides', 'thing_id', nullable=False)
     op.create_foreign_key(
         'NMA_Radionuclides_thing_id_fkey', 'NMA_Radionuclides', 'thing',
         ['thing_id'], ['id'], ondelete='CASCADE',

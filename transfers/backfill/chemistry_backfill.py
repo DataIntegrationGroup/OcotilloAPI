@@ -28,6 +28,7 @@ from datetime import timezone
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from db.analysis_method import AnalysisMethod
@@ -121,7 +122,7 @@ def _resolve_detect_flag(symbol: str | None, value: float | None) -> bool | None
     return None
 
 
-def _backfill_radionuclides_impl(session: Session, batch_size: int) -> BackfillResult:
+def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
     result = BackfillResult()
 
     sample_cache = _build_sample_cache(session)
@@ -167,123 +168,129 @@ def _backfill_radionuclides_impl(session: Session, batch_size: int) -> BackfillR
 
         sample_id = sample_cache[sample_pt_key]
 
-        # Get-or-create Parameter
         analyte = row.analyte
         if not analyte:
             result.errors.append(
                 f"Row GlobalID={global_id_str} has no Analyte — skipping"
             )
             continue
-        param = _get_or_create_parameter(session, analyte, "water")
 
-        # Get-or-create AnalysisMethod
-        analysis_method_id = None
-        if row.analysis_method:
-            am = _get_or_create_analysis_method(session, row.analysis_method)
-            analysis_method_id = am.id
-
-        # Resolve detect_flag
-        detect_flag = _resolve_detect_flag(row.symbol, row.sample_value)
-
-        # Build observation_datetime — use analysis_date or fallback
+        # Build observation_datetime
         obs_dt = row.analysis_date
         if obs_dt is not None:
             if obs_dt.tzinfo is None:
                 obs_dt = obs_dt.replace(tzinfo=timezone.utc)
         else:
-            # If no analysis date, we cannot create an observation
             result.errors.append(
-                f"Row GlobalID={global_id_str} has no AnalysisDate — using epoch"
+                f"Row GlobalID={global_id_str} has no AnalysisDate — skipping"
             )
-            from datetime import datetime
+            continue
 
-            obs_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        # Per-row savepoint so one bad row doesn't abort the entire backfill
+        savepoint = session.begin_nested()
+        try:
+            # Get-or-create Parameter
+            param = _get_or_create_parameter(session, analyte, "water")
 
-        # Determine unit
-        unit = row.units if row.units else "pCi/L"
+            # Get-or-create AnalysisMethod
+            analysis_method_id = None
+            if row.analysis_method:
+                am = _get_or_create_analysis_method(session, row.analysis_method)
+                analysis_method_id = am.id
 
-        # Upsert Observation
-        obs_values = {
-            "nma_pk_chemistryresults": global_id_str,
-            "sample_id": sample_id,
-            "parameter_id": param.id,
-            "analysis_method_id": analysis_method_id,
-            "observation_datetime": obs_dt,
-            "value": row.sample_value,
-            "unit": unit,
-            "detect_flag": detect_flag,
-            "uncertainty": row.uncertainty,
-            "analysis_agency": row.analyses_agency,
-            "release_status": "draft",
-        }
+            # Resolve detect_flag
+            detect_flag = _resolve_detect_flag(row.symbol, row.sample_value)
 
-        stmt = pg_insert(Observation).values(**obs_values)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["nma_pk_chemistryresults"],
-            set_={
-                "sample_id": stmt.excluded.sample_id,
-                "parameter_id": stmt.excluded.parameter_id,
-                "analysis_method_id": stmt.excluded.analysis_method_id,
-                "observation_datetime": stmt.excluded.observation_datetime,
-                "value": stmt.excluded.value,
-                "unit": stmt.excluded.unit,
-                "detect_flag": stmt.excluded.detect_flag,
-                "uncertainty": stmt.excluded.uncertainty,
-                "analysis_agency": stmt.excluded.analysis_agency,
-            },
-        )
-        session.execute(stmt)
+            # Determine unit
+            unit = row.units if row.units else "pCi/L"
 
-        if global_id_str in existing_keys:
-            result.updated += 1
-        else:
-            result.inserted += 1
-            existing_keys.add(global_id_str)
+            # Upsert Observation
+            obs_values = {
+                "nma_pk_chemistryresults": global_id_str,
+                "sample_id": sample_id,
+                "parameter_id": param.id,
+                "analysis_method_id": analysis_method_id,
+                "observation_datetime": obs_dt,
+                "value": row.sample_value,
+                "unit": unit,
+                "detect_flag": detect_flag,
+                "uncertainty": row.uncertainty,
+                "analysis_agency": row.analyses_agency,
+                "release_status": "draft",
+            }
 
-        # Update Sample volume/volume_unit if present on legacy row
-        if row.volume is not None or row.volume_unit is not None:
-            sample = session.get(Sample, sample_id)
-            if sample:
-                if row.volume is not None:
-                    sample.volume = float(row.volume)
-                if row.volume_unit is not None:
-                    sample.volume_unit = row.volume_unit
+            stmt = pg_insert(Observation).values(**obs_values)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["nma_pk_chemistryresults"],
+                set_={
+                    "sample_id": stmt.excluded.sample_id,
+                    "parameter_id": stmt.excluded.parameter_id,
+                    "analysis_method_id": stmt.excluded.analysis_method_id,
+                    "observation_datetime": stmt.excluded.observation_datetime,
+                    "value": stmt.excluded.value,
+                    "unit": stmt.excluded.unit,
+                    "detect_flag": stmt.excluded.detect_flag,
+                    "uncertainty": stmt.excluded.uncertainty,
+                    "analysis_agency": stmt.excluded.analysis_agency,
+                },
+            )
+            session.execute(stmt)
 
-        # Create Notes if present
-        if row.notes:
-            # Look up the observation we just upserted
-            obs = session.execute(
-                select(Observation).where(
-                    Observation.nma_pk_chemistryresults == global_id_str
-                )
-            ).scalar_one_or_none()
+            if global_id_str in existing_keys:
+                result.updated += 1
+            else:
+                result.inserted += 1
+                existing_keys.add(global_id_str)
 
-            if obs is None:
-                result.errors.append(
-                    f"Row GlobalID={global_id_str}: upserted Observation not found "
-                    f"when creating Notes — skipping note"
-                )
-                continue
+            # Update Sample volume/volume_unit if present on legacy row
+            if row.volume is not None or row.volume_unit is not None:
+                sample = session.get(Sample, sample_id)
+                if sample:
+                    if row.volume is not None:
+                        sample.volume = float(row.volume)
+                    if row.volume_unit is not None:
+                        sample.volume_unit = row.volume_unit
 
-            # Check if note already exists for this observation
-            existing_note = session.execute(
-                select(Notes).where(
-                    Notes.target_id == obs.id,
-                    Notes.target_table == "observation",
-                    Notes.note_type == "Chemistry Observation",
-                    Notes.content == row.notes,
-                )
-            ).scalar_one_or_none()
+            # Create Notes if present
+            if row.notes:
+                obs = session.execute(
+                    select(Observation).where(
+                        Observation.nma_pk_chemistryresults == global_id_str
+                    )
+                ).scalar_one_or_none()
 
-            if existing_note is None:
-                note = Notes(
-                    target_id=obs.id,
-                    target_table="observation",
-                    note_type="Chemistry Observation",
-                    content=row.notes,
-                    release_status="draft",
-                )
-                session.add(note)
+                if obs is None:
+                    result.errors.append(
+                        f"Row GlobalID={global_id_str}: upserted Observation not found "
+                        f"when creating Notes — skipping note"
+                    )
+                else:
+                    existing_note = session.execute(
+                        select(Notes).where(
+                            Notes.target_id == obs.id,
+                            Notes.target_table == "observation",
+                            Notes.note_type == "Chemistry Observation",
+                            Notes.content == row.notes,
+                        )
+                    ).scalar_one_or_none()
+
+                    if existing_note is None:
+                        note = Notes(
+                            target_id=obs.id,
+                            target_table="observation",
+                            note_type="Chemistry Observation",
+                            content=row.notes,
+                            release_status="draft",
+                        )
+                        session.add(note)
+
+            savepoint.commit()
+        except SQLAlchemyError as exc:
+            savepoint.rollback()
+            result.errors.append(
+                f"Row GlobalID={global_id_str}: {exc}"
+            )
+            continue
 
     session.commit()
     logger.info(
@@ -296,10 +303,10 @@ def _backfill_radionuclides_impl(session: Session, batch_size: int) -> BackfillR
     return result
 
 
-def backfill_radionuclides(batch_size: int = 1000) -> BackfillResult:
+def backfill_radionuclides() -> BackfillResult:
     """Top-level runner for the radionuclides backfill."""
     with session_ctx() as session:
-        return _backfill_radionuclides_impl(session, batch_size)
+        return _backfill_radionuclides_impl(session)
 
 
 # ============= EOF =============================================

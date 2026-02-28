@@ -17,10 +17,9 @@
 Orchestrates the backfill pipeline used in CD workflows.
 
 Preferred usage (avoids import path issues):
-    python -m transfers.backfill.backfill --batch-size 1000
+    python -m transfers.backfill.backfill
 """
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -34,10 +33,8 @@ from transfers.backfill.chemistry_backfill import backfill_radionuclides
 from transfers.logger import logger
 
 
-def run(batch_size: int = 1000) -> None:
-    """
-    Execute all backfill steps in a deterministic order.
-    """
+def run() -> None:
+    """Execute all backfill steps in a deterministic order."""
     steps = (
         ("Radionuclides", backfill_radionuclides, "BACKFILL_RADIONUCLIDES"),
     )
@@ -46,7 +43,7 @@ def run(batch_size: int = 1000) -> None:
             logger.info(f"Skipping backfill: {name} ({flag}=false)")
             continue
         logger.info(f"Starting backfill: {name}")
-        result = fn(batch_size)
+        result = fn()
         logger.info(
             f"Completed backfill: {name} — "
             f"inserted={result.inserted} updated={result.updated} "
@@ -57,21 +54,9 @@ def run(batch_size: int = 1000) -> None:
                 logger.warning(f"  {name}: {err}")
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run backfill pipeline.")
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=1000,
-        help="Number of rows to insert per batch.",
-    )
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = _parse_args()
     try:
-        run(batch_size=args.batch_size)
+        run()
     except Exception:
         logger.critical("Backfill orchestration failed", exc_info=True)
         sys.exit(1)

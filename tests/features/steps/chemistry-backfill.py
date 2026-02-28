@@ -274,12 +274,30 @@ def step_given_sample_with_chemistry_key(context: Context, sample_pt_id: str):
 # ---------------------------------------------------------------------------
 # WHEN steps
 # ---------------------------------------------------------------------------
+def _track_created_analysis_methods(context: Context):
+    """Record AnalysisMethod IDs created by the backfill for cleanup."""
+    _ensure_backfill_tracking(context)
+    with session_ctx() as session:
+        # Find methods referenced by backfill-created observations
+        obs_am_ids = [
+            row[0]
+            for row in session.execute(
+                select(Observation.analysis_method_id).where(
+                    Observation.nma_pk_chemistryresults.isnot(None),
+                    Observation.analysis_method_id.isnot(None),
+                )
+            ).all()
+        ]
+        context._backfill_created["analysis_method_ids"] = list(set(obs_am_ids))
+
+
 @when("I run the Radionuclides backfill job")
 def step_when_run_backfill(context: Context):
     """Execute the backfill and store the result on context."""
     from transfers.backfill.chemistry_backfill import backfill_radionuclides
 
     context.backfill_result = backfill_radionuclides()
+    _track_created_analysis_methods(context)
 
 
 @when("I run the Radionuclides backfill job again")
@@ -288,6 +306,7 @@ def step_when_run_backfill_again(context: Context):
     from transfers.backfill.chemistry_backfill import backfill_radionuclides
 
     context.backfill_result = backfill_radionuclides()
+    _track_created_analysis_methods(context)
 
 
 # ---------------------------------------------------------------------------
