@@ -75,7 +75,7 @@ if __name__ == "__main__":
     args = _parse_args()
     try:
         run(batch_size=args.batch_size)
-    except Exception as exc:
+    except Exception:
         logger.critical("Backfill orchestration failed", exc_info=True)
         sys.exit(1)
 
