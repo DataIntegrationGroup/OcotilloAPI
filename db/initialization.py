@@ -2,7 +2,7 @@
 
 import os
 
-from sqlalchemy import text
+from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 from sqlalchemy_searchable import sync_trigger
@@ -69,12 +69,8 @@ def recreate_public_schema(session: Session) -> None:
             ")"
         )
     ).scalar()
-    if not pg_cron_available:
-        raise RuntimeError(
-            "Cannot initialize database schema: pg_cron extension is not available "
-            "on this PostgreSQL server."
-        )
-    session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
+    if pg_cron_available:
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
     session.execute(APP_READ_GRANT_SQL)
     grant_app_read_members(session)
     session.commit()
@@ -83,7 +79,11 @@ def recreate_public_schema(session: Session) -> None:
 def sync_search_vector_triggers(session: Session) -> None:
     """Ensure SQLAlchemy-searchable triggers exist for every TSVector column."""
     conn = session.connection()
+    inspector = sa_inspect(conn)
+    existing_tables = set(inspector.get_table_names())
     for table in Base.metadata.tables.values():
+        if table.name not in existing_tables:
+            continue
         for column in table.columns:
             if isinstance(column.type, TSVectorType):
                 sync_trigger(conn, table.name, column.name, list(column.type.columns))
