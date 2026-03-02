@@ -17,8 +17,6 @@ down_revision: Union[str, Sequence[str], None] = "c4d5e6f7a8b9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 REFRESH_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
-REFRESH_JOB_NAME = "refresh_pygeoapi_matviews_nightly"
-REFRESH_SCHEDULE = "0 3 * * *"
 
 THING_COLLECTIONS = [
     ("water_wells", "water well"),
@@ -231,68 +229,6 @@ def _create_refresh_function() -> str:
     """
 
 
-def _schedule_refresh_job() -> str:
-    return f"""
-        DO $do$
-        BEGIN
-            BEGIN
-                -- Avoid direct SELECT on cron.job because managed Postgres
-                -- environments may deny access to the cron schema table.
-                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
-            EXCEPTION
-                WHEN undefined_function THEN
-                    NULL;
-                WHEN invalid_parameter_value THEN
-                    NULL;
-                WHEN internal_error THEN
-                    -- Some pg_cron builds raise internal_error when the named
-                    -- job does not exist. Treat this as already-unscheduled.
-                    NULL;
-                WHEN insufficient_privilege THEN
-                    RAISE NOTICE
-                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
-                        '{REFRESH_JOB_NAME}';
-                    RETURN;
-            END;
-
-            PERFORM cron.schedule(
-                '{REFRESH_JOB_NAME}',
-                '{REFRESH_SCHEDULE}',
-                $cmd$SELECT public.{REFRESH_FUNCTION_NAME}();$cmd$
-            );
-        EXCEPTION
-            WHEN insufficient_privilege THEN
-                RAISE NOTICE
-                    'Skipping pg_cron schedule for % due to insufficient privileges.',
-                    '{REFRESH_JOB_NAME}';
-        END
-        $do$;
-    """
-
-
-def _unschedule_refresh_job() -> str:
-    return f"""
-        DO $do$
-        BEGIN
-            BEGIN
-                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
-            EXCEPTION
-                WHEN undefined_function THEN
-                    NULL;
-                WHEN invalid_parameter_value THEN
-                    NULL;
-                WHEN internal_error THEN
-                    NULL;
-                WHEN insufficient_privilege THEN
-                    RAISE NOTICE
-                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
-                        '{REFRESH_JOB_NAME}';
-            END;
-        END
-        $do$;
-    """
-
-
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = inspect(bind)
@@ -306,16 +242,6 @@ def upgrade() -> None:
             "Cannot create pygeoapi supporting views. The following required core "
             f"tables are missing: {missing_tables_str}"
         )
-
-    pg_cron_available = bind.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
 
     for view_id, thing_type in THING_COLLECTIONS:
         safe_view_id = _safe_view_id(view_id)
@@ -360,21 +286,9 @@ def upgrade() -> None:
     _create_matview_indexes()
 
     op.execute(text(_create_refresh_function()))
-    if pg_cron_available:
-        op.execute(text(_schedule_refresh_job()))
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    pg_cron_available = bind.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        op.execute(text(_unschedule_refresh_job()))
     op.execute(text(f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"))
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")

@@ -10,7 +10,8 @@ from sqlalchemy_utils import TSVectorType
 
 from db import Base
 
-APP_READ_GRANT_SQL = text("""
+APP_READ_GRANT_SQL = text(
+    """
     DO $$
     BEGIN
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_read') THEN
@@ -19,7 +20,8 @@ APP_READ_GRANT_SQL = text("""
             EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_read';
         END IF;
     END $$;
-    """)
+    """
+)
 
 
 def _parse_app_read_members() -> list[str]:
@@ -46,14 +48,16 @@ def grant_app_read_members(executor: Session | Connection | None) -> None:
     for member in members:
         safe_member = member.replace("'", "''")
         quoted = f'"{safe_member}"'
-        stmt = text(f"""
+        stmt = text(
+            f"""
             DO $$
             BEGIN
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{safe_member}') THEN
                     EXECUTE 'GRANT app_read TO {quoted}';
                 END IF;
             END $$;
-            """)
+            """
+        )
         executor.execute(stmt)
 
 
@@ -62,15 +66,6 @@ def recreate_public_schema(session: Session) -> None:
     session.execute(text("DROP SCHEMA public CASCADE"))
     session.execute(text("CREATE SCHEMA public"))
     session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    pg_cron_available = session.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
     session.execute(APP_READ_GRANT_SQL)
     grant_app_read_members(session)
     session.commit()
