@@ -286,20 +286,14 @@ def step_given_sample_with_chemistry_key(context: Context, sample_pt_id: str):
 def _snapshot_analysis_method_ids() -> set[int]:
     """Return the set of all AnalysisMethod IDs that exist before the backfill."""
     with session_ctx() as session:
-        return {
-            row[0]
-            for row in session.execute(select(AnalysisMethod.id)).all()
-        }
+        return {row[0] for row in session.execute(select(AnalysisMethod.id)).all()}
 
 
 def _track_created_analysis_methods(context: Context, pre_ids: set[int]):
     """Record only AnalysisMethod IDs that were actually created by the backfill."""
     _ensure_backfill_tracking(context)
     with session_ctx() as session:
-        post_ids = {
-            row[0]
-            for row in session.execute(select(AnalysisMethod.id)).all()
-        }
+        post_ids = {row[0] for row in session.execute(select(AnalysisMethod.id)).all()}
     new_ids = post_ids - pre_ids
     context._backfill_created["analysis_method_ids"] = list(new_ids)
 
