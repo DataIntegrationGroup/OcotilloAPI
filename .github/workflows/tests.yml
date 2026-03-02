@@ -11,64 +11,80 @@ permissions:
   contents: read
 
 jobs:
-  run-tests:
+  unit-tests:
     runs-on: ubuntu-latest
 
-    # Set shared env vars ONCE here for all steps
     env:
       MODE: development
       POSTGRES_HOST: localhost
-      POSTGRES_PORT: 54321
+      POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
+      PYGEOAPI_POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      PYGEOAPI_POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ocotilloapi_test
+      PYGEOAPI_POSTGRES_HOST: localhost
+      PYGEOAPI_POSTGRES_PORT: 5432
+      PYGEOAPI_POSTGRES_DB: ocotilloapi_test
       DB_DRIVER: postgres
       BASE_URL: http://localhost:8000
       SESSION_SECRET_KEY: supersecretkeyforunittests
-
-    services:
-      postgis:
-        image: postgis/postgis:17-3.5
-        # don't test against latest. be explicit in version being tested to avoid breaking changes
-        # image: postgis/postgis:latest
-
-        # These env vars are ONLY for the service container itself
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_PORT: 54321
-
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-        ports:
-          # Maps tcp port 5432 on service container to the host
-          - 54321:5432
+      AUTHENTIK_DISABLE_AUTHENTICATION: 1
 
     steps:
       - name: Check out source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+
+      - name: Start database (PostGIS + pg_cron)
+        run: |
+          docker compose build db
+          docker compose up -d db
+
+      - name: Wait for database readiness
+        run: |
+          for i in {1..60}; do
+            if PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Database did not become ready in time"
+          exit 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7.3.1
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: setup-python
+        uses: actions/setup-python@v6.2.0
         with:
           python-version-file: "pyproject.toml"
+
+      - name: Cache project virtualenv
+        id: cache-venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      - name: Show Alembic heads
+        run: uv run alembic heads
+
+      - name: Create test database and extensions
+        run: |
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'ocotilloapi_test'" | grep -q 1 || \
+            PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS pg_cron"
+
       - name: Run tests
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
-
-      - name: Run BDD tests
-        run: |
-          uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
@@ -76,3 +92,86 @@ jobs:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Stop database
+        if: always()
+        run: docker compose down -v
+
+  bdd-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      MODE: development
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      PYGEOAPI_POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PYGEOAPI_POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ocotilloapi_test
+      PYGEOAPI_POSTGRES_HOST: localhost
+      PYGEOAPI_POSTGRES_PORT: 5432
+      PYGEOAPI_POSTGRES_DB: ocotilloapi_test
+      DB_DRIVER: postgres
+      BASE_URL: http://localhost:8000
+      SESSION_SECRET_KEY: supersecretkeyforunittests
+      AUTHENTIK_DISABLE_AUTHENTICATION: 1
+      DROP_AND_REBUILD_DB: 1
+
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Start database (PostGIS + pg_cron)
+        run: |
+          docker compose build db
+          docker compose up -d db
+
+      - name: Wait for database readiness
+        run: |
+          for i in {1..60}; do
+            if PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "SELECT 1" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Database did not become ready in time"
+          exit 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7.3.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Cache project virtualenv
+        id: cache-venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('uv.lock') }}
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Show Alembic heads
+        run: uv run alembic heads
+
+      - name: Create test database and extensions
+        run: |
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'ocotilloapi_test'" | grep -q 1 || \
+            PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS pg_cron"
+
+      - name: Run BDD tests
+        run: uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
+
+      - name: Stop database
+        if: always()
+        run: docker compose down -v

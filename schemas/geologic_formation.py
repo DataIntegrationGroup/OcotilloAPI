@@ -2,9 +2,9 @@ from typing import List
 
 from pydantic import BaseModel, field_validator, Field
 
+from core.enums import FormationCode, Lithology
 from schemas import BaseResponseModel
 from schemas.validators import DepthIntervalMixin, GeometryMixin
-from core.enums import FormationCode, Lithology
 
 
 # ------ CREATE ----------

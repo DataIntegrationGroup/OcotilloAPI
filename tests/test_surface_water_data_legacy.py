@@ -14,9 +14,9 @@
 # limitations under the License.
 # ===============================================================================
 """
-Unit tests for SurfaceWaterData legacy model.
+Unit tests for NMA_SurfaceWaterData legacy model.
 
-These tests verify the migration of columns from the legacy SurfaceWaterData table.
+These tests verify the migration of columns from the legacy NMA_SurfaceWaterData table.
 Migrated columns:
 - SurfaceID -> surface_id
 - PointID -> point_id
@@ -39,7 +39,8 @@ from datetime import datetime
 from uuid import uuid4
 
 from db.engine import session_ctx
-from db.nma_legacy import SurfaceWaterData
+from db.thing import Thing
+from db.nma_legacy import NMA_SurfaceWaterData
 
 
 def _next_object_id() -> int:
@@ -47,11 +48,22 @@ def _next_object_id() -> int:
     return -(uuid4().int % 2_000_000_000)
 
 
+def _attach_thing_with_location(session, water_well_thing):
+    location_id = uuid4()
+    thing = session.get(Thing, water_well_thing.id)
+    thing.nma_pk_location = str(location_id)
+    session.commit()
+    return thing, location_id
+
+
 # ===================== CREATE tests ==========================
-def test_create_surface_water_data_all_fields():
+def test_create_surface_water_data_all_fields(water_well_thing):
     """Test creating a surface water data record with all fields."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
+            location_id=location_id,
+            thing_id=thing.id,
             surface_id=uuid4(),
             point_id="SW-1001",
             object_id=_next_object_id(),
@@ -75,19 +87,23 @@ def test_create_surface_water_data_all_fields():
         assert record.object_id is not None
         assert record.point_id == "SW-1001"
         assert record.surface_id is not None
+        assert record.location_id is not None
         assert record.discharge_rate == 1.2
 
         session.delete(record)
         session.commit()
 
 
-def test_create_surface_water_data_minimal():
+def test_create_surface_water_data_minimal(water_well_thing):
     """Test creating a surface water data record with minimal fields."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1002",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -103,18 +119,21 @@ def test_create_surface_water_data_minimal():
 
 
 # ===================== READ tests ==========================
-def test_read_surface_water_data_by_object_id():
+def test_read_surface_water_data_by_object_id(water_well_thing):
     """Test reading a surface water data record by OBJECTID."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1003",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
 
-        fetched = session.get(SurfaceWaterData, record.object_id)
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
         assert fetched is not None
         assert fetched.object_id == record.object_id
         assert fetched.point_id == "SW-1003"
@@ -123,25 +142,52 @@ def test_read_surface_water_data_by_object_id():
         session.commit()
 
 
-def test_query_surface_water_data_by_point_id():
+def test_surface_water_data_stores_location_id(water_well_thing):
+    """Ensure location_id values persist in the legacy model."""
+    with session_ctx() as session:
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
+            location_id=location_id,
+            surface_id=uuid4(),
+            point_id="SW-1010",
+            object_id=_next_object_id(),
+            thing_id=thing.id,
+        )
+        session.add(record)
+        session.commit()
+
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
+        assert fetched is not None
+        assert fetched.location_id == location_id
+
+        session.delete(record)
+        session.commit()
+
+
+def test_query_surface_water_data_by_point_id(water_well_thing):
     """Test querying surface water data by point_id."""
     with session_ctx() as session:
-        record1 = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record1 = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1004",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
-        record2 = SurfaceWaterData(
+        record2 = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1005",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add_all([record1, record2])
         session.commit()
 
         results = (
-            session.query(SurfaceWaterData)
-            .filter(SurfaceWaterData.point_id == "SW-1004")
+            session.query(NMA_SurfaceWaterData)
+            .filter(NMA_SurfaceWaterData.point_id == "SW-1004")
             .all()
         )
         assert len(results) >= 1
@@ -153,13 +199,16 @@ def test_query_surface_water_data_by_point_id():
 
 
 # ===================== UPDATE tests ==========================
-def test_update_surface_water_data():
+def test_update_surface_water_data(water_well_thing):
     """Test updating a surface water data record."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1006",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -177,13 +226,16 @@ def test_update_surface_water_data():
 
 
 # ===================== DELETE tests ==========================
-def test_delete_surface_water_data():
+def test_delete_surface_water_data(water_well_thing):
     """Test deleting a surface water data record."""
     with session_ctx() as session:
-        record = SurfaceWaterData(
+        thing, location_id = _attach_thing_with_location(session, water_well_thing)
+        record = NMA_SurfaceWaterData(
             surface_id=uuid4(),
             point_id="SW-1007",
             object_id=_next_object_id(),
+            location_id=location_id,
+            thing_id=thing.id,
         )
         session.add(record)
         session.commit()
@@ -191,7 +243,7 @@ def test_delete_surface_water_data():
         session.delete(record)
         session.commit()
 
-        fetched = session.get(SurfaceWaterData, record.object_id)
+        fetched = session.get(NMA_SurfaceWaterData, record.object_id)
         assert fetched is None
 
 
@@ -199,6 +251,7 @@ def test_delete_surface_water_data():
 def test_surface_water_data_has_all_migrated_columns():
     """Test that the model has all expected columns."""
     expected_columns = [
+        "location_id",
         "surface_id",
         "point_id",
         "object_id",
@@ -218,13 +271,13 @@ def test_surface_water_data_has_all_migrated_columns():
 
     for column in expected_columns:
         assert hasattr(
-            SurfaceWaterData, column
-        ), f"Expected column '{column}' not found in SurfaceWaterData model"
+            NMA_SurfaceWaterData, column
+        ), f"Expected column '{column}' not found in NMA_SurfaceWaterData model"
 
 
 def test_surface_water_data_table_name():
     """Test that the table name follows convention."""
-    assert SurfaceWaterData.__tablename__ == "NMA_SurfaceWaterData"
+    assert NMA_SurfaceWaterData.__tablename__ == "NMA_SurfaceWaterData"
 
 
 # ============= EOF =============================================

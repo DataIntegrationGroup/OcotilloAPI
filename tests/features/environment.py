@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============== ================================================================
+import os
 import random
 from datetime import datetime, timedelta
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import select
 
-from core.initializers import erase_and_rebuild_db
+from core.initializers import init_lexicon, init_parameter
 from db import (
     Location,
     Thing,
@@ -32,7 +35,6 @@ from db import (
     TransducerObservationBlock,
     WellCasingMaterial,
     PermissionHistory,
-    Contact,
     StatusHistory,
     ThingIdLink,
     WellPurpose,
@@ -44,11 +46,14 @@ from db import (
     ThingAquiferAssociation,
     GeologicFormation,
     ThingGeologicFormationAssociation,
-    Base,
     Asset,
+    Contact,
     Sample,
+    Base,
 )
 from db.engine import session_ctx
+from db.initialization import recreate_public_schema, sync_search_vector_triggers
+from services.util import get_bool_env
 
 
 def add_context_object_container(name):
@@ -104,7 +109,6 @@ def add_well(context, session, location, name_num):
         well_construction_method="Driven",
         well_pump_type="Submersible",
         well_pump_depth=8,
-        is_suitable_for_datalogger=True,
         formation_completion_code="000EXRV",
     )
 
@@ -500,24 +504,30 @@ def add_geologic_formation(context, session, formation_code, well):
     return formation
 
 
+def _alembic_config() -> Config:
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    cfg = Config(os.path.join(root, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+    return cfg
+
+
+def _initialize_test_schema() -> None:
+    with session_ctx() as session:
+        recreate_public_schema(session)
+    command.upgrade(_alembic_config(), "head")
+    with session_ctx() as session:
+        sync_search_vector_triggers(session)
+    init_lexicon()
+    init_parameter()
+
+
 def before_all(context):
     context.objects = {}
 
-    rebuild = False
-    # rebuild = True
-    erase_data = True
-    if rebuild:
-        erase_and_rebuild_db()
-    elif erase_data:
-        with session_ctx() as session:
-            for table in reversed(Base.metadata.sorted_tables):
-                if table.name in ("alembic_version", "parameter"):
-                    continue
-                elif table.name.startswith("lexicon"):
-                    continue
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
 
-                session.execute(table.delete())
-            session.commit()
+    _initialize_test_schema()
 
     with session_ctx() as session:
 
@@ -533,6 +543,8 @@ def before_all(context):
         sensor_1 = add_sensor(context, session)
         deployment = add_deployment(context, session, well_1.id, sensor_1.id)
 
+        for well in [well_1, well_2, well_3]:
+            add_measuring_point_history(context, session, well=well)
         add_well_casing_material(context, session, well_1)
 
         contact = add_contact(context, session)
@@ -583,14 +595,31 @@ def before_all(context):
                 target_table="thing",
             )
 
-        for value, start, end in (
-            ("Currently monitored", datetime(2020, 1, 1), datetime(2021, 1, 1)),
-            ("Not currently monitored", datetime(2021, 1, 1), None),
+        for value, status_type, start, end in (
+            (
+                "Currently monitored",
+                "Monitoring Status",
+                datetime(2020, 1, 1),
+                datetime(2021, 1, 1),
+            ),
+            (
+                "Not currently monitored",
+                "Monitoring Status",
+                datetime(2021, 1, 1),
+                None,
+            ),
+            ("Open", "Open Status", datetime(2020, 1, 1), None),
+            (
+                "Datalogger can be installed",
+                "Datalogger Suitability Status",
+                datetime(2020, 1, 1),
+                None,
+            ),
         ):
             add_status_history(
                 context,
                 session,
-                status_type="Monitoring Status",
+                status_type=status_type,
                 status_value=value,
                 start_date=start,
                 end_date=end,
@@ -688,6 +717,9 @@ def before_all(context):
 
 
 def after_all(context):
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
+
     with session_ctx() as session:
         for table in reversed(Base.metadata.sorted_tables):
             if table.name in ("alembic_version", "parameter"):
@@ -708,6 +740,10 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
+
+    if not get_bool_env("DROP_AND_REBUILD_DB"):
+        return
+
     # runs after EVERY scenario
     # e.g. clean up temp files, close db sessions
     if scenario.name.startswith(

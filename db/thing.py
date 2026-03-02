@@ -47,7 +47,15 @@ if TYPE_CHECKING:
     from db.thing_geologic_formation_association import (
         ThingGeologicFormationAssociation,
     )
-    from db.nma_legacy import ChemistrySampleInfo, Stratigraphy
+    from db.nma_legacy import (
+        NMA_AssociatedData,
+        NMA_Chemistry_SampleInfo,
+        NMA_HydraulicsData,
+        NMA_Soil_Rock_Results,
+        NMA_Stratigraphy,
+        NMA_SurfaceWaterData,
+        NMA_WaterLevelsContinuous_Pressure_Daily,
+    )
 
 
 class Thing(
@@ -70,6 +78,10 @@ class Thing(
     nma_pk_welldata: Mapped[str] = mapped_column(
         nullable=True,
         comment="To audit where the data came from in NM_Aquifer if it was transferred over",
+    )
+    nma_pk_location: Mapped[str] = mapped_column(
+        nullable=True,
+        comment="To audit the original NM_Aquifer LocationID if it was transferred over",
     )
 
     # TODO: should `name` be unique?
@@ -138,11 +150,6 @@ class Thing(
         String(25),
         nullable=True,
         comment="Raw FormationZone value from legacy WellData (NM_Aquifer).",
-    )
-    # TODO: should this be required for every well in the database? AMMP review
-    is_suitable_for_datalogger: Mapped[bool] = mapped_column(
-        nullable=True,
-        comment="Indicates if the well is suitable for datalogger installation.",
     )
 
     # Spring-related columns
@@ -304,16 +311,54 @@ class Thing(
         )
     )
 
-    # One-To-Many: A Thing can have many ChemistrySampleInfos (legacy NMA data).
-    chemistry_sample_infos: Mapped[List["ChemistrySampleInfo"]] = relationship(
-        "ChemistrySampleInfo",
+    # One-To-Many: A Thing can have many NMA_Chemistry_SampleInfo records (legacy NMA data).
+    chemistry_sample_infos: Mapped[List["NMA_Chemistry_SampleInfo"]] = relationship(
+        "NMA_Chemistry_SampleInfo",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
-    stratigraphy_logs: Mapped[List["Stratigraphy"]] = relationship(
-        "Stratigraphy",
+    stratigraphy_logs: Mapped[List["NMA_Stratigraphy"]] = relationship(
+        "NMA_Stratigraphy",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_HydraulicsData records (legacy NMA data).
+    hydraulics_data: Mapped[List["NMA_HydraulicsData"]] = relationship(
+        "NMA_HydraulicsData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_AssociatedData records (legacy NMA data).
+    associated_data: Mapped[List["NMA_AssociatedData"]] = relationship(
+        "NMA_AssociatedData",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # One-To-Many: A Thing can have many NMA_Soil_Rock_Results records (legacy NMA data).
+    soil_rock_results: Mapped[List["NMA_Soil_Rock_Results"]] = relationship(
+        "NMA_Soil_Rock_Results",
+        back_populates="thing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    pressure_daily_levels: Mapped[List["NMA_WaterLevelsContinuous_Pressure_Daily"]] = (
+        relationship(
+            "NMA_WaterLevelsContinuous_Pressure_Daily",
+            back_populates="thing",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+    surface_water_data: Mapped[List["NMA_SurfaceWaterData"]] = relationship(
+        "NMA_SurfaceWaterData",
         back_populates="thing",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -390,6 +435,10 @@ class Thing(
         return self._get_notes("Construction")
 
     @property
+    def site_notes(self):
+        return self._get_notes("Site Notes (legacy)")
+
+    @property
     def well_status(self) -> str | None:
         """
         Returns the well status from the most recent status history entry
@@ -416,6 +465,32 @@ class Thing(
         return latest_status.status_value if latest_status else None
 
     @property
+    def open_status(self) -> str | None:
+        """
+        Returns the open status from the most recent status history entry
+        where status_type is "Open Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Open Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
+    def datalogger_suitability_status(self) -> str | None:
+        """
+        Returns the datalogger installation status from the most recent status history entry
+        where status_type is "Datalogger Suitability Status".
+
+        Since status_history is eagerly loaded, this should not introduce N+1 query issues.
+        """
+        latest_status = retrieve_latest_polymorphic_history_table_record(
+            self, "status_history", "Datalogger Suitability Status"
+        )
+        return latest_status.status_value if latest_status else None
+
+    @property
     def measuring_point_height(self) -> int | None:
         """
         Returns the most recent measuring point height from the measuring point history
@@ -424,10 +499,15 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
+            if not self.measuring_points:
+                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
-            return sorted_measuring_point_history[0].measuring_point_height
+            for record in sorted_measuring_point_history:
+                if record.measuring_point_height is not None:
+                    return record.measuring_point_height
+            return None
         else:
             return None
 
@@ -440,10 +520,15 @@ class Thing(
         Since measuring_point_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         if self.thing_type == "water well":
+            if not self.measuring_points:
+                return None
             sorted_measuring_point_history = sorted(
                 self.measuring_points, key=lambda x: x.start_date, reverse=True
             )
-            return sorted_measuring_point_history[0].measuring_point_description
+            for record in sorted_measuring_point_history:
+                if record.measuring_point_description is not None:
+                    return record.measuring_point_description
+            return None
         else:
             return None
 
@@ -523,10 +608,10 @@ class WellScreen(Base, AutoBaseMixin, ReleaseMixin):
     geologic_formation_id: Mapped[int] = mapped_column(
         ForeignKey("geologic_formation.id", ondelete="SET NULL"), nullable=True
     )
-    screen_depth_top: Mapped[float] = mapped_column(
+    screen_depth_top: Mapped[float | None] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
-    screen_depth_bottom: Mapped[float] = mapped_column(
+    screen_depth_bottom: Mapped[float | None] = mapped_column(
         info={"unit": "feet below ground surface"}, nullable=True
     )
     screen_type: Mapped[str] = lexicon_term(nullable=True)  # e.g., "PVC", "Steel", etc.

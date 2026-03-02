@@ -1,6 +1,7 @@
 import time
-from sqlalchemy.orm import Session
+
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from db import AquiferSystem
 from schemas.aquifer_system import CreateAquiferSystem

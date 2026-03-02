@@ -16,8 +16,8 @@
 """
 Unit tests for NMA Chemistry lineage OO associations.
 
-Lineage:
-    Thing (1) ---> (*) ChemistrySampleInfo (1) ---> (*) NMAMinorTraceChemistry
+Lineage (updated 2026-01):
+    Thing (1) ---> (*) NMA_Chemistry_SampleInfo (1) ---> (*) NMA_MinorTraceChemistry
 
 Tests verify SQLAlchemy relationships enable OO navigation:
     - thing.chemistry_sample_infos
@@ -25,6 +25,9 @@ Tests verify SQLAlchemy relationships enable OO navigation:
     - sample_info.minor_trace_chemistries
     - mtc.chemistry_sample_info
     - mtc.chemistry_sample_info.thing  (full chain)
+
+FK Change (2026-01):
+    - Uses thing_id (Integer FK to Thing.id)
 """
 
 from uuid import uuid4
@@ -52,29 +55,50 @@ def _next_global_id():
 
 
 @pytest.fixture(scope="module")
-def shared_well():
-    """Create a single Thing for all tests in this module."""
-    from db import Thing
+def shared_thing():
+    """Create a single Thing (with Location) for all tests in this module."""
+    from db import Location, LocationThingAssociation, Thing
 
     with session_ctx() as session:
+        location = Location(
+            point="POINT(-107.949533 33.809665)",
+            elevation=2464.9,
+            release_status="draft",
+        )
+        session.add(location)
+        session.commit()
+        session.refresh(location)
+
         thing = Thing(
-            name=f"Shared-Well-{uuid4().hex[:8]}",
-            thing_type="water well",
+            name="LINEAGE-TEST-WELL",
+            thing_type="monitoring well",
             release_status="draft",
         )
         session.add(thing)
         session.commit()
         session.refresh(thing)
+
+        assoc = LocationThingAssociation(
+            location_id=location.id,
+            thing_id=thing.id,
+        )
+        session.add(assoc)
+        session.commit()
+
         thing_id = thing.id
+        location_id = location.id
 
     yield thing_id
 
     # Cleanup after all tests
     with session_ctx() as session:
         thing = session.get(Thing, thing_id)
+        location = session.get(Location, location_id)
         if thing:
             session.delete(thing)
-            session.commit()
+        if location:
+            session.delete(location)
+        session.commit()
 
 
 # ===================== Model import tests ==========================
@@ -82,31 +106,35 @@ def shared_well():
 
 def test_models_importable():
     """Models should be importable from db.nma_legacy."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
 
-    assert ChemistrySampleInfo is not None
-    assert NMAMinorTraceChemistry is not None
+    assert NMA_Chemistry_SampleInfo is not None
+    assert NMA_MinorTraceChemistry is not None
 
 
 def test_nma_minor_trace_chemistry_table_name():
-    """NMAMinorTraceChemistry should have correct table name."""
-    from db.nma_legacy import NMAMinorTraceChemistry
+    """NMA_MinorTraceChemistry should have correct table name."""
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
-    assert NMAMinorTraceChemistry.__tablename__ == "NMA_MinorTraceChemistry"
+    assert NMA_MinorTraceChemistry.__tablename__ == "NMA_MinorTraceChemistry"
 
 
 def test_nma_minor_trace_chemistry_columns():
     """
-    NMAMinorTraceChemistry should have required columns.
+    NMA_MinorTraceChemistry should have required columns.
 
-    Omitted legacy columns: globalid, objectid, ssma_timestamp,
-    samplepointid, sampleptid, wclab_id
+    Updated for Integer PK schema:
+    - id: Integer PK (autoincrement)
+    - nma_global_id: Legacy GlobalID UUID (UNIQUE)
+    - chemistry_sample_info_id: Integer FK to NMA_Chemistry_SampleInfo.id
     """
-    from db.nma_legacy import NMAMinorTraceChemistry
+    from db.nma_legacy import NMA_MinorTraceChemistry
 
     expected_columns = [
-        "global_id",  # PK
-        "chemistry_sample_info_id",  # new FK (UUID, not string)
+        "id",  # Integer PK
+        "nma_global_id",  # Legacy UUID
+        "chemistry_sample_info_id",  # Integer FK
+        "nma_sample_point_id",  # Legacy sample point id
         # from legacy
         "analyte",
         "sample_value",
@@ -122,30 +150,31 @@ def test_nma_minor_trace_chemistry_columns():
     ]
 
     for col in expected_columns:
-        assert hasattr(NMAMinorTraceChemistry, col), f"Missing column: {col}"
+        assert hasattr(NMA_MinorTraceChemistry, col), f"Missing column: {col}"
 
 
-def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
-    """Can save NMAMinorTraceChemistry with all columns populated."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_nma_minor_trace_chemistry_save_all_columns(shared_thing):
+    """Can save NMA_MinorTraceChemistry with all columns populated."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
     from datetime import date
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        mtc = NMAMinorTraceChemistry(
-            global_id=_next_global_id(),
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
             analyte="As",
             sample_value=0.015,
             units="mg/L",
@@ -155,7 +184,7 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
             notes="Test measurement",
             analyses_agency="NMBGMR",
             uncertainty=0.002,
-            volume=500.0,
+            volume=500,
             volume_unit="mL",
         )
         session.add(mtc)
@@ -163,8 +192,10 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         session.refresh(mtc)
 
         # Verify all columns saved
-        assert mtc.global_id is not None
-        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
+        assert mtc.id is not None  # Integer PK
+        assert mtc.nma_global_id is not None  # Legacy UUID
+        assert mtc.chemistry_sample_info_id == sample_info.id  # Integer FK
+        assert mtc.nma_sample_point_id == sample_info.nma_sample_point_id
         assert mtc.analyte == "As"
         assert mtc.sample_value == 0.015
         assert mtc.units == "mg/L"
@@ -174,142 +205,171 @@ def test_nma_minor_trace_chemistry_save_all_columns(shared_well):
         assert mtc.notes == "Test measurement"
         assert mtc.analyses_agency == "NMBGMR"
         assert mtc.uncertainty == 0.002
-        assert mtc.volume == 500.0
+        assert mtc.volume == 500
         assert mtc.volume_unit == "mL"
 
         session.delete(sample_info)
         session.commit()
 
 
-# ===================== Thing → ChemistrySampleInfo association ==========================
+# ===================== Thing → NMA_Chemistry_SampleInfo association ==========================
 
 
-def test_thing_has_chemistry_sample_infos_attribute(shared_well):
+def test_thing_has_chemistry_sample_infos_attribute(shared_thing):
     """Thing should have chemistry_sample_infos relationship."""
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
-        assert hasattr(well, "chemistry_sample_infos")
+        thing = session.get(Thing, shared_thing)
+        assert hasattr(thing, "chemistry_sample_infos")
 
 
 def test_thing_chemistry_sample_infos_empty_by_default():
     """New Thing should have empty chemistry_sample_infos."""
-    from db import Thing
+    from db import Thing, Location, LocationThingAssociation
 
     with session_ctx() as session:
         # Create a fresh Thing for this test
+        location = Location(
+            point="POINT(-106.0 35.0)",
+            elevation=1500.0,
+            release_status="draft",
+        )
+        session.add(location)
+        session.commit()
+
         new_thing = Thing(
-            name=f"Empty-Test-{uuid4().hex[:8]}",
-            thing_type="water well",
+            name="EMPTY-CHEM-TEST",
+            thing_type="monitoring well",
             release_status="draft",
         )
         session.add(new_thing)
+        session.commit()
+
+        assoc = LocationThingAssociation(
+            location_id=location.id,
+            thing_id=new_thing.id,
+        )
+        session.add(assoc)
         session.commit()
         session.refresh(new_thing)
 
         assert new_thing.chemistry_sample_infos == []
 
         session.delete(new_thing)
+        session.delete(location)
         session.commit()
 
 
-def test_assign_thing_to_sample_info(shared_well):
-    """Can assign Thing to ChemistrySampleInfo via object (not just ID)."""
-    from db.nma_legacy import ChemistrySampleInfo
+def test_assign_thing_to_sample_info(shared_thing):
+    """Can assign Thing to NMA_Chemistry_SampleInfo via object (not just ID)."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,  # OO: assign object
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,  # OO: assign object
         )
         session.add(sample_info)
         session.commit()
 
         # Verify bidirectional
-        assert sample_info.thing == well
-        assert sample_info in well.chemistry_sample_infos
+        assert sample_info.thing == thing
+        assert sample_info in thing.chemistry_sample_infos
 
         session.delete(sample_info)
         session.commit()
 
 
-def test_append_sample_info_to_thing(shared_well):
-    """Can append ChemistrySampleInfo to Thing's collection."""
-    from db.nma_legacy import ChemistrySampleInfo
+def test_append_sample_info_to_thing(shared_thing):
+    """Can append NMA_Chemistry_SampleInfo to Thing's collection."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
         )
-        well.chemistry_sample_infos.append(sample_info)
+        thing.chemistry_sample_infos.append(sample_info)
         session.commit()
 
         # Verify bidirectional
-        assert sample_info.thing == well
-        assert sample_info.thing_id == well.id
+        assert sample_info.thing == thing
+        assert sample_info.thing_id == thing.id
 
         session.delete(sample_info)
         session.commit()
 
 
-# ===================== ChemistrySampleInfo → Thing association ==========================
-
-
-def test_sample_info_has_thing_attribute():
-    """ChemistrySampleInfo should have thing relationship."""
-    from db.nma_legacy import ChemistrySampleInfo
-
-    assert hasattr(ChemistrySampleInfo, "thing")
-
-
-def test_sample_info_requires_thing():
-    """ChemistrySampleInfo cannot be orphaned - must have a parent Thing."""
-    from db.nma_legacy import ChemistrySampleInfo
-
-    # Validator raises ValueError before database is even touched
-    with pytest.raises(ValueError, match="requires a parent Thing"):
-        ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing_id=None,  # Explicit None triggers validator
-        )
-
-
-# ===================== ChemistrySampleInfo → NMAMinorTraceChemistry association ==========================
-
-
-def test_sample_info_has_minor_trace_chemistries_attribute():
-    """ChemistrySampleInfo should have minor_trace_chemistries relationship."""
-    from db.nma_legacy import ChemistrySampleInfo
-
-    assert hasattr(ChemistrySampleInfo, "minor_trace_chemistries")
-
-
-def test_sample_info_minor_trace_chemistries_empty_by_default(shared_well):
-    """New ChemistrySampleInfo should have empty minor_trace_chemistries."""
-    from db.nma_legacy import ChemistrySampleInfo
+def test_sample_info_has_thing_attribute(shared_thing):
+    """NMA_Chemistry_SampleInfo should have thing relationship."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
+        )
+        session.add(sample_info)
+        session.commit()
+        session.refresh(sample_info)
+
+        assert hasattr(sample_info, "thing")
+        assert sample_info.thing == thing
+
+        session.delete(sample_info)
+        session.commit()
+
+
+def test_sample_info_requires_thing(shared_thing):
+    """NMA_Chemistry_SampleInfo should require thing_id (not nullable)."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
+    from sqlalchemy.exc import IntegrityError, ProgrammingError
+
+    with session_ctx() as session:
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            # No thing_id - should fail
+        )
+        session.add(sample_info)
+        # pg8000 raises ProgrammingError for NOT NULL violations (error code 23502)
+        with pytest.raises((IntegrityError, ProgrammingError, ValueError)):
+            session.commit()
+        session.rollback()
+
+
+# ===================== NMA_Chemistry_SampleInfo → NMA_MinorTraceChemistry association ==========================
+
+
+def test_sample_info_minor_trace_chemistries_empty_by_default(shared_thing):
+    """New NMA_Chemistry_SampleInfo should have empty minor_trace_chemistries."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
+    from db import Thing
+
+    with session_ctx() as session:
+        thing = session.get(Thing, shared_thing)
+
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
@@ -321,29 +381,28 @@ def test_sample_info_minor_trace_chemistries_empty_by_default(shared_well):
         session.commit()
 
 
-def test_assign_sample_info_to_mtc(shared_well):
-    """Can assign ChemistrySampleInfo to MinorTraceChemistry via object."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_assign_sample_info_to_mtc(shared_thing):
+    """Can assign NMA_Chemistry_SampleInfo to NMA_MinorTraceChemistry via object."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        mtc = NMAMinorTraceChemistry(
-            global_id=_next_global_id(),
-            analyte="As",
-            sample_value=0.01,
-            units="mg/L",
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,  # OO: assign object
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Pb",
         )
         session.add(mtc)
         session.commit()
@@ -352,303 +411,298 @@ def test_assign_sample_info_to_mtc(shared_well):
         assert mtc.chemistry_sample_info == sample_info
         assert mtc in sample_info.minor_trace_chemistries
 
-        session.delete(sample_info)  # cascades to mtc
+        session.delete(sample_info)
         session.commit()
 
 
-def test_append_mtc_to_sample_info(shared_well):
-    """Can append MinorTraceChemistry to ChemistrySampleInfo's collection."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_append_mtc_to_sample_info(shared_thing):
+    """Can append NMA_MinorTraceChemistry to NMA_Chemistry_SampleInfo's collection."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        mtc = NMAMinorTraceChemistry(
-            global_id=_next_global_id(),
-            analyte="U",
-            sample_value=15.2,
-            units="ug/L",
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Fe",
         )
         sample_info.minor_trace_chemistries.append(mtc)
         session.commit()
 
         # Verify bidirectional
         assert mtc.chemistry_sample_info == sample_info
-        assert mtc.chemistry_sample_info_id == sample_info.sample_pt_id
+        assert mtc.chemistry_sample_info_id == sample_info.id
 
         session.delete(sample_info)
         session.commit()
 
 
-# ===================== NMAMinorTraceChemistry → ChemistrySampleInfo association ==========================
-
-
-def test_mtc_has_chemistry_sample_info_attribute():
-    """NMAMinorTraceChemistry should have chemistry_sample_info relationship."""
-    from db.nma_legacy import NMAMinorTraceChemistry
-
-    assert hasattr(NMAMinorTraceChemistry, "chemistry_sample_info")
-
-
 def test_mtc_requires_chemistry_sample_info():
-    """NMAMinorTraceChemistry cannot be orphaned - must have a parent."""
-    from db.nma_legacy import NMAMinorTraceChemistry
+    """NMA_MinorTraceChemistry should require chemistry_sample_info_id."""
+    from db.nma_legacy import NMA_MinorTraceChemistry
+    from sqlalchemy.exc import IntegrityError, ProgrammingError
 
-    # Validator raises ValueError before database is even touched
-    with pytest.raises(ValueError, match="requires a parent ChemistrySampleInfo"):
-        NMAMinorTraceChemistry(
-            analyte="As",
-            sample_value=0.01,
-            units="mg/L",
-            chemistry_sample_info_id=None,  # Explicit None triggers validator
+    with session_ctx() as session:
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            analyte="Cu",
+            # No chemistry_sample_info_id - should fail
         )
+        session.add(mtc)
+        # pg8000 raises ProgrammingError for NOT NULL violations (error code 23502)
+        with pytest.raises((IntegrityError, ProgrammingError)):
+            session.commit()
+        session.rollback()
 
 
 # ===================== Full lineage navigation ==========================
 
 
-def test_full_lineage_navigation(shared_well):
-    """Can navigate full chain: mtc.chemistry_sample_info.thing"""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_full_lineage_navigation(shared_thing):
+    """Can navigate full lineage: Thing -> SampleInfo -> MTC."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        mtc = NMAMinorTraceChemistry(
-            global_id=_next_global_id(),
-            analyte="Se",
-            sample_value=0.005,
-            units="mg/L",
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Zn",
         )
         session.add(mtc)
         session.commit()
 
-        # Full chain navigation
-        assert mtc.chemistry_sample_info.thing == well
+        # Forward navigation
+        assert thing.chemistry_sample_infos[0] == sample_info
+        assert sample_info.minor_trace_chemistries[0] == mtc
+
+        # Reverse navigation
+        assert mtc.chemistry_sample_info == sample_info
+        assert mtc.chemistry_sample_info.thing == thing
 
         session.delete(sample_info)
         session.commit()
 
 
-def test_reverse_lineage_navigation(shared_well):
-    """Can navigate reverse: thing.chemistry_sample_infos[0].minor_trace_chemistries"""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_reverse_lineage_navigation(shared_thing):
+    """Can navigate reverse: MTC -> SampleInfo -> Thing."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        mtc = NMAMinorTraceChemistry(
-            global_id=_next_global_id(),
-            analyte="Pb",
-            sample_value=0.002,
-            units="mg/L",
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
             chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Mn",
         )
         session.add(mtc)
         session.commit()
-        session.refresh(well)
+        session.refresh(mtc)
 
-        # Reverse navigation - filter to just this sample_info
-        matching = [
-            si
-            for si in well.chemistry_sample_infos
-            if si.sample_pt_id == sample_info.sample_pt_id
-        ]
-        assert len(matching) == 1
-        assert len(matching[0].minor_trace_chemistries) == 1
-        assert matching[0].minor_trace_chemistries[0] == mtc
+        # Full reverse chain
+        assert mtc.chemistry_sample_info.thing.id == thing.id
 
         session.delete(sample_info)
         session.commit()
 
 
-# ===================== Cascade delete ==========================
+# ===================== Cascade delete tests ==========================
 
 
-def test_cascade_delete_sample_info_deletes_mtc(shared_well):
-    """Deleting ChemistrySampleInfo should cascade delete its MinorTraceChemistries."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_cascade_delete_sample_info_deletes_mtc(shared_thing):
+    """Deleting NMA_Chemistry_SampleInfo should cascade delete NMA_MinorTraceChemistry."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        # Add multiple children
-        for analyte in ["As", "U", "Se", "Pb"]:
-            sample_info.minor_trace_chemistries.append(
-                NMAMinorTraceChemistry(
-                    global_id=_next_global_id(),
-                    analyte=analyte,
-                    sample_value=0.01,
-                    units="mg/L",
-                )
-            )
+        mtc = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
+            chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Cd",
+        )
+        session.add(mtc)
         session.commit()
 
-        sample_info_id = sample_info.sample_pt_id
-        assert (
-            session.query(NMAMinorTraceChemistry)
-            .filter_by(chemistry_sample_info_id=sample_info_id)
-            .count()
-            == 4
-        )
-
-        # Delete parent
+        mtc_id = mtc.id
         session.delete(sample_info)
         session.commit()
+        session.expire_all()  # Force fresh DB lookup after cascade delete
 
-        # Children should be gone
-        assert (
-            session.query(NMAMinorTraceChemistry)
-            .filter_by(chemistry_sample_info_id=sample_info_id)
-            .count()
-            == 0
-        )
+        # MTC should be gone
+        assert session.get(NMA_MinorTraceChemistry, mtc_id) is None
 
 
-def test_cascade_delete_thing_deletes_sample_infos():
-    """Deleting Thing should cascade delete its ChemistrySampleInfos."""
-    from db.nma_legacy import ChemistrySampleInfo
-    from db import Thing
+def test_cascade_delete_thing_deletes_sample_infos(shared_thing):
+    """Deleting Thing should cascade delete NMA_Chemistry_SampleInfo."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
+    from db import Thing, Location, LocationThingAssociation
 
     with session_ctx() as session:
         # Create a separate thing for this test
-        test_thing = Thing(
-            name=f"Cascade-Test-{uuid4().hex[:8]}",
-            thing_type="water well",
+        location = Location(
+            point="POINT(-105.0 34.0)",
+            elevation=1200.0,
             release_status="draft",
         )
-        session.add(test_thing)
+        session.add(location)
         session.commit()
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=test_thing,
+        thing = Thing(
+            name="CASCADE-DELETE-TEST",
+            thing_type="monitoring well",
+            release_status="draft",
+        )
+        session.add(thing)
+        session.commit()
+
+        assoc = LocationThingAssociation(
+            location_id=location.id,
+            thing_id=thing.id,
+        )
+        session.add(assoc)
+        session.commit()
+
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        # SamplePtID is the PK for ChemistrySampleInfo.
-        sample_info_id = sample_info.sample_pt_id
+        sample_info_id = sample_info.id
+        session.delete(thing)
+        session.commit()
+        session.expire_all()  # Force fresh DB lookup after cascade delete
 
-        # Delete thing
-        session.delete(test_thing)
+        # SampleInfo should be gone
+        assert session.get(NMA_Chemistry_SampleInfo, sample_info_id) is None
+
+        session.delete(location)
         session.commit()
 
-    # Use fresh session to verify cascade delete (avoid session cache)
-    with session_ctx() as session:
-        assert session.get(ChemistrySampleInfo, sample_info_id) is None
+
+# ===================== Multiple records tests ==========================
 
 
-# ===================== Multiple children ==========================
-
-
-def test_multiple_sample_infos_per_thing():
-    """Thing can have multiple ChemistrySampleInfos."""
-    from db.nma_legacy import ChemistrySampleInfo
+def test_multiple_sample_infos_per_thing(shared_thing):
+    """Thing can have multiple NMA_Chemistry_SampleInfo records."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo
     from db import Thing
 
     with session_ctx() as session:
-        # Create a dedicated thing for this test
-        test_thing = Thing(
-            name=f"Multi-SI-Test-{uuid4().hex[:8]}",
-            thing_type="water well",
-            release_status="draft",
+        thing = session.get(Thing, shared_thing)
+
+        sample_info1 = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
-        session.add(test_thing)
+        sample_info2 = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
+        )
+        session.add_all([sample_info1, sample_info2])
+        session.commit()
+        session.refresh(thing)
+
+        assert len(thing.chemistry_sample_infos) >= 2
+        assert sample_info1 in thing.chemistry_sample_infos
+        assert sample_info2 in thing.chemistry_sample_infos
+
+        session.delete(sample_info1)
+        session.delete(sample_info2)
         session.commit()
 
-        for i in range(3):
-            sample_info = ChemistrySampleInfo(
-                object_id=_next_object_id(),
-                sample_pt_id=_next_sample_pt_id(),
-                sample_point_id=_next_sample_point_id(),
-                thing=test_thing,
-            )
-            session.add(sample_info)
-        session.commit()
 
-        session.refresh(test_thing)
-        assert len(test_thing.chemistry_sample_infos) == 3
-
-        # Cleanup - delete thing cascades to sample_infos
-        session.delete(test_thing)
-        session.commit()
-
-
-def test_multiple_mtc_per_sample_info(shared_well):
-    """ChemistrySampleInfo can have multiple MinorTraceChemistries."""
-    from db.nma_legacy import ChemistrySampleInfo, NMAMinorTraceChemistry
+def test_multiple_mtc_per_sample_info(shared_thing):
+    """NMA_Chemistry_SampleInfo can have multiple NMA_MinorTraceChemistry records."""
+    from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
     from db import Thing
 
     with session_ctx() as session:
-        well = session.get(Thing, shared_well)
+        thing = session.get(Thing, shared_thing)
 
-        sample_info = ChemistrySampleInfo(
-            object_id=_next_object_id(),
-            sample_pt_id=_next_sample_pt_id(),
-            sample_point_id=_next_sample_point_id(),
-            thing=well,
+        sample_info = NMA_Chemistry_SampleInfo(
+            nma_object_id=_next_object_id(),
+            nma_sample_pt_id=_next_sample_pt_id(),
+            nma_sample_point_id=_next_sample_point_id(),
+            thing=thing,
         )
         session.add(sample_info)
         session.commit()
 
-        analytes = ["As", "U", "Se", "Pb", "Cd", "Hg"]
-        for analyte in analytes:
-            sample_info.minor_trace_chemistries.append(
-                NMAMinorTraceChemistry(
-                    global_id=_next_global_id(),
-                    analyte=analyte,
-                    sample_value=0.01,
-                    units="mg/L",
-                )
-            )
+        mtc1 = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
+            chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="As",
+        )
+        mtc2 = NMA_MinorTraceChemistry(
+            nma_global_id=_next_global_id(),
+            chemistry_sample_info=sample_info,
+            nma_sample_point_id=sample_info.nma_sample_point_id,
+            analyte="Pb",
+        )
+        session.add_all([mtc1, mtc2])
         session.commit()
-
         session.refresh(sample_info)
-        assert len(sample_info.minor_trace_chemistries) == 6
+
+        assert len(sample_info.minor_trace_chemistries) == 2
+        assert mtc1 in sample_info.minor_trace_chemistries
+        assert mtc2 in sample_info.minor_trace_chemistries
 
         session.delete(sample_info)
         session.commit()

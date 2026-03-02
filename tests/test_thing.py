@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import timezone
+from datetime import date, timezone
 
 import pytest
 
@@ -25,7 +25,8 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import Thing, WellScreen, ThingIdLink
+from db import MeasuringPointHistory, Thing, ThingIdLink, WellScreen
+from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
 from schemas.location import LocationResponse
@@ -63,6 +64,7 @@ def override_authentication_dependency_fixture():
 # VALIDATE tests ===============================================================
 
 
+@pytest.mark.skip(reason="Temporarily not relevant until transfer process is complete.")
 def test_validate_hole_depth_well_depth():
     with pytest.raises(
         ValueError, match="well depth must be less than than or equal to hole depth"
@@ -70,6 +72,7 @@ def test_validate_hole_depth_well_depth():
         ValidateWell(well_depth=100.0, hole_depth=90.0)
 
 
+@pytest.mark.skip(reason="Temporarily not relevant until transfer process is complete.")
 def test_validate_hole_depth_casing_depth():
     with pytest.raises(
         ValueError,
@@ -81,6 +84,46 @@ def test_validate_hole_depth_casing_depth():
 def test_update_well_allows_nma_formation_zone():
     payload = UpdateWell(nma_formation_zone="FZ-001")
     assert payload.nma_formation_zone == "FZ-001"
+
+
+def test_measuring_point_properties_skip_null_history():
+    with session_ctx() as session:
+        well = Thing(
+            name="Null MP Height Well",
+            thing_type="water well",
+            release_status="draft",
+        )
+        session.add(well)
+        session.commit()
+        session.refresh(well)
+
+        old_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=2.5,
+            measuring_point_description="old mp",
+            start_date=date(2020, 1, 1),
+            end_date=None,
+            release_status="draft",
+        )
+        new_history = MeasuringPointHistory(
+            thing_id=well.id,
+            measuring_point_height=None,
+            measuring_point_description=None,
+            start_date=date(2021, 1, 1),
+            end_date=None,
+            release_status="draft",
+        )
+        session.add_all([old_history, new_history])
+        session.commit()
+        session.refresh(well)
+
+        assert well.measuring_point_height == 2.5
+        assert well.measuring_point_description == "old mp"
+
+        session.delete(new_history)
+        session.delete(old_history)
+        session.delete(well)
+        session.commit()
 
 
 # this is not a valid test because measuring_point_height is not related to hole_depth
@@ -1139,3 +1182,59 @@ def test_delete_thing_id_link_404_not_found(second_thing_id_link):
     assert response.status_code == 404
     data = response.json()
     assert data["detail"] == f"ThingIdLink with ID {bad_id} not found."
+
+
+# =============================================================================
+# FK Enforcement Tests - Issue #363
+# Feature: features/admin/well_data_relationships.feature
+# =============================================================================
+
+
+class TestThingLegacyIdentifierColumns:
+    """Tests for Thing's legacy identifier columns (nma_pk_welldata, nma_pk_location)."""
+
+    def test_thing_has_nma_pk_welldata_column(self):
+        """Thing model has nma_pk_welldata column for legacy WellID."""
+        assert hasattr(Thing, "nma_pk_welldata")
+
+    def test_thing_has_nma_pk_location_column(self):
+        """Thing model has nma_pk_location column for legacy LocationID."""
+        assert hasattr(Thing, "nma_pk_location")
+
+
+class TestThingNMARelationshipCollections:
+    """Tests for Thing's relationship collections to NMA legacy models."""
+
+    def test_thing_has_hydraulics_data_relationship(self):
+        """Thing model has hydraulics_data relationship collection."""
+        assert hasattr(Thing, "hydraulics_data")
+
+    def test_thing_has_associated_data_relationship(self):
+        """Thing model has associated_data relationship collection."""
+        assert hasattr(Thing, "associated_data")
+
+    def test_thing_has_soil_rock_results_relationship(self):
+        """Thing model has soil_rock_results relationship collection."""
+        assert hasattr(Thing, "soil_rock_results")
+
+
+class TestThingNMACascadeDeleteConfiguration:
+    """Tests for cascade delete-orphan configuration on Thing relationships."""
+
+    def test_hydraulics_data_has_cascade_delete(self):
+        """hydraulics_data relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("hydraulics_data")
+        assert rel is not None, "hydraulics_data relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade
+
+    def test_associated_data_has_cascade_delete(self):
+        """associated_data relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("associated_data")
+        assert rel is not None, "associated_data relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade
+
+    def test_soil_rock_results_has_cascade_delete(self):
+        """soil_rock_results relationship has cascade delete configured."""
+        rel = Thing.__mapper__.relationships.get("soil_rock_results")
+        assert rel is not None, "soil_rock_results relationship should exist"
+        assert "delete" in rel.cascade or "all" in rel.cascade

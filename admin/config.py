@@ -23,60 +23,76 @@ from starlette_admin.contrib.sqla import Admin
 
 from admin.auth import NMSampleLocationsAuthProvider
 from admin.views import (
-    LocationAdmin,
-    ThingAdmin,
-    ObservationAdmin,
-    ContactAdmin,
-    SensorAdmin,
-    DeploymentAdmin,
-    LexiconTermAdmin,
-    LexiconCategoryAdmin,
-    AssetAdmin,
-    AquiferTypeAdmin,
     AquiferSystemAdmin,
-    GroupAdmin,
-    NotesAdmin,
-    SampleAdmin,
-    HydraulicsDataAdmin,
+    AquiferTypeAdmin,
+    AssetAdmin,
+    AssociatedDataAdmin,
     ChemistrySampleInfoAdmin,
-    RadionuclidesAdmin,
-    GeologicFormationAdmin,
+    ContactAdmin,
     DataProvenanceAdmin,
-    TransducerObservationAdmin,
-    FieldEventAdmin,
+    DeploymentAdmin,
     FieldActivityAdmin,
+    FieldEventAdmin,
+    GeologicFormationAdmin,
+    GroupAdmin,
+    HydraulicsDataAdmin,
+    LexiconCategoryAdmin,
+    LexiconTermAdmin,
+    LocationAdmin,
+    MajorChemistryAdmin,
+    MinorTraceChemistryAdmin,
+    NotesAdmin,
+    ObservationAdmin,
     ParameterAdmin,
+    RadionuclidesAdmin,
+    SampleAdmin,
+    SensorAdmin,
+    SoilRockResultsAdmin,
+    StratigraphyAdmin,
     SurfaceWaterDataAdmin,
+    SurfaceWaterPhotosAdmin,
+    ThingAdmin,
+    TransducerObservationAdmin,
+    WaterLevelsContinuousPressureDailyAdmin,
+    WeatherPhotosAdmin,
+    WeatherDataAdmin,
+    FieldParametersAdmin,
 )
-
-from db.engine import engine
-from db.location import Location
-from db.thing import Thing
-from db.observation import Observation
-from db.contact import Contact
-from db.sensor import Sensor
-from db.deployment import Deployment
-from db.lexicon import (
-    LexiconTerm,
-    LexiconCategory,
-)
-from db.asset import Asset
-from db.aquifer_type import AquiferType
+from db import NMA_FieldParameters
 from db.aquifer_system import AquiferSystem
-from db.group import Group
-from db.notes import Notes
-from db.sample import Sample
-from db.nma_legacy import (
-    ChemistrySampleInfo,
-    NMAHydraulicsData,
-    NMARadionuclides,
-    SurfaceWaterData,
-)
-from db.geologic_formation import GeologicFormation
+from db.aquifer_type import AquiferType
+from db.asset import Asset
+from db.contact import Contact
 from db.data_provenance import DataProvenance
-from db.transducer import TransducerObservation
-from db.field import FieldEvent, FieldActivity
+from db.deployment import Deployment
+from db.engine import engine
+from db.field import FieldActivity, FieldEvent
+from db.geologic_formation import GeologicFormation
+from db.group import Group
+from db.lexicon import LexiconCategory, LexiconTerm
+from db.location import Location
+from db.nma_legacy import (
+    NMA_AssociatedData,
+    NMA_Chemistry_SampleInfo,
+    NMA_MajorChemistry,
+    NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
+    NMA_HydraulicsData,
+    NMA_Soil_Rock_Results,
+    NMA_Stratigraphy,
+    NMA_SurfaceWaterData,
+    NMA_WaterLevelsContinuous_Pressure_Daily,
+    NMA_WeatherPhotos,
+    NMA_SurfaceWaterPhotos,
+    NMA_WeatherData,
+)
+from db.notes import Notes
+from db.observation import Observation
 from db.parameter import Parameter
+from db.sample import Sample
+from db.sensor import Sensor
+from db.thing import Thing
+from db.transducer import TransducerObservation
 
 
 def create_admin(app):
@@ -107,24 +123,34 @@ def create_admin(app):
     )
 
     # Register model views
-    # Geography
-    admin.add_view(LocationAdmin(Location))
-
-    # Things (Wells, Springs, etc.)
-    admin.add_view(ThingAdmin(Thing))
-
-    # Observations (Water Levels)
-    admin.add_view(ObservationAdmin(Observation))
-
-    # Contacts (Owners)
-    admin.add_view(ContactAdmin(Contact))
-
-    # Equipment
-    admin.add_view(SensorAdmin(Sensor))
-    admin.add_view(DeploymentAdmin(Deployment))
-
     # Assets
     admin.add_view(AssetAdmin(Asset))
+
+    # Aquifer
+    admin.add_view(AquiferSystemAdmin(AquiferSystem))
+    admin.add_view(AquiferTypeAdmin(AquiferType))
+
+    # Contacts
+    admin.add_view(ContactAdmin(Contact))
+
+    # Data provenance
+    admin.add_view(DataProvenanceAdmin(DataProvenance))
+
+    # Deployment / Equipment
+    admin.add_view(DeploymentAdmin(Deployment))
+    admin.add_view(SensorAdmin(Sensor))
+
+    # Field
+    admin.add_view(FieldActivityAdmin(FieldActivity))
+    admin.add_view(FieldEventAdmin(FieldEvent))
+
+    # Geology
+    admin.add_view(GeologicFormationAdmin(GeologicFormation))
+
+    # Geography
+    admin.add_view(LocationAdmin(Location))
+    # Associated data
+    admin.add_view(AssociatedDataAdmin(NMA_AssociatedData))
 
     # Aquifer
     admin.add_view(AquiferSystemAdmin(AquiferSystem))
@@ -133,37 +159,55 @@ def create_admin(app):
     # Groups
     admin.add_view(GroupAdmin(Group))
 
+    # Hydraulics
+    admin.add_view(HydraulicsDataAdmin(NMA_HydraulicsData))
+    admin.add_view(MinorTraceChemistryAdmin(NMA_MinorTraceChemistry))
+    admin.add_view(RadionuclidesAdmin(NMA_Radionuclides))
+    admin.add_view(MajorChemistryAdmin(NMA_MajorChemistry))
+
+    # Lexicon
+    admin.add_view(LexiconCategoryAdmin(LexiconCategory))
+    admin.add_view(LexiconTermAdmin(LexiconTerm))
+
     # Notes
     admin.add_view(NotesAdmin(Notes))
 
-    # Samples
-    admin.add_view(SampleAdmin(Sample))
-    admin.add_view(ChemistrySampleInfoAdmin(ChemistrySampleInfo))
-    admin.add_view(SurfaceWaterDataAdmin(SurfaceWaterData))
-
-    # Hydraulics
-    admin.add_view(HydraulicsDataAdmin(NMAHydraulicsData))
-    admin.add_view(RadionuclidesAdmin(NMARadionuclides))
-
-    # Field
-    admin.add_view(FieldEventAdmin(FieldEvent))
-    admin.add_view(FieldActivityAdmin(FieldActivity))
+    # Observations
+    admin.add_view(ObservationAdmin(Observation))
 
     # Parameters
     admin.add_view(ParameterAdmin(Parameter))
+    admin.add_view(FieldParametersAdmin(NMA_FieldParameters))
 
-    # Geology
-    admin.add_view(GeologicFormationAdmin(GeologicFormation))
+    # Samples
+    admin.add_view(ChemistrySampleInfoAdmin(NMA_Chemistry_SampleInfo))
+    admin.add_view(SampleAdmin(Sample))
+    admin.add_view(SurfaceWaterDataAdmin(NMA_SurfaceWaterData))
 
-    # Data provenance
-    admin.add_view(DataProvenanceAdmin(DataProvenance))
+    # Soil & Stratigraphy
+    admin.add_view(SoilRockResultsAdmin(NMA_Soil_Rock_Results))
+    admin.add_view(StratigraphyAdmin(NMA_Stratigraphy))
+
+    # Things (Wells, Springs, etc.)
+    admin.add_view(ThingAdmin(Thing))
 
     # Transducer observations
     admin.add_view(TransducerObservationAdmin(TransducerObservation))
 
-    # Lexicon
-    admin.add_view(LexiconTermAdmin(LexiconTerm))
-    admin.add_view(LexiconCategoryAdmin(LexiconCategory))
+    # Water Levels - Continuous (legacy)
+    admin.add_view(
+        WaterLevelsContinuousPressureDailyAdmin(
+            NMA_WaterLevelsContinuous_Pressure_Daily
+        )
+    )
+
+    # Weather
+    admin.add_view(WeatherPhotosAdmin(NMA_WeatherPhotos))
+
+    # Surface Water Photos
+    admin.add_view(SurfaceWaterPhotosAdmin(NMA_SurfaceWaterPhotos))
+    # Weather
+    admin.add_view(WeatherDataAdmin(NMA_WeatherData))
 
     # Future: Add more views here as they are implemented
     # admin.add_view(SampleAdmin)

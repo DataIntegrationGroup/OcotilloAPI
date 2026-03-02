@@ -1,10 +1,10 @@
 import os
 
-from dotenv import load_dotenv
-
 import pytest
 from alembic import command
 from alembic.config import Config
+from dotenv import load_dotenv
+
 from core.initializers import init_lexicon, init_parameter
 from db import *
 from db.engine import session_ctx
@@ -17,7 +17,11 @@ from tests import get_parameter_id
 
 def pytest_configure():
     load_dotenv(override=True)
-    os.environ["POSTGRES_PORT"] = "54321"
+    os.environ.setdefault("POSTGRES_PORT", "54321")
+    # NOTE: This hardcoded secret key is for tests only and must NEVER be used in production.
+    os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")
+    # Always use test database, never dev
+    os.environ["POSTGRES_DB"] = "ocotilloapi_test"
 
 
 def _alembic_config() -> Config:
@@ -441,6 +445,14 @@ def contact(water_well_thing):
         session.add(association)
         session.commit()
         session.refresh(association)
+
+        for content, note_type in [
+            ("Communication note", "Communication"),
+            ("General note", "General"),
+        ]:
+            note = contact.add_note(content, note_type)
+            session.add(note)
+        session.commit()
 
         yield contact
         session.delete(contact)

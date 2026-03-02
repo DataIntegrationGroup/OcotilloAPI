@@ -57,6 +57,38 @@ NMA_COORDINATE_ACCURACY = {
 }
 
 
+DEFINED_RECORDING_INTERVALS = {
+    "SA-0174": (1, "hour"),
+    "SO-0140": (15, "minute"),
+    "SO-0145": (15, "minute"),
+    "SO-0146": (15, "minute"),
+    "SO-0148": (15, "minute"),
+    "SO-0160": (15, "minute"),
+    "SO-0163": (15, "minute"),
+    "SO-0165": (15, "minute"),
+    "SO-0166": (15, "minute"),
+    "SO-0175": (15, "minute"),
+    "SO-0177": (15, "minute"),
+    "SO-0189": (15, "minute"),
+    "SO-0191": (15, "minute"),
+    "SO-0194": (15, "minute"),
+    "SO-0200": (15, "minute"),
+    "SO-0204": (15, "minute"),
+    "SO-0224": (15, "minute"),
+    "SO-0238": (15, "minute"),
+    "SO-0247": (15, "minute"),
+    "SO-0249": (15, "minute"),
+    "SO-0261": (15, "minute"),
+    "SM-0055": (6, "hour"),
+    "SM-0259": (12, "hour"),
+    "HS-038": (12, "hour"),
+    "EB-220": (12, "hour"),
+    "SO-0144": (15, "minute"),
+    "SO-0142": (15, "minute"),
+    "SO-0190": (15, "minute"),
+}
+
+
 class MeasuringPointEstimator:
     def __init__(self):
         df = read_csv("WaterLevels")
@@ -94,6 +126,7 @@ class MeasuringPointEstimator:
                 # try to estimate mpheight from measurements
                 for m in df.itertuples():
                     mphi = m.DepthToWater - m.DepthToWaterBGS
+                    mphi = _round_sig_figs(mphi, 2)
                     start_date = m.DateMeasured
                     if mphi not in mphs:
                         if notna(mphi):
@@ -121,6 +154,34 @@ class MeasuringPointEstimator:
             end_dates.append(None)
 
         return mphs, mph_descs, start_dates, end_dates
+
+
+def _round_sig_figs(value: float, sig_figs: int) -> float:
+    if value is None:
+        return value
+    try:
+        if pd.isna(value):
+            return value
+    except TypeError:
+        pass
+
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return value
+
+    if not math.isfinite(numeric):
+        return value
+
+    if numeric == 0:
+        return 0.0
+    return round(numeric, sig_figs - int(math.floor(math.log10(abs(numeric)))) - 1)
+
+
+def _get_defined_recording_interval(pointid: str) -> tuple[int, str] | None:
+    if pointid in DEFINED_RECORDING_INTERVALS:
+        return DEFINED_RECORDING_INTERVALS[pointid]
+    return None
 
 
 class SensorParameterEstimator:
@@ -156,7 +217,16 @@ class SensorParameterEstimator:
         installation_date: datetime = None,
         removal_date: datetime = None,
     ) -> tuple[int | None, str | None, str | None]:
+        """
+        return estimated recording interval, unit, and error message if applicable
+        """
         point_id = record.PointID
+
+        # get statically defined recording interval provided by Ethan
+        ri = _get_defined_recording_interval(point_id)
+        if ri is not None:
+            return ri[0], ri[1], None
+
         cdf = self._get_values(point_id)
         if len(cdf) == 0:
             return None, None, f"No measurements found for PointID: {point_id}"
@@ -557,6 +627,11 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
     if row.SiteDate:
         nma_site_date = datetime.strptime(row.SiteDate, "%Y-%m-%d %H:%M:%S.%f").date()
 
+    data_reliability = row.DataReliability
+    if data_reliability and pd.notna(data_reliability):
+        code = data_reliability.strip()
+        data_reliability = lexicon_mapper.map_value(f"LU_DataReliability:{code}")
+
     location = Location(
         nma_pk_location=row.LocationId,
         description=row.PointID,  # Use PointID as location description
@@ -565,6 +640,9 @@ def make_location(row: pd.Series, elevations: dict) -> tuple:
         release_status="public" if row.PublicRelease else "private",
         nma_date_created=nma_date_created,
         nma_site_date=nma_site_date,
+        nma_location_notes=row.LocationNotes,
+        nma_coordinate_notes=row.CoordinateNotes,
+        nma_data_reliability=data_reliability,
     )
 
     return location, elevation_method, notes
@@ -739,6 +817,7 @@ class LexiconMapper:
             "LU_CurrentUse",
             "LU_DataQuality",
             "LU_DataSource",
+            "LU_DataReliability",
             "LU_Depth_CompletionSource",
             "LU_Discharge_ChemistrySource",
             "LU_Formations",
@@ -770,6 +849,7 @@ class LexiconMapper:
                     meaning = row.MEANING
 
                 mappers.update({f"{lu_table}:{code}": meaning})
+
         self._mappers = mappers
         return mappers
 

@@ -20,7 +20,6 @@ from typing import Any, Dict, Iterable, List
 
 from behave import given, when, then
 from behave.runner import Context
-
 from db import Observation
 from db.engine import session_ctx
 from services.water_level_csv import bulk_upload_water_levels
@@ -116,24 +115,20 @@ def _ensure_stdout_json(context: Context) -> Dict[str, Any]:
 # Scenario: Uploading a valid water level entry CSV containing required fields
 # ============================================================================
 @given("a valid CSV file for bulk water level entry upload")
-def step_impl(context: Context):
+def step_given_a_valid_csv_file_for_bulk_water_level_entry_upload(context: Context):
     rows = _build_valid_rows(context)
     _set_rows(context, rows)
 
 
-@given("my CSV file is encoded in UTF-8 and uses commas as separators")
-def step_impl(context: Context):
-    assert context.csv_raw_text.encode("utf-8").decode("utf-8") == context.csv_raw_text
-    assert "," in context.csv_raw_text.splitlines()[0]
-
-
 @given("my CSV file contains multiple rows of water level entry data")
-def step_impl(context: Context):
+def step_given_my_csv_file_contains_multiple_rows_of_water_level_entry(
+    context: Context,
+):
     assert len(context.csv_rows) >= 2
 
 
-@given("the CSV includes required fields:")
-def step_impl(context: Context):
+@given("the water level CSV includes required fields:")
+def step_given_the_water_level_csv_includes_required_fields(context: Context):
     field_name = context.table.headings[0]
     expected_fields = [row[field_name].strip() for row in context.table]
     headers = set(context.csv_headers)
@@ -142,7 +137,7 @@ def step_impl(context: Context):
 
 
 @given('each "well_name_point_id" value matches an existing well')
-def step_impl(context: Context):
+def step_given_each_well_name_point_id_value_matches_an_existing_well(context: Context):
     available = set(_available_well_names(context))
     for row in context.csv_rows:
         assert (
@@ -153,23 +148,23 @@ def step_impl(context: Context):
 @given(
     '"measurement_date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")'
 )
-def step_impl(context: Context):
+def step_step_step(context: Context):
     for row in context.csv_rows:
         assert row["measurement_date_time"].startswith("2025-02")
         assert "T" in row["measurement_date_time"]
 
 
-@given("the CSV includes optional fields when available:")
-def step_impl(context: Context):
-    field_name = context.table.headings[0]
-    optional_fields = [row[field_name].strip() for row in context.table]
-    headers = set(context.csv_headers)
-    missing = [field for field in optional_fields if field not in headers]
-    assert not missing, f"Missing optional headers: {missing}"
+# @given("the water level CSV includes optional fields when available:")
+# def step_impl(context: Context):
+#     field_name = context.table.headings[0]
+#     optional_fields = [row[field_name].strip() for row in context.table]
+#     headers = set(context.csv_headers)
+#     missing = [field for field in optional_fields if field not in headers]
+#     assert not missing, f"Missing optional headers: {missing}"
 
 
 @when("I run the CLI command:")
-def step_impl(context: Context):
+def step_when_i_run_the_cli_command(context: Context):
     command_text = (context.text or "").strip()
     context.command_text = command_text
     output_json = "--output json" in command_text.lower()
@@ -180,18 +175,13 @@ def step_impl(context: Context):
     context.stdout_json = None
 
 
-@then("the command exits with code 0")
-def step_impl(context: Context):
-    assert context.cli_result.exit_code == 0, context.cli_result.stderr
-
-
 @then("stdout should be valid JSON")
-def step_impl(context: Context):
+def step_then_stdout_should_be_valid_json(context: Context):
     _ensure_stdout_json(context)
 
 
 @then("stdout includes a summary containing:")
-def step_impl(context: Context):
+def step_then_stdout_includes_a_summary_containing(context: Context):
     payload = _ensure_stdout_json(context)
     summary = payload.get("summary", {})
     for row in context.table:
@@ -205,7 +195,9 @@ def step_impl(context: Context):
 
 
 @then("stdout includes an array of created water level entry objects")
-def step_impl(context: Context):
+def step_then_stdout_includes_an_array_of_created_water_level_entry_objects(
+    context: Context,
+):
     payload = _ensure_stdout_json(context)
     rows = payload.get("water_levels", [])
     assert rows, "Expected created water level records"
@@ -218,15 +210,17 @@ def step_impl(context: Context):
 
 
 @then("stderr should be empty")
-def step_impl(context: Context):
+def step_then_stderr_should_be_empty(context: Context):
     assert context.cli_result.stderr == ""
 
 
 # ============================================================================
 # Scenario: Upload succeeds when required columns are present but reordered
 # ============================================================================
-@given("my CSV file contains all required headers but in a different column order")
-def step_impl(context: Context):
+@given(
+    "my water level CSV file contains all required headers but in a different column order"
+)
+def step_step_step_2(context: Context):
     rows = _build_valid_rows(context)
     headers = list(reversed(list(rows[0].keys())))
     _set_rows(context, rows, headers=headers)
@@ -234,7 +228,7 @@ def step_impl(context: Context):
 
 
 @then("all water level entries are imported")
-def step_impl(context: Context):
+def step_then_all_water_level_entries_are_imported(context: Context):
     payload = _ensure_stdout_json(context)
     summary = payload["summary"]
     assert summary["total_rows_processed"] == summary["total_rows_imported"]
@@ -244,8 +238,8 @@ def step_impl(context: Context):
 # ============================================================================
 # Scenario: Upload succeeds when CSV contains extra columns
 # ============================================================================
-@given("my CSV file contains extra columns but is otherwise valid")
-def step_impl(context: Context):
+@given("my water level CSV file contains extra columns but is otherwise valid")
+def step_given_my_water_level_csv_file_contains_extra_columns_but_is(context: Context):
     rows = _build_valid_rows(context)
     for idx, row in enumerate(rows):
         row["custom_note"] = f"extra-{idx}"
@@ -258,29 +252,24 @@ def step_impl(context: Context):
 # Scenario: No entries imported when any row fails validation
 # ============================================================================
 @given(
-    'my CSV file contains 3 rows of data with 2 valid rows and 1 row missing the required "well_name_point_id"'
+    'my water level CSV contains 3 rows with 2 valid rows and 1 row missing the required "well_name_point_id"'
 )
-def step_impl(context: Context):
+def step_step_step_3(context: Context):
     rows = _build_valid_rows(context, count=3)
     rows[2]["well_name_point_id"] = ""
     _set_rows(context, rows)
     context.missing_field = "well_name_point_id"
 
 
-@then("the command exits with a non-zero exit code")
-def step_impl(context: Context):
-    assert context.cli_result.exit_code != 0
-
-
 @then(
     'stderr should contain a validation error for the row missing "well_name_point_id"'
 )
-def step_impl(context: Context):
+def step_step_step_4(context: Context):
     assert "well_name_point_id" in context.cli_result.stderr
 
 
 @then("no water level entries are imported")
-def step_impl(context: Context):
+def step_then_no_water_level_entries_are_imported(context: Context):
     payload = _ensure_stdout_json(context)
     summary = payload["summary"]
     assert summary["total_rows_imported"] == 0
@@ -289,8 +278,10 @@ def step_impl(context: Context):
 # ============================================================================
 # Scenario Outline: Upload fails when a required field is missing
 # ============================================================================
-@given('my CSV file contains a row missing the required "{required_field}" field')
-def step_impl(context: Context, required_field: str):
+@given(
+    'my water level CSV file contains a row missing the required "{required_field}" field'
+)
+def step_step_step_5(context: Context, required_field: str):
     rows = _build_valid_rows(context, count=1)
     rows[0][required_field] = ""
     _set_rows(context, rows)
@@ -298,7 +289,9 @@ def step_impl(context: Context, required_field: str):
 
 
 @then('stderr should contain a validation error for the "{required_field}" field')
-def step_impl(context: Context, required_field: str):
+def step_then_stderr_should_contain_a_validation_error_for_the_required_field(
+    context: Context, required_field: str
+):
     assert required_field in context.cli_result.stderr
 
 
@@ -308,7 +301,7 @@ def step_impl(context: Context, required_field: str):
 @given(
     'my CSV file contains invalid ISO 8601 date values in the "measurement_date_time" field'
 )
-def step_impl(context: Context):
+def step_step_step_6(context: Context):
     rows = _build_valid_rows(context, count=1)
     rows[0]["measurement_date_time"] = "02/15/2025 10:30"
     _set_rows(context, rows)
@@ -316,7 +309,9 @@ def step_impl(context: Context):
 
 
 @then("stderr should contain validation errors identifying the invalid field and row")
-def step_impl(context: Context):
+def step_then_stderr_should_contain_validation_errors_identifying_the_invalid_field_and(
+    context: Context,
+):
     stderr = context.cli_result.stderr
     assert stderr, "Expected stderr output"
     for field in getattr(context, "invalid_fields", []):
@@ -330,7 +325,7 @@ def step_impl(context: Context):
 @given(
     'my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "mp_height" or "depth_to_water_ft"'
 )
-def step_impl(context: Context):
+def step_step_step_7(context: Context):
     rows = _build_valid_rows(context, count=1)
     rows[0]["mp_height"] = "one point five"
     rows[0]["depth_to_water_ft"] = "forty"
@@ -344,7 +339,7 @@ def step_impl(context: Context):
 @given(
     'my CSV file contains invalid lexicon values for "sampler", "sample_method", "level_status", or "data_quality"'
 )
-def step_impl(context: Context):
+def step_step_step_8(context: Context):
     rows = _build_valid_rows(context, count=1)
     rows[0]["sampler"] = "Unknown Team"
     rows[0]["sample_method"] = "mystery"

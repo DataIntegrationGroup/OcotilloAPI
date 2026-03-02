@@ -1,6 +1,5 @@
-import time
-
 from pydantic import ValidationError
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from db import GeologicFormation
@@ -27,12 +26,13 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
     # 2. Replace NaNs with None
     cleaned_df = replace_nans(input_df)
 
+    if limit is not None:
+        cleaned_df = cleaned_df.head(limit)
+
     # 3. Initialize tracking variables for logging
     n = len(cleaned_df)
-    step = 25
-    start_time = time.time()
     errors = []
-    created_count = 0
+    prepared_count = 0
     skipped_count = 0
 
     logger.info(
@@ -40,46 +40,34 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
         n,
     )
 
-    # 4. Process each row
-    for i, row in enumerate(cleaned_df.itertuples()):
-        # Log progress every 'step' rows
-        if i and not i % step:
-            logger.info(
-                f"Processing row {i} of {n}. Avg rows per second: {step / (time.time() - start_time):.2f}"
-            )
-            start_time = time.time()
+    # 4. Build a deduplicated, validated payload for a set-based insert.
+    rows_to_insert: list[dict] = []
+    seen_codes: set[str] = set()
+    for i, row in enumerate(cleaned_df.itertuples(index=False), start=1):
+        if i % 1000 == 0:
+            logger.info("Prepared %s/%s geologic formation rows", i, n)
 
-            # Commit progress periodically
-            try:
-                session.commit()
-            except Exception as e:
-                logger.critical(f"Error committing geologic formations: {e}")
-                session.rollback()
-                continue
-
-        # 5. Extract formation code and description
-        formation_code = row.Code
+        # 5. Extract and normalize formation code
+        formation_code = getattr(row, "Code", None)
 
         if not formation_code:
-            logger.warning(f"Skipping row {i}: Missing formation code")
+            logger.warning("Skipping row %s: Missing formation code", i)
             skipped_count += 1
             continue
 
-        # Check if this formation already exists
-        # existing = (
-        #     session.query(GeologicFormation)
-        #     .filter(GeologicFormation.formation_code == formation_code)
-        #     .first()
-        # )
-        #
-        # if existing:
-        #     logger.info(
-        #         f"Skipping row {i}: Formation code {formation_code} already exists"
-        #     )
-        #     skipped_count += 1
-        #     continue
+        formation_code = str(formation_code).strip().upper()
+        if not formation_code:
+            logger.warning("Skipping row %s: Blank formation code", i)
+            skipped_count += 1
+            continue
 
-        # 6. Prepare data for creation
+        if formation_code in seen_codes:
+            # Duplicate code in source payload; keep first one only.
+            skipped_count += 1
+            continue
+        seen_codes.add(formation_code)
+
+        # 6. Validate and prepare payload
         # Note: We only store the formation_code. Formation names will be mapped by the API using a
         # formations.json file from authoritative sources (e.g., USGS).
         # The description field is left as None and can be populated later if needed.
@@ -105,33 +93,30 @@ def transfer_geologic_formations(session: Session, limit: int = None) -> tuple:
             logger.critical(f"Error preparing data for {formation_code}: {e}")
             continue
 
-        # 7. Create database object
-        geologic_formation = None
-        try:
-            formation_data = data.model_dump()
-            geologic_formation = GeologicFormation(**formation_data)
-            session.add(geologic_formation)
-            created_count += 1
+        rows_to_insert.append(data.model_dump())
+        prepared_count += 1
 
-            logger.info(
-                f"Created geologic formation: {geologic_formation.formation_code}"
-            )
-
-        except Exception as e:
-            if geologic_formation is not None:
-                session.expunge(geologic_formation)
-            errors.append({"code": formation_code, "error": str(e)})
-            logger.critical(
-                f"Error creating geologic formation for {formation_code}: {e}"
-            )
-            continue
-
-    # 8. Final commit
+    # 7. Bulk insert with idempotent upsert semantics.
+    created_count = 0
     try:
+        if rows_to_insert:
+            stmt = (
+                pg_insert(GeologicFormation)
+                .values(rows_to_insert)
+                .on_conflict_do_nothing(index_elements=["formation_code"])
+                .returning(GeologicFormation.formation_code)
+            )
+            inserted_codes = session.execute(stmt).scalars().all()
+            created_count = len(inserted_codes)
+
         session.commit()
         logger.info(
-            f"Successfully transferred {created_count} geologic formations, skipped {skipped_count}. "
-            f"Note: lithology is None and will be updated during stratigraphy transfer."
+            "Successfully transferred geologic formations. prepared=%s created=%s skipped=%s "
+            "existing_or_duplicate=%s. Note: lithology is None and will be updated during stratigraphy transfer.",
+            prepared_count,
+            created_count,
+            skipped_count,
+            max(prepared_count - created_count, 0),
         )
     except Exception as e:
         logger.critical(f"Error during final commit of geologic formations: {e}")

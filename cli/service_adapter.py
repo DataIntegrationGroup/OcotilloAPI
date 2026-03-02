@@ -15,23 +15,54 @@
 # ===============================================================================
 import csv
 import io
+import json
 import mimetypes
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-
-from fastapi import UploadFile
-from sqlalchemy import select
 
 from db import Thing, Asset
 from db.engine import session_ctx
+from fastapi import UploadFile
 from services.asset_helper import upload_and_associate
 from services.gcs_helper import get_storage_bucket, make_blob_name_and_uri
 from services.water_level_csv import bulk_upload_water_levels
+from services.well_inventory_csv import import_well_inventory_csv
+from sqlalchemy import select
+
+
+@dataclass
+class WellInventoryResult:
+    exit_code: int
+    stdout: str
+    stderr: str
+    payload: dict
 
 
 def well_inventory_csv(source_file: Path | str):
     if isinstance(source_file, str):
         source_file = Path(source_file)
+    if source_file.suffix.lower() != ".csv":
+        payload = {"detail": "Unsupported file type"}
+        return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
+    content = source_file.read_bytes()
+    if not content:
+        payload = {"detail": "Empty file"}
+        return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        payload = {"detail": "File encoding error"}
+        return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
+    try:
+        payload = import_well_inventory_csv(
+            text=text, user={"sub": "cli", "name": "cli"}
+        )
+    except ValueError as exc:
+        payload = {"detail": str(exc)}
+        return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
+    exit_code = 0 if not payload.get("validation_errors") else 1
+    return WellInventoryResult(exit_code, json.dumps(payload), "", payload)
 
 
 def water_levels_csv(source_file: Path | str, *, pretty_json: bool = False):
@@ -41,7 +72,7 @@ def water_levels_csv(source_file: Path | str, *, pretty_json: bool = False):
     result = bulk_upload_water_levels(source_file, pretty_json=pretty_json)
     if result.stderr:
         print(result.stderr, file=sys.stderr)
-    return result.exit_code
+    return result
 
 
 def associate_assets(source_directory: Path | str) -> list[str]:

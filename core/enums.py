@@ -32,6 +32,7 @@ CoordinateMethod: type[Enum] = build_enum_from_lexicon_category("coordinate_meth
 WellPurpose: type[Enum] = build_enum_from_lexicon_category("well_purpose")
 DataQuality: type[Enum] = build_enum_from_lexicon_category("data_quality")
 DataSource: type[Enum] = build_enum_from_lexicon_category("data_source")
+DataReliability: type[Enum] = build_enum_from_lexicon_category("data_reliability")
 DepthCompletionSource: type[Enum] = build_enum_from_lexicon_category(
     "depth_completion_source"
 )
@@ -50,7 +51,7 @@ MeasurementMethod: type[Enum] = build_enum_from_lexicon_category("measurement_me
 MonitoringStatus: type[Enum] = build_enum_from_lexicon_category("monitoring_status")
 ParameterName: type[Enum] = build_enum_from_lexicon_category("parameter_name")
 Organization: type[Enum] = build_enum_from_lexicon_category("organization")
-OriginSource: type[Enum] = build_enum_from_lexicon_category("origin_source")
+OriginType: type[Enum] = build_enum_from_lexicon_category("origin_type")
 ParameterType: type[Enum] = build_enum_from_lexicon_category("parameter_type")
 PhoneType: type[Enum] = build_enum_from_lexicon_category("phone_type")
 PublicationType: type[Enum] = build_enum_from_lexicon_category("publication_type")
@@ -80,4 +81,5 @@ AquiferType: type[Enum] = build_enum_from_lexicon_category("aquifer_type")
 GeographicScale: type[Enum] = build_enum_from_lexicon_category("geographic_scale")
 Lithology: type[Enum] = build_enum_from_lexicon_category("lithology")
 FormationCode: type[Enum] = build_enum_from_lexicon_category("formation_code")
+NoteType: type[Enum] = build_enum_from_lexicon_category("note_type")
 # ============= EOF =============================================

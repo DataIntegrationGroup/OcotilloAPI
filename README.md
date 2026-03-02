@@ -27,31 +27,31 @@ supports research, field operations, and public data delivery for the Bureau of 
 
 ## 🗺️ OGC API - Features
 
-The API exposes OGC API - Features endpoints under `/ogc`.
+The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
 
 ### Landing & metadata
 
 ```bash
-curl http://localhost:8000/ogc
-curl http://localhost:8000/ogc/conformance
-curl http://localhost:8000/ogc/collections
-curl http://localhost:8000/ogc/collections/locations
+curl http://localhost:8000/ogcapi
+curl http://localhost:8000/ogcapi/conformance
+curl http://localhost:8000/ogcapi/collections
+curl http://localhost:8000/ogcapi/collections/locations
 ```
 
 ### Items (GeoJSON)
 
 ```bash
-curl "http://localhost:8000/ogc/collections/locations/items?limit=10&offset=0"
-curl "http://localhost:8000/ogc/collections/wells/items?limit=5"
-curl "http://localhost:8000/ogc/collections/springs/items?limit=5"
-curl "http://localhost:8000/ogc/collections/locations/items/123"
+curl "http://localhost:8000/ogcapi/collections/locations/items?limit=10&offset=0"
+curl "http://localhost:8000/ogcapi/collections/wells/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/springs/items?limit=5"
+curl "http://localhost:8000/ogcapi/collections/locations/items/123"
 ```
 
 ### BBOX + datetime filters
 
 ```bash
-curl "http://localhost:8000/ogc/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
-curl "http://localhost:8000/ogc/collections/wells/items?datetime=2020-01-01/2024-01-01"
+curl "http://localhost:8000/ogcapi/collections/locations/items?bbox=-107.9,33.8,-107.8,33.9"
+curl "http://localhost:8000/ogcapi/collections/wells/items?datetime=2020-01-01/2024-01-01"
 ```
 
 ### Polygon filter (CQL2 text)
@@ -59,18 +59,13 @@ curl "http://localhost:8000/ogc/collections/wells/items?datetime=2020-01-01/2024
 Use `filter` + `filter-lang=cql2-text` with `WITHIN(...)`:
 
 ```bash
-curl "http://localhost:8000/ogc/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
+curl "http://localhost:8000/ogcapi/collections/locations/items?filter=WITHIN(geometry,POLYGON((-107.9 33.8,-107.8 33.8,-107.8 33.9,-107.9 33.9,-107.9 33.8)))&filter-lang=cql2-text"
 ```
 
-### Property filter (CQL)
-
-Basic property filters are supported with `properties`:
+### OpenAPI UI
 
 ```bash
-curl "http://localhost:8000/ogc/collections/wells/items?properties=thing_type='water well' AND well_depth>=100 AND well_depth<=200"
-curl "http://localhost:8000/ogc/collections/wells/items?properties=well_purposes IN ('domestic','irrigation')"
-curl "http://localhost:8000/ogc/collections/wells/items?properties=well_casing_materials='PVC'"
-curl "http://localhost:8000/ogc/collections/wells/items?properties=well_screen_type='Steel'"
+curl "http://localhost:8000/ogcapi/openapi?ui=swagger"
 ```
     
 
@@ -143,10 +138,7 @@ cp .env.example .env
 ```
 Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
-* PostgreSQL port is 54321 (default is 5432). Update your `postgresql.conf` to `port = 54321`.  
-  - On many systems, `postgresql.conf` is in the PostgreSQL data directory (for example: `/etc/postgresql/<version>/main/postgresql.conf` on Debian/Ubuntu, `/var/lib/pgsql/data/postgresql.conf` on many RPM-based distros, or `/usr/local/var/postgres/postgresql.conf` for Homebrew on macOS).  
-  - You can find the exact location from `psql` with: `SHOW config_file;`  
-  - After changing the port, restart PostgreSQL so the new port takes effect.
+* PostgreSQL uses the default port 5432.
 
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
@@ -179,7 +171,7 @@ Notes:
 * Requires Docker Desktop.
 * Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
 * `alembic upgrade head` runs on app startup after `docker compose up`.
-* The database listens on `5432` in the container and is published to your host as `54321`. Ensure `POSTGRES_PORT=54321` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 
@@ -264,6 +256,10 @@ python -m transfers.transfer
 ```
 
 Configure the `.env` file with the appropriate credentials before running transfers.
+
+If contact transfers fail with `OwnerKey normalization collisions`, add or update
+`transfers/data/owners_ownerkey_mapper.json` to map inconsistent `OwnerKey` values
+to a single canonical spelling before re-running the transfer.
 
 To drop the existing schema and rebuild from migrations before transferring data, set:
 

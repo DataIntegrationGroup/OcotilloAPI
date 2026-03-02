@@ -14,8 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import date
-from typing import Any
-from typing import List
+from typing import List, Any
 
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
@@ -88,7 +87,7 @@ class GeoJSONGeometry(BaseModel):
 class GeoJSONUTMCoordinates(BaseModel):
     easting: float
     northing: float
-    utm_zone: int = 13
+    utm_zone: str = "13N"
     horizontal_datum: str = "NAD83"
 
     model_config = ConfigDict(
@@ -106,6 +105,8 @@ class GeoJSONProperties(BaseModel):
         default_factory=GeoJSONUTMCoordinates
     )
     notes: list[NoteResponse] = []
+    nma_location_notes: str | None = None
+    nma_data_reliability: str | None = None
     # AMPAPI date fields (read-only, populated only during migration)
     nma_date_created: date | None = None
     nma_site_date: date | None = None
@@ -153,6 +154,12 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
+        data_dict["properties"]["nma_location_notes"] = data_dict.get(
+            "nma_location_notes"
+        )
+        data_dict["properties"]["nma_data_reliability"] = data_dict.get(
+            "nma_data_reliability"
+        )
         # populate AMPAPI date fields
         data_dict["properties"]["nma_date_created"] = data_dict.get("nma_date_created")
         data_dict["properties"]["nma_site_date"] = data_dict.get("nma_site_date")
@@ -186,6 +193,8 @@ class LocationResponse(BaseResponseModel):
     state: str | None
     county: str | None
     quad_name: str | None
+    nma_location_notes: str | None = None
+    nma_data_reliability: str | None = None
 
     # AMPAPI date fields (read-only, populated only during migration, not in Create/Update schemas)
     nma_date_created: date | None = None

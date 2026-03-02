@@ -31,7 +31,7 @@ from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from core.constants import SRID_WGS84
-from db.base import Base, AutoBaseMixin, ReleaseMixin
+from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
 from db.data_provenance import DataProvenanceMixin
 from db.notes import NotesMixin
 
@@ -59,8 +59,9 @@ class Location(Base, AutoBaseMixin, ReleaseMixin, NotesMixin, DataProvenanceMixi
     quad_name: Mapped[str] = mapped_column(String(100), nullable=True)
     # TODO: remove this 'notes' field in favor of using the polymorphic Notes table. Did not remove it yet to avoid breaking existing data model.
     # notes: Mapped[str] = mapped_column(Text, nullable=True)
-    nma_notes_location: Mapped[str] = mapped_column(Text, nullable=True)
+    nma_location_notes: Mapped[str] = mapped_column(Text, nullable=True)
     nma_coordinate_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    nma_data_reliability: Mapped[str] = lexicon_term(nullable=True)
 
     # --- AMPAPI Date Fields (Migration-Only, Read-Only Post-Migration) ---
     nma_date_created: Mapped[datetime.date] = mapped_column(

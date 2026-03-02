@@ -14,7 +14,6 @@
 # limitations under the License.
 # ===============================================================================
 
-import asyncio
 import copy
 import getpass
 import os
@@ -24,7 +23,7 @@ from dotenv import load_dotenv
 from sqlalchemy import (
     create_engine,
 )
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import (
     sessionmaker,
 )
@@ -32,7 +31,8 @@ from sqlalchemy.util import await_only
 
 from services.util import get_bool_env
 
-load_dotenv()
+# Load .env file - don't override env vars already set (e.g., by test framework)
+load_dotenv(override=False)
 driver = os.environ.get("DB_DRIVER", "")
 
 

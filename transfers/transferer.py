@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 import time
+from typing import Any, Optional
+from uuid import UUID
 
 import pandas as pd
 from pandas import DataFrame
@@ -21,7 +23,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
-from db import Thing, Base
+from db import Thing, Base, NMA_Chemistry_SampleInfo
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.util import chunk_by_size, read_csv
@@ -141,6 +143,40 @@ class Transferer(object):
             return pd.read_csv(csv_path, **kw)
         return read_csv(name, dtype=dtype, **kw)
 
+    def _dedupe_rows(
+        self,
+        rows: list[dict[str, Any]],
+        key: str | list[str] = "nma_GlobalID",
+        include_missing: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Dedupe rows by unique key(s) to avoid ON CONFLICT loops. Later rows win."""
+        deduped: dict[Any, dict[str, Any]] = {}
+        passthrough: list[dict[str, Any]] = []
+        key_list = key if isinstance(key, list) else [key]
+
+        for row in rows:
+            if len(key_list) == 1:
+                row_key = row.get(key_list[0])
+            else:
+                row_key = tuple(row.get(k) for k in key_list)
+
+            # Treat None and any pd.isna(...) value (e.g., NaN) as missing keys
+            if isinstance(row_key, tuple):
+                is_missing = any(pd.isna(k) for k in row_key)
+            else:
+                is_missing = pd.isna(row_key)
+
+            if is_missing:
+                if include_missing:
+                    passthrough.append(row)
+                continue
+
+            deduped[row_key] = row
+
+        if include_missing:
+            return list(deduped.values()) + passthrough
+        return list(deduped.values())
+
 
 class ChunkTransferer(Transferer):
     def __init__(self, *args, **kwargs):
@@ -248,6 +284,101 @@ class ThingBasedTransferer(GroupTransferer):
     def _get_db_item(self, session, index) -> Thing:
         pointid = index[0]
         return session.query(Thing).filter(Thing.name == pointid).first()
+
+
+class ChemistryTransferer(Transferer):
+    def __init__(self, *args, batch_size: int = 1000, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.batch_size = batch_size
+        # Cache: legacy UUID -> Integer id
+        self._sample_info_cache: dict[UUID, int] = {}
+        self._build_sample_info_cache()
+        self._parse_dates = None
+
+    def _build_sample_info_cache(self) -> None:
+        """Build cache of nma_sample_pt_id -> id for FK lookups."""
+        with session_ctx() as session:
+            sample_infos = (
+                session.query(
+                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
+                    NMA_Chemistry_SampleInfo.id,
+                )
+                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+                .all()
+            )
+            self._sample_info_cache = {
+                nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
+            }
+        logger.info(
+            f"Built ChemistrySampleInfo cache with {len(self._sample_info_cache)} entries"
+        )
+
+    def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        input_df = self._read_csv(self.source_table, parse_dates=self._parse_dates)
+        cleaned_df = self._filter_to_valid_sample_infos(input_df)
+        return input_df, cleaned_df
+
+    def _filter_to_valid_sample_infos(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filter to only include rows where SamplePtID matches a ChemistrySampleInfo.
+
+        This prevents orphan records and ensures the FK constraint will be satisfied.
+        """
+        valid_sample_pt_ids = set(self._sample_info_cache.keys())
+        before_count = len(df)
+        parsed_sample_pt_ids = df["SamplePtID"].map(self._uuid_val)
+        mask = parsed_sample_pt_ids.isin(valid_sample_pt_ids)
+        filtered_df = df[mask].copy()
+        after_count = len(filtered_df)
+
+        if before_count > after_count:
+            skipped = before_count - after_count
+            table_name = self.source_table or self.__class__.__name__
+            logger.warning(
+                f"Filtered out {skipped} {table_name} records without matching "
+                f"ChemistrySampleInfo ({after_count} valid, {skipped} orphan records prevented)"
+            )
+
+        return filtered_df
+
+    def _safe_str(self, row, attr: str) -> Optional[str]:
+        """Safely get a string value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        return str(val)
+
+    def _safe_float(self, row, attr: str) -> Optional[float]:
+        """Safely get a float value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    def _safe_int(self, row, attr: str) -> Optional[int]:
+        """Safely get an int value, returning None for NaN."""
+        val = getattr(row, attr, None)
+        if val is None or pd.isna(val):
+            return None
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return None
+
+    def _uuid_val(self, value: Any) -> Optional[UUID]:
+        if value is None or pd.isna(value):
+            return None
+        if isinstance(value, UUID):
+            return value
+        if isinstance(value, str):
+            try:
+                return UUID(value)
+            except ValueError:
+                return None
+        return None
 
 
 # ============= EOF =============================================

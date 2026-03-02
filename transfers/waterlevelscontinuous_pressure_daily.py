@@ -22,13 +22,14 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMAWaterLevelsContinuousPressureDaily
+from db import NMA_WaterLevelsContinuous_Pressure_Daily, Thing
+from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import read_csv
 
 
-class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
+class NMA_WaterLevelsContinuous_Pressure_DailyTransferer(Transferer):
     """
     Transfer for the legacy WaterLevelsContinuous_Pressure_Daily table.
 
@@ -41,6 +42,30 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
     def __init__(self, *args, batch_size: int = 1000, **kwargs):
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
+        self._thing_id_cache: dict[str, int] = {}
+        self._build_thing_id_cache()
+
+    def _build_thing_id_cache(self) -> None:
+        with session_ctx() as session:
+            things = session.query(Thing.name, Thing.id).all()
+            self._thing_id_cache = {name: thing_id for name, thing_id in things}
+        logger.info(f"Built Thing ID cache with {len(self._thing_id_cache)} entries")
+
+    def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:
+        valid_point_ids = set(self._thing_id_cache.keys())
+        before_count = len(df)
+        filtered_df = df[df["PointID"].isin(valid_point_ids)].copy()
+        after_count = len(filtered_df)
+        if before_count > after_count:
+            skipped = before_count - after_count
+            logger.warning(
+                "Filtered out %s WaterLevelsContinuous_Pressure_Daily records without matching Things "
+                "(%s valid, %s orphan records prevented)",
+                skipped,
+                after_count,
+                skipped,
+            )
+        return filtered_df
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         # Parse key datetime columns eagerly to avoid per-row parsing later.
@@ -48,8 +73,8 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
             self.source_table,
             parse_dates=["DateMeasured", "Created", "Updated"],
         )
-        # No special cleaning/validation beyond raw import; keep identical copy.
-        return input_df, input_df
+        cleaned_df = self._filter_to_valid_things(input_df)
+        return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
         rows = self._dedupe_rows(
@@ -57,7 +82,7 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
             key="GlobalID",
         )
 
-        insert_stmt = insert(NMAWaterLevelsContinuousPressureDaily)
+        insert_stmt = insert(NMA_WaterLevelsContinuous_Pressure_Daily)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):
@@ -71,6 +96,7 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
                     "OBJECTID": excluded.OBJECTID,
                     "WellID": excluded.WellID,
                     "PointID": excluded.PointID,
+                    "thing_id": excluded.thing_id,
                     "DateMeasured": excluded.DateMeasured,
                     "TemperatureWater": excluded.TemperatureWater,
                     "WaterHead": excluded.WaterHead,
@@ -104,6 +130,7 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
             "OBJECTID": val("OBJECTID"),
             "WellID": val("WellID"),
             "PointID": val("PointID"),
+            "thing_id": self._thing_id_cache.get(val("PointID")),
             "DateMeasured": val("DateMeasured"),
             "TemperatureWater": val("TemperatureWater"),
             "WaterHead": val("WaterHead"),
@@ -121,25 +148,12 @@ class NMAWaterLevelsContinuousPressureDailyTransferer(Transferer):
             "CONDDL (mS/cm)": val("CONDDL (mS/cm)"),
         }
 
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """
-        Deduplicate rows within a batch by the given key to avoid ON CONFLICT loops.
-        Later rows win.
-        """
-        deduped = {}
-        for row in rows:
-            gid = row.get(key)
-            if gid is None:
-                continue
-            deduped[gid] = row
-        return list(deduped.values())
-
 
 def run(batch_size: int = 1000) -> None:
     """Entrypoint to execute the transfer."""
-    transferer = NMAWaterLevelsContinuousPressureDailyTransferer(batch_size=batch_size)
+    transferer = NMA_WaterLevelsContinuous_Pressure_DailyTransferer(
+        batch_size=batch_size
+    )
     transferer.transfer()
 
 

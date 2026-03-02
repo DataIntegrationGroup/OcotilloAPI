@@ -23,10 +23,15 @@ These tests verify that:
 
 import datetime
 from unittest.mock import patch
+
+import numpy as np
 import pandas as pd
 import pytest
 
+from db import Sample
+from transfers.well_transfer import _normalize_completion_date
 from transfers.util import make_location
+from transfers.waterlevels_transfer import WaterLevelTransferer
 
 # ============================================================================
 # FIXTURES
@@ -59,12 +64,13 @@ def test_make_location_with_both_ampapi_dates(mock_lexicon_mapper):
             "SiteDate": "2002-12-10 00:00:00.000",
             "Altitude": 1558.8,
             "AltDatum": "NAVD88",
-            "AltitudeMethod": "GPS",
+            "AltitudeMethod": None,
             "LocationId": 1,
             "PublicRelease": True,
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -102,6 +108,7 @@ def test_make_location_with_only_date_created(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -132,6 +139,7 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -141,6 +149,116 @@ def test_make_location_with_site_date_later_than_date_created(mock_lexicon_mappe
     # Both dates should be preserved as-is, regardless of order
     assert location.nma_date_created == datetime.date(2010, 1, 15)
     assert location.nma_site_date == datetime.date(2015, 6, 20)
+
+
+def test_make_location_maps_data_reliability_code(mock_lexicon_mapper):
+    """DataReliability codes should map via the lexicon mapper."""
+    row = pd.Series(
+        {
+            "PointID": "TEST-DR",
+            "Easting": 350000,
+            "Northing": 3880000,
+            "DateCreated": "2012-01-01 00:00:00.000",
+            "SiteDate": None,
+            "Altitude": 1500.0,
+            "AltDatum": "NAVD88",
+            "AltitudeMethod": "GPS",
+            "LocationId": 9999,
+            "PublicRelease": True,
+            "CoordinateNotes": None,
+            "LocationNotes": None,
+            "AltitudeAccuracy": None,
+            "DataReliability": "U",
+        }
+    )
+
+    location, elevation_method, location_notes = make_location(row, {})
+    mock_lexicon_mapper.map_value.assert_any_call("LU_DataReliability:U")
+    assert location.nma_data_reliability == mock_lexicon_mapper.map_value.return_value
+
+
+def test_make_observation_maps_data_quality():
+    transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    transfer.groundwater_parameter_id = 1
+
+    row = pd.Series(
+        {
+            "MPHeight": 1.0,
+            "DepthToWater": 10.0,
+            "DepthToWaterBGS": 9.0,
+            "GlobalID": "TEST-GLOBAL",
+            "DataQuality": "U2",
+        }
+    )
+
+    sample = Sample(
+        field_activity_id=1,
+        sample_date=datetime.datetime.now(datetime.timezone.utc),
+        sample_name="test-sample",
+        sample_matrix="water",
+        sample_method="grab sample",
+        qc_type="Normal",
+    )
+
+    with patch("transfers.waterlevels_transfer.lexicon_mapper") as mapper:
+        mapper.map_value.return_value = "Mapped Quality"
+        observation = transfer._make_observation(
+            row, sample, datetime.datetime.now(datetime.timezone.utc), "Reason"
+        )
+        mapper.map_value.assert_any_call("LU_DataQuality:U2")
+        assert observation.nma_data_quality == "Mapped Quality"
+
+
+def test_normalize_completion_date_drops_time_from_datetime():
+    value = datetime.datetime(2024, 7, 3, 14, 15, 16)
+    normalized, parse_failed = _normalize_completion_date(value)
+    assert normalized == datetime.date(2024, 7, 3)
+    assert parse_failed is False
+
+
+def test_normalize_completion_date_drops_time_from_timestamp_and_string():
+    ts_value = pd.Timestamp("2021-05-06 23:59:00")
+    str_value = "2021-05-06 23:59:00.000"
+    normalized_ts, parse_failed_ts = _normalize_completion_date(ts_value)
+    normalized_str, parse_failed_str = _normalize_completion_date(str_value)
+    assert normalized_ts == datetime.date(2021, 5, 6)
+    assert normalized_str == datetime.date(2021, 5, 6)
+    assert parse_failed_ts is False
+    assert parse_failed_str is False
+
+
+def test_normalize_completion_date_handles_numpy_datetime64():
+    value = np.datetime64("2020-01-02T03:04:05")
+    normalized, parse_failed = _normalize_completion_date(value)
+    assert normalized == datetime.date(2020, 1, 2)
+    assert parse_failed is False
+
+
+def test_normalize_completion_date_invalid_returns_none_and_parse_failed():
+    normalized, parse_failed = _normalize_completion_date("not-a-date")
+    assert normalized is None
+    assert parse_failed is True
+
+
+def test_get_dt_utc_respects_time_datum():
+    transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    transfer.errors = []
+    transfer.source_table = "WaterLevels"
+    base = {
+        "PointID": "TEST",
+        "OBJECTID": 1,
+        "DateMeasured": "2025-01-01",
+        "TimeMeasured": "10:00:00.000000",
+    }
+
+    row_mst = pd.Series({**base, "TimeDatum": "MST"})
+    dt_mst = transfer._get_dt_utc(row_mst)
+    assert dt_mst.tzinfo == datetime.timezone.utc
+    assert dt_mst.hour == 17
+
+    row_mdt = pd.Series({**base, "TimeDatum": "MDT"})
+    dt_mdt = transfer._get_dt_utc(row_mdt)
+    assert dt_mdt.hour == 16
 
 
 def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
@@ -160,6 +278,7 @@ def test_make_location_with_very_old_site_date(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -192,6 +311,7 @@ def test_make_location_ampapi_dates_are_date_not_datetime(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -227,6 +347,7 @@ def test_make_location_ampapi_dates_independent_of_created_at(mock_lexicon_mappe
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -267,6 +388,7 @@ def test_make_location_with_no_ampapi_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -295,6 +417,7 @@ def test_make_location_with_empty_string_dates(mock_lexicon_mapper):
             "CoordinateNotes": None,
             "LocationNotes": None,
             "AltitudeAccuracy": None,
+            "DataReliability": None,
         }
     )
 
@@ -326,6 +449,7 @@ def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
                 "CoordinateNotes": None,
                 "LocationNotes": None,
                 "AltitudeAccuracy": None,
+                "DataReliability": None,
             }
         )
 

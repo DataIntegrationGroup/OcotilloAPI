@@ -22,6 +22,7 @@ from pydantic import field_validator, BaseModel, model_validator
 
 from core.enums import Role, ContactType, PhoneType, EmailType, AddressType
 from schemas import BaseResponseModel, BaseCreateModel, BaseUpdateModel
+from schemas.notes import CreateNote, NoteResponse
 
 # -------- VALIDATORS ----------
 
@@ -122,10 +123,12 @@ class CreateAddress(BaseCreateModel):
     # todo: use a postal API to validate address and suggest corrections
     address_line_1: str  # Required (e.g., "123 Main St")
     address_line_2: str | None = None  # Optional (e.g., "Apt 4B", "Suite 200")
-    city: str
+    city: str | None = None
     # todo: add validation.  Should state be required? what about foreign addresses?
-    state: str = "NM"  # Default to New Mexico
-    postal_code: str
+    state: str | None = "NM"  # Default to New Mexico
+
+    # todo: make postal code required?
+    postal_code: str | None = None
     country: str = "United States"  # Default to United States
     address_type: AddressType = "Primary"
 
@@ -149,6 +152,7 @@ class CreateContact(BaseCreateModel, ValidateContact):
     organization: str | None = None
     role: Role
     contact_type: ContactType = "Primary"
+    nma_pk_owners: str | None = None
     # description: str | None = None
     # email: str | None = None
     # phone: str | None = None
@@ -156,6 +160,7 @@ class CreateContact(BaseCreateModel, ValidateContact):
     emails: list[CreateEmail] | None = None
     phones: list[CreatePhone] | None = None
     addresses: list[CreateAddress] | None = None
+    notes: list[CreateNote] | None = None
 
 
 # -------- RESPONSE ----------
@@ -190,9 +195,9 @@ class AddressResponse(BaseItemResponse):
 
     address_line_1: str
     address_line_2: str | None = None
-    city: str
-    state: str
-    postal_code: str
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
     country: str
     address_type: AddressType
 
@@ -220,6 +225,8 @@ class ContactResponse(BaseResponseModel):
     phones: List[PhoneResponse] = []
     addresses: List[AddressResponse] = []
     things: List[ThingResponseForContact] = []
+    communication_notes: List[NoteResponse] = []
+    general_notes: List[NoteResponse] = []
 
     @field_validator("incomplete_nma_phones", mode="before")
     def make_incomplete_nma_phone_str(cls, v: list) -> list:

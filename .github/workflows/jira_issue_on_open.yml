@@ -1,0 +1,191 @@
+name: Create Jira ticket on GitHub issue open
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-jira-ticket:
+    runs-on: ubuntu-latest
+    environment: jira-codex
+    steps:
+      - name: Validate Jira configuration
+        env:
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY }}
+          JIRA_ISSUE_TYPE: ${{ vars.JIRA_ISSUE_TYPE }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          for v in JIRA_BASE_URL JIRA_PROJECT_KEY JIRA_ISSUE_TYPE JIRA_EMAIL JIRA_API_TOKEN; do
+            if [ -z "${!v:-}" ]; then
+              echo "Missing required Jira configuration: $v"
+              exit 1
+            fi
+          done
+
+      - name: Build Jira payload from issue
+        id: payload
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_REPO: ${{ github.repository }}
+          ISSUE_LABELS_JSON: ${{ toJson(github.event.issue.labels) }}
+          JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY }}
+          JIRA_ISSUE_TYPE: ${{ vars.JIRA_ISSUE_TYPE }}
+          LABEL_TO_COMPONENT_PREFIX: "component:"
+          LABEL_TO_PRIORITY_PREFIX: "priority:"
+          # Optional JSON map in repo variable, example:
+          # {"label:customer-impact":{"customfield_12345":"High"}}
+          LABEL_TO_CUSTOM_FIELDS_JSON: ${{ vars.JIRA_LABEL_TO_CUSTOM_FIELDS_JSON }}
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def text_to_adf(text: str) -> dict:
+            lines = text.splitlines()
+            if not lines:
+              lines = ["(No issue body provided)"]
+
+            content = []
+            for idx, line in enumerate(lines):
+              if line:
+                content.append({"type": "text", "text": line})
+              if idx < len(lines) - 1:
+                content.append({"type": "hardBreak"})
+
+            if not content:
+              content = [{"type": "text", "text": "(No issue body provided)"}]
+
+            return {
+              "type": "doc",
+              "version": 1,
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": content,
+                }
+              ],
+            }
+
+          issue_title = os.environ["ISSUE_TITLE"]
+          issue_body = os.environ.get("ISSUE_BODY", "") or ""
+          issue_url = os.environ["ISSUE_URL"]
+          issue_number = os.environ["ISSUE_NUMBER"]
+          issue_repo = os.environ["ISSUE_REPO"]
+
+          labels_payload = json.loads(os.environ.get("ISSUE_LABELS_JSON", "[]") or "[]")
+          labels = [item.get("name", "").strip() for item in labels_payload if item.get("name")]
+
+          component_prefix = os.environ.get("LABEL_TO_COMPONENT_PREFIX", "component:")
+          priority_prefix = os.environ.get("LABEL_TO_PRIORITY_PREFIX", "priority:")
+          custom_fields_map = os.environ.get("LABEL_TO_CUSTOM_FIELDS_JSON", "").strip()
+          custom_field_overrides = json.loads(custom_fields_map) if custom_fields_map else {}
+
+          components = []
+          priority = None
+          custom_fields = {}
+
+          for label in labels:
+            lower = label.lower()
+            if lower.startswith(component_prefix.lower()):
+              name = label[len(component_prefix):].strip()
+              if name:
+                components.append({"name": name})
+            elif lower.startswith(priority_prefix.lower()):
+              name = label[len(priority_prefix):].strip()
+              if name:
+                priority = {"name": name}
+
+            override_fields = custom_field_overrides.get(label, {})
+            if isinstance(override_fields, dict):
+              custom_fields.update(override_fields)
+
+          description_text = (
+            f"GitHub issue: {issue_repo}#{issue_number}\n"
+            f"URL: {issue_url}\n\n"
+            f"{issue_body if issue_body else '(No issue body provided)'}"
+          )
+
+          fields = {
+            "project": {"key": os.environ["JIRA_PROJECT_KEY"]},
+            "issuetype": {"name": os.environ["JIRA_ISSUE_TYPE"]},
+            "summary": issue_title,
+            "description": text_to_adf(description_text),
+            "labels": labels,
+          }
+          if components:
+            fields["components"] = components
+          if priority:
+            fields["priority"] = priority
+          fields.update(custom_fields)
+
+          payload = {"fields": fields}
+          Path("jira-payload.json").write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+          PY
+
+      - name: Create Jira issue via REST API
+        id: jira
+        env:
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          JIRA_BASE_URL="${JIRA_BASE_URL%/}"
+          case "$JIRA_BASE_URL" in
+            */rest/api/3) API_BASE="$JIRA_BASE_URL" ;;
+            *) API_BASE="$JIRA_BASE_URL/rest/api/3" ;;
+          esac
+
+          HTTP_CODE=$(curl -sS --retry 3 --retry-delay 2 \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -o jira-response.json \
+            -w "%{http_code}" \
+            -X POST \
+            --data @jira-payload.json \
+            "$API_BASE/issue")
+
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "Jira issue creation failed. HTTP $HTTP_CODE"
+            cat jira-response.json
+            exit 1
+          fi
+
+          JIRA_KEY="$(jq -r '.key // empty' jira-response.json)"
+          if [ -z "$JIRA_KEY" ]; then
+            echo "Jira response did not include issue key."
+            cat jira-response.json
+            exit 1
+          fi
+          echo "jira_key=$JIRA_KEY" >> "$GITHUB_OUTPUT"
+          echo "jira_browse_url=${JIRA_BASE_URL}/browse/${JIRA_KEY}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Jira link back on the GitHub issue
+        uses: actions/github-script@v8
+        env:
+          JIRA_KEY: ${{ steps.jira.outputs.jira_key }}
+          JIRA_URL: ${{ steps.jira.outputs.jira_browse_url }}
+        with:
+          script: |
+            const body = `Linked Jira ticket created: [${process.env.JIRA_KEY}](${process.env.JIRA_URL})`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body
+            });

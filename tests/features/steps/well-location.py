@@ -19,7 +19,7 @@ from behave.runner import Context
 
 # TODO: should this use fixtures to populate and access data from the database?
 @given("the system has valid well and location data in the database")
-def step_impl(context):
+def step_given_the_system_has_valid_well_and_location_data_in_the(context):
     context.database = {
         "Well-Alpha": {
             "location": {"type": "Point", "coordinates": [32.222222, -110.999999]},
@@ -58,7 +58,9 @@ def step_impl_well_with_location(context: Context, well_name: str):
 
 
 @when('the technician retrieves the location for the well "{well_name}"')
-def step_impl(context: Context, well_name: str):
+def step_when_the_technician_retrieves_the_location_for_the_well_well_name(
+    context: Context, well_name: str
+):
     """
     :type context: behave.runner.Context
     """
@@ -66,7 +68,9 @@ def step_impl(context: Context, well_name: str):
 
 
 @then("the system should return the location details for that well")
-def step_impl(context: Context):
+def step_then_the_system_should_return_the_location_details_for_that_well(
+    context: Context,
+):
     """
     :type context: behave.runner.Context
     """

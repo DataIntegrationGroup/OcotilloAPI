@@ -14,6 +14,7 @@
 # limitations under the License.
 # ===============================================================================
 from xml.etree import ElementTree as etree
+
 from sqlalchemy import text
 
 # NSMAP = dict(xsi="http://www.w3.org/2001/XMLSchema-instance", xsd="http://www.w3.org/2001/XMLSchema")
@@ -44,7 +45,7 @@ def make_well_construction_response(point_id, db):
 def make_waterlevels_response(point_id, db):
     sql = "select * from dbo.view_NGWMN_WaterLevels where PointID=:point_id order by DateMeasured"
     sql2 = (
-        "select * from NMAWaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
+        "select * from NMA_WaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
         "DateMeasured"
     )
 

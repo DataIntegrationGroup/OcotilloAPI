@@ -48,6 +48,38 @@ EQUIPMENT_TO_SENSOR_TYPE_MAP = {
 }
 
 
+def _coerce_wi_int(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_wi_mic_gain(value):
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+    try:
+        return bool(int(float(value)))
+    except (TypeError, ValueError):
+        return None
+
+
 class SensorTransferer(ThingBasedTransferer):
     source_table = "Equipment"
 
@@ -134,16 +166,10 @@ class SensorTransferer(ThingBasedTransferer):
             estimator = self._get_estimator(sensor_type)
             installation_date = estimator.estimate_installation_date(row)
             if not installation_date:
-                logger.critical(
-                    f"Installation Date cannot be None. Skipping deployment. Sensor: {row.ID}, "
-                    f"SerialNo: {row.SerialNo} PointID: {pointid}"
+                logger.warning(
+                    f"Installation Date is None. Proceeding with NULL deployment installation date. "
+                    f"Sensor: {row.ID}, SerialNo: {row.SerialNo} PointID: {pointid}"
                 )
-                self._capture_error(
-                    pointid,
-                    f"row.SerialNo={row.SerialNo}. Installation Date cannot be None",
-                    "DateInstalled",
-                )
-                return
             else:
                 logger.warning(
                     f"Estimated installation date={installation_date} for {pointid}"
@@ -170,12 +196,8 @@ class SensorTransferer(ThingBasedTransferer):
                 row, installation_date, removal_date
             )
 
-            if recording_interval:
+            if recording_interval is not None:
                 recording_interval_unit = unit
-                logger.info(
-                    f"name={sensor.name}, serial_no={sensor.serial_no}. "
-                    f"estimated recording interval: {recording_interval} {unit}"
-                )
                 self._capture_error(
                     pointid,
                     f"Estimated recording interval={recording_interval} {unit}. Is this correct?",
@@ -183,12 +205,10 @@ class SensorTransferer(ThingBasedTransferer):
                 )
 
             else:
-                logger.critical(
-                    f"name={sensor.name}, serial_no={sensor.serial_no} error={error}"
-                )
                 self._capture_error(
                     pointid,
-                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. error={error}",
+                    f"name={sensor.name}, row.SerialNo={row.SerialNo}. "
+                    f"error=Could not estimate recording interval. estimator error: {error}",
                     "RecordingInterval",
                 )
 
@@ -218,6 +238,12 @@ class SensorTransferer(ThingBasedTransferer):
             hanging_cable_length=row.HangingCableLength,
             hanging_point_height=row.HangingPointHgt,
             hanging_point_description=row.HangingPointDescription,
+            nma_WI_Duration=_coerce_wi_int(row.WI_Duration),
+            nma_WI_EndFrequency=_coerce_wi_int(row.WI_EndFrequency),
+            nma_WI_Magnitude=_coerce_wi_int(row.WI_Magnitude),
+            nma_WI_MicGain=_coerce_wi_mic_gain(row.WI_MicGain),
+            nma_WI_MinSoundDepth=_coerce_wi_int(row.WI_MinSoundDepth),
+            nma_WI_StartFrequency=_coerce_wi_int(row.WI_StartFrequency),
         )
         session.add(deployment)
         logger.info(

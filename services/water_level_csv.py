@@ -18,18 +18,18 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, List
 
+from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
+from db.engine import session_ctx
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
-from db.engine import session_ctx
 
 # Required CSV columns for the bulk upload
 REQUIRED_FIELDS: List[str] = [
@@ -44,6 +44,11 @@ REQUIRED_FIELDS: List[str] = [
     "depth_to_water_ft",
     "data_quality",
 ]
+
+HEADER_ALIASES: dict[str, str] = {
+    "measuring_person": "sampler",
+    "water_level_date_time": "measurement_date_time",
+}
 
 # Allow-list values for validation. These represent early MVP lexicon values.
 VALID_LEVEL_STATUSES = {"stable", "rising", "falling"}
@@ -173,7 +178,7 @@ def bulk_upload_water_levels(
         headers, csv_rows = _read_csv(source_file)
     except FileNotFoundError:
         msg = f"File not found: {source_file}"
-        payload = _build_payload([], [], 0, 0, [msg])
+        payload = _build_payload([], [], 0, 0, 1, errors=[msg])
         stdout = _serialize_payload(payload, pretty_json)
         return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg, payload=payload)
 
@@ -205,7 +210,7 @@ def bulk_upload_water_levels(
     summary = {
         "total_rows_processed": len(csv_rows),
         "total_rows_imported": len(created_rows) if not validation_errors else 0,
-        "validation_errors_or_warnings": len(validation_errors),
+        "validation_errors_or_warnings": _count_rows_with_issues(validation_errors),
     }
     payload = _build_payload(
         csv_rows, created_rows, **summary, errors=validation_errors
@@ -220,6 +225,22 @@ def bulk_upload_water_levels(
 
 def _serialize_payload(payload: dict[str, Any], pretty: bool) -> str:
     return json.dumps(payload, indent=2 if pretty else None)
+
+
+def _count_rows_with_issues(errors: list[str]) -> int:
+    """
+    Count unique row numbers represented in validation errors.
+    Falls back to total error count when row numbers are unavailable.
+    """
+    row_ids: set[int] = set()
+    for err in errors:
+        match = re.match(r"^Row\s+(\d+):", str(err))
+        if match:
+            row_ids.add(int(match.group(1)))
+
+    if row_ids:
+        return len(row_ids)
+    return len(errors)
 
 
 def _build_payload(
@@ -261,14 +282,23 @@ def _read_csv(
 
     stream = io.StringIO(text)
     reader = csv.DictReader(stream)
-    rows = [
-        {
-            k.strip(): (v.strip() if isinstance(v, str) else v or "")
-            for k, v in row.items()
-        }
-        for row in reader
+    rows: list[dict[str, str]] = []
+    for row in reader:
+        normalized_row: dict[str, str] = {}
+        for k, v in row.items():
+            if k is None:
+                continue
+            key = HEADER_ALIASES.get(k.strip(), k.strip())
+            value = v.strip() if isinstance(v, str) else v or ""
+            # If both alias and canonical header are present, preserve first non-empty value.
+            if key in normalized_row and normalized_row[key] and not value:
+                continue
+            normalized_row[key] = value
+        rows.append(normalized_row)
+
+    headers = [
+        HEADER_ALIASES.get(h.strip(), h.strip()) for h in (reader.fieldnames or [])
     ]
-    headers = [h.strip() for h in reader.fieldnames or []]
     return headers, rows
 
 

@@ -15,45 +15,25 @@
 # ===============================================================================
 import os
 from functools import lru_cache
+
 from dotenv import load_dotenv
 
 # Load .env file BEFORE importing anything else
 # Use override=True to override conflicting shell environment variables
 load_dotenv(override=True)
 
-# for safety dont test on the production database port
-os.environ["POSTGRES_PORT"] = "54321"
-
-# this should not be needed since all Pydantic serializes all datetimes as UTC
-# furthermore, tzset is not supported on Windows, so this breaks cross-platform compatibility
-# # Set timezone to UTC for consistent datetime handling in tests
-# os.environ["TZ"] = "UTC"
-
-# # Also set time.tzset() to apply the timezone change
-# import time
-
-# time.tzset()
+# for safety don't test on the production database port
+os.environ["POSTGRES_PORT"] = "5432"
+# Always use test database, never dev
+os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+# Keep `main:app` importable in clean test environments without a local `.env`.
+os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")
 
 from fastapi.testclient import TestClient
-from fastapi_pagination import add_pagination
-from starlette.middleware.cors import CORSMiddleware
 
-from core.initializers import register_routes
 from db import Parameter, Base
 from db.engine import session_ctx
-from core.app import app
-
-register_routes(app)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins, adjust as needed for security
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-add_pagination(app)
+from main import app
 
 client = TestClient(app)
 

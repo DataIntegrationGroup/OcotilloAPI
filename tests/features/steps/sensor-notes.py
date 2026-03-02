@@ -18,19 +18,19 @@ from behave.runner import Context
 
 
 @when("the user requests the sensor with ID 1")
-def step_impl(context: Context):
+def step_when_the_user_requests_the_sensor_with_id_1(context: Context):
     context.response = context.client.get("sensor/1")
 
 
 @when("the user requests the sensor with ID 9999")
-def step_impl(context: Context):
+def step_when_the_user_requests_the_sensor_with_id_9999(context: Context):
     context.response = context.client.get("sensor/9999")
 
 
 @then(
     "the response should include an error message indicating the sensor was not found"
 )
-def step_impl(context: Context):
+def step_step_step(context: Context):
     assert {"detail": "Sensor with ID 9999 not found."} == context.response.json()
 
 

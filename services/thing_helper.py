@@ -28,7 +28,6 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db import (
     LocationThingAssociation,
     Thing,
-    Base,
     Location,
     WellScreen,
     WellPurpose,
@@ -36,8 +35,11 @@ from db import (
     ThingAquiferAssociation,
     GroupThingAssociation,
     MeasuringPointHistory,
+    DataProvenance,
+    ThingIdLink,
+    MonitoringFrequencyHistory,
+    StatusHistory,
 )
-
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
@@ -49,7 +51,7 @@ WELL_DESCRIPTOR_MODEL_MAP = {
     "well_casing_materials": (WellCasingMaterial, "material"),
 }
 
-WELL_LOADER_OPTIONS = [
+WATER_WELL_LOADER_OPTIONS = [
     selectinload(Thing.location_associations).selectinload(
         LocationThingAssociation.location
     ),
@@ -63,7 +65,7 @@ WELL_LOADER_OPTIONS = [
     ),
 ]
 
-WELL_THING_TYPE = "water well"
+WATER_WELL_THING_TYPE = "water well"
 
 
 def wkb_to_geojson(wkb_element):
@@ -92,11 +94,11 @@ def get_db_things(
     if thing_type:
         sql = sql.where(Thing.thing_type == thing_type)
 
-        if thing_type == WELL_THING_TYPE:
-            sql = sql.options(*WELL_LOADER_OPTIONS)
+        if thing_type == WATER_WELL_THING_TYPE:
+            sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
     else:
         # add all eager loads for generic thing query until/unless GET /thing is deprecated
-        sql = sql.options(*WELL_LOADER_OPTIONS)
+        sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
 
     if name:
         sql = sql.where(Thing.name == name)
@@ -161,8 +163,8 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
     thing_type = get_thing_type_from_request(request)
     sql = select(Thing).where(Thing.id == thing_id)
 
-    if thing_type == WELL_THING_TYPE:
-        sql = sql.options(*WELL_LOADER_OPTIONS)
+    if thing_type == WATER_WELL_THING_TYPE:
+        sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
 
     thing = session.execute(sql).scalar_one_or_none()
 
@@ -183,24 +185,67 @@ def add_thing(
     user: dict = None,
     request: Request | None = None,
     thing_type: str | None = None,  # to be used only for data transfers, not the API
-) -> Base:
+    commit: bool = True,
+) -> Thing:
     if request is not None:
         thing_type = get_thing_type_from_request(request)
 
+    # Extract data for related tables
+    # Normalize Pydantic models to dictionaries so we can safely mutate with .pop()
     if isinstance(data, BaseModel):
-        well_descriptor_table_list = list(WELL_DESCRIPTOR_MODEL_MAP.keys())
-        data = data.model_dump(exclude=well_descriptor_table_list)
+        data = data.model_dump()
 
-    notes = None
-    if "notes" in data:
-        notes = data.pop("notes")
+    # ---------
+    # BEGIN UNIVERSAL THING RELATED TABLES
+    # ---------
 
+    notes = data.pop("notes", None)
+    alternate_ids = data.pop("alternate_ids", None)
     location_id = data.pop("location_id", None)
+    first_visit_date = data.get("first_visit_date")
+    if first_visit_date is None:
+        effective_start = None
+    elif isinstance(first_visit_date, datetime):
+        # Ensure datetime is timezone-aware; default to UTC if naive
+        effective_start = (
+            first_visit_date
+            if first_visit_date.tzinfo is not None
+            else first_visit_date.replace(tzinfo=ZoneInfo("UTC"))
+        )
+    else:
+        # Interpret date-only values as midnight UTC on that date
+        dt = datetime.combine(first_visit_date, datetime.min.time())
+        effective_start = dt.replace(tzinfo=ZoneInfo("UTC"))
     group_id = data.pop("group_id", None)
+    monitoring_frequencies = data.pop("monitoring_frequencies", None)
+    datalogger_suitability_status = data.pop("is_suitable_for_datalogger", None)
+    open_status = data.pop("is_open", None)
+    well_status = data.pop("well_status", None)
 
-    # Extract measuring point data (stored in separate history table, not as Thing columns)
+    # ----------
+    # END UNIVERSAL THING RELATED TABLES
+    # ----------
+
+    # ----------
+    # BEGIN WATER WELL SPECIFIC RELATED TABLES
+    # ----------
+
+    # measuring point info
     measuring_point_height = data.pop("measuring_point_height", None)
     measuring_point_description = data.pop("measuring_point_description", None)
+
+    # data provenance info
+    well_completion_date_source = data.pop("well_completion_date_source", None)
+    well_construction_method_source = data.pop("well_construction_method_source", None)
+    well_depth_source = data.pop("well_depth_source", None)
+
+    # descriptor tables
+    well_purposes = data.pop("well_purposes", None)
+    well_casing_materials = data.pop("well_casing_materials", None)
+
+    # ----------
+    # END WATER WELL SPECIFIC RELATED TABLES
+    # ----------
 
     try:
         thing = Thing(**data)
@@ -212,17 +257,117 @@ def add_thing(
         session.flush()
         session.refresh(thing)
 
-        # Create MeasuringPointHistory record if measuring_point_height provided
-        if measuring_point_height is not None:
-            measuring_point_history = MeasuringPointHistory(
-                thing_id=thing.id,
-                measuring_point_height=measuring_point_height,
-                measuring_point_description=measuring_point_description,
-                start_date=datetime.now(tz=ZoneInfo("UTC")),
-                end_date=None,
-            )
-            audit_add(user, measuring_point_history)
-            session.add(measuring_point_history)
+        # ----------
+        # BEGIN WATER WELL SPECIFIC LOGIC
+        # ----------
+
+        if thing_type == WATER_WELL_THING_TYPE:
+
+            # Create MeasuringPointHistory record if measuring_point_height provided
+            if measuring_point_height is not None:
+                measuring_point_history = MeasuringPointHistory(
+                    thing_id=thing.id,
+                    measuring_point_height=measuring_point_height,
+                    measuring_point_description=measuring_point_description,
+                    start_date=datetime.now(tz=ZoneInfo("UTC")),
+                    end_date=None,
+                )
+                audit_add(user, measuring_point_history)
+                session.add(measuring_point_history)
+
+            if well_completion_date_source is not None:
+                dp = DataProvenance(
+                    target_id=thing.id,
+                    target_table="thing",
+                    field_name="well_completion_date",
+                    origin_type=well_completion_date_source,
+                )
+                audit_add(user, dp)
+                session.add(dp)
+
+            if well_depth_source is not None:
+                dp = DataProvenance(
+                    target_id=thing.id,
+                    target_table="thing",
+                    field_name="well_depth",
+                    origin_type=well_depth_source,
+                )
+                audit_add(user, dp)
+                session.add(dp)
+
+            if well_construction_method_source is not None:
+                dp = DataProvenance(
+                    target_id=thing.id,
+                    target_table="thing",
+                    field_name="well_construction_method",
+                    origin_source=well_construction_method_source,
+                )
+                audit_add(user, dp)
+                session.add(dp)
+
+            if well_purposes:
+                for purpose in well_purposes:
+                    wp = WellPurpose(thing_id=thing.id, purpose=purpose)
+                    audit_add(user, wp)
+                    session.add(wp)
+
+            if well_casing_materials:
+                for material in well_casing_materials:
+                    wcm = WellCasingMaterial(thing_id=thing.id, material=material)
+                    audit_add(user, wcm)
+                    session.add(wcm)
+
+            if datalogger_suitability_status is not None:
+                if datalogger_suitability_status is True:
+                    status_value = "Datalogger can be installed"
+                else:
+                    status_value = "Datalogger cannot be installed"
+                dlss = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=status_value,
+                    status_type="Datalogger Suitability Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, dlss)
+                session.add(dlss)
+
+            if open_status is not None:
+                if open_status is True:
+                    status_value = "Open"
+                else:
+                    status_value = "Closed"
+                os_status = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=status_value,
+                    status_type="Open Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, os_status)
+                session.add(os_status)
+
+            if well_status is not None:
+                ws_status = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=well_status,
+                    status_type="Well Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, ws_status)
+                session.add(ws_status)
+
+        # ----------
+        # END WATER WELL SPECIFIC LOGIC
+        # ----------
+
+        # ----------
+        # BEGIN UNIVERSAL THING RELATED LOGIC
+        # ----------
 
         # endpoint catches ProgrammingError if location_id or group_id do not exist
         if group_id:
@@ -233,22 +378,51 @@ def add_thing(
             session.add(assoc)
 
         if location_id is not None:
-            # TODO: how do we want to handle effective_start? is it the date it gets entered?
             assoc = LocationThingAssociation()
             audit_add(user, assoc)
             assoc.location_id = location_id
             assoc.thing_id = thing.id
+            assoc.effective_start = effective_start
             session.add(assoc)
-
-        session.commit()
-        session.refresh(thing)
 
         if notes:
             for n in notes:
-                nn = thing.add_note(n["content"], n["note_type"])
-                session.add(nn)
-            session.commit()
+                thing_note = thing.add_note(n["content"], n["note_type"])
+                session.add(thing_note)
+            session.flush()
             session.refresh(thing)
+
+        if alternate_ids:
+            for aid in alternate_ids:
+                id_link = ThingIdLink(
+                    thing_id=thing.id,
+                    relation=aid["relation"],
+                    alternate_id=aid["alternate_id"],
+                    alternate_organization=aid["alternate_organization"],
+                )
+                session.add(id_link)
+
+        if monitoring_frequencies:
+            for mf in monitoring_frequencies:
+                mfh = MonitoringFrequencyHistory(
+                    thing_id=thing.id,
+                    monitoring_frequency=mf["monitoring_frequency"],
+                    start_date=mf["start_date"],
+                    end_date=mf.get("end_date", None),
+                )
+                session.add(mfh)
+
+        # ----------
+        # END UNIVERSAL THING RELATED LOGIC
+        # ----------
+        if commit:
+            session.commit()
+        else:
+            session.flush()
+        session.refresh(thing)
+
+        for note in thing.notes:
+            session.refresh(note)
 
     except Exception as e:
         session.rollback()

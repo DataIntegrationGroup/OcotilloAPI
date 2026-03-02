@@ -24,9 +24,9 @@ from uuid import uuid4
 
 from db.engine import session_ctx
 from db.nma_legacy import (
-    ViewNGWMNWellConstruction,
-    ViewNGWMNWaterLevels,
-    ViewNGWMNLithology,
+    NMA_view_NGWMN_WellConstruction,
+    NMA_view_NGWMN_WaterLevels,
+    NMA_view_NGWMN_Lithology,
 )
 
 
@@ -39,7 +39,7 @@ def _next_object_id() -> int:
 def test_create_ngwmn_well_construction():
     """Test creating an NGWMN well construction record."""
     with session_ctx() as session:
-        record = ViewNGWMNWellConstruction(
+        record = NMA_view_NGWMN_WellConstruction(
             point_id="NG-1001",
             casing_top=10.0,
             casing_bottom=100.0,
@@ -78,20 +78,23 @@ def test_ngwmn_well_construction_columns():
 
     for column in expected_columns:
         assert hasattr(
-            ViewNGWMNWellConstruction, column
-        ), f"Expected column '{column}' not found in ViewNGWMNWellConstruction model"
+            NMA_view_NGWMN_WellConstruction, column
+        ), f"Expected column '{column}' not found in NMA_view_NGWMN_WellConstruction model"
 
 
 def test_ngwmn_well_construction_table_name():
     """Test that the table name follows convention."""
-    assert ViewNGWMNWellConstruction.__tablename__ == "NMA_view_NGWMN_WellConstruction"
+    assert (
+        NMA_view_NGWMN_WellConstruction.__tablename__
+        == "NMA_view_NGWMN_WellConstruction"
+    )
 
 
 # ===================== WaterLevels tests ==========================
 def test_create_ngwmn_water_levels():
     """Test creating an NGWMN water levels record."""
     with session_ctx() as session:
-        record = ViewNGWMNWaterLevels(
+        record = NMA_view_NGWMN_WaterLevels(
             point_id="NG-2001",
             date_measured=date(2024, 1, 1),
             depth_to_water_bgs=12.3,
@@ -103,7 +106,7 @@ def test_create_ngwmn_water_levels():
         session.add(record)
         session.commit()
 
-        fetched = session.get(ViewNGWMNWaterLevels, ("NG-2001", date(2024, 1, 1)))
+        fetched = session.get(NMA_view_NGWMN_WaterLevels, ("NG-2001", date(2024, 1, 1)))
         assert fetched is not None
         assert fetched.point_id == "NG-2001"
 
@@ -125,20 +128,20 @@ def test_ngwmn_water_levels_columns():
 
     for column in expected_columns:
         assert hasattr(
-            ViewNGWMNWaterLevels, column
-        ), f"Expected column '{column}' not found in ViewNGWMNWaterLevels model"
+            NMA_view_NGWMN_WaterLevels, column
+        ), f"Expected column '{column}' not found in NMA_view_NGWMN_WaterLevels model"
 
 
 def test_ngwmn_water_levels_table_name():
     """Test that the table name follows convention."""
-    assert ViewNGWMNWaterLevels.__tablename__ == "NMA_view_NGWMN_WaterLevels"
+    assert NMA_view_NGWMN_WaterLevels.__tablename__ == "NMA_view_NGWMN_WaterLevels"
 
 
 # ===================== Lithology tests ==========================
 def test_create_ngwmn_lithology():
     """Test creating an NGWMN lithology record."""
     with session_ctx() as session:
-        record = ViewNGWMNLithology(
+        record = NMA_view_NGWMN_Lithology(
             object_id=_next_object_id(),
             point_id="NG-3001",
             lithology="Sand",
@@ -176,13 +179,13 @@ def test_ngwmn_lithology_columns():
 
     for column in expected_columns:
         assert hasattr(
-            ViewNGWMNLithology, column
-        ), f"Expected column '{column}' not found in ViewNGWMNLithology model"
+            NMA_view_NGWMN_Lithology, column
+        ), f"Expected column '{column}' not found in NMA_view_NGWMN_Lithology model"
 
 
 def test_ngwmn_lithology_table_name():
     """Test that the table name follows convention."""
-    assert ViewNGWMNLithology.__tablename__ == "NMA_view_NGWMN_Lithology"
+    assert NMA_view_NGWMN_Lithology.__tablename__ == "NMA_view_NGWMN_Lithology"
 
 
 # ============= EOF =============================================

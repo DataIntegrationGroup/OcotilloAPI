@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import WeatherPhotos
+from db import NMA_WeatherPhotos
 from transfers.logger import logger
 from transfers.transferer import Transferer
 from transfers.util import replace_nans
@@ -51,7 +51,7 @@ class WeatherPhotosTransferer(Transferer):
             logger.info("No WeatherPhotos rows to transfer")
             return
 
-        insert_stmt = insert(WeatherPhotos)
+        insert_stmt = insert(NMA_WeatherPhotos)
         excluded = insert_stmt.excluded
 
         for i in range(0, len(rows), self.batch_size):
@@ -82,18 +82,6 @@ class WeatherPhotosTransferer(Transferer):
             "OBJECTID": row.get("OBJECTID"),
             "GlobalID": self._uuid_val(row.get("GlobalID")),
         }
-
-    def _dedupe_rows(
-        self, rows: list[dict[str, Any]], key: str
-    ) -> list[dict[str, Any]]:
-        """Dedupe rows by unique key to avoid ON CONFLICT loops. Later rows win."""
-        deduped = {}
-        for row in rows:
-            global_id = row.get(key)
-            if global_id is None:
-                continue
-            deduped[global_id] = row
-        return list(deduped.values())
 
     def _uuid_val(self, value: Any) -> Optional[UUID]:
         if value is None or pd.isna(value):

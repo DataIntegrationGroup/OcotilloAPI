@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     ForeignKey,
     DateTime,
@@ -22,8 +24,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import mapped_column, relationship, Mapped
 
 from db.base import Base, AutoBaseMixin, ReleaseMixin, lexicon_term
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from db.sample import Sample
@@ -64,6 +64,10 @@ class Observation(Base, AutoBaseMixin, ReleaseMixin):
     )
     unit: Mapped[str] = lexicon_term(nullable=False)
     notes: Mapped[str] = mapped_column(nullable=True)
+    nma_data_quality: Mapped[str] = lexicon_term(
+        nullable=True,
+        comment="Legacy WaterLevels DataQuality mapped to lexicon term",
+    )
 
     # groundwater
     measuring_point_height: Mapped[float] = mapped_column(

@@ -16,6 +16,7 @@
 from datetime import datetime, timezone, date
 from typing import Annotated
 
+from core.enums import ReleaseStatus
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -25,8 +26,6 @@ from pydantic import (
 from pydantic.functional_validators import AfterValidator
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
-
-from core.enums import ReleaseStatus
 
 DT_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -53,13 +52,25 @@ class BaseUpdateModel(BaseCreateModel):
     release_status: ReleaseStatus | None = None
 
 
-def past_or_today_validator(value: date) -> date:
-    if value > date.today():
+def past_or_today_validator(
+    value: date | datetime | None,
+) -> date | datetime | None:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            if value > datetime.now():
+                raise ValueError("Datetime must be in the past or present.")
+        elif value > datetime.now(timezone.utc):
+            raise ValueError("Datetime must be in the past or present.")
+    elif value > date.today():
         raise ValueError("Date must be today or in the past.")
     return value
 
 
 PastOrTodayDate = Annotated[date, AfterValidator(past_or_today_validator)]
+PastOrTodayDatetime = Annotated[datetime, AfterValidator(past_or_today_validator)]
 
 
 # Custom type for UTC datetime serialization

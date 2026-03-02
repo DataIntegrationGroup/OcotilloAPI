@@ -262,6 +262,7 @@ async def get_lexicon_term(
 async def get_lexicon_categories(
     session: session_dependency,
     user: viewer_dependency,
+    name: str | None = None,
     sort: str = "name",
     order: str = "asc",
     filter_: str = Query(alias="filter", default=None),
@@ -269,6 +270,10 @@ async def get_lexicon_categories(
     """
     Endpoint to retrieve lexicon categories.
     """
+    if name:
+        sql = select(LexiconCategory).where(LexiconCategory.name.ilike(f"%{name}%"))
+        return paginated_all_getter(session, LexiconCategory, sort, order, filter_, sql)
+
     return paginated_all_getter(session, LexiconCategory, sort, order, filter_)
 
 
