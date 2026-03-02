@@ -62,15 +62,6 @@ def recreate_public_schema(session: Session) -> None:
     session.execute(text("DROP SCHEMA public CASCADE"))
     session.execute(text("CREATE SCHEMA public"))
     session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    pg_cron_available = session.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
     session.execute(APP_READ_GRANT_SQL)
     grant_app_read_members(session)
     session.commit()
