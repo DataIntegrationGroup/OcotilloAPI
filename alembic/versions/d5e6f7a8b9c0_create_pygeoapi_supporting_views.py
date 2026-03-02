@@ -314,12 +314,8 @@ def upgrade() -> None:
             ")"
         )
     ).scalar()
-    if not pg_cron_available:
-        raise RuntimeError(
-            "Cannot schedule nightly pygeoapi materialized view refresh job: "
-            "pg_cron extension is not available on this PostgreSQL server."
-        )
-    op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
+    if pg_cron_available:
+        op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
 
     for view_id, thing_type in THING_COLLECTIONS:
         safe_view_id = _safe_view_id(view_id)
@@ -364,11 +360,21 @@ def upgrade() -> None:
     _create_matview_indexes()
 
     op.execute(text(_create_refresh_function()))
-    op.execute(text(_schedule_refresh_job()))
+    if pg_cron_available:
+        op.execute(text(_schedule_refresh_job()))
 
 
 def downgrade() -> None:
-    op.execute(text(_unschedule_refresh_job()))
+    bind = op.get_bind()
+    pg_cron_available = bind.execute(
+        text(
+            "SELECT EXISTS ("
+            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
+            ")"
+        )
+    ).scalar()
+    if pg_cron_available:
+        op.execute(text(_unschedule_refresh_job()))
     op.execute(text(f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"))
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
