@@ -135,12 +135,16 @@ def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
         ).all()
     )
 
-    # Query all radionuclides joined with sample info for nma_sample_pt_id
+    # Query all radionuclides joined with sample info for nma_sample_pt_id.
+    # ORDER BY id for deterministic processing — when multiple rows map to
+    # the same Sample, the lowest-PK row's volume/volume_unit wins.
     legacy_rows = session.execute(
-        select(NMA_Radionuclides, NMA_Chemistry_SampleInfo.nma_sample_pt_id).join(
+        select(NMA_Radionuclides, NMA_Chemistry_SampleInfo.nma_sample_pt_id)
+        .join(
             NMA_Chemistry_SampleInfo,
             NMA_Radionuclides.chemistry_sample_info_id == NMA_Chemistry_SampleInfo.id,
         )
+        .order_by(NMA_Radionuclides.id)
     ).all()
 
     logger.info("Processing %d legacy Radionuclides rows", len(legacy_rows))
@@ -238,14 +242,36 @@ def _backfill_radionuclides_impl(session: Session) -> BackfillResult:
                 result.inserted += 1
                 existing_keys.add(global_id_str)
 
-            # Update Sample volume/volume_unit if present on legacy row
+            # Update Sample volume/volume_unit if present on legacy row.
+            # Only set when the sample doesn't already have a value to avoid
+            # nondeterministic overwrites when multiple rows share a sample.
             if row.volume is not None or row.volume_unit is not None:
                 sample = session.get(Sample, sample_id)
                 if sample:
                     if row.volume is not None:
-                        sample.volume = float(row.volume)
+                        if sample.volume is None:
+                            sample.volume = float(row.volume)
+                        elif float(sample.volume) != float(row.volume):
+                            logger.warning(
+                                "Sample id=%s already has volume=%s, "
+                                "skipping conflicting value %s from GlobalID=%s",
+                                sample_id,
+                                sample.volume,
+                                row.volume,
+                                global_id_str,
+                            )
                     if row.volume_unit is not None:
-                        sample.volume_unit = row.volume_unit
+                        if sample.volume_unit is None:
+                            sample.volume_unit = row.volume_unit
+                        elif sample.volume_unit != row.volume_unit:
+                            logger.warning(
+                                "Sample id=%s already has volume_unit=%s, "
+                                "skipping conflicting value %s from GlobalID=%s",
+                                sample_id,
+                                sample.volume_unit,
+                                row.volume_unit,
+                                global_id_str,
+                            )
 
             # Create Notes if present
             if row.notes:

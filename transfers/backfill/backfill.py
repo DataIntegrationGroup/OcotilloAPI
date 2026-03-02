@@ -53,6 +53,14 @@ def run() -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        logger.error(
+            "Unknown arguments: %s. "
+            "CLI options (--batch-size) were removed; "
+            "use BACKFILL_* env vars to control execution.",
+            " ".join(sys.argv[1:]),
+        )
+        sys.exit(2)
     try:
         run()
     except Exception:
