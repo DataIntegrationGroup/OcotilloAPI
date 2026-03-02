@@ -848,6 +848,8 @@ def after_scenario(context, scenario):
                 scenario.name,
                 exc_info=True,
             )
+        finally:
+            del context._backfill_created
 
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return
