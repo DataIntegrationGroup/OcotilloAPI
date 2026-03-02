@@ -283,24 +283,25 @@ def step_given_sample_with_chemistry_key(context: Context, sample_pt_id: str):
 # ---------------------------------------------------------------------------
 # WHEN steps
 # ---------------------------------------------------------------------------
-def _track_created_analysis_methods(context: Context):
-    """Record AnalysisMethod IDs created by the backfill for cleanup."""
-    _ensure_backfill_tracking(context)
-    scenario_sample_ids = context._backfill_created.get("sample_ids", [])
-    if not scenario_sample_ids:
-        return
+def _snapshot_analysis_method_ids() -> set[int]:
+    """Return the set of all AnalysisMethod IDs that exist before the backfill."""
     with session_ctx() as session:
-        # Scope to observations linked to this scenario's samples only
-        obs_am_ids = [
+        return {
             row[0]
-            for row in session.execute(
-                select(Observation.analysis_method_id).where(
-                    Observation.sample_id.in_(scenario_sample_ids),
-                    Observation.analysis_method_id.isnot(None),
-                )
-            ).all()
-        ]
-        context._backfill_created["analysis_method_ids"] = list(set(obs_am_ids))
+            for row in session.execute(select(AnalysisMethod.id)).all()
+        }
+
+
+def _track_created_analysis_methods(context: Context, pre_ids: set[int]):
+    """Record only AnalysisMethod IDs that were actually created by the backfill."""
+    _ensure_backfill_tracking(context)
+    with session_ctx() as session:
+        post_ids = {
+            row[0]
+            for row in session.execute(select(AnalysisMethod.id)).all()
+        }
+    new_ids = post_ids - pre_ids
+    context._backfill_created["analysis_method_ids"] = list(new_ids)
 
 
 @when("I run the Radionuclides backfill job")
@@ -308,8 +309,9 @@ def step_when_run_backfill(context: Context):
     """Execute the backfill and store the result on context."""
     from transfers.backfill.chemistry_backfill import backfill_radionuclides
 
+    pre_ids = _snapshot_analysis_method_ids()
     context.backfill_result = backfill_radionuclides()
-    _track_created_analysis_methods(context)
+    _track_created_analysis_methods(context, pre_ids)
 
 
 @when("I run the Radionuclides backfill job again")
@@ -317,8 +319,9 @@ def step_when_run_backfill_again(context: Context):
     """Re-run to verify idempotency."""
     from transfers.backfill.chemistry_backfill import backfill_radionuclides
 
+    pre_ids = _snapshot_analysis_method_ids()
     context.backfill_result = backfill_radionuclides()
-    _track_created_analysis_methods(context)
+    _track_created_analysis_methods(context, pre_ids)
 
 
 # ---------------------------------------------------------------------------
