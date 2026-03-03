@@ -37,7 +37,7 @@ def _create_latest_tds_view() -> str:
             SELECT
                 csi.thing_id,
                 mc.id AS major_chemistry_id,
-                COALESCE(mc."AnalysisDate", csi."CollectionDate")::date AS observation_date,
+                COALESCE(mc."AnalysisDate", csi."CollectionDate") AS observation_datetime,
                 mc."SampleValue" AS sample_value,
                 mc."Units" AS units
             FROM "NMA_MajorChemistry" AS mc
@@ -59,12 +59,12 @@ def _create_latest_tds_view() -> str:
             SELECT
                 to2.thing_id,
                 to2.major_chemistry_id,
-                to2.observation_date,
+                to2.observation_datetime,
                 to2.sample_value,
                 to2.units,
                 ROW_NUMBER() OVER (
                     PARTITION BY to2.thing_id
-                    ORDER BY to2.observation_date DESC NULLS LAST, to2.major_chemistry_id DESC
+                    ORDER BY to2.observation_datetime DESC NULLS LAST, to2.major_chemistry_id DESC
                 ) AS rn
             FROM tds_obs AS to2
         )
@@ -73,7 +73,7 @@ def _create_latest_tds_view() -> str:
             t.name,
             t.thing_type,
             rt.major_chemistry_id,
-            rt.observation_date AS latest_tds_observation_date,
+            rt.observation_datetime::date AS latest_tds_observation_date,
             rt.sample_value AS latest_tds_value,
             rt.units AS latest_tds_units,
             l.point

@@ -138,12 +138,83 @@ def test_latest_tds_observation_date_falls_back_to_collection_date(water_well_th
         session.commit()
 
 
+def test_latest_tds_uses_latest_timestamp_within_same_day(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="TDS-TIME",
+            collection_date=datetime(2024, 2, 1, 9, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        mc_early = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Total Dissolved Solids",
+            symbol="TDS",
+            sample_value=300.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 2, 1, 8, 0, 0),
+        )
+        mc_late = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Total Dissolved Solids",
+            symbol="TDS",
+            sample_value=700.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 2, 1, 18, 0, 0),
+        )
+        session.add(mc_early)
+        session.add(mc_late)
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_avg_tds_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT latest_tds_observation_date, latest_tds_value "
+                "FROM ogc_latest_tds_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert row.latest_tds_observation_date.isoformat() == "2024-02-01"
+        assert float(row.latest_tds_value) == 700.0
+
+        session.delete(mc_late)
+        session.delete(mc_early)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_avg_tds_wells"))
+        session.commit()
+
+
 def test_ogc_collections():
     response = client.get("/ogcapi/collections")
     assert response.status_code == 200
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
-    assert {"locations", "water_wells", "springs"}.issubset(ids)
+    assert {
+        "locations",
+        "water_wells",
+        "springs",
+        "latest_tds_wells",
+        "depth_to_water_trend_wells",
+        "water_well_summary",
+    }.issubset(ids)
+
+
+def test_ogc_new_collection_items_endpoints():
+    for collection_id in (
+        "latest_tds_wells",
+        "depth_to_water_trend_wells",
+        "water_well_summary",
+    ):
+        response = client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["type"] == "FeatureCollection"
 
 
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
