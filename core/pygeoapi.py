@@ -288,18 +288,17 @@ def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
             "PYGEOAPI_POSTGRES_USER or POSTGRES_USER must be set and non-empty "
             "to generate the pygeoapi configuration."
         )
-    password_value = os.environ.get("PYGEOAPI_POSTGRES_PASSWORD")
-    if password_value is None:
-        password_value = os.environ.get("POSTGRES_PASSWORD")
-    if password_value is None:
+    has_pygeoapi_password = os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is not None
+    has_postgres_password = os.environ.get("POSTGRES_PASSWORD") is not None
+    if not has_pygeoapi_password and not has_postgres_password:
         raise RuntimeError(
             "PYGEOAPI_POSTGRES_PASSWORD or POSTGRES_PASSWORD must be set to "
             "generate the pygeoapi configuration."
         )
-    # Normalize to a dedicated runtime env var used by generated pygeoapi config.
-    runtime_password_env_var = "PYGEOAPI_DB_AUTH_TOKEN"
-    os.environ[runtime_password_env_var] = password_value
-    return host, port, dbname, user, f"${{{runtime_password_env_var}}}"
+    password_env_var = (
+        "PYGEOAPI_POSTGRES_PASSWORD" if has_pygeoapi_password else "POSTGRES_PASSWORD"
+    )
+    return host, port, dbname, user, f"${{{password_env_var}}}"
 
 
 def _write_config(path: Path) -> None:
