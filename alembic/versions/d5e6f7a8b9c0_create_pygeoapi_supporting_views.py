@@ -71,9 +71,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
         SELECT
             t.id,
             t.name,
-            t.thing_type,
             t.first_visit_date,
-            t.spring_type,
             t.nma_pk_welldata,
             t.well_depth,
             t.hole_depth,
@@ -87,6 +85,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
             t.formation_completion_code,
             t.nma_formation_zone,
             t.release_status,
+            l.elevation,
             l.point
         FROM thing AS t
         JOIN latest_location AS ll ON ll.thing_id = t.id
@@ -152,7 +151,7 @@ def _create_avg_tds_view() -> str:
             SELECT
                 csi.thing_id,
                 mc.id AS major_chemistry_id,
-                mc."AnalysisDate" AS analysis_date,
+                COALESCE(mc."AnalysisDate", csi."CollectionDate")::date AS observation_date,
                 mc."SampleValue" AS sample_value,
                 mc."Units" AS units
             FROM "NMA_MajorChemistry" AS mc
@@ -176,8 +175,8 @@ def _create_avg_tds_view() -> str:
             t.thing_type,
             COUNT(to2.major_chemistry_id)::integer AS tds_observation_count,
             AVG(to2.sample_value)::double precision AS avg_tds_value,
-            MIN(to2.analysis_date) AS first_tds_observation_datetime,
-            MAX(to2.analysis_date) AS latest_tds_observation_datetime,
+            MIN(to2.observation_date) AS first_tds_observation_date,
+            MAX(to2.observation_date) AS last_tds_observation_date,
             l.point
         FROM tds_obs AS to2
         JOIN thing AS t ON t.id = to2.thing_id

@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import pytest
+from datetime import datetime
 from importlib.util import find_spec
+
+import pytest
+from sqlalchemy import text
 
 from core.dependencies import (
     admin_function,
@@ -24,6 +27,8 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry
+from db.engine import session_ctx
 from main import app
 from tests import client, override_authentication
 
@@ -69,6 +74,68 @@ def test_ogc_conformance():
     payload = response.json()
     assert "conformsTo" in payload
     assert any("ogcapi-features" in item for item in payload["conformsTo"])
+
+
+def test_ogc_openapi_has_paths():
+    response = client.get("/ogcapi/openapi?f=json")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["openapi"].startswith("3.")
+    assert payload["paths"]
+    assert "/collections" in payload["paths"]
+
+
+def test_latest_tds_observation_date_falls_back_to_collection_date(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="TDS-FALLBK",
+            collection_date=datetime(2024, 1, 15, 12, 30, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        mc = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Total Dissolved Solids",
+            symbol="TDS",
+            sample_value=500.0,
+            units="mg/L",
+            analysis_date=None,
+        )
+        session.add(mc)
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_avg_tds_wells"))
+        session.commit()
+
+        latest_dt = session.execute(
+            text(
+                "SELECT latest_tds_observation_date "
+                "FROM ogc_latest_tds_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).scalar_one()
+        avg_range = session.execute(
+            text(
+                "SELECT first_tds_observation_date, last_tds_observation_date "
+                "FROM ogc_avg_tds_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert latest_dt is not None
+        assert latest_dt.isoformat() == "2024-01-15"
+        assert avg_range.first_tds_observation_date is not None
+        assert avg_range.last_tds_observation_date is not None
+        assert avg_range.first_tds_observation_date.isoformat() == "2024-01-15"
+        assert avg_range.last_tds_observation_date.isoformat() == "2024-01-15"
+
+        session.delete(mc)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_avg_tds_wells"))
+        session.commit()
 
 
 def test_ogc_collections():

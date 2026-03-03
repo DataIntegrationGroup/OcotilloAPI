@@ -265,21 +265,43 @@ def _thing_collections_block(
 
 
 def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
-    host = (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip() or "127.0.0.1"
-    port = (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip() or "5432"
-    dbname = (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip() or "postgres"
-    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip()
+    host = (
+        (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip()
+        or (os.environ.get("POSTGRES_HOST") or "").strip()
+        or "127.0.0.1"
+    )
+    port = (
+        (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip()
+        or (os.environ.get("POSTGRES_PORT") or "").strip()
+        or "5432"
+    )
+    dbname = (
+        (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip()
+        or (os.environ.get("POSTGRES_DB") or "").strip()
+        or "postgres"
+    )
+    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip() or (
+        os.environ.get("POSTGRES_USER") or ""
+    ).strip()
     if not user:
         raise RuntimeError(
-            "PYGEOAPI_POSTGRES_USER must be set and non-empty to generate the "
-            "pygeoapi configuration."
+            "PYGEOAPI_POSTGRES_USER or POSTGRES_USER must be set and non-empty "
+            "to generate the pygeoapi configuration."
         )
-    if os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is None:
+    if (
+        os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is None
+        and os.environ.get("POSTGRES_PASSWORD") is None
+    ):
         raise RuntimeError(
-            "PYGEOAPI_POSTGRES_PASSWORD must be set to "
+            "PYGEOAPI_POSTGRES_PASSWORD or POSTGRES_PASSWORD must be set to "
             "generate the pygeoapi configuration."
         )
-    return host, port, dbname, user, "${PYGEOAPI_POSTGRES_PASSWORD}"
+    password_env_var = (
+        "PYGEOAPI_POSTGRES_PASSWORD"
+        if os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is not None
+        else "POSTGRES_PASSWORD"
+    )
+    return host, port, dbname, user, f"${{{password_env_var}}}"
 
 
 def _write_config(path: Path) -> None:
@@ -312,15 +334,14 @@ def _write_config(path: Path) -> None:
     path.write_text(config, encoding="utf-8")
 
 
-def _generate_openapi(_config_path: Path, openapi_path: Path) -> None:
-    openapi = f"""openapi: 3.0.2
-info:
-  title: Ocotillo OGC API
-  version: 1.0.0
-servers:
-  - url: {_server_url()}
-paths: {{}}
-"""
+def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
+    from pygeoapi.openapi import generate_openapi_document
+
+    # Avoid startup failures when backing tables are not yet present; pygeoapi
+    # will skip invalid collections and still emit a standards-compliant spec.
+    openapi = generate_openapi_document(
+        config_path, "yaml", fail_on_invalid_collection=False
+    )
     openapi_path.write_text(openapi, encoding="utf-8")
 
 
