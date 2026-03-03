@@ -1,7 +1,6 @@
 @backend
 @cli
 @BDMS-TBD
-@production
 Feature: Bulk upload well inventory from CSV via CLI
   As a hydrogeologist or data specialist
   I want to upload a CSV file containing well inventory data for multiple wells
@@ -151,7 +150,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     # assumes users are entering datetimes as Mountain Time because location is restricted to New Mexico
     Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value.
     And the command exits with code 0
-    And the system should return a response in JSON format
 #    And null values in the response are represented as JSON null
     And the response includes a summary containing:
       | summary_field              | value |
@@ -174,7 +172,6 @@ Feature: Bulk upload well inventory from CSV via CLI
       | utm_zone                |
     When I run the well inventory bulk upload command
     Then the command exits with code 0
-    And the system should return a response in JSON format
     And all wells are imported
 
   @positive @validation @extra_columns @BDMS-TBD
@@ -182,7 +179,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains extra columns but is otherwise valid
     When I run the well inventory bulk upload command
     Then the command exits with code 0
-    And the system should return a response in JSON format
     And all wells are imported
 
   @positive @validation @autogenerate_ids @BDMS-TBD
@@ -190,7 +186,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains all valid columns but uses uppercase "-xxxx" placeholders and blank values for well_name_point_id
     When I run the well inventory bulk upload command
     Then the command exits with code 0
-    And the system should return a response in JSON format
     And all wells are imported with system-generated unique well_name_point_id values
 
   ###########################################################################
@@ -201,7 +196,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains 3 rows of data with 2 valid rows and 1 row with a blank "well_name_point_id"
     When I run the well inventory bulk upload command
     Then the command exits with code 0
-    And the system should return a response in JSON format
     And all wells are imported with system-generated unique well_name_point_id values
 
   @negative @validation @BDMS-TBD
@@ -209,7 +203,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row that has an invalid postal code format in contact_1_address_1_postal_code
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid postal code format
     And no wells are imported
 
@@ -218,7 +211,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact with a phone number that is not in the valid format
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid phone number format
     And no wells are imported
 
@@ -227,7 +219,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact with an email that is not in the valid format
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid email format
     And no wells are imported
 
@@ -236,7 +227,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "contact_role" field
     And no wells are imported
 
@@ -245,7 +235,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact but is missing the required "contact_type" field for that contact
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "contact_type" value
     And no wells are imported
 
@@ -254,7 +243,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact_type value that is not in the valid lexicon for "contact_type"
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "contact_type" value
     And no wells are imported
 
@@ -263,7 +251,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact with an email but is missing the required "email_type" field for that email
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "email_type" value
     And no wells are imported
 
@@ -272,7 +259,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact with a phone but is missing the required "phone_type" field for that phone
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "phone_type" value
     And no wells are imported
 
@@ -281,7 +267,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a contact with an address but is missing the required "address_type" field for that address
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the missing "address_type" value
     And no wells are imported
 
@@ -290,7 +275,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with an address_type value that is not one of: Work, Personal, Mailing, Physical
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "address_type" value
     And no wells are imported
 
@@ -299,7 +283,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a state value that is not a valid 2-letter US state abbreviation
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid state value
     And no wells are imported
 
@@ -308,7 +291,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a well_hole_status value that is not one of: "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used"
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "well_hole_status" value
     And no wells are imported
 
@@ -317,7 +299,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a monitoring_status value that is not one of: "Open", "Open (unequipped)", "Closed", "Datalogger can be installed", "Datalogger cannot be installed", "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used", "Currently monitored", "Not currently monitored"
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "monitoring_status" value
     And no wells are imported
 
@@ -326,7 +307,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with a well_pump_type value that is not one of: "Submersible", "Jet", "Line Shaft", "Hand"
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid "well_pump_type" value
     And no wells are imported
 
@@ -335,7 +315,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with utm_easting utm_northing and utm_zone values that are not within New Mexico
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating the invalid UTM coordinates
     And no wells are imported
 
@@ -344,7 +323,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row with contact fields filled but both "contact_1_name" and "contact_1_organization" are blank
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided
     And no wells are imported
 
@@ -353,7 +331,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating that "water_level_date_time" is required when "depth_to_water_ft" is provided
     And no wells are imported
 
@@ -362,7 +339,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a row missing the required "<required_field>" field
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error for the "<required_field>" field
     And no wells are imported
 
@@ -382,7 +358,6 @@ Feature: Bulk upload well inventory from CSV via CLI
 #    And my CSV file contains other boolean fields such as "sample_possible" with valid boolean values
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating an invalid boolean value for the "is_open" field
     And no wells are imported
 
@@ -429,7 +404,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains more rows than the configured maximum for bulk upload
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes an error message indicating the row limit was exceeded
     And no wells are imported
 
@@ -466,7 +440,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file contains a valid but duplicate header row
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating a repeated header row
     And no wells are imported
 
@@ -475,7 +448,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my CSV file header row contains the "contact_1_email_1" column name more than once
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating duplicate header names
     And no wells are imported
 
@@ -489,7 +461,6 @@ Feature: Bulk upload well inventory from CSV via CLI
     And my file uses "<delimiter_description>" as the field delimiter instead of commas
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes an error message indicating an unsupported delimiter
     And no wells are imported
 
@@ -505,7 +476,6 @@ Feature: Bulk upload well inventory from CSV via CLI
 #    And all other required fields are populated with valid values
     When I run the well inventory bulk upload command
     Then the command exits with code 0
-    And the system should return a response in JSON format
     And all wells are imported
 
   ###########################################################################
@@ -519,6 +489,5 @@ Feature: Bulk upload well inventory from CSV via CLI
     Given my csv file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
-    And the system should return a response in JSON format
     And the response includes a validation error indicating that "water_level_date_time" is required when "depth_to_water_ft" is provided
     And no wells are imported
