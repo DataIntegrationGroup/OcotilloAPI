@@ -27,19 +27,20 @@ Feature: Bulk upload water level entries from CSV via CLI
       | field_staff           |
       | well_name_point_id    |
       | field_event_date_time |
-      | water_level_date_time |
       | measuring_person      |
-      | sample_method         |
-      | mp_height             |
-      | level_status          |
-      | depth_to_water_ft     |
-      | data_quality          |
     And each "well_name_point_id" value matches an existing well
+    And "field_event_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T08:00:00")
     And "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
     And the CSV includes optional fields when available:
       | optional field name |
       | field_staff_2       |
       | field_staff_3       |
+      | water_level_date_time |
+      | sample_method         |
+      | mp_height             |
+      | level_status          |
+      | depth_to_water_ft     |
+      | data_quality          |
       | water_level_notes   |
     When I run the CLI command:
       """
@@ -60,19 +61,15 @@ Feature: Bulk upload water level entries from CSV via CLI
     Given my water level CSV file contains all required headers but in a different column order
     And the CSV includes required fields:
       | required field name   |
+      | field_staff           |
       | well_name_point_id    |
-      | water_level_date_time |
+      | field_event_date_time |
       | measuring_person      |
-      | sample_method         |
-      | mp_height             |
-      | level_status          |
-      | depth_to_water_ft     |
-      | data_quality          |
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    # assumes users are entering datetimes as Mountain Time becuase well location is restricted to New Mexico
+    # assumes users are entering datetimes as Mountain Time because well location is restricted to New Mexico
     Then all datetime objects are assigned the correct Mountain Time timezone offset based on the date value. 
     And the command exits with code 0
     And all water level entries are imported
@@ -117,14 +114,10 @@ Feature: Bulk upload water level entries from CSV via CLI
 
     Examples:
       | required_field        |
+      | field_staff           |
       | well_name_point_id    |
-      | water_level_date_time |
+      | field_event_date_time |
       | measuring_person      |
-      | sample_method         |
-      | mp_height             |
-      | level_status          |
-      | depth_to_water_ft     |
-      | data_quality          |
 
   @negative @validation @date_formats @BDMS-TBD
   Scenario: Upload fails due to invalid date formats
@@ -148,13 +141,13 @@ Feature: Bulk upload water level entries from CSV via CLI
     And stderr should contain validation errors identifying the invalid field and row
     And no water level entries are imported
 
-  @negative @validation @lexicon_values @BDMS-TBD
-  Scenario: Upload fails due to invalid lexicon values
-    Given my CSV file contains invalid lexicon values for "measuring_person", "sample_method", "level_status", or "data_quality"
+  @negative @validation @string_fields @BDMS-TBD
+  Scenario: Upload accepts free-text values for measuring person and water level descriptors
+    Given my CSV file contains non-lexicon text values for "measuring_person", "sample_method", "level_status", and "data_quality"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    Then the command exits with a non-zero exit code
-    And stderr should contain validation errors identifying the invalid field and row
-    And no water level entries are imported
+    Then the command exits with code 0
+    And all water level entries are imported
+    And stderr should be empty
