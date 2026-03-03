@@ -179,7 +179,13 @@ def upgrade() -> None:
     bind = op.get_bind()
     inspector = inspect(bind)
     existing_tables = set(inspector.get_table_names(schema="public"))
-    required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
+    required_tds = {
+        "NMA_MajorChemistry",
+        "NMA_Chemistry_SampleInfo",
+        "thing",
+        "location",
+        "location_thing_association",
+    }
 
     if not required_tds.issubset(existing_tables):
         missing_tds_tables = sorted(t for t in required_tds if t not in existing_tables)
