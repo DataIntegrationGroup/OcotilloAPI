@@ -35,7 +35,7 @@ jobs:
       - name: Check out source repository
         uses: actions/checkout@v6.0.2
 
-      - name: Start database (PostGIS + pg_cron)
+      - name: Start database (PostGIS)
         run: |
           docker compose build db
           docker compose up -d db
@@ -81,7 +81,6 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'ocotilloapi_test'" | grep -q 1 || \
             PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
-          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS pg_cron"
 
       - name: Run tests
         run: uv run pytest -vv --durations=20 --cov --cov-report=xml --junitxml=junit.xml --ignore=tests/transfers
@@ -121,7 +120,7 @@ jobs:
       - name: Check out source repository
         uses: actions/checkout@v6.0.2
 
-      - name: Start database (PostGIS + pg_cron)
+      - name: Start database (PostGIS)
         run: |
           docker compose build db
           docker compose up -d db
@@ -167,7 +166,6 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'ocotilloapi_test'" | grep -q 1 || \
             PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -c "CREATE DATABASE ocotilloapi_test"
           PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS postgis"
-          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d ocotilloapi_test -c "CREATE EXTENSION IF NOT EXISTS pg_cron"
 
       - name: Run BDD tests
         run: uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
