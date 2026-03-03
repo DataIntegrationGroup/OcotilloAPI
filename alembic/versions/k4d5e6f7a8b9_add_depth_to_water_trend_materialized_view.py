@@ -76,6 +76,7 @@ def _create_depth_to_water_trend_view() -> str:
             CASE
                 WHEN a.record_count >= 10 OR (a.record_count >= 4 AND a.span_years >= 2.0) THEN
                     CASE
+                        WHEN a.slope_ft_per_year IS NULL THEN 'not enough data'
                         WHEN a.slope_ft_per_year > 0.25 THEN 'increasing'
                         WHEN a.slope_ft_per_year < -0.25 THEN 'decreasing'
                         ELSE 'stable'
