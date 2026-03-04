@@ -37,8 +37,8 @@ jobs:
 
       - name: Start database (PostGIS)
         run: |
-          docker compose build db
-          docker compose up -d db
+          docker compose build db_dev
+          docker compose up -d db_dev
 
       - name: Wait for database readiness
         run: |
@@ -122,8 +122,8 @@ jobs:
 
       - name: Start database (PostGIS)
         run: |
-          docker compose build db
-          docker compose up -d db
+          docker compose build db_dev
+          docker compose up -d db_dev
 
       - name: Wait for database readiness
         run: |
