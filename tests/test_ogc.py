@@ -190,6 +190,77 @@ def test_latest_tds_uses_latest_timestamp_within_same_day(water_well_thing):
         session.commit()
 
 
+def test_ogc_normalized_major_chemistry_uses_latest_per_analyte(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MAJOR-NORM-01",
+            collection_date=datetime(2024, 3, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Older calcium result
+        calcium_old = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=80.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 1, 9, 0, 0),
+        )
+        # Newer calcium result that should win for calcium + calcium_units
+        calcium_new = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=95.0,
+            units="mg/L as CaCO3",
+            analysis_date=datetime(2024, 3, 2, 9, 0, 0),
+        )
+        # Separate analyte with even later date to drive latest_chemistry_date
+        chloride = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Cl",
+            symbol="",
+            sample_value=40.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 3, 8, 0, 0),
+        )
+
+        session.add_all([calcium_old, calcium_new, chloride])
+        session.commit()
+
+        session.execute(
+            text("REFRESH MATERIALIZED VIEW ogc_normalized_chemistry_results")
+        )
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT calcium, calcium_units, chloride, chloride_units, latest_chemistry_date "
+                "FROM ogc_normalized_chemistry_results WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.calcium) == 95.0
+        assert row.calcium_units == "mg/L as CaCO3"
+        assert float(row.chloride) == 40.0
+        assert row.chloride_units == "mg/L"
+        assert row.latest_chemistry_date.isoformat() == "2024-03-03"
+
+        session.delete(chloride)
+        session.delete(calcium_new)
+        session.delete(calcium_old)
+        session.delete(csi)
+        session.commit()
+        session.execute(
+            text("REFRESH MATERIALIZED VIEW ogc_normalized_chemistry_results")
+        )
+        session.commit()
+
+
 def test_ogc_collections():
     response = client.get("/ogcapi/collections")
     assert response.status_code == 200
