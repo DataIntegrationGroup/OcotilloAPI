@@ -272,11 +272,14 @@ def step_then_response_includes_invalid_well_pump_type_error(context: Context):
 
 
 @then(
-    'the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided'
+    'the response includes validation errors indicating that both "contact_1_name" and "contact_1_organization" must be provided when any contact information is present'
 )
 def step_then_response_includes_contact_name_or_org_required_error(context: Context):
     _assert_any_validation_error_contains(
         context, "composite field error", "contact_1_name is required"
+    )
+    _assert_any_validation_error_contains(
+        context, "composite field error", "contact_1_organization is required"
     )
 
 
