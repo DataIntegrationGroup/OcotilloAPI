@@ -31,6 +31,7 @@ Feature: Bulk upload water level entries from CSV via CLI
     And each "well_name_point_id" value matches an existing well
     And "field_event_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T08:00:00")
     And "water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")
+    And when provided, "sample_method", "level_status", and "data_quality" values are valid lexicon values
     And the CSV includes optional fields when available:
       | optional field name |
       | field_staff_2       |
@@ -141,13 +142,13 @@ Feature: Bulk upload water level entries from CSV via CLI
     And stderr should contain validation errors identifying the invalid field and row
     And no water level entries are imported
 
-  @negative @validation @string_fields @BDMS-TBD
-  Scenario: Upload accepts free-text values for measuring person and water level descriptors
-    Given my CSV file contains non-lexicon text values for "measuring_person", "sample_method", "level_status", and "data_quality"
+  @negative @validation @lexicon_values @BDMS-TBD
+  Scenario: Upload fails due to invalid lexicon values for water level descriptor fields
+    Given my CSV file contains invalid lexicon values for "sample_method", "level_status", or "data_quality"
     When I run the CLI command:
       """
       oco water-levels bulk-upload --file ./water_levels.csv
       """
-    Then the command exits with code 0
-    And all water level entries are imported
-    And stderr should be empty
+    Then the command exits with a non-zero exit code
+    And stderr should contain validation errors identifying the invalid field and row
+    And no water level entries are imported
