@@ -1,7 +1,7 @@
 # keep docker-compose.yml in root directory to configure with root .env
 
 services:
-  db:
+  db_dev:
     build:
       context: .
       dockerfile: ./docker/db/Dockerfile
@@ -9,13 +9,32 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB=ocotilloapi_dev
     ports:
       - 5432:5432
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ocotilloapi_dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  db_test:
+    build:
+      context: .
+      dockerfile: ./docker/db/Dockerfile
+    platform: linux/amd64
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=ocotilloapi_test
+    ports:
+      - 5433:5432
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ocotilloapi_test"]
       interval: 2s
       timeout: 5s
       retries: 20
@@ -27,20 +46,21 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=db
+      - POSTGRES_DB=ocotilloapi_dev
+      - POSTGRES_HOST=db_dev
       - POSTGRES_PORT=5432
       - MODE=${MODE}
       - AUTHENTIK_DISABLE_AUTHENTICATION=${AUTHENTIK_DISABLE_AUTHENTICATION}
     ports:
       - 8000:8000
     depends_on:
-      db:
+      db_dev:
         condition: service_healthy # <-- wait for DB to be ready
     links:
-      - db
+      - db_dev
     volumes:
       - .:/app
 
 volumes:
-  postgres_data:
+  postgres_data_dev:
+  postgres_data_test:

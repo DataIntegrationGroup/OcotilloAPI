@@ -55,6 +55,7 @@ PYGEOAPI_MATERIALIZED_VIEWS = (
     "ogc_avg_tds_wells",
     "ogc_depth_to_water_trend_wells",
     "ogc_water_well_summary",
+    "ogc_normalized_chemistry_results",
 )
 
 

@@ -1,7 +1,12 @@
 #!/bin/sh
+
+DB_HOST="${POSTGRES_HOST:-db}"
+DB_PORT="${POSTGRES_PORT:-5432}"
+DB_NAME="${POSTGRES_DB:-postgres}"
+
 # Wait for PostgreSQL to be ready
-until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h db -p 5432 -U "$POSTGRES_USER"; do
-  echo "Waiting for postgres..."
+until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -d "$DB_NAME"; do
+  echo "Waiting for postgres at ${DB_HOST}:${DB_PORT}/${DB_NAME}..."
   sleep 2
 done
 echo "PostgreSQL is ready!"
