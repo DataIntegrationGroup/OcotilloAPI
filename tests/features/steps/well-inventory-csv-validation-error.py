@@ -272,15 +272,26 @@ def step_then_response_includes_invalid_well_pump_type_error(context: Context):
 
 
 @then(
+    'the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided'
+)
+@then(
     'the response includes validation errors indicating that both "contact_1_name" and "contact_1_organization" must be provided when any contact information is present'
 )
 def step_then_response_includes_contact_name_or_org_required_error(context: Context):
-    _assert_any_validation_error_contains(
-        context, "composite field error", "contact_1_name is required"
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert validation_errors, "Expected at least one validation error"
+    found = any(
+        "composite field error" in str(err.get("field", ""))
+        and (
+            "contact_1_name is required" in str(err.get("error", ""))
+            or "contact_1_organization is required" in str(err.get("error", ""))
+        )
+        for err in validation_errors
     )
-    _assert_any_validation_error_contains(
-        context, "composite field error", "contact_1_organization is required"
-    )
+    assert (
+        found
+    ), "Expected contact validation error requiring contact_1_name or contact_1_organization"
 
 
 @then(
