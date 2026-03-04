@@ -195,11 +195,12 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                         added = _add_csv_row(session, group, model, user)
                         wells.append(added)
             except ValueError as e:
+                error_text = str(e)
                 validation_errors.append(
                     {
                         "row": current_row_id or "unknown",
-                        "field": "Invalid value",
-                        "error": str(e),
+                        "field": _extract_field_from_value_error(error_text),
+                        "error": error_text,
                     }
                 )
                 session.rollback()
@@ -236,6 +237,16 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         },
         "wells": wells,
     }
+
+
+def _extract_field_from_value_error(error_text: str) -> str:
+    """Best-effort extraction of field name from wrapped validation errors."""
+    lines = [line.strip() for line in error_text.splitlines() if line.strip()]
+    if len(lines) >= 3 and re.match(r"^\d+ validation error", lines[0]):
+        field_name = lines[1]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", field_name):
+            return field_name
+    return "Invalid value"
 
 
 def _make_location(model) -> Location:

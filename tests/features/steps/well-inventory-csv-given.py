@@ -50,7 +50,7 @@ def step_step_step(context: Context):
 
 
 @given(
-    "my CSV file contains a row  that has an invalid postal code format in contact_1_address_1_postal_code"
+    "my CSV file contains a row that has an invalid postal code format in contact_1_address_1_postal_code"
 )
 def step_step_step_2(context: Context):
     _set_file_content(context, "well-inventory-invalid-postal-code.csv")
@@ -359,6 +359,78 @@ def step_step_step_20(context: Context):
     "my csv file contains a row where some but not all water level entry fields are filled"
 )
 def step_step_step_21(context):
+    _set_file_content(context, "well-inventory-missing-wl-fields.csv")
+
+
+@given(
+    "my CSV file contains a row with an address_type value that is not one of: Work, Personal, Mailing, Physical"
+)
+def step_given_row_contains_invalid_address_type_value(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "contact_1_address_1_type"] = "InvalidAddressType"
+    _set_content_from_df(context, df)
+
+
+@given(
+    "my CSV file contains a row with a state value that is not a valid 2-letter US state abbreviation"
+)
+def step_given_row_contains_invalid_state_value(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "contact_1_address_1_state"] = "New Mexico"
+    _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains a row with a well_hole_status value that is not one of: "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used"'
+)
+def step_given_row_contains_invalid_well_hole_status_value(context: Context):
+    df = _get_valid_df(context)
+    if "well_status" in df.columns:
+        df.loc[0, "well_status"] = "NotARealWellHoleStatus"
+    _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains a row with a monitoring_status value that is not one of: "Open", "Open (unequipped)", "Closed", "Datalogger can be installed", "Datalogger cannot be installed", "Abandoned", "Active, pumping well", "Destroyed, exists but not usable", "Inactive, exists but not used", "Currently monitored", "Not currently monitored"'
+)
+def step_given_row_contains_invalid_monitoring_status_value(context: Context):
+    df = _get_valid_df(context)
+    if "monitoring_frequency" in df.columns:
+        df.loc[0, "monitoring_frequency"] = "NotARealMonitoringStatus"
+    _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains a row with a well_pump_type value that is not one of: "Submersible", "Jet", "Line Shaft", "Hand"'
+)
+def step_given_row_contains_invalid_well_pump_type_value(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "well_pump_type"] = "NotARealPumpType"
+    _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains a row with contact fields filled but both "contact_1_name" and "contact_1_organization" are blank'
+)
+def step_given_row_contains_contact_fields_but_name_and_org_are_blank(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "contact_1_name"] = ""
+    df.loc[0, "contact_1_organization"] = ""
+    # Keep other contact data present so composite contact validation is exercised.
+    df.loc[0, "contact_1_role"] = "Owner"
+    df.loc[0, "contact_1_type"] = "Primary"
+    _set_content_from_df(context, df)
+
+
+@given(
+    'my CSV file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank'
+)
+@given(
+    'my csv file contains a row where "depth_to_water_ft" is filled but "water_level_date_time" is blank'
+)
+def step_given_depth_to_water_is_filled_but_water_level_date_time_is_blank(
+    context: Context,
+):
     _set_file_content(context, "well-inventory-missing-wl-fields.csv")
 
 
