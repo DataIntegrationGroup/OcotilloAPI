@@ -268,7 +268,7 @@ def step_then_response_includes_invalid_monitoring_status_error(context: Context
     'the response includes a validation error indicating an invalid "well_pump_type" value'
 )
 def step_then_response_includes_invalid_well_pump_type_error(context: Context):
-    _assert_any_validation_error_contains(context, "Invalid value", "well_pump_type")
+    _assert_any_validation_error_contains(context, "well_pump_type", "Input should be")
 
 
 @then(
