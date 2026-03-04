@@ -26,7 +26,6 @@ from schemas.create.lexicon import (
 from services.lexicon import add_lexicon_term
 from sqlalchemy import select
 
-
 router = APIRouter(
     prefix="/lexicon",
 )

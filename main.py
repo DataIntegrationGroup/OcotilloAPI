@@ -30,7 +30,6 @@ from api.publication import router as publication_router
 from api.author import router as author_router
 from api.asset import router as asset_router
 
-
 app.include_router(base_router)
 app.include_router(location_router)
 app.include_router(thing_router)

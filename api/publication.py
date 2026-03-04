@@ -22,7 +22,6 @@ from schemas.response.publication import PublicationResponse
 from services.publication_helper import add_publication
 from sqlalchemy.orm import Session
 
-
 router = APIRouter(
     prefix="/publication",
     tags=["publication"],

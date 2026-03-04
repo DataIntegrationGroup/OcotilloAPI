@@ -17,7 +17,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-
 # class CreateAnalysisSet(BaseModel):
 #     well_id: int  # mapped_column(Integer, ForeignKey('well.id'))
 #     laboratory: str | None = None  # mapped_column(String(100), nullable=True)

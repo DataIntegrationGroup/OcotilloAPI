@@ -19,7 +19,6 @@ from db.lexicon import Lexicon
 # from schemas.create.chemistry import CreateWaterChemistryAnalysis
 from services.validation import get_category
 
-
 # async def validate_analyte(analysis_data: CreateWaterChemistryAnalysis):
 #     # get valid analytes from the database
 #     valid_analytes = get_category("water_chemistry")
