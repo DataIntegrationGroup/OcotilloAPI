@@ -246,6 +246,7 @@ def _create_normalized_chemistry_results_view() -> str:
         JOIN latest_location AS ll ON ll.thing_id = t.id
         JOIN location AS l ON l.id = ll.location_id
         WHERE lr.rn = 1
+          AND t.thing_type = 'water well'
         GROUP BY t.id, ll.location_id, t.name, t.thing_type, l.point
     """
 

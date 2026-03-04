@@ -203,6 +203,7 @@ def test_ogc_collections():
         "depth_to_water_trend_wells",
         "water_well_summary",
         "normalized_chemistry_results",
+        "minor_chemistry_wells",
     }.issubset(ids)
 
 
@@ -212,6 +213,7 @@ def test_ogc_new_collection_items_endpoints():
         "depth_to_water_trend_wells",
         "water_well_summary",
         "normalized_chemistry_results",
+        "minor_chemistry_wells",
     ):
         response = client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
         assert response.status_code == 200
