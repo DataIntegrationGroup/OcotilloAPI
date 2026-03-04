@@ -1,4 +1,5 @@
 #!/bin/sh
+set -eu
 
 DB_HOST="${POSTGRES_HOST:-db}"
 DB_PORT="${POSTGRES_PORT:-5432}"

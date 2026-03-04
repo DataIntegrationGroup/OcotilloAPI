@@ -21,6 +21,8 @@ services:
       retries: 20
 
   db_test:
+    profiles:
+      - test
     build:
       context: .
       dockerfile: ./docker/db/Dockerfile
