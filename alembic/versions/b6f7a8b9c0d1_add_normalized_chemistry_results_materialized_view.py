@@ -80,11 +80,11 @@ def _static_analyte_unit_columns() -> str:
     )
 
 
-def _create_normalized_chemistry_results_view() -> str:
+def _create_major_chemistry_results_view() -> str:
     static_columns = _static_analyte_select_columns()
     static_unit_columns = _static_analyte_unit_columns()
     return f"""
-        CREATE MATERIALIZED VIEW ogc_normalized_chemistry_results AS
+        CREATE MATERIALIZED VIEW ogc_major_chemistry_results AS
         WITH latest_location AS (
 {LATEST_LOCATION_CTE}
         ),
@@ -100,7 +100,10 @@ def _create_normalized_chemistry_results_view() -> str:
             FROM "NMA_MajorChemistry" AS mc
             JOIN "NMA_Chemistry_SampleInfo" AS csi
                 ON csi.id = mc.chemistry_sample_info_id
+            JOIN thing AS t
+                ON t.id = csi.thing_id
             WHERE mc."SampleValue" IS NOT NULL
+              AND t.thing_type = 'water well'
         ),
         normalized_rows AS (
             SELECT
@@ -246,7 +249,6 @@ def _create_normalized_chemistry_results_view() -> str:
         JOIN latest_location AS ll ON ll.thing_id = t.id
         JOIN location AS l ON l.id = ll.location_id
         WHERE lr.rn = 1
-          AND t.thing_type = 'water well'
         GROUP BY t.id, ll.location_id, t.name, t.thing_type, l.point
     """
 
@@ -266,29 +268,31 @@ def upgrade() -> None:
     if not required_tables.issubset(existing_tables):
         missing = sorted(t for t in required_tables if t not in existing_tables)
         raise RuntimeError(
-            "Cannot create ogc_normalized_chemistry_results. Missing required tables: "
+            "Cannot create ogc_major_chemistry_results. Missing required tables: "
             + ", ".join(missing)
         )
 
+    op.execute(text("DROP MATERIALIZED VIEW IF EXISTS ogc_major_chemistry_results"))
     op.execute(
         text("DROP MATERIALIZED VIEW IF EXISTS ogc_normalized_chemistry_results")
     )
-    op.execute(text(_create_normalized_chemistry_results_view()))
+    op.execute(text(_create_major_chemistry_results_view()))
     op.execute(
         text(
-            "COMMENT ON MATERIALIZED VIEW ogc_normalized_chemistry_results IS "
+            "COMMENT ON MATERIALIZED VIEW ogc_major_chemistry_results IS "
             "'Latest major-chemistry analyte values per location, pivoted into static analyte columns.'"
         )
     )
     op.execute(
         text(
-            "CREATE UNIQUE INDEX ux_ogc_normalized_chemistry_results_id "
-            "ON ogc_normalized_chemistry_results (id)"
+            "CREATE UNIQUE INDEX ux_ogc_major_chemistry_results_id "
+            "ON ogc_major_chemistry_results (id)"
         )
     )
 
 
 def downgrade() -> None:
+    op.execute(text("DROP MATERIALIZED VIEW IF EXISTS ogc_major_chemistry_results"))
     op.execute(
         text("DROP MATERIALIZED VIEW IF EXISTS ogc_normalized_chemistry_results")
     )

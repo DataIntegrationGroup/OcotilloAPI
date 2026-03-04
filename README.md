@@ -199,12 +199,14 @@ docker compose up --build
 
 Notes:
 * Requires Docker Desktop.
-* By default, spins up two containers: `db_dev` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
-* `db_test` is opt-in via profile: `docker compose --profile test up`.
+* By default, spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* `db` initializes both application databases in the same Postgres service:
+  * `ocotilloapi_dev`
+  * `ocotilloapi_test`
 * `alembic upgrade head` runs on app startup after `docker compose up`.
 * Compose uses hardcoded DB names:
   * dev: `ocotilloapi_dev`
-  * test: `ocotilloapi_test`
+  * test: `ocotilloapi_test` (created by init SQL in `docker/db/init/01-create-test-db.sql`)
 * The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` and `POSTGRES_DB=ocotilloapi_dev` in your `.env` to run local commands against the Docker dev DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data

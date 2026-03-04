@@ -1,7 +1,7 @@
 # keep docker-compose.yml in root directory to configure with root .env
 
 services:
-  db_dev:
+  db:
     build:
       context: .
       dockerfile: ./docker/db/Dockerfile
@@ -14,29 +14,9 @@ services:
       - 5432:5432
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ocotilloapi_dev"]
-      interval: 2s
-      timeout: 5s
-      retries: 20
-
-  db_test:
-    profiles:
-      - test
-    build:
-      context: .
-      dockerfile: ./docker/db/Dockerfile
-    platform: linux/amd64
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=ocotilloapi_test
-    ports:
-      - 5433:5432
-    volumes:
-      - postgres_data_test:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ocotilloapi_test"]
       interval: 2s
       timeout: 5s
       retries: 20
@@ -49,20 +29,19 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=ocotilloapi_dev
-      - POSTGRES_HOST=db_dev
+      - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
       - MODE=${MODE}
       - AUTHENTIK_DISABLE_AUTHENTICATION=${AUTHENTIK_DISABLE_AUTHENTICATION}
     ports:
       - 8000:8000
     depends_on:
-      db_dev:
+      db:
         condition: service_healthy # <-- wait for DB to be ready
     links:
-      - db_dev
+      - db
     volumes:
       - .:/app
 
 volumes:
   postgres_data_dev:
-  postgres_data_test:

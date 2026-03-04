@@ -172,7 +172,7 @@ resources:
         table: ogc_water_well_summary
         geom_field: point
 
-  normalized_chemistry_results:
+  major_chemistry_results:
     type: collection
     title: Major Chemistry (Water Wells)
     description: Latest major chemistry analyte values for water wells, represented as static analyte columns.
@@ -192,7 +192,7 @@ resources:
           password: {postgres_password_env}
           search_path: [public]
         id_field: id
-        table: ogc_normalized_chemistry_results
+        table: ogc_major_chemistry_results
         geom_field: point
 
   minor_chemistry_wells:

@@ -137,7 +137,6 @@ def _create_minor_chemistry_wells_view() -> str:
                 mtc.id AS result_id,
                 COALESCE(mtc.analysis_date::timestamp, csi."CollectionDate") AS observation_datetime,
                 trim(mtc.analyte) AS analyte_name,
-                trim(mtc.symbol) AS symbol_name,
                 mtc.sample_value::double precision AS sample_value,
                 mtc.units AS units
             FROM "NMA_MinorTraceChemistry" AS mtc
@@ -162,15 +161,6 @@ def _create_minor_chemistry_wells_view() -> str:
                     ),
                     ''
                 ) AS analyte_token,
-                NULLIF(
-                    regexp_replace(
-                        lower(trim(coalesce(cr.symbol_name, ''))),
-                        '[^a-z0-9]+',
-                        '',
-                        'g'
-                    ),
-                    ''
-                ) AS symbol_token,
                 cr.sample_value,
                 cr.units
             FROM chemistry_rows AS cr
