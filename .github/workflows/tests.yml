@@ -31,14 +31,25 @@ jobs:
       SESSION_SECRET_KEY: supersecretkeyforunittests
       AUTHENTIK_DISABLE_AUTHENTICATION: 1
 
+    services:
+      postgis:
+        image: postgis/postgis:17-3.5
+        # don't test against latest. be explicit in version being tested to avoid breaking changes
+        # image: postgis/postgis:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Check out source repository
         uses: actions/checkout@v6.0.2
-
-      - name: Start database (PostGIS)
-        run: |
-          docker compose build db
-          docker compose up -d db
 
       - name: Wait for database readiness
         run: |
@@ -91,10 +102,6 @@ jobs:
           report_type: test_results
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Stop database
-        if: always()
-        run: docker compose down -v
-
   bdd-tests:
     runs-on: ubuntu-latest
 
@@ -116,14 +123,25 @@ jobs:
       AUTHENTIK_DISABLE_AUTHENTICATION: 1
       DROP_AND_REBUILD_DB: 1
 
+    services:
+      postgis:
+        image: postgis/postgis:17-3.5
+        # don't test against latest. be explicit in version being tested to avoid breaking changes
+        # image: postgis/postgis:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Check out source repository
         uses: actions/checkout@v6.0.2
-
-      - name: Start database (PostGIS)
-        run: |
-          docker compose build db
-          docker compose up -d db
 
       - name: Wait for database readiness
         run: |
@@ -169,7 +187,3 @@ jobs:
 
       - name: Run BDD tests
         run: uv run behave tests/features --tags="@backend and @production and not @skip" --no-capture
-
-      - name: Stop database
-        if: always()
-        run: docker compose down -v
