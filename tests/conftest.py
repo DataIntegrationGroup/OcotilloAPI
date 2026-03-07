@@ -1,4 +1,5 @@
 import os
+import socket
 
 import pytest
 from alembic import command
@@ -16,7 +17,15 @@ from tests import get_parameter_id
 
 
 def pytest_configure():
-    load_dotenv(override=True)
+    load_dotenv(override=False)
+    for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
+        host = (os.environ.get(env_name) or "").strip()
+        if host != "db":
+            continue
+        try:
+            socket.gethostbyname(host)
+        except OSError:
+            os.environ[env_name] = "localhost"
     os.environ.setdefault("POSTGRES_PORT", "54321")
     # NOTE: This hardcoded secret key is for tests only and must NEVER be used in production.
     os.environ.setdefault("SESSION_SECRET_KEY", "test-session-secret-key")

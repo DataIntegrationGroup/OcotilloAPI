@@ -140,6 +140,36 @@ Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
 * PostgreSQL uses the default port 5432.
 
+Minimum vars to set in `.env` for local development:
+* `POSTGRES_USER`
+* `POSTGRES_PASSWORD`
+* `POSTGRES_DB` (`ocotilloapi_dev` when using Docker Compose dev)
+* `POSTGRES_HOST` (`localhost` for local psql/pytest against mapped Docker port)
+* `POSTGRES_PORT` (`5432`)
+* `MODE` (`development` recommended locally)
+* `SESSION_SECRET_KEY`
+
+Auth-related vars (required when auth is enabled, optional when `AUTHENTIK_DISABLE_AUTHENTICATION=1`):
+* `AUTHENTIK_DISABLE_AUTHENTICATION`
+* `AUTHENTIK_URL`
+* `AUTHENTIK_CLIENT_ID`
+* `AUTHENTIK_AUTHORIZE_URL`
+* `AUTHENTIK_TOKEN_URL`
+
+pygeoapi vars:
+* `PYGEOAPI_MOUNT_PATH` (default `/ogcapi`)
+* `PYGEOAPI_RUNTIME_DIR` (default `/tmp/pygeoapi`)
+* `PYGEOAPI_POSTGRES_HOST`
+* `PYGEOAPI_POSTGRES_PORT`
+* `PYGEOAPI_POSTGRES_DB`
+* `PYGEOAPI_POSTGRES_USER`
+* `PYGEOAPI_POSTGRES_PASSWORD`
+
+Optional telemetry vars:
+* `SENTRY_DSN`
+* `APITALLY_CLIENT_ID`
+* `ENVIRONMENT`
+
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Database and server
@@ -169,9 +199,15 @@ docker compose up --build
 
 Notes:
 * Requires Docker Desktop.
-* Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* By default, spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
+* `db` initializes both application databases in the same Postgres service:
+  * `ocotilloapi_dev`
+  * `ocotilloapi_test`
 * `alembic upgrade head` runs on app startup after `docker compose up`.
-* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
+* Compose uses hardcoded DB names:
+  * dev: `ocotilloapi_dev`
+  * test: `ocotilloapi_test` (created by init SQL in `docker/db/init/01-create-test-db.sql`)
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` and `POSTGRES_DB=ocotilloapi_dev` in your `.env` to run local commands against the Docker dev DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
 
 #### Staging Data
 

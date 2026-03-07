@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from datetime import date, datetime
 from importlib.util import find_spec
 
 import pytest
@@ -27,7 +27,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry
+from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry, NMA_MinorTraceChemistry
 from db.engine import session_ctx
 from main import app
 from tests import client, override_authentication
@@ -190,6 +190,143 @@ def test_latest_tds_uses_latest_timestamp_within_same_day(water_well_thing):
         session.commit()
 
 
+def test_ogc_major_chemistry_results_uses_latest_per_analyte(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MAJNORM01",
+            collection_date=datetime(2024, 3, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Older calcium result
+        calcium_old = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=80.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 1, 9, 0, 0),
+        )
+        # Newer calcium result that should win for calcium + calcium_units
+        calcium_new = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=95.0,
+            units="mg/L as CaCO3",
+            analysis_date=datetime(2024, 3, 2, 9, 0, 0),
+        )
+        # Separate analyte with even later date to drive latest_chemistry_date
+        chloride = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Cl",
+            symbol="",
+            sample_value=40.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 3, 8, 0, 0),
+        )
+
+        session.add_all([calcium_old, calcium_new, chloride])
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_major_chemistry_results"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT calcium, calcium_units, chloride, chloride_units, latest_chemistry_date "
+                "FROM ogc_major_chemistry_results WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.calcium) == 95.0
+        assert row.calcium_units == "mg/L as CaCO3"
+        assert float(row.chloride) == 40.0
+        assert row.chloride_units == "mg/L"
+        assert row.latest_chemistry_date.isoformat() == "2024-03-03"
+
+        session.delete(chloride)
+        session.delete(calcium_new)
+        session.delete(calcium_old)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_major_chemistry_results"))
+        session.commit()
+
+
+def test_ogc_minor_chemistry_wells_uses_latest_per_analyte(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MINRNORM1",
+            collection_date=datetime(2024, 4, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Older barium result
+        barium_old = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="Ba",
+            symbol="",
+            sample_value=0.40,
+            units="mg/L",
+            analysis_date=date(2024, 4, 1),
+        )
+        # Newer barium result that should win for barium + barium_units
+        barium_new = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="Ba",
+            symbol="",
+            sample_value=0.55,
+            units="ug/L",
+            analysis_date=date(2024, 4, 2),
+        )
+        # Separate analyte with even later date to drive latest_chemistry_date
+        fluoride = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="F",
+            symbol="",
+            sample_value=1.2,
+            units="mg/L",
+            analysis_date=date(2024, 4, 3),
+        )
+
+        session.add_all([barium_old, barium_new, fluoride])
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT barium, barium_units, fluoride, fluoride_units, latest_chemistry_date "
+                "FROM ogc_minor_chemistry_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.barium) == 0.55
+        assert row.barium_units == "ug/L"
+        assert float(row.fluoride) == 1.2
+        assert row.fluoride_units == "mg/L"
+        assert row.latest_chemistry_date.isoformat() == "2024-04-03"
+
+        session.delete(fluoride)
+        session.delete(barium_new)
+        session.delete(barium_old)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells"))
+        session.commit()
+
+
 def test_ogc_collections():
     response = client.get("/ogcapi/collections")
     assert response.status_code == 200
@@ -202,6 +339,8 @@ def test_ogc_collections():
         "latest_tds_wells",
         "depth_to_water_trend_wells",
         "water_well_summary",
+        "major_chemistry_results",
+        "minor_chemistry_wells",
     }.issubset(ids)
 
 
@@ -210,6 +349,8 @@ def test_ogc_new_collection_items_endpoints():
         "latest_tds_wells",
         "depth_to_water_trend_wells",
         "water_well_summary",
+        "major_chemistry_results",
+        "minor_chemistry_wells",
     ):
         response = client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
         assert response.status_code == 200
