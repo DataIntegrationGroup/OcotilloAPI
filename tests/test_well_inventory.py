@@ -25,8 +25,25 @@ from db import (
     FieldEventParticipant,
 )
 from db.engine import session_ctx
+from schemas.well_inventory import WellInventoryRow
 from services.util import transform_srid, convert_ft_to_m
 from shapely import Point
+
+
+def _minimal_valid_well_inventory_row():
+    return {
+        "project": "Test Project",
+        "well_name_point_id": "TEST-0001",
+        "site_name": "Test Site",
+        "date_time": "2025-02-15T10:30:00",
+        "field_staff": "Test Staff",
+        "utm_easting": 357000,
+        "utm_northing": 3784000,
+        "utm_zone": "13N",
+        "elevation_ft": 5000,
+        "elevation_method": "Global positioning system (GPS)",
+        "measuring_point_height_ft": 3.5,
+    }
 
 
 def test_well_inventory_db_contents():
@@ -905,6 +922,50 @@ class TestWellInventoryHelpers:
             # Clean up
             session.delete(test_group)
             session.commit()
+
+
+class TestWellInventoryRowAliases:
+    """Schema alias handling for well inventory CSV field names."""
+
+    def test_well_status_accepts_well_hole_status_alias(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "Abandoned"
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status == "Abandoned"
+
+    def test_water_level_aliases_are_mapped(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "measuring_person": "Tech 1",
+                "sample_method": "Tape",
+                "water_level_date_time": "2025-02-15T10:30:00",
+                "mp_height_ft": 2.5,
+                "level_status": "Static",
+                "depth_to_water_ft": 11.2,
+                "data_quality": "Good",
+                "water_level_notes": "Initial reading",
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.sampler == "Tech 1"
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T10:30:00"
+        )
+        assert model.mp_height == 2.5
+
+    def test_canonical_name_wins_when_alias_and_canonical_present(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_status"] = "Abandoned"
+        row["well_hole_status"] = "Inactive, exists but not used"
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status == "Abandoned"
 
 
 class TestWellInventoryAPIEdgeCases:
