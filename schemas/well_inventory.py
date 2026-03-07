@@ -38,6 +38,8 @@ from pydantic import (
     validate_email,
     AfterValidator,
     field_validator,
+    Field,
+    AliasChoices,
 )
 from schemas import past_or_today_validator, PastOrTodayDatetime
 from services.util import convert_dt_tz_naive_to_tz_aware
@@ -256,7 +258,10 @@ class WellInventoryRow(BaseModel):
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
-    well_status: Optional[str] = None
+    well_status: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("well_status", "well_hole_status"),
+    )
     monitoring_frequency: MonitoringFrequencyField = None
 
     result_communication_preference: Optional[str] = None
@@ -266,10 +271,19 @@ class WellInventoryRow(BaseModel):
     sample_possible: OptionalBool = None  # TODO: needs a home
 
     # water levels
-    sampler: Optional[str] = None
+    sampler: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("sampler", "measuring_person"),
+    )
     sample_method: Optional[str] = None
-    measurement_date_time: OptionalPastOrTodayDateTime = None
-    mp_height: Optional[float] = None
+    measurement_date_time: OptionalPastOrTodayDateTime = Field(
+        default=None,
+        validation_alias=AliasChoices("measurement_date_time", "water_level_date_time"),
+    )
+    mp_height: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("mp_height", "mp_height_ft"),
+    )
     level_status: Optional[str] = None
     depth_to_water_ft: Optional[float] = None
     data_quality: Optional[str] = None
