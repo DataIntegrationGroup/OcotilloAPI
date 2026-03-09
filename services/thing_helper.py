@@ -430,12 +430,12 @@ def add_thing(
         # ----------
         if commit:
             session.commit()
+            session.refresh(thing)
+
+            for note in thing.notes:
+                session.refresh(note)
         else:
             session.flush()
-        session.refresh(thing)
-
-        for note in thing.notes:
-            session.refresh(note)
 
     except Exception as e:
         if commit:
