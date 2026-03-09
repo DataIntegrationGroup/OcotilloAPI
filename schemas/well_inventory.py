@@ -29,6 +29,9 @@ from core.enums import (
     AddressType,
     WellPurpose as WellPurposeEnum,
     MonitoringFrequency,
+    OriginType,
+    WellPumpType,
+    MonitoringStatus,
 )
 from phonenumbers import NumberParseException
 from pydantic import (
@@ -124,28 +127,64 @@ def email_validator_function(email_str):
             raise ValueError(f"Invalid email format. {email_str}") from e
 
 
+def flexible_lexicon_validator(enum_cls):
+    def validator(v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, enum_cls):
+            return v
+
+        v_str = str(v).strip().lower()
+        for item in enum_cls:
+            if item.value.lower() == v_str:
+                return item
+        return v
+
+    return validator
+
+
 # Reusable type
 PhoneTypeField: TypeAlias = Annotated[
-    Optional[PhoneType], BeforeValidator(blank_to_none)
+    Optional[PhoneType], BeforeValidator(flexible_lexicon_validator(PhoneType))
 ]
 ContactTypeField: TypeAlias = Annotated[
-    Optional[ContactType], BeforeValidator(blank_to_none)
+    Optional[ContactType], BeforeValidator(flexible_lexicon_validator(ContactType))
 ]
 EmailTypeField: TypeAlias = Annotated[
-    Optional[EmailType], BeforeValidator(blank_to_none)
+    Optional[EmailType], BeforeValidator(flexible_lexicon_validator(EmailType))
 ]
 AddressTypeField: TypeAlias = Annotated[
-    Optional[AddressType], BeforeValidator(blank_to_none)
+    Optional[AddressType], BeforeValidator(flexible_lexicon_validator(AddressType))
 ]
-ContactRoleField: TypeAlias = Annotated[Optional[Role], BeforeValidator(blank_to_none)]
+ContactRoleField: TypeAlias = Annotated[
+    Optional[Role], BeforeValidator(flexible_lexicon_validator(Role))
+]
 OptionalFloat: TypeAlias = Annotated[
     Optional[float], BeforeValidator(empty_str_to_none)
 ]
 MonitoringFrequencyField: TypeAlias = Annotated[
-    Optional[MonitoringFrequency], BeforeValidator(blank_to_none)
+    Optional[MonitoringFrequency],
+    BeforeValidator(flexible_lexicon_validator(MonitoringFrequency)),
 ]
 WellPurposeField: TypeAlias = Annotated[
-    Optional[WellPurposeEnum], BeforeValidator(blank_to_none)
+    Optional[WellPurposeEnum],
+    BeforeValidator(flexible_lexicon_validator(WellPurposeEnum)),
+]
+OriginTypeField: TypeAlias = Annotated[
+    Optional[OriginType], BeforeValidator(flexible_lexicon_validator(OriginType))
+]
+WellPumpTypeField: TypeAlias = Annotated[
+    Optional[WellPumpType], BeforeValidator(flexible_lexicon_validator(WellPumpType))
+]
+MonitoringStatusField: TypeAlias = Annotated[
+    Optional[MonitoringStatus],
+    BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
+]
+SampleMethodField: TypeAlias = Annotated[
+    Optional[OriginType], BeforeValidator(flexible_lexicon_validator(OriginType))
+]
+DataQualityField: TypeAlias = Annotated[
+    Optional[OriginType], BeforeValidator(flexible_lexicon_validator(OriginType))
 ]
 PostalCodeField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(postal_code_or_none)
@@ -172,18 +211,21 @@ OptionalPastOrTodayDate: TypeAlias = Annotated[
 class WellInventoryRow(BaseModel):
     # Required fields
     project: str
-    well_name_point_id: str
-    site_name: str
+    well_name_point_id: Optional[str] = None
     date_time: PastOrTodayDatetime
     field_staff: str
     utm_easting: float
     utm_northing: float
     utm_zone: str
-    elevation_ft: float
-    elevation_method: ElevationMethod
-    measuring_point_height_ft: float
 
     # Optional fields
+    site_name: Optional[str] = None
+    elevation_ft: OptionalFloat = None
+    elevation_method: Annotated[
+        Optional[ElevationMethod],
+        BeforeValidator(flexible_lexicon_validator(ElevationMethod)),
+    ] = None
+    measuring_point_height_ft: OptionalFloat = None
     field_staff_2: Optional[str] = None
     field_staff_3: Optional[str] = None
 
@@ -242,15 +284,15 @@ class WellInventoryRow(BaseModel):
     repeat_measurement_permission: OptionalBool = None
     sampling_permission: OptionalBool = None
     datalogger_installation_permission: OptionalBool = None
-    public_availability_acknowledgement: OptionalBool = None  # TODO: needs a home
+    public_availability_acknowledgement: OptionalBool = None
     special_requests: Optional[str] = None
     ose_well_record_id: Optional[str] = None
     date_drilled: OptionalPastOrTodayDate = None
     completion_source: Optional[str] = None
     total_well_depth_ft: OptionalFloat = None
     historic_depth_to_water_ft: OptionalFloat = None
-    depth_source: Optional[str] = None
-    well_pump_type: Optional[str] = None
+    depth_source: OriginTypeField = None
+    well_pump_type: WellPumpTypeField = None
     well_pump_depth_ft: OptionalFloat = None
     is_open: OptionalBool = None
     datalogger_possible: OptionalBool = None
@@ -263,31 +305,34 @@ class WellInventoryRow(BaseModel):
         validation_alias=AliasChoices("well_status", "well_hole_status"),
     )
     monitoring_frequency: MonitoringFrequencyField = None
+    monitoring_status: MonitoringStatusField = None
 
     result_communication_preference: Optional[str] = None
     contact_special_requests_notes: Optional[str] = None
     sampling_scenario_notes: Optional[str] = None
+    well_notes: Optional[str] = None
+    water_notes: Optional[str] = None
     well_measuring_notes: Optional[str] = None
-    sample_possible: OptionalBool = None  # TODO: needs a home
+    sample_possible: OptionalBool = None
 
     # water levels
     sampler: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("sampler", "measuring_person"),
     )
-    sample_method: Optional[str] = None
+    sample_method: SampleMethodField = None
     measurement_date_time: OptionalPastOrTodayDateTime = Field(
         default=None,
         validation_alias=AliasChoices("measurement_date_time", "water_level_date_time"),
     )
-    mp_height: Optional[float] = Field(
+    mp_height: OptionalFloat = Field(
         default=None,
         validation_alias=AliasChoices("mp_height", "mp_height_ft"),
     )
     level_status: Optional[str] = None
     depth_to_water_ft: Optional[float] = None
-    data_quality: Optional[str] = None
-    water_level_notes: Optional[str] = None  # TODO: needs a home
+    data_quality: DataQualityField = None
+    water_level_notes: Optional[str] = None
 
     @field_validator("date_time", mode="before")
     def make_date_time_tz_aware(cls, v):
@@ -306,23 +351,6 @@ class WellInventoryRow(BaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-
-        optional_wl = (
-            "sampler",
-            "sample_method",
-            "measurement_date_time",
-            "mp_height",
-            "level_status",
-            "depth_to_water_ft",
-            "data_quality",
-            "water_level_notes",
-        )
-
-        wl_fields = [getattr(self, a) for a in optional_wl]
-        if any(wl_fields):
-            if not all(wl_fields):
-                raise ValueError("All water level fields must be provided")
-
         # verify utm in NM
         utm_zone_value = (self.utm_zone or "").upper()
         if utm_zone_value not in ("12N", "13N"):
@@ -339,6 +367,12 @@ class WellInventoryRow(BaseModel):
                 f" Zone={self.utm_zone}"
             )
 
+        if self.depth_to_water_ft is not None:
+            if self.measurement_date_time is None:
+                raise ValueError(
+                    "water_level_date_time is required when depth_to_water_ft is provided"
+                )
+
         required_attrs = ("line_1", "type", "state", "city", "postal_code")
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
         for jdx in (1, 2):
@@ -346,31 +380,35 @@ class WellInventoryRow(BaseModel):
             # Check if any contact data is provided
             name = getattr(self, f"{key}_name")
             organization = getattr(self, f"{key}_organization")
-            has_contact_data = any(
+
+            # Check for OTHER contact fields (excluding name and organization)
+            has_other_contact_data = any(
                 [
-                    name,
-                    organization,
                     getattr(self, f"{key}_role"),
                     getattr(self, f"{key}_type"),
-                    *[getattr(self, f"{key}_email_{i}", None) for i in (1, 2)],
-                    *[getattr(self, f"{key}_phone_{i}", None) for i in (1, 2)],
+                    *[getattr(self, f"{key}_email_{i}") for i in (1, 2)],
+                    *[getattr(self, f"{key}_phone_{i}") for i in (1, 2)],
                     *[
-                        getattr(self, f"{key}_address_{i}_{a}", None)
+                        getattr(self, f"{key}_address_{i}_{a}")
                         for i in (1, 2)
                         for a in all_attrs
                     ],
                 ]
             )
 
-            # If any contact data is provided, both name and organization are required
-            if has_contact_data:
-                if not name:
+            # If any contact data is provided, at least one of name or organization is required
+            if has_other_contact_data:
+                if not name and not organization:
                     raise ValueError(
-                        f"{key}_name is required when other contact fields are provided"
+                        f"At least one of {key}_name or {key}_organization must be provided"
                     )
-                if not organization:
+                if not getattr(self, f"{key}_role"):
                     raise ValueError(
-                        f"{key}_organization is required when other contact fields are provided"
+                        f"{key}_role is required when contact fields are provided"
+                    )
+                if not getattr(self, f"{key}_type"):
+                    raise ValueError(
+                        f"{key}_type is required when contact fields are provided"
                     )
             for idx in (1, 2):
                 if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):
@@ -379,17 +417,6 @@ class WellInventoryRow(BaseModel):
                         for a in required_attrs
                     ):
                         raise ValueError("All contact address fields must be provided")
-
-                name = getattr(self, f"{key}_name")
-                if name:
-                    if not getattr(self, f"{key}_role"):
-                        raise ValueError(
-                            f"{key}_role must be provided if name is provided"
-                        )
-                    if not getattr(self, f"{key}_type"):
-                        raise ValueError(
-                            f"{key}_type must be provided if name is provided"
-                        )
 
                 phone = getattr(self, f"{key}_phone_{idx}")
                 tag = f"{key}_phone_{idx}_type"
