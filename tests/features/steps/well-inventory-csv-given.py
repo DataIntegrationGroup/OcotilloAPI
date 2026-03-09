@@ -29,17 +29,41 @@ def _set_file_content(context: Context, name):
 
 def _set_file_content_from_path(context: Context, path: Path, name: str | None = None):
     context.file_path = path
-    with open(path, "r", encoding="utf-8", newline="") as f:
-        context.file_name = name or path.name
-        context.file_content = f.read()
-        if context.file_name.endswith(".csv"):
-            context.rows = list(csv.DictReader(context.file_content.splitlines()))
-            context.row_count = len(context.rows)
-            context.file_type = "text/csv"
+    import hashlib
+    import pandas as pd
+    from io import StringIO
+
+    context.file_name = name or path.name
+
+    if path.suffix == ".csv" and path.exists() and path.stat().st_size > 0:
+        suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
+        df = pd.read_csv(path, dtype=str)
+        if "well_name_point_id" in df.columns:
+            df["well_name_point_id"] = df["well_name_point_id"].apply(
+                lambda x: (
+                    f"{x}_{suffix}"
+                    if x and not str(x).endswith("-xxxx") and not str(x).strip() == ""
+                    else x
+                )
+            )
+        buffer = StringIO()
+        df.to_csv(buffer, index=False)
+        context.file_content = buffer.getvalue()
+        context.rows = list(csv.DictReader(context.file_content.splitlines()))
+        context.row_count = len(context.rows)
+        context.file_type = "text/csv"
+    else:
+        # For empty files or non-CSV files, don't use pandas
+        if path.exists():
+            with open(path, "r", encoding="utf-8", newline="") as f:
+                context.file_content = f.read()
         else:
-            context.rows = []
-            context.row_count = 0
-            context.file_type = "text/plain"
+            context.file_content = ""
+        context.rows = []
+        context.row_count = 0
+        context.file_type = (
+            "text/csv" if context.file_name.endswith(".csv") else "text/plain"
+        )
 
 
 @given(
@@ -275,6 +299,17 @@ def step_step_step_16(context: Context):
 def _get_valid_df(context: Context) -> pd.DataFrame:
     _set_file_content(context, "well-inventory-valid.csv")
     df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+
+    # Add unique suffix to well names to ensure isolation between scenarios
+    # using a simple hash of the scenario name
+    import hashlib
+
+    suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
+    if "well_name_point_id" in df.columns:
+        df["well_name_point_id"] = df["well_name_point_id"].apply(
+            lambda x: f"{x}_{suffix}" if x and not str(x).endswith("-xxxx") else x
+        )
+
     return df
 
 
