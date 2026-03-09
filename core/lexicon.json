@@ -8182,8 +8182,15 @@
       "categories": [
         "note_type"
       ],
-      "term": "Water",
+      "term": "Water Bearing Zone",
       "definition": "Water bearing zone information and other info from ose reports"
+    },
+    {
+      "categories": [
+        "note_type"
+      ],
+      "term": "Water Quality",
+      "definition": "Water quality information"
     },
     {
       "categories": [
