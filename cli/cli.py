@@ -52,6 +52,7 @@ class SmokePopulation(str, Enum):
 
 PYGEOAPI_MATERIALIZED_VIEWS = (
     "ogc_latest_depth_to_water_wells",
+    "ogc_water_elevation_wells",
     "ogc_avg_tds_wells",
     "ogc_depth_to_water_trend_wells",
     "ogc_water_well_summary",
