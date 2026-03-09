@@ -414,11 +414,17 @@ def step_given_row_contains_invalid_well_pump_type_value(context: Context):
 )
 def step_given_row_contains_contact_fields_but_name_and_org_are_blank(context: Context):
     df = _get_valid_df(context)
+    # df has 2 rows from well-inventory-valid.csv.
+    # We want to make SURE both rows are processed and the error is caught for row 1 (index 0).
+    # ensure rows are valid so row 0's error is the only one
+    df.loc[:, "contact_1_name"] = "Contact Name"
+    df.loc[:, "contact_1_organization"] = "Contact Org"
     df.loc[0, "contact_1_name"] = ""
     df.loc[0, "contact_1_organization"] = ""
     # Keep other contact data present so composite contact validation is exercised.
     df.loc[0, "contact_1_role"] = "Owner"
     df.loc[0, "contact_1_type"] = "Primary"
+
     _set_content_from_df(context, df)
 
 

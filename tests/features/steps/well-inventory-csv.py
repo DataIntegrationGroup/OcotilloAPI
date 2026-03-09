@@ -248,7 +248,11 @@ def step_then_the_response_identifies_the_row_and_field_for_each_error(
 def step_then_no_wells_are_imported(context: Context):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
-    assert len(wells) == 0, "Expected no wells to be imported"
+    if len(wells) > 0:
+        print(f"ACTUAL IMPORTED WELLS: {wells}")
+    assert (
+        len(wells) == 0
+    ), f"Expected no wells to be imported, but got {len(wells)}: {wells}"
 
 
 @then("the response includes validation errors indicating duplicated values")
