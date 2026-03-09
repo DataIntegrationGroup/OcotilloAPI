@@ -17,6 +17,7 @@ from xml.etree import ElementTree as etree
 
 from sqlalchemy import text
 
+
 # NSMAP = dict(xsi="http://www.w3.org/2001/XMLSchema-instance", xsd="http://www.w3.org/2001/XMLSchema")
 
 
@@ -26,27 +27,29 @@ def make_xml_response(db, sql, point_id, func):
 
     rs = []
     for si in sql:
-
         records = db.execute(text(si), {"point_id": point_id})
         rs.append(records.fetchall())
     return func(*rs)
 
 
 def make_lithology_response(point_id, db):
-    sql = "select * from NMA_view_NGWMN_Lithology where PointID=:point_id"
+    sql = 'select * from "NMA_view_NGWMN_Lithology" where "PointID"=:point_id'
     return make_xml_response(db, sql, point_id, lithology_xml)
 
 
 def make_well_construction_response(point_id, db):
-    sql = "select * from NMA_view_NGWMN_WellConstruction where PointID=:point_id"
+    sql = 'select * from "NMA_view_NGWMN_WellConstruction" where "PointID"=:point_id'
     return make_xml_response(db, sql, point_id, well_construction_xml)
 
 
 def make_waterlevels_response(point_id, db):
-    sql = "select * from dbo.view_NGWMN_WaterLevels where PointID=:point_id order by DateMeasured"
+    sql = (
+        'select * from "NMA_view_NGWMN_WaterLevels" where "PointID"=:point_id '
+        'order by "DateMeasured"'
+    )
     sql2 = (
-        "select * from NMA_WaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
-        "DateMeasured"
+        'select * from "NMA_WaterLevelsContinuous_Pressure_Daily" where "PointID"=:point_id and "QCed" is true '
+        'order by "DateMeasured"'
     )
 
     return make_xml_response(db, (sql, sql2), point_id, water_levels_xml2)
