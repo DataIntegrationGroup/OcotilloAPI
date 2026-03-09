@@ -55,6 +55,7 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
     assert result.exit_code == 0, result.output
     assert executed_sql == [
         "REFRESH MATERIALIZED VIEW ogc_latest_depth_to_water_wells",
+        "REFRESH MATERIALIZED VIEW ogc_water_elevation_wells",
         "REFRESH MATERIALIZED VIEW ogc_avg_tds_wells",
         "REFRESH MATERIALIZED VIEW ogc_depth_to_water_trend_wells",
         "REFRESH MATERIALIZED VIEW ogc_water_well_summary",
@@ -62,7 +63,7 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
         "REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells",
     ]
     assert commit_called["value"] is True
-    assert "Refreshed 6 materialized view(s)." in result.output
+    assert "Refreshed 7 materialized view(s)." in result.output
 
 
 def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch):
