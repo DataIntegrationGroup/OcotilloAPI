@@ -29,7 +29,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.util import await_only
 
-from services.util import get_bool_env
+from services.env import get_bool_env
 
 # Load .env file - don't override env vars already set (e.g., by test framework)
 load_dotenv(override=False)

@@ -16,6 +16,7 @@
 from datetime import date, timezone
 
 import pytest
+from sqlalchemy import delete
 
 from core.dependencies import (
     admin_function,
@@ -120,9 +121,12 @@ def test_measuring_point_properties_skip_null_history():
         assert well.measuring_point_height == 2.5
         assert well.measuring_point_description == "old mp"
 
-        session.delete(new_history)
-        session.delete(old_history)
-        session.delete(well)
+        session.execute(
+            delete(MeasuringPointHistory).where(
+                MeasuringPointHistory.thing_id == well.id
+            )
+        )
+        session.execute(delete(Thing).where(Thing.id == well.id))
         session.commit()
 
 

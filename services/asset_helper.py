@@ -5,19 +5,21 @@
 # You may not use this file except in compliance with the License.
 # You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 # ===============================================================================
-from typing import BinaryIO
+from typing import TYPE_CHECKING, BinaryIO
 
-from google.cloud.storage import Bucket
 from sqlalchemy.orm import Session
 
 from db import AssetThingAssociation, Thing, Asset
 from services.gcs_helper import gcs_upload
 
+if TYPE_CHECKING:
+    from google.cloud.storage import Bucket
+
 
 def upload_and_associate(
     session: Session,
     ff: BinaryIO,
-    bucket: Bucket,
+    bucket: "Bucket",
     thing: Thing,
     name: str,
     **asset_args,
