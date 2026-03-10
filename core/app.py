@@ -14,10 +14,14 @@
 # limitations under the License.
 # ===============================================================================
 import os
+import asyncio
+import time
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from fastapi import Request
 from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
@@ -25,6 +29,8 @@ from fastapi.openapi.docs import (
 from fastapi.openapi.utils import get_openapi
 
 from .settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -37,147 +43,204 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         seed_all(10, skip_if_exists=True)
 
-    yield
-
-
-app = FastAPI(
-    title="Sample Location API",
-    description="API for managing sample locations",
-    version=settings.version,
-    lifespan=lifespan,
-)
-
-
-# --- full OpenAPI schema ---
-def full_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    schema = get_openapi(
-        title="Ocotillo API (Full)",
-        version=settings.version,
-        description="Full API schema (authorized users)",
-        routes=app.routes,
-    )
-    app.openapi_schema = schema
-    return app.openapi_schema
-
-
-# --- public OpenAPI schema ---
-def public_openapi():
-    schema = get_openapi(
-        title="Ocotillo API (Public)",
-        version="0.0.1",
-        description="Public API schema (anonymous users)",
-        routes=app.routes,
-    )
-
-    # Keep only operations where the endpoint function is marked public
-    new_paths = {}
-    for path, path_item in schema["paths"].items():
-        new_methods = {}
-        for method, operation in path_item.items():
-            # Recover the actual route handler
-
-            route = next(
-                (
-                    r
-                    for r in app.routes
-                    if r.path == path and method.upper() in r.methods
-                ),
-                None,
-            )
-            if not route:
-                continue
-
-            endpoint = getattr(route, "endpoint", None)
-            if getattr(endpoint, "_is_public", False):
-                # Strip security info for public docs
-                operation["security"] = []
-                new_methods[method] = operation
-
-        if new_methods:
-            new_paths[path] = new_methods
-
-    schema["paths"] = new_paths
-
-    # --- Collect all referenced schemas recursively ---
-    referenced = set()
-
-    def collect_refs(obj):
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if (
-                    k == "$ref"
-                    and isinstance(v, str)
-                    and v.startswith("#/components/schemas/")
-                ):
-                    referenced.add(v.split("/")[-1])
-                else:
-                    collect_refs(v)
-        elif isinstance(obj, list):
-            for item in obj:
-                collect_refs(item)
-
-    # Step 1: Collect refs from paths
-    collect_refs(schema["paths"])
-
-    # Step 2: Recursively resolve inside components
-    visited = set()
-    to_visit = set(referenced)
-
-    while to_visit:
-        name = to_visit.pop()
-        if name in visited:
-            continue
-        visited.add(name)
-
-        model = schema.get("components", {}).get("schemas", {}).get(name)
-        if not model:
-            continue
-
-        collect_refs(model)
-        # Add only new schemas we haven’t visited yet
-        to_visit |= referenced - visited
-
-    # Step 3: Filter components.schemas to only referenced ones
-    if "components" in schema and "schemas" in schema["components"]:
-        schema["components"]["schemas"] = {
-            n: m for n, m in schema["components"]["schemas"].items() if n in referenced
-        }
-
-    # 4. Drop security schemes entirely for the public spec
-    if "components" in schema and "securitySchemes" in schema["components"]:
-        schema["components"].pop("securitySchemes", None)
-    return schema
-
-
-# set the public schema as the default
-app.openapi = public_openapi
-
-CLIENT_ID = os.environ.get("AUTHENTIK_CLIENT_ID")
-
-
-@app.get("/docs-auth", include_in_schema=False)
-async def custom_swagger_ui():
-    return get_swagger_ui_html(
-        openapi_url="/openapi-auth.json",
-        title="Swagger UI",
-        oauth2_redirect_url="/docs-auth/oauth2-redirect",
-        init_oauth={
-            "clientId": CLIENT_ID,
-            "usePkceWithAuthorizationCodeGrant": True,  # if you use PKCE
+    app.state.instance_ready_at = time.perf_counter()
+    app.state.first_request_pending = True
+    logger.info(
+        "instance startup complete",
+        extra={
+            "event": "instance_startup_complete",
+            "startup_ms": round(
+                (app.state.instance_ready_at - app.state.process_boot_started_at)
+                * 1000,
+                2,
+            ),
         },
     )
 
-
-@app.get("/openapi-auth.json", include_in_schema=False)
-async def get_openapi_auth():
-    return full_openapi()
+    yield
 
 
-@app.get("/docs-auth/oauth2-redirect", include_in_schema=False)
-async def swagger_ui_redirect():
-    return get_swagger_ui_oauth2_redirect_html()
+def create_base_app() -> FastAPI:
+    app = FastAPI(
+        title="Sample Location API",
+        description="API for managing sample locations",
+        version=settings.version,
+        lifespan=lifespan,
+    )
+    app.state.process_boot_started_at = time.perf_counter()
+    app.state.instance_ready_at = None
+    app.state.first_request_pending = True
+    app.state.request_timing_lock = asyncio.Lock()
+
+    @app.middleware("http")
+    async def log_request_timing(request: Request, call_next):
+        request_started_at = time.perf_counter()
+        async with app.state.request_timing_lock:
+            is_first_request = app.state.first_request_pending
+            app.state.first_request_pending = False
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        finally:
+            request_duration_ms = round(
+                (time.perf_counter() - request_started_at) * 1000, 2
+            )
+            startup_ms = round(
+                (
+                    (app.state.instance_ready_at or request_started_at)
+                    - app.state.process_boot_started_at
+                )
+                * 1000,
+                2,
+            )
+            uptime_before_request_ms = round(
+                (
+                    (
+                        request_started_at
+                        - (app.state.instance_ready_at or request_started_at)
+                    )
+                )
+                * 1000,
+                2,
+            )
+            request_kind = "cold" if is_first_request else "warm"
+
+            logger.info(
+                "request timing",
+                extra={
+                    "event": "request_timing",
+                    "request_kind": request_kind,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": status_code,
+                    "request_duration_ms": request_duration_ms,
+                    "startup_ms": startup_ms,
+                    "uptime_before_request_ms": uptime_before_request_ms,
+                },
+            )
+
+    def full_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title="Ocotillo API (Full)",
+            version=settings.version,
+            description="Full API schema (authorized users)",
+            routes=app.routes,
+        )
+        app.openapi_schema = schema
+        return app.openapi_schema
+
+    def public_openapi():
+        schema = get_openapi(
+            title="Ocotillo API (Public)",
+            version="0.0.1",
+            description="Public API schema (anonymous users)",
+            routes=app.routes,
+        )
+
+        # Keep only operations where the endpoint function is marked public.
+        new_paths = {}
+        for path, path_item in schema["paths"].items():
+            new_methods = {}
+            for method, operation in path_item.items():
+                route = next(
+                    (
+                        r
+                        for r in app.routes
+                        if r.path == path and method.upper() in r.methods
+                    ),
+                    None,
+                )
+                if not route:
+                    continue
+
+                endpoint = getattr(route, "endpoint", None)
+                if getattr(endpoint, "_is_public", False):
+                    operation["security"] = []
+                    new_methods[method] = operation
+
+            if new_methods:
+                new_paths[path] = new_methods
+
+        schema["paths"] = new_paths
+
+        referenced = set()
+
+        def collect_refs(obj):
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    if (
+                        key == "$ref"
+                        and isinstance(value, str)
+                        and value.startswith("#/components/schemas/")
+                    ):
+                        referenced.add(value.split("/")[-1])
+                    else:
+                        collect_refs(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    collect_refs(item)
+
+        collect_refs(schema["paths"])
+
+        visited = set()
+        to_visit = set(referenced)
+        while to_visit:
+            name = to_visit.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+
+            model = schema.get("components", {}).get("schemas", {}).get(name)
+            if not model:
+                continue
+
+            collect_refs(model)
+            to_visit |= referenced - visited
+
+        if "components" in schema and "schemas" in schema["components"]:
+            schema["components"]["schemas"] = {
+                name: model
+                for name, model in schema["components"]["schemas"].items()
+                if name in referenced
+            }
+
+        if "components" in schema and "securitySchemes" in schema["components"]:
+            schema["components"].pop("securitySchemes", None)
+        return schema
+
+    app.openapi = public_openapi
+
+    client_id = os.environ.get("AUTHENTIK_CLIENT_ID")
+
+    @app.get("/docs-auth", include_in_schema=False)
+    async def custom_swagger_ui():
+        return get_swagger_ui_html(
+            openapi_url="/openapi-auth.json",
+            title="Swagger UI",
+            oauth2_redirect_url="/docs-auth/oauth2-redirect",
+            init_oauth={
+                "clientId": client_id,
+                "usePkceWithAuthorizationCodeGrant": True,
+            },
+        )
+
+    @app.get("/openapi-auth.json", include_in_schema=False)
+    async def get_openapi_auth():
+        return full_openapi()
+
+    @app.get("/docs-auth/oauth2-redirect", include_in_schema=False)
+    async def swagger_ui_redirect():
+        return get_swagger_ui_oauth2_redirect_html()
+
+    @app.get("/_ah/warmup", include_in_schema=False)
+    async def warmup():
+        return {"status": "ok"}
+
+    return app
 
 
 def public_route(func):

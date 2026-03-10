@@ -24,8 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
-# CLI should honor local `.env` values, even if shell/container vars already exist.
-load_dotenv(override=True)
+# CLI should load `.env` defaults without clobbering an explicitly prepared environment.
+load_dotenv(override=False)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")

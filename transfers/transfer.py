@@ -52,7 +52,7 @@ from alembic.config import Config
 
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from services.util import get_bool_env
+from services.env import get_bool_env
 from transfers.aquifer_system_transfer import transfer_aquifer_systems
 from transfers.geologic_formation_transfer import transfer_geologic_formations
 from transfers.permissions_transfer import transfer_permissions

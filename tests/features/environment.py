@@ -53,7 +53,7 @@ from db import (
 )
 from db.engine import session_ctx
 from db.initialization import recreate_public_schema, sync_search_vector_triggers
-from services.util import get_bool_env
+from services.env import get_bool_env
 
 
 def add_context_object_container(name):

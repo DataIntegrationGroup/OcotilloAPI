@@ -5,10 +5,12 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
+from sqlalchemy import delete
+from sqlalchemy import inspect as sa_inspect
 
 from core.initializers import init_lexicon, init_parameter
 from db import *
-from db.engine import session_ctx
+from db.engine import engine, session_ctx
 from db.initialization import (
     recreate_public_schema,
     sync_search_vector_triggers,
@@ -41,13 +43,31 @@ def _alembic_config() -> Config:
 
 
 def _reset_schema() -> None:
+    engine.dispose()
     with session_ctx() as session:
         recreate_public_schema(session)
+    engine.dispose()
 
 
 def _sync_search_vectors() -> None:
+    engine.dispose()
     with session_ctx() as session:
         sync_search_vector_triggers(session)
+    engine.dispose()
+
+
+def _delete_if_present(session, obj) -> None:
+    if obj is None:
+        return
+
+    state = sa_inspect(obj)
+    identity = state.identity
+    if identity is None:
+        return
+
+    persistent = session.get(type(obj), identity[0] if len(identity) == 1 else identity)
+    if persistent is not None:
+        session.delete(persistent)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -55,6 +75,7 @@ def _setup_test_db():
     """Reset schema once per session; tests share DB state, so keep isolation in fixtures."""
     _reset_schema()
     command.upgrade(_alembic_config(), "head")
+    engine.dispose()
     _sync_search_vectors()
     init_lexicon()
     init_parameter()
@@ -123,11 +144,11 @@ def location():
         session.add(note)
         session.commit()
         session.refresh(loc)
+        location_id = loc.id
 
         yield loc
 
-        session.delete(note)
-        session.delete(loc)
+        session.execute(delete(Location).where(Location.id == location_id))
         session.commit()
 
 
@@ -141,8 +162,9 @@ def second_location():
         )
         session.add(location)
         session.commit()
+        location_id = location.id
         yield location
-        session.delete(location)
+        session.execute(delete(Location).where(Location.id == location_id))
         session.commit()
 
 
@@ -281,8 +303,9 @@ def second_well_screen(water_well_thing):
         )
         session.add(screen)
         session.commit()
+        screen_id = screen.id
         yield screen
-        session.delete(screen)
+        session.execute(delete(WellScreen).where(WellScreen.id == screen_id))
         session.commit()
 
 
@@ -298,8 +321,9 @@ def thing_id_link(water_well_thing):
         )
         session.add(id_link)
         session.commit()
+        link_id = id_link.id
         yield id_link
-        session.delete(id_link)
+        session.execute(delete(ThingIdLink).where(ThingIdLink.id == link_id))
         session.commit()
 
 
@@ -315,8 +339,9 @@ def second_thing_id_link(water_well_thing):
         )
         session.add(id_link)
         session.commit()
+        link_id = id_link.id
         yield id_link
-        session.delete(id_link)
+        session.execute(delete(ThingIdLink).where(ThingIdLink.id == link_id))
         session.commit()
 
 
@@ -339,9 +364,14 @@ def spring_thing(location):
         assoc.thing_id = spring.id
         session.add(assoc)
         session.commit()
+        spring_id = spring.id
         yield spring
-        session.delete(spring)
-        session.delete(assoc)
+        session.execute(
+            delete(LocationThingAssociation).where(
+                LocationThingAssociation.thing_id == spring_id
+            )
+        )
+        session.execute(delete(Thing).where(Thing.id == spring_id))
         session.commit()
 
 
@@ -364,9 +394,14 @@ def second_spring_thing(location):
         assoc.thing_id = spring.id
         session.add(assoc)
         session.commit()
+        spring_id = spring.id
         yield spring
-        session.delete(spring)
-        session.delete(assoc)
+        session.execute(
+            delete(LocationThingAssociation).where(
+                LocationThingAssociation.thing_id == spring_id
+            )
+        )
+        session.execute(delete(Thing).where(Thing.id == spring_id))
         session.commit()
 
 
@@ -386,8 +421,9 @@ def sensor():
         )
         session.add(sensor)
         session.commit()
+        sensor_id = sensor.id
         yield sensor
-        session.delete(sensor)
+        session.execute(delete(Sensor).where(Sensor.id == sensor_id))
         session.commit()
 
 
@@ -407,8 +443,9 @@ def second_sensor():
         )
         session.add(sensor)
         session.commit()
+        sensor_id = sensor.id
         yield sensor
-        session.delete(sensor)
+        session.execute(delete(Sensor).where(Sensor.id == sensor_id))
         session.commit()
 
 
@@ -697,8 +734,13 @@ def asset_with_associated_thing(water_well_thing):
         session.refresh(association)
 
         yield asset
-        session.delete(asset)
-        session.delete(association)
+        session.execute(
+            delete(AssetThingAssociation).where(
+                AssetThingAssociation.asset_id == asset.id,
+                AssetThingAssociation.thing_id == water_well_thing.id,
+            )
+        )
+        session.execute(delete(Asset).where(Asset.id == asset.id))
         session.commit()
 
 
@@ -718,7 +760,7 @@ def second_asset():
         session.commit()
         session.refresh(asset)
         yield asset
-        session.delete(asset)
+        session.execute(delete(Asset).where(Asset.id == asset.id))
         session.commit()
 
 
