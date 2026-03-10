@@ -41,6 +41,9 @@ from db import (
     PermissionHistory,
     Thing,
     ThingContactAssociation,
+    Sample,
+    Observation,
+    Parameter,
 )
 from db.engine import session_ctx
 from pydantic import ValidationError
@@ -264,12 +267,21 @@ def _make_location(model) -> Location:
     transformed_point = transform_srid(
         point, source_srid=source_srid, target_srid=SRID_WGS84
     )
-    elevation_ft = float(model.elevation_ft)
-    elevation_m = convert_ft_to_m(elevation_ft)
+    elevation_ft = model.elevation_ft
+    elevation_m = (
+        convert_ft_to_m(float(elevation_ft)) if elevation_ft is not None else 0.0
+    )
+
+    release_status = "draft"
+    if model.public_availability_acknowledgement is True:
+        release_status = "public"
+    elif model.public_availability_acknowledgement is False:
+        release_status = "private"
 
     loc = Location(
         point=transformed_point.wkt,
         elevation=elevation_m,
+        release_status=release_status,
     )
 
     return loc
@@ -504,11 +516,16 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.add(directions_note)
 
     # add data provenance records
+    elevation_method = (
+        model.elevation_method.value
+        if hasattr(model.elevation_method, "value")
+        else (model.elevation_method or "Unknown")
+    )
     dp = DataProvenance(
         target_id=loc.id,
         target_table="location",
         field_name="elevation",
-        collection_method=model.elevation_method,
+        collection_method=elevation_method,
     )
     session.add(dp)
 
@@ -524,7 +541,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     She indicated that it would be acceptable to use the depth source for the historic depth to water source.
     """
     if model.depth_source:
-        historic_depth_to_water_source = model.depth_source.lower()
+        historic_depth_to_water_source = (
+            model.depth_source.value
+            if hasattr(model.depth_source, "value")
+            else model.depth_source
+        ).lower()
     else:
         historic_depth_to_water_source = "unknown"
 
@@ -539,7 +560,17 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         (model.contact_special_requests_notes, "General"),
         (model.well_measuring_notes, "Sampling Procedure"),
         (model.sampling_scenario_notes, "Sampling Procedure"),
+        (model.well_notes, "General"),
+        (model.water_notes, "Water"),
         (historic_depth_note, "Historical"),
+        (
+            (
+                f"Sample possible: {model.sample_possible}"
+                if model.sample_possible is not None
+                else None
+            ),
+            "Sampling Procedure",
+        ),
     ):
         if note_content is not None:
             well_notes.append({"content": note_content, "note_type": note_type})
@@ -591,6 +622,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
         well_status=model.well_status,
+        monitoring_status=(
+            model.monitoring_status.value
+            if hasattr(model.monitoring_status, "value")
+            else model.monitoring_status
+        ),
         notes=well_notes,
         well_purposes=well_purposes,
         monitoring_frequencies=monitoring_frequencies,
@@ -660,6 +696,66 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         notes="Well inventory conducted during field event.",
     )
     session.add(fa)
+
+    if model.depth_to_water_ft is not None:
+        if model.measurement_date_time is None:
+            raise ValueError(
+                "water_level_date_time is required when depth_to_water_ft is provided"
+            )
+
+        # get groundwater level parameter
+        parameter = (
+            session.query(Parameter)
+            .filter(
+                Parameter.parameter_name == "groundwater level",
+                Parameter.matrix == "groundwater",
+            )
+            .first()
+        )
+
+        if not parameter:
+            # this shouldn't happen if initialized properly, but just in case
+            parameter = Parameter(
+                parameter_name="groundwater level",
+                matrix="groundwater",
+                parameter_type="Field Parameter",
+                default_unit="ft",
+            )
+            session.add(parameter)
+            session.flush()
+
+        # create Sample
+        sample_method = (
+            model.sample_method.value
+            if hasattr(model.sample_method, "value")
+            else (model.sample_method or "Unknown")
+        )
+        sample = Sample(
+            field_activity_id=fa.id,
+            sample_date=model.measurement_date_time,
+            sample_name=f"{well.name_point_id}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
+            sample_matrix="groundwater",
+            sample_method=sample_method,
+            notes=model.water_level_notes,
+        )
+        session.add(sample)
+        session.flush()
+
+        # create Observation
+        observation = Observation(
+            sample_id=sample.id,
+            parameter_id=parameter.id,
+            observation_value=model.depth_to_water_ft,
+            observation_unit="ft",
+            observation_date=model.measurement_date_time,
+            data_quality=(
+                model.data_quality.value
+                if hasattr(model.data_quality, "value")
+                else (model.data_quality or "Unknown")
+            ),
+            notes=model.water_level_notes,
+        )
+        session.add(observation)
 
     # ------------------
     # Contacts

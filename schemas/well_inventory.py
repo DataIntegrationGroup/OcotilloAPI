@@ -288,7 +288,7 @@ class WellInventoryRow(BaseModel):
     special_requests: Optional[str] = None
     ose_well_record_id: Optional[str] = None
     date_drilled: OptionalPastOrTodayDate = None
-    completion_source: Optional[str] = None
+    completion_source: OriginTypeField = None
     total_well_depth_ft: OptionalFloat = None
     historic_depth_to_water_ft: OptionalFloat = None
     depth_source: OriginTypeField = None
