@@ -1,4 +1,3 @@
-@production
 @backend
 @cli
 @BDMS-TBD
@@ -123,7 +122,6 @@ Feature: Bulk upload well inventory from CSV via CLI
       | well_hole_status                  |
       | well_status                       |
       | monitoring_frequency              |
-      | monitoring_status                 |
       | sampling_scenario_notes           |
       | well_notes                        |
       | well_measuring_notes              |
