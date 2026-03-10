@@ -344,7 +344,8 @@ def test_ogc_water_elevation_wells_computes_elevation_minus_depth_to_water(
 
         assert float(row.depth_to_water_below_ground_surface) == 5.0
         assert float(row.elevation) == 2464.9
-        assert abs(float(row.water_elevation) - 2459.9) < 1e-9
+        expected_water_elevation_ft = (2464.9 * 3.28084) - 5.0
+        assert abs(float(row.water_elevation) - expected_water_elevation_ft) < 1e-9
 
 
 def test_ogc_collections():
