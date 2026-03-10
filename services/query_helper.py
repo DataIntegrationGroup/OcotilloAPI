@@ -24,8 +24,8 @@ from sqlalchemy.sql.elements import OperatorExpression
 from starlette.status import HTTP_404_NOT_FOUND
 
 from db import search as search_func
+from services.env import to_bool
 from services.regex import QUERY_REGEX
-from services.util import to_bool
 
 
 def make_where(col: Column, op: str, v: str) -> OperatorExpression:

@@ -15,6 +15,7 @@ import pytest
 from cli.service_adapter import well_inventory_csv
 from core.constants import SRID_UTM_ZONE_13N, SRID_WGS84
 from db import (
+    Base,
     Location,
     LocationThingAssociation,
     Thing,
@@ -27,6 +28,24 @@ from db import (
 from db.engine import session_ctx
 from services.util import transform_srid, convert_ft_to_m
 from shapely import Point
+
+
+def _reset_well_inventory_tables() -> None:
+    with session_ctx() as session:
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name in ("alembic_version", "parameter"):
+                continue
+            if table.name.startswith("lexicon"):
+                continue
+            session.execute(table.delete())
+        session.commit()
+
+
+@pytest.fixture(autouse=True)
+def isolate_well_inventory_tables():
+    _reset_well_inventory_tables()
+    yield
+    _reset_well_inventory_tables()
 
 
 def test_well_inventory_db_contents():
@@ -417,17 +436,6 @@ def test_well_inventory_db_contents():
                 else:
                     assert participant.participant.name == file_content["field_staff_2"]
 
-        # CLEAN UP THE DATABASE AFTER TESTING
-        session.query(FieldEventParticipant).delete()
-        session.query(FieldActivity).delete()
-        session.query(FieldEvent).delete()
-        session.query(ThingContactAssociation).delete()
-        session.query(LocationThingAssociation).delete()
-        session.query(Contact).delete()
-        session.query(Location).delete()
-        session.query(Thing).delete()
-        session.commit()
-
 
 # =============================================================================
 # Error Handling Tests - Cover API error paths
@@ -582,7 +590,7 @@ class TestWellInventoryErrorHandling:
             result = well_inventory_csv(file_path)
             assert result.exit_code == 1
 
-    def test_upload_missing_contact_type(self):
+    def test_upload_missing_contact_role(self):
         """Upload fails when contact is provided without role."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
         if file_path.exists():
@@ -965,16 +973,6 @@ class TestWellInventoryAPIEdgeCases:
             result = well_inventory_csv(file_path)
             # Should succeed - commas in quoted fields are valid CSV
             assert result.exit_code in (0, 1)  # 1 if other validation fails
-
-            # Clean up if records were created
-            if result.exit_code == 0:
-                with session_ctx() as session:
-                    session.query(Thing).delete()
-                    session.query(Location).delete()
-                    session.query(Contact).delete()
-                    session.query(FieldEvent).delete()
-                    session.query(FieldActivity).delete()
-                    session.commit()
 
 
 # ============= EOF =============================================

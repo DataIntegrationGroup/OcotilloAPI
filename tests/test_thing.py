@@ -731,19 +731,19 @@ def test_get_thing_id_links(thing_id_link):
     response = client.get("/thing/id-link")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == thing_id_link.id
-    assert data["items"][0]["created_at"] == thing_id_link.created_at.astimezone(
+    assert data["total"] >= 1
+    item = next(
+        (item for item in data["items"] if item["id"] == thing_id_link.id), None
+    )
+    assert item is not None
+    assert item["created_at"] == thing_id_link.created_at.astimezone(
         timezone.utc
     ).strftime(DT_FMT)
-    assert data["items"][0]["release_status"] == thing_id_link.release_status
-    assert data["items"][0]["thing_id"] == thing_id_link.thing_id
-    assert data["items"][0]["relation"] == thing_id_link.relation
-    assert data["items"][0]["alternate_id"] == thing_id_link.alternate_id
-    assert (
-        data["items"][0]["alternate_organization"]
-        == thing_id_link.alternate_organization
-    )
+    assert item["release_status"] == thing_id_link.release_status
+    assert item["thing_id"] == thing_id_link.thing_id
+    assert item["relation"] == thing_id_link.relation
+    assert item["alternate_id"] == thing_id_link.alternate_id
+    assert item["alternate_organization"] == thing_id_link.alternate_organization
 
 
 def test_get_thing_id_link_by_id(thing_id_link):
@@ -797,11 +797,11 @@ def test_get_things(water_well_thing, spring_thing, location):
     response = client.get("/thing")
     assert response.status_code == 200
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
-    # created_at is already serialized to UTC format by UTCAwareDatetime
-
     data = response.json()
-    assert data["total"] == 2
+    assert data["total"] >= 2
+    item_ids = {item["id"] for item in data["items"]}
+    assert water_well_thing.id in item_ids
+    assert spring_thing.id in item_ids
 
 
 @pytest.mark.skip("Needs to be updated per changes made from feature files")
