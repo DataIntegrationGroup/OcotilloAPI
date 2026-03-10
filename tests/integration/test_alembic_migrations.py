@@ -226,18 +226,14 @@ class TestSchemaAfterMigration:
     def test_water_elevation_materialized_view_has_expected_columns(self):
         """Water elevation materialized view should match the feet-normalized schema."""
         with session_ctx() as session:
-            result = session.execute(
-                text(
-                    """
+            result = session.execute(text("""
                     SELECT attname
                     FROM pg_attribute
                     WHERE attrelid = 'ogc_water_elevation_wells'::regclass
                       AND attnum > 0
                       AND NOT attisdropped
                     ORDER BY attnum
-                    """
-                )
-            )
+                    """))
             columns = [row[0] for row in result.fetchall()]
 
         assert columns == [
