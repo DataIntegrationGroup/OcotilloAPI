@@ -55,8 +55,10 @@ from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
-AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
-AUTOGEN_TOKEN_REGEX = re.compile(r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$")
+AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$", re.IGNORECASE)
+AUTOGEN_TOKEN_REGEX = re.compile(
+    r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$", re.IGNORECASE
+)
 
 
 def _extract_autogen_prefix(well_id: str | None) -> str | None:
@@ -86,10 +88,6 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
     if m:
         prefix = m.group("prefix").upper()
         return f"{prefix}-"
-
-    token_match = AUTOGEN_TOKEN_REGEX.match(value)
-    if token_match:
-        return f"{token_match.group('prefix')}-"
 
     return None
 
@@ -150,9 +148,10 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
     try:
         header = text.splitlines()[0]
         dialect = csv.Sniffer().sniff(header)
-    except csv.Error:
-        # raise an error if sniffing fails, which likely means the header is not parseable as CSV
-        raise ValueError("Unable to parse CSV header")
+    except Exception:
+        # fallback to comma if sniffing fails
+        class dialect:
+            delimiter = ","
 
     if dialect.delimiter != ",":
         raise ValueError(f"Unsupported delimiter '{dialect.delimiter}'")
@@ -162,69 +161,93 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
     duplicates = [col for col, count in counts.items() if count > 1]
 
     wells = []
+    validation_errors = []
     if duplicates:
         validation_errors = [
             {
-                "row": 0,
+                "row": "header",
                 "field": f"{duplicates}",
                 "error": "Duplicate columns found",
                 "value": duplicates,
             }
         ]
+        return {
+            "validation_errors": validation_errors,
+            "summary": {
+                "total_rows_processed": 0,
+                "total_rows_imported": 0,
+                "validation_errors_or_warnings": 1,
+            },
+            "wells": [],
+        }
 
-    else:
-        models, validation_errors = _make_row_models(rows, session)
-        if models and not validation_errors:
-            current_row_id = None
-            try:
-                for project, items in groupby(
-                    sorted(models, key=lambda x: x.project), key=lambda x: x.project
-                ):
-                    # get project and add if does not exist
-                    # BDMS-221 adds group_type
-                    sql = select(Group).where(
-                        and_(
-                            Group.group_type == "Monitoring Plan", Group.name == project
+    try:
+        models, row_validation_errors = _make_row_models(rows, session)
+        validation_errors.extend(row_validation_errors)
+
+        if models:
+            # Group by project, preserving row number
+            # models is a list of (row_number, model)
+            sorted_models = sorted(models, key=lambda x: x[1].project)
+            for project, items in groupby(sorted_models, key=lambda x: x[1].project):
+                # get project and add if does not exist
+                sql = select(Group).where(
+                    and_(Group.group_type == "Monitoring Plan", Group.name == project)
+                )
+                group = session.scalars(sql).one_or_none()
+                if not group:
+                    group = Group(name=project, group_type="Monitoring Plan")
+                    session.add(group)
+                    session.flush()
+
+                for row_number, model in items:
+                    current_row_id = model.well_name_point_id
+                    try:
+                        # Use savepoint for "best-effort" import per row
+                        with session.begin_nested():
+                            added = _add_csv_row(session, group, model, user)
+                            if added:
+                                wells.append(added)
+                    except (
+                        ValueError,
+                        DatabaseError,
+                        PydanticStyleException,
+                        ValidationError,
+                    ) as e:
+                        if isinstance(e, PydanticStyleException):
+                            error_text = str(e.detail)
+                            field = "error"
+                        elif isinstance(e, ValidationError):
+                            # extract just the error messages
+                            error_text = "; ".join(
+                                [str(err.get("msg")) for err in e.errors()]
+                            )
+                            field = _extract_field_from_value_error(error_text)
+                        elif isinstance(e, DatabaseError):
+                            error_text = "A database error occurred"
+                            field = "Database error"
+                        else:
+                            error_text = str(e)
+                            field = _extract_field_from_value_error(error_text)
+
+                        logging.error(
+                            f"Error while importing row {row_number} ('{current_row_id}'): {error_text}"
                         )
-                    )
-                    group = session.scalars(sql).one_or_none()
-                    if not group:
-                        group = Group(name=project, group_type="Monitoring Plan")
-                        session.add(group)
-                        session.flush()
+                        validation_errors.append(
+                            {
+                                "row": row_number,
+                                "well_id": current_row_id,
+                                "field": field,
+                                "error": error_text,
+                            }
+                        )
+            session.commit()
+    except Exception as exc:
+        logging.exception("Unexpected error in _import_well_inventory_csv")
+        return {"detail": str(exc)}
 
-                    for model in items:
-                        current_row_id = model.well_name_point_id
-                        added = _add_csv_row(session, group, model, user)
-                        wells.append(added)
-            except ValueError as e:
-                error_text = str(e)
-                validation_errors.append(
-                    {
-                        "row": current_row_id or "unknown",
-                        "field": _extract_field_from_value_error(error_text),
-                        "error": error_text,
-                    }
-                )
-                session.rollback()
-                wells = []
-            except DatabaseError as e:
-                logging.error(
-                    f"Database error while importing row '{current_row_id or 'unknown'}': {e}"
-                )
-                validation_errors.append(
-                    {
-                        "row": current_row_id or "unknown",
-                        "field": "Database error",
-                        "error": "A database error occurred while importing this row.",
-                    }
-                )
-                session.rollback()
-                wells = []
-            else:
-                session.commit()
-
-    rows_imported = len(wells)
+    wells_imported = [w for w in wells if w is not None]
+    rows_imported = len(wells_imported)
     rows_processed = len(rows)
     error_rows = {
         e.get("row") for e in validation_errors if e.get("row") not in (None, 0)
@@ -238,7 +261,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
             "total_rows_imported": rows_imported,
             "validation_errors_or_warnings": rows_with_validation_errors_or_warnings,
         },
-        "wells": wells,
+        "wells": wells_imported,
     }
 
 
@@ -409,8 +432,9 @@ def _make_row_models(rows, session):
     models = []
     validation_errors = []
     seen_ids: Set[str] = set()
-    offset = 0
+    offsets = {}
     for idx, row in enumerate(rows):
+        row_number = idx + 1
         try:
             if all(key == row.get(key) for key in row.keys()):
                 raise ValueError("Duplicate header row")
@@ -420,10 +444,12 @@ def _make_row_models(rows, session):
 
             well_id = row.get("well_name_point_id")
             autogen_prefix = _extract_autogen_prefix(well_id)
-            if autogen_prefix:
+            if autogen_prefix is not None:
+                offset = offsets.get(autogen_prefix, 0)
                 well_id, offset = _generate_autogen_well_id(
                     session, autogen_prefix, offset
                 )
+                offsets[autogen_prefix] = offset
                 row["well_name_point_id"] = well_id
             elif not well_id:
                 raise ValueError("Field required")
@@ -432,23 +458,24 @@ def _make_row_models(rows, session):
                 raise ValueError("Duplicate value for well_name_point_id")
             seen_ids.add(well_id)
 
-            model = WellInventoryRow(**row)
-            models.append(model)
+            try:
+                model = WellInventoryRow(**row)
+                models.append((row_number, model))
+            except ValidationError as e:
+                for err in e.errors():
+                    loc = err["loc"]
 
-        except ValidationError as e:
-            for err in e.errors():
-                loc = err["loc"]
-
-                field = loc[0] if loc else "composite field error"
-                value = row.get(field) if loc else None
-                validation_errors.append(
-                    {
-                        "row": idx + 1,
-                        "error": err["msg"],
-                        "field": field,
-                        "value": value,
-                    }
-                )
+                    field = loc[0] if loc else "composite field error"
+                    value = row.get(field) if loc else None
+                    validation_errors.append(
+                        {
+                            "row": row_number,
+                            "well_id": well_id,
+                            "error": err["msg"],
+                            "field": field,
+                            "value": value,
+                        }
+                    )
         except ValueError as e:
             field = "well_name_point_id"
             # Map specific controlled errors to safe, non-revealing messages
@@ -460,7 +487,7 @@ def _make_row_models(rows, session):
                 error_msg = "Duplicate header row"
                 field = "header"
             else:
-                error_msg = "Invalid value"
+                error_msg = str(e)
 
             if field == "header":
                 value = ",".join(row.keys())
@@ -468,7 +495,13 @@ def _make_row_models(rows, session):
                 value = row.get(field)
 
             validation_errors.append(
-                {"row": idx + 1, "field": field, "error": error_msg, "value": value}
+                {
+                    "row": row_number,
+                    "well_id": row.get("well_name_point_id"),
+                    "field": field,
+                    "error": error_msg,
+                    "value": value,
+                }
             )
     return models, validation_errors
 
@@ -487,7 +520,7 @@ def _add_field_staff(
 
     if not contact:
         payload = dict(name=fs, role="Technician", organization=org, contact_type=ct)
-        contact = add_contact(session, payload, user)
+        contact = add_contact(session, payload, user, commit=False)
 
     fec = FieldEventParticipant(
         field_event=field_event, contact_id=contact.id, participant_role=role

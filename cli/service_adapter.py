@@ -61,8 +61,16 @@ def well_inventory_csv(source_file: Path | str):
     except ValueError as exc:
         payload = {"detail": str(exc)}
         return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
-    exit_code = 0 if not payload.get("validation_errors") else 1
-    return WellInventoryResult(exit_code, json.dumps(payload), "", payload)
+    exit_code = (
+        0 if not payload.get("validation_errors") and not payload.get("detail") else 1
+    )
+    stderr = ""
+    if exit_code != 0:
+        if payload.get("validation_errors"):
+            stderr = f"Validation errors: {json.dumps(payload.get('validation_errors'), indent=2)}"
+        else:
+            stderr = f"Error: {payload.get('detail')}"
+    return WellInventoryResult(exit_code, json.dumps(payload), stderr, payload)
 
 
 def water_levels_csv(source_file: Path | str, *, pretty_json: bool = False):

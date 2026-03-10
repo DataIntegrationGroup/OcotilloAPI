@@ -205,7 +205,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the invalid postal code format
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid phone number format
@@ -213,7 +213,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the invalid phone number format
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid email format
@@ -221,7 +221,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the invalid email format
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact without a contact_role
@@ -229,7 +229,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the missing "contact_role" field
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact without a "contact_type"
@@ -237,7 +237,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the missing "contact_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid "contact_type"
@@ -245,7 +245,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid "contact_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an email without an email_type
@@ -253,7 +253,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the missing "email_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with a phone without a phone_type
@@ -261,7 +261,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the missing "phone_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an address without an address_type
@@ -269,7 +269,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the missing "address_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid "address_type"
@@ -277,7 +277,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid "address_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid state abbreviation
@@ -285,7 +285,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid state value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid well_hole_status value
@@ -293,7 +293,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid "well_hole_status" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid monitoring_status value
@@ -301,7 +301,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid "monitoring_status" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has an invalid well_pump_type value
@@ -309,7 +309,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid "well_pump_type" value
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has utm_easting utm_northing and utm_zone values that are not within New Mexico
@@ -317,7 +317,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating the invalid UTM coordinates
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with neither contact_name nor contact_organization
@@ -325,7 +325,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when water_level_date_time is missing but depth_to_water_ft is provided
@@ -360,7 +360,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating an invalid boolean value for the "is_open" field
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when duplicate well_name_point_id values are present
@@ -369,7 +369,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     Then the command exits with a non-zero exit code
     And the response includes validation errors indicating duplicated values
     And each error identifies the row and field
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid lexicon values
@@ -393,7 +393,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
-    And no wells are imported
+    And 3 wells are imported
 
 
   ###########################################################################
