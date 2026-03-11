@@ -58,6 +58,7 @@ class WaterLevelsContinuousTransferer(Transferer):
 
     def _get_dfs(self):
         input_df = read_csv(self.source_table, parse_dates=["DateMeasured"])
+        input_df = input_df[:1000]
         cleaned_df = filter_to_valid_point_ids(input_df)
         cleaned_df = cleaned_df.sort_values(by=["PointID"])
 
