@@ -37,12 +37,14 @@ def _set_file_content_from_path(context: Context, path: Path, name: str | None =
 
     if path.suffix == ".csv" and path.exists() and path.stat().st_size > 0:
         suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
-        df = pd.read_csv(path, dtype=str)
+        df = pd.read_csv(path, dtype=str, keep_default_na=False)
         if "well_name_point_id" in df.columns:
             df["well_name_point_id"] = df["well_name_point_id"].apply(
                 lambda x: (
                     f"{x}_{suffix}"
-                    if x and not str(x).endswith("-xxxx") and not str(x).strip() == ""
+                    if x
+                    and str(x).strip() != ""
+                    and not str(x).lower().endswith("-xxxx")
                     else x
                 )
             )
@@ -267,7 +269,11 @@ def step_given_my_csv_file_contains_a_row_missing_the_required_required(
 ):
     _set_file_content(context, "well-inventory-valid.csv")
 
-    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    df = pd.read_csv(
+        context.file_path,
+        dtype={"contact_2_address_1_postal_code": str},
+        keep_default_na=False,
+    )
     df = df.drop(required_field, axis=1)
 
     buffer = StringIO()
@@ -298,7 +304,11 @@ def step_step_step_16(context: Context):
 
 def _get_valid_df(context: Context) -> pd.DataFrame:
     _set_file_content(context, "well-inventory-valid.csv")
-    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    df = pd.read_csv(
+        context.file_path,
+        dtype={"contact_2_address_1_postal_code": str},
+        keep_default_na=False,
+    )
 
     # Add unique suffix to well names to ensure isolation between scenarios
     # using a simple hash of the scenario name
@@ -307,7 +317,11 @@ def _get_valid_df(context: Context) -> pd.DataFrame:
     suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
     if "well_name_point_id" in df.columns:
         df["well_name_point_id"] = df["well_name_point_id"].apply(
-            lambda x: f"{x}_{suffix}" if x and not str(x).endswith("-xxxx") else x
+            lambda x: (
+                f"{x}_{suffix}"
+                if x and str(x).strip() != "" and not str(x).lower().endswith("-xxxx")
+                else x
+            )
         )
 
     return df
