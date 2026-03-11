@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-# import os
 import os
+from functools import lru_cache
 from typing import Optional, List, Union, cast, Callable
 
 import httpx
@@ -36,18 +36,20 @@ auth_disabled = int(os.environ.get("AUTHENTIK_DISABLE_AUTHENTICATION", 0))
 if AUTHENTIK_ISSUER and not auth_disabled:
     JWKS_URL = f"{AUTHENTIK_ISSUER}jwks/"
 
-    # Fetch JWKS (could also cache this)
-    def get_jwks():
-        resp = httpx.get(JWKS_URL)
-        resp.raise_for_status()
-        return resp.json()
 
-    jwks = get_jwks()
+@lru_cache(maxsize=1)
+def get_jwks():
+    if not AUTHENTIK_ISSUER or auth_disabled:
+        return {}
+
+    resp = httpx.get(JWKS_URL, timeout=10.0)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def get_public_key(token):
     unverified_header = jwt.get_unverified_header(token)
-    for key in jwks["keys"]:
+    for key in get_jwks().get("keys", []):
         if key["kid"] == unverified_header["kid"]:
             return RSAAlgorithm.from_jwk(key)
     raise HTTPException(status_code=401, detail="Invalid signing key")

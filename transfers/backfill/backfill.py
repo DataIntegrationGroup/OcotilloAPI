@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from services.util import get_bool_env
+from services.env import get_bool_env
 from transfers.logger import logger
 
 

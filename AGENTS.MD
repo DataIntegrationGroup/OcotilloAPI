@@ -25,6 +25,13 @@ these transfers, keep the following rules in mind to avoid hour-long runs:
 - Data migrations should be safe to re-run without creating duplicate rows or corrupting data.
 - Use upserts or duplicate checks and update source fields only after successful inserts.
 
+## 4. Do a cleanup and code analysis pass after code changes
+- After completing any code modification, do a cleanup and code analysis pass adjusted to the size and risk of the change.
+- Check for obvious regressions, dead code, inconsistent config/docs/tests, and adjacent issues introduced by the change.
+- Fix any concrete issues you find in that pass instead of stopping at implementation.
+- After code cleanup, run `black` on the touched Python files and run `flake8` on the touched Python files before wrapping up.
+- Run targeted validation for the modified area after cleanup; use broader validation when the change affects shared boot, deploy, or database paths.
+
 Following this playbook keeps ETL runs measured in seconds/minutes instead of hours. EOF
 
 ## Activate python venv

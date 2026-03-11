@@ -1,9 +1,19 @@
 
+Use Cloud Scheduler to keep the primary API warm during business hours without
+paying for a dedicated instance overnight.
 
-this is used to add a schedule.
-This schedule is used to keeping the api runingl
-
-gcloud scheduler jobs create http keep-alive-job \
-  --schedule="*/10 8-18 * * 1-5" \
+Production:
+gcloud scheduler jobs create http ocotillo-api-business-hours-warmup \
+  --location=us-west4 \
+  --schedule="*/5 8-18 * * 1-5" \
+  --time-zone="America/Denver" \
   --uri="https://ocotillo-api-dot-waterdatainitiative-271000.appspot.com/_ah/warmup" \
+  --http-method=GET
+
+Staging:
+gcloud scheduler jobs create http ocotillo-api-staging-business-hours-warmup \
+  --location=us-west4 \
+  --schedule="*/5 8-18 * * 1-5" \
+  --time-zone="America/Denver" \
+  --uri="https://ocotillo-api-staging-dot-waterdatainitiative-271000.appspot.com/_ah/warmup" \
   --http-method=GET

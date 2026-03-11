@@ -327,6 +327,71 @@ def test_ogc_minor_chemistry_wells_uses_latest_per_analyte(water_well_thing):
         session.commit()
 
 
+def test_ogc_water_elevation_wells_computes_elevation_minus_depth_to_water(
+    water_well_thing, groundwater_level_observation
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT elevation_m, depth_to_water_below_ground_surface_ft, water_elevation_ft "
+                "FROM ogc_water_elevation_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.depth_to_water_below_ground_surface_ft) == 5.0
+        assert float(row.elevation_m) == 2464.9
+        expected_water_elevation_ft = (2464.9 * 3.28084) - 5.0
+        assert abs(float(row.water_elevation_ft) - expected_water_elevation_ft) < 1e-9
+
+
+def test_ogc_water_elevation_wells_normalizes_meter_observations_to_feet(
+    water_well_thing, groundwater_level_observation
+):
+    with session_ctx() as session:
+        meter_observation = groundwater_level_observation.__class__(
+            observation_datetime=datetime(2025, 1, 2, 0, 4, 0),
+            sample_id=groundwater_level_observation.sample_id,
+            sensor_id=groundwater_level_observation.sensor_id,
+            parameter_id=groundwater_level_observation.parameter_id,
+            release_status="draft",
+            value=3.0,
+            unit="m",
+            measuring_point_height=2.0,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(meter_observation)
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT depth_to_water_below_ground_surface_ft, water_elevation_ft "
+                "FROM ogc_water_elevation_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        expected_depth_ft = (3.0 * 3.28084) - 2.0
+        expected_water_elevation_ft = (2464.9 * 3.28084) - expected_depth_ft
+
+        assert (
+            abs(float(row.depth_to_water_below_ground_surface_ft) - expected_depth_ft)
+            < 1e-9
+        )
+        assert abs(float(row.water_elevation_ft) - expected_water_elevation_ft) < 1e-9
+
+        session.delete(meter_observation)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+
 def test_ogc_collections():
     response = client.get("/ogcapi/collections")
     assert response.status_code == 200
@@ -338,6 +403,7 @@ def test_ogc_collections():
         "springs",
         "latest_tds_wells",
         "depth_to_water_trend_wells",
+        "water_elevation_wells",
         "water_well_summary",
         "major_chemistry_results",
         "minor_chemistry_wells",
@@ -348,6 +414,7 @@ def test_ogc_new_collection_items_endpoints():
     for collection_id in (
         "latest_tds_wells",
         "depth_to_water_trend_wells",
+        "water_elevation_wells",
         "water_well_summary",
         "major_chemistry_results",
         "minor_chemistry_wells",

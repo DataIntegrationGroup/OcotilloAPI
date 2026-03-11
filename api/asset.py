@@ -32,17 +32,16 @@ from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
-from services.query_helper import simple_get_by_id
-from services.gcs_helper import (
-    get_storage_bucket,
-    gcs_upload,
-    gcs_remove,
-    check_asset_exists,
-    add_signed_url,
-)
 from services.exceptions_helper import PydanticStyleException
+from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/asset", tags=["asset"])
+
+
+def get_storage_bucket():
+    from services.gcs_helper import get_storage_bucket as get_gcs_storage_bucket
+
+    return get_gcs_storage_bucket()
 
 
 def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
@@ -83,6 +82,8 @@ async def upload_asset(
     bucket=Depends(get_storage_bucket),
     file: UploadFile = File(...),
 ) -> dict:
+    from services.gcs_helper import gcs_upload
+
     uri, blob_name = gcs_upload(file, bucket)
     return {
         "uri": uri,
@@ -105,6 +106,8 @@ async def add_asset(
 
         # check to see if an asset entry already exists for
         # this storage path and thing_id
+        from services.gcs_helper import check_asset_exists
+
         existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
         if existing_asset:
             # If an asset already exists, return it
@@ -161,6 +164,8 @@ async def list_assets(
 
     def transformer(records: list[Asset]):
         if thing_id is not None:
+            from services.gcs_helper import add_signed_url
+
             bucket = get_storage_bucket()
             records = [add_signed_url(ai, bucket) for ai in records]
         return records
@@ -178,6 +183,8 @@ async def get_asset(
     """
     Retrieve an asset by its ID.
     """
+    from services.gcs_helper import add_signed_url
+
     asset = simple_get_by_id(session, Asset, asset_id)
 
     add_signed_url(asset, bucket)
@@ -220,6 +227,8 @@ async def remove_asset(
     session: session_dependency,
     bucket=Depends(get_storage_bucket),
 ):
+    from services.gcs_helper import gcs_remove
+
     asset = simple_get_by_id(session, Asset, asset_id)
     gcs_remove(asset.uri, bucket)
 

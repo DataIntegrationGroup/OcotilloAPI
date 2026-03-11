@@ -20,7 +20,6 @@ import os
 from hashlib import md5
 
 from fastapi import UploadFile
-from google.oauth2 import service_account
 from sqlalchemy import select
 
 from core.settings import settings
@@ -29,10 +28,11 @@ from db import Asset, AssetThingAssociation
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 GCS_BUCKET_BASE_URL = f"https://storage.cloud.google.com/{GCS_BUCKET_NAME}/uploads"
 
-from google.cloud import storage
 
+def get_storage_client():
+    from google.cloud import storage
+    from google.oauth2 import service_account
 
-def get_storage_client() -> storage.Client:
     if settings.mode == "production":
         key_base64 = os.environ.get("GCS_SERVICE_ACCOUNT_KEY")
         decoded = base64.b64decode(key_base64).decode("utf-8")
@@ -51,7 +51,7 @@ def get_storage_client() -> storage.Client:
     return client
 
 
-def get_storage_bucket(client=None, bucket: str = None) -> storage.Bucket:
+def get_storage_bucket(client=None, bucket: str = None):
     if client is None:
         client = get_storage_client()
 
@@ -70,7 +70,7 @@ def make_blob_name_and_uri(file):
     return blob_name, uri
 
 
-def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
+def gcs_upload(file: UploadFile, bucket=None):
     if bucket is None:
         bucket = get_storage_bucket()
 
@@ -87,12 +87,12 @@ def gcs_upload(file: UploadFile, bucket: storage.Bucket = None):
     return uri, blob_name
 
 
-def gcs_remove(uri: str, bucket: storage.Bucket):
+def gcs_remove(uri: str, bucket):
     blob = bucket.blob(uri)
     blob.delete()
 
 
-def add_signed_url(asset: Asset, bucket: storage.Bucket):
+def add_signed_url(asset: Asset, bucket):
     asset.signed_url = bucket.blob(asset.storage_path).generate_signed_url(
         version="v4",
         expiration=datetime.timedelta(minutes=15),
