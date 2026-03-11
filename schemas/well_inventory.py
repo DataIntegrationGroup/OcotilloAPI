@@ -32,6 +32,8 @@ from core.enums import (
     OriginType,
     WellPumpType,
     MonitoringStatus,
+    SampleMethod,
+    DataQuality,
 )
 from phonenumbers import NumberParseException
 from pydantic import (
@@ -181,10 +183,10 @@ MonitoringStatusField: TypeAlias = Annotated[
     BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
 ]
 SampleMethodField: TypeAlias = Annotated[
-    Optional[OriginType], BeforeValidator(flexible_lexicon_validator(OriginType))
+    Optional[SampleMethod], BeforeValidator(flexible_lexicon_validator(SampleMethod))
 ]
 DataQualityField: TypeAlias = Annotated[
-    Optional[OriginType], BeforeValidator(flexible_lexicon_validator(OriginType))
+    Optional[DataQuality], BeforeValidator(flexible_lexicon_validator(DataQuality))
 ]
 PostalCodeField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(postal_code_or_none)
