@@ -64,10 +64,16 @@ def _validate_restore_source_name(source_name: str) -> None:
 
 
 def _decompress_gzip_file(source_path: Path, target_path: Path) -> None:
-    with gzip.open(source_path, "rb") as compressed:
-        with open(target_path, "wb") as expanded:
-            while chunk := compressed.read(1024 * 1024):
-                expanded.write(chunk)
+    try:
+        with gzip.open(source_path, "rb") as compressed:
+            with open(target_path, "wb") as expanded:
+                while chunk := compressed.read(1024 * 1024):
+                    expanded.write(chunk)
+    except (OSError, gzip.BadGzipFile) as exc:
+        raise LocalDbRestoreError(
+            f"Failed to decompress gzip source {source_path!r}: "
+            "file is not a valid gzip-compressed SQL dump or is corrupted."
+        ) from exc
 
 
 def _sanitize_sql_dump(source_path: Path, target_path: Path) -> None:
