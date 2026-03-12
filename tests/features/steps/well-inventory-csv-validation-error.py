@@ -22,17 +22,27 @@ def _handle_validation_error(context, expected_errors):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
 
-    for expected in expected_errors:
-        found = False
-        for actual in validation_errors:
-            field_match = str(expected.get("field", "")) in str(actual.get("field", ""))
-            error_match = str(expected.get("error", "")) in str(actual.get("error", ""))
-            if field_match and error_match:
-                found = True
-                break
-        assert (
-            found
-        ), f"Expected validation error for field '{expected.get('field')}' with error containing '{expected.get('error')}' not found. Got: {validation_errors}"
+    def _matches(expected, actual):
+        field_match = str(expected.get("field", "")) in str(actual.get("field", ""))
+        error_match = str(expected.get("error", "")) in str(actual.get("error", ""))
+        return field_match and error_match
+
+    def _find_match(expected_idx: int, used_indices: set[int]) -> bool:
+        if expected_idx == len(expected_errors):
+            return True
+
+        expected = expected_errors[expected_idx]
+        for actual_idx, actual in enumerate(validation_errors):
+            if actual_idx in used_indices or not _matches(expected, actual):
+                continue
+            if _find_match(expected_idx + 1, used_indices | {actual_idx}):
+                return True
+        return False
+
+    assert _find_match(0, set()), (
+        f"Expected at least {len(expected_errors)} distinct validation error matches for "
+        f"{expected_errors}. Got: {validation_errors}"
+    )
 
 
 def _assert_any_validation_error_contains(
@@ -293,9 +303,6 @@ def step_then_response_includes_contact_name_or_org_required_error(context: Cont
         )
         for err in validation_errors
     )
-    if not found:
-        pass
-        # print(f"ACTUAL VALIDATION ERRORS: {validation_errors}")
 
     assert (
         found
