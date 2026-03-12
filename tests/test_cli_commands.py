@@ -15,9 +15,11 @@
 # ===============================================================================
 from __future__ import annotations
 
+import gzip
 import textwrap
 import uuid
 from pathlib import Path
+from subprocess import CalledProcessError
 from types import SimpleNamespace
 
 from sqlalchemy import select
@@ -157,6 +159,198 @@ def test_associate_assets_command_calls_service(monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert captured["path"] == asset_dir
+
+
+def test_restore_local_db_invokes_psql(monkeypatch, tmp_path):
+    sql_file = tmp_path / "restore.sql"
+    sql_file.write_text(
+        "SET ROLE ocotillo;\n"
+        "ALTER TABLE public.sample OWNER TO ocotillo;\n"
+        "GRANT ALL ON TABLE public.sample TO ocotillo;\n"
+        "select 1;\n"
+    )
+    captured: dict[str, object] = {}
+    call_order: list[str] = []
+
+    def fake_reset():
+        call_order.append("reset")
+
+    def fake_run(command, check, env, capture_output, text):
+        call_order.append("psql")
+        captured["command"] = command
+        captured["check"] = check
+        captured["env"] = env
+        captured["capture_output"] = capture_output
+        captured["text"] = text
+        captured["restored_sql"] = Path(command[-1]).read_text()
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("cli.db_restore._reset_target_schema", fake_reset)
+    monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_USER", "nm_user")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "secret")
+    monkeypatch.setenv("POSTGRES_DB", "ocotilloapi_dev")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", str(sql_file)])
+
+    assert result.exit_code == 0, result.output
+    assert captured["command"][:-1] == [
+        "psql",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-h",
+        "localhost",
+        "-p",
+        "5432",
+        "-U",
+        "nm_user",
+        "-d",
+        "ocotilloapi_dev",
+        "-f",
+    ]
+    assert captured["command"][-1].endswith("/restore.sql")
+    assert captured["check"] is True
+    assert captured["capture_output"] is True
+    assert captured["text"] is True
+    assert captured["env"]["PGPASSWORD"] == "secret"
+    assert captured["restored_sql"] == "select 1;\n"
+    assert call_order == ["reset", "psql"]
+    assert "Restored" in result.output
+    assert "ocotilloapi_dev" in result.output
+
+
+def test_restore_local_db_rejects_non_sql_files(tmp_path):
+    source_file = tmp_path / "restore.dump"
+    source_file.write_text("not sql")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", str(source_file)])
+
+    assert result.exit_code == 1
+    assert "requires a .sql or .sql.gz source" in result.output
+
+
+def test_restore_local_db_rejects_remote_host(monkeypatch, tmp_path):
+    sql_file = tmp_path / "restore.sql"
+    sql_file.write_text("select 1;\n")
+    called = {"value": False}
+
+    def fake_run(*args, **kwargs):
+        called["value"] = True
+        raise AssertionError("subprocess.run should not be called for remote hosts")
+
+    monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
+    monkeypatch.setenv("POSTGRES_HOST", "db.example.com")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", str(sql_file)])
+
+    assert result.exit_code == 1
+    assert "only supports local PostgreSQL hosts" in result.output
+    assert called["value"] is False
+
+
+def test_restore_local_db_reports_psql_failures(monkeypatch, tmp_path):
+    sql_file = tmp_path / "restore.sql"
+    sql_file.write_text("select 1;\n")
+
+    def fake_run(command, check, env, capture_output, text):
+        raise CalledProcessError(
+            1,
+            command,
+            stderr='psql: role "missing" does not exist',
+        )
+
+    monkeypatch.setattr("cli.db_restore._reset_target_schema", lambda: None)
+    monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_DB", "ocotilloapi_dev")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", str(sql_file)])
+
+    assert result.exit_code == 1
+    assert "Restore failed for database 'ocotilloapi_dev'" in result.output
+    assert 'role "missing" does not exist' in result.output
+
+
+def test_restore_local_db_downloads_and_restores_gcs_gzip(monkeypatch, tmp_path):
+    source_uri = "gs://ocotillo/sql-exports/latest.sql.gz"
+    sql_text = (
+        "SET SESSION AUTHORIZATION 'ocotillo';\n"
+        "REVOKE ALL ON SCHEMA public FROM ocotillo;\n"
+        "select 42;\n"
+    )
+    gz_payload = gzip.compress(sql_text.encode("utf-8"))
+    captured: dict[str, object] = {}
+
+    class FakeBlob:
+        def download_to_filename(self, filename):
+            Path(filename).write_bytes(gz_payload)
+
+    class FakeBucket:
+        def __init__(self):
+            self.requested_blob_name = None
+
+        def blob(self, blob_name):
+            self.requested_blob_name = blob_name
+            captured["blob_name"] = blob_name
+            return FakeBlob()
+
+    fake_bucket = FakeBucket()
+
+    def fake_get_storage_bucket(client=None, bucket=None):
+        captured["bucket_name"] = bucket
+        return fake_bucket
+
+    def fake_run(command, check, env, capture_output, text):
+        captured["command"] = command
+        captured["restored_sql"] = Path(command[-1]).read_text()
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("cli.db_restore._reset_target_schema", lambda: None)
+    monkeypatch.setattr("cli.db_restore.get_storage_bucket", fake_get_storage_bucket)
+    monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_DB", "ocotilloapi_dev")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", source_uri])
+
+    assert result.exit_code == 0, result.output
+    assert captured["bucket_name"] == "ocotillo"
+    assert captured["blob_name"] == "sql-exports/latest.sql.gz"
+    assert captured["restored_sql"] == "select 42;\n"
+    assert captured["command"][-2:] == ["-f", captured["command"][-1]]
+    assert source_uri in result.output
+
+
+def test_restore_local_db_reports_schema_reset_failures(monkeypatch, tmp_path):
+    sql_file = tmp_path / "restore.sql"
+    sql_file.write_text("select 1;\n")
+    called = {"psql": False}
+
+    def fake_reset():
+        raise RuntimeError("permission denied to drop schema public")
+
+    def fake_run(*args, **kwargs):
+        called["psql"] = True
+        raise AssertionError("psql should not be called when schema reset fails")
+
+    monkeypatch.setattr("cli.db_restore._reset_target_schema", fake_reset)
+    monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_DB", "ocotilloapi_dev")
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["restore-local-db", str(sql_file)])
+
+    assert result.exit_code == 1
+    assert "permission denied to drop schema public" in result.output
+    assert called["psql"] is False
 
 
 def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
