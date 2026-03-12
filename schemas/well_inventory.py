@@ -67,13 +67,6 @@ def owner_default(v):
     return v
 
 
-def primary_default(v):
-    v = blank_to_none(v)
-    if v is None:
-        return "Primary"
-    return v
-
-
 US_POSTAL_REGEX = re.compile(r"^\d{5}(-\d{4})?$")
 
 
@@ -150,7 +143,8 @@ PhoneTypeField: TypeAlias = Annotated[
     Optional[PhoneType], BeforeValidator(flexible_lexicon_validator(PhoneType))
 ]
 ContactTypeField: TypeAlias = Annotated[
-    Optional[ContactType], BeforeValidator(flexible_lexicon_validator(ContactType))
+    Optional[ContactType],
+    BeforeValidator(flexible_lexicon_validator(ContactType)),
 ]
 EmailTypeField: TypeAlias = Annotated[
     Optional[EmailType], BeforeValidator(flexible_lexicon_validator(EmailType))
@@ -379,13 +373,15 @@ class WellInventoryRow(BaseModel):
         all_attrs = ("line_1", "line_2", "type", "state", "city", "postal_code")
         for jdx in (1, 2):
             key = f"contact_{jdx}"
-            # Check if any contact data is provided
             name = getattr(self, f"{key}_name")
             organization = getattr(self, f"{key}_organization")
 
-            # Check for OTHER contact fields (excluding name and organization)
-            has_other_contact_data = any(
+            # Treat name or organization as contact data too, so bare contacts
+            # still go through the same cross-field rules as fully populated ones.
+            has_contact_data = any(
                 [
+                    name,
+                    organization,
                     getattr(self, f"{key}_role"),
                     getattr(self, f"{key}_type"),
                     *[getattr(self, f"{key}_email_{i}") for i in (1, 2)],
@@ -398,19 +394,10 @@ class WellInventoryRow(BaseModel):
                 ]
             )
 
-            # If any contact data is provided, at least one of name or organization is required
-            if has_other_contact_data:
+            if has_contact_data:
                 if not name and not organization:
                     raise ValueError(
                         f"At least one of {key}_name or {key}_organization must be provided"
-                    )
-                if not getattr(self, f"{key}_role"):
-                    raise ValueError(
-                        f"{key}_role is required when contact fields are provided"
-                    )
-                if not getattr(self, f"{key}_type"):
-                    raise ValueError(
-                        f"{key}_type is required when contact fields are provided"
                     )
             for idx in (1, 2):
                 if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):

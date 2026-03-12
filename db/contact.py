@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 
 from sqlalchemy import Integer, ForeignKey, String, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
@@ -49,8 +49,8 @@ class ThingContactAssociation(Base, AutoBaseMixin):
 class Contact(Base, AutoBaseMixin, ReleaseMixin, NotesMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=True)
     organization: Mapped[str] = lexicon_term(nullable=True)
-    role: Mapped[str] = lexicon_term(nullable=False)
-    contact_type: Mapped[str] = lexicon_term(nullable=False)
+    role: Mapped[Optional[str]] = lexicon_term(nullable=True)
+    contact_type: Mapped[Optional[str]] = lexicon_term(nullable=True)
 
     # primary keys of the nm aquifer tables from which the contacts originate
     nma_pk_owners: Mapped[str] = mapped_column(String(100), nullable=True)

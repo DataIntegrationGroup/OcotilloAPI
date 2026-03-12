@@ -324,7 +324,8 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     phones = []
     addresses = []
     name = getattr(model, f"contact_{idx}_name")
-    if name:
+    organization = getattr(model, f"contact_{idx}_organization")
+    if name or organization:
         for i in (1, 2):
             email = getattr(model, f"contact_{idx}_email_{i}")
             etype = getattr(model, f"contact_{idx}_email_{i}_type")
@@ -356,9 +357,17 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
         return {
             "thing_id": well.id,
             "name": name,
-            "organization": getattr(model, f"contact_{idx}_organization"),
-            "role": getattr(model, f"contact_{idx}_role"),
-            "contact_type": getattr(model, f"contact_{idx}_type"),
+            "organization": organization,
+            "role": (
+                getattr(model, f"contact_{idx}_role").value
+                if hasattr(getattr(model, f"contact_{idx}_role"), "value")
+                else getattr(model, f"contact_{idx}_role")
+            ),
+            "contact_type": (
+                getattr(model, f"contact_{idx}_type").value
+                if hasattr(getattr(model, f"contact_{idx}_type"), "value")
+                else getattr(model, f"contact_{idx}_type")
+            ),
             "emails": emails,
             "phones": phones,
             "addresses": addresses,

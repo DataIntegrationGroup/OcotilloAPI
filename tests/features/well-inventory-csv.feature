@@ -223,21 +223,19 @@ Feature: Bulk upload well inventory from CSV via CLI
     And the response includes a validation error indicating the invalid email format
     And 1 well is imported
 
-  @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has a contact without a contact_role
+  @positive @validation @BDMS-TBD
+  Scenario: Upload succeeds when a row has a contact without a contact_role
     Given my CSV file contains a row with a contact but is missing the required "contact_role" field for that contact
     When I run the well inventory bulk upload command
-    Then the command exits with a non-zero exit code
-    And the response includes a validation error indicating the missing "contact_role" field
-    And 1 well is imported
+    Then the command exits with code 0
+    And all wells are imported
 
-  @negative @validation @BDMS-TBD
-  Scenario: Upload fails when a row has a contact without a "contact_type"
+  @positive @validation @BDMS-TBD
+  Scenario: Upload succeeds when a row has a contact without a "contact_type"
     Given my CSV file contains a row with a contact but is missing the required "contact_type" field for that contact
     When I run the well inventory bulk upload command
-    Then the command exits with a non-zero exit code
-    And the response includes a validation error indicating the missing "contact_type" value
-    And 1 well is imported
+    Then the command exits with code 0
+    And all wells are imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails when a row has a contact with an invalid "contact_type"

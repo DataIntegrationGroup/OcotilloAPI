@@ -150,8 +150,8 @@ class CreateContact(BaseCreateModel, ValidateContact):
     thing_id: int
     name: str | None = None
     organization: str | None = None
-    role: Role
-    contact_type: ContactType = "Primary"
+    role: Role | None = None
+    contact_type: ContactType | None = None
     nma_pk_owners: str | None = None
     # description: str | None = None
     # email: str | None = None
@@ -218,8 +218,8 @@ class ContactResponse(BaseResponseModel):
 
     name: str | None
     organization: str | None
-    role: Role
-    contact_type: ContactType
+    role: Role | None
+    contact_type: ContactType | None
     incomplete_nma_phones: List[str] = []
     emails: List[EmailResponse] = []
     phones: List[PhoneResponse] = []
