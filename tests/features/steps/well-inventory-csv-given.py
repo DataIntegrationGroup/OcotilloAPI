@@ -30,26 +30,40 @@ def _set_file_content(context: Context, name):
 def _set_file_content_from_path(context: Context, path: Path, name: str | None = None):
     context.file_path = path
     import hashlib
-    import pandas as pd
-    from io import StringIO
 
     context.file_name = name or path.name
 
     if path.suffix == ".csv" and path.exists() and path.stat().st_size > 0:
         suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
-        df = pd.read_csv(path, dtype=str, keep_default_na=False)
-        if "well_name_point_id" in df.columns:
-            df["well_name_point_id"] = df["well_name_point_id"].apply(
-                lambda x: (
-                    f"{x}_{suffix}"
-                    if x
-                    and str(x).strip() != ""
-                    and not str(x).lower().endswith("-xxxx")
-                    else x
-                )
-            )
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            rows = list(csv.reader(f))
+
+        if rows:
+            header = rows[0]
+            well_id_indexes = [
+                idx
+                for idx, column_name in enumerate(header)
+                if column_name == "well_name_point_id"
+            ]
+            for row in rows[1:]:
+                # Preserve repeated header rows and duplicate-column fixtures so
+                # structural CSV scenarios still reach the importer unchanged.
+                if row == header:
+                    continue
+
+                for idx in well_id_indexes:
+                    if idx >= len(row):
+                        continue
+                    value = row[idx]
+                    if (
+                        value
+                        and str(value).strip() != ""
+                        and not str(value).lower().endswith("-xxxx")
+                    ):
+                        row[idx] = f"{value}_{suffix}"
+
         buffer = StringIO()
-        df.to_csv(buffer, index=False)
+        csv.writer(buffer).writerows(rows)
         context.file_content = buffer.getvalue()
         context.rows = list(csv.DictReader(context.file_content.splitlines()))
         context.row_count = len(context.rows)
@@ -463,13 +477,10 @@ def step_given_row_contains_invalid_well_pump_type_value(context: Context):
 )
 def step_given_row_contains_contact_fields_but_name_and_org_are_blank(context: Context):
     df = _get_valid_df(context)
-    # df has 2 rows from well-inventory-valid.csv.
-    # We want to make SURE both rows are processed and the error is caught for row 1 (index 0).
-    # ensure rows are valid so row 0's error is the only one
-    df.loc[:, "contact_1_name"] = "Contact Name"
-    df.loc[:, "contact_1_organization"] = "Contact Org"
+    # Keep row 2 unchanged so row 1's invalid contact is the only expected error.
     df.loc[0, "contact_1_name"] = ""
     df.loc[0, "contact_1_organization"] = ""
+
     # Keep other contact data present so composite contact validation is exercised.
     df.loc[0, "contact_1_role"] = "Owner"
     df.loc[0, "contact_1_type"] = "Primary"
