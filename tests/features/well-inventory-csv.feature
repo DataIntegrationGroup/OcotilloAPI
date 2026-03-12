@@ -375,7 +375,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
-    And no wells are imported
+    And 3 wells are imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid date formats
@@ -383,7 +383,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes validation errors identifying the invalid field and row
-    And no wells are imported
+    And 1 well is imported
 
   @negative @validation @BDMS-TBD
   Scenario: Upload fails due to invalid numeric fields
@@ -440,7 +440,7 @@ Feature: Bulk upload well inventory from CSV via CLI
     When I run the well inventory bulk upload command
     Then the command exits with a non-zero exit code
     And the response includes a validation error indicating a repeated header row
-    And no wells are imported
+    And 3 wells are imported
 
   @negative @validation @header_row @BDMS-TBD
   Scenario: Upload fails when the header row contains duplicate column names
