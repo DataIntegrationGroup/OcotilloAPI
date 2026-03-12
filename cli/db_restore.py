@@ -77,12 +77,24 @@ def _decompress_gzip_file(source_path: Path, target_path: Path) -> None:
 
 
 def _sanitize_sql_dump(source_path: Path, target_path: Path) -> None:
-    with open(source_path, "r", encoding="utf-8") as infile:
-        with open(target_path, "w", encoding="utf-8") as outfile:
-            for line in infile:
-                if any(pattern.search(line) for pattern in ROLE_DEPENDENT_SQL_PATTERNS):
-                    continue
-                outfile.write(line)
+    try:
+        with open(source_path, "r", encoding="utf-8") as infile:
+            with open(target_path, "w", encoding="utf-8") as outfile:
+                for line in infile:
+                    if any(
+                        pattern.search(line) for pattern in ROLE_DEPENDENT_SQL_PATTERNS
+                    ):
+                        continue
+                    outfile.write(line)
+    except UnicodeError as exc:
+        raise LocalDbRestoreError(
+            f"Failed to read SQL dump {source_path} as UTF-8. "
+            "Ensure the dump file is UTF-8 encoded and not truncated."
+        ) from exc
+    except OSError as exc:
+        raise LocalDbRestoreError(
+            f"I/O error while processing SQL dump {source_path} -> {target_path}: {exc}"
+        ) from exc
 
 
 @contextmanager
