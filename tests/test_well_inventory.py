@@ -949,12 +949,12 @@ class TestWellInventoryRowAliases:
         row.update(
             {
                 "measuring_person": "Tech 1",
-                "sample_method": "Tape",
+                "sample_method": "Steel-tape measurement",
                 "water_level_date_time": "2025-02-15T10:30:00",
                 "mp_height_ft": 2.5,
                 "level_status": "Static",
                 "depth_to_water_ft": 11.2,
-                "data_quality": "Good",
+                "data_quality": "Water level accurate to within two hundreths of a foot",
                 "water_level_notes": "Initial reading",
             }
         )
