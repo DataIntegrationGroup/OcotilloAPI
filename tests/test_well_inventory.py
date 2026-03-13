@@ -856,10 +856,12 @@ class TestWellInventoryHelpers:
         assert _extract_autogen_prefix("XY-") == "XY-"
         assert _extract_autogen_prefix("AB-") == "AB-"
 
-        # New supported form (2-3 uppercase letter prefixes)
+        # Placeholder tokens are accepted case-insensitively and normalized.
         assert _extract_autogen_prefix("WL-XXXX") == "WL-"
         assert _extract_autogen_prefix("SAC-XXXX") == "SAC-"
         assert _extract_autogen_prefix("ABC -xxxx") == "ABC-"
+        assert _extract_autogen_prefix("wl-xxxx") == "WL-"
+        assert _extract_autogen_prefix("abc - XXXX") == "ABC-"
 
         # Blank values use default prefix
         assert _extract_autogen_prefix("") == "NM-"
@@ -871,7 +873,6 @@ class TestWellInventoryHelpers:
         assert _extract_autogen_prefix("X-") is None
         assert _extract_autogen_prefix("123-") is None
         assert _extract_autogen_prefix("USER-XXXX") is None
-        assert _extract_autogen_prefix("wl-xxxx") is None
 
     def test_make_row_models_missing_well_name_point_id_column_errors(self):
         """Missing well_name_point_id column should fail validation (blank cell is separate)."""
