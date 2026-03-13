@@ -168,6 +168,7 @@ def test_well_inventory_db_contents():
                 [
                     file_content["well_measuring_notes"],
                     file_content["sampling_scenario_notes"],
+                    f"Sample possible: {file_content['sample_possible']}",
                 ]
             )
             assert sorted(c.content for c in thing._get_notes("Historical")) == sorted(
@@ -744,15 +745,38 @@ class TestWellInventoryHelpers:
         assert len(contact_dict["addresses"]) == 1
         assert len(contact_dict["notes"]) == 2
 
-    def test_make_contact_with_no_name(self):
-        """Test contact dict returns None when name is empty."""
+    def test_make_contact_with_no_name_or_organization(self):
+        """Test contact dict returns None when name and organization are empty."""
         from services.well_inventory_csv import _make_contact
         from unittest.mock import MagicMock
 
         model = MagicMock()
         model.result_communication_preference = None
         model.contact_special_requests_notes = None
-        model.contact_1_name = None  # No name provided
+        model.contact_1_name = None
+        model.contact_1_organization = None
+        model.contact_1_role = None
+        model.contact_1_type = None
+        model.contact_1_email_1 = None
+        model.contact_1_email_1_type = None
+        model.contact_1_email_2 = None
+        model.contact_1_email_2_type = None
+        model.contact_1_phone_1 = None
+        model.contact_1_phone_1_type = None
+        model.contact_1_phone_2 = None
+        model.contact_1_phone_2_type = None
+        model.contact_1_address_1_line_1 = None
+        model.contact_1_address_1_line_2 = None
+        model.contact_1_address_1_city = None
+        model.contact_1_address_1_state = None
+        model.contact_1_address_1_postal_code = None
+        model.contact_1_address_1_type = None
+        model.contact_1_address_2_line_1 = None
+        model.contact_1_address_2_line_2 = None
+        model.contact_1_address_2_city = None
+        model.contact_1_address_2_state = None
+        model.contact_1_address_2_postal_code = None
+        model.contact_1_address_2_type = None
 
         well = MagicMock()
         well.id = 1
@@ -760,6 +784,53 @@ class TestWellInventoryHelpers:
         contact_dict = _make_contact(model, well, 1)
 
         assert contact_dict is None
+
+    def test_make_contact_with_organization_only(self):
+        """Test contact dict creation when organization is present without a name."""
+        from services.well_inventory_csv import _make_contact
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.result_communication_preference = None
+        model.contact_special_requests_notes = None
+        model.contact_1_name = None
+        model.contact_1_organization = "Test Org"
+        model.contact_1_role = None
+        model.contact_1_type = None
+        model.contact_1_email_1 = None
+        model.contact_1_email_1_type = None
+        model.contact_1_email_2 = None
+        model.contact_1_email_2_type = None
+        model.contact_1_phone_1 = None
+        model.contact_1_phone_1_type = None
+        model.contact_1_phone_2 = None
+        model.contact_1_phone_2_type = None
+        model.contact_1_address_1_line_1 = None
+        model.contact_1_address_1_line_2 = None
+        model.contact_1_address_1_city = None
+        model.contact_1_address_1_state = None
+        model.contact_1_address_1_postal_code = None
+        model.contact_1_address_1_type = None
+        model.contact_1_address_2_line_1 = None
+        model.contact_1_address_2_line_2 = None
+        model.contact_1_address_2_city = None
+        model.contact_1_address_2_state = None
+        model.contact_1_address_2_postal_code = None
+        model.contact_1_address_2_type = None
+
+        well = MagicMock()
+        well.id = 1
+
+        contact_dict = _make_contact(model, well, 1)
+
+        assert contact_dict is not None
+        assert contact_dict["name"] is None
+        assert contact_dict["organization"] == "Test Org"
+        assert contact_dict["thing_id"] == 1
+        assert contact_dict["emails"] == []
+        assert contact_dict["phones"] == []
+        assert contact_dict["addresses"] == []
+        assert contact_dict["notes"] == []
 
     def test_make_well_permission(self):
         """Test well permission creation."""
