@@ -134,6 +134,36 @@ def associate_assets_command(
     associate_assets(root_directory)
 
 
+@cli.command("restore-local-db")
+def restore_local_db(
+    source: str = typer.Argument(
+        ...,
+        help="Local .sql/.sql.gz path or gs://bucket/path.sql[.gz] URI.",
+    ),
+    db_name: str | None = typer.Option(
+        None,
+        "--db-name",
+        help="Override POSTGRES_DB for the restore target.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from cli.db_restore import LocalDbRestoreError, restore_local_db_from_sql
+
+    try:
+        result = restore_local_db_from_sql(source, db_name=db_name)
+    except LocalDbRestoreError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(
+        "Restored "
+        f"{result.source} into {result.db_name} "
+        f"on {result.host}:{result.port} as {result.user}."
+    )
+
+
 @cli.command("transfer-results")
 def transfer_results(
     summary_path: Path = typer.Option(
