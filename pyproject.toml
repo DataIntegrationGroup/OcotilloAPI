@@ -72,7 +72,7 @@ dependencies = [
   "pydantic==2.12.5",
   "pydantic-core==2.41.5",
   "pygments==2.19.2",
-  "pyjwt==2.11.0",
+  "pyjwt==2.12.0",
   "pygeoapi==0.22.0",
   "pyproj==3.7.2",
   "pyshp==2.3.1",
