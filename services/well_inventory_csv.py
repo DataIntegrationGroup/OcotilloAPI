@@ -739,12 +739,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     )
     session.add(fa)
 
-    if model.depth_to_water_ft is not None:
-        if model.measurement_date_time is None:
-            raise ValueError(
-                "water_level_date_time is required when depth_to_water_ft is provided"
-            )
-
+    if model.measurement_date_time is not None:
         # get groundwater level parameter
         parameter = (
             session.query(Parameter)
@@ -790,6 +785,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             value=model.depth_to_water_ft,
             unit="ft",
             observation_datetime=model.measurement_date_time,
+            measuring_point_height=model.mp_height,
             nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")

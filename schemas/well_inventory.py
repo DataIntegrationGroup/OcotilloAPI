@@ -326,7 +326,7 @@ class WellInventoryRow(BaseModel):
         validation_alias=AliasChoices("mp_height", "mp_height_ft"),
     )
     level_status: Optional[str] = None
-    depth_to_water_ft: Optional[float] = None
+    depth_to_water_ft: OptionalFloat = None
     data_quality: DataQualityField = None
     water_level_notes: Optional[str] = None
 
