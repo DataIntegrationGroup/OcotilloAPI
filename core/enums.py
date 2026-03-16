@@ -48,7 +48,7 @@ GroundwaterLevelReason: type[Enum] = build_enum_from_lexicon_category(
 )
 LimitType: type[Enum] = build_enum_from_lexicon_category("limit_type")
 MeasurementMethod: type[Enum] = build_enum_from_lexicon_category("measurement_method")
-MonitoringStatus: type[Enum] = build_enum_from_lexicon_category("monitoring_status")
+MonitoringStatus: type[Enum] = build_enum_from_lexicon_category("status_value")
 ParameterName: type[Enum] = build_enum_from_lexicon_category("parameter_name")
 Organization: type[Enum] = build_enum_from_lexicon_category("organization")
 OriginType: type[Enum] = build_enum_from_lexicon_category("origin_type")
