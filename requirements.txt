@@ -155,9 +155,9 @@ attrs==25.4.0 \
     #   ocotilloapi
     #   rasterio
     #   referencing
-authlib==1.6.8 \
-    --hash=sha256:41ae180a17cf672bc784e4a518e5c82687f1fe1e98b0cafaeda80c8e4ab2d1cb \
-    --hash=sha256:97286fd7a15e6cfefc32771c8ef9c54f0ed58028f1322de6a2a7c969c3817888
+authlib==1.6.9 \
+    --hash=sha256:d8f2421e7e5980cc1ddb4e32d3f5fa659cfaf60d8eaf3281ebed192e4ab74f04 \
+    --hash=sha256:f08b4c14e08f0861dc18a32357b33fbcfd2ea86cfe3fe149484b4d764c4a0ac3
     # via ocotilloapi
 babel==2.17.0 \
     --hash=sha256:0c54cffb19f690cdcc52a3b50bcbf71e07a808d1c80d549f2459b9d2cf0afb9d \
