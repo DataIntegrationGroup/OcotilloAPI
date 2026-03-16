@@ -775,7 +775,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         sample = Sample(
             field_activity_id=fa.id,
             sample_date=model.measurement_date_time,
-            sample_name=f"{well.name_point_id}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
+            sample_name=f"{well.name}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
             sample_matrix="groundwater",
             sample_method=sample_method,
             notes=model.water_level_notes,
@@ -787,10 +787,10 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         observation = Observation(
             sample_id=sample.id,
             parameter_id=parameter.id,
-            observation_value=model.depth_to_water_ft,
-            observation_unit="ft",
-            observation_date=model.measurement_date_time,
-            data_quality=(
+            value=model.depth_to_water_ft,
+            unit="ft",
+            observation_datetime=model.measurement_date_time,
+            nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")
                 else (model.data_quality or "Unknown")
