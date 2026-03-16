@@ -50,7 +50,8 @@ def well_inventory_csv(source_file: Path | str):
         payload = {"detail": "Empty file"}
         return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
     try:
-        text = content.decode("utf-8")
+        # Accept UTF-8 CSVs saved with a BOM so the first header is parsed correctly.
+        text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         payload = {"detail": "File encoding error"}
         return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
