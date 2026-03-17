@@ -29,7 +29,6 @@ def _set_file_content(context: Context, name):
 
 def _set_file_content_from_path(context: Context, path: Path, name: str | None = None):
     context.file_path = path
-    print(context.file_path)
     import hashlib
 
     context.file_name = name or path.name
