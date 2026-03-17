@@ -202,7 +202,7 @@ def step_step_step_8(context):
 @then(
     'the response includes a validation error indicating the missing "contact_type" value'
 )
-def step_step_step_8(context):
+def step_step_step_9(context):
     expected_errors = [
         {
             "field": "composite field error",
