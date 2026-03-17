@@ -62,7 +62,7 @@ def step_impl_command_exit_zero(context):
 
 @then("the command exits with a non-zero exit code")
 def step_impl_command_exit_nonzero(context):
-    assert context.cli_result.exit_code != 0
+    assert context.cli_result.exit_code != 0, context.cli_result.exit_code
 
 
 # ============= EOF =============================================
