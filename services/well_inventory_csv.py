@@ -224,7 +224,8 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                             )
                             field = _extract_field_from_value_error(error_text)
                         elif isinstance(e, DatabaseError):
-                            error_text = "A database error occurred"
+                            error_text = str(getattr(e, "orig", None) or e)
+                            error_text = " ".join(error_text.split())
                             field = "Database error"
                         else:
                             error_text = str(e)
