@@ -267,7 +267,7 @@ def step_then_response_includes_invalid_state_error(context: Context):
 )
 def step_then_response_includes_invalid_well_hole_status_error(context: Context):
     _assert_any_validation_error_contains(
-        context, "Database error", "database error occurred"
+        context, "Database error", "status_history_status_value_fkey"
     )
 
 
