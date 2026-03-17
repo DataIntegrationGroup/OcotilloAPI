@@ -438,6 +438,44 @@ def _generate_autogen_well_id(session, prefix: str, offset: int = 0) -> tuple[st
     return f"{prefix}{new_number:04d}", new_number
 
 
+def _find_existing_imported_well(
+    session: Session, model: WellInventoryRow
+) -> Thing | None:
+    if model.measurement_date_time is not None:
+        sample_name = (
+            f"{model.well_name_point_id}-WL-"
+            f"{model.measurement_date_time.strftime('%Y%m%d%H%M')}"
+        )
+        existing = session.scalars(
+            select(Thing)
+            .join(FieldEvent, FieldEvent.thing_id == Thing.id)
+            .join(FieldActivity, FieldActivity.field_event_id == FieldEvent.id)
+            .join(Sample, Sample.field_activity_id == FieldActivity.id)
+            .where(
+                Thing.name == model.well_name_point_id,
+                Thing.thing_type == "water well",
+                FieldActivity.activity_type == "well inventory",
+                Sample.sample_name == sample_name,
+            )
+            .order_by(Thing.id.asc())
+        ).first()
+        if existing is not None:
+            return existing
+
+    return session.scalars(
+        select(Thing)
+        .join(FieldEvent, FieldEvent.thing_id == Thing.id)
+        .join(FieldActivity, FieldActivity.field_event_id == FieldEvent.id)
+        .where(
+            Thing.name == model.well_name_point_id,
+            Thing.thing_type == "water well",
+            FieldEvent.event_date == model.date_time,
+            FieldActivity.activity_type == "well inventory",
+        )
+        .order_by(Thing.id.asc())
+    ).first()
+
+
 def _make_row_models(rows, session):
     models = []
     validation_errors = []
@@ -541,6 +579,10 @@ def _add_field_staff(
 def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) -> str:
     name = model.well_name_point_id
     date_time = model.date_time
+
+    existing_well = _find_existing_imported_well(session, model)
+    if existing_well is not None:
+        return existing_well.name
 
     # --------------------
     # Location and associated tables
