@@ -494,6 +494,38 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
         assert observations[0].measuring_point_height == 2.5
 
 
+def test_rerunning_same_well_inventory_csv_is_idempotent():
+    """Re-importing the same CSV should not create duplicate well inventory records."""
+    file = Path("tests/features/data/well-inventory-valid.csv")
+    assert file.exists(), "Test data file does not exist."
+
+    first = well_inventory_csv(file)
+    assert first.exit_code == 0, first.stderr
+
+    with session_ctx() as session:
+        counts_after_first = {
+            "things": session.query(Thing).count(),
+            "field_events": session.query(FieldEvent).count(),
+            "field_activities": session.query(FieldActivity).count(),
+            "samples": session.query(Sample).count(),
+            "observations": session.query(Observation).count(),
+        }
+
+    second = well_inventory_csv(file)
+    assert second.exit_code == 0, second.stderr
+
+    with session_ctx() as session:
+        counts_after_second = {
+            "things": session.query(Thing).count(),
+            "field_events": session.query(FieldEvent).count(),
+            "field_activities": session.query(FieldActivity).count(),
+            "samples": session.query(Sample).count(),
+            "observations": session.query(Observation).count(),
+        }
+
+    assert counts_after_second == counts_after_first
+
+
 # =============================================================================
 # Error Handling Tests - Cover API error paths
 # =============================================================================
