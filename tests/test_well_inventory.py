@@ -1095,6 +1095,24 @@ class TestWellInventoryRowAliases:
         )
         assert model.depth_to_water_ft is None
 
+    def test_blank_contact_organization_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["contact_1_name"] = "Test Contact"
+        row["contact_1_organization"] = ""
+
+        model = WellInventoryRow(**row)
+
+        assert model.contact_1_name == "Test Contact"
+        assert model.contact_1_organization is None
+
+    def test_blank_well_status_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = ""
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status is None
+
     def test_canonical_name_wins_when_alias_and_canonical_present(self):
         row = _minimal_valid_well_inventory_row()
         row["well_status"] = "Abandoned"

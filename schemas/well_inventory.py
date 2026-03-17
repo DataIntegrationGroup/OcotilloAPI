@@ -190,6 +190,7 @@ PhoneField: TypeAlias = Annotated[Optional[str], BeforeValidator(phone_validator
 EmailField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(email_validator_function)
 ]
+OptionalText: TypeAlias = Annotated[Optional[str], BeforeValidator(empty_str_to_none)]
 
 OptionalBool: TypeAlias = Annotated[Optional[bool], BeforeValidator(empty_str_to_none)]
 OptionalPastOrTodayDateTime: TypeAlias = Annotated[
@@ -215,18 +216,18 @@ class WellInventoryRow(BaseModel):
     utm_zone: str
 
     # Optional fields
-    site_name: Optional[str] = None
+    site_name: OptionalText = None
     elevation_ft: OptionalFloat = None
     elevation_method: Annotated[
         Optional[ElevationMethod],
         BeforeValidator(flexible_lexicon_validator(ElevationMethod)),
     ] = None
     measuring_point_height_ft: OptionalFloat = None
-    field_staff_2: Optional[str] = None
-    field_staff_3: Optional[str] = None
+    field_staff_2: OptionalText = None
+    field_staff_3: OptionalText = None
 
-    contact_1_name: Optional[str] = None
-    contact_1_organization: Optional[str] = None
+    contact_1_name: OptionalText = None
+    contact_1_organization: OptionalText = None
     contact_1_role: ContactRoleField = None
     contact_1_type: ContactTypeField = None
     contact_1_phone_1: PhoneField = None
@@ -250,8 +251,8 @@ class WellInventoryRow(BaseModel):
     contact_1_address_2_city: Optional[str] = None
     contact_1_address_2_postal_code: PostalCodeField = None
 
-    contact_2_name: Optional[str] = None
-    contact_2_organization: Optional[str] = None
+    contact_2_name: OptionalText = None
+    contact_2_organization: OptionalText = None
     contact_2_role: ContactRoleField = None
     contact_2_type: ContactTypeField = None
     contact_2_phone_1: PhoneField = None
@@ -296,7 +297,7 @@ class WellInventoryRow(BaseModel):
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
-    well_status: Optional[str] = Field(
+    well_status: OptionalText = Field(
         default=None,
         validation_alias=AliasChoices("well_status", "well_hole_status"),
     )
