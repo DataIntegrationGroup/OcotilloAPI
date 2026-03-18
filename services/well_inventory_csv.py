@@ -681,6 +681,22 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             }
         )
 
+    if (
+        model.mp_height is not None
+        and model.measuring_point_height_ft is not None
+        and model.mp_height != model.measuring_point_height_ft
+    ):
+        raise ValueError(
+            "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
+        )
+
+    if model.measuring_point_height_ft is not None:
+        universal_mp_height = model.measuring_point_height_ft
+    elif model.mp_height is not None:
+        universal_mp_height = model.mp_height
+    else:
+        universal_mp_height = None
+
     data = CreateWell(
         location_id=loc.id,
         group_id=group.id,
@@ -689,7 +705,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
         well_casing_diameter=model.casing_diameter_ft,
-        measuring_point_height=model.measuring_point_height_ft,
+        measuring_point_height=universal_mp_height,
         measuring_point_description=model.measuring_point_description,
         well_completion_date=model.date_drilled,
         well_completion_date_source=model.completion_source,
@@ -821,6 +837,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.add(sample)
         session.flush()
 
+        if model.depth_to_water_ft is not None and universal_mp_height is None:
+            raise ValueError(
+                "measuring_point_height_ft or mp_height is required when depth_to_water_ft is provided for a non-null observation"
+            )
+
         # create Observation
         # TODO: groundwater_level_reason may be conditionally required for null depth_to_water_ft - handle accordingly
         observation = Observation(
@@ -829,7 +850,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             value=model.depth_to_water_ft,
             unit="ft",
             observation_datetime=model.measurement_date_time,
-            measuring_point_height=model.mp_height,
+            measuring_point_height=universal_mp_height,
             groundwater_level_reason=(
                 model.level_status.value
                 if hasattr(model.level_status, "value")
