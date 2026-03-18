@@ -565,7 +565,7 @@ def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
 def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft_blank(
     tmp_path,
 ):
-    """When depth to water is provided but measuring_point_height_ft is blank, the mp_height value should be used for the thing's and observation's measuring_point_height."""
+    """When depth to water is provided and measuring_point_height_ft is blank the mp_height value should be used for the thing's (MeasuringPointHistory) and observation's measuring_point_height."""
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
@@ -599,7 +599,7 @@ def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft
 
 
 def test_null_observation_allows_blank_mp_height(tmp_path):
-    """When depth to water is not provided, a blank measuring_point_height_ft should be allowed and result in a null measuring_point_height on the thing and observation and no associated measuring point height for the well."""
+    """When depth to water is not provided (ie null), blank measuring_point_height_ft and mp_height fields should be allowed and result in a null measuring_point_height for the observation and no associated measuring point height (MeasuringPointHistory) for the well."""
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
@@ -632,7 +632,11 @@ def test_null_observation_allows_blank_mp_height(tmp_path):
 
 
 def test_conflicting_mp_heights_raises_error(tmp_path):
+    """
+    When both measuring_point_height_ft and mp_height are provided, an inequality (conflict) should raise an error.
+    """
     row = _minimal_valid_well_inventory_row()
+
     row.update(
         {
             "measuring_point_height_ft": 3.5,
