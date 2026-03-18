@@ -822,6 +822,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.flush()
 
         # create Observation
+        # TODO: groundwater_level_reason may be conditionally required for null depth_to_water_ft - handle accordingly
         observation = Observation(
             sample_id=sample.id,
             parameter_id=parameter.id,
@@ -829,7 +830,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             unit="ft",
             observation_datetime=model.measurement_date_time,
             measuring_point_height=model.mp_height,
-            groundwater_level_reason=model.level_status,
+            groundwater_level_reason=(
+                model.level_status.value
+                if hasattr(model.level_status, "value")
+                else None
+            ),
             nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")
