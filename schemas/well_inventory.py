@@ -376,6 +376,8 @@ class WellInventoryRow(BaseModel):
             key = f"contact_{jdx}"
             name = getattr(self, f"{key}_name")
             organization = getattr(self, f"{key}_organization")
+            role = getattr(self, f"{key}_role")
+            contact_type = getattr(self, f"{key}_type")
 
             # Treat name or organization as contact data too, so bare contacts
             # still go through the same cross-field rules as fully populated ones.
@@ -399,6 +401,14 @@ class WellInventoryRow(BaseModel):
                 if not name and not organization:
                     raise ValueError(
                         f"At least one of {key}_name or {key}_organization must be provided"
+                    )
+                if not role:
+                    raise ValueError(
+                        f"{key}_role is required when contact data is provided"
+                    )
+                if not contact_type:
+                    raise ValueError(
+                        f"{key}_type is required when contact data is provided"
                     )
             for idx in (1, 2):
                 if any(getattr(self, f"{key}_address_{idx}_{a}") for a in all_attrs):

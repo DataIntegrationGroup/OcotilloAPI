@@ -673,18 +673,18 @@ class TestWellInventoryErrorHandling:
             assert result.exit_code == 1
 
     def test_upload_missing_contact_type(self):
-        """Upload succeeds when contact is provided without contact_type."""
+        """Upload fails when contact is provided without contact_type."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-type.csv")
         if file_path.exists():
             result = well_inventory_csv(file_path)
-            assert result.exit_code == 0
+            assert result.exit_code == 1
 
     def test_upload_missing_contact_role(self):
-        """Upload succeeds when contact is provided without role."""
+        """Upload fails when contact is provided without role."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
         if file_path.exists():
             result = well_inventory_csv(file_path)
-            assert result.exit_code == 0
+            assert result.exit_code == 1
 
     def test_upload_partial_water_level_fields(self):
         """Upload fails when only some water level fields are provided."""

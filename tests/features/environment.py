@@ -17,6 +17,11 @@ import os
 import random
 from datetime import datetime, timedelta
 
+# Lock test database before any db module imports
+# Ensures BDD tests only use ocotilloapi_test, never ocotilloapi_dev
+os.environ["POSTGRES_DB"] = "ocotilloapi_test"
+os.environ["POSTGRES_PORT"] = "5432"
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import select

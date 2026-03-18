@@ -187,13 +187,26 @@ def step_then_the_response_includes_a_validation_error_indicating_the_invalid_em
 
 
 @then(
-    'the response includes a validation error indicating the missing "contact_type" value'
+    'the response includes a validation error indicating the missing "contact_role" value'
 )
 def step_step_step_8(context):
     expected_errors = [
         {
             "field": "composite field error",
-            "error": "Value error, contact_1_type is required when contact fields are provided",
+            "error": "Value error, contact_1_role is required when contact data is provided",
+        }
+    ]
+    _handle_validation_error(context, expected_errors)
+
+
+@then(
+    'the response includes a validation error indicating the missing "contact_type" value'
+)
+def step_step_step_9(context):
+    expected_errors = [
+        {
+            "field": "composite field error",
+            "error": "Value error, contact_1_type is required when contact data is provided",
         }
     ]
     _handle_validation_error(context, expected_errors)

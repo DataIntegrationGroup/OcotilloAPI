@@ -354,21 +354,12 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
                         "address_type": address_type,
                     }
                 )
-
         return {
             "thing_id": well.id,
             "name": name,
             "organization": organization,
-            "role": (
-                getattr(model, f"contact_{idx}_role").value
-                if hasattr(getattr(model, f"contact_{idx}_role"), "value")
-                else getattr(model, f"contact_{idx}_role")
-            ),
-            "contact_type": (
-                getattr(model, f"contact_{idx}_type").value
-                if hasattr(getattr(model, f"contact_{idx}_type"), "value")
-                else getattr(model, f"contact_{idx}_type")
-            ),
+            "role": getattr(model, f"contact_{idx}_role").value,
+            "contact_type": getattr(model, f"contact_{idx}_type").value,
             "emails": emails,
             "phones": phones,
             "addresses": addresses,
