@@ -506,6 +506,11 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
 
         assert len(field_events) == 1
         assert len(field_activities) == 2
+        activity_types = {fa.activity_type for fa in field_activities}
+        assert activity_types == {
+            "well inventory",
+            "groundwater level",
+        }, f"Unexpected activity types: {activity_types}"
         gwl_field_activity = next(
             (fa for fa in field_activities if fa.activity_type == "groundwater level"),
             None,
@@ -520,6 +525,8 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
         sample = samples[0]
         assert sample.field_activity == gwl_field_activity
         assert len(observations) == 1
+        observation = observations[0]
+        assert observation.sample == sample
 
 
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
