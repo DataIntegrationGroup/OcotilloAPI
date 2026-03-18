@@ -562,7 +562,9 @@ def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
         assert observations[0].measuring_point_height == 3.5
 
 
-def test_mp_height_used_for_thing_and_observation_when_mp_height_ft_blank(tmp_path):
+def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft_blank(
+    tmp_path,
+):
     """When depth to water is provided but measuring_point_height_ft is blank, the mp_height value should be used for the thing's and observation's measuring_point_height."""
     row = _minimal_valid_well_inventory_row()
     row.update(
