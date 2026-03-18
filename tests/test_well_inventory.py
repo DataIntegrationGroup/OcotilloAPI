@@ -506,11 +506,19 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
 
         assert len(field_events) == 1
         assert len(field_activities) == 2
+        gwl_field_activity = next(
+            (fa for fa in field_activities if fa.activity_type == "groundwater level"),
+            None,
+        )
+        assert gwl_field_activity is not None
+
         assert len(field_event_participants) == 1
         assert len(contacts) == 1
         assert len(locations) == 1
         assert len(things) == 1
         assert len(samples) == 1
+        sample = samples[0]
+        assert sample.field_activity == gwl_field_activity
         assert len(observations) == 1
 
 
