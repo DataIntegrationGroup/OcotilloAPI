@@ -445,7 +445,7 @@ def _find_existing_imported_well(
             .where(
                 Thing.name == model.well_name_point_id,
                 Thing.thing_type == "water well",
-                FieldActivity.activity_type == "well inventory",
+                FieldActivity.activity_type == "groundwater level",
                 Sample.sample_name == sample_name,
             )
             .order_by(Thing.id.asc())
