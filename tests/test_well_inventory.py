@@ -551,9 +551,9 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
 
         assert len(samples) == 1
         assert len(observations) == 1
-        assert samples[0].sample_date == datetime.fromisoformat("2025-02-15T10:30:00")
+        assert samples[0].sample_date == datetime.fromisoformat("2025-02-15T10:30:00Z")
         assert observations[0].observation_datetime == datetime.fromisoformat(
-            "2025-02-15T10:30:00"
+            "2025-02-15T10:30:00Z"
         )
         assert observations[0].value is None
         assert observations[0].measuring_point_height == 2.5
