@@ -837,7 +837,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.add(sample)
         session.flush()
 
-        if model.depth_to_water_ft and not universal_mp_height:
+        if model.depth_to_water_ft is not None and universal_mp_height is None:
             raise ValueError(
                 "measuring_point_height_ft or mp_height is required when depth_to_water_ft is provided for a non-null observation"
             )
