@@ -34,6 +34,7 @@ from core.enums import (
     MonitoringStatus,
     SampleMethod,
     DataQuality,
+    GroundwaterLevelReason,
 )
 from phonenumbers import NumberParseException
 from pydantic import (
@@ -182,6 +183,10 @@ SampleMethodField: TypeAlias = Annotated[
 DataQualityField: TypeAlias = Annotated[
     Optional[DataQuality], BeforeValidator(flexible_lexicon_validator(DataQuality))
 ]
+GroundwaterLevelReasonField: TypeAlias = Annotated[
+    Optional[GroundwaterLevelReason],
+    BeforeValidator(flexible_lexicon_validator(GroundwaterLevelReason)),
+]
 PostalCodeField: TypeAlias = Annotated[
     Optional[str], BeforeValidator(postal_code_or_none)
 ]
@@ -326,7 +331,7 @@ class WellInventoryRow(BaseModel):
         default=None,
         validation_alias=AliasChoices("mp_height", "mp_height_ft"),
     )
-    level_status: Optional[str] = None
+    level_status: GroundwaterLevelReasonField = None
     depth_to_water_ft: OptionalFloat = None
     data_quality: DataQualityField = None
     water_level_notes: Optional[str] = None

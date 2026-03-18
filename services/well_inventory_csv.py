@@ -795,6 +795,15 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             session.add(parameter)
             session.flush()
 
+        # create FieldActivity
+        gwl_field_activity = FieldActivity(
+            field_event=fe,
+            activity_type="groundwater level",
+            notes="Groundwater level measurement activity conducted during well inventory field event.",
+        )
+        session.add(gwl_field_activity)
+        session.flush()
+
         # create Sample
         sample_method = (
             model.sample_method.value
@@ -802,7 +811,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             else (model.sample_method or "Unknown")
         )
         sample = Sample(
-            field_activity_id=fa.id,
+            field_activity_id=gwl_field_activity.id,
             sample_date=model.measurement_date_time,
             sample_name=f"{well.name}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
             sample_matrix="groundwater",
@@ -820,6 +829,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             unit="ft",
             observation_datetime=model.measurement_date_time,
             measuring_point_height=model.mp_height,
+            groundwater_level_reason=model.level_status,
             nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")

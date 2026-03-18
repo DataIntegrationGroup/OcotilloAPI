@@ -67,7 +67,7 @@ def isolate_well_inventory_tables():
     _reset_well_inventory_tables()
 
 
-def test_well_inventory_db_contents():
+def test_well_inventory_db_contents_no_waterlevels():
     """
     Test that the well inventory upload creates the correct database contents.
 
@@ -455,6 +455,71 @@ def test_well_inventory_db_contents():
                     assert participant.participant.name == file_content["field_staff"]
                 else:
                     assert participant.participant.name == file_content["field_staff_2"]
+
+
+def test_well_inventory_db_contents_with_waterlevels(tmp_path):
+    """
+    Tests that the following records are made:
+
+    - field event
+    - field activity for well inventory
+    - field activity for water level measurement
+    - field participants
+    - contact
+    - location
+    - thing
+    - sample
+    - observation
+
+    """
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+            "mp_height_ft": 2.5,
+            "level_status": "Water level not affected",
+        }
+    )
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        field_events = session.query(FieldEvent).all()
+        field_activities = session.query(FieldActivity).all()
+        field_event_participants = session.query(FieldEventParticipant).all()
+        contacts = session.query(Contact).all()
+        locations = session.query(Location).all()
+        things = session.query(Thing).all()
+        samples = session.query(Sample).all()
+        observations = session.query(Observation).all()
+
+        assert len(field_events) == 1
+        assert len(field_activities) == 2
+        assert len(field_event_participants) == 1
+        assert len(contacts) == 1
+        assert len(locations) == 1
+        assert len(things) == 1
+        assert len(samples) == 1
+        assert len(observations) == 1
+
+        session.query(FieldEvent).delete()
+        session.query(FieldActivity).delete()
+        session.query(FieldEventParticipant).delete()
+        session.query(Contact).delete()
+        session.query(Location).delete()
+        session.query(Thing).delete()
+        session.query(Sample).delete()
+        session.query(Observation).delete()
 
 
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
