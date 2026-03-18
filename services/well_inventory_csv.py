@@ -682,17 +682,17 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         )
 
     if (
-        model.mp_height
-        and model.measuring_point_height_ft
+        model.mp_height is not None
+        and model.measuring_point_height_ft is not None
         and model.mp_height != model.measuring_point_height_ft
     ):
         raise ValueError(
             "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
         )
 
-    if model.measuring_point_height_ft:
+    if model.measuring_point_height_ft is not None:
         universal_mp_height = model.measuring_point_height_ft
-    elif model.mp_height:
+    elif model.mp_height is not None:
         universal_mp_height = model.mp_height
     else:
         universal_mp_height = None
