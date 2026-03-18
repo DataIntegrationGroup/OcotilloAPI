@@ -513,15 +513,6 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
         assert len(samples) == 1
         assert len(observations) == 1
 
-        session.query(FieldEvent).delete()
-        session.query(FieldActivity).delete()
-        session.query(FieldEventParticipant).delete()
-        session.query(Contact).delete()
-        session.query(Location).delete()
-        session.query(Thing).delete()
-        session.query(Sample).delete()
-        session.query(Observation).delete()
-
 
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
     """Blank depth-to-water is treated as missing while preserving the attempted measurement."""
