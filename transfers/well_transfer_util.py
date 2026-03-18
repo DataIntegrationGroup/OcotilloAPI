@@ -20,7 +20,7 @@ from pandas import isna
 from sqlalchemy.orm import Session
 
 from db import GeologicFormation, Location
-from services.gcs_helper import get_storage_bucket
+from services.gcs_helper import GCS_BUCKET_NAME, get_storage_bucket
 from services.util import (
     get_state_from_point,
     get_county_from_point,
@@ -156,6 +156,8 @@ def get_or_create_geologic_formation(
 
 
 def get_cached_elevations() -> dict:
+    if not GCS_BUCKET_NAME:
+        return {}
     bucket = get_storage_bucket()
     log_filename = "transfer_data/cached_elevations.json"
     blob = bucket.blob(log_filename)
@@ -163,6 +165,8 @@ def get_cached_elevations() -> dict:
 
 
 def dump_cached_elevations(lut: dict):
+    if not GCS_BUCKET_NAME:
+        return
     bucket = get_storage_bucket()
     log_filename = "transfer_data/cached_elevations.json"
     blob = bucket.blob(log_filename)
@@ -174,17 +178,19 @@ def cleanup_locations(session):
     n = len(locations)
     lut = {}
 
-    bucket = get_storage_bucket()
-    log_filename = "transfer_data/location_cleanup.json"
-    blob = bucket.blob(log_filename)
-    if blob.exists():
-        lut = download_blob_json(blob, default={})
+    if GCS_BUCKET_NAME:
+        bucket = get_storage_bucket()
+        log_filename = "transfer_data/location_cleanup.json"
+        blob = bucket.blob(log_filename)
+        if blob.exists():
+            lut = download_blob_json(blob, default={})
 
     updates = []
     for i, location in enumerate(locations):
         if i and not i % 100:
-            logger.info(f"Processing row {i} of {n}. dumping lut to {log_filename}")
-            upload_blob_json(blob, lut)
+            logger.info(f"Processing row {i} of {n}")
+            if GCS_BUCKET_NAME:
+                upload_blob_json(blob, lut)
             session.bulk_update_mappings(Location, updates)
             session.commit()
             updates = []
@@ -222,7 +228,8 @@ def cleanup_locations(session):
             f"={quad_name}"
         )
 
-    upload_blob_json(blob, lut)
+    if GCS_BUCKET_NAME:
+        upload_blob_json(blob, lut)
     if updates:
         session.bulk_update_mappings(Location, updates)
         session.commit()
