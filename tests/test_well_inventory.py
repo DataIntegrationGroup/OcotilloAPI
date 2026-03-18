@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from cli.service_adapter import well_inventory_csv
 from core.constants import SRID_UTM_ZONE_13N, SRID_WGS84
+from core.enums import Role, ContactType
 from db import (
     Base,
     Location,
@@ -844,8 +845,8 @@ class TestWellInventoryHelpers:
         model.contact_special_requests_notes = "Call before visiting"
         model.contact_1_name = "John Doe"
         model.contact_1_organization = "Test Org"
-        model.contact_1_role = "Owner"
-        model.contact_1_type = "Primary"
+        model.contact_1_role = Role.Owner
+        model.contact_1_type = ContactType.Primary
         model.contact_1_email_1 = "john@example.com"
         model.contact_1_email_1_type = "Work"
         model.contact_1_email_2 = None
@@ -931,8 +932,8 @@ class TestWellInventoryHelpers:
         model.contact_special_requests_notes = None
         model.contact_1_name = None
         model.contact_1_organization = "Test Org"
-        model.contact_1_role = None
-        model.contact_1_type = None
+        model.contact_1_role = Role.Owner
+        model.contact_1_type = ContactType.Primary
         model.contact_1_email_1 = None
         model.contact_1_email_1_type = None
         model.contact_1_email_2 = None
