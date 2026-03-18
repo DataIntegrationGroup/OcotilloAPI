@@ -530,7 +530,7 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
 
 
 def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
-    """When measuring_point_height_ft is provided it is used for the thing's and observation's measuring_point_height."""
+    """When measuring_point_height_ft is provided it is used for the thing's (MeasuringPointHistory) and observation's measuring_point_height values."""
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
