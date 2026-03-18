@@ -445,7 +445,7 @@ def _find_existing_imported_well(
             .where(
                 Thing.name == model.well_name_point_id,
                 Thing.thing_type == "water well",
-                FieldActivity.activity_type == "well inventory",
+                FieldActivity.activity_type == "groundwater level",
                 Sample.sample_name == sample_name,
             )
             .order_by(Thing.id.asc())
@@ -795,6 +795,15 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             session.add(parameter)
             session.flush()
 
+        # create FieldActivity
+        gwl_field_activity = FieldActivity(
+            field_event=fe,
+            activity_type="groundwater level",
+            notes="Groundwater level measurement activity conducted during well inventory field event.",
+        )
+        session.add(gwl_field_activity)
+        session.flush()
+
         # create Sample
         sample_method = (
             model.sample_method.value
@@ -802,7 +811,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             else (model.sample_method or "Unknown")
         )
         sample = Sample(
-            field_activity_id=fa.id,
+            field_activity_id=gwl_field_activity.id,
             sample_date=model.measurement_date_time,
             sample_name=f"{well.name}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
             sample_matrix="groundwater",
@@ -813,6 +822,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.flush()
 
         # create Observation
+        # TODO: groundwater_level_reason may be conditionally required for null depth_to_water_ft - handle accordingly
         observation = Observation(
             sample_id=sample.id,
             parameter_id=parameter.id,
@@ -820,6 +830,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             unit="ft",
             observation_datetime=model.measurement_date_time,
             measuring_point_height=model.mp_height,
+            groundwater_level_reason=(
+                model.level_status.value
+                if hasattr(model.level_status, "value")
+                else None
+            ),
             nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")
