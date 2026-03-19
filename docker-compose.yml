@@ -39,6 +39,7 @@ services:
       - PYGEOAPI_POSTGRES_DB=ocotilloapi_dev
       - PYGEOAPI_POSTGRES_USER=${POSTGRES_USER}
       - PYGEOAPI_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs_credentials.json
     ports:
       - 8000:8000
     depends_on:
