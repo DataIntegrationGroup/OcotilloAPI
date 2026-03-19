@@ -279,9 +279,17 @@ def step_then_response_includes_invalid_state_error(context: Context):
     'the response includes a validation error indicating an invalid "well_hole_status" value'
 )
 def step_then_response_includes_invalid_well_hole_status_error(context: Context):
-    _assert_any_validation_error_contains(
-        context, "Database error", "status_history_status_value_fkey"
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert validation_errors, "Expected at least one validation error"
+    found = any(
+        str(error.get("field", "")) in {"well_hole_status", "well_status"}
+        and "Input should be" in str(error.get("error", ""))
+        for error in validation_errors
     )
+    assert (
+        found
+    ), f"Expected well_hole_status/well_status validation error. Got: {validation_errors}"
 
 
 @then(

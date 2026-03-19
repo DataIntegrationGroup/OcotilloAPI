@@ -177,6 +177,10 @@ MonitoringStatusField: TypeAlias = Annotated[
     Optional[MonitoringStatus],
     BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
 ]
+WellStatusField: TypeAlias = Annotated[
+    Optional[MonitoringStatus],
+    BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
+]
 SampleMethodField: TypeAlias = Annotated[
     Optional[SampleMethod], BeforeValidator(flexible_lexicon_validator(SampleMethod))
 ]
@@ -302,7 +306,7 @@ class WellInventoryRow(BaseModel):
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
-    well_status: OptionalText = Field(
+    well_status: WellStatusField = Field(
         default=None,
         validation_alias=AliasChoices("well_status", "well_hole_status"),
     )

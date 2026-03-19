@@ -697,7 +697,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_pump_depth=model.well_pump_depth_ft,
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
-        well_status=model.well_status,
+        well_status=(
+            model.well_status.value
+            if hasattr(model.well_status, "value")
+            else model.well_status
+        ),
         monitoring_status=(
             model.monitoring_status.value
             if hasattr(model.monitoring_status, "value")

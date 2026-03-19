@@ -1156,7 +1156,14 @@ class TestWellInventoryRowAliases:
 
         model = WellInventoryRow(**row)
 
-        assert model.well_status == "Abandoned"
+        assert model.well_status.value == "Abandoned"
+
+    def test_invalid_well_status_alias_raises_validation_error(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "NotARealWellHoleStatus"
+
+        with pytest.raises(ValueError, match="Input should be"):
+            WellInventoryRow(**row)
 
     def test_water_level_aliases_are_mapped(self):
         row = _minimal_valid_well_inventory_row()
@@ -1226,7 +1233,7 @@ class TestWellInventoryRowAliases:
 
         model = WellInventoryRow(**row)
 
-        assert model.well_status == "Abandoned"
+        assert model.well_status.value == "Abandoned"
 
 
 class TestWellInventoryAPIEdgeCases:
