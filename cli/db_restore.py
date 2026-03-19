@@ -235,6 +235,7 @@ def restore_local_db_from_sql(
             ) from exc
 
         return LocalDbRestoreResult(
+            sql_file=staged_sql_file,
             source=source_description,
             host=host,
             port=port,

@@ -52,34 +52,25 @@ def get_transducer_observations(
     order: str | None = None,
     filter_: str = Query(alias="filter", default=None),
 ):
+    deployment_rows: list[tuple[int, int]] = []
+    deployment_to_thing: dict[int, int] = {}
+
     if thing_id:
         item = session.get(Thing, thing_id)
         if item is None:
             empty_query = select(TransducerObservation).where(False)
             return paginate(query=empty_query, conn=session)
+        deployment_rows = session.execute(
+            select(Deployment.id, Deployment.thing_id).where(
+                Deployment.thing_id == thing_id
+            )
+        ).all()
+        deployment_to_thing = {
+            deployment_id: deployment_thing_id
+            for deployment_id, deployment_thing_id in deployment_rows
+        }
 
-    # Subquery to get latest block for each observation
-    block_subq = (
-        select(TransducerObservationBlock.id)
-        .where(
-            TransducerObservationBlock.parameter_id
-            == TransducerObservation.parameter_id,
-            TransducerObservationBlock.start_datetime
-            <= TransducerObservation.observation_datetime,
-            TransducerObservationBlock.end_datetime
-            >= TransducerObservation.observation_datetime,
-        )
-        .order_by(desc(TransducerObservationBlock.start_datetime))
-        .limit(1)
-        .correlate(TransducerObservation)
-        .scalar_subquery()
-    )
-
-    query = (
-        select(TransducerObservation, TransducerObservationBlock)
-        .join(Deployment, TransducerObservation.deployment_id == Deployment.id)
-        .join(TransducerObservationBlock, TransducerObservationBlock.id == block_subq)
-    )
+    query = select(TransducerObservation)
 
     if start_time:
         query = query.where(TransducerObservation.observation_datetime >= start_time)
@@ -89,22 +80,103 @@ def get_transducer_observations(
     if parameter_id:
         query = query.where(TransducerObservation.parameter_id == parameter_id)
     if thing_id:
-        query = query.where(Deployment.thing_id == thing_id)
+        deployment_ids = list(deployment_to_thing)
+        if not deployment_ids:
+            empty_query = select(TransducerObservation).where(False)
+            return paginate(query=empty_query, conn=session)
+        query = query.where(TransducerObservation.deployment_id.in_(deployment_ids))
 
-    def transformer(result):
+    def transformer(observations):
         from schemas.transducer import (
             TransducerObservationWithBlockResponse,
             TransducerObservationResponse,
             TransducerObservationBlockResponse,
         )
 
-        return [
-            TransducerObservationWithBlockResponse(
-                observation=TransducerObservationResponse.model_validate(observation),
-                block=TransducerObservationBlockResponse.model_validate(block),
-            ).model_dump()
-            for observation, block in result
+        if not observations:
+            return []
+
+        deployment_ids = {observation.deployment_id for observation in observations}
+        if not deployment_to_thing or not deployment_ids.issubset(deployment_to_thing):
+            deployment_rows = session.execute(
+                select(Deployment.id, Deployment.thing_id).where(
+                    Deployment.id.in_(deployment_ids)
+                )
+            ).all()
+            deployment_to_thing.update(
+                {
+                    deployment_id: deployment_thing_id
+                    for deployment_id, deployment_thing_id in deployment_rows
+                }
+            )
+
+        thing_ids = {
+            deployment_to_thing[observation.deployment_id]
+            for observation in observations
+            if observation.deployment_id in deployment_to_thing
+        }
+        parameter_ids = {observation.parameter_id for observation in observations}
+        observation_datetimes = [
+            observation.observation_datetime for observation in observations
         ]
+
+        block_rows = session.scalars(
+            select(TransducerObservationBlock)
+            .where(
+                TransducerObservationBlock.thing_id.in_(thing_ids),
+                TransducerObservationBlock.parameter_id.in_(parameter_ids),
+                TransducerObservationBlock.start_datetime <= max(observation_datetimes),
+                TransducerObservationBlock.end_datetime >= min(observation_datetimes),
+            )
+            .order_by(
+                TransducerObservationBlock.thing_id,
+                TransducerObservationBlock.parameter_id,
+                desc(TransducerObservationBlock.start_datetime),
+            )
+        ).all()
+
+        block_map: dict[tuple[int, int], list[TransducerObservationBlock]] = {}
+        for block in block_rows:
+            key = (block.thing_id, block.parameter_id)
+            if key not in block_map:
+                block_map[key] = []
+            block_map[key].append(block)
+
+        response_items = []
+        for observation in observations:
+            thing_id_for_observation = deployment_to_thing.get(
+                observation.deployment_id
+            )
+            if thing_id_for_observation is None:
+                continue
+
+            matching_block = next(
+                (
+                    block
+                    for block in block_map.get(
+                        (thing_id_for_observation, observation.parameter_id), []
+                    )
+                    if block.start_datetime
+                    <= observation.observation_datetime
+                    <= block.end_datetime
+                ),
+                None,
+            )
+            if matching_block is None:
+                continue
+
+            response_items.append(
+                TransducerObservationWithBlockResponse(
+                    observation=TransducerObservationResponse.model_validate(
+                        observation
+                    ),
+                    block=TransducerObservationBlockResponse.model_validate(
+                        matching_block
+                    ),
+                ).model_dump()
+            )
+
+        return response_items
 
     query = query.order_by(TransducerObservation.observation_datetime.desc())
 

@@ -14,7 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
+import uuid
 
 import pytest
 
@@ -25,7 +26,18 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
-from db import Observation, FieldEvent, FieldActivity, Sample
+from db import (
+    Deployment,
+    FieldActivity,
+    FieldEvent,
+    LocationThingAssociation,
+    Observation,
+    Sample,
+    Sensor,
+    Thing,
+    TransducerObservation,
+    TransducerObservationBlock,
+)
 from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
@@ -382,6 +394,162 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
         data["items"][0]["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
     )
+
+
+def test_get_transducer_groundwater_level_observations_uses_blocks_for_same_thing(
+    location, second_location, sensor
+):
+    observation_time = datetime.now(timezone.utc)
+    matching_block_id = None
+    observation_id = None
+    other_block_id = None
+    target_deployment_id = None
+    other_deployment_id = None
+    other_sensor_id = None
+    other_thing_id = None
+    target_thing_id = None
+
+    try:
+        with session_ctx() as session:
+            target_thing = Thing(
+                name="Transducer Target Well",
+                first_visit_date="2023-03-03",
+                thing_type="water well",
+                release_status="draft",
+                well_depth=10,
+                hole_depth=10,
+                well_casing_diameter=5.0,
+                well_casing_depth=10.0,
+            )
+            other_thing = Thing(
+                name="Transducer Other Well",
+                first_visit_date="2023-03-04",
+                thing_type="water well",
+                release_status="draft",
+                well_depth=10,
+                hole_depth=10,
+                well_casing_diameter=5.0,
+                well_casing_depth=10.0,
+            )
+            session.add_all([target_thing, other_thing])
+            session.flush()
+
+            session.add_all(
+                [
+                    LocationThingAssociation(
+                        location_id=location.id,
+                        thing_id=target_thing.id,
+                        effective_start="2025-02-01T00:00:00Z",
+                    ),
+                    LocationThingAssociation(
+                        location_id=second_location.id,
+                        thing_id=other_thing.id,
+                        effective_start="2025-02-01T00:00:00Z",
+                    ),
+                ]
+            )
+
+            other_sensor = Sensor(
+                name=f"Transducer Other Sensor {uuid.uuid4()}",
+                sensor_type="Pressure Transducer",
+                model="Model X",
+                serial_no=f"serial-{uuid.uuid4()}",
+                pcn_number=f"pcn-{uuid.uuid4()}",
+                owner_agency="NMBGMR",
+                sensor_status="In Service",
+                notes="other sensor",
+                release_status="draft",
+            )
+            session.add(other_sensor)
+            session.flush()
+
+            target_deployment = Deployment(
+                sensor_id=sensor.id,
+                thing_id=target_thing.id,
+                installation_date="2023-01-01",
+                recording_interval=24,
+                recording_interval_units="hour",
+                hanging_cable_length=10,
+                hanging_point_height=0,
+                hanging_point_description="target deployment",
+                notes="target deployment",
+            )
+            other_deployment = Deployment(
+                sensor_id=other_sensor.id,
+                thing_id=other_thing.id,
+                installation_date="2023-01-01",
+                recording_interval=24,
+                recording_interval_units="hour",
+                hanging_cable_length=10,
+                hanging_point_height=0,
+                hanging_point_description="other deployment",
+                notes="other deployment",
+            )
+            session.add_all([target_deployment, other_deployment])
+            session.flush()
+
+            target_block = TransducerObservationBlock(
+                thing_id=target_thing.id,
+                parameter_id=_groundwater_level_parameter_id(),
+                start_datetime=observation_time - timedelta(days=10),
+                end_datetime=observation_time + timedelta(days=10),
+                review_status="not reviewed",
+            )
+            other_block = TransducerObservationBlock(
+                thing_id=other_thing.id,
+                parameter_id=_groundwater_level_parameter_id(),
+                start_datetime=observation_time - timedelta(days=1),
+                end_datetime=observation_time + timedelta(days=1),
+                review_status="not reviewed",
+            )
+            session.add_all([target_block, other_block])
+            session.flush()
+
+            observation = TransducerObservation(
+                parameter_id=_groundwater_level_parameter_id(),
+                deployment_id=target_deployment.id,
+                observation_datetime=observation_time,
+                value=12.34,
+            )
+            session.add(observation)
+            session.commit()
+
+            matching_block_id = target_block.id
+            observation_id = observation.id
+            other_block_id = other_block.id
+            target_deployment_id = target_deployment.id
+            other_deployment_id = other_deployment.id
+            other_sensor_id = other_sensor.id
+            target_thing_id = target_thing.id
+            other_thing_id = other_thing.id
+
+        response = client.get(
+            f"/observation/transducer-groundwater-level?thing_id={target_thing_id}"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["block"]["id"] == matching_block_id
+        assert data["items"][0]["block"]["id"] != other_block_id
+    finally:
+        with session_ctx() as session:
+            for model, pk in (
+                (TransducerObservation, observation_id),
+                (TransducerObservationBlock, matching_block_id),
+                (TransducerObservationBlock, other_block_id),
+                (Deployment, target_deployment_id),
+                (Deployment, other_deployment_id),
+                (Sensor, other_sensor_id),
+                (Thing, target_thing_id),
+                (Thing, other_thing_id),
+            ):
+                if pk is None:
+                    continue
+                instance = session.get(model, pk)
+                if instance is not None:
+                    session.delete(instance)
+            session.commit()
 
 
 def test_get_groundwater_level_observation_by_id(groundwater_level_observation):
