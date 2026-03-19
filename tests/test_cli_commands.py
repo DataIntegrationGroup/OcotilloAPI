@@ -164,10 +164,12 @@ def test_associate_assets_command_calls_service(monkeypatch):
 def test_restore_local_db_invokes_psql(monkeypatch, tmp_path):
     sql_file = tmp_path / "restore.sql"
     sql_file.write_text(
+        "\\restrict abc123\n"
         "SET ROLE ocotillo;\n"
         "ALTER TABLE public.sample OWNER TO ocotillo;\n"
         "GRANT ALL ON TABLE public.sample TO ocotillo;\n"
         "select 1;\n"
+        "\\unrestrict abc123\n"
     )
     captured: dict[str, object] = {}
     call_order: list[str] = []
@@ -532,10 +534,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
             CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"

@@ -21,6 +21,12 @@ ROLE_DEPENDENT_SQL_PATTERNS = (
     re.compile(r"^\s*REVOKE\b", re.IGNORECASE),
     re.compile(r"^\s*ALTER\s+DEFAULT\s+PRIVILEGES\b", re.IGNORECASE),
 )
+PSQL_META_COMMAND_PATTERNS = (
+    # Newer pg_dump versions emit these psql-only commands for safer restores.
+    # Older local psql clients reject them, so drop them from staged restores.
+    re.compile(r"^\s*\\restrict\b", re.IGNORECASE),
+    re.compile(r"^\s*\\unrestrict\b", re.IGNORECASE),
+)
 
 
 class LocalDbRestoreError(RuntimeError):
@@ -81,9 +87,13 @@ def _sanitize_sql_dump(source_path: Path, target_path: Path) -> None:
         with open(source_path, "r", encoding="utf-8") as infile:
             with open(target_path, "w", encoding="utf-8") as outfile:
                 for line in infile:
-                    if any(
+                    matches_role_sql = any(
                         pattern.search(line) for pattern in ROLE_DEPENDENT_SQL_PATTERNS
-                    ):
+                    )
+                    matches_psql_meta = any(
+                        pattern.search(line) for pattern in PSQL_META_COMMAND_PATTERNS
+                    )
+                    if matches_role_sql or matches_psql_meta:
                         continue
                     outfile.write(line)
     except UnicodeError as exc:
@@ -235,6 +245,7 @@ def restore_local_db_from_sql(
             ) from exc
 
         return LocalDbRestoreResult(
+            sql_file=staged_sql_file,
             source=source_description,
             host=host,
             port=port,
