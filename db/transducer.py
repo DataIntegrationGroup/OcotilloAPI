@@ -107,6 +107,14 @@ class TransducerObservation(Base, AutoBaseMixin, ReleaseMixin):
     """
 
     __tablename__ = "transducer_observation"
+    __table_args__ = (
+        Index(
+            "ix_transducer_observation_deployment_parameter_datetime",
+            "deployment_id",
+            "parameter_id",
+            "observation_datetime",
+        ),
+    )
 
     parameter_id: Mapped[int] = mapped_column(
         ForeignKey("parameter.id", ondelete="CASCADE"), nullable=False, index=True
