@@ -600,7 +600,7 @@ def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft
 
 
 def test_null_mp_height_allowed(tmp_path):
-    """A null measuring_point_height_ft and mp_height area allowed when depth to water is provided, and results in null measuring_point_height for the thing and observation."""
+    """A null measuring_point_height_ft and mp_height are allowed when depth to water is provided, and results in null measuring_point_height for the thing and observation."""
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
