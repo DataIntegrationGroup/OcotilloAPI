@@ -20,7 +20,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from core.factory import create_api_app
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -29,12 +28,14 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
+from core.factory import create_api_app
 from db import (
     Group,
     GroupThingAssociation,
     NMA_Chemistry_SampleInfo,
     NMA_MajorChemistry,
     NMA_MinorTraceChemistry,
+    StatusHistory,
 )
 from db.engine import session_ctx
 from tests import override_authentication
@@ -422,6 +423,14 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
             thing_id=water_well_thing.id,
         )
         session.add(group_assoc)
+        status_history = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add(status_history)
         session.commit()
 
         row = session.execute(
@@ -436,6 +445,59 @@ def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
         assert row.group_name == "Water Level Network"
         assert row.group_type == "Monitoring Plan"
 
+        session.delete(status_history)
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
+def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.commit()
+
+        group = Group(
+            name="Water Level Network",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        currently_monitored = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        not_currently_monitored = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Not currently monitored",
+            start_date=date(2024, 2, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add_all([currently_monitored, not_currently_monitored])
+        session.commit()
+
+        row = session.execute(
+            text("SELECT id FROM ogc_actively_monitored_wells WHERE id = :thing_id"),
+            {"thing_id": water_well_thing.id},
+        ).one_or_none()
+
+        assert row is None
+
+        session.delete(not_currently_monitored)
+        session.delete(currently_monitored)
         session.delete(group_assoc)
         session.delete(group)
         session.commit()
@@ -457,6 +519,7 @@ def test_ogc_collections(ogc_client):
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",
+        "project_areas",
     }.issubset(ids)
 
 
@@ -469,11 +532,21 @@ def test_ogc_new_collection_items_endpoints(ogc_client):
         "major_chemistry_results",
         "minor_chemistry_wells",
         "actively_monitored_wells",
+        "project_areas",
     ):
         response = ogc_client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
         assert response.status_code == 200
         payload = response.json()
         assert payload["type"] == "FeatureCollection"
+
+
+def test_ogc_project_areas_items_expose_groups_with_project_areas(ogc_client, group):
+    response = ogc_client.get("/ogcapi/collections/project_areas/items?limit=20")
+
+    assert response.status_code == 200
+    payload = response.json()
+    ids = {str(feature["id"]) for feature in payload["features"]}
+    assert str(group.id) in ids
 
 
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
