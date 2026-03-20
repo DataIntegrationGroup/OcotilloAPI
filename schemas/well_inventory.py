@@ -125,7 +125,9 @@ def email_validator_function(email_str):
 
 def flexible_lexicon_validator(enum_cls):
     def validator(v):
-        if v is None or v == "":
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == "":
             return None
         if isinstance(v, enum_cls):
             return v
@@ -174,6 +176,10 @@ WellPumpTypeField: TypeAlias = Annotated[
     Optional[WellPumpType], BeforeValidator(flexible_lexicon_validator(WellPumpType))
 ]
 MonitoringStatusField: TypeAlias = Annotated[
+    Optional[MonitoringStatus],
+    BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
+]
+WellStatusField: TypeAlias = Annotated[
     Optional[MonitoringStatus],
     BeforeValidator(flexible_lexicon_validator(MonitoringStatus)),
 ]
@@ -302,7 +308,7 @@ class WellInventoryRow(BaseModel):
     measuring_point_description: Optional[str] = None
     well_purpose: WellPurposeField = None
     well_purpose_2: WellPurposeField = None
-    well_status: OptionalText = Field(
+    well_status: WellStatusField = Field(
         default=None,
         validation_alias=AliasChoices("well_status", "well_hole_status"),
     )

@@ -20,6 +20,7 @@ from db import (
     Location,
     LocationThingAssociation,
     Thing,
+    Group,
     Sample,
     Observation,
     Contact,
@@ -481,7 +482,7 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 3.5,
+            "mp_height_ft": 2.5,
             "level_status": "Water level not affected",
         }
     )
@@ -669,7 +670,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 3.5,
+            "mp_height_ft": 2.5,
         }
     )
 
@@ -693,7 +694,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "2025-02-15T10:30:00Z"
         )
         assert observations[0].value is None
-        assert observations[0].measuring_point_height == 3.5
+        assert observations[0].measuring_point_height == 2.5
 
 
 def test_rerunning_same_well_inventory_csv_is_idempotent():
@@ -726,6 +727,37 @@ def test_rerunning_same_well_inventory_csv_is_idempotent():
         }
 
     assert counts_after_second == counts_after_first
+
+
+def test_failed_project_rows_do_not_create_empty_group(tmp_path):
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "project": "Project Without Successful Rows",
+            "repeat_measurement_permission": True,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-failed-project.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 1, result.stderr
+
+    with session_ctx() as session:
+        group = (
+            session.query(Group)
+            .filter(
+                Group.name == "Project Without Successful Rows",
+                Group.group_type == "Monitoring Plan",
+            )
+            .one_or_none()
+        )
+
+        assert group is None
 
 
 # =============================================================================
@@ -1286,7 +1318,14 @@ class TestWellInventoryRowAliases:
 
         model = WellInventoryRow(**row)
 
-        assert model.well_status == "Abandoned"
+        assert model.well_status.value == "Abandoned"
+
+    def test_invalid_well_status_alias_raises_validation_error(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "NotARealWellHoleStatus"
+
+        with pytest.raises(ValueError, match="Input should be"):
+            WellInventoryRow(**row)
 
     def test_water_level_aliases_are_mapped(self):
         row = _minimal_valid_well_inventory_row()
@@ -1349,6 +1388,14 @@ class TestWellInventoryRowAliases:
 
         assert model.well_status is None
 
+    def test_whitespace_only_well_status_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "   "
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status is None
+
     def test_canonical_name_wins_when_alias_and_canonical_present(self):
         row = _minimal_valid_well_inventory_row()
         row["well_status"] = "Abandoned"
@@ -1356,7 +1403,7 @@ class TestWellInventoryRowAliases:
 
         model = WellInventoryRow(**row)
 
-        assert model.well_status == "Abandoned"
+        assert model.well_status.value == "Abandoned"
 
 
 class TestWellInventoryAPIEdgeCases:

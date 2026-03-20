@@ -190,24 +190,30 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
             # models is a list of (row_number, model)
             sorted_models = sorted(models, key=lambda x: x[1].project)
             for project, items in groupby(sorted_models, key=lambda x: x[1].project):
-                # get project and add if does not exist
+                # Reuse an existing project group immediately, but defer creating a
+                # new one until a row for that project actually imports successfully.
                 sql = select(Group).where(
                     and_(Group.group_type == "Monitoring Plan", Group.name == project)
                 )
                 group = session.scalars(sql).one_or_none()
-                if not group:
-                    group = Group(name=project, group_type="Monitoring Plan")
-                    session.add(group)
-                    session.flush()
 
                 for row_number, model in items:
                     current_row_id = model.well_name_point_id
                     try:
                         # Use savepoint for "best-effort" import per row
                         with session.begin_nested():
-                            added = _add_csv_row(session, group, model, user)
+                            group_for_row = group
+                            if group_for_row is None:
+                                group_for_row = Group(
+                                    name=project, group_type="Monitoring Plan"
+                                )
+                                session.add(group_for_row)
+                                session.flush()
+
+                            added = _add_csv_row(session, group_for_row, model, user)
                             if added:
                                 wells.append(added)
+                                group = group_for_row
                     except (
                         ValueError,
                         DatabaseError,
@@ -681,22 +687,6 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             }
         )
 
-    if (
-        model.mp_height is not None
-        and model.measuring_point_height_ft is not None
-        and model.mp_height != model.measuring_point_height_ft
-    ):
-        raise ValueError(
-            "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
-        )
-
-    if model.measuring_point_height_ft is not None:
-        universal_mp_height = model.measuring_point_height_ft
-    elif model.mp_height is not None:
-        universal_mp_height = model.mp_height
-    else:
-        universal_mp_height = None
-
     data = CreateWell(
         location_id=loc.id,
         group_id=group.id,
@@ -705,7 +695,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
         well_casing_diameter=model.casing_diameter_ft,
-        measuring_point_height=universal_mp_height,
+        measuring_point_height=model.measuring_point_height_ft,
         measuring_point_description=model.measuring_point_description,
         well_completion_date=model.date_drilled,
         well_completion_date_source=model.completion_source,
@@ -713,7 +703,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_pump_depth=model.well_pump_depth_ft,
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
-        well_status=model.well_status,
+        well_status=(
+            model.well_status.value
+            if hasattr(model.well_status, "value")
+            else model.well_status
+        ),
         monitoring_status=(
             model.monitoring_status.value
             if hasattr(model.monitoring_status, "value")
@@ -845,7 +839,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             value=model.depth_to_water_ft,
             unit="ft",
             observation_datetime=model.measurement_date_time,
-            measuring_point_height=universal_mp_height,
+            measuring_point_height=model.mp_height,
             groundwater_level_reason=(
                 model.level_status.value
                 if hasattr(model.level_status, "value")

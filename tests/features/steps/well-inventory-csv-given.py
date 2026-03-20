@@ -448,7 +448,9 @@ def step_given_row_contains_invalid_state_value(context: Context):
 )
 def step_given_row_contains_invalid_well_hole_status_value(context: Context):
     df = _get_valid_df(context)
-    if "well_status" in df.columns:
+    if "well_hole_status" in df.columns:
+        df.loc[0, "well_hole_status"] = "NotARealWellHoleStatus"
+    elif "well_status" in df.columns:
         df.loc[0, "well_status"] = "NotARealWellHoleStatus"
     _set_content_from_df(context, df)
 
