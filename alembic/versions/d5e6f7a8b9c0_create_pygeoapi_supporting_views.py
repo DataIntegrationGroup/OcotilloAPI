@@ -34,7 +34,10 @@ THING_COLLECTIONS = [
     ("monitoring_wells", "monitoring well"),
     ("observation_wells", "observation well"),
     ("other_things", "other"),
-    ("outfalls_wastewater_return_flow", "outfall of wastewater or return flow"),
+    (
+        "outfalls_wastewater_return_flow",
+        "outfall of wastewater or return flow",
+    ),
     ("perennial_streams", "perennial stream"),
     ("piezometers", "piezometer"),
     ("production_wells", "production well"),
@@ -107,8 +110,11 @@ def _create_latest_depth_view() -> str:
                 o.observation_datetime,
                 o.value,
                 o.measuring_point_height,
-                -- Treat NULL measuring_point_height as 0 when computing depth_to_water_bgs
-                (o.value - COALESCE(o.measuring_point_height, 0)) AS depth_to_water_bgs,
+                -- Treat NULL measuring_point_height as 0 when computing
+                -- depth_to_water_bgs.
+                (
+                    o.value - COALESCE(o.measuring_point_height, 0)
+                ) AS depth_to_water_bgs,
                 ROW_NUMBER() OVER (
                     PARTITION BY fe.thing_id
                     ORDER BY o.observation_datetime DESC, o.id DESC
@@ -151,7 +157,10 @@ def _create_avg_tds_view() -> str:
             SELECT
                 csi.thing_id,
                 mc.id AS major_chemistry_id,
-                COALESCE(mc."AnalysisDate", csi."CollectionDate")::date AS observation_date,
+                COALESCE(
+                    mc."AnalysisDate",
+                    csi."CollectionDate"
+                )::date AS observation_date,
                 mc."SampleValue" AS sample_value,
                 mc."Units" AS units
             FROM "NMA_MajorChemistry" AS mc
@@ -193,15 +202,16 @@ def _drop_view_or_materialized_view(view_name: str) -> None:
 
 def _create_matview_indexes() -> None:
     # Required so REFRESH MATERIALIZED VIEW CONCURRENTLY can run.
+    avg_tds_index_sql = (
+        "CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)"
+    )
     op.execute(
         text(
             "CREATE UNIQUE INDEX ux_ogc_latest_depth_to_water_wells_id "
             "ON ogc_latest_depth_to_water_wells (id)"
         )
     )
-    op.execute(
-        text("CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)")
-    )
+    op.execute(text(avg_tds_index_sql))
 
 
 def _create_refresh_function() -> str:
@@ -220,7 +230,11 @@ def _create_refresh_function() -> str:
                 WHERE schemaname = 'public'
                   AND matviewname LIKE 'ogc_%'
             LOOP
-                matview_fqname := format('%I.%I', matview_record.schemaname, matview_record.matviewname);
+                matview_fqname := format(
+                    '%I.%I',
+                    matview_record.schemaname,
+                    matview_record.matviewname
+                );
                 EXECUTE format('REFRESH MATERIALIZED VIEW %s', matview_fqname);
             END LOOP;
         END;
@@ -235,10 +249,15 @@ def upgrade() -> None:
     required_core = {"thing", "location", "location_thing_association"}
     existing_tables = set(inspector.get_table_names(schema="public"))
     if not required_core.issubset(existing_tables):
-        missing_tables = sorted(t for t in required_core if t not in existing_tables)
+        missing_tables = sorted(
+            table_name
+            for table_name in required_core
+            if table_name not in existing_tables
+        )
         missing_tables_str = ", ".join(missing_tables)
         raise RuntimeError(
-            "Cannot create pygeoapi supporting views. The following required core "
+            "Cannot create pygeoapi supporting views. "
+            "The following required core "
             f"tables are missing: {missing_tables_str}"
         )
 
@@ -255,7 +274,8 @@ def upgrade() -> None:
         )
         missing_depth_tables_str = ", ".join(missing_depth_tables)
         raise RuntimeError(
-            "Cannot create ogc_latest_depth_to_water_wells. The following required "
+            "Cannot create ogc_latest_depth_to_water_wells. "
+            "The following required "
             f"tables are missing: {missing_depth_tables_str}"
         )
     op.execute(text(_create_latest_depth_view()))
@@ -269,7 +289,11 @@ def upgrade() -> None:
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
     if not required_tds.issubset(existing_tables):
-        missing_tds_tables = sorted(t for t in required_tds if t not in existing_tables)
+        missing_tds_tables = sorted(
+            table_name
+            for table_name in required_tds
+            if table_name not in existing_tables
+        )
         missing_tds_tables_str = ", ".join(missing_tds_tables)
         raise RuntimeError(
             "Cannot create ogc_avg_tds_wells. The following required "
@@ -288,7 +312,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(text(f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"))
+    drop_refresh_function_sql = (
+        f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"
+    )
+    op.execute(text(drop_refresh_function_sql))
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     for view_id, _ in THING_COLLECTIONS:

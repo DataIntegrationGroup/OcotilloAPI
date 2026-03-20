@@ -17,8 +17,10 @@ from datetime import date, datetime
 from importlib.util import find_spec
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from core.factory import create_api_app
 from core.dependencies import (
     admin_function,
     editor_function,
@@ -27,10 +29,15 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry, NMA_MinorTraceChemistry
+from db import (
+    Group,
+    GroupThingAssociation,
+    NMA_Chemistry_SampleInfo,
+    NMA_MajorChemistry,
+    NMA_MinorTraceChemistry,
+)
 from db.engine import session_ctx
-from main import app
-from tests import client, override_authentication
+from tests import override_authentication
 
 pytestmark = pytest.mark.skipif(
     find_spec("pygeoapi") is None,
@@ -39,7 +46,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module", autouse=True)
-def override_authentication_dependency_fixture():
+def ogc_client():
+    app = create_api_app()
     app.dependency_overrides[admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
@@ -55,29 +63,30 @@ def override_authentication_dependency_fixture():
     )
     app.dependency_overrides[amp_viewer_function] = override_authentication()
 
-    yield
+    with TestClient(app) as client:
+        yield client
 
     app.dependency_overrides = {}
 
 
-def test_ogc_landing():
-    response = client.get("/ogcapi")
+def test_ogc_landing(ogc_client):
+    response = ogc_client.get("/ogcapi")
     assert response.status_code == 200
     payload = response.json()
     assert payload["title"]
     assert any(link["rel"] == "self" for link in payload["links"])
 
 
-def test_ogc_conformance():
-    response = client.get("/ogcapi/conformance")
+def test_ogc_conformance(ogc_client):
+    response = ogc_client.get("/ogcapi/conformance")
     assert response.status_code == 200
     payload = response.json()
     assert "conformsTo" in payload
     assert any("ogcapi-features" in item for item in payload["conformsTo"])
 
 
-def test_ogc_openapi_has_paths():
-    response = client.get("/ogcapi/openapi?f=json")
+def test_ogc_openapi_has_paths(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
     assert response.status_code == 200
     payload = response.json()
     assert payload["openapi"].startswith("3.")
@@ -392,8 +401,48 @@ def test_ogc_water_elevation_wells_normalizes_meter_observations_to_feet(
         session.commit()
 
 
-def test_ogc_collections():
-    response = client.get("/ogcapi/collections")
+def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.commit()
+
+        group = Group(
+            name="Water Level Network",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT group_id, group_name, group_type "
+                "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert row.group_id == group.id
+        assert row.group_name == "Water Level Network"
+        assert row.group_type == "Monitoring Plan"
+
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
+def test_ogc_collections(ogc_client):
+    response = ogc_client.get("/ogcapi/collections")
     assert response.status_code == 200
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
@@ -407,10 +456,11 @@ def test_ogc_collections():
         "water_well_summary",
         "major_chemistry_results",
         "minor_chemistry_wells",
+        "actively_monitored_wells",
     }.issubset(ids)
 
 
-def test_ogc_new_collection_items_endpoints():
+def test_ogc_new_collection_items_endpoints(ogc_client):
     for collection_id in (
         "latest_tds_wells",
         "depth_to_water_trend_wells",
@@ -418,8 +468,9 @@ def test_ogc_new_collection_items_endpoints():
         "water_well_summary",
         "major_chemistry_results",
         "minor_chemistry_wells",
+        "actively_monitored_wells",
     ):
-        response = client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
+        response = ogc_client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
         assert response.status_code == 200
         payload = response.json()
         assert payload["type"] == "FeatureCollection"
@@ -428,22 +479,22 @@ def test_ogc_new_collection_items_endpoints():
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_locations_items_bbox(location):
     bbox = "-107.95,33.80,-107.94,33.81"
-    response = client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
+    response = ogc_client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
     assert response.status_code == 200
     payload = response.json()
     assert payload["type"] == "FeatureCollection"
     assert payload["numberReturned"] >= 1
 
 
-def test_ogc_wells_items_and_item(water_well_thing):
-    response = client.get("/ogcapi/collections/water_wells/items?limit=20")
+def test_ogc_wells_items_and_item(ogc_client, water_well_thing):
+    response = ogc_client.get("/ogcapi/collections/water_wells/items?limit=20")
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
     ids = {str(feature["id"]) for feature in payload["features"]}
     assert str(water_well_thing.id) in ids
 
-    response = client.get(
+    response = ogc_client.get(
         f"/ogcapi/collections/water_wells/items/{water_well_thing.id}"
     )
     assert response.status_code == 200
@@ -454,7 +505,7 @@ def test_ogc_wells_items_and_item(water_well_thing):
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_polygon_within_filter(location):
     polygon = "POLYGON((-107.95 33.80,-107.94 33.80,-107.94 33.81,-107.95 33.81,-107.95 33.80))"
-    response = client.get(
+    response = ogc_client.get(
         "/ogcapi/collections/locations/items",
         params={
             "filter": f"WITHIN(geometry,{polygon})",

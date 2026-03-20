@@ -241,4 +241,27 @@ resources:
         table: ogc_minor_chemistry_wells
         geom_field: point
 
+  actively_monitored_wells:
+    type: collection
+    title: Actively Monitored Wells
+    description: Wells in the collaborative network currently flagged as actively monitored.
+    keywords: [water-wells, monitoring, collaborative-network, actively-monitored]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_actively_monitored_wells
+        geom_field: point
+
 {thing_collections_block}
