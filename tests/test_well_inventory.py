@@ -20,6 +20,7 @@ from db import (
     Location,
     LocationThingAssociation,
     Thing,
+    Group,
     Sample,
     Observation,
     Contact,
@@ -596,6 +597,37 @@ def test_rerunning_same_well_inventory_csv_is_idempotent():
         }
 
     assert counts_after_second == counts_after_first
+
+
+def test_failed_project_rows_do_not_create_empty_group(tmp_path):
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "project": "Project Without Successful Rows",
+            "repeat_measurement_permission": True,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-failed-project.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 1, result.stderr
+
+    with session_ctx() as session:
+        group = (
+            session.query(Group)
+            .filter(
+                Group.name == "Project Without Successful Rows",
+                Group.group_type == "Monitoring Plan",
+            )
+            .one_or_none()
+        )
+
+        assert group is None
 
 
 # =============================================================================

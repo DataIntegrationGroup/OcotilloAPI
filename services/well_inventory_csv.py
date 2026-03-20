@@ -190,24 +190,30 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
             # models is a list of (row_number, model)
             sorted_models = sorted(models, key=lambda x: x[1].project)
             for project, items in groupby(sorted_models, key=lambda x: x[1].project):
-                # get project and add if does not exist
+                # Reuse an existing project group immediately, but defer creating a
+                # new one until a row for that project actually imports successfully.
                 sql = select(Group).where(
                     and_(Group.group_type == "Monitoring Plan", Group.name == project)
                 )
                 group = session.scalars(sql).one_or_none()
-                if not group:
-                    group = Group(name=project, group_type="Monitoring Plan")
-                    session.add(group)
-                    session.flush()
 
                 for row_number, model in items:
                     current_row_id = model.well_name_point_id
                     try:
                         # Use savepoint for "best-effort" import per row
                         with session.begin_nested():
-                            added = _add_csv_row(session, group, model, user)
+                            group_for_row = group
+                            if group_for_row is None:
+                                group_for_row = Group(
+                                    name=project, group_type="Monitoring Plan"
+                                )
+                                session.add(group_for_row)
+                                session.flush()
+
+                            added = _add_csv_row(session, group_for_row, model, user)
                             if added:
                                 wells.append(added)
+                                group = group_for_row
                     except (
                         ValueError,
                         DatabaseError,
