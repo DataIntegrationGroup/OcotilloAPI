@@ -482,7 +482,7 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 2.5,
+            "mp_height_ft": 3.5,
             "level_status": "Water level not affected",
         }
     )
@@ -670,7 +670,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 2.5,
+            "mp_height_ft": 3.5,
         }
     )
 
@@ -694,7 +694,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "2025-02-15T10:30:00Z"
         )
         assert observations[0].value is None
-        assert observations[0].measuring_point_height == 2.5
+        assert observations[0].measuring_point_height == 3.5
 
 
 def test_rerunning_same_well_inventory_csv_is_idempotent():
