@@ -125,7 +125,9 @@ def email_validator_function(email_str):
 
 def flexible_lexicon_validator(enum_cls):
     def validator(v):
-        if v is None or v == "":
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == "":
             return None
         if isinstance(v, enum_cls):
             return v

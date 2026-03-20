@@ -1258,6 +1258,14 @@ class TestWellInventoryRowAliases:
 
         assert model.well_status is None
 
+    def test_whitespace_only_well_status_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "   "
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status is None
+
     def test_canonical_name_wins_when_alias_and_canonical_present(self):
         row = _minimal_valid_well_inventory_row()
         row["well_status"] = "Abandoned"
