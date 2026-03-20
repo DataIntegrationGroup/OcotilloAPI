@@ -16,12 +16,27 @@ down_revision: Union[str, Sequence[str], None] = "p9c0d1e2f3a4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 DROP_VIEW_SQL = "DROP VIEW IF EXISTS ogc_actively_monitored_wells"
-DROP_MATVIEW_SQL = "DROP MATERIALIZED VIEW IF EXISTS " "ogc_actively_monitored_wells"
+DROP_MATVIEW_SQL = "".join(
+    [
+        "DROP MATERIALIZED VIEW IF EXISTS ",
+        "ogc_actively_monitored_wells",
+    ]
+)
 
 
 def _create_actively_monitored_wells_view() -> str:
     return """
         CREATE VIEW ogc_actively_monitored_wells AS
+        WITH latest_monitoring_status AS (
+            SELECT DISTINCT ON (sh.target_id)
+                sh.target_id AS thing_id,
+                sh.status_value
+            FROM status_history AS sh
+            WHERE
+                sh.target_table = 'thing'
+                AND sh.status_type = 'Monitoring Status'
+            ORDER BY sh.target_id, sh.start_date DESC, sh.id DESC
+        )
         SELECT
             wws.id,
             wws.name,
@@ -43,7 +58,9 @@ def _create_actively_monitored_wells_view() -> str:
         FROM "group" AS g
         JOIN group_thing_association AS gta ON gta.group_id = g.id
         JOIN ogc_water_well_summary AS wws ON wws.id = gta.thing_id
+        JOIN latest_monitoring_status AS lms ON lms.thing_id = wws.id
         WHERE lower(trim(g.name)) = 'water level network'
+          AND lms.status_value = 'Currently monitored'
     """
 
 
@@ -54,6 +71,7 @@ def upgrade() -> None:
     required_tables = {
         "group",
         "group_thing_association",
+        "status_history",
     }
 
     if not required_tables.issubset(existing_tables):

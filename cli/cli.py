@@ -1005,6 +1005,30 @@ def refresh_pygeoapi_materialized_views(
     typer.echo(f"Refreshed {len(target_views)} materialized view(s).")
 
 
+@cli.command("import-project-area-boundaries")
+def import_project_area_boundaries_command(
+    layer_url: str = typer.Option(
+        (
+            "https://maps.nmt.edu/server/rest/services/Water/"
+            "Water_Resources/MapServer/17"
+        ),
+        "--layer-url",
+        help="ArcGIS Feature Layer URL for project area boundaries.",
+    ),
+):
+    from cli.project_area_import import import_project_area_boundaries
+
+    result = import_project_area_boundaries(layer_url=layer_url)
+    typer.echo(f"Fetched {result.fetched} feature(s).")
+    typer.echo(f"Matched {result.matched} group row(s).")
+    typer.echo(f"Updated {result.updated} group project area(s).")
+    if result.unmatched_locations:
+        typer.echo(
+            "Unmatched locations: " + ", ".join(result.unmatched_locations),
+            err=True,
+        )
+
+
 if __name__ == "__main__":
     cli()
 
