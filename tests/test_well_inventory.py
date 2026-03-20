@@ -598,14 +598,14 @@ def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft
         assert observations[0].measuring_point_height == 4.0
 
 
-def test_null_observation_allows_blank_mp_height(tmp_path):
-    """When depth to water is not provided (ie null), blank measuring_point_height_ft and mp_height fields should be allowed and result in a null measuring_point_height for the observation and no associated measuring point height (MeasuringPointHistory) for the well."""
+def test_null_mp_height_allowed(tmp_path):
+    """A null measuring_point_height_ft and mp_height area allowed when depth to water is provided, and results in null measuring_point_height for the thing and observation."""
     row = _minimal_valid_well_inventory_row()
     row.update(
         {
             "measuring_point_height_ft": "",
             "water_level_date_time": "2025-02-15T10:30:00",
-            "depth_to_water_ft": "",
+            "depth_to_water_ft": 8,
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
@@ -628,6 +628,7 @@ def test_null_observation_allows_blank_mp_height(tmp_path):
         assert len(things) == 1
         assert things[0].measuring_point_height is None
         assert len(observations) == 1
+        assert observations[0].value == 8
         assert observations[0].measuring_point_height is None
 
 
@@ -655,31 +656,6 @@ def test_conflicting_mp_heights_raises_error(tmp_path):
     assert (
         result.payload["validation_errors"][0]["error"]
         == "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
-    )
-
-
-def test_no_mp_height_raises_error_when_depth_to_water_provided(tmp_path):
-    row = _minimal_valid_well_inventory_row()
-    row.update(
-        {
-            "water_level_date_time": "2025-02-15T10:30:00",
-            "measuring_point_height_ft": "",
-            "mp_height": "",
-            "depth_to_water_ft": "8",
-        }
-    )
-
-    file_path = tmp_path / "well-inventory-no-mp-height.csv"
-    with file_path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
-        writer.writeheader()
-        writer.writerow(row)
-
-    result = well_inventory_csv(file_path)
-    assert result.exit_code == 1, result.stderr
-    assert (
-        result.payload["validation_errors"][0]["error"]
-        == "measuring_point_height_ft or mp_height is required when depth_to_water_ft is provided for a non-null observation"
     )
 
 
