@@ -1021,7 +1021,9 @@ def import_project_area_boundaries_command(
     result = import_project_area_boundaries(layer_url=layer_url)
     typer.echo(f"Fetched {result.fetched} feature(s).")
     typer.echo(f"Matched {result.matched} group row(s).")
+    typer.echo(f"Created {result.created} group(s).")
     typer.echo(f"Updated {result.updated} group project area(s).")
+    typer.echo(f"Skipped {result.skipped} unchanged group(s).")
     if result.unmatched_locations:
         typer.echo(
             "Unmatched locations: " + ", ".join(result.unmatched_locations),
