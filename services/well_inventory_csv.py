@@ -236,6 +236,13 @@ def _import_well_inventory_csv(
 
                 for row_number, model in project_rows:
                     current_row_id = model.well_name_point_id
+                    _emit_progress(
+                        progress_callback,
+                        (
+                            f"Starting row {attempted_count + 1}/{total_model_rows}: "
+                            f"{current_row_id}"
+                        ),
+                    )
                     try:
                         # Use savepoint for "best-effort" import per row
                         with session.begin_nested():
