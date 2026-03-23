@@ -482,7 +482,7 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 2.5,
+            "mp_height_ft": 3.5,
             "level_status": "Water level not affected",
         }
     )
@@ -530,6 +530,136 @@ def test_well_inventory_db_contents_with_waterlevels(tmp_path):
         assert observation.sample == sample
 
 
+def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
+    """When measuring_point_height_ft is provided it is used for the thing's (MeasuringPointHistory) and observation's measuring_point_height values."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": 3.5,
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height == 3.5
+        assert len(observations) == 1
+        assert observations[0].measuring_point_height == 3.5
+
+
+def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft_blank(
+    tmp_path,
+):
+    """When depth to water is provided and measuring_point_height_ft is blank the mp_height value should be used for the thing's (MeasuringPointHistory) and observation's measuring_point_height."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": "",
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+            "mp_height": 4.0,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height == 4.0
+        assert len(observations) == 1
+        assert observations[0].measuring_point_height == 4.0
+
+
+def test_null_mp_height_allowed(tmp_path):
+    """A null measuring_point_height_ft and mp_height are allowed when depth to water is provided, and results in null measuring_point_height for the thing and observation."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": "",
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": 8,
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height is None
+        assert len(observations) == 1
+        assert observations[0].value == 8
+        assert observations[0].measuring_point_height is None
+
+
+def test_conflicting_mp_heights_raises_error(tmp_path):
+    """
+    When both measuring_point_height_ft and mp_height are provided, an inequality (conflict) should raise an error.
+    """
+    row = _minimal_valid_well_inventory_row()
+
+    row.update(
+        {
+            "measuring_point_height_ft": 3.5,
+            "mp_height": 4.0,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 1, result.stderr
+    assert (
+        result.payload["validation_errors"][0]["error"]
+        == "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
+    )
+
+
 def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
     """Blank depth-to-water is treated as missing while preserving the attempted measurement."""
     row = _minimal_valid_well_inventory_row()
@@ -540,7 +670,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "sample_method": "Steel-tape measurement",
             "data_quality": "Water level accurate to within two hundreths of a foot",
             "water_level_notes": "Attempted measurement",
-            "mp_height_ft": 2.5,
+            "mp_height_ft": 3.5,
         }
     )
 
@@ -564,7 +694,7 @@ def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
             "2025-02-15T10:30:00Z"
         )
         assert observations[0].value is None
-        assert observations[0].measuring_point_height == 2.5
+        assert observations[0].measuring_point_height == 3.5
 
 
 def test_rerunning_same_well_inventory_csv_is_idempotent():
