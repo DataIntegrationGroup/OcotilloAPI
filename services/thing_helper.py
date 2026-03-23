@@ -221,6 +221,7 @@ def add_thing(
     datalogger_suitability_status = data.pop("is_suitable_for_datalogger", None)
     open_status = data.pop("is_open", None)
     well_status = data.pop("well_status", None)
+    monitoring_status = data.pop("monitoring_status", None)
 
     # ----------
     # END UNIVERSAL THING RELATED TABLES
@@ -361,6 +362,18 @@ def add_thing(
                 audit_add(user, ws_status)
                 session.add(ws_status)
 
+            if monitoring_status is not None:
+                ms_status = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=monitoring_status,
+                    status_type="Monitoring Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, ms_status)
+                session.add(ms_status)
+
         # ----------
         # END WATER WELL SPECIFIC LOGIC
         # ----------
@@ -417,15 +430,16 @@ def add_thing(
         # ----------
         if commit:
             session.commit()
+            session.refresh(thing)
+
+            for note in thing.notes:
+                session.refresh(note)
         else:
             session.flush()
-        session.refresh(thing)
-
-        for note in thing.notes:
-            session.refresh(note)
 
     except Exception as e:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise e
 
     return thing

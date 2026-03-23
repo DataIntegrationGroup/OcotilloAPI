@@ -114,16 +114,16 @@ def add_contact(
 
         if commit:
             session.commit()
+            session.refresh(contact)
+
+            for note in contact.notes:
+                session.refresh(note)
         else:
             session.flush()
 
-        session.refresh(contact)
-
-        for note in contact.notes:
-            session.refresh(note)
-
     except Exception as e:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise e
 
     return contact

@@ -17,6 +17,11 @@ import os
 import random
 from datetime import datetime, timedelta
 
+# Default BDD runs to the local test database before any db module imports.
+# Allow explicit CI/local environment configuration to override these values.
+os.environ.setdefault("POSTGRES_DB", "ocotilloapi_test")
+os.environ.setdefault("POSTGRES_PORT", "5432")
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import select

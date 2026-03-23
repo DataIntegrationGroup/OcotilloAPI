@@ -29,17 +29,57 @@ def _set_file_content(context: Context, name):
 
 def _set_file_content_from_path(context: Context, path: Path, name: str | None = None):
     context.file_path = path
-    with open(path, "r", encoding="utf-8", newline="") as f:
-        context.file_name = name or path.name
-        context.file_content = f.read()
-        if context.file_name.endswith(".csv"):
-            context.rows = list(csv.DictReader(context.file_content.splitlines()))
-            context.row_count = len(context.rows)
-            context.file_type = "text/csv"
+    import hashlib
+
+    context.file_name = name or path.name
+
+    if path.suffix == ".csv" and path.exists() and path.stat().st_size > 0:
+        suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            rows = list(csv.reader(f))
+
+        if rows:
+            header = rows[0]
+            well_id_indexes = [
+                idx
+                for idx, column_name in enumerate(header)
+                if column_name == "well_name_point_id"
+            ]
+            for row in rows[1:]:
+                # Preserve repeated header rows and duplicate-column fixtures so
+                # structural CSV scenarios still reach the importer unchanged.
+                if row == header:
+                    continue
+
+                for idx in well_id_indexes:
+                    if idx >= len(row):
+                        continue
+                    value = row[idx]
+                    if (
+                        value
+                        and str(value).strip() != ""
+                        and not str(value).lower().endswith("-xxxx")
+                    ):
+                        row[idx] = f"{value}_{suffix}"
+
+        buffer = StringIO()
+        csv.writer(buffer).writerows(rows)
+        context.file_content = buffer.getvalue()
+        context.rows = list(csv.DictReader(context.file_content.splitlines()))
+        context.row_count = len(context.rows)
+        context.file_type = "text/csv"
+    else:
+        # For empty files or non-CSV files, don't use pandas
+        if path.exists():
+            with open(path, "r", encoding="utf-8", newline="") as f:
+                context.file_content = f.read()
         else:
-            context.rows = []
-            context.row_count = 0
-            context.file_type = "text/plain"
+            context.file_content = ""
+        context.rows = []
+        context.row_count = 0
+        context.file_type = (
+            "text/csv" if context.file_name.endswith(".csv") else "text/plain"
+        )
 
 
 @given(
@@ -243,7 +283,11 @@ def step_given_my_csv_file_contains_a_row_missing_the_required_required(
 ):
     _set_file_content(context, "well-inventory-valid.csv")
 
-    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    df = pd.read_csv(
+        context.file_path,
+        dtype={"contact_2_address_1_postal_code": str},
+        keep_default_na=False,
+    )
     df = df.drop(required_field, axis=1)
 
     buffer = StringIO()
@@ -274,7 +318,26 @@ def step_step_step_16(context: Context):
 
 def _get_valid_df(context: Context) -> pd.DataFrame:
     _set_file_content(context, "well-inventory-valid.csv")
-    df = pd.read_csv(context.file_path, dtype={"contact_2_address_1_postal_code": str})
+    df = pd.read_csv(
+        context.file_path,
+        dtype={"contact_2_address_1_postal_code": str},
+        keep_default_na=False,
+    )
+
+    # Add unique suffix to well names to ensure isolation between scenarios
+    # using a simple hash of the scenario name
+    import hashlib
+
+    suffix = hashlib.md5(context.scenario.name.encode()).hexdigest()[:6]
+    if "well_name_point_id" in df.columns:
+        df["well_name_point_id"] = df["well_name_point_id"].apply(
+            lambda x: (
+                f"{x}_{suffix}"
+                if x and str(x).strip() != "" and not str(x).lower().endswith("-xxxx")
+                else x
+            )
+        )
+
     return df
 
 
@@ -385,7 +448,9 @@ def step_given_row_contains_invalid_state_value(context: Context):
 )
 def step_given_row_contains_invalid_well_hole_status_value(context: Context):
     df = _get_valid_df(context)
-    if "well_status" in df.columns:
+    if "well_hole_status" in df.columns:
+        df.loc[0, "well_hole_status"] = "NotARealWellHoleStatus"
+    elif "well_status" in df.columns:
         df.loc[0, "well_status"] = "NotARealWellHoleStatus"
     _set_content_from_df(context, df)
 
@@ -397,6 +462,14 @@ def step_given_row_contains_invalid_monitoring_status_value(context: Context):
     df = _get_valid_df(context)
     if "monitoring_frequency" in df.columns:
         df.loc[0, "monitoring_frequency"] = "NotARealMonitoringStatus"
+    _set_content_from_df(context, df)
+
+
+@given('my CSV file contains a row with monitoring_frequency set to "Complete"')
+def step_given_row_contains_complete_monitoring_frequency(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "monitoring_frequency"] = "Complete"
+    context.complete_monitoring_frequency_well_id = df.loc[0, "well_name_point_id"]
     _set_content_from_df(context, df)
 
 
@@ -414,11 +487,14 @@ def step_given_row_contains_invalid_well_pump_type_value(context: Context):
 )
 def step_given_row_contains_contact_fields_but_name_and_org_are_blank(context: Context):
     df = _get_valid_df(context)
+    # Keep row 2 unchanged so row 1's invalid contact is the only expected error.
     df.loc[0, "contact_1_name"] = ""
     df.loc[0, "contact_1_organization"] = ""
+
     # Keep other contact data present so composite contact validation is exercised.
     df.loc[0, "contact_1_role"] = "Owner"
     df.loc[0, "contact_1_type"] = "Primary"
+
     _set_content_from_df(context, df)
 
 
