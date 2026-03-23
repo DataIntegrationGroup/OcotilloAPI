@@ -949,7 +949,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             nma_data_quality=(
                 model.data_quality.value
                 if hasattr(model.data_quality, "value")
-                else (model.data_quality or "Unknown")
+                else model.data_quality or None
             ),
             notes=model.water_level_notes,
         )
