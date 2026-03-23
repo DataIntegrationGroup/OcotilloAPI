@@ -760,6 +760,28 @@ def test_failed_project_rows_do_not_create_empty_group(tmp_path):
         assert group is None
 
 
+def test_complete_monitoring_frequency_sets_not_currently_monitored_without_frequency(
+    tmp_path,
+):
+    row = _minimal_valid_well_inventory_row()
+    row["monitoring_frequency"] = "Complete"
+
+    file_path = tmp_path / "well-inventory-complete-monitoring-frequency.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        thing = session.query(Thing).one()
+
+        assert thing.monitoring_status == "Not currently monitored"
+        assert thing.monitoring_frequencies == []
+
+
 # =============================================================================
 # Error Handling Tests - Cover API error paths
 # =============================================================================
@@ -1387,6 +1409,15 @@ class TestWellInventoryRowAliases:
         model = WellInventoryRow(**row)
 
         assert model.well_status is None
+
+    def test_complete_monitoring_frequency_is_normalized(self):
+        row = _minimal_valid_well_inventory_row()
+        row["monitoring_frequency"] = "Complete"
+
+        model = WellInventoryRow(**row)
+
+        assert model.monitoring_frequency is None
+        assert model.monitoring_status.value == "Not currently monitored"
 
     def test_whitespace_only_well_status_is_treated_as_none(self):
         row = _minimal_valid_well_inventory_row()

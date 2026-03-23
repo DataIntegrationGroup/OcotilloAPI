@@ -465,6 +465,14 @@ def step_given_row_contains_invalid_monitoring_status_value(context: Context):
     _set_content_from_df(context, df)
 
 
+@given('my CSV file contains a row with monitoring_frequency set to "Complete"')
+def step_given_row_contains_complete_monitoring_frequency(context: Context):
+    df = _get_valid_df(context)
+    df.loc[0, "monitoring_frequency"] = "Complete"
+    context.complete_monitoring_frequency_well_id = df.loc[0, "well_name_point_id"]
+    _set_content_from_df(context, df)
+
+
 @given(
     'my CSV file contains a row with a well_pump_type value that is not one of: "Submersible", "Jet", "Line Shaft", "Hand"'
 )

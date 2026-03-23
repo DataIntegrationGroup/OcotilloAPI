@@ -6,6 +6,7 @@ from pathlib import Path
 from behave import given, when, then
 from behave.runner import Context
 from cli.service_adapter import well_inventory_csv
+from db import Thing
 from db.engine import session_ctx
 from db.lexicon import LexiconCategory
 from services.util import convert_dt_tz_naive_to_tz_aware
@@ -415,3 +416,20 @@ def step_then_all_wells_are_imported_with_system_generated_unique_well_name(
     assert len(well_ids) == len(
         set(well_ids)
     ), "Expected unique well_name_point_id values"
+
+
+@then(
+    'the imported well with monitoring_frequency "Complete" is marked not currently monitored'
+)
+def step_then_complete_monitoring_frequency_maps_to_not_currently_monitored(
+    context: Context,
+):
+    with session_ctx() as session:
+        thing = session.scalars(
+            select(Thing).where(
+                Thing.name == context.complete_monitoring_frequency_well_id
+            )
+        ).one()
+
+        assert thing.monitoring_status == "Not currently monitored"
+        assert thing.monitoring_frequencies == []

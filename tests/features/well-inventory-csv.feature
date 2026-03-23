@@ -182,6 +182,14 @@ Feature: Bulk upload well inventory from CSV via CLI
     Then the command exits with code 0
     And all wells are imported
 
+  @positive @validation @BDMS-TBD
+  Scenario: Upload treats Complete monitoring_frequency as not currently monitored
+    Given my CSV file contains a row with monitoring_frequency set to "Complete"
+    When I run the well inventory bulk upload command
+    Then the command exits with code 0
+    And all wells are imported
+    And the imported well with monitoring_frequency "Complete" is marked not currently monitored
+
   @positive @validation @autogenerate_ids @BDMS-TBD
   Scenario: Upload succeeds and system auto-generates well_name_point_id for uppercase prefix placeholders and blanks
     Given my CSV file contains all valid columns but uses uppercase "-xxxx" placeholders and blank values for well_name_point_id

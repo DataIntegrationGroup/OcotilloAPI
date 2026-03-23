@@ -342,6 +342,25 @@ class WellInventoryRow(BaseModel):
     data_quality: DataQualityField = None
     water_level_notes: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_complete_monitoring_frequency(cls, data):
+        """Normalize `Complete` monitoring_frequency by clearing monitoring_frequency and setting monitoring_status to `Not currently monitored`."""
+        if not isinstance(data, dict):
+            return data
+
+        monitoring_frequency = data.get("monitoring_frequency")
+        if (
+            isinstance(monitoring_frequency, str)
+            and monitoring_frequency.strip().lower() == "complete"
+        ):
+            normalized = dict(data)
+            normalized["monitoring_frequency"] = None
+            normalized["monitoring_status"] = "Not currently monitored"
+            return normalized
+
+        return data
+
     @field_validator("date_time", mode="before")
     def make_date_time_tz_aware(cls, v):
         if isinstance(v, str):
