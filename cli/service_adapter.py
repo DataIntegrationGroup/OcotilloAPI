@@ -56,8 +56,13 @@ def well_inventory_csv(source_file: Path | str):
         payload = {"detail": "File encoding error"}
         return WellInventoryResult(1, json.dumps(payload), payload["detail"], payload)
     try:
+        progress_callback = None
+        if sys.stdout.isatty():
+            progress_callback = lambda message: print(message, flush=True)
         payload = import_well_inventory_csv(
-            text=text, user={"sub": "cli", "name": "cli"}
+            text=text,
+            user={"sub": "cli", "name": "cli"},
+            progress_callback=progress_callback,
         )
     except ValueError as exc:
         payload = {"detail": str(exc)}

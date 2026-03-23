@@ -21,7 +21,7 @@ from collections import Counter
 from datetime import date
 from io import StringIO
 from itertools import groupby
-from typing import Set
+from typing import Callable, Set
 
 from shapely import Point
 from sqlalchemy import select, and_
@@ -59,6 +59,7 @@ AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$", re.IGNORECASE)
 AUTOGEN_TOKEN_REGEX = re.compile(
     r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$", re.IGNORECASE
 )
+PROGRESS_INTERVAL = 25
 
 
 def _extract_autogen_prefix(well_id: str | None) -> str | None:
@@ -97,7 +98,19 @@ def import_well_inventory_csv(*args, **kw) -> dict:
         return _import_well_inventory_csv(session, *args, **kw)
 
 
-def _import_well_inventory_csv(session: Session, text: str, user: str):
+def _emit_progress(
+    progress_callback: Callable[[str], None] | None, message: str
+) -> None:
+    if progress_callback is not None:
+        progress_callback(message)
+
+
+def _import_well_inventory_csv(
+    session: Session,
+    text: str,
+    user: str,
+    progress_callback: Callable[[str], None] | None = None,
+):
     # if not file.content_type.startswith("text/csv") or not file.filename.endswith(
     #         ".csv"
     # ):
@@ -144,6 +157,9 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         raise ValueError("No data rows found")
     if len(rows) > 2000:
         raise ValueError(f"Too many rows {len(rows)}>2000")
+    _emit_progress(
+        progress_callback, f"Loaded {len(rows)} data rows. Validating input..."
+    )
 
     try:
         header = text.splitlines()[0]
@@ -182,14 +198,35 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         }
 
     try:
-        models, row_validation_errors = _make_row_models(rows, session)
+        models, row_validation_errors = _make_row_models(
+            rows, session, progress_callback=progress_callback
+        )
         validation_errors.extend(row_validation_errors)
+        _emit_progress(
+            progress_callback,
+            (
+                "Validation complete: "
+                f"{len(models)} rows ready to import, "
+                f"{len(row_validation_errors)} validation errors found."
+            ),
+        )
 
         if models:
+            total_model_rows = len(models)
+            attempted_count = 0
+            imported_count = 0
             # Group by project, preserving row number
             # models is a list of (row_number, model)
             sorted_models = sorted(models, key=lambda x: x[1].project)
             for project, items in groupby(sorted_models, key=lambda x: x[1].project):
+                project_rows = list(items)
+                _emit_progress(
+                    progress_callback,
+                    (
+                        f"Importing project '{project}' "
+                        f"({len(project_rows)} row{'s' if len(project_rows) != 1 else ''})..."
+                    ),
+                )
                 # Reuse an existing project group immediately, but defer creating a
                 # new one until a row for that project actually imports successfully.
                 sql = select(Group).where(
@@ -197,7 +234,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                 )
                 group = session.scalars(sql).one_or_none()
 
-                for row_number, model in items:
+                for row_number, model in project_rows:
                     current_row_id = model.well_name_point_id
                     try:
                         # Use savepoint for "best-effort" import per row
@@ -214,6 +251,7 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                             if added:
                                 wells.append(added)
                                 group = group_for_row
+                                imported_count += 1
                     except (
                         ValueError,
                         DatabaseError,
@@ -248,7 +286,26 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
                                 "error": error_text,
                             }
                         )
+                    finally:
+                        attempted_count += 1
+                        if (
+                            attempted_count == total_model_rows
+                            or attempted_count % PROGRESS_INTERVAL == 0
+                        ):
+                            _emit_progress(
+                                progress_callback,
+                                (
+                                    "Import progress: "
+                                    f"{attempted_count}/{total_model_rows} validated rows attempted, "
+                                    f"{imported_count} imported, "
+                                    f"{len(validation_errors)} issues recorded."
+                                ),
+                            )
             session.commit()
+        else:
+            _emit_progress(
+                progress_callback, "No valid rows were available for import."
+            )
     except Exception as exc:
         logging.exception("Unexpected error in _import_well_inventory_csv")
         return {"detail": str(exc)}
@@ -260,6 +317,15 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         e.get("row") for e in validation_errors if e.get("row") not in (None, 0)
     }
     rows_with_validation_errors_or_warnings = len(error_rows)
+
+    _emit_progress(
+        progress_callback,
+        (
+            "Import finished: "
+            f"{rows_imported}/{rows_processed} rows imported, "
+            f"{rows_with_validation_errors_or_warnings} rows with issues."
+        ),
+    )
 
     return {
         "validation_errors": validation_errors,
@@ -473,11 +539,12 @@ def _find_existing_imported_well(
     ).first()
 
 
-def _make_row_models(rows, session):
+def _make_row_models(rows, session, progress_callback=None):
     models = []
     validation_errors = []
     seen_ids: Set[str] = set()
     offsets = {}
+    total_rows = len(rows)
     for idx, row in enumerate(rows):
         row_number = idx + 1
         try:
@@ -548,6 +615,17 @@ def _make_row_models(rows, session):
                     "value": value,
                 }
             )
+        finally:
+            if row_number == total_rows or row_number % PROGRESS_INTERVAL == 0:
+                _emit_progress(
+                    progress_callback,
+                    (
+                        "Validation progress: "
+                        f"{row_number}/{total_rows} rows checked, "
+                        f"{len(models)} valid, "
+                        f"{len(validation_errors)} issues found."
+                    ),
+                )
     return models, validation_errors
 
 
