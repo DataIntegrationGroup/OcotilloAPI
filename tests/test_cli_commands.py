@@ -661,12 +661,10 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,"
             f"1.5,stable,42.5,approved,{notes}"
         )
-        csv_text = textwrap.dedent(
-            f"""\
+        csv_text = textwrap.dedent(f"""\
             {header}
             {row}
-            """
-        )
+            """)
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
