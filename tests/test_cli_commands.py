@@ -68,7 +68,9 @@ def test_refresh_pygeoapi_materialized_views_defaults(monkeypatch):
     assert "Refreshed 7 materialized view(s)." in result.output
 
 
-def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(monkeypatch):
+def test_refresh_pygeoapi_materialized_views_custom_and_concurrently(
+    monkeypatch,
+):
     executed_sql: list[str] = []
     execution_options: list[dict[str, object]] = []
 
@@ -190,12 +192,16 @@ def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
         def __init__(self):
             self.commit_called = False
             self.scalar_calls = 0
+            self.added = []
 
         def scalars(self, stmt):
             self.scalar_calls += 1
             if self.scalar_calls == 1:
                 return FakeScalarResult([fake_group])
             return FakeScalarResult([])
+
+        def add(self, obj):
+            self.added.append(obj)
 
         def commit(self):
             self.commit_called = True
@@ -208,15 +214,20 @@ def test_import_project_area_boundaries_updates_matching_groups(monkeypatch):
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr("cli.project_area_import.session_ctx", lambda: FakeSessionCtx())
+    monkeypatch.setattr(
+        "cli.project_area_import.session_ctx",
+        lambda: FakeSessionCtx(),
+    )
 
     runner = CliRunner()
     result = runner.invoke(cli, ["import-project-area-boundaries"])
 
     assert result.exit_code == 0, result.output
     assert "Fetched 2 feature(s)." in result.output
-    assert "Matched 1 group row(s)." in result.output
+    assert "Matched 2 group row(s)." in result.output
+    assert "Created 1 group(s)." in result.output
     assert "Updated 1 group project area(s)." in result.output
+    assert "Skipped 0 unchanged group(s)." in result.output
     assert "Unmatched locations: Missing Group" in result.output
     assert fake_group.project_area is not None
 
@@ -408,7 +419,10 @@ def test_restore_local_db_downloads_and_restores_gcs_gzip(monkeypatch, tmp_path)
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr("cli.db_restore._reset_target_schema", lambda: None)
-    monkeypatch.setattr("cli.db_restore.get_storage_bucket", fake_get_storage_bucket)
+    monkeypatch.setattr(
+        "cli.db_restore.get_storage_bucket",
+        fake_get_storage_bucket,
+    )
     monkeypatch.setattr("cli.db_restore.subprocess.run", fake_run)
     monkeypatch.setenv("POSTGRES_HOST", "localhost")
     monkeypatch.setenv("POSTGRES_DB", "ocotilloapi_dev")
@@ -471,7 +485,10 @@ def test_well_inventory_csv_command_calls_service(monkeypatch, tmp_path):
             },
         )
 
-    monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
+    monkeypatch.setattr(
+        "cli.service_adapter.well_inventory_csv",
+        fake_well_inventory,
+    )
 
     runner = CliRunner()
     result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
@@ -500,7 +517,8 @@ def test_transfer_results_command_writes_summary(monkeypatch, tmp_path):
             captured["result_count"] = len(comparison.results)
 
     monkeypatch.setattr(
-        "transfers.transfer_results_builder.TransferResultsBuilder", FakeBuilder
+        "transfers.transfer_results_builder.TransferResultsBuilder",
+        FakeBuilder,
     )
 
     summary_path = tmp_path / "metrics" / "summary.md"
@@ -558,7 +576,10 @@ def test_well_inventory_csv_command_reports_validation_errors(monkeypatch, tmp_p
             },
         )
 
-    monkeypatch.setattr("cli.service_adapter.well_inventory_csv", fake_well_inventory)
+    monkeypatch.setattr(
+        "cli.service_adapter.well_inventory_csv",
+        fake_well_inventory,
+    )
 
     runner = CliRunner()
     result = runner.invoke(cli, ["well-inventory-csv", str(inventory_file)])
@@ -624,14 +645,28 @@ def test_water_levels_bulk_upload_json_output(monkeypatch, tmp_path):
 
 def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
-    End-to-end CLI invocation should create FieldEvent, Sample, and Observation rows.
+    End-to-end CLI invocation should create FieldEvent, Sample,
+    and Observation rows.
     """
 
     def _write_csv(path: Path, *, well_name: str, notes: str):
-        csv_text = textwrap.dedent(f"""\
-            field_staff,well_name_point_id,field_event_date_time,measurement_date_time,sampler,sample_method,mp_height,level_status,depth_to_water_ft,data_quality,water_level_notes
-            CLI Tester,{well_name},2025-02-15T08:00:00-07:00,2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,1.5,stable,42.5,approved,{notes}
-            """)
+        header = (
+            "field_staff,well_name_point_id,field_event_date_time,"
+            "measurement_date_time,sampler,sample_method,mp_height,"
+            "level_status,depth_to_water_ft,data_quality,"
+            "water_level_notes"
+        )
+        row = (
+            f"CLI Tester,{well_name},2025-02-15T08:00:00-07:00,"
+            "2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,"
+            f"1.5,stable,42.5,approved,{notes}"
+        )
+        csv_text = textwrap.dedent(
+            f"""\
+            {header}
+            {row}
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"

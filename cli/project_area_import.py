@@ -119,6 +119,7 @@ def import_project_area_boundaries(
             )
 
             if not groups:
+                unmatched_locations.append(location_name)
                 new_group = Group(
                     name=location_name,
                     group_type=group_type,
