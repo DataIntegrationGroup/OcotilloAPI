@@ -27,43 +27,19 @@ from typing import Any, BinaryIO, Iterable, List
 
 from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
 from db.engine import session_ctx
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import ValidationError
+from schemas.water_level_csv import (
+    WaterLevelCsvRow,
+    WATER_LEVEL_REQUIRED_FIELDS,
+    WATER_LEVEL_HEADER_ALIASES,
+    WATER_LEVEL_IGNORED_FIELDS,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-# Required CSV columns for the bulk upload
-REQUIRED_FIELDS: List[str] = [
-    "field_staff",
-    "well_name_point_id",
-    "field_event_date_time",
-    "measurement_date_time",
-    "sampler",
-    "sample_method",
-    "mp_height",
-    "level_status",
-    "depth_to_water_ft",
-    "data_quality",
-]
-
-HEADER_ALIASES: dict[str, str] = {
-    "measuring_person": "sampler",
-    "water_level_date_time": "measurement_date_time",
-}
-
-# Allow-list values for validation. These represent early MVP lexicon values.
-VALID_LEVEL_STATUSES = {"stable", "rising", "falling"}
-VALID_DATA_QUALITIES = {"approved", "provisional"}
-VALID_SAMPLERS = {"groundwater team", "consultant"}
-
-# Mapping between human-friendly sample methods provided in CSV uploads and
-# their canonical lexicon terms stored in the database.
-SAMPLE_METHOD_ALIASES = {
-    "electric tape": "Electric tape measurement (E-probe)",
-    "steel tape": "Steel-tape measurement",
-}
-SAMPLE_METHOD_CANONICAL = {
-    value.lower(): value for value in SAMPLE_METHOD_ALIASES.values()
-}
+REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
+HEADER_ALIASES: dict[str, str] = dict(WATER_LEVEL_HEADER_ALIASES)
+IGNORED_FIELDS: set[str] = set(WATER_LEVEL_IGNORED_FIELDS)
 
 
 @dataclass
@@ -84,89 +60,11 @@ class _ValidatedRow:
     sample_method_term: str
     field_event_dt: datetime
     measurement_dt: datetime
-    mp_height: float
-    depth_to_water_ft: float
-    level_status: str
-    data_quality: str
+    mp_height: float | None
+    depth_to_water_ft: float | None
+    level_status: str | None
+    data_quality: str | None
     water_level_notes: str | None
-
-
-class WaterLevelCsvRow(BaseModel):
-    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
-
-    field_staff: str
-    well_name_point_id: str
-    field_event_date_time: datetime
-    measurement_date_time: datetime
-    sampler: str
-    sample_method: str
-    mp_height: float
-    level_status: str
-    depth_to_water_ft: float
-    data_quality: str
-    water_level_notes: str | None = None
-
-    @field_validator(
-        "field_staff",
-        "well_name_point_id",
-        "sampler",
-        "sample_method",
-        "level_status",
-        "data_quality",
-    )
-    @classmethod
-    def _require_value(cls, value: str) -> str:
-        if value is None or value == "":
-            raise ValueError("value is required")
-        return value
-
-    @field_validator("sampler")
-    @classmethod
-    def _validate_sampler(cls, value: str) -> str:
-        if value.lower() not in VALID_SAMPLERS:
-            raise ValueError(
-                f"Invalid sampler '{value}'. Expected one of: {sorted(VALID_SAMPLERS)}"
-            )
-        return value
-
-    @field_validator("level_status")
-    @classmethod
-    def _validate_level_status(cls, value: str) -> str:
-        if value.lower() not in VALID_LEVEL_STATUSES:
-            raise ValueError(
-                f"Invalid level_status '{value}'. Expected one of: {sorted(VALID_LEVEL_STATUSES)}"
-            )
-        return value
-
-    @field_validator("data_quality")
-    @classmethod
-    def _validate_data_quality(cls, value: str) -> str:
-        if value.lower() not in VALID_DATA_QUALITIES:
-            raise ValueError(
-                f"Invalid data_quality '{value}'. Expected one of: {sorted(VALID_DATA_QUALITIES)}"
-            )
-        return value
-
-    @field_validator("sample_method")
-    @classmethod
-    def _normalize_sample_method(cls, value: str) -> str:
-        normalized = value.lower()
-        if normalized in SAMPLE_METHOD_ALIASES:
-            return SAMPLE_METHOD_ALIASES[normalized]
-        if normalized in SAMPLE_METHOD_CANONICAL:
-            return SAMPLE_METHOD_CANONICAL[normalized]
-        raise ValueError(
-            f"Invalid sample_method '{value}'. Expected one of: {sorted(SAMPLE_METHOD_ALIASES.keys())}"
-        )
-
-    @field_validator("water_level_notes", mode="before")
-    @classmethod
-    def _empty_to_none(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, str) and value.strip() == "":
-            return None
-        return value
 
 
 def bulk_upload_water_levels(
@@ -180,7 +78,12 @@ def bulk_upload_water_levels(
         msg = f"File not found: {source_file}"
         payload = _build_payload([], [], 0, 0, 1, errors=[msg])
         stdout = _serialize_payload(payload, pretty_json)
-        return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg, payload=payload)
+        return BulkUploadResult(
+            exit_code=1,
+            stdout=stdout,
+            stderr=msg,
+            payload=payload,
+        )
 
     validation_errors: list[str] = []
     created_rows: list[dict[str, Any]] = []
@@ -188,7 +91,8 @@ def bulk_upload_water_levels(
     with session_ctx() as session:
         parameter_id = _get_groundwater_level_parameter_id(session)
 
-        # Validate headers early so we can short-circuit without touching the DB.
+        # Validate headers early so we can short-circuit
+        # without touching the DB.
         header_errors = _validate_headers(headers)
         if header_errors:
             validation_errors.extend(header_errors)
@@ -198,7 +102,11 @@ def bulk_upload_water_levels(
 
             if not validation_errors:
                 try:
-                    created_rows = _create_records(session, parameter_id, valid_rows)
+                    created_rows = _create_records(
+                        session,
+                        parameter_id,
+                        valid_rows,
+                    )
                     session.commit()
                 except Exception as exc:  # pragma: no cover - safety fallback
                     session.rollback()
@@ -209,7 +117,7 @@ def bulk_upload_water_levels(
 
     summary = {
         "total_rows_processed": len(csv_rows),
-        "total_rows_imported": len(created_rows) if not validation_errors else 0,
+        "total_rows_imported": (len(created_rows) if not validation_errors else 0),
         "validation_errors_or_warnings": _count_rows_with_issues(validation_errors),
     }
     payload = _build_payload(
@@ -288,16 +196,22 @@ def _read_csv(
         for k, v in row.items():
             if k is None:
                 continue
-            key = HEADER_ALIASES.get(k.strip(), k.strip())
+            stripped_key = k.strip()
+            if stripped_key in IGNORED_FIELDS:
+                continue
+            key = HEADER_ALIASES.get(stripped_key, stripped_key)
             value = v.strip() if isinstance(v, str) else v or ""
-            # If both alias and canonical header are present, preserve first non-empty value.
+            # If both alias and canonical header are present,
+            # preserve the first non-empty value.
             if key in normalized_row and normalized_row[key] and not value:
                 continue
             normalized_row[key] = value
         rows.append(normalized_row)
 
     headers = [
-        HEADER_ALIASES.get(h.strip(), h.strip()) for h in (reader.fieldnames or [])
+        HEADER_ALIASES.get(h.strip(), h.strip())
+        for h in (reader.fieldnames or [])
+        if h is not None and h.strip() not in IGNORED_FIELDS
     ]
     return headers, rows
 
@@ -350,10 +264,10 @@ def _validate_rows(
                 raw={**normalized},
                 well=well,
                 field_staff=model.field_staff,
-                sampler=model.sampler,
+                sampler=model.measuring_person,
                 sample_method_term=model.sample_method,
                 field_event_dt=model.field_event_date_time,
-                measurement_dt=model.measurement_date_time,
+                measurement_dt=model.water_level_date_time,
                 mp_height=model.mp_height,
                 depth_to_water_ft=model.depth_to_water_ft,
                 level_status=model.level_status,
@@ -413,7 +327,8 @@ def _create_records(
                 "field_activity_id": field_activity.id,
                 "sample_id": sample.id,
                 "observation_id": observation.id,
-                "measurement_date_time": row.raw["measurement_date_time"],
+                "measurement_date_time": row.raw.get("water_level_date_time")
+                or row.raw.get("measurement_date_time"),
                 "level_status": row.level_status,
                 "data_quality": row.data_quality,
             }
@@ -431,7 +346,11 @@ def _build_field_event_notes(row: _ValidatedRow) -> str | None:
 
 
 def _build_observation_notes(row: _ValidatedRow) -> str | None:
-    parts = [f"Level status: {row.level_status}", f"Data quality: {row.data_quality}"]
+    parts = []
+    if row.level_status is not None:
+        parts.append(f"Level status: {row.level_status}")
+    if row.data_quality is not None:
+        parts.append(f"Data quality: {row.data_quality}")
     notes = " | ".join(parts)
     return notes or None
 
