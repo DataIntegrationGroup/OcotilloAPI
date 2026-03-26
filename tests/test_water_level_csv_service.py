@@ -1,11 +1,16 @@
-from datetime import date
+from datetime import date, datetime, timezone
+from types import SimpleNamespace
 
-from db import Thing
+from db import FieldActivity, FieldEvent, Observation, Sample, Thing
 from db.measuring_point_history import MeasuringPointHistory
+from db.engine import session_ctx
 from services.water_level_csv import (
+    _build_sample_name,
     _resolve_measuring_point_height,
     _validate_depth_to_water_against_well,
+    bulk_upload_water_levels,
 )
+from sqlalchemy import select
 
 
 def _build_well(
@@ -84,3 +89,97 @@ def test_validate_depth_to_water_against_well_skips_when_height_unavailable():
     error = _validate_depth_to_water_against_well(4, well, 12.5, None)
 
     assert error is None
+
+
+def test_build_sample_name_uses_deterministic_well_inventory_style_format():
+    row = SimpleNamespace(
+        well=SimpleNamespace(name="AR0001"),
+        measurement_dt=datetime(2025, 2, 15, 10, 30, tzinfo=timezone.utc),
+    )
+
+    assert _build_sample_name(row) == "AR0001-WL-202502151030"
+
+
+def test_bulk_upload_water_levels_is_idempotent(water_well_thing):
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    first = bulk_upload_water_levels(csv_content.encode("utf-8"))
+    second = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert first.exit_code == 0, first.payload
+    assert second.exit_code == 0, second.payload
+    assert (
+        first.payload["water_levels"][0]["sample_id"]
+        == second.payload["water_levels"][0]["sample_id"]
+    )
+    assert (
+        first.payload["water_levels"][0]["observation_id"]
+        == second.payload["water_levels"][0]["observation_id"]
+    )
+
+    with session_ctx() as session:
+        samples = session.scalars(
+            select(Sample)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(
+                Thing.id == water_well_thing.id,
+                FieldActivity.activity_type == "groundwater level",
+            )
+        ).all()
+        observations = session.scalars(
+            select(Observation)
+            .join(Sample, Observation.sample_id == Sample.id)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(
+                Thing.id == water_well_thing.id,
+                FieldActivity.activity_type == "groundwater level",
+            )
+        ).all()
+
+        assert len(samples) == 1
+        assert len(observations) == 1
+        assert samples[0].sample_name == "Test Well-WL-202502151730"
+        assert samples[0].sample_matrix == "groundwater"
+        assert observations[0].groundwater_level_reason == "Water level not affected"
+        assert (
+            observations[0].nma_data_quality
+            == "Water level accurate to within two hundreths of a foot"
+        )
+        assert observations[0].measuring_point_height == 1.5

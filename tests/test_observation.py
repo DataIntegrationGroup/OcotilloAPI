@@ -188,10 +188,19 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
     with session_ctx() as session:
         observation = session.get(Observation, row["observation_id"])
         assert observation is not None
+        sample = session.get(Sample, row["sample_id"])
+        assert sample is not None
+        assert sample.sample_name == f"{water_well_thing.name}-WL-202502151730"
+        assert sample.sample_matrix == "groundwater"
+        assert observation.groundwater_level_reason == "Water level not affected"
+        assert (
+            observation.nma_data_quality
+            == "Water level accurate to within two hundreths of a foot"
+        )
+        assert observation.measuring_point_height == 1.5
         # cleanup in reverse dependency order
         if observation:
             session.delete(observation)
-        sample = session.get(Sample, row["sample_id"])
         if sample:
             session.delete(sample)
         field_activity = session.get(FieldActivity, row["field_activity_id"])

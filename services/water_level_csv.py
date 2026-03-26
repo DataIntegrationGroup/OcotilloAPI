@@ -19,7 +19,6 @@ import csv
 import io
 import json
 import re
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -352,39 +351,40 @@ def _create_records(
     created: list[dict[str, Any]] = []
 
     for row in rows:
-        field_event = FieldEvent(
-            thing=row.well,
-            event_date=row.field_event_dt,
-            notes=_build_field_event_notes(row),
-        )
-        field_activity = FieldActivity(
-            field_event=field_event,
-            activity_type="groundwater level",
-            notes=f"Sampler: {row.sampler}",
-        )
-        sample = Sample(
-            field_activity=field_activity,
-            sample_date=row.measurement_dt,
-            sample_name=f"wl-{uuid.uuid4()}",
-            sample_matrix="water",
-            sample_method=row.sample_method_term,
-            qc_type="Normal",
-            notes=row.water_level_notes,
-        )
-        observation = Observation(
-            sample=sample,
-            observation_datetime=row.measurement_dt,
-            parameter_id=parameter_id,
-            value=row.depth_to_water_ft,
-            unit="ft",
-            measuring_point_height=row.mp_height,
-            groundwater_level_reason=None,
-            notes=_build_observation_notes(row),
-        )
-        session.add(field_event)
-        session.add(field_activity)
-        session.add(sample)
-        session.add(observation)
+        sample_name = _build_sample_name(row)
+        sample = _find_existing_imported_sample(session, row, sample_name)
+
+        if sample is None:
+            field_event = FieldEvent(
+                thing=row.well,
+                event_date=row.field_event_dt,
+                notes=_build_field_event_notes(row),
+            )
+            field_activity = FieldActivity(
+                field_event=field_event,
+                activity_type="groundwater level",
+                notes=f"Sampler: {row.sampler}",
+            )
+            sample = Sample(field_activity=field_activity)
+            observation = Observation(sample=sample)
+            session.add(field_event)
+            session.add(field_activity)
+            session.add(sample)
+            session.add(observation)
+        else:
+            field_activity = sample.field_activity
+            field_event = field_activity.field_event
+            observation = _find_existing_observation(sample, parameter_id)
+            if observation is None:
+                observation = Observation(sample=sample)
+                session.add(observation)
+
+            field_event.event_date = row.field_event_dt
+            field_event.notes = _build_field_event_notes(row)
+            field_activity.notes = f"Sampler: {row.sampler}"
+
+        _apply_sample_values(sample, row, sample_name)
+        _apply_observation_values(observation, row, parameter_id)
         session.flush()
 
         created.append(
@@ -406,6 +406,62 @@ def _create_records(
     return created
 
 
+def _build_sample_name(row: _ValidatedRow) -> str:
+    return f"{row.well.name}-WL-{row.measurement_dt.strftime('%Y%m%d%H%M')}"
+
+
+def _find_existing_imported_sample(
+    session: Session, row: _ValidatedRow, sample_name: str
+) -> Sample | None:
+    sql = (
+        select(Sample)
+        .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+        .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+        .join(Thing, FieldEvent.thing_id == Thing.id)
+        .options(
+            selectinload(Sample.field_activity).selectinload(FieldActivity.field_event),
+            selectinload(Sample.observations),
+        )
+        .where(
+            Thing.name == row.well.name,
+            Thing.thing_type == "water well",
+            FieldActivity.activity_type == "groundwater level",
+            Sample.sample_name == sample_name,
+        )
+        .order_by(Sample.id.asc())
+    )
+    return session.scalars(sql).first()
+
+
+def _find_existing_observation(sample: Sample, parameter_id: int) -> Observation | None:
+    for observation in sample.observations:
+        if observation.parameter_id == parameter_id:
+            return observation
+    return sample.observations[0] if sample.observations else None
+
+
+def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -> None:
+    sample.sample_date = row.measurement_dt
+    sample.sample_name = sample_name
+    sample.sample_matrix = "groundwater"
+    sample.sample_method = row.sample_method_term
+    sample.qc_type = "Normal"
+    sample.notes = row.water_level_notes
+
+
+def _apply_observation_values(
+    observation: Observation, row: _ValidatedRow, parameter_id: int
+) -> None:
+    observation.observation_datetime = row.measurement_dt
+    observation.parameter_id = parameter_id
+    observation.value = row.depth_to_water_ft
+    observation.unit = "ft"
+    observation.measuring_point_height = row.resolved_mp_height
+    observation.groundwater_level_reason = row.level_status
+    observation.nma_data_quality = row.data_quality
+    observation.notes = row.water_level_notes
+
+
 def _build_field_event_notes(row: _ValidatedRow) -> str | None:
     parts = [f"Field staff: {row.field_staff}"]
     if row.water_level_notes:
@@ -414,22 +470,24 @@ def _build_field_event_notes(row: _ValidatedRow) -> str | None:
     return notes or None
 
 
-def _build_observation_notes(row: _ValidatedRow) -> str | None:
-    parts = []
-    if row.level_status is not None:
-        parts.append(f"Level status: {row.level_status}")
-    if row.data_quality is not None:
-        parts.append(f"Data quality: {row.data_quality}")
-    notes = " | ".join(parts)
-    return notes or None
-
-
 def _get_groundwater_level_parameter_id(session: Session) -> int:
-    sql = select(Parameter.id).where(Parameter.parameter_name == "groundwater level")
+    sql = select(Parameter.id).where(
+        Parameter.parameter_name == "groundwater level",
+        Parameter.matrix == "groundwater",
+    )
     parameter_id = session.scalars(sql).one_or_none()
-    if parameter_id is None:
-        raise RuntimeError("Groundwater level parameter is not initialized")
-    return parameter_id
+    if parameter_id is not None:
+        return parameter_id
+
+    parameter = Parameter(
+        parameter_name="groundwater level",
+        matrix="groundwater",
+        parameter_type="Field Parameter",
+        default_unit="ft",
+    )
+    session.add(parameter)
+    session.flush()
+    return parameter.id
 
 
 # ============= EOF =============================================
