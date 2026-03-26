@@ -161,12 +161,12 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
             water_well_thing.name,
             "2025-02-15T08:00:00-07:00",
             "2025-02-15T10:30:00-07:00",
-            "Groundwater Team",
+            "A Lopez",
             "electric tape",
             "1.5",
-            "stable",
-            "45.2",
-            "approved",
+            "Water level not affected",
+            "7.0",
+            "Water level accurate to within two hundreths of a foot",
             "Initial measurement",
         ]
     )

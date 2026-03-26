@@ -35,7 +35,7 @@ from schemas.water_level_csv import (
     WATER_LEVEL_IGNORED_FIELDS,
 )
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
 HEADER_ALIASES: dict[str, str] = dict(WATER_LEVEL_HEADER_ALIASES)
@@ -61,6 +61,9 @@ class _ValidatedRow:
     field_event_dt: datetime
     measurement_dt: datetime
     mp_height: float | None
+    resolved_mp_height: float | int | None
+    existing_mp_height: float | int | None
+    mp_height_differs_from_history: bool
     depth_to_water_ft: float | None
     level_status: str | None
     data_quality: str | None
@@ -251,12 +254,35 @@ def _validate_rows(
         well_name = model.well_name_point_id
         well = wells_by_name.get(well_name)
         if well is None:
-            sql = select(Thing).where(Thing.name == well_name)
+            sql = (
+                select(Thing)
+                .options(selectinload(Thing.measuring_points))
+                .where(
+                    Thing.name == well_name,
+                    Thing.thing_type == "water well",
+                )
+            )
             well = session.scalars(sql).one_or_none()
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
                 continue
             wells_by_name[well_name] = well
+
+        (
+            resolved_mp_height,
+            existing_mp_height,
+            mp_height_differs_from_history,
+        ) = _resolve_measuring_point_height(well, model.mp_height)
+
+        depth_error = _validate_depth_to_water_against_well(
+            idx,
+            well,
+            model.depth_to_water_ft,
+            resolved_mp_height,
+        )
+        if depth_error:
+            errors.append(depth_error)
+            continue
 
         valid_rows.append(
             _ValidatedRow(
@@ -269,6 +295,9 @@ def _validate_rows(
                 field_event_dt=model.field_event_date_time,
                 measurement_dt=model.water_level_date_time,
                 mp_height=model.mp_height,
+                resolved_mp_height=resolved_mp_height,
+                existing_mp_height=existing_mp_height,
+                mp_height_differs_from_history=mp_height_differs_from_history,
                 depth_to_water_ft=model.depth_to_water_ft,
                 level_status=model.level_status,
                 data_quality=model.data_quality,
@@ -277,6 +306,44 @@ def _validate_rows(
         )
 
     return valid_rows, errors
+
+
+def _resolve_measuring_point_height(
+    well: Thing, csv_mp_height: float | None
+) -> tuple[float | int | None, float | int | None, bool]:
+    existing_mp_height = well.measuring_point_height
+    if csv_mp_height is not None:
+        return (
+            csv_mp_height,
+            existing_mp_height,
+            (existing_mp_height is not None and csv_mp_height != existing_mp_height),
+        )
+
+    return existing_mp_height, existing_mp_height, False
+
+
+def _validate_depth_to_water_against_well(
+    row_index: int,
+    well: Thing,
+    depth_to_water_ft: float | None,
+    resolved_mp_height: float | int | None,
+) -> str | None:
+    if (
+        depth_to_water_ft is None
+        or resolved_mp_height is None
+        or well.well_depth is None
+    ):
+        return None
+
+    corrected_depth_to_water = depth_to_water_ft - resolved_mp_height
+    if corrected_depth_to_water >= well.well_depth:
+        return (
+            f"Row {row_index}: depth_to_water_ft minus measuring point height "
+            f"({corrected_depth_to_water}) must be less than well depth "
+            f"({well.well_depth})"
+        )
+
+    return None
 
 
 def _create_records(
@@ -327,8 +394,10 @@ def _create_records(
                 "field_activity_id": field_activity.id,
                 "sample_id": sample.id,
                 "observation_id": observation.id,
-                "measurement_date_time": row.raw.get("water_level_date_time")
-                or row.raw.get("measurement_date_time"),
+                "measurement_date_time": (
+                    row.raw.get("water_level_date_time")
+                    or row.raw.get("measurement_date_time")
+                ),
                 "level_status": row.level_status,
                 "data_quality": row.data_quality,
             }
