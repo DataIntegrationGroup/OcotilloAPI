@@ -123,7 +123,7 @@ def bulk_upload_water_levels(
     )
     stdout = _serialize_payload(payload, pretty_json)
     stderr = "\n".join(validation_errors)
-    exit_code = 0 if not validation_errors else 1
+    exit_code = 0 if created_rows or not validation_errors else 1
     return BulkUploadResult(
         exit_code=exit_code, stdout=stdout, stderr=stderr, payload=payload
     )

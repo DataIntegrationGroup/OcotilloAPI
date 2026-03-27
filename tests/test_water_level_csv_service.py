@@ -240,7 +240,7 @@ def test_bulk_upload_water_levels_imports_valid_rows_when_other_rows_fail(
 
     result = bulk_upload_water_levels(csv_content.encode("utf-8"))
 
-    assert result.exit_code == 1
+    assert result.exit_code == 0
     assert result.payload["summary"]["total_rows_processed"] == 2
     assert result.payload["summary"]["total_rows_imported"] == 1
     assert result.payload["summary"]["validation_errors_or_warnings"] == 1

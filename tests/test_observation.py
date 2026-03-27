@@ -212,6 +212,89 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
         session.commit()
 
 
+def test_bulk_upload_groundwater_levels_api_partial_success(water_well_thing):
+    csv_content = ",".join(
+        [
+            "field_staff",
+            "well_name_point_id",
+            "field_event_date_time",
+            "measurement_date_time",
+            "sampler",
+            "sample_method",
+            "mp_height",
+            "level_status",
+            "depth_to_water_ft",
+            "data_quality",
+            "water_level_notes",
+        ]
+    )
+    csv_content += "\n"
+    csv_content += "\n".join(
+        [
+            ",".join(
+                [
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "Bad Well",
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Bad row",
+                ]
+            ),
+        ]
+    )
+
+    files = {
+        "file": ("water_levels.csv", csv_content, "text/csv"),
+    }
+
+    response = client.post("/observation/groundwater-level/bulk-upload", files=files)
+    data = response.json()
+    assert response.status_code == 200
+    assert data["summary"]["total_rows_imported"] == 1
+    assert data["summary"]["total_rows_processed"] == 2
+    assert data["summary"]["validation_errors_or_warnings"] == 1
+    assert len(data["validation_errors"]) == 1
+    assert "Bad Well" in data["validation_errors"][0]
+
+    row = data["water_levels"][0]
+    with session_ctx() as session:
+        observation = session.get(Observation, row["observation_id"])
+        sample = session.get(Sample, row["sample_id"])
+        field_activity = session.get(FieldActivity, row["field_activity_id"])
+        field_event = session.get(FieldEvent, row["field_event_id"])
+
+        if observation:
+            session.delete(observation)
+        if sample:
+            session.delete(sample)
+        if field_activity:
+            session.delete(field_activity)
+        if field_event:
+            session.delete(field_event)
+        session.commit()
+
+
 # PATCH tests ==================================================================
 
 

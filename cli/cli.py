@@ -666,9 +666,16 @@ def water_levels_bulk_upload(
     payload = result.payload if isinstance(result.payload, dict) else {}
     summary = payload.get("summary", {})
     validation_errors = payload.get("validation_errors", [])
+    rows_with_issues = summary.get("validation_errors_or_warnings", 0)
 
-    if result.exit_code == 0:
+    if result.exit_code == 0 and not rows_with_issues:
         typer.secho("[WATER LEVEL IMPORT] SUCCESS", fg=colors["ok"], bold=True)
+    elif result.exit_code == 0:
+        typer.secho(
+            "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
+            fg=colors["issue"],
+            bold=True,
+        )
     else:
         typer.secho(
             "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
@@ -709,7 +716,6 @@ def water_levels_bulk_upload(
     if summary:
         processed = summary.get("total_rows_processed", 0)
         imported = summary.get("total_rows_imported", 0)
-        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
         typer.secho("SUMMARY", fg=colors["accent"], bold=True)
         label_width = 16
         value_width = 8
