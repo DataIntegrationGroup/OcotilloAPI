@@ -307,6 +307,8 @@ def _resolve_measuring_point_height(
     well: Thing, csv_mp_height: float | None
 ) -> tuple[float | int | None, float | int | None, bool]:
     existing_mp_height = well.measuring_point_height
+    if existing_mp_height is not None:
+        existing_mp_height = float(existing_mp_height)
     if csv_mp_height is not None:
         return (
             csv_mp_height,
@@ -323,19 +325,19 @@ def _validate_depth_to_water_against_well(
     depth_to_water_ft: float | None,
     resolved_mp_height: float | int | None,
 ) -> str | None:
-    if (
-        depth_to_water_ft is None
-        or resolved_mp_height is None
-        or well.well_depth is None
-    ):
+    well_depth = well.well_depth
+    if well_depth is not None:
+        well_depth = float(well_depth)
+
+    if depth_to_water_ft is None or resolved_mp_height is None or well_depth is None:
         return None
 
     corrected_depth_to_water = depth_to_water_ft - resolved_mp_height
-    if corrected_depth_to_water >= well.well_depth:
+    if corrected_depth_to_water >= well_depth:
         return (
             f"Row {row_index}: depth_to_water_ft minus measuring point height "
             f"({corrected_depth_to_water}) must be less than well depth "
-            f"({well.well_depth})"
+            f"({well_depth})"
         )
 
     return None
@@ -348,60 +350,65 @@ def _create_records(
     errors: list[str] = []
 
     for row in rows:
+        savepoint = session.begin_nested()
         try:
-            with session.begin_nested():
-                sample_name = _build_sample_name(row)
-                sample = _find_existing_imported_sample(session, row, sample_name)
+            sample_name = _build_sample_name(row)
+            sample = _find_existing_imported_sample(session, row, sample_name)
 
-                if sample is None:
-                    field_event = FieldEvent(
-                        thing=row.well,
-                        event_date=row.field_event_dt,
-                        notes=_build_field_event_notes(row),
-                    )
-                    field_activity = FieldActivity(
-                        field_event=field_event,
-                        activity_type="groundwater level",
-                        notes=f"Sampler: {row.sampler}",
-                    )
-                    sample = Sample(field_activity=field_activity)
-                    observation = Observation(sample=sample)
-                    session.add(field_event)
-                    session.add(field_activity)
-                    session.add(sample)
-                    session.add(observation)
-                else:
-                    field_activity = sample.field_activity
-                    field_event = field_activity.field_event
-                    observation = _find_existing_observation(sample, parameter_id)
-                    if observation is None:
-                        observation = Observation(sample=sample)
-                        session.add(observation)
-
-                    field_event.event_date = row.field_event_dt
-                    field_event.notes = _build_field_event_notes(row)
-                    field_activity.notes = f"Sampler: {row.sampler}"
-
-                _apply_sample_values(sample, row, sample_name)
-                _apply_observation_values(observation, row, parameter_id)
-                session.flush()
-
-                created.append(
-                    {
-                        "well_name_point_id": row.raw["well_name_point_id"],
-                        "field_event_id": field_event.id,
-                        "field_activity_id": field_activity.id,
-                        "sample_id": sample.id,
-                        "observation_id": observation.id,
-                        "measurement_date_time": (
-                            row.raw.get("water_level_date_time")
-                            or row.raw.get("measurement_date_time")
-                        ),
-                        "level_status": row.level_status,
-                        "data_quality": row.data_quality,
-                    }
+            if sample is None:
+                field_event = FieldEvent(
+                    thing=row.well,
+                    event_date=row.field_event_dt,
+                    notes=_build_field_event_notes(row),
                 )
+                field_activity = FieldActivity(
+                    field_event=field_event,
+                    activity_type="groundwater level",
+                    notes=f"Sampler: {row.sampler}",
+                )
+                sample = Sample(field_activity=field_activity)
+                observation = Observation(sample=sample)
+                session.add(field_event)
+                session.add(field_activity)
+                session.add(sample)
+                session.add(observation)
+            else:
+                field_activity = sample.field_activity
+                field_event = field_activity.field_event
+                observation = _find_existing_observation(sample, parameter_id)
+                if observation is None:
+                    observation = Observation(sample=sample)
+                    session.add(observation)
+
+                field_event.event_date = row.field_event_dt
+                field_event.notes = _build_field_event_notes(row)
+                field_activity.notes = f"Sampler: {row.sampler}"
+
+            _apply_sample_values(sample, row, sample_name)
+            _apply_observation_values(observation, row, parameter_id)
+            session.flush()
+            savepoint.commit()
+
+            created.append(
+                {
+                    "well_name_point_id": row.raw["well_name_point_id"],
+                    "field_event_id": field_event.id,
+                    "field_activity_id": field_activity.id,
+                    "sample_id": sample.id,
+                    "observation_id": observation.id,
+                    "measurement_date_time": (
+                        row.raw.get("water_level_date_time")
+                        or row.raw.get("measurement_date_time")
+                    ),
+                    "level_status": row.level_status,
+                    "data_quality": row.data_quality,
+                }
+            )
         except Exception as exc:  # pragma: no cover - exercised via DB tests
+            if savepoint.is_active:
+                savepoint.rollback()
+            else:
+                session.expire_all()
             errors.append(f"Row {row.row_index}: {exc}")
 
     return created, errors

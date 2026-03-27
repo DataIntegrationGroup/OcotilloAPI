@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from types import SimpleNamespace
 
 from db import FieldActivity, FieldEvent, Observation, Sample, Thing
@@ -46,6 +47,20 @@ def test_resolve_measuring_point_height_prefers_csv_value():
 
 def test_resolve_measuring_point_height_falls_back_to_well_history():
     well = _build_well(measuring_point_height=3.5)
+
+    (
+        resolved_mp_height,
+        existing_mp_height,
+        differs,
+    ) = _resolve_measuring_point_height(well, None)
+
+    assert resolved_mp_height == 3.5
+    assert existing_mp_height == 3.5
+    assert differs is False
+
+
+def test_resolve_measuring_point_height_coerces_decimal_history_value():
+    well = _build_well(measuring_point_height=Decimal("3.5"))
 
     (
         resolved_mp_height,
