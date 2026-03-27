@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
+from starlette.concurrency import run_in_threadpool
 from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT, HTTP_204_NO_CONTENT
 
 from api.pagination import CustomPage
@@ -84,7 +85,8 @@ async def upload_asset(
 ) -> dict:
     from services.gcs_helper import gcs_upload
 
-    uri, blob_name = gcs_upload(file, bucket)
+    # GCS client calls are synchronous and can block for large uploads.
+    uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
     return {
         "uri": uri,
         "storage_path": blob_name,
