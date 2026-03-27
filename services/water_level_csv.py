@@ -91,8 +91,6 @@ def bulk_upload_water_levels(
     created_rows: list[dict[str, Any]] = []
 
     with session_ctx() as session:
-        parameter_id = _get_groundwater_level_parameter_id(session)
-
         # Validate headers early so we can short-circuit
         # without touching the DB.
         header_errors = _validate_headers(headers)
@@ -102,24 +100,22 @@ def bulk_upload_water_levels(
             valid_rows, row_errors = _validate_rows(session, csv_rows)
             validation_errors.extend(row_errors)
 
-            if not validation_errors:
-                try:
-                    created_rows = _create_records(
-                        session,
-                        parameter_id,
-                        valid_rows,
-                    )
-                    session.commit()
-                except Exception as exc:  # pragma: no cover - safety fallback
-                    session.rollback()
-                    validation_errors.append(str(exc))
-
-        if validation_errors:
-            session.rollback()
+            try:
+                parameter_id = _get_groundwater_level_parameter_id(session)
+                created_rows, persistence_errors = _create_records(
+                    session,
+                    parameter_id,
+                    valid_rows,
+                )
+                validation_errors.extend(persistence_errors)
+                session.commit()
+            except Exception as exc:  # pragma: no cover - safety fallback
+                session.rollback()
+                validation_errors.append(str(exc))
 
     summary = {
         "total_rows_processed": len(csv_rows),
-        "total_rows_imported": (len(created_rows) if not validation_errors else 0),
+        "total_rows_imported": len(created_rows),
         "validation_errors_or_warnings": _count_rows_with_issues(validation_errors),
     }
     payload = _build_payload(
@@ -347,63 +343,68 @@ def _validate_depth_to_water_against_well(
 
 def _create_records(
     session: Session, parameter_id: int, rows: list[_ValidatedRow]
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     created: list[dict[str, Any]] = []
+    errors: list[str] = []
 
     for row in rows:
-        sample_name = _build_sample_name(row)
-        sample = _find_existing_imported_sample(session, row, sample_name)
+        try:
+            with session.begin_nested():
+                sample_name = _build_sample_name(row)
+                sample = _find_existing_imported_sample(session, row, sample_name)
 
-        if sample is None:
-            field_event = FieldEvent(
-                thing=row.well,
-                event_date=row.field_event_dt,
-                notes=_build_field_event_notes(row),
-            )
-            field_activity = FieldActivity(
-                field_event=field_event,
-                activity_type="groundwater level",
-                notes=f"Sampler: {row.sampler}",
-            )
-            sample = Sample(field_activity=field_activity)
-            observation = Observation(sample=sample)
-            session.add(field_event)
-            session.add(field_activity)
-            session.add(sample)
-            session.add(observation)
-        else:
-            field_activity = sample.field_activity
-            field_event = field_activity.field_event
-            observation = _find_existing_observation(sample, parameter_id)
-            if observation is None:
-                observation = Observation(sample=sample)
-                session.add(observation)
+                if sample is None:
+                    field_event = FieldEvent(
+                        thing=row.well,
+                        event_date=row.field_event_dt,
+                        notes=_build_field_event_notes(row),
+                    )
+                    field_activity = FieldActivity(
+                        field_event=field_event,
+                        activity_type="groundwater level",
+                        notes=f"Sampler: {row.sampler}",
+                    )
+                    sample = Sample(field_activity=field_activity)
+                    observation = Observation(sample=sample)
+                    session.add(field_event)
+                    session.add(field_activity)
+                    session.add(sample)
+                    session.add(observation)
+                else:
+                    field_activity = sample.field_activity
+                    field_event = field_activity.field_event
+                    observation = _find_existing_observation(sample, parameter_id)
+                    if observation is None:
+                        observation = Observation(sample=sample)
+                        session.add(observation)
 
-            field_event.event_date = row.field_event_dt
-            field_event.notes = _build_field_event_notes(row)
-            field_activity.notes = f"Sampler: {row.sampler}"
+                    field_event.event_date = row.field_event_dt
+                    field_event.notes = _build_field_event_notes(row)
+                    field_activity.notes = f"Sampler: {row.sampler}"
 
-        _apply_sample_values(sample, row, sample_name)
-        _apply_observation_values(observation, row, parameter_id)
-        session.flush()
+                _apply_sample_values(sample, row, sample_name)
+                _apply_observation_values(observation, row, parameter_id)
+                session.flush()
 
-        created.append(
-            {
-                "well_name_point_id": row.raw["well_name_point_id"],
-                "field_event_id": field_event.id,
-                "field_activity_id": field_activity.id,
-                "sample_id": sample.id,
-                "observation_id": observation.id,
-                "measurement_date_time": (
-                    row.raw.get("water_level_date_time")
-                    or row.raw.get("measurement_date_time")
-                ),
-                "level_status": row.level_status,
-                "data_quality": row.data_quality,
-            }
-        )
+                created.append(
+                    {
+                        "well_name_point_id": row.raw["well_name_point_id"],
+                        "field_event_id": field_event.id,
+                        "field_activity_id": field_activity.id,
+                        "sample_id": sample.id,
+                        "observation_id": observation.id,
+                        "measurement_date_time": (
+                            row.raw.get("water_level_date_time")
+                            or row.raw.get("measurement_date_time")
+                        ),
+                        "level_status": row.level_status,
+                        "data_quality": row.data_quality,
+                    }
+                )
+        except Exception as exc:  # pragma: no cover - exercised via DB tests
+            errors.append(f"Row {row.row_index}: {exc}")
 
-    return created
+    return created, errors
 
 
 def _build_sample_name(row: _ValidatedRow) -> str:
