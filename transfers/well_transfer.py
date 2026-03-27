@@ -93,6 +93,7 @@ EXCLUDED_FIELDS = [
     "is_suitable_for_datalogger",
     "is_open",
     "well_status",
+    "monitoring_status",
 ]
 
 
