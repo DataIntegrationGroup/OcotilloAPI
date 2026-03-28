@@ -51,6 +51,7 @@ from schemas.thing import (
     UpdateThingIdLink,
     UpdateWellScreen,
 )
+from schemas.well_details import WellDetailsResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import get_terms_by_category
@@ -68,6 +69,7 @@ from services.thing_helper import (
     modify_well_descriptor_tables,
     WELL_DESCRIPTOR_MODEL_MAP,
 )
+from services.well_details_helper import get_well_details_payload
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
@@ -175,6 +177,28 @@ async def get_well_by_id(
     Retrieve a water well by ID from the database.
     """
     return get_thing_of_a_thing_type_by_id(session, request, thing_id)
+
+
+@router.get(
+    "/water-well/{thing_id}/details",
+    summary="Get water well details payload",
+    status_code=HTTP_200_OK,
+)
+async def get_well_details(
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
+) -> WellDetailsResponse:
+    """
+    Retrieve the consolidated payload needed to render the well details page.
+    Hydrograph series and map layer loading are intentionally handled separately.
+    """
+    return get_well_details_payload(
+        session=session,
+        request=request,
+        thing_id=thing_id,
+    )
 
 
 @router.get(
