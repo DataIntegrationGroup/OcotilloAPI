@@ -1,4 +1,6 @@
 from datetime import datetime
+import logging
+import time
 from typing import List
 
 from fastapi import Request, Query
@@ -24,7 +26,14 @@ from schemas.observation import (
     GroundwaterLevelObservationResponse,
 )
 from services.exceptions_helper import PydanticStyleException
+from services.env import get_bool_env
 from services.query_helper import simple_get_by_id, order_sort_filter
+
+logger = logging.getLogger(__name__)
+
+
+def is_debug_timing_enabled() -> bool:
+    return bool(get_bool_env("API_DEBUG_TIMING", False))
 
 
 def get_activity_type_from_request(request: Request) -> str:
@@ -235,7 +244,27 @@ def get_observations(
     if not order:
         sql = sql.order_by(Observation.observation_datetime.desc())
 
-    return paginate(query=sql, conn=session)
+    started_at = time.perf_counter()
+    page = paginate(query=sql, conn=session)
+    if is_debug_timing_enabled():
+        duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        logger.info(
+            "observation query completed path=%s thing_id=%s sensor_id=%s sample_id=%s duration_ms=%s",
+            request.url.path,
+            thing_id,
+            sensor_id,
+            sample_id,
+            duration_ms,
+            extra={
+                "event": "observation_query_completed",
+                "path": request.url.path,
+                "thing_id": thing_id,
+                "sensor_id": sensor_id,
+                "sample_id": sample_id,
+                "duration_ms": duration_ms,
+            },
+        )
+    return page
 
 
 def verify_observed_property_corresponds_with_activity_type(

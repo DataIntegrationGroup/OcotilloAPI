@@ -52,6 +52,7 @@ from schemas.thing import (
     UpdateWellScreen,
 )
 from schemas.well_details import WellDetailsResponse
+from schemas.well_export import WellExportResponse
 from services.crud_helper import model_patcher, model_adder, model_deleter
 from services.exceptions_helper import PydanticStyleException
 from services.lexicon_helper import get_terms_by_category
@@ -69,7 +70,10 @@ from services.thing_helper import (
     modify_well_descriptor_tables,
     WELL_DESCRIPTOR_MODEL_MAP,
 )
-from services.well_details_helper import get_well_details_payload
+from services.well_details_helper import (
+    get_well_details_payload,
+    get_well_export_payload,
+)
 
 router = APIRouter(prefix="/thing", tags=["thing"])
 
@@ -195,6 +199,27 @@ async def get_well_details(
     Hydrograph series and map layer loading are intentionally handled separately.
     """
     return get_well_details_payload(
+        session=session,
+        request=request,
+        thing_id=thing_id,
+    )
+
+
+@router.get(
+    "/water-well/{thing_id}/export",
+    summary="Get water well export payload",
+    status_code=HTTP_200_OK,
+)
+async def get_well_export(
+    user: viewer_dependency,
+    thing_id: int,
+    session: session_dependency,
+    request: Request,
+) -> WellExportResponse:
+    """
+    Retrieve the minimal payload needed for field sheet export generation.
+    """
+    return get_well_export_payload(
         session=session,
         request=request,
         thing_id=thing_id,

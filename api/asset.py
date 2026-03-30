@@ -14,12 +14,19 @@
 # limitations under the License.
 # ===============================================================================
 
+import logging
+import time
+
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
 from sqlalchemy.exc import ProgrammingError
 from starlette.concurrency import run_in_threadpool
-from starlette.status import HTTP_201_CREATED, HTTP_409_CONFLICT, HTTP_204_NO_CONTENT
+from starlette.status import (
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_409_CONFLICT,
+)
 
 from api.pagination import CustomPage
 from core.dependencies import (
@@ -33,16 +40,38 @@ from db.asset import Asset, AssetThingAssociation
 from schemas.asset import AssetResponse, CreateAsset, UpdateAsset
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher, model_deleter
+from services.env import get_bool_env
 from services.exceptions_helper import PydanticStyleException
 from services.query_helper import simple_get_by_id
 
 router = APIRouter(prefix="/asset", tags=["asset"])
+logger = logging.getLogger(__name__)
+
+
+def is_debug_timing_enabled() -> bool:
+    return bool(get_bool_env("API_DEBUG_TIMING", False))
 
 
 def get_storage_bucket():
-    from services.gcs_helper import get_storage_bucket as get_gcs_storage_bucket
+    from services.gcs_helper import (
+        get_storage_bucket as get_gcs_storage_bucket,
+    )
 
-    return get_gcs_storage_bucket()
+    started_at = time.perf_counter()
+    try:
+        return get_gcs_storage_bucket()
+    finally:
+        if is_debug_timing_enabled():
+            logger.info(
+                "asset storage bucket resolved",
+                extra={
+                    "event": "asset_storage_bucket_resolved",
+                    "bucket_resolution_ms": round(
+                        (time.perf_counter() - started_at) * 1000,
+                        2,
+                    ),
+                },
+            )
 
 
 def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
@@ -53,8 +82,8 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
     error_message = error.orig.args[0]["M"]
 
     if (
-        error_message
-        == 'null value in column "thing_id" of relation "asset_thing_association" violates not-null constraint'
+        error_message == 'null value in column "thing_id" of relation '
+        '"asset_thing_association" violates not-null constraint'
     ):
         """
         Developer's notes
@@ -70,10 +99,13 @@ def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> Non
             "input": {"thing_id": payload.thing_id},
         }
 
-    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
+    raise PydanticStyleException(
+        status_code=HTTP_409_CONFLICT,
+        detail=[detail],
+    )
 
 
-# POST =========================================================================
+# POST =======================================================================
 @router.post(
     "/upload",
     status_code=HTTP_201_CREATED,
@@ -86,7 +118,21 @@ async def upload_asset(
     from services.gcs_helper import gcs_upload
 
     # GCS client calls are synchronous and can block for large uploads.
+    request_started_at = time.perf_counter()
     uri, blob_name = await run_in_threadpool(gcs_upload, file, bucket)
+    if is_debug_timing_enabled():
+        logger.info(
+            "asset upload request completed",
+            extra={
+                "event": "asset_upload_request_completed",
+                "upload_filename": file.filename,
+                "content_type": file.content_type,
+                "upload_request_ms": round(
+                    (time.perf_counter() - request_started_at) * 1000,
+                    2,
+                ),
+            },
+        )
     return {
         "uri": uri,
         "storage_path": blob_name,
@@ -110,7 +156,11 @@ async def add_asset(
         # this storage path and thing_id
         from services.gcs_helper import check_asset_exists
 
-        existing_asset = check_asset_exists(session, storage_path, thing_id=thing_id)
+        existing_asset = check_asset_exists(
+            session,
+            storage_path,
+            thing_id=thing_id,
+        )
         if existing_asset:
             # If an asset already exists, return it
             return existing_asset
@@ -136,7 +186,7 @@ async def add_asset(
         database_error_handler(asset_data, e)
 
 
-# GET ==========================================================================
+# GET ========================================================================
 
 """
 Developer's notes
@@ -189,11 +239,11 @@ async def get_asset(
 
     asset = simple_get_by_id(session, Asset, asset_id)
 
-    add_signed_url(asset, bucket)
+    asset = await run_in_threadpool(add_signed_url, asset, bucket)
     return asset
 
 
-# PATCH ========================================================================
+# PATCH ======================================================================
 @router.patch("/{asset_id}")
 async def update_asset(
     asset_id: int,
@@ -207,7 +257,7 @@ async def update_asset(
     return model_patcher(session, Asset, asset_id, asset_data, user=user)
 
 
-# DELETE =======================================================================
+# DELETE =====================================================================
 
 
 @router.delete("/{asset_id}", status_code=HTTP_204_NO_CONTENT)
@@ -215,7 +265,8 @@ async def delete_asset(
     asset_id: int, session: session_dependency, user: admin_dependency
 ):
 
-    # TODO: Interesting issue here.  we don't have a way of tracking who deleted a record
+    # TODO: Interesting issue here. We don't have a way of tracking
+    # who deleted a record.
     return model_deleter(session, Asset, asset_id)
 
 

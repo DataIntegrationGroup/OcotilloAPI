@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from core.app import create_base_app
 
 
-def test_request_timing_logs_cold_then_warm(caplog):
+def test_request_lifecycle_logs_start_and_completion(caplog):
     app = create_base_app()
 
     @app.get("/ping")
@@ -20,24 +20,23 @@ def test_request_timing_logs_cold_then_warm(caplog):
     startup_logs = [
         record for record in caplog.records if record.msg == "instance startup complete"
     ]
-    request_logs = [
-        record for record in caplog.records if record.msg == "request timing"
+    request_started_logs = [
+        record for record in caplog.records if record.msg == "request started"
     ]
-
+    request_completed_logs = [
+        record for record in caplog.records if record.msg == "request completed"
+    ]
     assert len(startup_logs) == 1
-    assert len(request_logs) == 2
+    assert len(request_started_logs) == 2
+    assert len(request_completed_logs) == 2
 
     assert startup_logs[0].event == "instance_startup_complete"
     assert startup_logs[0].startup_ms >= 0
-
-    assert request_logs[0].request_kind == "cold"
-    assert request_logs[0].path == "/ping"
-    assert request_logs[0].status_code == 200
-    assert request_logs[0].request_duration_ms >= 0
-    assert request_logs[0].startup_ms >= 0
-
-    assert request_logs[1].request_kind == "warm"
-    assert request_logs[1].path == "/ping"
-    assert request_logs[1].status_code == 200
-    assert request_logs[1].request_duration_ms >= 0
-    assert request_logs[1].uptime_before_request_ms >= 0
+    assert request_started_logs[0].event == "request_started"
+    assert request_started_logs[0].request_id
+    assert request_started_logs[0].path == "/ping"
+    assert request_completed_logs[0].event == "request_completed"
+    assert request_completed_logs[0].request_id == request_started_logs[0].request_id
+    assert request_completed_logs[0].status_code == 200
+    assert request_completed_logs[1].request_id == request_started_logs[1].request_id
+    assert request_completed_logs[1].status_code == 200

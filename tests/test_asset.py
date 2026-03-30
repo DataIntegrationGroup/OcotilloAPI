@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+import io
+import logging
+import os
 from datetime import timezone
 from unittest.mock import patch
 
@@ -23,6 +26,7 @@ from main import app
 from core.dependencies import viewer_function, admin_function, editor_function
 from db import Asset
 from schemas import DT_FMT
+from services import gcs_helper
 from tests import (
     client,
     cleanup_post_test,
@@ -30,12 +34,18 @@ from tests import (
     cleanup_patch_test,
 )
 
-# CLASSES, FIXTURES, AND FUNCTIONS =============================================
+# CLASSES, FIXTURES, AND FUNCTIONS ===========================================
 
 
 class MockBlob:
+    def __init__(self):
+        self.upload_calls = 0
+        self.last_file_position = None
+
     def upload_from_file(self, *args, **kwargs):
-        pass
+        self.upload_calls += 1
+        if args:
+            self.last_file_position = args[0].tell()
 
     def generate_signed_url(self, *args, **kwargs):
         return "https://storage.googleapis.com/mock-bucket/mock-asset"
@@ -47,11 +57,15 @@ class MockBlob:
 class MockStorageBucket:
     name = "mock-bucket"
 
+    def __init__(self, existing_blob=None):
+        self._blob = MockBlob()
+        self._existing_blob = existing_blob
+
     def blob(self, *args, **kwargs):
-        return MockBlob()
+        return self._blob
 
     def get_blob(self, *args, **kwargs):
-        return None
+        return self._existing_blob
 
 
 def mock_storage_bucket():
@@ -77,7 +91,7 @@ def override_dependency_fixture():
     app.dependency_overrides = {}
 
 
-# POST & UPLOAD tests ==========================================================
+# POST & UPLOAD tests ========================================================
 
 
 def test_upload_asset():
@@ -92,6 +106,86 @@ def test_upload_asset():
         assert response.status_code == 201
         data = response.json()
         assert "storage_path" in data
+
+
+def test_gcs_upload_logs_stage_timings(caplog):
+    bucket = MockStorageBucket()
+    upload = type(
+        "UploadStub",
+        (),
+        {
+            "filename": "field-compilation.pdf",
+            "content_type": "application/pdf",
+            "file": io.BytesIO(b"pdf-bytes" * 2048),
+        },
+    )()
+
+    with patch.dict(os.environ, {"API_DEBUG_TIMING": "true"}):
+        with caplog.at_level(logging.INFO, logger="services.gcs_helper"):
+            uri, blob_name = gcs_helper.gcs_upload(upload, bucket)
+
+    stage_logs = [
+        record for record in caplog.records if record.msg == "gcs stage timing"
+    ]
+
+    assert uri.endswith(blob_name)
+    assert {record.stage for record in stage_logs} >= {
+        "hash_file",
+        "lookup_blob",
+        "upload_blob",
+        "upload_request_total",
+    }
+
+
+def test_gcs_upload_skips_existing_blob():
+    existing_blob = object()
+    bucket = MockStorageBucket(existing_blob=existing_blob)
+    upload = type(
+        "UploadStub",
+        (),
+        {
+            "filename": "existing.pdf",
+            "content_type": "application/pdf",
+            "file": io.BytesIO(b"existing-pdf"),
+        },
+    )()
+
+    gcs_helper.gcs_upload(upload, bucket)
+
+    assert bucket._blob.upload_calls == 0
+
+
+def test_make_blob_name_and_uri_rewinds_file_after_hashing():
+    upload = type(
+        "UploadStub",
+        (),
+        {
+            "filename": "rewind.pdf",
+            "file": io.BytesIO(b"a" * (gcs_helper.HASH_CHUNK_SIZE + 5)),
+        },
+    )()
+
+    blob_name, uri = gcs_helper.make_blob_name_and_uri(upload)
+
+    assert blob_name in uri
+    assert upload.file.tell() == 0
+
+
+def test_gcs_upload_rewinds_before_upload():
+    bucket = MockStorageBucket()
+    upload = type(
+        "UploadStub",
+        (),
+        {
+            "filename": "rewind-before-upload.pdf",
+            "content_type": "application/pdf",
+            "file": io.BytesIO(b"b" * (gcs_helper.HASH_CHUNK_SIZE + 7)),
+        },
+    )()
+
+    gcs_helper.gcs_upload(upload, bucket)
+
+    assert bucket._blob.last_file_position == 0
 
 
 def test_add_asset(water_well_thing):
@@ -119,7 +213,7 @@ def test_add_asset(water_well_thing):
     assert data["storage_path"] == payload["storage_path"]
     assert data["mime_type"] == payload["mime_type"]
     assert data["size"] == payload["size"]
-    assert data["signed_url"] == None
+    assert data["signed_url"] is None
 
     cleanup_post_test(Asset, data["id"])
 
@@ -146,7 +240,7 @@ def test_add_asset_409_bad_thing_id(water_well_thing):
     assert data["detail"][0]["input"] == {"thing_id": bad_thing_id}
 
 
-# GET tests ====================================================================
+# GET tests ==================================================================
 
 
 def test_get_assets(asset, asset_with_associated_thing):
@@ -166,7 +260,7 @@ def test_get_assets(asset, asset_with_associated_thing):
     assert data["items"][0]["size"] == asset.size
     assert data["items"][0]["uri"] == asset.uri
     assert data["items"][0]["storage_service"] == asset.storage_service
-    assert data["items"][0]["signed_url"] == None
+    assert data["items"][0]["signed_url"] is None
 
     assert data["items"][1]["id"] == asset_with_associated_thing.id
     assert data["items"][1][
@@ -187,11 +281,14 @@ def test_get_assets(asset, asset_with_associated_thing):
         data["items"][1]["storage_service"]
         == asset_with_associated_thing.storage_service
     )
-    assert data["items"][1]["signed_url"] == None
+    assert data["items"][1]["signed_url"] is None
 
 
 def test_get_assets_thing_id(asset_with_associated_thing, water_well_thing):
-    with patch("api.asset.get_storage_bucket", return_value=MockStorageBucket()):
+    with patch(
+        "api.asset.get_storage_bucket",
+        return_value=MockStorageBucket(),
+    ):
         query_parameters = {"thing_id": water_well_thing.id}
         response = client.get("/asset", params=query_parameters)
         assert response.status_code == 200
@@ -231,7 +328,7 @@ def test_get_asset_by_id_404_not_found(asset):
     assert data["detail"] == f"Asset with ID {bad_id} not found."
 
 
-# PATCH tests ==================================================================
+# PATCH tests ================================================================
 
 
 def test_patch_asset(asset):
@@ -260,7 +357,7 @@ def test_patch_asset_404_not_found(asset):
     assert data["detail"] == f"Asset with ID {bad_id} not found."
 
 
-# DELETE tests =================================================================
+# DELETE tests ===============================================================
 
 
 def test_delete_asset(second_asset):

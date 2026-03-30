@@ -16,13 +16,13 @@
 
 import copy
 import getpass
+import logging
 import os
+import time
 from contextlib import contextmanager
 
 from dotenv import load_dotenv
-from sqlalchemy import (
-    create_engine,
-)
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import (
     sessionmaker,
@@ -31,9 +31,59 @@ from sqlalchemy.util import await_only
 
 from services.env import get_bool_env
 
-# Load .env file - don't override env vars already set (e.g., by test framework)
+# Load .env file. Do not override env vars already set by the runtime.
 load_dotenv(override=False)
 driver = os.environ.get("DB_DRIVER", "")
+logger = logging.getLogger(__name__)
+
+
+def is_pool_logging_enabled() -> bool:
+    return bool(
+        get_bool_env("DB_POOL_LOGGING", False)
+        or get_bool_env("API_DEBUG_TIMING", False)
+    )
+
+
+def _install_pool_logging(engine):
+    if not is_pool_logging_enabled():
+        return
+
+    @event.listens_for(engine, "checkout")
+    def log_checkout(dbapi_connection, connection_record, connection_proxy):
+        connection_record.info["checked_out_at"] = time.perf_counter()
+        logger.info(
+            "db pool checkout",
+            extra={
+                "event": "db_pool_checkout",
+                "pool_status": engine.pool.status(),
+            },
+        )
+
+    @event.listens_for(engine, "checkin")
+    def log_checkin(dbapi_connection, connection_record):
+        checked_out_at = connection_record.info.pop("checked_out_at", None)
+        hold_ms = None
+        if checked_out_at is not None:
+            hold_ms = round((time.perf_counter() - checked_out_at) * 1000, 2)
+        logger.info(
+            "db pool checkin",
+            extra={
+                "event": "db_pool_checkin",
+                "connection_hold_ms": hold_ms,
+                "pool_status": engine.pool.status(),
+            },
+        )
+
+    @event.listens_for(engine, "invalidate")
+    def log_invalidate(dbapi_connection, connection_record, exception):
+        logger.warning(
+            "db pool invalidate",
+            extra={
+                "event": "db_pool_invalidate",
+                "pool_status": engine.pool.status(),
+                "exception_type": (type(exception).__name__ if exception else None),
+            },
+        )
 
 
 def get_iam_login_token() -> str:
@@ -85,7 +135,11 @@ async def get_async_engine():
         else:
             connect_kwargs["password"] = password
 
-        connection = connector.connect_async(instance_name, "asyncpg", **connect_kwargs)
+        connection = connector.connect_async(
+            instance_name,
+            "asyncpg",
+            **connect_kwargs,
+        )
 
         return AsyncAdapt_asyncpg_connection(
             engine.dialect.dbapi,
@@ -133,6 +187,7 @@ if driver == "cloudsql":
         # Configure connection pool for parallel transfers
         pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
         max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
+        pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
 
         engine = create_engine(
             "postgresql+pg8000://",
@@ -140,8 +195,10 @@ if driver == "cloudsql":
             echo=False,
             pool_size=pool_size,
             max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
             pool_pre_ping=True,
         )
+        _install_pool_logging(engine)
         return engine
 
     connector = Connector()
@@ -172,6 +229,7 @@ else:
     # max_overflow: additional connections during peak usage
     pool_size = int(os.environ.get("DB_POOL_SIZE", "10"))
     max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "20"))
+    pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
 
     engine = create_engine(
         url,
@@ -179,8 +237,10 @@ else:
         plugins=["geoalchemy2"],
         pool_size=pool_size,
         max_overflow=max_overflow,
+        pool_timeout=pool_timeout,
         pool_pre_ping=True,  # Verify connections before use
     )
+    _install_pool_logging(engine)
 
     async_engine = create_async_engine(
         url.replace("postgresql+pg8000", "postgresql+asyncpg"),
