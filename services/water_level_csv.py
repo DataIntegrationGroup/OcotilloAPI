@@ -351,8 +351,9 @@ def _create_records(
     errors: list[str] = []
 
     for row in rows:
-        savepoint = session.begin_nested()
+        savepoint = None
         try:
+            savepoint = session.begin_nested()
             sample_name = _build_sample_name(row)
             sample = _find_existing_imported_sample(session, row, sample_name)
 
@@ -406,7 +407,7 @@ def _create_records(
                 }
             )
         except Exception as exc:  # pragma: no cover - exercised via DB tests
-            if savepoint.is_active:
+            if savepoint is not None and savepoint.is_active:
                 savepoint.rollback()
             else:
                 session.expire_all()

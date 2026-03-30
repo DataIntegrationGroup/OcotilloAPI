@@ -8,6 +8,7 @@ from db.engine import session_ctx
 from tests import get_parameter_id
 from services.water_level_csv import (
     _build_sample_name,
+    _create_records,
     _resolve_measuring_point_height,
     _validate_depth_to_water_against_well,
     bulk_upload_water_levels,
@@ -114,6 +115,30 @@ def test_build_sample_name_uses_deterministic_well_inventory_style_format():
     )
 
     assert _build_sample_name(row) == "AR0001-WL-202502151030"
+
+
+def test_create_records_reports_savepoint_creation_failure_as_row_error():
+    class BrokenSession:
+        def __init__(self):
+            self.expire_all_called = False
+
+        def begin_nested(self):
+            raise RuntimeError("savepoint failed")
+
+        def expire_all(self):
+            self.expire_all_called = True
+
+    session = BrokenSession()
+
+    created, errors = _create_records(
+        session,
+        parameter_id=1,
+        rows=[SimpleNamespace(row_index=7)],
+    )
+
+    assert created == []
+    assert errors == ["Row 7: savepoint failed"]
+    assert session.expire_all_called is True
 
 
 def test_bulk_upload_water_levels_is_idempotent(water_well_thing):
