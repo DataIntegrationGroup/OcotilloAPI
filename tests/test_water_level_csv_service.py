@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from db import FieldActivity, FieldEvent, Observation, Sample, Thing
 from db.measuring_point_history import MeasuringPointHistory
 from db.engine import session_ctx
+from tests import get_parameter_id
 from services.water_level_csv import (
     _build_sample_name,
     _resolve_measuring_point_height,
@@ -198,6 +199,124 @@ def test_bulk_upload_water_levels_is_idempotent(water_well_thing):
             == "Water level accurate to within two hundreths of a foot"
         )
         assert observations[0].measuring_point_height == 1.5
+
+
+def test_bulk_upload_water_levels_preserves_unrelated_existing_observations(
+    water_well_thing,
+):
+    groundwater_parameter_id = get_parameter_id("groundwater level", "Field Parameter")
+    ph_parameter_id = get_parameter_id("pH", "Field Parameter")
+
+    with session_ctx() as session:
+        well = session.merge(water_well_thing)
+        field_event = FieldEvent(
+            thing=well,
+            event_date=datetime(2025, 2, 15, 15, 0, tzinfo=timezone.utc),
+            notes="Existing field event",
+        )
+        field_activity = FieldActivity(
+            field_event=field_event,
+            activity_type="groundwater level",
+            notes="Sampler: Original Sampler",
+        )
+        sample = Sample(
+            field_activity=field_activity,
+            sample_date=datetime(2025, 2, 15, 17, 30, tzinfo=timezone.utc),
+            sample_name="Test Well-WL-202502151730",
+            sample_matrix="groundwater",
+            sample_method="Electric tape measurement (E-probe)",
+            qc_type="Normal",
+            notes="Existing sample",
+        )
+        unrelated_observation = Observation(
+            sample=sample,
+            observation_datetime=datetime(2025, 2, 15, 17, 30, tzinfo=timezone.utc),
+            parameter_id=ph_parameter_id,
+            value=7.2,
+            unit="dimensionless",
+            notes="Keep me as pH",
+        )
+        session.add_all([field_event, field_activity, sample, unrelated_observation])
+        session.commit()
+        unrelated_observation_id = unrelated_observation.id
+
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Imported groundwater level",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+
+    with session_ctx() as session:
+        sample = session.scalars(
+            select(Sample)
+            .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+            .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+            .join(Thing, FieldEvent.thing_id == Thing.id)
+            .where(
+                Thing.id == water_well_thing.id,
+                FieldActivity.activity_type == "groundwater level",
+                Sample.sample_name == "Test Well-WL-202502151730",
+            )
+        ).one()
+        observations = session.scalars(
+            select(Observation)
+            .where(Observation.sample_id == sample.id)
+            .order_by(Observation.id.asc())
+        ).all()
+
+        assert len(observations) == 2
+        assert observations[0].id == unrelated_observation_id
+        assert observations[0].parameter_id == ph_parameter_id
+        assert observations[0].value == 7.2
+        assert observations[0].unit == "dimensionless"
+        assert observations[0].notes == "Keep me as pH"
+
+        groundwater_observations = [
+            observation
+            for observation in observations
+            if observation.parameter_id == groundwater_parameter_id
+        ]
+        assert len(groundwater_observations) == 1
+        assert (
+            groundwater_observations[0].id
+            == result.payload["water_levels"][0]["observation_id"]
+        )
+        assert groundwater_observations[0].value == 7.0
+        assert groundwater_observations[0].unit == "ft"
+        assert groundwater_observations[0].notes == "Imported groundwater level"
 
 
 def test_bulk_upload_water_levels_imports_valid_rows_when_other_rows_fail(

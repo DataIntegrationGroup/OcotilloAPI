@@ -445,7 +445,7 @@ def _find_existing_observation(sample: Sample, parameter_id: int) -> Observation
     for observation in sample.observations:
         if observation.parameter_id == parameter_id:
             return observation
-    return sample.observations[0] if sample.observations else None
+    return None
 
 
 def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -> None:
