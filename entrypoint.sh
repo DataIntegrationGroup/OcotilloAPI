@@ -7,6 +7,7 @@ DB_NAME="${POSTGRES_DB:-postgres}"
 APP_MODULE="${APP_MODULE:-main:app}"
 APP_PORT="${APP_PORT:-8000}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
+UVICORN_RELOAD="${UVICORN_RELOAD:-false}"
 
 # Wait for PostgreSQL to be ready
 until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER" -d "$DB_NAME"; do
@@ -21,4 +22,8 @@ if [ "$RUN_MIGRATIONS" = "true" ]; then
 fi
 
 echo "Starting the application..."
-uvicorn "$APP_MODULE" --host 0.0.0.0 --port "$APP_PORT" --reload
+if [ "$UVICORN_RELOAD" = "true" ]; then
+  uvicorn "$APP_MODULE" --host 0.0.0.0 --port "$APP_PORT" --reload
+else
+  uvicorn "$APP_MODULE" --host 0.0.0.0 --port "$APP_PORT"
+fi

@@ -27,11 +27,13 @@ from core.dependencies import (
 )
 from db.sample import Sample
 from schemas import ResourceNotFoundResponse
-from schemas.sample import SampleResponse, CreateSample, UpdateSample
-from services.query_helper import simple_get_by_id
+from schemas.sample import CreateSample, SampleResponse, UpdateSample
 from services.crud_helper import model_patcher, model_deleter, model_adder
 from services.exceptions_helper import PydanticStyleException
-from services.sample_helper import get_db_samples
+from services.sample_helper import (
+    get_db_samples,
+    get_sample_by_id_with_relationships,
+)
 
 router = APIRouter(
     prefix="/sample",
@@ -42,44 +44,56 @@ router = APIRouter(
 # TODO: add the following database validation handlers
 # invalid sample_id
 # invalid lexicon terms
-# sample_date of the Sample model cannot be before the event_date of the FieldEvent model
+# sample_date of the Sample model cannot be before the
+# event_date of the FieldEvent model
 
 
 def database_error_handler(
-    payload: CreateSample | UpdateSample, error: IntegrityError | ProgrammingError
+    payload: CreateSample | UpdateSample,
+    error: IntegrityError | ProgrammingError,
 ) -> None:
     """
     Handle errors raised by the database when adding or updating a sample.
     """
     error_message = error.orig.args[0]["M"]
     if (
-        error_message
-        == 'duplicate key value violates unique constraint "sample_sample_name_key"'
+        error_message == "duplicate key value violates unique "
+        'constraint "sample_sample_name_key"'
     ):
         detail = {
             "loc": ["body", "sample_name"],
-            "msg": f"Sample with sample_name {payload.sample_name} already exists.",
+            "msg": (
+                f"Sample with sample_name {payload.sample_name} " "already exists."
+            ),
             "type": "value_error",
             "input": {"sample_name": payload.sample_name},
         }
     elif (
         error_message
-        == 'insert or update on table "sample" violates foreign key constraint "sample_field_activity_id_fkey"'
+        == 'insert or update on table "sample" violates foreign key constraint '
+        '"sample_field_activity_id_fkey"'
     ):
         detail = {
             "loc": ["body", "field_activity_id"],
-            "msg": f"FieldActivity with ID {payload.field_activity_id} does not exist.",
+            "msg": (
+                f"FieldActivity with ID {payload.field_activity_id} " "does not exist."
+            ),
             "type": "value_error",
             "input": {"field_activity_id": payload.field_activity_id},
         }
 
-    raise PydanticStyleException(status_code=HTTP_409_CONFLICT, detail=[detail])
+    raise PydanticStyleException(
+        status_code=HTTP_409_CONFLICT,
+        detail=[detail],
+    )
 
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
 async def add_sample(
-    sample_data: CreateSample, session: session_dependency, user: admin_dependency
+    sample_data: CreateSample,
+    session: session_dependency,
+    user: admin_dependency,
 ) -> SampleResponse:
     """
     Endpoint to add a sample.
@@ -106,7 +120,13 @@ async def update_sample(
     try:
         # since this is only one instance N+1 is not a concern for
         # FieldActivity, FieldEvent, and Thing
-        return model_patcher(session, Sample, sample_id, sample_data, user=user)
+        return model_patcher(
+            session,
+            Sample,
+            sample_id,
+            sample_data,
+            user=user,
+        )
     except (IntegrityError, ProgrammingError) as e:
         database_error_handler(sample_data, e)
 
@@ -124,27 +144,38 @@ async def get_samples(
     """
     Endpoint to retrieve samples.
     """
-    return get_db_samples(session, thing_id, sort=sort, order=order, filter_=filter_)
+    return get_db_samples(
+        session,
+        thing_id,
+        sort=sort,
+        order=order,
+        filter_=filter_,
+    )
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
 async def get_sample_by_id(
-    sample_id: int, session: session_dependency, user: viewer_dependency
+    sample_id: int,
+    session: session_dependency,
+    user: viewer_dependency,
 ) -> SampleResponse | ResourceNotFoundResponse:
     """
     Endpoint to retrieve a sample by its ID.
     """
-    # since this is only one instance N+1 is not a concern
-    # FieldActivity, FieldEvent, and Thing
-    return simple_get_by_id(session, Sample, sample_id)
+    return get_sample_by_id_with_relationships(session, sample_id)
 
 
 # ======= DELETE ===============================================================
 
 
-@router.delete("/{sample_id}", summary="Delete Sample by ID")
+@router.delete(
+    "/{sample_id}",
+    summary="Delete Sample by ID",
+)
 async def delete_sample_by_id(
-    sample_id: int, session: session_dependency, user: admin_dependency
+    sample_id: int,
+    session: session_dependency,
+    user: admin_dependency,
 ) -> Response:
     return model_deleter(session, Sample, sample_id)
 

@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-import os
-import asyncio
-import time
 import logging
+import os
+import time
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -44,7 +44,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         seed_all(10, skip_if_exists=True)
 
     app.state.instance_ready_at = time.perf_counter()
-    app.state.first_request_pending = True
     logger.info(
         "instance startup complete",
         extra={
@@ -69,55 +68,39 @@ def create_base_app() -> FastAPI:
     )
     app.state.process_boot_started_at = time.perf_counter()
     app.state.instance_ready_at = None
-    app.state.first_request_pending = True
-    app.state.request_timing_lock = asyncio.Lock()
 
     @app.middleware("http")
-    async def log_request_timing(request: Request, call_next):
-        request_started_at = time.perf_counter()
-        async with app.state.request_timing_lock:
-            is_first_request = app.state.first_request_pending
-            app.state.first_request_pending = False
+    async def log_request_lifecycle(request: Request, call_next):
+        request_id = uuid4().hex
+        request.state.request_id = request_id
+        logger.info(
+            "request started %s %s",
+            request.method,
+            request.url.path,
+            extra={
+                "event": "request_started",
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+            },
+        )
         status_code = 500
         try:
             response = await call_next(request)
             status_code = response.status_code
             return response
         finally:
-            request_duration_ms = round(
-                (time.perf_counter() - request_started_at) * 1000, 2
-            )
-            startup_ms = round(
-                (
-                    (app.state.instance_ready_at or request_started_at)
-                    - app.state.process_boot_started_at
-                )
-                * 1000,
-                2,
-            )
-            uptime_before_request_ms = round(
-                (
-                    (
-                        request_started_at
-                        - (app.state.instance_ready_at or request_started_at)
-                    )
-                )
-                * 1000,
-                2,
-            )
-            request_kind = "cold" if is_first_request else "warm"
-
             logger.info(
-                "request timing",
+                "request completed %s %s status=%s",
+                request.method,
+                request.url.path,
+                status_code,
                 extra={
-                    "event": "request_timing",
-                    "request_kind": request_kind,
+                    "event": "request_completed",
+                    "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": status_code,
-                    "request_duration_ms": request_duration_ms,
-                    "startup_ms": startup_ms,
-                    "uptime_before_request_ms": uptime_before_request_ms,
                 },
             )
 
