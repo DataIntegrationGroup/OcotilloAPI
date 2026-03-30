@@ -229,6 +229,13 @@ class BaseThingResponse(BaseResponseModel):
         return active_frequencies
 
 
+class WellContactSummaryResponse(BaseResponseModel):
+    name: str | None = None
+    organization: str | None = None
+    role: str
+    contact_type: str
+
+
 class WellResponse(BaseThingResponse):
     """
     Response schema for well details.
@@ -262,6 +269,7 @@ class WellResponse(BaseThingResponse):
     aquifers: list[dict] = []
     water_notes: list[NoteResponse] = []
     construction_notes: list[NoteResponse] = []
+    contacts: list[WellContactSummaryResponse] = []
     permissions: list[PermissionHistoryResponse]
     formation_completion_code: FormationCode | None
     nma_formation_zone: str | None

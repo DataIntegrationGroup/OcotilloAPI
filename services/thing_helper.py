@@ -28,6 +28,7 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from db import (
     LocationThingAssociation,
     Thing,
+    ThingContactAssociation,
     Location,
     WellScreen,
     WellPurpose,
@@ -54,6 +55,9 @@ WELL_DESCRIPTOR_MODEL_MAP = {
 WATER_WELL_LOADER_OPTIONS = [
     selectinload(Thing.location_associations).selectinload(
         LocationThingAssociation.location
+    ),
+    selectinload(Thing.contact_associations).selectinload(
+        ThingContactAssociation.contact
     ),
     selectinload(Thing.well_purposes),
     selectinload(Thing.well_casing_materials),
