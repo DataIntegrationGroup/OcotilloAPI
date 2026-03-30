@@ -690,7 +690,10 @@ def test_get_water_wells_includes_contact_summary(
     assert response.status_code == 200
     data = response.json()
 
-    well = next(item for item in data["items"] if item["id"] == water_well_thing.id)
+    well = next(
+        (item for item in data["items"] if item["id"] == water_well_thing.id), None
+    )
+    assert well is not None, f"Well {water_well_thing.id} not found in response"
     assert well["contacts"] == [
         {
             "id": contact.id,

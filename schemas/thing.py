@@ -28,6 +28,8 @@ from core.enums import (
     WellPumpType,
     FormationCode,
     OriginType,
+    Role,
+    ContactType,
 )
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel, PastOrTodayDate
 from schemas.group import GroupResponse
@@ -232,8 +234,8 @@ class BaseThingResponse(BaseResponseModel):
 class WellContactSummaryResponse(BaseResponseModel):
     name: str | None = None
     organization: str | None = None
-    role: str
-    contact_type: str
+    role: Role
+    contact_type: ContactType
 
 
 class WellResponse(BaseThingResponse):
