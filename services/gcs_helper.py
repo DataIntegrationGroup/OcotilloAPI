@@ -79,14 +79,16 @@ def get_storage_bucket(client=None, bucket: str = None):
 def _log_stage(stage: str, started_at: float, **extra):
     if not is_debug_timing_enabled():
         return
+    record_extra = {
+        "event": "gcs_stage_timing",
+        "stage": stage,
+        "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+    }
+    if "filename" in extra:
+        record_extra["upload_filename"] = extra.pop("filename")
     logger.info(
         "gcs stage timing",
-        extra={
-            "event": "gcs_stage_timing",
-            "stage": stage,
-            "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
-            **extra,
-        },
+        extra={**record_extra, **extra},
     )
 
 

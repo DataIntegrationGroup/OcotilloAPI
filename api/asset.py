@@ -125,7 +125,7 @@ async def upload_asset(
             "asset upload request completed",
             extra={
                 "event": "asset_upload_request_completed",
-                "filename": file.filename,
+                "upload_filename": file.filename,
                 "content_type": file.content_type,
                 "upload_request_ms": round(
                     (time.perf_counter() - request_started_at) * 1000,

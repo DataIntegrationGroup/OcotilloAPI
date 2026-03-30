@@ -37,7 +37,17 @@ driver = os.environ.get("DB_DRIVER", "")
 logger = logging.getLogger(__name__)
 
 
+def is_pool_logging_enabled() -> bool:
+    return bool(
+        get_bool_env("DB_POOL_LOGGING", False)
+        or get_bool_env("API_DEBUG_TIMING", False)
+    )
+
+
 def _install_pool_logging(engine):
+    if not is_pool_logging_enabled():
+        return
+
     @event.listens_for(engine, "checkout")
     def log_checkout(dbapi_connection, connection_record, connection_proxy):
         connection_record.info["checked_out_at"] = time.perf_counter()

@@ -1,6 +1,3 @@
-import logging
-import time
-
 from fastapi import HTTPException
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
@@ -20,9 +17,6 @@ from db import (
     ThingContactAssociation,
 )
 from services.query_helper import order_sort_filter
-
-logger = logging.getLogger(__name__)
-
 
 THING_RESPONSE_BASE = (
     joinedload(Sample.field_activity)
@@ -60,6 +54,9 @@ CONTACT_RESPONSE_PARTICIPANT = CONTACT_RESPONSE_BASE.selectinload(
 CONTACT_RESPONSE_THING_ASSOCIATIONS = CONTACT_RESPONSE_PARTICIPANT.selectinload(
     Contact.thing_associations
 )
+CONTACT_RESPONSE_THING = CONTACT_RESPONSE_THING_ASSOCIATIONS.selectinload(
+    ThingContactAssociation.thing
+)
 
 
 CONTACT_RESPONSE_LOADER_OPTIONS = (
@@ -67,7 +64,7 @@ CONTACT_RESPONSE_LOADER_OPTIONS = (
     CONTACT_RESPONSE_PARTICIPANT.selectinload(Contact.phones),
     CONTACT_RESPONSE_PARTICIPANT.selectinload(Contact.addresses),
     CONTACT_RESPONSE_PARTICIPANT.selectinload(Contact.incomplete_nma_phones),
-    CONTACT_RESPONSE_THING_ASSOCIATIONS.selectinload(ThingContactAssociation.thing),
+    CONTACT_RESPONSE_THING,
     CONTACT_RESPONSE_PARTICIPANT.selectinload(Contact.notes),
 )
 
@@ -103,8 +100,10 @@ def get_db_samples(
     return paginate(query)
 
 
-def get_sample_by_id_with_relationships(session: Session, sample_id: int) -> Sample:
-    started_at = time.perf_counter()
+def get_sample_by_id_with_relationships(
+    session: Session,
+    sample_id: int,
+) -> Sample:
     sql = select(Sample).where(Sample.id == sample_id)
     sql = sql.options(*SAMPLE_LOADER_OPTIONS)
     sample = session.execute(sql).unique().scalar_one_or_none()
@@ -113,16 +112,4 @@ def get_sample_by_id_with_relationships(session: Session, sample_id: int) -> Sam
             status_code=HTTP_404_NOT_FOUND,
             detail=f"Sample with ID {sample_id} not found.",
         )
-
-    duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
-    logger.info(
-        "sample lookup completed sample_id=%s duration_ms=%s",
-        sample_id,
-        duration_ms,
-        extra={
-            "event": "sample_lookup_completed",
-            "sample_id": sample_id,
-            "duration_ms": duration_ms,
-        },
-    )
     return sample

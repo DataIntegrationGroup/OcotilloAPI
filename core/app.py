@@ -74,9 +74,7 @@ def create_base_app() -> FastAPI:
         request_id = uuid4().hex
         request.state.request_id = request_id
         logger.info(
-            "request started %s %s",
-            request.method,
-            request.url.path,
+            "request started",
             extra={
                 "event": "request_started",
                 "request_id": request_id,
@@ -91,10 +89,7 @@ def create_base_app() -> FastAPI:
             return response
         finally:
             logger.info(
-                "request completed %s %s status=%s",
-                request.method,
-                request.url.path,
-                status_code,
+                "request completed",
                 extra={
                     "event": "request_completed",
                     "request_id": request_id,
