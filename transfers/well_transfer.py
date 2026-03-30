@@ -138,11 +138,23 @@ class WellTransferer(Transferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self._cached_elevations = get_cached_elevations()
+        # Delay external I/O so unit tests can instantiate the transferer
+        # without requiring GCS credentials or source CSV files.
+        self._cached_elevations = None
         self._added_locations = {}
         self._aquifers = None
-        self._measuring_point_estimator = MeasuringPointEstimator()
+        self._measuring_point_estimator = None
         self._row_by_pointid: dict[str, pd.Series] = {}
+
+    def _get_cached_elevations(self) -> dict:
+        if self._cached_elevations is None:
+            self._cached_elevations = get_cached_elevations()
+        return self._cached_elevations
+
+    def _get_measuring_point_estimator(self) -> MeasuringPointEstimator:
+        if self._measuring_point_estimator is None:
+            self._measuring_point_estimator = MeasuringPointEstimator()
+        return self._measuring_point_estimator
 
     def transfer_parallel(self, num_workers: int = None) -> None:
         """
@@ -300,7 +312,7 @@ class WellTransferer(Transferer):
         logger.info(f"Parallel transfer complete: {n} wells, {len(all_errors)} errors")
 
         # Dump cached elevations (minimal after-processing)
-        dump_cached_elevations(self._cached_elevations)
+        dump_cached_elevations(self._get_cached_elevations())
 
     def _get_dfs(self):
         """Load and clean WellData/Location dataframes."""
@@ -658,7 +670,7 @@ class WellTransferer(Transferer):
         """Create a Location from the legacy row."""
         try:
             location, elevation_method, location_notes = make_location(
-                row, self._cached_elevations
+                row, self._get_cached_elevations()
             )
             session.add(location)
             return location, elevation_method, location_notes
@@ -745,7 +757,11 @@ class WellTransferer(Transferer):
                 )
             )
         else:
-            mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+            mphs = (
+                self._get_measuring_point_estimator().estimate_measuring_point_height(
+                    row
+                )
+            )
             added_measuring_point = False
             for mph, mph_desc, start_date, end_date in zip(*mphs):
                 session.add(
@@ -1007,7 +1023,7 @@ class WellTransferer(Transferer):
                         )
                         if not existing:
                             local_aquifers.append(aquifer)
-                except Exception as e:
+                except Exception:
                     # Race condition - another thread created it
                     session.rollback()
                     aquifer = (
