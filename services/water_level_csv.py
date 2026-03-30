@@ -100,18 +100,19 @@ def bulk_upload_water_levels(
             valid_rows, row_errors = _validate_rows(session, csv_rows)
             validation_errors.extend(row_errors)
 
-            try:
-                parameter_id = _get_groundwater_level_parameter_id(session)
-                created_rows, persistence_errors = _create_records(
-                    session,
-                    parameter_id,
-                    valid_rows,
-                )
-                validation_errors.extend(persistence_errors)
-                session.commit()
-            except Exception as exc:  # pragma: no cover - safety fallback
-                session.rollback()
-                validation_errors.append(str(exc))
+            if valid_rows:
+                try:
+                    parameter_id = _get_groundwater_level_parameter_id(session)
+                    created_rows, persistence_errors = _create_records(
+                        session,
+                        parameter_id,
+                        valid_rows,
+                    )
+                    validation_errors.extend(persistence_errors)
+                    session.commit()
+                except Exception as exc:  # pragma: no cover - safety fallback
+                    session.rollback()
+                    validation_errors.append(str(exc))
 
     summary = {
         "total_rows_processed": len(csv_rows),
