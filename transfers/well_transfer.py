@@ -186,6 +186,7 @@ class WellTransferer(Transferer):
         # Pre-load shared cached elevations on the main thread so workers
         # mutate a single cache instance instead of racing lazy initialization.
         self._get_cached_elevations()
+        self._get_measuring_point_estimator()
 
         # Calculate batch size
         batch_size = max(100, n // num_workers)

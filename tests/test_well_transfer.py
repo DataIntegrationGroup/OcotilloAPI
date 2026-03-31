@@ -251,3 +251,66 @@ def test_transfer_parallel_preloads_cached_elevations_before_worker_submission(
 
     assert load_calls == ["load"]
     assert dumped == [{"source": "preloaded"}]
+
+
+def test_transfer_parallel_preloads_measuring_point_estimator_before_workers(
+    monkeypatch,
+):
+    class FakePreloadSession:
+        def query(self, _model):
+            return self
+
+        def all(self):
+            return []
+
+        def expunge_all(self):
+            pass
+
+    class FakeFuture:
+        def result(self):
+            return {"errors": []}
+
+    class FakeExecutor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, fn, idx, batch):
+            assert transferer._measuring_point_estimator is estimator
+            return FakeFuture()
+
+    @contextmanager
+    def fake_session_ctx():
+        yield FakePreloadSession()
+
+    dumped = []
+    estimator = object()
+    build_calls = []
+
+    def fake_get_cached_elevations():
+        return {}
+
+    def fake_dump_cached_elevations(lut):
+        dumped.append(lut)
+
+    def fake_estimator_ctor():
+        build_calls.append("build")
+        return estimator
+
+    transferer = wt.WellTransferer()
+    df = pd.DataFrame([{"PointID": "AR0001"}])
+
+    monkeypatch.setattr(wt, "session_ctx", fake_session_ctx)
+    monkeypatch.setattr(wt, "get_cached_elevations", fake_get_cached_elevations)
+    monkeypatch.setattr(wt, "dump_cached_elevations", fake_dump_cached_elevations)
+    monkeypatch.setattr(wt, "MeasuringPointEstimator", fake_estimator_ctor)
+    monkeypatch.setattr(wt, "ThreadPoolExecutor", lambda max_workers: FakeExecutor())
+    monkeypatch.setattr(wt, "as_completed", lambda futures: list(futures))
+    monkeypatch.setattr(transferer, "_get_dfs", lambda: (df, df.copy()))
+
+    transferer.transfer_parallel(num_workers=2)
+
+    assert build_calls == ["build"]
+    assert dumped == [{}]
