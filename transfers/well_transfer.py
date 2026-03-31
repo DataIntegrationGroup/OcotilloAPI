@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from pandas import isna, notna
 from pydantic import ValidationError
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DatabaseError, IntegrityError
 from sqlalchemy.orm import Session
 
 from core.enums import (
@@ -93,6 +93,7 @@ EXCLUDED_FIELDS = [
     "is_suitable_for_datalogger",
     "is_open",
     "well_status",
+    "monitoring_status",
 ]
 
 
@@ -137,11 +138,23 @@ class WellTransferer(Transferer):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self._cached_elevations = get_cached_elevations()
+        # Delay external I/O so unit tests can instantiate the transferer
+        # without requiring GCS credentials or source CSV files.
+        self._cached_elevations = None
         self._added_locations = {}
         self._aquifers = None
-        self._measuring_point_estimator = MeasuringPointEstimator()
+        self._measuring_point_estimator = None
         self._row_by_pointid: dict[str, pd.Series] = {}
+
+    def _get_cached_elevations(self) -> dict:
+        if self._cached_elevations is None:
+            self._cached_elevations = get_cached_elevations()
+        return self._cached_elevations
+
+    def _get_measuring_point_estimator(self) -> MeasuringPointEstimator:
+        if self._measuring_point_estimator is None:
+            self._measuring_point_estimator = MeasuringPointEstimator()
+        return self._measuring_point_estimator
 
     def transfer_parallel(self, num_workers: int = None) -> None:
         """
@@ -169,6 +182,11 @@ class WellTransferer(Transferer):
         if n == 0:
             logger.info("No wells to transfer")
             return
+
+        # Pre-load shared cached elevations on the main thread so workers
+        # mutate a single cache instance instead of racing lazy initialization.
+        self._get_cached_elevations()
+        self._get_measuring_point_estimator()
 
         # Calculate batch size
         batch_size = max(100, n // num_workers)
@@ -299,7 +317,7 @@ class WellTransferer(Transferer):
         logger.info(f"Parallel transfer complete: {n} wells, {len(all_errors)} errors")
 
         # Dump cached elevations (minimal after-processing)
-        dump_cached_elevations(self._cached_elevations)
+        dump_cached_elevations(self._get_cached_elevations())
 
     def _get_dfs(self):
         """Load and clean WellData/Location dataframes."""
@@ -657,7 +675,7 @@ class WellTransferer(Transferer):
         """Create a Location from the legacy row."""
         try:
             location, elevation_method, location_notes = make_location(
-                row, self._cached_elevations
+                row, self._get_cached_elevations()
             )
             session.add(location)
             return location, elevation_method, location_notes
@@ -744,7 +762,11 @@ class WellTransferer(Transferer):
                 )
             )
         else:
-            mphs = self._measuring_point_estimator.estimate_measuring_point_height(row)
+            mphs = (
+                self._get_measuring_point_estimator().estimate_measuring_point_height(
+                    row
+                )
+            )
             added_measuring_point = False
             for mph, mph_desc, start_date, end_date in zip(*mphs):
                 session.add(
@@ -885,12 +907,9 @@ class WellTransferer(Transferer):
 
         # Aquifers
         if notna(row.AquiferType):
-            try:
-                self._add_aquifers_parallel(
-                    session, row, well, local_aquifers, aquifers_lock
-                )
-            except Exception as e:
-                logger.warning(f"Error adding aquifer for {well.name}: {e}")
+            self._add_aquifers_parallel(
+                session, row, well, local_aquifers, aquifers_lock
+            )
 
         # Formation zone
         formation_code = row.FormationZone if hasattr(row, "FormationZone") else None
@@ -989,13 +1008,14 @@ class WellTransferer(Transferer):
 
             if not aquifer:
                 try:
-                    aquifer = AquiferSystem(
-                        name=aquifer_name,
-                        primary_aquifer_type=primary_type,
-                        geographic_scale=None,
-                    )
-                    session.add(aquifer)
-                    session.flush()
+                    with session.begin_nested():
+                        aquifer = AquiferSystem(
+                            name=aquifer_name,
+                            primary_aquifer_type=primary_type,
+                            geographic_scale=None,
+                        )
+                        session.add(aquifer)
+                        session.flush()
                     logger.info(f"Created aquifer: {aquifer_name}")
 
                     # Update local cache under lock
@@ -1006,14 +1026,23 @@ class WellTransferer(Transferer):
                         )
                         if not existing:
                             local_aquifers.append(aquifer)
-                except Exception as e:
+                except IntegrityError:
                     # Race condition - another thread created it
-                    session.rollback()
                     aquifer = (
                         session.query(AquiferSystem)
                         .filter(AquiferSystem.name == aquifer_name)
                         .first()
                     )
+                    if aquifer:
+                        with aquifers_lock:
+                            existing = next(
+                                (a for a in local_aquifers if a.name == aquifer_name),
+                                None,
+                            )
+                            if not existing:
+                                local_aquifers.append(aquifer)
+                    else:
+                        raise
 
         if aquifer:
             aquifer_assoc = ThingAquiferAssociation(thing=well, aquifer_system=aquifer)

@@ -643,6 +643,39 @@ def test_water_levels_bulk_upload_json_output(monkeypatch, tmp_path):
     assert captured["pretty_json"] is True
 
 
+def test_water_levels_bulk_upload_reports_partial_success(monkeypatch, tmp_path):
+    csv_file = tmp_path / "water_levels.csv"
+    csv_file.write_text("col\nvalue\n")
+
+    def fake_upload(_file_path, *, pretty_json=False):
+        assert pretty_json is False
+        return SimpleNamespace(
+            exit_code=0,
+            stdout="",
+            stderr="Row 2: Unknown well_name_point_id 'Bad Well'",
+            payload={
+                "summary": {
+                    "total_rows_processed": 2,
+                    "total_rows_imported": 1,
+                    "validation_errors_or_warnings": 1,
+                },
+                "validation_errors": ["Row 2: Unknown well_name_point_id 'Bad Well'"],
+                "water_levels": [{}],
+            },
+        )
+
+    monkeypatch.setattr("cli.service_adapter.water_levels_csv", fake_upload)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["water-levels", "bulk-upload", "--file", str(csv_file)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES" in result.output
+    assert "rows_with_issues" in result.output
+
+
 def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
     """
     End-to-end CLI invocation should create FieldEvent, Sample,
@@ -658,8 +691,10 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
         )
         row = (
             f"CLI Tester,{well_name},2025-02-15T08:00:00-07:00,"
-            "2025-02-15T10:30:00-07:00,Groundwater Team,electric tape,"
-            f"1.5,stable,42.5,approved,{notes}"
+            "2025-02-15T10:30:00-07:00,CLI Tester,electric tape,"
+            f"1.5,Water level not affected,7.0,"
+            "Water level accurate to within two hundreths of a foot,"
+            f"{notes}"
         )
         csv_text = textwrap.dedent(f"""\
             {header}
@@ -697,10 +732,16 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
 
         assert field_event.thing_id == water_well_thing.id
         assert sample.sample_method == "Electric tape measurement (E-probe)"
-        assert sample.sample_matrix == "water"
-        assert observation.value == 42.5
+        assert sample.sample_matrix == "groundwater"
+        assert sample.sample_name == f"{water_well_thing.name}-WL-202502151730"
+        assert observation.value == 7.0
         assert observation.measuring_point_height == 1.5
-        assert observation.notes == "Level status: stable | Data quality: approved"
+        assert observation.notes == unique_notes
+        assert observation.groundwater_level_reason == "Water level not affected"
+        assert (
+            observation.nma_data_quality
+            == "Water level accurate to within two hundreths of a foot"
+        )
         assert (
             field_event.notes == f"Field staff: CLI Tester | {unique_notes}"
         ), "Field event notes should capture field staff and notes"

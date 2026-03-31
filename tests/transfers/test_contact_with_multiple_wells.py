@@ -93,6 +93,8 @@ def test_owner_comment_absent_skips_notes():
 def test_ownerkey_fallback_name_when_name_and_org_missing(water_well_thing):
     with session_ctx() as sess:
         thing = sess.get(Thing, water_well_thing.id)
+        contact_by_owner_type = {}
+        contact_by_name_org = {}
         row = SimpleNamespace(
             FirstName=None,
             LastName=None,
@@ -118,12 +120,18 @@ def test_ownerkey_fallback_name_when_name_and_org_missing(water_well_thing):
 
         # Should not raise "Either name or organization must be provided."
         contact = _add_first_contact(
-            sess, row=row, thing=thing, organization=None, added=[]
+            sess,
+            row=row,
+            thing=thing,
+            organization=None,
+            added=set(),
+            contact_by_owner_type=contact_by_owner_type,
+            contact_by_name_org=contact_by_name_org,
         )
         sess.flush()
 
         assert contact is not None
-        assert contact.name == "Fallback OwnerKey Name"
+        assert contact.name == "Fallback OwnerKey Name-primary"
         assert contact.organization is None
 
 
@@ -131,6 +139,8 @@ def test_ownerkey_dedupes_when_fallback_name_differs(water_well_thing):
     owner_key = f"OwnerKey-{uuid4()}"
     with session_ctx() as sess:
         first_thing = sess.get(Thing, water_well_thing.id)
+        contact_by_owner_type = {}
+        contact_by_name_org = {}
         second_thing = Thing(
             name=f"Second Well {uuid4()}",
             thing_type="water well",
@@ -184,15 +194,27 @@ def test_ownerkey_dedupes_when_fallback_name_differs(water_well_thing):
             PhysicalZipCode=None,
         )
 
-        added = []
+        added = set()
         first_contact = _add_first_contact(
-            sess, row=complete_row, thing=first_thing, organization=None, added=added
+            sess,
+            row=complete_row,
+            thing=first_thing,
+            organization=None,
+            added=added,
+            contact_by_owner_type=contact_by_owner_type,
+            contact_by_name_org=contact_by_name_org,
         )
         assert first_contact is not None
         assert first_contact.name == "Casey Owner"
 
         second_contact = _add_first_contact(
-            sess, row=fallback_row, thing=second_thing, organization=None, added=added
+            sess,
+            row=fallback_row,
+            thing=second_thing,
+            organization=None,
+            added=added,
+            contact_by_owner_type=contact_by_owner_type,
+            contact_by_name_org=contact_by_name_org,
         )
         sess.flush()
 
