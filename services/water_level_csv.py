@@ -407,10 +407,7 @@ def _create_records(
                     "field_activity_id": field_activity.id,
                     "sample_id": sample.id,
                     "observation_id": observation.id,
-                    "measurement_date_time": (
-                        row.raw.get("water_level_date_time")
-                        or row.raw.get("measurement_date_time")
-                    ),
+                    "measurement_date_time": row.raw.get("water_level_date_time"),
                     "level_status": row.level_status,
                     "data_quality": row.data_quality,
                 }
