@@ -392,6 +392,14 @@ def _create_records(
             session.flush()
             savepoint.commit()
 
+            if row.mp_height_differs_from_history:
+                errors.append(
+                    "Row "
+                    f"{row.row_index}: CSV mp_height ({row.mp_height}) differs "
+                    "from existing measuring point height "
+                    f"({row.existing_mp_height}); CSV value will be used"
+                )
+
             created.append(
                 {
                     "well_name_point_id": row.raw["well_name_point_id"],

@@ -180,8 +180,11 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
     assert response.status_code == 200
     assert data["summary"]["total_rows_imported"] == 1
     assert data["summary"]["total_rows_processed"] == 1
-    assert data["summary"]["validation_errors_or_warnings"] == 0
-    assert data["validation_errors"] == []
+    assert data["summary"]["validation_errors_or_warnings"] == 1
+    assert data["validation_errors"] == [
+        "Row 1: CSV mp_height (1.5) differs from existing measuring point height "
+        "(2.0); CSV value will be used"
+    ]
     row = data["water_levels"][0]
     assert row["well_name_point_id"] == water_well_thing.name
 
@@ -273,9 +276,14 @@ def test_bulk_upload_groundwater_levels_api_partial_success(water_well_thing):
     assert response.status_code == 200
     assert data["summary"]["total_rows_imported"] == 1
     assert data["summary"]["total_rows_processed"] == 2
-    assert data["summary"]["validation_errors_or_warnings"] == 1
-    assert len(data["validation_errors"]) == 1
-    assert "Bad Well" in data["validation_errors"][0]
+    assert data["summary"]["validation_errors_or_warnings"] == 2
+    assert len(data["validation_errors"]) == 2
+    assert any(
+        "CSV mp_height (1.5) differs from existing measuring point height (2.0)"
+        in message
+        for message in data["validation_errors"]
+    )
+    assert any("Bad Well" in message for message in data["validation_errors"])
 
     row = data["water_levels"][0]
     with session_ctx() as session:

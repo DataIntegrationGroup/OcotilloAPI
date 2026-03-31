@@ -226,6 +226,55 @@ def test_bulk_upload_water_levels_is_idempotent(water_well_thing):
         assert observations[0].measuring_point_height == 1.5
 
 
+def test_bulk_upload_water_levels_warns_when_mp_height_differs_from_history(
+    water_well_thing,
+):
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Measurement with warning",
+                ]
+            ),
+        ]
+    )
+
+    result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+    assert result.exit_code == 0, result.payload
+    assert result.payload["summary"]["total_rows_imported"] == 1
+    assert result.payload["summary"]["validation_errors_or_warnings"] == 1
+    assert result.payload["validation_errors"] == [
+        "Row 1: CSV mp_height (1.5) differs from existing measuring point height "
+        "(2.0); CSV value will be used"
+    ]
+
+
 def test_bulk_upload_water_levels_preserves_unrelated_existing_observations(
     water_well_thing,
 ):
@@ -402,9 +451,15 @@ def test_bulk_upload_water_levels_imports_valid_rows_when_other_rows_fail(
     assert result.exit_code == 0
     assert result.payload["summary"]["total_rows_processed"] == 2
     assert result.payload["summary"]["total_rows_imported"] == 1
-    assert result.payload["summary"]["validation_errors_or_warnings"] == 1
+    assert result.payload["summary"]["validation_errors_or_warnings"] == 2
     assert len(result.payload["water_levels"]) == 1
-    assert (
-        "Unknown well_name_point_id 'Unknown Well'"
-        in result.payload["validation_errors"][0]
+    assert len(result.payload["validation_errors"]) == 2
+    assert any(
+        "CSV mp_height (1.5) differs from existing measuring point height (2.0)"
+        in message
+        for message in result.payload["validation_errors"]
+    )
+    assert any(
+        "Unknown well_name_point_id 'Unknown Well'" in message
+        for message in result.payload["validation_errors"]
     )
