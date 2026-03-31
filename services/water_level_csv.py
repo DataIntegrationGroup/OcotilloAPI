@@ -200,8 +200,9 @@ def _read_csv(
                 continue
             key = HEADER_ALIASES.get(stripped_key, stripped_key)
             value = v.strip() if isinstance(v, str) else v or ""
-            # If both alias and canonical header are present,
-            # preserve the first non-empty value.
+            # If both alias and canonical headers are present, keep the later
+            # non-empty value in CSV column order. An empty later value does not
+            # overwrite an earlier non-empty value.
             if key in normalized_row and normalized_row[key] and not value:
                 continue
             normalized_row[key] = value
