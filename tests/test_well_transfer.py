@@ -243,6 +243,7 @@ def test_transfer_parallel_preloads_cached_elevations_before_worker_submission(
     monkeypatch.setattr(wt, "session_ctx", fake_session_ctx)
     monkeypatch.setattr(wt, "get_cached_elevations", fake_get_cached_elevations)
     monkeypatch.setattr(wt, "dump_cached_elevations", fake_dump_cached_elevations)
+    monkeypatch.setattr(wt, "MeasuringPointEstimator", lambda: object())
     monkeypatch.setattr(wt, "ThreadPoolExecutor", lambda max_workers: FakeExecutor())
     monkeypatch.setattr(wt, "as_completed", lambda futures: list(futures))
     monkeypatch.setattr(transferer, "_get_dfs", lambda: (df, df.copy()))
