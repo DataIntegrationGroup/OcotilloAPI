@@ -183,6 +183,10 @@ class WellTransferer(Transferer):
             logger.info("No wells to transfer")
             return
 
+        # Pre-load shared cached elevations on the main thread so workers
+        # mutate a single cache instance instead of racing lazy initialization.
+        self._get_cached_elevations()
+
         # Calculate batch size
         batch_size = max(100, n // num_workers)
         batches = [df.iloc[i : i + batch_size] for i in range(0, n, batch_size)]

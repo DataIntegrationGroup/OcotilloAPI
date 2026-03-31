@@ -1,6 +1,8 @@
 import threading
+from contextlib import contextmanager
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -191,3 +193,61 @@ def test_add_aquifers_parallel_reraises_unexpected_flush_errors(monkeypatch):
 
     assert session.begin_nested_calls == 1
     assert session.rollback_calls == 0
+
+
+def test_transfer_parallel_preloads_cached_elevations_before_worker_submission(
+    monkeypatch,
+):
+    class FakePreloadSession:
+        def query(self, _model):
+            return self
+
+        def all(self):
+            return []
+
+        def expunge_all(self):
+            pass
+
+    class FakeFuture:
+        def result(self):
+            return {"errors": []}
+
+    class FakeExecutor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, fn, idx, batch):
+            assert transferer._cached_elevations == {"source": "preloaded"}
+            return FakeFuture()
+
+    @contextmanager
+    def fake_session_ctx():
+        yield FakePreloadSession()
+
+    load_calls = []
+    dumped = []
+
+    def fake_get_cached_elevations():
+        load_calls.append("load")
+        return {"source": "preloaded"}
+
+    def fake_dump_cached_elevations(lut):
+        dumped.append(lut)
+
+    transferer = wt.WellTransferer()
+    df = pd.DataFrame([{"PointID": "AR0001"}])
+
+    monkeypatch.setattr(wt, "session_ctx", fake_session_ctx)
+    monkeypatch.setattr(wt, "get_cached_elevations", fake_get_cached_elevations)
+    monkeypatch.setattr(wt, "dump_cached_elevations", fake_dump_cached_elevations)
+    monkeypatch.setattr(wt, "ThreadPoolExecutor", lambda max_workers: FakeExecutor())
+    monkeypatch.setattr(wt, "as_completed", lambda futures: list(futures))
+    monkeypatch.setattr(transferer, "_get_dfs", lambda: (df, df.copy()))
+
+    transferer.transfer_parallel(num_workers=2)
+
+    assert load_calls == ["load"]
+    assert dumped == [{"source": "preloaded"}]
