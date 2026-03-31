@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from pandas import isna, notna
 from pydantic import ValidationError
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DatabaseError, IntegrityError
 from sqlalchemy.orm import Session
 
 from core.enums import (
@@ -902,12 +902,9 @@ class WellTransferer(Transferer):
 
         # Aquifers
         if notna(row.AquiferType):
-            try:
-                self._add_aquifers_parallel(
-                    session, row, well, local_aquifers, aquifers_lock
-                )
-            except Exception as e:
-                logger.warning(f"Error adding aquifer for {well.name}: {e}")
+            self._add_aquifers_parallel(
+                session, row, well, local_aquifers, aquifers_lock
+            )
 
         # Formation zone
         formation_code = row.FormationZone if hasattr(row, "FormationZone") else None
@@ -1006,13 +1003,14 @@ class WellTransferer(Transferer):
 
             if not aquifer:
                 try:
-                    aquifer = AquiferSystem(
-                        name=aquifer_name,
-                        primary_aquifer_type=primary_type,
-                        geographic_scale=None,
-                    )
-                    session.add(aquifer)
-                    session.flush()
+                    with session.begin_nested():
+                        aquifer = AquiferSystem(
+                            name=aquifer_name,
+                            primary_aquifer_type=primary_type,
+                            geographic_scale=None,
+                        )
+                        session.add(aquifer)
+                        session.flush()
                     logger.info(f"Created aquifer: {aquifer_name}")
 
                     # Update local cache under lock
@@ -1023,14 +1021,23 @@ class WellTransferer(Transferer):
                         )
                         if not existing:
                             local_aquifers.append(aquifer)
-                except Exception:
+                except IntegrityError:
                     # Race condition - another thread created it
-                    session.rollback()
                     aquifer = (
                         session.query(AquiferSystem)
                         .filter(AquiferSystem.name == aquifer_name)
                         .first()
                     )
+                    if aquifer:
+                        with aquifers_lock:
+                            existing = next(
+                                (a for a in local_aquifers if a.name == aquifer_name),
+                                None,
+                            )
+                            if not existing:
+                                local_aquifers.append(aquifer)
+                    else:
+                        raise
 
         if aquifer:
             aquifer_assoc = ThingAquiferAssociation(thing=well, aquifer_system=aquifer)
