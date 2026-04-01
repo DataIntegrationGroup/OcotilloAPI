@@ -34,6 +34,7 @@ from schemas.water_level_csv import (
     WATER_LEVEL_IGNORED_FIELDS,
 )
 from sqlalchemy import select
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, selectinload
 
 REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
@@ -259,7 +260,14 @@ def _validate_rows(
                     Thing.thing_type == "water well",
                 )
             )
-            well = session.scalars(sql).one_or_none()
+            try:
+                well = session.scalars(sql).one_or_none()
+            except MultipleResultsFound:
+                errors.append(
+                    f"Row {idx}: Multiple wells found for well_name_point_id "
+                    f"'{well_name}'"
+                )
+                continue
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
                 continue

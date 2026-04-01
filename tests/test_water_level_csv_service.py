@@ -463,3 +463,65 @@ def test_bulk_upload_water_levels_imports_valid_rows_when_other_rows_fail(
         "Unknown well_name_point_id 'Unknown Well'" in message
         for message in result.payload["validation_errors"]
     )
+
+
+def test_bulk_upload_water_levels_reports_duplicate_well_name_matches():
+    with session_ctx() as session:
+        well_one = Thing(name="Duplicate Well", thing_type="water well")
+        well_two = Thing(name="Duplicate Well", thing_type="water well")
+        session.add_all([well_one, well_two])
+        session.commit()
+        well_one_id = well_one.id
+        well_two_id = well_two.id
+
+    csv_content = "\n".join(
+        [
+            ",".join(
+                [
+                    "field_staff",
+                    "well_name_point_id",
+                    "field_event_date_time",
+                    "measurement_date_time",
+                    "sampler",
+                    "sample_method",
+                    "mp_height",
+                    "level_status",
+                    "depth_to_water_ft",
+                    "data_quality",
+                    "water_level_notes",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "Duplicate Well",
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+        ]
+    )
+
+    try:
+        result = bulk_upload_water_levels(csv_content.encode("utf-8"))
+
+        assert result.exit_code == 1
+        assert result.payload["summary"]["total_rows_processed"] == 1
+        assert result.payload["summary"]["total_rows_imported"] == 0
+        assert result.payload["validation_errors"] == [
+            "Row 1: Multiple wells found for well_name_point_id 'Duplicate Well'"
+        ]
+    finally:
+        with session_ctx() as session:
+            for well_id in (well_one_id, well_two_id):
+                well = session.get(Thing, well_id)
+                if well is not None:
+                    session.delete(well)
+            session.commit()

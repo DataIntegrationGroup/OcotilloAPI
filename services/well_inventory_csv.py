@@ -280,7 +280,12 @@ def _import_well_inventory_csv(
                             field = "Database error"
                         else:
                             error_text = str(e)
-                            field = _extract_field_from_value_error(error_text)
+                            if error_text.startswith(
+                                "Well already exists in database for well_name_point_id "
+                            ):
+                                field = "well_name_point_id"
+                            else:
+                                field = _extract_field_from_value_error(error_text)
 
                         logging.error(
                             f"Error while importing row {row_number} ('{current_row_id}'): {error_text}"
@@ -665,6 +670,19 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     existing_well = _find_existing_imported_well(session, model)
     if existing_well is not None:
         return existing_well.name
+
+    existing_named_well = session.scalars(
+        select(Thing)
+        .where(
+            Thing.name == model.well_name_point_id,
+            Thing.thing_type == "water well",
+        )
+        .order_by(Thing.id.asc())
+    ).first()
+    if existing_named_well is not None:
+        raise ValueError(
+            f"Well already exists in database for well_name_point_id '{model.well_name_point_id}'"
+        )
 
     # --------------------
     # Location and associated tables
