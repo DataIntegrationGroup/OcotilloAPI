@@ -21,7 +21,7 @@ from collections import Counter
 from datetime import date
 from io import StringIO
 from itertools import groupby
-from typing import Set
+from typing import Callable, Set
 
 from shapely import Point
 from sqlalchemy import select, and_
@@ -41,6 +41,9 @@ from db import (
     PermissionHistory,
     Thing,
     ThingContactAssociation,
+    Sample,
+    Observation,
+    Parameter,
 )
 from db.engine import session_ctx
 from pydantic import ValidationError
@@ -52,8 +55,11 @@ from services.thing_helper import add_thing
 from services.util import transform_srid, convert_ft_to_m
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
-AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$")
-AUTOGEN_TOKEN_REGEX = re.compile(r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$")
+AUTOGEN_PREFIX_REGEX = re.compile(r"^[A-Z]{2,3}-$", re.IGNORECASE)
+AUTOGEN_TOKEN_REGEX = re.compile(
+    r"^(?P<prefix>[A-Z]{2,3})\s*-\s*(?:x{4}|X{4})$", re.IGNORECASE
+)
+PROGRESS_INTERVAL = 25
 
 
 def _extract_autogen_prefix(well_id: str | None) -> str | None:
@@ -84,10 +90,6 @@ def _extract_autogen_prefix(well_id: str | None) -> str | None:
         prefix = m.group("prefix").upper()
         return f"{prefix}-"
 
-    token_match = AUTOGEN_TOKEN_REGEX.match(value)
-    if token_match:
-        return f"{token_match.group('prefix')}-"
-
     return None
 
 
@@ -96,7 +98,19 @@ def import_well_inventory_csv(*args, **kw) -> dict:
         return _import_well_inventory_csv(session, *args, **kw)
 
 
-def _import_well_inventory_csv(session: Session, text: str, user: str):
+def _emit_progress(
+    progress_callback: Callable[[str], None] | None, message: str
+) -> None:
+    if progress_callback is not None:
+        progress_callback(message)
+
+
+def _import_well_inventory_csv(
+    session: Session,
+    text: str,
+    user: str,
+    progress_callback: Callable[[str], None] | None = None,
+):
     # if not file.content_type.startswith("text/csv") or not file.filename.endswith(
     #         ".csv"
     # ):
@@ -143,13 +157,17 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
         raise ValueError("No data rows found")
     if len(rows) > 2000:
         raise ValueError(f"Too many rows {len(rows)}>2000")
+    _emit_progress(
+        progress_callback, f"Loaded {len(rows)} data rows. Validating input..."
+    )
 
     try:
         header = text.splitlines()[0]
         dialect = csv.Sniffer().sniff(header)
-    except csv.Error:
-        # raise an error if sniffing fails, which likely means the header is not parseable as CSV
-        raise ValueError("Unable to parse CSV header")
+    except Exception:
+        # fallback to comma if sniffing fails
+        class dialect:
+            delimiter = ","
 
     if dialect.delimiter != ",":
         raise ValueError(f"Unsupported delimiter '{dialect.delimiter}'")
@@ -159,73 +177,162 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
     duplicates = [col for col, count in counts.items() if count > 1]
 
     wells = []
+    validation_errors = []
     if duplicates:
         validation_errors = [
             {
-                "row": 0,
+                "row": "header",
                 "field": f"{duplicates}",
                 "error": "Duplicate columns found",
                 "value": duplicates,
             }
         ]
+        return {
+            "validation_errors": validation_errors,
+            "summary": {
+                "total_rows_processed": 0,
+                "total_rows_imported": 0,
+                "validation_errors_or_warnings": 1,
+            },
+            "wells": [],
+        }
 
-    else:
-        models, validation_errors = _make_row_models(rows, session)
-        if models and not validation_errors:
-            current_row_id = None
-            try:
-                for project, items in groupby(
-                    sorted(models, key=lambda x: x.project), key=lambda x: x.project
-                ):
-                    # get project and add if does not exist
-                    # BDMS-221 adds group_type
-                    sql = select(Group).where(
-                        and_(
-                            Group.group_type == "Monitoring Plan", Group.name == project
-                        )
+    try:
+        models, row_validation_errors = _make_row_models(
+            rows, session, progress_callback=progress_callback
+        )
+        validation_errors.extend(row_validation_errors)
+        _emit_progress(
+            progress_callback,
+            (
+                "Validation complete: "
+                f"{len(models)} rows ready to import, "
+                f"{len(row_validation_errors)} validation errors found."
+            ),
+        )
+
+        if models:
+            total_model_rows = len(models)
+            attempted_count = 0
+            imported_count = 0
+            # Group by project, preserving row number
+            # models is a list of (row_number, model)
+            sorted_models = sorted(models, key=lambda x: x[1].project)
+            for project, items in groupby(sorted_models, key=lambda x: x[1].project):
+                project_rows = list(items)
+                _emit_progress(
+                    progress_callback,
+                    (
+                        f"Importing project '{project}' "
+                        f"({len(project_rows)} row{'s' if len(project_rows) != 1 else ''})..."
+                    ),
+                )
+                # Reuse an existing project group immediately, but defer creating a
+                # new one until a row for that project actually imports successfully.
+                sql = select(Group).where(
+                    and_(Group.group_type == "Monitoring Plan", Group.name == project)
+                )
+                group = session.scalars(sql).one_or_none()
+
+                for row_number, model in project_rows:
+                    current_row_id = model.well_name_point_id
+                    _emit_progress(
+                        progress_callback,
+                        (
+                            f"Starting row {attempted_count + 1}/{total_model_rows}: "
+                            f"{current_row_id}"
+                        ),
                     )
-                    group = session.scalars(sql).one_or_none()
-                    if not group:
-                        group = Group(name=project, group_type="Monitoring Plan")
-                        session.add(group)
-                        session.flush()
+                    try:
+                        # Use savepoint for "best-effort" import per row
+                        with session.begin_nested():
+                            group_for_row = group
+                            if group_for_row is None:
+                                group_for_row = Group(
+                                    name=project, group_type="Monitoring Plan"
+                                )
+                                session.add(group_for_row)
+                                session.flush()
 
-                    for model in items:
-                        current_row_id = model.well_name_point_id
-                        added = _add_csv_row(session, group, model, user)
-                        wells.append(added)
-            except ValueError as e:
-                validation_errors.append(
-                    {
-                        "row": current_row_id or "unknown",
-                        "field": "Invalid value",
-                        "error": str(e),
-                    }
-                )
-                session.rollback()
-                wells = []
-            except DatabaseError as e:
-                logging.error(
-                    f"Database error while importing row '{current_row_id or 'unknown'}': {e}"
-                )
-                validation_errors.append(
-                    {
-                        "row": current_row_id or "unknown",
-                        "field": "Database error",
-                        "error": "A database error occurred while importing this row.",
-                    }
-                )
-                session.rollback()
-                wells = []
-            else:
-                session.commit()
+                            added = _add_csv_row(session, group_for_row, model, user)
+                            if added:
+                                wells.append(added)
+                                group = group_for_row
+                                imported_count += 1
+                    except (
+                        ValueError,
+                        DatabaseError,
+                        PydanticStyleException,
+                        ValidationError,
+                    ) as e:
+                        if isinstance(e, PydanticStyleException):
+                            error_text = str(e.detail)
+                            field = "error"
+                        elif isinstance(e, ValidationError):
+                            # extract just the error messages
+                            error_text = "; ".join(
+                                [str(err.get("msg")) for err in e.errors()]
+                            )
+                            field = _extract_field_from_value_error(error_text)
+                        elif isinstance(e, DatabaseError):
+                            error_text = str(getattr(e, "orig", None) or e)
+                            error_text = " ".join(error_text.split())
+                            field = "Database error"
+                        else:
+                            error_text = str(e)
+                            field = _extract_field_from_value_error(error_text)
 
-    rows_imported = len(wells)
+                        logging.error(
+                            f"Error while importing row {row_number} ('{current_row_id}'): {error_text}"
+                        )
+                        validation_errors.append(
+                            {
+                                "row": row_number,
+                                "well_id": current_row_id,
+                                "field": field,
+                                "error": error_text,
+                            }
+                        )
+                    finally:
+                        attempted_count += 1
+                        if (
+                            attempted_count == total_model_rows
+                            or attempted_count % PROGRESS_INTERVAL == 0
+                        ):
+                            _emit_progress(
+                                progress_callback,
+                                (
+                                    "Import progress: "
+                                    f"{attempted_count}/{total_model_rows} validated rows attempted, "
+                                    f"{imported_count} imported, "
+                                    f"{len(validation_errors)} issues recorded."
+                                ),
+                            )
+            session.commit()
+        else:
+            _emit_progress(
+                progress_callback, "No valid rows were available for import."
+            )
+    except Exception as exc:
+        logging.exception("Unexpected error in _import_well_inventory_csv")
+        return {"detail": str(exc)}
+
+    wells_imported = [w for w in wells if w is not None]
+    rows_imported = len(wells_imported)
     rows_processed = len(rows)
     error_rows = {
         e.get("row") for e in validation_errors if e.get("row") not in (None, 0)
     }
     rows_with_validation_errors_or_warnings = len(error_rows)
+
+    _emit_progress(
+        progress_callback,
+        (
+            "Import finished: "
+            f"{rows_imported}/{rows_processed} rows imported, "
+            f"{rows_with_validation_errors_or_warnings} rows with issues."
+        ),
+    )
 
     return {
         "validation_errors": validation_errors,
@@ -234,8 +341,18 @@ def _import_well_inventory_csv(session: Session, text: str, user: str):
             "total_rows_imported": rows_imported,
             "validation_errors_or_warnings": rows_with_validation_errors_or_warnings,
         },
-        "wells": wells,
+        "wells": wells_imported,
     }
+
+
+def _extract_field_from_value_error(error_text: str) -> str:
+    """Best-effort extraction of field name from wrapped validation errors."""
+    lines = [line.strip() for line in error_text.splitlines() if line.strip()]
+    if len(lines) >= 3 and re.match(r"^\d+ validation error", lines[0]):
+        field_name = lines[1]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", field_name):
+            return field_name
+    return "Invalid value"
 
 
 def _make_location(model) -> Location:
@@ -253,12 +370,21 @@ def _make_location(model) -> Location:
     transformed_point = transform_srid(
         point, source_srid=source_srid, target_srid=SRID_WGS84
     )
-    elevation_ft = float(model.elevation_ft)
-    elevation_m = convert_ft_to_m(elevation_ft)
+    elevation_ft = model.elevation_ft
+    elevation_m = (
+        convert_ft_to_m(float(elevation_ft)) if elevation_ft is not None else 0.0
+    )
+
+    release_status = "draft"
+    if model.public_availability_acknowledgement is True:
+        release_status = "public"
+    elif model.public_availability_acknowledgement is False:
+        release_status = "private"
 
     loc = Location(
         point=transformed_point.wkt,
         elevation=elevation_m,
+        release_status=release_status,
     )
 
     return loc
@@ -278,7 +404,8 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
     phones = []
     addresses = []
     name = getattr(model, f"contact_{idx}_name")
-    if name:
+    organization = getattr(model, f"contact_{idx}_organization")
+    if name or organization:
         for i in (1, 2):
             email = getattr(model, f"contact_{idx}_email_{i}")
             etype = getattr(model, f"contact_{idx}_email_{i}_type")
@@ -306,13 +433,12 @@ def _make_contact(model: WellInventoryRow, well: Thing, idx) -> dict:
                         "address_type": address_type,
                     }
                 )
-
         return {
             "thing_id": well.id,
             "name": name,
-            "organization": getattr(model, f"contact_{idx}_organization"),
-            "role": getattr(model, f"contact_{idx}_role"),
-            "contact_type": getattr(model, f"contact_{idx}_type"),
+            "organization": organization,
+            "role": getattr(model, f"contact_{idx}_role").value,
+            "contact_type": getattr(model, f"contact_{idx}_type").value,
             "emails": emails,
             "phones": phones,
             "addresses": addresses,
@@ -382,12 +508,52 @@ def _generate_autogen_well_id(session, prefix: str, offset: int = 0) -> tuple[st
     return f"{prefix}{new_number:04d}", new_number
 
 
-def _make_row_models(rows, session):
+def _find_existing_imported_well(
+    session: Session, model: WellInventoryRow
+) -> Thing | None:
+    if model.measurement_date_time is not None:
+        sample_name = (
+            f"{model.well_name_point_id}-WL-"
+            f"{model.measurement_date_time.strftime('%Y%m%d%H%M')}"
+        )
+        existing = session.scalars(
+            select(Thing)
+            .join(FieldEvent, FieldEvent.thing_id == Thing.id)
+            .join(FieldActivity, FieldActivity.field_event_id == FieldEvent.id)
+            .join(Sample, Sample.field_activity_id == FieldActivity.id)
+            .where(
+                Thing.name == model.well_name_point_id,
+                Thing.thing_type == "water well",
+                FieldActivity.activity_type == "groundwater level",
+                Sample.sample_name == sample_name,
+            )
+            .order_by(Thing.id.asc())
+        ).first()
+        if existing is not None:
+            return existing
+
+    return session.scalars(
+        select(Thing)
+        .join(FieldEvent, FieldEvent.thing_id == Thing.id)
+        .join(FieldActivity, FieldActivity.field_event_id == FieldEvent.id)
+        .where(
+            Thing.name == model.well_name_point_id,
+            Thing.thing_type == "water well",
+            FieldEvent.event_date == model.date_time,
+            FieldActivity.activity_type == "well inventory",
+        )
+        .order_by(Thing.id.asc())
+    ).first()
+
+
+def _make_row_models(rows, session, progress_callback=None):
     models = []
     validation_errors = []
     seen_ids: Set[str] = set()
-    offset = 0
+    offsets = {}
+    total_rows = len(rows)
     for idx, row in enumerate(rows):
+        row_number = idx + 1
         try:
             if all(key == row.get(key) for key in row.keys()):
                 raise ValueError("Duplicate header row")
@@ -397,10 +563,12 @@ def _make_row_models(rows, session):
 
             well_id = row.get("well_name_point_id")
             autogen_prefix = _extract_autogen_prefix(well_id)
-            if autogen_prefix:
+            if autogen_prefix is not None:
+                offset = offsets.get(autogen_prefix, 0)
                 well_id, offset = _generate_autogen_well_id(
                     session, autogen_prefix, offset
                 )
+                offsets[autogen_prefix] = offset
                 row["well_name_point_id"] = well_id
             elif not well_id:
                 raise ValueError("Field required")
@@ -409,23 +577,24 @@ def _make_row_models(rows, session):
                 raise ValueError("Duplicate value for well_name_point_id")
             seen_ids.add(well_id)
 
-            model = WellInventoryRow(**row)
-            models.append(model)
+            try:
+                model = WellInventoryRow(**row)
+                models.append((row_number, model))
+            except ValidationError as e:
+                for err in e.errors():
+                    loc = err["loc"]
 
-        except ValidationError as e:
-            for err in e.errors():
-                loc = err["loc"]
-
-                field = loc[0] if loc else "composite field error"
-                value = row.get(field) if loc else None
-                validation_errors.append(
-                    {
-                        "row": idx + 1,
-                        "error": err["msg"],
-                        "field": field,
-                        "value": value,
-                    }
-                )
+                    field = loc[0] if loc else "composite field error"
+                    value = row.get(field) if loc else None
+                    validation_errors.append(
+                        {
+                            "row": row_number,
+                            "well_id": well_id,
+                            "error": err["msg"],
+                            "field": field,
+                            "value": value,
+                        }
+                    )
         except ValueError as e:
             field = "well_name_point_id"
             # Map specific controlled errors to safe, non-revealing messages
@@ -437,7 +606,7 @@ def _make_row_models(rows, session):
                 error_msg = "Duplicate header row"
                 field = "header"
             else:
-                error_msg = "Invalid value"
+                error_msg = str(e)
 
             if field == "header":
                 value = ",".join(row.keys())
@@ -445,8 +614,25 @@ def _make_row_models(rows, session):
                 value = row.get(field)
 
             validation_errors.append(
-                {"row": idx + 1, "field": field, "error": error_msg, "value": value}
+                {
+                    "row": row_number,
+                    "well_id": row.get("well_name_point_id"),
+                    "field": field,
+                    "error": error_msg,
+                    "value": value,
+                }
             )
+        finally:
+            if row_number == total_rows or row_number % PROGRESS_INTERVAL == 0:
+                _emit_progress(
+                    progress_callback,
+                    (
+                        "Validation progress: "
+                        f"{row_number}/{total_rows} rows checked, "
+                        f"{len(models)} valid, "
+                        f"{len(validation_errors)} issues found."
+                    ),
+                )
     return models, validation_errors
 
 
@@ -464,7 +650,7 @@ def _add_field_staff(
 
     if not contact:
         payload = dict(name=fs, role="Technician", organization=org, contact_type=ct)
-        contact = add_contact(session, payload, user)
+        contact = add_contact(session, payload, user, commit=False)
 
     fec = FieldEventParticipant(
         field_event=field_event, contact_id=contact.id, participant_role=role
@@ -475,6 +661,10 @@ def _add_field_staff(
 def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) -> str:
     name = model.well_name_point_id
     date_time = model.date_time
+
+    existing_well = _find_existing_imported_well(session, model)
+    if existing_well is not None:
+        return existing_well.name
 
     # --------------------
     # Location and associated tables
@@ -493,11 +683,16 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         session.add(directions_note)
 
     # add data provenance records
+    elevation_method = (
+        model.elevation_method.value
+        if hasattr(model.elevation_method, "value")
+        else (model.elevation_method or "Unknown")
+    )
     dp = DataProvenance(
         target_id=loc.id,
         target_table="location",
         field_name="elevation",
-        collection_method=model.elevation_method,
+        collection_method=elevation_method,
     )
     session.add(dp)
 
@@ -513,7 +708,11 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     She indicated that it would be acceptable to use the depth source for the historic depth to water source.
     """
     if model.depth_source:
-        historic_depth_to_water_source = model.depth_source.lower()
+        historic_depth_to_water_source = (
+            model.depth_source.value
+            if hasattr(model.depth_source, "value")
+            else model.depth_source
+        ).lower()
     else:
         historic_depth_to_water_source = "unknown"
 
@@ -528,7 +727,17 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         (model.contact_special_requests_notes, "General"),
         (model.well_measuring_notes, "Sampling Procedure"),
         (model.sampling_scenario_notes, "Sampling Procedure"),
+        (model.well_notes, "General"),
+        (model.water_notes, "Water"),
         (historic_depth_note, "Historical"),
+        (
+            (
+                f"Sample possible: {model.sample_possible}"
+                if model.sample_possible is not None
+                else None
+            ),
+            "Sampling Procedure",
+        ),
     ):
         if note_content is not None:
             well_notes.append({"content": note_content, "note_type": note_type})
@@ -563,6 +772,22 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
             }
         )
 
+    if (
+        model.mp_height is not None
+        and model.measuring_point_height_ft is not None
+        and model.mp_height != model.measuring_point_height_ft
+    ):
+        raise ValueError(
+            "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
+        )
+
+    if model.measuring_point_height_ft is not None:
+        universal_mp_height = model.measuring_point_height_ft
+    elif model.mp_height is not None:
+        universal_mp_height = model.mp_height
+    else:
+        universal_mp_height = None
+
     data = CreateWell(
         location_id=loc.id,
         group_id=group.id,
@@ -571,7 +796,7 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_depth=model.total_well_depth_ft,
         well_depth_source=model.depth_source,
         well_casing_diameter=model.casing_diameter_ft,
-        measuring_point_height=model.measuring_point_height_ft,
+        measuring_point_height=universal_mp_height,
         measuring_point_description=model.measuring_point_description,
         well_completion_date=model.date_drilled,
         well_completion_date_source=model.completion_source,
@@ -579,7 +804,16 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         well_pump_depth=model.well_pump_depth_ft,
         is_suitable_for_datalogger=model.datalogger_possible,
         is_open=model.is_open,
-        well_status=model.well_status,
+        well_status=(
+            model.well_status.value
+            if hasattr(model.well_status, "value")
+            else model.well_status
+        ),
+        monitoring_status=(
+            model.monitoring_status.value
+            if hasattr(model.monitoring_status, "value")
+            else model.monitoring_status
+        ),
         notes=well_notes,
         well_purposes=well_purposes,
         monitoring_frequencies=monitoring_frequencies,
@@ -649,6 +883,77 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
         notes="Well inventory conducted during field event.",
     )
     session.add(fa)
+
+    if model.measurement_date_time is not None:
+        # get groundwater level parameter
+        parameter = (
+            session.query(Parameter)
+            .filter(
+                Parameter.parameter_name == "groundwater level",
+                Parameter.matrix == "groundwater",
+            )
+            .first()
+        )
+
+        if not parameter:
+            # this shouldn't happen if initialized properly, but just in case
+            parameter = Parameter(
+                parameter_name="groundwater level",
+                matrix="groundwater",
+                parameter_type="Field Parameter",
+                default_unit="ft",
+            )
+            session.add(parameter)
+            session.flush()
+
+        # create FieldActivity
+        gwl_field_activity = FieldActivity(
+            field_event=fe,
+            activity_type="groundwater level",
+            notes="Groundwater level measurement activity conducted during well inventory field event.",
+        )
+        session.add(gwl_field_activity)
+        session.flush()
+
+        # create Sample
+        sample_method = (
+            model.sample_method.value
+            if hasattr(model.sample_method, "value")
+            else (model.sample_method or "Unknown")
+        )
+        sample = Sample(
+            field_activity_id=gwl_field_activity.id,
+            sample_date=model.measurement_date_time,
+            sample_name=f"{well.name}-WL-{model.measurement_date_time.strftime('%Y%m%d%H%M')}",
+            sample_matrix="groundwater",
+            sample_method=sample_method,
+            notes=model.water_level_notes,
+        )
+        session.add(sample)
+        session.flush()
+
+        # create Observation
+        # TODO: groundwater_level_reason may be conditionally required for null depth_to_water_ft - handle accordingly
+        observation = Observation(
+            sample_id=sample.id,
+            parameter_id=parameter.id,
+            value=model.depth_to_water_ft,
+            unit="ft",
+            observation_datetime=model.measurement_date_time,
+            measuring_point_height=universal_mp_height,
+            groundwater_level_reason=(
+                model.level_status.value
+                if hasattr(model.level_status, "value")
+                else None
+            ),
+            nma_data_quality=(
+                model.data_quality.value
+                if hasattr(model.data_quality, "value")
+                else model.data_quality or None
+            ),
+            notes=model.water_level_notes,
+        )
+        session.add(observation)
 
     # ------------------
     # Contacts

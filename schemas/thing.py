@@ -143,6 +143,7 @@ class CreateWell(CreateBaseThing, ValidateWell):
     is_suitable_for_datalogger: bool | None = None
     is_open: bool | None = None
     well_status: str | None = None
+    monitoring_status: str | None = None
     formation_completion_code: FormationCode | None = None
     nma_formation_zone: str | None = None
 

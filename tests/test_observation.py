@@ -14,7 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
+import uuid
 
 import pytest
 
@@ -25,7 +26,18 @@ from core.dependencies import (
     amp_editor_function,
     viewer_function,
 )
-from db import Observation, FieldEvent, FieldActivity, Sample
+from db import (
+    Deployment,
+    FieldActivity,
+    FieldEvent,
+    LocationThingAssociation,
+    Observation,
+    Sample,
+    Sensor,
+    Thing,
+    TransducerObservation,
+    TransducerObservationBlock,
+)
 from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
@@ -149,12 +161,12 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
             water_well_thing.name,
             "2025-02-15T08:00:00-07:00",
             "2025-02-15T10:30:00-07:00",
-            "Groundwater Team",
+            "A Lopez",
             "electric tape",
             "1.5",
-            "stable",
-            "45.2",
-            "approved",
+            "Water level not affected",
+            "7.0",
+            "Water level accurate to within two hundreths of a foot",
             "Initial measurement",
         ]
     )
@@ -168,24 +180,124 @@ def test_bulk_upload_groundwater_levels_api(water_well_thing):
     assert response.status_code == 200
     assert data["summary"]["total_rows_imported"] == 1
     assert data["summary"]["total_rows_processed"] == 1
-    assert data["summary"]["validation_errors_or_warnings"] == 0
-    assert data["validation_errors"] == []
+    assert data["summary"]["validation_errors_or_warnings"] == 1
+    assert data["validation_errors"] == [
+        "Row 1: CSV mp_height (1.5) differs from existing measuring point height "
+        "(2.0); CSV value will be used"
+    ]
     row = data["water_levels"][0]
     assert row["well_name_point_id"] == water_well_thing.name
 
     with session_ctx() as session:
         observation = session.get(Observation, row["observation_id"])
         assert observation is not None
+        sample = session.get(Sample, row["sample_id"])
+        assert sample is not None
+        assert sample.sample_name == f"{water_well_thing.name}-WL-202502151730"
+        assert sample.sample_matrix == "groundwater"
+        assert observation.groundwater_level_reason == "Water level not affected"
+        assert (
+            observation.nma_data_quality
+            == "Water level accurate to within two hundreths of a foot"
+        )
+        assert observation.measuring_point_height == 1.5
         # cleanup in reverse dependency order
         if observation:
             session.delete(observation)
-        sample = session.get(Sample, row["sample_id"])
         if sample:
             session.delete(sample)
         field_activity = session.get(FieldActivity, row["field_activity_id"])
         if field_activity:
             session.delete(field_activity)
         field_event = session.get(FieldEvent, row["field_event_id"])
+        if field_event:
+            session.delete(field_event)
+        session.commit()
+
+
+def test_bulk_upload_groundwater_levels_api_partial_success(water_well_thing):
+    csv_content = ",".join(
+        [
+            "field_staff",
+            "well_name_point_id",
+            "field_event_date_time",
+            "measurement_date_time",
+            "sampler",
+            "sample_method",
+            "mp_height",
+            "level_status",
+            "depth_to_water_ft",
+            "data_quality",
+            "water_level_notes",
+        ]
+    )
+    csv_content += "\n"
+    csv_content += "\n".join(
+        [
+            ",".join(
+                [
+                    "A Lopez",
+                    water_well_thing.name,
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Initial measurement",
+                ]
+            ),
+            ",".join(
+                [
+                    "A Lopez",
+                    "Bad Well",
+                    "2025-02-15T08:00:00-07:00",
+                    "2025-02-15T10:30:00-07:00",
+                    "A Lopez",
+                    "electric tape",
+                    "1.5",
+                    "Water level not affected",
+                    "7.0",
+                    "Water level accurate to within two hundreths of a foot",
+                    "Bad row",
+                ]
+            ),
+        ]
+    )
+
+    files = {
+        "file": ("water_levels.csv", csv_content, "text/csv"),
+    }
+
+    response = client.post("/observation/groundwater-level/bulk-upload", files=files)
+    data = response.json()
+    assert response.status_code == 200
+    assert data["summary"]["total_rows_imported"] == 1
+    assert data["summary"]["total_rows_processed"] == 2
+    assert data["summary"]["validation_errors_or_warnings"] == 2
+    assert len(data["validation_errors"]) == 2
+    assert any(
+        "CSV mp_height (1.5) differs from existing measuring point height (2.0)"
+        in message
+        for message in data["validation_errors"]
+    )
+    assert any("Bad Well" in message for message in data["validation_errors"])
+
+    row = data["water_levels"][0]
+    with session_ctx() as session:
+        observation = session.get(Observation, row["observation_id"])
+        sample = session.get(Sample, row["sample_id"])
+        field_activity = session.get(FieldActivity, row["field_activity_id"])
+        field_event = session.get(FieldEvent, row["field_event_id"])
+
+        if observation:
+            session.delete(observation)
+        if sample:
+            session.delete(sample)
+        if field_activity:
+            session.delete(field_activity)
         if field_event:
             session.delete(field_event)
         session.commit()
@@ -382,6 +494,162 @@ def test_get_groundwater_level_observations(groundwater_level_observation):
         data["items"][0]["measuring_point_height"]
         == groundwater_level_observation.measuring_point_height
     )
+
+
+def test_get_transducer_groundwater_level_observations_uses_blocks_for_same_thing(
+    location, second_location, sensor
+):
+    observation_time = datetime.now(timezone.utc)
+    matching_block_id = None
+    observation_id = None
+    other_block_id = None
+    target_deployment_id = None
+    other_deployment_id = None
+    other_sensor_id = None
+    other_thing_id = None
+    target_thing_id = None
+
+    try:
+        with session_ctx() as session:
+            target_thing = Thing(
+                name="Transducer Target Well",
+                first_visit_date="2023-03-03",
+                thing_type="water well",
+                release_status="draft",
+                well_depth=10,
+                hole_depth=10,
+                well_casing_diameter=5.0,
+                well_casing_depth=10.0,
+            )
+            other_thing = Thing(
+                name="Transducer Other Well",
+                first_visit_date="2023-03-04",
+                thing_type="water well",
+                release_status="draft",
+                well_depth=10,
+                hole_depth=10,
+                well_casing_diameter=5.0,
+                well_casing_depth=10.0,
+            )
+            session.add_all([target_thing, other_thing])
+            session.flush()
+
+            session.add_all(
+                [
+                    LocationThingAssociation(
+                        location_id=location.id,
+                        thing_id=target_thing.id,
+                        effective_start="2025-02-01T00:00:00Z",
+                    ),
+                    LocationThingAssociation(
+                        location_id=second_location.id,
+                        thing_id=other_thing.id,
+                        effective_start="2025-02-01T00:00:00Z",
+                    ),
+                ]
+            )
+
+            other_sensor = Sensor(
+                name=f"Transducer Other Sensor {uuid.uuid4()}",
+                sensor_type="Pressure Transducer",
+                model="Model X",
+                serial_no=f"serial-{uuid.uuid4()}",
+                pcn_number=f"pcn-{uuid.uuid4()}",
+                owner_agency="NMBGMR",
+                sensor_status="In Service",
+                notes="other sensor",
+                release_status="draft",
+            )
+            session.add(other_sensor)
+            session.flush()
+
+            target_deployment = Deployment(
+                sensor_id=sensor.id,
+                thing_id=target_thing.id,
+                installation_date="2023-01-01",
+                recording_interval=24,
+                recording_interval_units="hour",
+                hanging_cable_length=10,
+                hanging_point_height=0,
+                hanging_point_description="target deployment",
+                notes="target deployment",
+            )
+            other_deployment = Deployment(
+                sensor_id=other_sensor.id,
+                thing_id=other_thing.id,
+                installation_date="2023-01-01",
+                recording_interval=24,
+                recording_interval_units="hour",
+                hanging_cable_length=10,
+                hanging_point_height=0,
+                hanging_point_description="other deployment",
+                notes="other deployment",
+            )
+            session.add_all([target_deployment, other_deployment])
+            session.flush()
+
+            target_block = TransducerObservationBlock(
+                thing_id=target_thing.id,
+                parameter_id=_groundwater_level_parameter_id(),
+                start_datetime=observation_time - timedelta(days=10),
+                end_datetime=observation_time + timedelta(days=10),
+                review_status="not reviewed",
+            )
+            other_block = TransducerObservationBlock(
+                thing_id=other_thing.id,
+                parameter_id=_groundwater_level_parameter_id(),
+                start_datetime=observation_time - timedelta(days=1),
+                end_datetime=observation_time + timedelta(days=1),
+                review_status="not reviewed",
+            )
+            session.add_all([target_block, other_block])
+            session.flush()
+
+            observation = TransducerObservation(
+                parameter_id=_groundwater_level_parameter_id(),
+                deployment_id=target_deployment.id,
+                observation_datetime=observation_time,
+                value=12.34,
+            )
+            session.add(observation)
+            session.commit()
+
+            matching_block_id = target_block.id
+            observation_id = observation.id
+            other_block_id = other_block.id
+            target_deployment_id = target_deployment.id
+            other_deployment_id = other_deployment.id
+            other_sensor_id = other_sensor.id
+            target_thing_id = target_thing.id
+            other_thing_id = other_thing.id
+
+        response = client.get(
+            f"/observation/transducer-groundwater-level?thing_id={target_thing_id}"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["block"]["id"] == matching_block_id
+        assert data["items"][0]["block"]["id"] != other_block_id
+    finally:
+        with session_ctx() as session:
+            for model, pk in (
+                (TransducerObservation, observation_id),
+                (TransducerObservationBlock, matching_block_id),
+                (TransducerObservationBlock, other_block_id),
+                (Deployment, target_deployment_id),
+                (Deployment, other_deployment_id),
+                (Sensor, other_sensor_id),
+                (Thing, target_thing_id),
+                (Thing, other_thing_id),
+            ):
+                if pk is None:
+                    continue
+                instance = session.get(model, pk)
+                if instance is not None:
+                    session.delete(instance)
+            session.commit()
 
 
 def test_get_groundwater_level_observation_by_id(groundwater_level_observation):

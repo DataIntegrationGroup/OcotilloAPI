@@ -17,8 +17,6 @@ down_revision: Union[str, Sequence[str], None] = "c4d5e6f7a8b9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 REFRESH_FUNCTION_NAME = "refresh_pygeoapi_materialized_views"
-REFRESH_JOB_NAME = "refresh_pygeoapi_matviews_nightly"
-REFRESH_SCHEDULE = "0 3 * * *"
 
 THING_COLLECTIONS = [
     ("water_wells", "water well"),
@@ -36,7 +34,10 @@ THING_COLLECTIONS = [
     ("monitoring_wells", "monitoring well"),
     ("observation_wells", "observation well"),
     ("other_things", "other"),
-    ("outfalls_wastewater_return_flow", "outfall of wastewater or return flow"),
+    (
+        "outfalls_wastewater_return_flow",
+        "outfall of wastewater or return flow",
+    ),
     ("perennial_streams", "perennial stream"),
     ("piezometers", "piezometer"),
     ("production_wells", "production well"),
@@ -73,9 +74,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
         SELECT
             t.id,
             t.name,
-            t.thing_type,
             t.first_visit_date,
-            t.spring_type,
             t.nma_pk_welldata,
             t.well_depth,
             t.hole_depth,
@@ -89,6 +88,7 @@ def _create_thing_view(view_id: str, thing_type: str) -> str:
             t.formation_completion_code,
             t.nma_formation_zone,
             t.release_status,
+            l.elevation,
             l.point
         FROM thing AS t
         JOIN latest_location AS ll ON ll.thing_id = t.id
@@ -110,8 +110,11 @@ def _create_latest_depth_view() -> str:
                 o.observation_datetime,
                 o.value,
                 o.measuring_point_height,
-                -- Treat NULL measuring_point_height as 0 when computing depth_to_water_bgs
-                (o.value - COALESCE(o.measuring_point_height, 0)) AS depth_to_water_bgs,
+                -- Treat NULL measuring_point_height as 0 when computing
+                -- depth_to_water_bgs.
+                (
+                    o.value - COALESCE(o.measuring_point_height, 0)
+                ) AS depth_to_water_bgs,
                 ROW_NUMBER() OVER (
                     PARTITION BY fe.thing_id
                     ORDER BY o.observation_datetime DESC, o.id DESC
@@ -154,7 +157,10 @@ def _create_avg_tds_view() -> str:
             SELECT
                 csi.thing_id,
                 mc.id AS major_chemistry_id,
-                mc."AnalysisDate" AS analysis_date,
+                COALESCE(
+                    mc."AnalysisDate",
+                    csi."CollectionDate"
+                )::date AS observation_date,
                 mc."SampleValue" AS sample_value,
                 mc."Units" AS units
             FROM "NMA_MajorChemistry" AS mc
@@ -178,8 +184,8 @@ def _create_avg_tds_view() -> str:
             t.thing_type,
             COUNT(to2.major_chemistry_id)::integer AS tds_observation_count,
             AVG(to2.sample_value)::double precision AS avg_tds_value,
-            MIN(to2.analysis_date) AS first_tds_observation_datetime,
-            MAX(to2.analysis_date) AS latest_tds_observation_datetime,
+            MIN(to2.observation_date) AS first_tds_observation_date,
+            MAX(to2.observation_date) AS last_tds_observation_date,
             l.point
         FROM tds_obs AS to2
         JOIN thing AS t ON t.id = to2.thing_id
@@ -196,15 +202,16 @@ def _drop_view_or_materialized_view(view_name: str) -> None:
 
 def _create_matview_indexes() -> None:
     # Required so REFRESH MATERIALIZED VIEW CONCURRENTLY can run.
+    avg_tds_index_sql = (
+        "CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)"
+    )
     op.execute(
         text(
             "CREATE UNIQUE INDEX ux_ogc_latest_depth_to_water_wells_id "
             "ON ogc_latest_depth_to_water_wells (id)"
         )
     )
-    op.execute(
-        text("CREATE UNIQUE INDEX ux_ogc_avg_tds_wells_id " "ON ogc_avg_tds_wells (id)")
-    )
+    op.execute(text(avg_tds_index_sql))
 
 
 def _create_refresh_function() -> str:
@@ -223,73 +230,15 @@ def _create_refresh_function() -> str:
                 WHERE schemaname = 'public'
                   AND matviewname LIKE 'ogc_%'
             LOOP
-                matview_fqname := format('%I.%I', matview_record.schemaname, matview_record.matviewname);
+                matview_fqname := format(
+                    '%I.%I',
+                    matview_record.schemaname,
+                    matview_record.matviewname
+                );
                 EXECUTE format('REFRESH MATERIALIZED VIEW %s', matview_fqname);
             END LOOP;
         END;
         $$;
-    """
-
-
-def _schedule_refresh_job() -> str:
-    return f"""
-        DO $do$
-        BEGIN
-            BEGIN
-                -- Avoid direct SELECT on cron.job because managed Postgres
-                -- environments may deny access to the cron schema table.
-                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
-            EXCEPTION
-                WHEN undefined_function THEN
-                    NULL;
-                WHEN invalid_parameter_value THEN
-                    NULL;
-                WHEN internal_error THEN
-                    -- Some pg_cron builds raise internal_error when the named
-                    -- job does not exist. Treat this as already-unscheduled.
-                    NULL;
-                WHEN insufficient_privilege THEN
-                    RAISE NOTICE
-                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
-                        '{REFRESH_JOB_NAME}';
-                    RETURN;
-            END;
-
-            PERFORM cron.schedule(
-                '{REFRESH_JOB_NAME}',
-                '{REFRESH_SCHEDULE}',
-                $cmd$SELECT public.{REFRESH_FUNCTION_NAME}();$cmd$
-            );
-        EXCEPTION
-            WHEN insufficient_privilege THEN
-                RAISE NOTICE
-                    'Skipping pg_cron schedule for % due to insufficient privileges.',
-                    '{REFRESH_JOB_NAME}';
-        END
-        $do$;
-    """
-
-
-def _unschedule_refresh_job() -> str:
-    return f"""
-        DO $do$
-        BEGIN
-            BEGIN
-                PERFORM cron.unschedule('{REFRESH_JOB_NAME}');
-            EXCEPTION
-                WHEN undefined_function THEN
-                    NULL;
-                WHEN invalid_parameter_value THEN
-                    NULL;
-                WHEN internal_error THEN
-                    NULL;
-                WHEN insufficient_privilege THEN
-                    RAISE NOTICE
-                        'Skipping pg_cron unschedule for % due to insufficient privileges.',
-                        '{REFRESH_JOB_NAME}';
-            END;
-        END
-        $do$;
     """
 
 
@@ -300,22 +249,17 @@ def upgrade() -> None:
     required_core = {"thing", "location", "location_thing_association"}
     existing_tables = set(inspector.get_table_names(schema="public"))
     if not required_core.issubset(existing_tables):
-        missing_tables = sorted(t for t in required_core if t not in existing_tables)
+        missing_tables = sorted(
+            table_name
+            for table_name in required_core
+            if table_name not in existing_tables
+        )
         missing_tables_str = ", ".join(missing_tables)
         raise RuntimeError(
-            "Cannot create pygeoapi supporting views. The following required core "
+            "Cannot create pygeoapi supporting views. "
+            "The following required core "
             f"tables are missing: {missing_tables_str}"
         )
-
-    pg_cron_available = bind.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        op.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
 
     for view_id, thing_type in THING_COLLECTIONS:
         safe_view_id = _safe_view_id(view_id)
@@ -330,7 +274,8 @@ def upgrade() -> None:
         )
         missing_depth_tables_str = ", ".join(missing_depth_tables)
         raise RuntimeError(
-            "Cannot create ogc_latest_depth_to_water_wells. The following required "
+            "Cannot create ogc_latest_depth_to_water_wells. "
+            "The following required "
             f"tables are missing: {missing_depth_tables_str}"
         )
     op.execute(text(_create_latest_depth_view()))
@@ -344,7 +289,11 @@ def upgrade() -> None:
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     required_tds = {"NMA_MajorChemistry", "NMA_Chemistry_SampleInfo"}
     if not required_tds.issubset(existing_tables):
-        missing_tds_tables = sorted(t for t in required_tds if t not in existing_tables)
+        missing_tds_tables = sorted(
+            table_name
+            for table_name in required_tds
+            if table_name not in existing_tables
+        )
         missing_tds_tables_str = ", ".join(missing_tds_tables)
         raise RuntimeError(
             "Cannot create ogc_avg_tds_wells. The following required "
@@ -360,22 +309,13 @@ def upgrade() -> None:
     _create_matview_indexes()
 
     op.execute(text(_create_refresh_function()))
-    if pg_cron_available:
-        op.execute(text(_schedule_refresh_job()))
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    pg_cron_available = bind.execute(
-        text(
-            "SELECT EXISTS ("
-            "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-            ")"
-        )
-    ).scalar()
-    if pg_cron_available:
-        op.execute(text(_unschedule_refresh_job()))
-    op.execute(text(f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"))
+    drop_refresh_function_sql = (
+        f"DROP FUNCTION IF EXISTS public.{REFRESH_FUNCTION_NAME}()"
+    )
+    op.execute(text(drop_refresh_function_sql))
     _drop_view_or_materialized_view("ogc_avg_tds_wells")
     _drop_view_or_materialized_view("ogc_latest_depth_to_water_wells")
     for view_id, _ in THING_COLLECTIONS:

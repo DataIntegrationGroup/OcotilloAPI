@@ -17,9 +17,10 @@
 Orchestrates the backfill pipeline used in CD workflows.
 
 Preferred usage (avoids import path issues):
-    python -m transfers.backfill.backfill
+    python -m transfers.backfill.backfill --batch-size 1000
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -28,20 +29,27 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from services.util import get_bool_env
-from transfers.backfill.chemistry_backfill import backfill_radionuclides
+from services.env import get_bool_env
 from transfers.logger import logger
 
 
-def run() -> None:
-    """Execute all backfill steps in a deterministic order."""
-    steps = (("Radionuclides", backfill_radionuclides, "BACKFILL_RADIONUCLIDES"),)
+def run(batch_size: int = 1000) -> None:
+    """
+    Execute all backfill steps in a deterministic order.
+
+    Currently, no concrete backfill steps are registered. This function is kept
+    as a stable orchestration entry point (used by CD/CLI) and will be wired
+    up to real backfill steps in future refactoring work.
+    """
+    # NOTE: Intentionally empty; this serves as a placeholder until concrete
+    # backfill steps are implemented and registered in this tuple.
+    steps = ()
     for name, fn, flag in steps:
         if not get_bool_env(flag, True):
             logger.info(f"Skipping backfill: {name} ({flag}=false)")
             continue
         logger.info(f"Starting backfill: {name}")
-        result = fn()
+        result = fn(batch_size)
         logger.info(
             f"Completed backfill: {name} — "
             f"inserted={result.inserted} updated={result.updated} "
@@ -52,17 +60,21 @@ def run() -> None:
                 logger.warning(f"  {name}: {err}")
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run backfill pipeline.")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1000,
+        help="Number of rows to insert per batch.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        logger.error(
-            "Unknown arguments: %s. "
-            "CLI options (--batch-size) were removed; "
-            "use BACKFILL_* env vars to control execution.",
-            " ".join(sys.argv[1:]),
-        )
-        sys.exit(2)
+    args = _parse_args()
     try:
-        run()
+        run(batch_size=args.batch_size)
     except Exception:
         logger.critical("Backfill orchestration failed", exc_info=True)
         sys.exit(1)

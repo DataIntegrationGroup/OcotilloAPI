@@ -2,24 +2,22 @@
 
 services:
   db:
-    build:
-      context: .
-      dockerfile: ./docker/db/Dockerfile
-    platform: linux/amd64
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_cron
-      -c cron.database_name=${POSTGRES_DB}
+    image: postgis/postgis:17-3.5
+    #    build:
+#      context: .
+#      dockerfile: ./docker/db/Dockerfile
+#    platform: linux/amd64
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB=ocotilloapi_dev
     ports:
-      - 5432:5432
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ocotilloapi_dev"]
       interval: 2s
       timeout: 5s
       retries: 20
@@ -31,13 +29,20 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB=ocotilloapi_dev
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
       - MODE=${MODE}
       - AUTHENTIK_DISABLE_AUTHENTICATION=${AUTHENTIK_DISABLE_AUTHENTICATION}
+      - SESSION_SECRET_KEY=${SESSION_SECRET_KEY}
+      - PYGEOAPI_POSTGRES_HOST=db
+      - PYGEOAPI_POSTGRES_PORT=5432
+      - PYGEOAPI_POSTGRES_DB=ocotilloapi_dev
+      - PYGEOAPI_POSTGRES_USER=${POSTGRES_USER}
+      - PYGEOAPI_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs_credentials.json
     ports:
-      - 8000:8000
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy # <-- wait for DB to be ready
@@ -47,4 +52,4 @@ services:
       - .:/app
 
 volumes:
-  postgres_data:
+  postgres_data_dev:

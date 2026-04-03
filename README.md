@@ -28,6 +28,10 @@ supports research, field operations, and public data delivery for the Bureau of 
 ## 🗺️ OGC API - Features
 
 The API exposes OGC API - Features endpoints under `/ogcapi` using `pygeoapi`.
+In App Engine deployments, `/admin` and `/ogcapi` are served from the same
+application as the primary API. The service is intended to scale to zero
+outside business hours and be kept warm during the workday with Cloud Scheduler
+hits to `/_ah/warmup`.
 
 ### Landing & metadata
 
@@ -140,6 +144,36 @@ Notes:
 * Create file gcs_credentials.json in the root directory of the project, and obtain its contents from a teammate.
 * PostgreSQL uses the default port 5432.
 
+Minimum vars to set in `.env` for local development:
+* `POSTGRES_USER`
+* `POSTGRES_PASSWORD`
+* `POSTGRES_DB` (`ocotilloapi_dev` when using Docker Compose dev)
+* `POSTGRES_HOST` (`localhost` for local psql/pytest against mapped Docker port)
+* `POSTGRES_PORT` (`5432`)
+* `MODE` (`development` recommended locally)
+* `SESSION_SECRET_KEY` (required if you want to use `/admin`)
+
+Auth-related vars (required when auth is enabled, optional when `AUTHENTIK_DISABLE_AUTHENTICATION=1`):
+* `AUTHENTIK_DISABLE_AUTHENTICATION`
+* `AUTHENTIK_URL`
+* `AUTHENTIK_CLIENT_ID`
+* `AUTHENTIK_AUTHORIZE_URL`
+* `AUTHENTIK_TOKEN_URL`
+
+pygeoapi vars:
+* `PYGEOAPI_MOUNT_PATH` (default `/ogcapi`)
+* `PYGEOAPI_RUNTIME_DIR` (default `/tmp/pygeoapi`)
+* `PYGEOAPI_POSTGRES_HOST`
+* `PYGEOAPI_POSTGRES_PORT`
+* `PYGEOAPI_POSTGRES_DB`
+* `PYGEOAPI_POSTGRES_USER`
+* `PYGEOAPI_POSTGRES_PASSWORD`
+
+Optional telemetry vars:
+* `SENTRY_DSN`
+* `APITALLY_CLIENT_ID`
+* `ENVIRONMENT`
+
 In development set `MODE=development` to allow lexicon enums to be populated. When `MODE=development`, the app attempts to seed the database with 10 example records via `transfers/seed.py`; if a `contact` record already exists, the seed step is skipped.
 
 #### 5. Database and server
@@ -169,9 +203,19 @@ docker compose up --build
 
 Notes:
 * Requires Docker Desktop.
-* Spins up two containers: `db` (PostGIS/PostgreSQL) and `app` (FastAPI API service).
-* `alembic upgrade head` runs on app startup after `docker compose up`.
-* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` in your `.env` to run local commands against the Docker DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
+* By default, spins up two containers:
+  * `db` for PostGIS/PostgreSQL
+  * `app` for the primary API, admin UI, and OGC API on `http://localhost:8000`
+* `db` initializes both application databases in the same Postgres service:
+  * `ocotilloapi_dev`
+  * `ocotilloapi_test`
+* `alembic upgrade head` runs in the `app` container on startup.
+* Compose uses hardcoded DB names:
+  * dev: `ocotilloapi_dev`
+  * test: `ocotilloapi_test` (created by init SQL in `docker/db/init/01-create-test-db.sql`)
+* The database listens on port `5432` both inside the container and on your host. Ensure `POSTGRES_PORT=5432` and `POSTGRES_DB=ocotilloapi_dev` in your `.env` to run local commands against the Docker dev DB (e.g., `uv run pytest`, `uv run python -m transfers.transfer`).
+* To restore a local or GCS-backed SQL dump into your local target DB, run `source .venv/bin/activate && python -m cli.cli restore-local-db path/to/dump.sql` or `source .venv/bin/activate && python -m cli.cli restore-local-db gs://ocotillo/sql-exports/latest.sql.gz`.
+* `SESSION_SECRET_KEY` only needs to be set in `.env` if you plan to use `/admin`; without it, the API and `/ogcapi` still boot, but `/admin` will be unavailable.
 
 #### Staging Data
 

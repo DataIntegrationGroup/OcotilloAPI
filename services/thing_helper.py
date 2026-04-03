@@ -14,6 +14,8 @@
 # limitations under the License.
 # ===============================================================================
 from datetime import datetime
+import logging
+import time
 from zoneinfo import ZoneInfo
 
 from fastapi import Request, HTTPException
@@ -43,8 +45,16 @@ from db import (
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
 from services.exceptions_helper import PydanticStyleException
+from services.env import get_bool_env
 from services.geospatial_helper import make_within_wkt
 from services.query_helper import make_query, order_sort_filter, simple_get_by_id
+
+logger = logging.getLogger(__name__)
+
+
+def is_debug_timing_enabled() -> bool:
+    return bool(get_bool_env("API_DEBUG_TIMING", False))
+
 
 WELL_DESCRIPTOR_MODEL_MAP = {
     "well_purposes": (WellPurpose, "purpose"),
@@ -160,6 +170,7 @@ def verify_thing_type_correspondence(thing: Thing, thing_type: str):
 
 
 def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id: int):
+    started_at = time.perf_counter()
     thing_type = get_thing_type_from_request(request)
     sql = select(Thing).where(Thing.id == thing_id)
 
@@ -175,6 +186,22 @@ def get_thing_of_a_thing_type_by_id(session: Session, request: Request, thing_id
         )
 
     verify_thing_type_correspondence(thing, thing_type)
+    if is_debug_timing_enabled():
+        duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        logger.info(
+            "thing lookup completed path=%s thing_id=%s thing_type=%s duration_ms=%s",
+            request.url.path,
+            thing_id,
+            thing_type,
+            duration_ms,
+            extra={
+                "event": "thing_lookup_completed",
+                "path": request.url.path,
+                "thing_id": thing_id,
+                "thing_type": thing_type,
+                "duration_ms": duration_ms,
+            },
+        )
 
     return thing
 
@@ -221,6 +248,7 @@ def add_thing(
     datalogger_suitability_status = data.pop("is_suitable_for_datalogger", None)
     open_status = data.pop("is_open", None)
     well_status = data.pop("well_status", None)
+    monitoring_status = data.pop("monitoring_status", None)
 
     # ----------
     # END UNIVERSAL THING RELATED TABLES
@@ -361,6 +389,18 @@ def add_thing(
                 audit_add(user, ws_status)
                 session.add(ws_status)
 
+            if monitoring_status is not None:
+                ms_status = StatusHistory(
+                    target_id=thing.id,
+                    target_table="thing",
+                    status_value=monitoring_status,
+                    status_type="Monitoring Status",
+                    start_date=effective_start,
+                    end_date=None,
+                )
+                audit_add(user, ms_status)
+                session.add(ms_status)
+
         # ----------
         # END WATER WELL SPECIFIC LOGIC
         # ----------
@@ -417,15 +457,16 @@ def add_thing(
         # ----------
         if commit:
             session.commit()
+            session.refresh(thing)
+
+            for note in thing.notes:
+                session.refresh(note)
         else:
             session.flush()
-        session.refresh(thing)
-
-        for note in thing.notes:
-            session.refresh(note)
 
     except Exception as e:
-        session.rollback()
+        if commit:
+            session.rollback()
         raise e
 
     return thing

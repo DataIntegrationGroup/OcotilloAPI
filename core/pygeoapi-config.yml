@@ -59,7 +59,7 @@ resources:
 
   latest_depth_to_water_wells:
     type: collection
-    title: Latest Depth to Water (Wells)
+    title: Latest Depth to Water (Water Wells)
     description: Most recent depth-to-water below ground surface observation for each water well.
     keywords: [water-wells, groundwater-level, depth-to-water-bgs, latest]
     extents:
@@ -102,5 +102,189 @@ resources:
         id_field: id
         table: ogc_avg_tds_wells
         geom_field: point
+
+  latest_tds_wells:
+    type: collection
+    title: Latest TDS (Water Wells)
+    description: Most recent total dissolved solids (TDS) result from major chemistry for each water well.
+    keywords: [water-wells, chemistry, tds, total-dissolved-solids, latest]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_latest_tds_wells
+        geom_field: point
+
+  depth_to_water_trend_wells:
+    type: collection
+    title: Depth to Water Trend (Water Wells)
+    description: Trend classification for depth to water based on slope in feet per year.
+    keywords: [water-wells, groundwater-level, depth-to-water, trend, slope]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_depth_to_water_trend_wells
+        geom_field: point
+
+  water_elevation_wells:
+    type: collection
+    title: Water Elevation (Water Wells)
+    description: Most recent water elevation per well calculated as elevation minus depth to water below ground surface.
+    keywords: [water-wells, groundwater-level, water-elevation, depth-to-water]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_water_elevation_wells
+        geom_field: point
+
+  water_well_summary:
+    type: collection
+    title: Water Well Summary
+    description: Summary metrics per water well, including latest, min/max, and trend for water levels.
+    keywords: [water-wells, summary, groundwater-level, trend]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_water_well_summary
+        geom_field: point
+
+  major_chemistry_results:
+    type: collection
+    title: Major Chemistry (Water Wells)
+    description: Latest major chemistry analyte values for water wells, represented as static analyte columns.
+    keywords: [water-wells, chemistry, analytes, major-chemistry]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_major_chemistry_results
+        geom_field: point
+
+  minor_chemistry_wells:
+    type: collection
+    title: Minor Chemistry (Water Wells)
+    description: Latest minor/trace chemistry analyte values for water wells, represented as static analyte columns.
+    keywords: [water-wells, chemistry, analytes, minor-chemistry, trace-chemistry]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_minor_chemistry_wells
+        geom_field: point
+
+  actively_monitored_wells:
+    type: collection
+    title: Actively Monitored Wells
+    description: Wells in the collaborative network currently flagged as actively monitored.
+    keywords: [water-wells, monitoring, collaborative-network, actively-monitored]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_actively_monitored_wells
+        geom_field: point
+
+  project_areas:
+    type: collection
+    title: Project Areas
+    description: Project groups with polygon project-area boundaries.
+    keywords: [project-areas, groups, boundaries]
+    extents:
+      spatial:
+        bbox: [-109.05, 31.33, -103.00, 37.00]
+        crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+    providers:
+      - type: feature
+        name: PostgreSQL
+        data:
+          host: {postgres_host}
+          port: {postgres_port}
+          dbname: {postgres_db}
+          user: {postgres_user}
+          password: {postgres_password_env}
+          search_path: [public]
+        id_field: id
+        table: ogc_project_areas
+        geom_field: project_area
 
 {thing_collections_block}

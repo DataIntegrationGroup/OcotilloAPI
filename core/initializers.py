@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from pathlib import Path
+import asyncio
 import os
+from pathlib import Path
 
 from fastapi_pagination import add_pagination
 from sqlalchemy import text, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import DatabaseError
+from starlette.responses import PlainTextResponse
 
 from db import Base
 from db.engine import session_ctx
@@ -66,15 +68,6 @@ def erase_and_rebuild_db():
         session.execute(text("DROP SCHEMA public CASCADE"))
         session.execute(text("CREATE SCHEMA public"))
         session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        pg_cron_available = session.execute(
-            text(
-                "SELECT EXISTS ("
-                "SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron'"
-                ")"
-            )
-        ).scalar()
-        if pg_cron_available:
-            session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_cron"))
         session.commit()
         Base.metadata.drop_all(session.bind)
         Base.metadata.create_all(session.bind)
@@ -202,11 +195,10 @@ def init_lexicon(path: str = None) -> None:
             session.commit()
 
 
-def register_routes(app):
-    if getattr(app.state, "routes_registered", False):
+def register_api_routes(app):
+    if getattr(app.state, "api_routes_registered", False):
         return
 
-    from admin.auth_routes import router as admin_auth_router
     from api.group import router as group_router
     from api.contact import router as contact_router
     from api.location import router as location_router
@@ -224,15 +216,12 @@ def register_routes(app):
     from api.search import router as search_router
     from api.geospatial import router as geospatial_router
     from api.ngwmn import router as ngwmn_router
-    from core.pygeoapi import mount_pygeoapi
 
     app.include_router(asset_router)
-    app.include_router(admin_auth_router)
     app.include_router(author_router)
     app.include_router(contact_router)
     app.include_router(geospatial_router)
     app.include_router(group_router)
-    mount_pygeoapi(app)
     app.include_router(lexicon_router)
     app.include_router(location_router)
     app.include_router(observation_router)
@@ -243,11 +232,10 @@ def register_routes(app):
     app.include_router(thing_router)
     app.include_router(ngwmn_router)
     add_pagination(app)
-    app.state.routes_registered = True
+    app.state.api_routes_registered = True
 
 
-def configure_middleware(app):
-    from starlette.middleware.cors import CORSMiddleware
+def configure_session_middleware(app):
     from starlette.middleware.sessions import SessionMiddleware
 
     if not getattr(app.state, "session_middleware_configured", False):
@@ -256,6 +244,10 @@ def configure_middleware(app):
             raise ValueError("SESSION_SECRET_KEY environment variable is not set.")
         app.add_middleware(SessionMiddleware, secret_key=session_secret_key)
         app.state.session_middleware_configured = True
+
+
+def configure_cors_middleware(app):
+    from starlette.middleware.cors import CORSMiddleware
 
     if not getattr(app.state, "cors_middleware_configured", False):
         app.add_middleware(
@@ -267,6 +259,8 @@ def configure_middleware(app):
         )
         app.state.cors_middleware_configured = True
 
+
+def configure_apitally_middleware(app):
     apitally_client_id = os.environ.get("APITALLY_CLIENT_ID")
     if apitally_client_id and not getattr(
         app.state, "apitally_middleware_configured", False
@@ -287,14 +281,44 @@ def configure_middleware(app):
         app.state.apitally_middleware_configured = True
 
 
+def configure_middleware(app):
+    configure_session_middleware(app)
+    configure_cors_middleware(app)
+    configure_apitally_middleware(app)
+
+
 def configure_admin(app):
     if getattr(app.state, "admin_configured", False):
         return
 
     from admin import create_admin
+    from admin.auth_routes import router as admin_auth_router
 
+    app.include_router(admin_auth_router)
     create_admin(app)
     app.state.admin_configured = True
+
+
+def configure_lazy_admin(app):
+    if getattr(app.state, "lazy_admin_configured", False):
+        return
+
+    app.state.admin_configure_lock = asyncio.Lock()
+
+    @app.middleware("http")
+    async def ensure_admin_initialized(request, call_next):
+        if request.url.path.startswith("/admin"):
+            if not getattr(app.state, "session_middleware_configured", False):
+                return PlainTextResponse(
+                    "Admin requires SESSION_SECRET_KEY to be configured.",
+                    status_code=503,
+                )
+            async with app.state.admin_configure_lock:
+                if not getattr(app.state, "admin_configured", False):
+                    configure_admin(app)
+        return await call_next(request)
+
+    app.state.lazy_admin_configured = True
 
 
 # ============= EOF =============================================

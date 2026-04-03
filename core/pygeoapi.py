@@ -1,5 +1,7 @@
+import importlib
 import os
 import re
+import sys
 import textwrap
 from importlib.util import find_spec
 from pathlib import Path
@@ -12,28 +14,38 @@ THING_COLLECTIONS = [
         "id": "water_wells",
         "title": "Water Wells",
         "thing_type": "water well",
-        "description": "Groundwater wells used for monitoring, production, and hydrogeologic investigations.",
+        "description": (
+            "Groundwater wells used for monitoring, production, and "
+            "hydrogeologic investigations."
+        ),
         "keywords": ["well", "groundwater", "water-well"],
     },
     {
         "id": "springs",
         "title": "Springs",
         "thing_type": "spring",
-        "description": "Natural spring features and associated spring monitoring points.",
+        "description": (
+            "Natural spring features and associated spring monitoring points."
+        ),
         "keywords": ["springs", "groundwater-discharge"],
     },
     {
         "id": "diversions_surface_water",
         "title": "Surface Water Diversions",
         "thing_type": "diversion of surface water, etc.",
-        "description": "Diversion structures such as ditches, canals, and intake points.",
+        "description": (
+            "Diversion structures such as ditches, canals, and intake points."
+        ),
         "keywords": ["surface-water", "diversion"],
     },
     {
         "id": "ephemeral_streams",
         "title": "Ephemeral Streams",
         "thing_type": "ephemeral stream",
-        "description": "Stream reaches that flow only in direct response to precipitation events.",
+        "description": (
+            "Stream reaches that flow only in direct response to "
+            "precipitation events."
+        ),
         "keywords": ["ephemeral-stream", "surface-water"],
     },
     {
@@ -54,7 +66,9 @@ THING_COLLECTIONS = [
         "id": "other_things",
         "title": "Other Thing Types",
         "thing_type": "other",
-        "description": "Feature records that do not match another defined thing type.",
+        "description": (
+            "Feature records that do not match another defined thing type."
+        ),
         "keywords": ["other"],
     },
     {
@@ -68,99 +82,24 @@ THING_COLLECTIONS = [
         "id": "perennial_streams",
         "title": "Perennial Streams",
         "thing_type": "perennial stream",
-        "description": "Stream reaches with continuous or near-continuous flow.",
+        "description": ("Stream reaches with continuous or near-continuous flow."),
         "keywords": ["perennial-stream", "surface-water"],
     },
     {
         "id": "rock_sample_locations",
         "title": "Rock Sample Locations",
         "thing_type": "rock sample location",
-        "description": "Locations where rock samples were collected or documented.",
+        "description": ("Locations where rock samples were collected or documented."),
         "keywords": ["rock-sample"],
     },
     {
         "id": "soil_gas_sample_locations",
         "title": "Soil Gas Sample Locations",
         "thing_type": "soil gas sample location",
-        "description": "Locations where soil gas measurements or samples were collected.",
+        "description": (
+            "Locations where soil gas measurements or samples were collected."
+        ),
         "keywords": ["soil-gas", "sample-location"],
-    },
-    {
-        "id": "abandoned_wells",
-        "title": "Abandoned Wells",
-        "thing_type": "abandoned well",
-        "description": "Wells that are no longer active and are classified as abandoned.",
-        "keywords": ["abandoned-well", "well"],
-    },
-    {
-        "id": "artesian_wells",
-        "title": "Artesian Wells",
-        "thing_type": "artesian well",
-        "description": "Wells that tap confined aquifers with artesian pressure conditions.",
-        "keywords": ["artesian", "well"],
-    },
-    {
-        "id": "dry_holes",
-        "title": "Dry Holes",
-        "thing_type": "dry hole",
-        "description": "Drilled holes that did not produce usable groundwater.",
-        "keywords": ["dry-hole", "well"],
-    },
-    {
-        "id": "dug_wells",
-        "title": "Dug Wells",
-        "thing_type": "dug well",
-        "description": "Large-diameter wells excavated by digging.",
-        "keywords": ["dug-well", "well"],
-    },
-    {
-        "id": "exploration_wells",
-        "title": "Exploration Wells",
-        "thing_type": "exploration well",
-        "description": "Wells drilled to characterize geologic and groundwater conditions.",
-        "keywords": ["exploration-well", "well"],
-    },
-    {
-        "id": "injection_wells",
-        "title": "Injection Wells",
-        "thing_type": "injection well",
-        "description": "Wells used to inject fluids into subsurface formations.",
-        "keywords": ["injection-well", "well"],
-    },
-    {
-        "id": "monitoring_wells",
-        "title": "Monitoring Wells",
-        "thing_type": "monitoring well",
-        "description": "Wells primarily used for long-term groundwater monitoring.",
-        "keywords": ["monitoring-well", "groundwater", "well"],
-    },
-    {
-        "id": "observation_wells",
-        "title": "Observation Wells",
-        "thing_type": "observation well",
-        "description": "Observation wells used for periodic water-level measurements.",
-        "keywords": ["observation-well", "groundwater", "well"],
-    },
-    {
-        "id": "piezometers",
-        "title": "Piezometers",
-        "thing_type": "piezometer",
-        "description": "Piezometers used to measure hydraulic head at depth.",
-        "keywords": ["piezometer", "groundwater", "well"],
-    },
-    {
-        "id": "production_wells",
-        "title": "Production Wells",
-        "thing_type": "production well",
-        "description": "Wells used for groundwater supply and extraction.",
-        "keywords": ["production-well", "groundwater", "well"],
-    },
-    {
-        "id": "test_wells",
-        "title": "Test Wells",
-        "thing_type": "test well",
-        "description": "Temporary or investigative test wells.",
-        "keywords": ["test-well", "well"],
     },
 ]
 
@@ -181,7 +120,8 @@ def _mount_path() -> str:
     if not path.startswith("/"):
         path = f"/{path}"
 
-    # Remove any trailing slashes so "/ogcapi/" and "ogcapi/" both become "/ogcapi".
+    # Remove trailing slashes so "/ogcapi/" and "ogcapi/" both become
+    # "/ogcapi".
     path = path.rstrip("/")
 
     # Disallow traversal/current-directory segments.
@@ -191,7 +131,8 @@ def _mount_path() -> str:
             "Invalid PYGEOAPI_MOUNT_PATH: traversal segments are not allowed."
         )
 
-    # Allow only slash-delimited segments of alphanumerics, underscore, or hyphen.
+    # Allow only slash-delimited segments of alphanumerics, underscore,
+    # or hyphen.
     if not re.fullmatch(r"/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*", path):
         raise ValueError(
             "Invalid PYGEOAPI_MOUNT_PATH: only letters, numbers, underscores, "
@@ -265,14 +206,28 @@ def _thing_collections_block(
 
 
 def _pygeoapi_db_settings() -> tuple[str, str, str, str, str]:
-    host = (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip() or "127.0.0.1"
-    port = (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip() or "5432"
-    dbname = (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip() or "postgres"
-    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip()
+    host = (
+        (os.environ.get("PYGEOAPI_POSTGRES_HOST") or "").strip()
+        or (os.environ.get("POSTGRES_HOST") or "").strip()
+        or "127.0.0.1"
+    )
+    port = (
+        (os.environ.get("PYGEOAPI_POSTGRES_PORT") or "").strip()
+        or (os.environ.get("POSTGRES_PORT") or "").strip()
+        or "5432"
+    )
+    dbname = (
+        (os.environ.get("PYGEOAPI_POSTGRES_DB") or "").strip()
+        or (os.environ.get("POSTGRES_DB") or "").strip()
+        or "postgres"
+    )
+    user = (os.environ.get("PYGEOAPI_POSTGRES_USER") or "").strip() or (
+        os.environ.get("POSTGRES_USER") or ""
+    ).strip()
     if not user:
         raise RuntimeError(
-            "PYGEOAPI_POSTGRES_USER must be set and non-empty to generate the "
-            "pygeoapi configuration."
+            "PYGEOAPI_POSTGRES_USER or POSTGRES_USER must be set and "
+            "non-empty to generate the pygeoapi configuration."
         )
     if os.environ.get("PYGEOAPI_POSTGRES_PASSWORD") is None:
         raise RuntimeError(
@@ -310,18 +265,27 @@ def _write_config(path: Path) -> None:
     #   * Do not expose it in logs, error messages, or diagnostics.
     #   * Ensure filesystem permissions restrict access appropriately.
     path.write_text(config, encoding="utf-8")
+    path.chmod(0o600)
 
 
-def _generate_openapi(_config_path: Path, openapi_path: Path) -> None:
-    openapi = f"""openapi: 3.0.2
-info:
-  title: Ocotillo OGC API
-  version: 1.0.0
-servers:
-  - url: {_server_url()}
-paths: {{}}
-"""
+def _generate_openapi(config_path: Path, openapi_path: Path) -> None:
+    from pygeoapi.openapi import generate_openapi_document
+
+    # Avoid startup failures when backing tables are not yet present; pygeoapi
+    # will skip invalid collections and still emit a standards-compliant spec.
+    openapi = generate_openapi_document(
+        config_path, "yaml", fail_on_invalid_collection=False
+    )
     openapi_path.write_text(openapi, encoding="utf-8")
+
+
+def _load_pygeoapi_app():
+    module_name = "pygeoapi.starlette_app"
+    if module_name in sys.modules:
+        module = importlib.reload(sys.modules[module_name])
+    else:
+        module = importlib.import_module(module_name)
+    return module.APP
 
 
 def mount_pygeoapi(app: FastAPI) -> None:
@@ -329,7 +293,8 @@ def mount_pygeoapi(app: FastAPI) -> None:
         return
     if find_spec("pygeoapi") is None:
         raise RuntimeError(
-            "pygeoapi is not installed. Rebuild/sync dependencies so /ogcapi can be mounted."
+            "pygeoapi is not installed. Rebuild/sync dependencies so "
+            "/ogcapi can be mounted."
         )
 
     pygeoapi_dir = _pygeoapi_dir()
@@ -341,8 +306,7 @@ def mount_pygeoapi(app: FastAPI) -> None:
     os.environ["PYGEOAPI_CONFIG"] = str(config_path)
     os.environ["PYGEOAPI_OPENAPI"] = str(openapi_path)
 
-    from pygeoapi.starlette_app import APP as pygeoapi_app
-
+    pygeoapi_app = _load_pygeoapi_app()
     mount_path = _mount_path()
     app.mount(mount_path, pygeoapi_app)
 
