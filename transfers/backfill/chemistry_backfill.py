@@ -25,7 +25,7 @@ Observation records keyed on nma_pk_chemistryresults.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import timezone
+from datetime import date as date_type, datetime, time, timezone
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -399,12 +399,13 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
         # so rows without AnalysisDate must be skipped.
         obs_dt = row.analysis_date
         if obs_dt is None:
+            logger.warning(
+                "Row GlobalID=%s has no AnalysisDate — skipping", global_id_str
+            )
             result.errors.append(
                 f"Row GlobalID={global_id_str} has no AnalysisDate — skipping"
             )
             continue
-
-        from datetime import date as date_type, datetime, time
 
         if isinstance(obs_dt, datetime):
             if obs_dt.tzinfo is None:
