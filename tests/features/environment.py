@@ -58,7 +58,11 @@ from db import (
 )
 from db.analysis_method import AnalysisMethod
 from db.field import FieldEvent, FieldActivity
-from db.nma_legacy import NMA_Radionuclides, NMA_Chemistry_SampleInfo
+from db.nma_legacy import (
+    NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
+    NMA_Chemistry_SampleInfo,
+)
 from db.notes import Notes
 from db.observation import Observation
 from db.engine import session_ctx
@@ -744,16 +748,27 @@ def after_all(context):
 
 
 def before_scenario(context, scenario):
-    # runs before EVERY scenario
-    # e.g. reset test data, open browser, etc.
-    pass
+    # Initialize backfill tracking at scenario level so after_scenario can access it.
+    context._backfill_created = {
+        "observation_ids": [],
+        "note_ids": [],
+        "analysis_method_ids": [],
+        "sample_ids": [],
+        "field_activity_ids": [],
+        "field_event_ids": [],
+        "nma_radionuclide_ids": [],
+        "nma_minor_trace_ids": [],
+        "nma_sampleinfo_ids": [],
+        "location_ids": [],
+        "well_ids": [],
+    }
 
 
 def after_scenario(context, scenario):
 
     # Chemistry backfill cleanup — runs regardless of DROP_AND_REBUILD_DB
     # because the backfill steps create their own fixture data.
-    if hasattr(context, "_backfill_created"):
+    if getattr(context, "_backfill_created", None) is not None:
         try:
             with session_ctx() as session:
                 created = context._backfill_created
@@ -793,6 +808,12 @@ def after_scenario(context, scenario):
                 # Delete NMA_Radionuclides created in this scenario
                 for rid in created.get("nma_radionuclide_ids", []):
                     row = session.get(NMA_Radionuclides, rid)
+                    if row:
+                        session.delete(row)
+
+                # Delete NMA_MinorTraceChemistry created in this scenario
+                for mid in created.get("nma_minor_trace_ids", []):
+                    row = session.get(NMA_MinorTraceChemistry, mid)
                     if row:
                         session.delete(row)
 
@@ -854,7 +875,10 @@ def after_scenario(context, scenario):
                 exc_info=True,
             )
         finally:
-            del context._backfill_created
+            try:
+                del context._backfill_created
+            except AttributeError:
+                pass
 
     if not get_bool_env("DROP_AND_REBUILD_DB"):
         return

@@ -31,7 +31,11 @@ from db import Location, Thing, LocationThingAssociation
 from db.analysis_method import AnalysisMethod
 from db.engine import session_ctx
 from db.field import FieldEvent, FieldActivity
-from db.nma_legacy import NMA_Chemistry_SampleInfo, NMA_Radionuclides
+from db.nma_legacy import (
+    NMA_Chemistry_SampleInfo,
+    NMA_MinorTraceChemistry,
+    NMA_Radionuclides,
+)
 from db.notes import Notes
 from db.observation import Observation
 from db.parameter import Parameter
@@ -52,6 +56,7 @@ def _ensure_backfill_tracking(context: Context):
             "field_activity_ids": [],
             "field_event_ids": [],
             "nma_radionuclide_ids": [],
+            "nma_minor_trace_ids": [],
             "nma_sampleinfo_ids": [],
             "location_ids": [],
             "well_ids": [],
@@ -144,6 +149,13 @@ def step_given_legacy_radionuclides_exist(context: Context):
     context.chemistry_type = "Radionuclides"
 
 
+@given("legacy NMA_MinorTraceChemistry records exist in the database")
+def step_given_legacy_minor_trace_exist(context: Context):
+    """Marker step — sets chemistry_type on context."""
+    _ensure_backfill_tracking(context)
+    context.chemistry_type = "MinorTraceChemistry"
+
+
 @given(
     'lexicon terms exist for parameter_name, unit, analysis_method_type, and sample_matrix "water"'
 )
@@ -158,7 +170,12 @@ def step_given_lexicon_terms_exist(context: Context):
         from db.lexicon import LexiconTerm
 
         # Terms that must already exist (seeded by init_lexicon)
-        for term in ("water", "pCi/L", "Chemistry Observation"):
+        required_terms = ["water", "Chemistry Observation"]
+        # Add unit terms based on chemistry type
+        if getattr(context, "chemistry_type", None) == "Radionuclides":
+            required_terms.append("pCi/L")
+
+        for term in required_terms:
             row = session.execute(
                 select(LexiconTerm).where(LexiconTerm.term == term)
             ).scalar_one_or_none()
@@ -171,14 +188,26 @@ def step_given_lexicon_terms_exist(context: Context):
         # In production these would be pre-seeded via a vocabulary
         # preparation step.
         test_analytes = (
+            # Radionuclides
             "GB",
             "Uranium",
             "GA",
             "Ra228",
             "Uranium-238",
             "Radium-226",
+            # Minor/Trace
+            "Arsenic",
+            "Boron",
+            "Lead",
+            "Copper",
+            "Zinc",
+            "Iron",
+            "Cadmium",
+            # Shared
             "Nitrate",
             "Unknown",
+            # Units
+            "ug/L",
         )
         for analyte in test_analytes:
             existing = session.execute(
@@ -207,6 +236,26 @@ def step_given_multi_radionuclides(context: Context):
             for heading in context.table.headings
         }
         _create_radionuclide_from_fields(context, fields)
+
+
+@given("a legacy NMA_MinorTraceChemistry record exists with:")
+def step_given_single_minor_trace(context: Context):
+    """Create a single NMA_MinorTraceChemistry row from a vertical Behave table."""
+    _ensure_backfill_tracking(context)
+    fields = {row["field"]: _parse_table_value(row["value"]) for row in context.table}
+    _create_minor_trace_from_fields(context, fields)
+
+
+@given("legacy NMA_MinorTraceChemistry records exist with:")
+def step_given_multi_minor_trace(context: Context):
+    """Create multiple NMA_MinorTraceChemistry rows from a horizontal Behave table."""
+    _ensure_backfill_tracking(context)
+    for row in context.table:
+        fields = {
+            heading: _parse_table_value(row[heading])
+            for heading in context.table.headings
+        }
+        _create_minor_trace_from_fields(context, fields)
 
 
 @given("a legacy Chemistry_SampleInfo record exists with:")
@@ -315,6 +364,26 @@ def step_when_run_backfill_again(context: Context):
 
     pre_ids = _snapshot_analysis_method_ids()
     context.backfill_result = backfill_radionuclides()
+    _track_created_analysis_methods(context, pre_ids)
+
+
+@when("I run the Minor Trace Chemistry backfill job")
+def step_when_run_minor_trace_backfill(context: Context):
+    """Execute the minor trace chemistry backfill and store the result."""
+    from transfers.backfill.chemistry_backfill import backfill_minor_trace_chemistry
+
+    pre_ids = _snapshot_analysis_method_ids()
+    context.backfill_result = backfill_minor_trace_chemistry()
+    _track_created_analysis_methods(context, pre_ids)
+
+
+@when("I run the Minor Trace Chemistry backfill job again")
+def step_when_run_minor_trace_backfill_again(context: Context):
+    """Re-run to verify idempotency."""
+    from transfers.backfill.chemistry_backfill import backfill_minor_trace_chemistry
+
+    pre_ids = _snapshot_analysis_method_ids()
+    context.backfill_result = backfill_minor_trace_chemistry()
     _track_created_analysis_methods(context, pre_ids)
 
 
@@ -536,6 +605,24 @@ def step_then_obs_by_gid_no_extra_columns(context: Context, global_id: str):
             ), f"Observation should not have attribute '{attr}'"
 
 
+@then(
+    'the Observation for GlobalID "{global_id}" should not store SamplePointID, OBJECTID, WCLab_ID, Volume, or VolumeUnit'
+)
+def step_then_obs_by_gid_no_extra_columns_extended(context: Context, global_id: str):
+    with session_ctx() as session:
+        obs = _get_observation_by_globalid(session, global_id)
+        for attr in (
+            "nma_sample_point_id",
+            "nma_object_id",
+            "nma_wclab_id",
+            "volume",
+            "volume_unit",
+        ):
+            assert not hasattr(
+                obs, attr
+            ), f"Observation should not have attribute '{attr}'"
+
+
 # --- Sample volume steps ---
 @then("the Sample should set volume to {value}")
 def step_then_sample_volume(context: Context, value: str):
@@ -696,6 +783,72 @@ def _create_radionuclide_from_fields(context: Context, fields: dict):
         session.commit()
         session.refresh(rad)
         context._backfill_created["nma_radionuclide_ids"].append(rad.id)
+
+
+def _create_minor_trace_from_fields(context: Context, fields: dict):
+    """Create NMA_Chemistry_SampleInfo (if needed) and NMA_MinorTraceChemistry row."""
+    _ensure_well(context)
+    global_id = fields.get("GlobalID")
+    sample_pt_id = fields.get("SamplePtID")
+
+    with session_ctx() as session:
+        well = context.objects["wells"][0]
+        well = session.merge(well)
+
+        # Get or create SampleInfo for this SamplePtID
+        sampleinfo = session.execute(
+            select(NMA_Chemistry_SampleInfo).where(
+                NMA_Chemistry_SampleInfo.nma_sample_pt_id == sample_pt_id
+            )
+        ).scalar_one_or_none()
+
+        if sampleinfo is None:
+            sampleinfo = NMA_Chemistry_SampleInfo(
+                thing_id=well.id,
+                nma_sample_pt_id=sample_pt_id,
+                nma_sample_point_id=fields.get("SamplePointID", "UNKNOWN"),
+            )
+            session.add(sampleinfo)
+            session.flush()
+            context._backfill_created["nma_sampleinfo_ids"].append(sampleinfo.id)
+
+        # Parse analysis date
+        analysis_date = None
+        if fields.get("AnalysisDate"):
+            analysis_date = datetime.strptime(
+                fields["AnalysisDate"], "%Y-%m-%d"
+            ).replace(tzinfo=timezone.utc)
+
+        # Parse numeric fields
+        sample_value = (
+            float(fields["SampleValue"]) if fields.get("SampleValue") else None
+        )
+        uncertainty_val = (
+            float(fields["Uncertainty"]) if fields.get("Uncertainty") else None
+        )
+        volume_val = int(fields["Volume"]) if fields.get("Volume") else None
+
+        mtc = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=sampleinfo.id,
+            nma_global_id=global_id,
+            nma_sample_point_id=fields.get("SamplePointID", "UNKNOWN"),
+            nma_wclab_id=fields.get("WCLab_ID"),
+            analyte=fields.get("Analyte"),
+            symbol=fields.get("Symbol"),
+            sample_value=sample_value,
+            units=fields.get("Units"),
+            uncertainty=uncertainty_val,
+            analysis_method=fields.get("AnalysisMethod"),
+            analysis_date=analysis_date,
+            notes=fields.get("Notes"),
+            volume=volume_val,
+            volume_unit=fields.get("VolumeUnit"),
+            analyses_agency=fields.get("AnalysesAgency"),
+        )
+        session.add(mtc)
+        session.commit()
+        session.refresh(mtc)
+        context._backfill_created["nma_minor_trace_ids"].append(mtc.id)
 
 
 # ============= EOF =============================================

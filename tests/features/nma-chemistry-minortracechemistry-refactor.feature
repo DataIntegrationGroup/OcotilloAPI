@@ -46,6 +46,7 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Analyte     | Boron                               |
       | SampleValue | 12.8                                |
       | Units       | ug/L                                |
+      | AnalysisDate| 2003-09-15                          |
       | Volume      | 25                                  |
       | VolumeUnit  | mL                                  |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
@@ -66,6 +67,7 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Analyte     | Lead                                |
       | SampleValue | 1.7                                 |
       | Units       | ug/L                                |
+      | AnalysisDate| 2002-04-10                          |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Minor Trace Chemistry backfill job
     Then the Observation for GlobalID "3c13c4f0-2a6c-4aa3-9d0b-1a6a8f7f9b33" should reference the Sample with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
@@ -92,6 +94,7 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Notes       | as Fe                               |
       | SampleValue | 210                                 |
       | Units       | ug/L                                |
+      | AnalysisDate| 2004-11-02                          |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Minor Trace Chemistry backfill job
     Then a Parameter record should exist with parameter_name "Iron" and matrix "water"
@@ -113,6 +116,7 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Symbol      | <                                   |
       | SampleValue | 0.05                                |
       | Units       | ug/L                                |
+      | AnalysisDate| 2005-03-18                          |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Minor Trace Chemistry backfill job
     Then the Observation for GlobalID "28d93dc8-99e3-40a2-8f1b-0b1f48d46cd8" should set detect_flag to false
@@ -123,6 +127,10 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | field        | value                               |
       | GlobalID     | 8f1e6dcb-9a5d-4b9c-9bf0-9b7c3f2b6b62 |
       | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000 |
+      | Analyte      | Arsenic                             |
+      | SampleValue  | 3.2                                 |
+      | Units        | ug/L                                |
+      | AnalysisDate | 2006-01-15                          |
       | SamplePointID| AB-0186A                            |
       | OBJECTID     | 9012                                |
       | WCLab_ID     | LAB-98765                           |
@@ -141,6 +149,7 @@ Feature: Refactor legacy MinorTraceChemistry into the Ocotillo schema via backfi
       | Analyte    | Nitrate                             |
       | SampleValue| 1.2                                 |
       | Units      | ug/L                                |
+      | AnalysisDate| 2007-08-22                         |
     When I run the Minor Trace Chemistry backfill job
     Then no Observation record should exist with nma_pk_chemistryresults "02b8a58c-9a7e-44e0-9e9f-9b26f2b8c71f"
     And the backfill job should report 1 skipped record due to missing Sample linkage (SamplePtID)
