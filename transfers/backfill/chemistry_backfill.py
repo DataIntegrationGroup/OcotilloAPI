@@ -64,7 +64,10 @@ def _build_sample_cache(session: Session) -> dict[str, int]:
 
 
 def _get_or_create_parameter(
-    session: Session, parameter_name: str, matrix: str = "water"
+    session: Session,
+    parameter_name: str,
+    matrix: str = "water",
+    default_unit: str = "pCi/L",
 ) -> Parameter:
     """Return existing Parameter or create a new one.
 
@@ -82,7 +85,7 @@ def _get_or_create_parameter(
         param = Parameter(
             parameter_name=parameter_name,
             matrix=matrix,
-            default_unit="pCi/L",
+            default_unit=default_unit,
             release_status="draft",
         )
         session.add(param)
@@ -403,10 +406,17 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
                 else:
                     # date object — promote to datetime at midnight UTC
                     obs_dt = datetime.combine(obs_dt, time.min, tzinfo=timezone.utc)
+        else:
+            logger.warning(
+                "Row GlobalID=%s has NULL AnalysisDate — observation_datetime will be NULL",
+                global_id_str,
+            )
 
         savepoint = session.begin_nested()
         try:
-            param = _get_or_create_parameter(session, analyte, "water")
+            param = _get_or_create_parameter(
+                session, analyte, "water", default_unit="ug/L"
+            )
 
             analysis_method_id = None
             if row.analysis_method:
