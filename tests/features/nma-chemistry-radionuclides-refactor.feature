@@ -41,13 +41,14 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
   Scenario: Volume and VolumeUnit populate the related Sample
     Given a legacy NMA_Radionuclides record exists with:
       | field       | value                               |
-      | GlobalID    | 9cece0ef-f0b3-4e3d-8df7-2f82dc67cb2c |
-      | SamplePtID  | 550e8400-e29b-41d4-a716-446655440000 |
-      | Analyte     | Uranium                             |
-      | SampleValue | 0.12                                |
-      | Units       | pCi/L                               |
-      | Volume      | 25                                  |
-      | VolumeUnit  | mL                                  |
+      | GlobalID     | 9cece0ef-f0b3-4e3d-8df7-2f82dc67cb2c |
+      | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000 |
+      | Analyte      | Uranium                             |
+      | SampleValue  | 0.12                                |
+      | Units        | pCi/L                               |
+      | AnalysisDate | 2004-03-15                          |
+      | Volume       | 25                                  |
+      | VolumeUnit   | mL                                  |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Radionuclides backfill job
     Then the Sample should set volume to 25
@@ -61,11 +62,12 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
       | SamplePointID| EB-490A                             |
     And a legacy NMA_Radionuclides record exists with:
       | field       | value                               |
-      | GlobalID    | 76F3A993-A29B-413B-83E0-00ADF51D15A2 |
-      | SamplePtID  | 7758D992-0394-42B1-BE96-734FCACB6412 |
-      | Analyte     | GA                                  |
-      | SampleValue | 5.7                                 |
-      | Units       | pCi/L                               |
+      | GlobalID     | 76F3A993-A29B-413B-83E0-00ADF51D15A2 |
+      | SamplePtID   | 7758D992-0394-42B1-BE96-734FCACB6412 |
+      | Analyte      | GA                                  |
+      | SampleValue  | 5.7                                 |
+      | Units        | pCi/L                               |
+      | AnalysisDate | 2003-06-20                          |
     And a Sample record exists with nma_pk_chemistrysample "7758D992-0394-42B1-BE96-734FCACB6412"
     When I run the Radionuclides backfill job
     Then the Observation for GlobalID "76F3A993-A29B-413B-83E0-00ADF51D15A2" should reference the Sample with nma_pk_chemistrysample "7758D992-0394-42B1-BE96-734FCACB6412"
@@ -87,12 +89,13 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
   Scenario: Notes are stored in the Notes table and linked to the Observation
     Given a legacy NMA_Radionuclides record exists with:
       | field       | value                               |
-      | GlobalID    | 6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74 |
-      | SamplePtID  | 550e8400-e29b-41d4-a716-446655440000 |
-      | Analyte     | Uranium-238                         |
-      | Notes       | counts below detection              |
-      | SampleValue | 0.02                                |
-      | Units       | pCi/L                               |
+      | GlobalID     | 6a5d2f1e-7b86-4b64-a7b7-9b5f5a612f74 |
+      | SamplePtID   | 550e8400-e29b-41d4-a716-446655440000 |
+      | Analyte      | Uranium-238                         |
+      | Notes        | counts below detection              |
+      | SampleValue  | 0.02                                |
+      | Units        | pCi/L                               |
+      | AnalysisDate | 2005-08-10                          |
     And a Sample record exists with nma_pk_chemistrysample "550e8400-e29b-41d4-a716-446655440000"
     When I run the Radionuclides backfill job
     Then a Parameter record should exist with parameter_name "Uranium-238" and matrix "water"
@@ -108,12 +111,13 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
   Scenario: Symbol "<" means SampleValue is a detection limit (not a detected concentration)
     Given a legacy NMA_Radionuclides record exists with:
       | field       | value                               |
-      | GlobalID    | F7370DC2-668F-447A-9E46-00D8CA514299 |
-      | SamplePtID  | D8CCC58C-55F2-4A35-B65D-A08F4A07902A |
-      | Analyte     | GA                                  |
-      | Symbol      | <                                   |
-      | SampleValue | 2                                   |
-      | Units       | pCi/L                               |
+      | GlobalID     | F7370DC2-668F-447A-9E46-00D8CA514299 |
+      | SamplePtID   | D8CCC58C-55F2-4A35-B65D-A08F4A07902A |
+      | Analyte      | GA                                  |
+      | Symbol       | <                                   |
+      | SampleValue  | 2                                   |
+      | Units        | pCi/L                               |
+      | AnalysisDate | 2006-02-14                          |
     And a Sample record exists with nma_pk_chemistrysample "D8CCC58C-55F2-4A35-B65D-A08F4A07902A"
     When I run the Radionuclides backfill job
     Then the Observation for GlobalID "F7370DC2-668F-447A-9E46-00D8CA514299" should set detect_flag to false
@@ -122,12 +126,13 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
   Scenario: Unmapped legacy fields are not persisted in the new schema
     Given a legacy NMA_Radionuclides record exists with:
       | field        | value                               |
-      | GlobalID     | 76F3A993-A29B-413B-83E0-00ADF51D15A2 |
-      | SamplePtID   | 7758D992-0394-42B1-BE96-734FCACB6412 |
-      | Analyte      | Radium-226                          |
-      | SamplePointID| EB-490A                             |
-      | OBJECTID     | 333                                 |
-      | WCLab_ID     | null                                |
+      | GlobalID      | 76F3A993-A29B-413B-83E0-00ADF51D15A2 |
+      | SamplePtID    | 7758D992-0394-42B1-BE96-734FCACB6412 |
+      | Analyte       | Radium-226                          |
+      | AnalysisDate  | 2003-06-20                          |
+      | SamplePointID | EB-490A                             |
+      | OBJECTID      | 333                                 |
+      | WCLab_ID      | null                                |
     And a Sample record exists with nma_pk_chemistrysample "7758D992-0394-42B1-BE96-734FCACB6412"
     When I run the Radionuclides backfill job
     Then the Observation for GlobalID "76F3A993-A29B-413B-83E0-00ADF51D15A2" should not store SamplePointID, OBJECTID, or WCLab_ID
@@ -136,11 +141,12 @@ Feature: Refactor legacy Radionuclides into the Ocotillo schema via backfill job
   Scenario: Orphan legacy records are skipped and reported
     Given a legacy NMA_Radionuclides record exists with:
       | field      | value                               |
-      | GlobalID   | 02b8a58c-9a7e-44e0-9e9f-9b26f2b8c71f |
-      | SamplePtID | 319c1256-1237-4e17-b93e-03ad8a7789d6 |
-      | Analyte    | Nitrate                             |
-      | SampleValue| 1.2                                 |
-      | Units      | pCi/L                               |
+      | GlobalID     | 02b8a58c-9a7e-44e0-9e9f-9b26f2b8c71f |
+      | SamplePtID   | 319c1256-1237-4e17-b93e-03ad8a7789d6 |
+      | Analyte      | Nitrate                             |
+      | SampleValue  | 1.2                                 |
+      | Units        | pCi/L                               |
+      | AnalysisDate | 2007-08-22                          |
     When I run the Radionuclides backfill job
     Then no Observation record should exist with nma_pk_chemistryresults "02b8a58c-9a7e-44e0-9e9f-9b26f2b8c71f"
     And the backfill job should report 1 skipped record due to missing Sample linkage (SamplePtID)
