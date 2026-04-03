@@ -822,12 +822,12 @@ def _create_minor_trace_from_fields(context: Context, fields: dict):
             session.flush()
             context._backfill_created["nma_sampleinfo_ids"].append(sampleinfo.id)
 
-        # Parse analysis date
+        # Parse analysis date as a plain date to match the Date column type
         analysis_date = None
         if fields.get("AnalysisDate"):
             analysis_date = datetime.strptime(
                 fields["AnalysisDate"], "%Y-%m-%d"
-            ).replace(tzinfo=timezone.utc)
+            ).date()
 
         # Parse numeric fields
         sample_value = (

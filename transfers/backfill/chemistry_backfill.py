@@ -398,29 +398,29 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
         # Build observation_datetime — observation_datetime is NOT NULL in the DB,
         # so rows without AnalysisDate must be skipped.
         obs_dt = row.analysis_date
-        if obs_dt is not None:
-            if hasattr(obs_dt, "tzinfo") and obs_dt.tzinfo is None:
-                from datetime import datetime, time
-
-                if isinstance(obs_dt, datetime):
-                    obs_dt = obs_dt.replace(tzinfo=timezone.utc)
-                else:
-                    # date object — promote to datetime at midnight UTC
-                    obs_dt = datetime.combine(obs_dt, time.min, tzinfo=timezone.utc)
-        else:
+        if obs_dt is None:
             result.errors.append(
                 f"Row GlobalID={global_id_str} has no AnalysisDate — skipping"
             )
             continue
 
-        # unit is NOT NULL in the DB — fall back to parameter default_unit
-        unit = row.units if row.units else "ug/L"
+        from datetime import date as date_type, datetime, time
+
+        if isinstance(obs_dt, datetime):
+            if obs_dt.tzinfo is None:
+                obs_dt = obs_dt.replace(tzinfo=timezone.utc)
+        elif isinstance(obs_dt, date_type):
+            obs_dt = datetime.combine(obs_dt, time.min, tzinfo=timezone.utc)
+        # else: already timezone-aware datetime — use as-is
 
         savepoint = session.begin_nested()
         try:
             param = _get_or_create_parameter(
                 session, analyte, "water", default_unit="ug/L"
             )
+
+            # unit is NOT NULL in the DB — fall back to parameter's default_unit
+            unit = row.units if row.units else param.default_unit
 
             analysis_method_id = None
             if row.analysis_method:

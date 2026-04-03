@@ -768,10 +768,10 @@ def after_scenario(context, scenario):
 
     # Chemistry backfill cleanup — runs regardless of DROP_AND_REBUILD_DB
     # because the backfill steps create their own fixture data.
-    if getattr(context, "_backfill_created", None) is not None:
+    created = getattr(context, "_backfill_created", None)
+    if created is not None and any(created.values()):
         try:
             with session_ctx() as session:
-                created = context._backfill_created
 
                 # Delete in FK order: Notes → Observations → Samples → FieldActivities → FieldEvents → NMA rows
                 # Scope to observations linked to this scenario's samples
