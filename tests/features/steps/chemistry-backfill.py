@@ -73,8 +73,18 @@ def _ensure_well(context: Context):
     """
     if not hasattr(context, "objects"):
         context.objects = {}
-    if context.objects.get("wells"):
-        return  # already have one
+    wells = context.objects.get("wells") or []
+    if wells:
+        existing_well = wells[0]
+        existing_well_id = getattr(existing_well, "id", None)
+        if existing_well_id is not None:
+            with session_ctx() as session:
+                persisted = session.execute(
+                    select(Thing).where(Thing.id == existing_well_id)
+                ).scalar_one_or_none()
+            if persisted is not None:
+                return  # already have a persisted well
+        context.objects["wells"] = []
 
     _ensure_backfill_tracking(context)
     with session_ctx() as session:

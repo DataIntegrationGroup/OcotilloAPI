@@ -395,7 +395,8 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
             )
             continue
 
-        # Build observation_datetime — minor/trace rows may lack AnalysisDate
+        # Build observation_datetime — observation_datetime is NOT NULL in the DB,
+        # so rows without AnalysisDate must be skipped.
         obs_dt = row.analysis_date
         if obs_dt is not None:
             if hasattr(obs_dt, "tzinfo") and obs_dt.tzinfo is None:
@@ -407,10 +408,13 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
                     # date object — promote to datetime at midnight UTC
                     obs_dt = datetime.combine(obs_dt, time.min, tzinfo=timezone.utc)
         else:
-            logger.warning(
-                "Row GlobalID=%s has NULL AnalysisDate — observation_datetime will be NULL",
-                global_id_str,
+            result.errors.append(
+                f"Row GlobalID={global_id_str} has no AnalysisDate — skipping"
             )
+            continue
+
+        # unit is NOT NULL in the DB — fall back to parameter default_unit
+        unit = row.units if row.units else "ug/L"
 
         savepoint = session.begin_nested()
         try:
@@ -424,8 +428,6 @@ def _backfill_minor_trace_chemistry_impl(session: Session) -> BackfillResult:
                 analysis_method_id = am.id
 
             detect_flag = _resolve_detect_flag(row.symbol, row.sample_value)
-
-            unit = row.units if row.units else None
 
             obs_values = {
                 "nma_pk_chemistryresults": global_id_str,

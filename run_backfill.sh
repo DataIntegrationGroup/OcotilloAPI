@@ -38,4 +38,4 @@ set +a
 
 uv run alembic upgrade head
 
-python -m transfers.backfill.backfill
+python -m transfers.backfill.backfill "$@"
