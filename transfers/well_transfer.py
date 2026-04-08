@@ -1077,7 +1077,7 @@ class WellChunkTransferer(ChunkTransferer):
 
         input_df = read_csv(self.source_table, self.source_dtypes)
         wdf = replace_nans(input_df)
-        cleaned_df = filter_to_valid_point_ids(wdf)
+        cleaned_df = filter_to_valid_point_ids(wdf, self.pointids)
         return input_df, cleaned_df
 
     def _get_df_chunk(self, session, chunk):

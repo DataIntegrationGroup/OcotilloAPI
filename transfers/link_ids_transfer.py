@@ -50,6 +50,9 @@ class LinkIdsWellDataTransferer(WellChunkTransferer):
                 len(chunk),
                 len(thing_id_by_pointid),
             )
+            existing_link_keys = _fetch_existing_link_keys(
+                session, thing_id_by_pointid.values()
+            )
 
             rows_to_insert: list[dict] = []
             for row in chunk.itertuples(index=False):
@@ -92,14 +95,18 @@ class LinkIdsWellDataTransferer(WellChunkTransferer):
                         )
                         continue
 
-                    rows_to_insert.append(
-                        {
-                            "thing_id": thing_id,
-                            "relation": relation,
-                            "alternate_id": aid_text,
-                            "alternate_organization": "NMOSE",
-                        }
-                    )
+                    link_row = {
+                        "thing_id": thing_id,
+                        "relation": relation,
+                        "alternate_id": aid_text,
+                        "alternate_organization": "NMOSE",
+                    }
+                    link_key = _link_row_key(link_row)
+                    if link_key in existing_link_keys:
+                        continue
+
+                    rows_to_insert.append(link_row)
+                    existing_link_keys.add(link_key)
 
             if rows_to_insert:
                 session.execute(insert(ThingIdLink), rows_to_insert)
@@ -135,7 +142,7 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
         ldf = input_df[input_df["SiteType"] == self.site_type]
         ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
         ldf = replace_nans(ldf)
-        cleaned_df = filter_to_valid_point_ids(ldf)
+        cleaned_df = filter_to_valid_point_ids(ldf, self.pointids)
         return input_df, cleaned_df
 
     def _transfer_hook(self, session):
@@ -153,6 +160,9 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
                 len(chunk),
                 len(thing_id_by_pointid),
             )
+            existing_link_keys = _fetch_existing_link_keys(
+                session, thing_id_by_pointid.values()
+            )
 
             rows_to_insert: list[dict] = []
             for row in chunk.itertuples(index=False):
@@ -168,7 +178,11 @@ class LinkIdsLocationDataTransferer(WellChunkTransferer):
                 ):
                     link_row = func(row, thing_id)
                     if link_row:
+                        link_key = _link_row_key(link_row)
+                        if link_key in existing_link_keys:
+                            continue
                         rows_to_insert.append(link_row)
+                        existing_link_keys.add(link_key)
 
             if rows_to_insert:
                 session.execute(insert(ThingIdLink), rows_to_insert)
@@ -245,6 +259,33 @@ def _make_thing_id_link(
         "relation": relation,
         "alternate_id": alternate_id,
         "alternate_organization": alternate_organization,
+    }
+
+
+def _link_row_key(row: dict) -> tuple[int, str, str, str]:
+    return (
+        row["thing_id"],
+        row["relation"],
+        row["alternate_id"],
+        row["alternate_organization"],
+    )
+
+
+def _fetch_existing_link_keys(session, thing_ids) -> set[tuple[int, str, str, str]]:
+    thing_ids = list(set(thing_ids))
+    if not thing_ids:
+        return set()
+
+    return {
+        (thing_id, relation, alternate_id, alternate_organization)
+        for thing_id, relation, alternate_id, alternate_organization in session.query(
+            ThingIdLink.thing_id,
+            ThingIdLink.relation,
+            ThingIdLink.alternate_id,
+            ThingIdLink.alternate_organization,
+        )
+        .filter(ThingIdLink.thing_id.in_(thing_ids))
+        .all()
     }
 
 

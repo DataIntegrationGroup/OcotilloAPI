@@ -92,7 +92,7 @@ class SensorTransferer(ThingBasedTransferer):
         input_df = read_csv(self.source_table)
         input_df.columns = input_df.columns.str.replace(" ", "_")
         input_df = input_df[input_df.SerialNo.notna()]
-        cleaned_df = filter_to_valid_point_ids(input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df, self.pointids)
         cleaned_df = replace_nans(cleaned_df)
         return input_df, cleaned_df
 

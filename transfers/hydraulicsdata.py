@@ -37,7 +37,7 @@ from db import NMA_HydraulicsData, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 class HydraulicsDataTransferer(Transferer):
@@ -63,7 +63,8 @@ class HydraulicsDataTransferer(Transferer):
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = read_csv(self.source_table)
-        cleaned_df = self._filter_to_valid_things(df)
+        cleaned_df = filter_to_valid_point_ids(df, self.pointids)
+        cleaned_df = self._filter_to_valid_things(cleaned_df)
         return df, cleaned_df
 
     def _filter_to_valid_things(self, df: pd.DataFrame) -> pd.DataFrame:

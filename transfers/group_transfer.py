@@ -47,11 +47,16 @@ class ProjectGroupTransferer(Transferer):
             if prefix:
                 # get all PointIDs that start with prefix
                 sql = select(Thing).where(Thing.name.like(f"{prefix}%"))
+                if self.is_scoped_run():
+                    sql = sql.where(Thing.name.in_(self.pointids))
                 records = session.scalars(sql).unique().all()
                 if records:
                     logger.info(
                         f"Adding {len(records)} things to group {group.name}, prefix {prefix}"
                     )
+                    existing_thing_ids = {
+                        assoc.thing_id for assoc in group.thing_associations
+                    }
                     group_is_monitoring_plan = False
                     for record in records:
                         # set the group_type to Monitoring Plan if at least one well is currently monitored
@@ -78,9 +83,11 @@ class ProjectGroupTransferer(Transferer):
                                             f"  Setting group {group.name} type to Monitoring Plan based on thing {record.name}"
                                         )
 
-                        gta = GroupThingAssociation(group=group, thing=record)
-                        session.add(gta)
-                        group.thing_associations.append(gta)
+                        if record.id not in existing_thing_ids:
+                            gta = GroupThingAssociation(group=group, thing=record)
+                            session.add(gta)
+                            group.thing_associations.append(gta)
+                            existing_thing_ids.add(record.id)
 
         session.add(group)
         session.commit()

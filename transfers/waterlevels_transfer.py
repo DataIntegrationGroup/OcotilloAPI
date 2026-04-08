@@ -106,6 +106,12 @@ class WaterLevelTransferer(Transferer):
                 name: thing_id
                 for name, thing_id in session.query(Thing.name, Thing.id).all()
             }
+            self._created_contact_id_by_key = {
+                (name, organization): contact_id
+                for name, organization, contact_id in session.query(
+                    Contact.name, Contact.organization, Contact.id
+                ).all()
+            }
 
             owner_rows = (
                 session.query(Thing.name, ThingContactAssociation.contact_id)
@@ -122,15 +128,16 @@ class WaterLevelTransferer(Transferer):
             self._owner_contact_id_by_pointid = owner_contact_cache
 
         logger.info(
-            "Built WaterLevels caches: %s Things, %s owner contacts",
+            "Built WaterLevels caches: %s Things, %s contacts, %s owner contacts",
             len(self._thing_id_by_pointid),
+            len(self._created_contact_id_by_key),
             len(self._owner_contact_id_by_pointid),
         )
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         input_df = read_csv(self.source_table, dtype={"MeasuredBy": str})
         input_df = replace_nans(input_df)
-        cleaned_df = filter_to_valid_point_ids(input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df, self.pointids)
         cleaned_df = filter_by_valid_measuring_agency(cleaned_df)
         logger.info(
             "Prepared %s rows for %s after filtering (%s -> %s)",
@@ -160,6 +167,7 @@ class WaterLevelTransferer(Transferer):
             "contacts_created": 0,
             "contacts_reused": 0,
             "notes_created": 0,
+            "rows_skipped_existing": 0,
         }
 
         gwd = self.cleaned_df.groupby(["PointID"])
@@ -175,6 +183,28 @@ class WaterLevelTransferer(Transferer):
                 len(group),
             )
 
+            group_globalids = [
+                str(global_id)
+                for global_id in group["GlobalID"].tolist()
+                if pd.notna(global_id)
+            ]
+            existing_globalids: set[str] = set()
+            if group_globalids:
+                existing_globalids.update(
+                    global_id
+                    for (global_id,) in session.query(Sample.nma_pk_waterlevels)
+                    .filter(Sample.nma_pk_waterlevels.in_(group_globalids))
+                    .all()
+                    if global_id
+                )
+                existing_globalids.update(
+                    global_id
+                    for (global_id,) in session.query(Observation.nma_pk_waterlevels)
+                    .filter(Observation.nma_pk_waterlevels.in_(group_globalids))
+                    .all()
+                    if global_id
+                )
+
             thing_id = self._thing_id_by_pointid.get(pointid)
             if thing_id is None:
                 stats["groups_skipped_missing_thing"] += 1
@@ -184,6 +214,10 @@ class WaterLevelTransferer(Transferer):
             prepared_rows: list[dict[str, Any]] = []
             for i, row in enumerate(group.itertuples()):
                 stats["rows_total"] += 1
+                row_globalid = str(row.GlobalID) if pd.notna(row.GlobalID) else None
+                if row_globalid and row_globalid in existing_globalids:
+                    stats["rows_skipped_existing"] += 1
+                    continue
                 dt_utc = self._get_dt_utc(row)
                 if dt_utc is None:
                     stats["rows_skipped_dt"] += 1
@@ -648,14 +682,15 @@ class WaterLevelTransferer(Transferer):
 
                 if contacts_to_create:
                     try:
-                        created_contact_ids = (
-                            session.execute(
-                                insert(Contact).returning(Contact.id),
-                                contacts_to_create,
+                        with session.begin_nested():
+                            created_contact_ids = (
+                                session.execute(
+                                    insert(Contact).returning(Contact.id),
+                                    contacts_to_create,
+                                )
+                                .scalars()
+                                .all()
                             )
-                            .scalars()
-                            .all()
-                        )
                     except Exception as e:
                         logger.critical(
                             "Contact insert failed for PointID=%s, GlobalID=%s: %s",
@@ -663,6 +698,26 @@ class WaterLevelTransferer(Transferer):
                             row.GlobalID,
                             str(e),
                         )
+                        existing_contact_ids = self._lookup_existing_contact_ids(
+                            session, missing_keys
+                        )
+                        unresolved_keys: list[tuple[str, str]] = []
+                        for key in missing_keys:
+                            existing_contact_id = existing_contact_ids.get(key)
+                            if existing_contact_id is None:
+                                unresolved_keys.append(key)
+                                continue
+                            self._created_contact_id_by_key[key] = existing_contact_id
+                            field_event_participant_ids.append(existing_contact_id)
+                            self._last_contacts_reused_count += 1
+
+                        if unresolved_keys:
+                            logger.critical(
+                                "Unable to resolve existing contact ids for PointID=%s, GlobalID=%s, keys=%s",
+                                row.PointID,
+                                row.GlobalID,
+                                unresolved_keys,
+                            )
                     else:
                         for key, created_contact_id, payload in zip(
                             missing_keys, created_contact_ids, contacts_to_create
@@ -703,6 +758,23 @@ class WaterLevelTransferer(Transferer):
 
         return field_event_participant_ids
 
+    def _lookup_existing_contact_ids(
+        self, session: Session, keys: list[tuple[str, str]]
+    ) -> dict[tuple[str, str], int]:
+        existing_contact_ids: dict[tuple[str, str], int] = {}
+        for name, organization in keys:
+            contact_id = (
+                session.query(Contact.id)
+                .filter(
+                    Contact.name == name,
+                    Contact.organization == organization,
+                )
+                .scalar()
+            )
+            if contact_id is not None:
+                existing_contact_ids[(name, organization)] = contact_id
+        return existing_contact_ids
+
     def _row_context(self, row: Any) -> str:
         return (
             f"PointID={getattr(row, 'PointID', None)}, "
@@ -713,7 +785,7 @@ class WaterLevelTransferer(Transferer):
     def _log_transfer_summary(self, stats: dict[str, int]) -> None:
         logger.info(
             "WaterLevels summary: groups total=%s processed=%s skipped_missing_thing=%s failed_commit=%s "
-            "rows total=%s created=%s skipped_dt=%s skipped_reason=%s missing_participants=%s well_destroyed=%s "
+            "rows total=%s created=%s skipped_existing=%s skipped_dt=%s skipped_reason=%s missing_participants=%s well_destroyed=%s "
             "field_events=%s activities=%s samples=%s observations=%s contacts_created=%s contacts_reused=%s",
             stats["groups_total"],
             stats["groups_processed"],
@@ -721,6 +793,7 @@ class WaterLevelTransferer(Transferer):
             stats["groups_failed_commit"],
             stats["rows_total"],
             stats["rows_created"],
+            stats["rows_skipped_existing"],
             stats["rows_skipped_dt"],
             stats["rows_skipped_reason"],
             stats["rows_missing_participants"],

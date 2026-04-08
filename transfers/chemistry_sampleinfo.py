@@ -23,7 +23,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, Location, LocationThingAssociation
+from db import NMA_Chemistry_SampleInfo, Location, LocationThingAssociation, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -75,8 +75,12 @@ class ChemistrySampleInfoTransferer(Transferer):
                     Location.id == LocationThingAssociation.location_id,
                 )
                 .filter(Location.nma_pk_location.isnot(None))
-                .all()
             )
+            if self.is_scoped_run():
+                results = results.join(
+                    Thing, Thing.id == LocationThingAssociation.thing_id
+                ).filter(Thing.name.in_(self.pointids))
+            results = results.all()
             location_to_thing = {}
             for nma_pk_location, thing_id in results:
                 if nma_pk_location is None:

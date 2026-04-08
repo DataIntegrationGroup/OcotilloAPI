@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from db import NMA_SurfaceWaterPhotos
 from transfers.logger import logger
 from transfers.transferer import Transferer
-from transfers.util import replace_nans
+from transfers.util import replace_nans, filter_to_valid_point_ids
 
 
 class SurfaceWaterPhotosTransferer(Transferer):
@@ -41,6 +41,7 @@ class SurfaceWaterPhotosTransferer(Transferer):
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
         cleaned_df = replace_nans(df)
+        cleaned_df = filter_to_valid_point_ids(cleaned_df, self.pointids)
         return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:

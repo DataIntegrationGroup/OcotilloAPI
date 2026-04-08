@@ -27,17 +27,19 @@ def test_transfer_new_site_types_calls_transfer_thing(
 ):
     calls = []
 
-    def fake_transfer_thing(session, site_type, make_payload, limit=None):
+    def fake_transfer_thing(
+        session, site_type, make_payload, limit=None, pointids=None
+    ):
         class Row:
             PointID = "PT-1"
             PublicRelease = False
 
         payload = make_payload(Row)
-        calls.append((site_type, payload, limit))
+        calls.append((site_type, payload, limit, pointids))
 
     monkeypatch.setattr(tt, "transfer_thing", fake_transfer_thing)
 
-    getattr(tt, func_name)(session=None, limit=7)
+    getattr(tt, func_name)(session=None, limit=7, pointids=["PT-1"])
 
     assert calls == [
         (
@@ -48,5 +50,6 @@ def test_transfer_new_site_types_calls_transfer_thing(
                 "release_status": "private",
             },
             7,
+            ["PT-1"],
         )
     ]

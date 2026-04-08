@@ -20,7 +20,9 @@ from transfers.util import (
 )
 
 
-def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
+def transfer_stratigraphy(
+    session: Session, limit: int = None, pointids: list[str] | None = None
+) -> tuple:
     """
     Transfer detailed stratigraphy (lithology log) data from Stratigraphy CSV.
 
@@ -50,7 +52,7 @@ def transfer_stratigraphy(session: Session, limit: int = None) -> tuple:
     cleaned_df = replace_nans(input_df)
 
     # Step 2: Filter to only wells that exist in database
-    cleaned_df = filter_to_valid_point_ids(cleaned_df)
+    cleaned_df = filter_to_valid_point_ids(cleaned_df, pointids)
 
     n_records = len(cleaned_df)
     n_wells = len(cleaned_df["PointID"].unique())

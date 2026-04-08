@@ -43,10 +43,27 @@ def _get_location_df():
     return _LOCATION_DF_CACHE
 
 
-def transfer_thing(session: Session, site_type: str, make_payload, limit=None) -> None:
+def transfer_thing(
+    session: Session,
+    site_type: str,
+    make_payload,
+    limit=None,
+    pointids: list[str] | None = None,
+) -> None:
     ldf = _get_location_df()
     ldf = ldf[ldf["SiteType"] == site_type]
     ldf = ldf[ldf["Easting"].notna() & ldf["Northing"].notna()]
+    if pointids:
+        normalized_pointids = ldf["PointID"].map(
+            lambda value: str(value).strip().upper()
+        )
+        ldf = ldf[normalized_pointids.isin(set(pointids))]
+        if ldf.empty:
+            logger.info(
+                "No matching PointIDs for site type %s in scoped run; skipping",
+                site_type,
+            )
+            return
 
     # Pre-compute duplicate PointIDs once to avoid O(n^2) filtering in the loop.
     duplicate_mask = ldf["PointID"].duplicated(keep=False)
@@ -219,7 +236,7 @@ def _release_status(row) -> str:
     return "public" if row.PublicRelease else "private"
 
 
-def transfer_springs(session, limit=None):
+def transfer_springs(session, limit=None, pointids: list[str] | None = None):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -227,10 +244,10 @@ def transfer_springs(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "SP", make_payload, limit)
+    transfer_thing(session, "SP", make_payload, limit, pointids)
 
 
-def transfer_perennial_streams(session, limit=None):
+def transfer_perennial_streams(session, limit=None, pointids: list[str] | None = None):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -238,10 +255,10 @@ def transfer_perennial_streams(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "PS", make_payload, limit)
+    transfer_thing(session, "PS", make_payload, limit, pointids)
 
 
-def transfer_ephemeral_streams(session, limit=None):
+def transfer_ephemeral_streams(session, limit=None, pointids: list[str] | None = None):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -249,10 +266,10 @@ def transfer_ephemeral_streams(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "ES", make_payload, limit)
+    transfer_thing(session, "ES", make_payload, limit, pointids)
 
 
-def transfer_met_stations(session, limit=None):
+def transfer_met_stations(session, limit=None, pointids: list[str] | None = None):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -260,10 +277,12 @@ def transfer_met_stations(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "M", make_payload, limit)
+    transfer_thing(session, "M", make_payload, limit, pointids)
 
 
-def transfer_rock_sample_locations(session, limit=None):
+def transfer_rock_sample_locations(
+    session, limit=None, pointids: list[str] | None = None
+):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -271,10 +290,12 @@ def transfer_rock_sample_locations(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "R", make_payload, limit)
+    transfer_thing(session, "R", make_payload, limit, pointids)
 
 
-def transfer_diversion_of_surface_water(session, limit=None):
+def transfer_diversion_of_surface_water(
+    session, limit=None, pointids: list[str] | None = None
+):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -282,10 +303,12 @@ def transfer_diversion_of_surface_water(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "D", make_payload, limit)
+    transfer_thing(session, "D", make_payload, limit, pointids)
 
 
-def transfer_lake_pond_reservoir(session, limit=None):
+def transfer_lake_pond_reservoir(
+    session, limit=None, pointids: list[str] | None = None
+):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -293,10 +316,12 @@ def transfer_lake_pond_reservoir(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "L", make_payload, limit)
+    transfer_thing(session, "L", make_payload, limit, pointids)
 
 
-def transfer_soil_gas_sample_locations(session, limit=None):
+def transfer_soil_gas_sample_locations(
+    session, limit=None, pointids: list[str] | None = None
+):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -304,10 +329,10 @@ def transfer_soil_gas_sample_locations(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "S", make_payload, limit)
+    transfer_thing(session, "S", make_payload, limit, pointids)
 
 
-def transfer_other_site_types(session, limit=None):
+def transfer_other_site_types(session, limit=None, pointids: list[str] | None = None):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -315,10 +340,12 @@ def transfer_other_site_types(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "OT", make_payload, limit)
+    transfer_thing(session, "OT", make_payload, limit, pointids)
 
 
-def transfer_outfall_wastewater_return_flow(session, limit=None):
+def transfer_outfall_wastewater_return_flow(
+    session, limit=None, pointids: list[str] | None = None
+):
     def make_payload(row):
         return {
             "name": row.PointID,
@@ -326,7 +353,7 @@ def transfer_outfall_wastewater_return_flow(session, limit=None):
             "release_status": _release_status(row),
         }
 
-    transfer_thing(session, "O", make_payload, limit)
+    transfer_thing(session, "O", make_payload, limit, pointids)
 
 
 # ============= EOF =============================================

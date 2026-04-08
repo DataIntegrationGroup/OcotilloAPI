@@ -19,7 +19,8 @@ from datetime import datetime
 from pandas import isna
 from sqlalchemy.orm import Session
 
-from db import GeologicFormation, Location
+from db import GeologicFormation, Location, LocationThingAssociation, Thing
+from transfers.transferer import Transferer
 from services.gcs_helper import get_storage_bucket
 from services.util import (
     get_state_from_point,
@@ -169,10 +170,31 @@ def dump_cached_elevations(lut: dict):
     upload_blob_json(blob, lut)
 
 
-def cleanup_locations(session):
-    locations = session.query(Location).all()
+def cleanup_locations(session, pointids: list[str] | None = None):
+    normalized_pointids = Transferer._normalize_pointids(pointids)
+
+    location_query = session.query(Location)
+    if normalized_pointids:
+        location_query = (
+            location_query.join(
+                LocationThingAssociation,
+                LocationThingAssociation.location_id == Location.id,
+            )
+            .join(Thing, Thing.id == LocationThingAssociation.thing_id)
+            .filter(Thing.name.in_(normalized_pointids))
+            .distinct()
+        )
+
+    locations = location_query.all()
     n = len(locations)
     lut = {}
+
+    if normalized_pointids:
+        logger.info(
+            "Scoped location cleanup active for PointIDs %s (%s Location records)",
+            normalized_pointids,
+            n,
+        )
 
     bucket = get_storage_bucket()
     log_filename = "transfer_data/location_cleanup.json"

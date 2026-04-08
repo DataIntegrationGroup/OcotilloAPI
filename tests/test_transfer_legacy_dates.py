@@ -22,6 +22,7 @@ These tests verify that:
 """
 
 import datetime
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -29,6 +30,8 @@ import pandas as pd
 import pytest
 
 from db import Sample
+from db.engine import session_ctx
+from transfers.transferer import Transferer
 from transfers.well_transfer import _normalize_completion_date
 from transfers.util import make_location
 from transfers.waterlevels_transfer import WaterLevelTransferer
@@ -471,6 +474,62 @@ def test_location_ampapi_date_coverage_statistics(mock_lexicon_mapper):
     # Verify expected coverage
     assert locations_created == 100  # 100% should have nma_date_created
     assert locations_with_site_date == 9  # 9% should have nma_site_date
+
+
+def test_capture_database_error_uses_message_when_detail_missing():
+    transfer = Transferer()
+    transfer.source_table = "TestTable"
+
+    class FakeOrig:
+        args = ({"M": "current transaction is aborted", "t": "contact"},)
+
+    class FakeDatabaseError(Exception):
+        def __init__(self):
+            self.orig = FakeOrig()
+
+    transfer._capture_database_error("PT-1", FakeDatabaseError())
+
+    assert transfer.errors == [
+        {
+            "pointid": "PT-1",
+            "error": "current transaction is aborted",
+            "table": "TestTable",
+            "field": "contact",
+        }
+    ]
+
+
+def test_get_field_event_participant_ids_reuses_existing_contact(contact):
+    transfer = WaterLevelTransferer.__new__(WaterLevelTransferer)
+    transfer._measured_by_mapper = {
+        "Tester": [contact.name, contact.organization, "Owner"]
+    }
+    transfer._created_contact_id_by_key = {}
+    transfer._owner_contact_id_by_pointid = {}
+    transfer._last_contacts_created_count = 0
+    transfer._last_contacts_reused_count = 0
+
+    row = SimpleNamespace(
+        PointID="TEST-POINTID",
+        GlobalID="TEST-GLOBALID",
+        MeasuredBy="Tester",
+    )
+
+    with session_ctx() as session:
+        participant_ids = transfer._get_field_event_participant_ids(session, row)
+        matching_contacts = (
+            session.query(contact.__class__)
+            .filter(
+                contact.__class__.name == contact.name,
+                contact.__class__.organization == contact.organization,
+            )
+            .all()
+        )
+
+    assert participant_ids == [contact.id]
+    assert transfer._last_contacts_created_count == 0
+    assert transfer._last_contacts_reused_count == 1
+    assert len(matching_contacts) == 1
 
 
 # ============================================================================

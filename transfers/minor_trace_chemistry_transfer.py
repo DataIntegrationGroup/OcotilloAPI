@@ -38,7 +38,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from db import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry
+from db import NMA_Chemistry_SampleInfo, NMA_MinorTraceChemistry, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
@@ -65,14 +65,15 @@ class MinorTraceChemistryTransferer(Transferer):
     def _build_sample_info_cache(self):
         """Build cache of ChemistrySampleInfo.nma_sample_pt_id -> ChemistrySampleInfo.id."""
         with session_ctx() as session:
-            sample_infos = (
-                session.query(
-                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
-                    NMA_Chemistry_SampleInfo.id,
-                )
-                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
-                .all()
-            )
+            query = session.query(
+                NMA_Chemistry_SampleInfo.nma_sample_pt_id,
+                NMA_Chemistry_SampleInfo.id,
+            ).filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+            if self.is_scoped_run():
+                query = query.join(
+                    Thing, Thing.id == NMA_Chemistry_SampleInfo.thing_id
+                ).filter(Thing.name.in_(self.pointids))
+            sample_infos = query.all()
             self._sample_info_cache = {
                 nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
             }

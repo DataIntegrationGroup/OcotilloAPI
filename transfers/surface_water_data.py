@@ -27,7 +27,7 @@ from db import NMA_SurfaceWaterData, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 class SurfaceWaterDataTransferer(Transferer):
@@ -58,7 +58,8 @@ class SurfaceWaterDataTransferer(Transferer):
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = read_csv(self.source_table, parse_dates=["DateMeasured"])
-        return df, df
+        cleaned_df = filter_to_valid_point_ids(df, self.pointids)
+        return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
         rows: list[dict[str, Any]] = []

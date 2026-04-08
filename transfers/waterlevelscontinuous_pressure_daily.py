@@ -26,7 +26,7 @@ from db import NMA_WaterLevelsContinuous_Pressure_Daily, Thing
 from db.engine import session_ctx
 from transfers.logger import logger
 from transfers.transferer import Transferer
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 class NMA_WaterLevelsContinuous_Pressure_DailyTransferer(Transferer):
@@ -73,7 +73,8 @@ class NMA_WaterLevelsContinuous_Pressure_DailyTransferer(Transferer):
             self.source_table,
             parse_dates=["DateMeasured", "Created", "Updated"],
         )
-        cleaned_df = self._filter_to_valid_things(input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df, self.pointids)
+        cleaned_df = self._filter_to_valid_things(cleaned_df)
         return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:

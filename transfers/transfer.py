@@ -18,8 +18,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Iterable
 
 from dotenv import load_dotenv
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from transfers.thing_transfer import (
     transfer_rock_sample_locations,
@@ -109,6 +111,9 @@ from transfers.waterlevelscontinuous_pressure_daily import (
 from transfers.weather_data import WeatherDataTransferer
 from transfers.weather_photos import WeatherPhotosTransferer
 from transfers.logger import logger, save_log_to_bucket
+from transfers.transferer import Transferer
+from transfers.util import read_csv
+from db import GeologicFormation
 
 
 @dataclass
@@ -229,20 +234,233 @@ def transfer_context(name: str, *, pad: int = 10):
 
 
 def _get_test_pointids():
-    pointids = None
-    if os.getenv("TRANSFER_TEST_POINTIDS"):
-        pointids = os.getenv("TRANSFER_TEST_POINTIDS").split(",")
+    return _normalize_test_pointids(os.getenv("TRANSFER_TEST_POINTIDS"))
+
+
+def _normalize_test_pointids(raw: str | None) -> list[str] | None:
+    if not raw:
+        return None
+    return Transferer._normalize_pointids(raw.split(","))
+
+
+def _normalize_pointid_series(values: Iterable) -> set[str]:
+    pointids: set[str] = set()
+    for value in values:
+        normalized = Transferer._normalize_pointid(value)
+        if normalized is not None:
+            pointids.add(normalized)
     return pointids
 
 
-def _execute_transfer(klass, flags: dict = None):
+def _source_pointids(table_name: str, column: str = "PointID", **read_kw) -> set[str]:
+    df = read_csv(table_name, **read_kw)
+    if column not in df.columns:
+        return set()
+    return _normalize_pointid_series(df[column].tolist())
+
+
+def _location_pointids_for_site_types(site_types: set[str]) -> set[str]:
+    if not site_types:
+        return set()
+    df = read_csv("Location")
+    if "SiteType" not in df.columns or "PointID" not in df.columns:
+        return set()
+    filtered = df[df["SiteType"].isin(site_types)]
+    return _normalize_pointid_series(filtered["PointID"].tolist())
+
+
+def _collect_available_scoped_pointids(transfer_options: TransferOptions) -> set[str]:
+    available: set[str] = set()
+    direct_sources: list[tuple[str, str, dict]] = []
+
+    direct_sources.append(("WellData", "PointID", {"dtype": {"OSEWelltagID": str}}))
+
+    if transfer_options.transfer_waterlevels:
+        direct_sources.append(("WaterLevels", "PointID", {}))
+    if transfer_options.transfer_pressure:
+        direct_sources.append(
+            (
+                "WaterLevelsContinuous_Pressure",
+                "PointID",
+                {"parse_dates": ["DateMeasured"]},
+            )
+        )
+    if transfer_options.transfer_acoustic:
+        direct_sources.append(
+            (
+                "WaterLevelsContinuous_Acoustic",
+                "PointID",
+                {"parse_dates": ["DateMeasured"]},
+            )
+        )
+    if transfer_options.transfer_pressure_daily:
+        direct_sources.append(
+            (
+                "WaterLevelsContinuous_Pressure_Daily",
+                "PointID",
+                {"parse_dates": ["DateMeasured", "Created", "Updated"]},
+            )
+        )
+    if transfer_options.transfer_assets:
+        direct_sources.append(("WellPhotos", "PointID", {}))
+    if transfer_options.transfer_sensors:
+        direct_sources.append(("Equipment", "PointID", {}))
+    if transfer_options.transfer_associated_data:
+        direct_sources.append(("AssociatedData", "PointID", {}))
+    if transfer_options.transfer_hydraulics_data:
+        direct_sources.append(("HydraulicsData", "PointID", {}))
+    if transfer_options.transfer_surface_water_data:
+        direct_sources.append(
+            ("SurfaceWaterData", "PointID", {"parse_dates": ["DateMeasured"]})
+        )
+    if transfer_options.transfer_surface_water_photos:
+        direct_sources.append(("SurfaceWaterPhotos", "PointID", {}))
+    if transfer_options.transfer_weather_data:
+        direct_sources.append(("WeatherData", "PointID", {}))
+    if transfer_options.transfer_weather_photos:
+        direct_sources.append(("WeatherPhotos", "PointID", {}))
+    if transfer_options.transfer_ngwmn_views:
+        direct_sources.extend(
+            [
+                ("view_NGWMN_WellConstruction", "PointID", {}),
+                (
+                    "view_NGWMN_WaterLevels",
+                    "PointID",
+                    {"parse_dates": ["DateMeasured"]},
+                ),
+                ("view_NGWMN_Lithology", "PointID", {}),
+            ]
+        )
+    if transfer_options.transfer_nma_stratigraphy:
+        direct_sources.append(("Stratigraphy", "PointID", {}))
+    if transfer_options.transfer_soil_rock_results:
+        direct_sources.append(("Soil_Rock_Results", "Point_ID", {}))
+
+    for table_name, column, read_kw in direct_sources:
+        available.update(_source_pointids(table_name, column=column, **read_kw))
+
+    location_site_types: set[str] = set()
+    if any(
+        (
+            transfer_options.transfer_springs,
+            transfer_options.transfer_perennial_streams,
+            transfer_options.transfer_ephemeral_streams,
+            transfer_options.transfer_met_stations,
+            transfer_options.transfer_rock_sample_locations,
+            transfer_options.transfer_diversion_of_surface_water,
+            transfer_options.transfer_lake_pond_reservoir,
+            transfer_options.transfer_soil_gas_sample_locations,
+            transfer_options.transfer_other_site_types,
+            transfer_options.transfer_outfall_wastewater_return_flow,
+            transfer_options.transfer_weather_data,
+            transfer_options.transfer_weather_photos,
+            transfer_options.transfer_surface_water_data,
+            transfer_options.transfer_surface_water_photos,
+            transfer_options.transfer_soil_rock_results,
+        )
+    ):
+        site_types_by_option = {
+            "transfer_springs": "SP",
+            "transfer_perennial_streams": "PS",
+            "transfer_ephemeral_streams": "ES",
+            "transfer_met_stations": "M",
+            "transfer_rock_sample_locations": "R",
+            "transfer_diversion_of_surface_water": "D",
+            "transfer_lake_pond_reservoir": "L",
+            "transfer_soil_gas_sample_locations": "S",
+            "transfer_other_site_types": "OT",
+            "transfer_outfall_wastewater_return_flow": "O",
+        }
+        for option_name, site_type in site_types_by_option.items():
+            if getattr(transfer_options, option_name):
+                location_site_types.add(site_type)
+        if any(
+            (
+                transfer_options.transfer_weather_data,
+                transfer_options.transfer_weather_photos,
+            )
+        ):
+            location_site_types.add("M")
+        if any(
+            (
+                transfer_options.transfer_surface_water_data,
+                transfer_options.transfer_surface_water_photos,
+            )
+        ):
+            location_site_types.update({"SP", "PS", "ES", "D", "L", "O"})
+        if transfer_options.transfer_soil_rock_results:
+            location_site_types.add("R")
+
+    available.update(_location_pointids_for_site_types(location_site_types))
+    return available
+
+
+def _validate_scoped_pointids_or_raise(
+    pointids: list[str], transfer_options: TransferOptions
+) -> None:
+    available_pointids = _collect_available_scoped_pointids(transfer_options)
+    missing = sorted(set(pointids) - available_pointids)
+    if missing:
+        raise RuntimeError(
+            "Scoped transfer preflight failed: requested PointIDs not found in "
+            f"applicable source data: {missing}"
+        )
+
+
+def _seed_scoped_geologic_formations(
+    pointids: list[str], transfer_options: TransferOptions
+) -> None:
+    required_codes: set[str] = set()
+    pointid_set = set(pointids)
+
+    well_df = read_csv("WellData", dtype={"OSEWelltagID": str})
+    if "PointID" in well_df.columns and "FormationZone" in well_df.columns:
+        filtered = well_df[
+            well_df["PointID"].map(Transferer._normalize_pointid).isin(pointid_set)
+        ]
+        required_codes.update(
+            _normalize_pointid_series(filtered["FormationZone"].tolist())
+        )
+
+    if transfer_options.transfer_nma_stratigraphy:
+        strat_df = read_csv("Stratigraphy")
+        if "PointID" in strat_df.columns and "UnitIdentifier" in strat_df.columns:
+            filtered = strat_df[
+                strat_df["PointID"].map(Transferer._normalize_pointid).isin(pointid_set)
+            ]
+            required_codes.update(
+                _normalize_pointid_series(filtered["UnitIdentifier"].tolist())
+            )
+
+    if not required_codes:
+        logger.info("Scoped run has no geologic formations to seed")
+        return
+
+    rows = [
+        {"formation_code": code, "description": None, "lithology": None}
+        for code in sorted(required_codes)
+    ]
+    with session_ctx() as session:
+        stmt = (
+            pg_insert(GeologicFormation)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["formation_code"])
+        )
+        session.execute(stmt)
+        session.commit()
+    logger.info("Seeded scoped geologic formations: %s", sorted(required_codes))
+
+
+def _execute_transfer(klass, flags: dict = None, pointids: list[str] | None = None):
     """Execute a single transfer class. Thread-safe since each creates its own session."""
-    transferer = klass(flags=flags, pointids=_get_test_pointids())
+    transferer = klass(flags=flags, pointids=pointids)
     transferer.transfer()
     return transferer.input_df, transferer.cleaned_df, transferer.errors
 
 
-def _execute_transfer_with_timing(name: str, klass, flags: dict = None):
+def _execute_transfer_with_timing(
+    name: str, klass, flags: dict = None, pointids: list[str] | None = None
+):
     """Execute transfer and return timing info."""
     start = time.time()
     logger.info(f"Starting parallel transfer: {name}")
@@ -250,30 +468,35 @@ def _execute_transfer_with_timing(name: str, klass, flags: dict = None):
     yield_transfer_limit = effective_flags.get("LIMIT", 0)
     if yield_transfer_limit:
         effective_flags["LIMIT"] = max(1, yield_transfer_limit // 10)
-    result = _execute_transfer(klass, effective_flags)
+    result = _execute_transfer(klass, effective_flags, pointids)
     elapsed = time.time() - start
     logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
     return name, result, elapsed
 
 
-def _execute_session_transfer_with_timing(name: str, transfer_func, limit: int):
+def _execute_session_transfer_with_timing(
+    name: str,
+    transfer_func,
+    limit: int,
+    pointids: list[str] | None = None,
+):
     """Execute a session-based transfer function and return timing info."""
     start = time.time()
     logger.info(f"Starting parallel transfer: {name}")
     with session_ctx() as session:
         effective_limit = max(1, limit // 10) if limit else 0
-        result = transfer_func(session, limit=effective_limit)
+        result = transfer_func(session, limit=effective_limit, pointids=pointids)
     elapsed = time.time() - start
     logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
     return name, result, elapsed
 
 
-def _execute_permissions_with_timing(name: str):
+def _execute_permissions_with_timing(name: str, pointids: list[str] | None = None):
     """Execute permissions transfer and return timing info."""
     start = time.time()
     logger.info(f"Starting parallel transfer: {name}")
     with session_ctx() as session:
-        transfer_permissions(session)
+        transfer_permissions(session, pointids=pointids)
     elapsed = time.time() - start
     logger.info(f"Completed parallel transfer: {name} in {elapsed:.2f}s")
     return name, None, elapsed
@@ -346,6 +569,12 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
     flags = {"TRANSFER_ALL_WELLS": True, "LIMIT": limit}
     message("TRANSFER_FLAGS")
     logger.info(flags)
+    scoped_pointids = _get_test_pointids()
+    if scoped_pointids:
+        message("SCOPED TRANSFER MODE")
+        logger.info("Scoped transfer mode active for PointIDs: %s", scoped_pointids)
+        _validate_scoped_pointids_or_raise(scoped_pointids, transfer_options)
+        logger.info("Preflight validation passed for requested PointIDs")
 
     profile_artifacts: list[ProfileArtifact] = []
     continuous_water_levels_only = get_bool_env("CONTINUOUS_WATER_LEVELS", False)
@@ -359,39 +588,48 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
         return profile_artifacts
     else:
         message("PHASE 1: FOUNDATIONAL TRANSFERS (PARALLEL)")
-        foundational_tasks = [
-            ("AquiferSystems", transfer_aquifer_systems),
-            ("GeologicFormations", transfer_geologic_formations),
-        ]
+        foundational_tasks = []
+        if scoped_pointids:
+            _seed_scoped_geologic_formations(scoped_pointids, transfer_options)
+        else:
+            foundational_tasks = [
+                ("AquiferSystems", transfer_aquifer_systems),
+                ("GeologicFormations", transfer_geologic_formations),
+            ]
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {
-                executor.submit(
-                    _execute_foundational_transfer_with_timing, name, func, limit
-                ): name
-                for name, func in foundational_tasks
-            }
+        if foundational_tasks:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                futures = {
+                    executor.submit(
+                        _execute_foundational_transfer_with_timing, name, func, limit
+                    ): name
+                    for name, func in foundational_tasks
+                }
 
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    result_name, result, elapsed = future.result()
-                    logger.info(
-                        f"Foundational transfer {result_name} completed in {elapsed:.2f}s"
-                    )
-                except Exception as e:
-                    logger.critical(f"Foundational transfer {name} failed: {e}")
-                    raise  # Fail fast - foundational transfers must succeed
+                for future in as_completed(futures):
+                    name = futures[future]
+                    try:
+                        result_name, result, elapsed = future.result()
+                        logger.info(
+                            f"Foundational transfer {result_name} completed in {elapsed:.2f}s"
+                        )
+                    except Exception as e:
+                        logger.critical(f"Foundational transfer {name} failed: {e}")
+                        raise  # Fail fast - foundational transfers must succeed
+        elif scoped_pointids:
+            logger.info("Skipping broad foundational lookup transfers in scoped mode")
 
         message("TRANSFERRING WELLS")
         use_parallel_wells = get_bool_env("TRANSFER_PARALLEL_WELLS", True)
         if use_parallel_wells:
             logger.info("Using PARALLEL wells transfer")
-            transferer = WellTransferer(flags=flags, pointids=_get_test_pointids())
+            transferer = WellTransferer(flags=flags, pointids=scoped_pointids)
             transferer.transfer_parallel()
             results = (transferer.input_df, transferer.cleaned_df, transferer.errors)
         else:
-            results = _execute_transfer(WellTransferer, flags=flags)
+            results = _execute_transfer(
+                WellTransferer, flags=flags, pointids=scoped_pointids
+            )
         metrics.well_metrics(*results)
 
         # Get transfer flags
@@ -439,7 +677,11 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
             with ThreadPoolExecutor(max_workers=len(non_well_tasks)) as executor:
                 futures = {
                     executor.submit(
-                        _execute_session_transfer_with_timing, name, func, limit
+                        _execute_session_transfer_with_timing,
+                        name,
+                        func,
+                        limit,
+                        scoped_pointids,
                     ): name
                     for name, func in non_well_tasks
                 }
@@ -459,6 +701,7 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
             flags,
             limit,
             transfer_options,
+            scoped_pointids,
         )
 
     return profile_artifacts
@@ -466,6 +709,7 @@ def transfer_all(metrics: Metrics) -> list[ProfileArtifact]:
 
 def _run_continuous_water_level_transfers(metrics, flags):
     message("CONTINUOUS WATER LEVEL TRANSFERS")
+    pointids = _get_test_pointids()
 
     # =========================================================================
     # PHASE 4: Parallel Group 2 (Continuous water levels - after sensors)
@@ -480,7 +724,13 @@ def _run_continuous_water_level_transfers(metrics, flags):
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {}
         for name, klass in parallel_tasks:
-            future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
+            future = executor.submit(
+                _execute_transfer_with_timing,
+                name,
+                klass,
+                flags,
+                pointids,
+            )
             futures[future] = name
 
         for future in as_completed(futures):
@@ -489,7 +739,7 @@ def _run_continuous_water_level_transfers(metrics, flags):
                 result_name, result, elapsed = future.result()
                 results_map[result_name] = result
                 logger.info(f"Parallel task {result_name} completed in {elapsed:.2f}s")
-            except Exception as e:
+            except Exception:
                 import traceback
 
                 logger.critical(
@@ -507,6 +757,7 @@ def _transfer_parallel(
     flags,
     limit,
     transfer_options: TransferOptions,
+    pointids: list[str] | None = None,
 ):
     """Execute transfers in parallel where possible."""
     message("PARALLEL TRANSFER GROUP 1")
@@ -571,7 +822,13 @@ def _transfer_parallel(
 
         # Submit class-based transfers
         for name, klass in parallel_tasks_1:
-            future = executor.submit(_execute_transfer_with_timing, name, klass, flags)
+            future = executor.submit(
+                _execute_transfer_with_timing,
+                name,
+                klass,
+                flags,
+                pointids,
+            )
             futures[future] = name
 
         future = executor.submit(
@@ -579,6 +836,7 @@ def _transfer_parallel(
             "StratigraphyNew",
             transfer_stratigraphy,
             limit,
+            pointids,
         )
         futures[future] = "StratigraphyNew"
 
@@ -645,7 +903,8 @@ def _transfer_parallel(
         # Permissions require contact associations; run after group 1 completes.
         try:
             result_name, result, elapsed = _execute_permissions_with_timing(
-                "Permissions"
+                "Permissions",
+                pointids,
             )
             results_map[result_name] = result
             logger.info(f"Task {result_name} completed in {elapsed:.2f}s")
@@ -654,22 +913,30 @@ def _transfer_parallel(
 
     if opts.transfer_major_chemistry:
         message("TRANSFERRING MAJOR CHEMISTRY")
-        results = _execute_transfer(MajorChemistryTransferer, flags=flags)
+        results = _execute_transfer(
+            MajorChemistryTransferer, flags=flags, pointids=pointids
+        )
         metrics.major_chemistry_metrics(*results)
 
     if opts.transfer_radionuclides:
         message("TRANSFERRING RADIONUCLIDES")
-        results = _execute_transfer(RadionuclidesTransferer, flags=flags)
+        results = _execute_transfer(
+            RadionuclidesTransferer, flags=flags, pointids=pointids
+        )
         metrics.radionuclides_metrics(*results)
 
     if opts.transfer_minor_trace_chemistry:
         message("TRANSFERRING MINOR TRACE CHEMISTRY")
-        results = _execute_transfer(MinorTraceChemistryTransferer, flags=flags)
+        results = _execute_transfer(
+            MinorTraceChemistryTransferer, flags=flags, pointids=pointids
+        )
         metrics.minor_trace_chemistry_metrics(*results)
 
     if opts.transfer_field_parameters:
         message("TRANSFERRING FIELD PARAMETERS")
-        results = _execute_transfer(FieldParametersTransferer, flags=flags)
+        results = _execute_transfer(
+            FieldParametersTransferer, flags=flags, pointids=pointids
+        )
         metrics.field_parameters_metrics(*results)
 
     # =========================================================================
@@ -677,7 +944,7 @@ def _transfer_parallel(
     # =========================================================================
     if opts.transfer_sensors:
         message("TRANSFERRING SENSORS")
-        results = _execute_transfer(SensorTransferer, flags=flags)
+        results = _execute_transfer(SensorTransferer, flags=flags, pointids=pointids)
         metrics.sensor_metrics(*results)
 
     # # =========================================================================
@@ -693,7 +960,7 @@ def _transfer_parallel(
     if get_bool_env("CLEANUP_LOCATIONS", True):
         message("CLEANING UP LOCATIONS")
         with session_ctx() as session:
-            cleanup_locations(session)
+            cleanup_locations(session, pointids=pointids)
 
 
 def main():

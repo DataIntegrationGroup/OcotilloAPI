@@ -45,7 +45,59 @@ class Transferer(object):
         self.errors = []
         self.flags = flags if flags else {}
         self.manual_fixer = ManualFixer()
-        self.pointids = pointids
+        self.pointids = self._normalize_pointids(pointids)
+
+    @staticmethod
+    def _normalize_pointid(value: Any) -> str | None:
+        if value is None:
+            return None
+        try:
+            if pd.isna(value):
+                return None
+        except (TypeError, ValueError):
+            pass
+        text = str(value).strip()
+        if not text:
+            return None
+        return text.upper()
+
+    @classmethod
+    def _normalize_pointids(cls, pointids: list | None) -> list[str] | None:
+        if not pointids:
+            return None
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for pointid in pointids:
+            normalized_pointid = cls._normalize_pointid(pointid)
+            if normalized_pointid is None or normalized_pointid in seen:
+                continue
+            seen.add(normalized_pointid)
+            normalized.append(normalized_pointid)
+        return normalized or None
+
+    def scoped_pointids(self) -> list[str] | None:
+        return self.pointids
+
+    def scoped_pointid_set(self) -> set[str] | None:
+        if not self.pointids:
+            return None
+        return set(self.pointids)
+
+    def is_scoped_run(self) -> bool:
+        return bool(self.pointids)
+
+    def filter_df_to_requested_pointids(
+        self, df: pd.DataFrame, column: str = "PointID"
+    ) -> pd.DataFrame:
+        if not self.is_scoped_run() or column not in df.columns:
+            return df
+
+        pointid_set = self.scoped_pointid_set()
+        if not pointid_set:
+            return df
+
+        normalized_series = df[column].map(self._normalize_pointid)
+        return df[normalized_series.isin(pointid_set)].copy()
 
     def _df_len(self, df: pd.DataFrame | None) -> int:
         return int(len(df)) if df is not None else 0
@@ -71,8 +123,15 @@ class Transferer(object):
         )
 
     def _capture_database_error(self, pointid: str, err: DatabaseError) -> None:
-        error_dict = err.orig.args[0]
-        self._capture_error(pointid, error_dict["D"], error_dict["t"])
+        error_dict = {}
+        if getattr(err, "orig", None) is not None and getattr(err.orig, "args", None):
+            first_arg = err.orig.args[0]
+            if isinstance(first_arg, dict):
+                error_dict = first_arg
+
+        error_message = error_dict.get("D") or error_dict.get("M") or str(err)
+        error_field = error_dict.get("t") or "DatabaseError"
+        self._capture_error(pointid, error_message, error_field)
 
     def _capture_error(self, pointid: str, error: str, field: str, table=None) -> None:
         if table is None:
@@ -298,14 +357,15 @@ class ChemistryTransferer(Transferer):
     def _build_sample_info_cache(self) -> None:
         """Build cache of nma_sample_pt_id -> id for FK lookups."""
         with session_ctx() as session:
-            sample_infos = (
-                session.query(
-                    NMA_Chemistry_SampleInfo.nma_sample_pt_id,
-                    NMA_Chemistry_SampleInfo.id,
-                )
-                .filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
-                .all()
-            )
+            query = session.query(
+                NMA_Chemistry_SampleInfo.nma_sample_pt_id,
+                NMA_Chemistry_SampleInfo.id,
+            ).filter(NMA_Chemistry_SampleInfo.nma_sample_pt_id.isnot(None))
+            if self.is_scoped_run():
+                query = query.join(
+                    Thing, Thing.id == NMA_Chemistry_SampleInfo.thing_id
+                ).filter(Thing.name.in_(self.pointids))
+            sample_infos = query.all()
             self._sample_info_cache = {
                 nma_sample_pt_id: csi_id for nma_sample_pt_id, csi_id in sample_infos
             }

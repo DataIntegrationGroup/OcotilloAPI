@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from db import Thing, PermissionHistory, Contact, ThingContactAssociation
 from transfers.util import read_csv, logger, replace_nans, chunk_by_size
+from transfers.transferer import Transferer
 
 """
 Developer's notes
@@ -43,7 +44,7 @@ def _make_permission(
     return permission
 
 
-def transfer_permissions(session: Session) -> None:
+def transfer_permissions(session: Session, pointids: list[str] | None = None) -> None:
     """
     The transferred wells and contacts need to be transferred first
     - to access the auto-generated well IDs
@@ -52,17 +53,34 @@ def transfer_permissions(session: Session) -> None:
     """
     wdf = read_csv("WellData", dtype={"OSEWelltagID": str})
     wdf = replace_nans(wdf)
+    if pointids:
+        normalized_pointids = wdf["PointID"].map(Transferer._normalize_pointid)
+        wdf = wdf[normalized_pointids.isin(set(pointids))]
 
     logger.info("Starting transfer: Permissions")
-    transferred_wells = (
+    transferred_wells_query = (
         session.query(Thing, Contact)
         .select_from(Thing)
         .join(ThingContactAssociation, ThingContactAssociation.thing_id == Thing.id)
         .join(Contact, Contact.id == ThingContactAssociation.contact_id)
         .filter(Thing.thing_type == "water well")
         .order_by(Thing.name)
-        .all()
     )
+    if pointids:
+        transferred_wells_query = transferred_wells_query.filter(
+            Thing.name.in_(pointids)
+        )
+    transferred_wells = transferred_wells_query.all()
+    existing_permissions = {
+        (target_id, contact_id, permission_type)
+        for target_id, contact_id, permission_type in session.query(
+            PermissionHistory.target_id,
+            PermissionHistory.contact_id,
+            PermissionHistory.permission_type,
+        )
+        .filter(PermissionHistory.target_table == "thing")
+        .all()
+    }
     created_count = 0
     visited = []
     for chunk in chunk_by_size(transferred_wells, 100):
@@ -78,16 +96,38 @@ def transfer_permissions(session: Session) -> None:
             permission = _make_permission(
                 wdf, well, contact.id, "SampleOK", "Water Chemistry Sample"
             )
-            if permission:
+            if (
+                permission
+                and (
+                    well.id,
+                    contact.id,
+                    permission.permission_type,
+                )
+                not in existing_permissions
+            ):
                 objs.append(permission)
                 created_count += 1
+                existing_permissions.add(
+                    (well.id, contact.id, permission.permission_type)
+                )
 
             permission = _make_permission(
                 wdf, well, contact.id, "MonitorOK", "Water Level Sample"
             )
-            if permission:
+            if (
+                permission
+                and (
+                    well.id,
+                    contact.id,
+                    permission.permission_type,
+                )
+                not in existing_permissions
+            ):
                 objs.append(permission)
                 created_count += 1
+                existing_permissions.add(
+                    (well.id, contact.id, permission.permission_type)
+                )
 
         session.bulk_save_objects(objs)
         session.commit()

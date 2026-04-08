@@ -18,7 +18,7 @@ import io
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
 
-from db import Thing
+from db import Thing, Asset, AssetThingAssociation
 from services.asset_helper import upload_and_associate
 from services.gcs_helper import (
     get_storage_bucket,
@@ -40,7 +40,7 @@ class AssetTransferer(Transferer):
 
     def _get_dfs(self):
         input_df = read_csv(self.source_table)
-        cleaned_df = filter_to_valid_point_ids(input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df, self.pointids)
         return input_df, cleaned_df
 
     def _transfer_hook(self, session: Session):
@@ -55,6 +55,13 @@ class AssetTransferer(Transferer):
                 .filter(Thing.name == row.PointID, Thing.thing_type == "water well")
                 .one_or_none()
             )
+            if well is None:
+                self._capture_error(
+                    row.PointID,
+                    "Thing not found",
+                    "PointID",
+                )
+                continue
             self._asset_step(session, i, well)
             session.commit()
 
@@ -68,6 +75,22 @@ class AssetTransferer(Transferer):
                 return
 
         n = len(photos)
+        existing_asset_names = {
+            name
+            for (name,) in session.query(Asset.name)
+            .join(AssetThingAssociation, AssetThingAssociation.asset_id == Asset.id)
+            .filter(AssetThingAssociation.thing_id == db_item.id)
+            .all()
+            if name
+        }
+        existing_asset_paths = {
+            storage_path
+            for (storage_path,) in session.query(Asset.storage_path)
+            .join(AssetThingAssociation, AssetThingAssociation.asset_id == Asset.id)
+            .filter(AssetThingAssociation.thing_id == db_item.id)
+            .all()
+            if storage_path
+        }
         for j, row in enumerate(photos.itertuples()):
             photo_path = row.OLEPath
             srcblob = self._bucket.get_blob(f"nma-photos/{photo_path}")
@@ -78,6 +101,16 @@ class AssetTransferer(Transferer):
                 continue
 
             head, filename = srcblob.name.split("/")
+            if filename in existing_asset_names or any(
+                storage_path.endswith(filename) for storage_path in existing_asset_paths
+            ):
+                logger.info(
+                    "Skipping existing asset %s for thing.id=%s thing=%s",
+                    filename,
+                    db_item.id,
+                    db_item.name,
+                )
+                continue
             f = srcblob.download_as_bytes()
             ff = UploadFile(file=io.BytesIO(f), filename=filename, size=len(f))
 
@@ -91,8 +124,16 @@ class AssetTransferer(Transferer):
             )
 
             logger.info(
-                f"Added asset {i}-{j}/{n} thing.id={db_item.id} thing={db_item.name} uri: {uri}"
+                "Added asset %s-%s/%s thing.id=%s thing=%s uri: %s",
+                i,
+                j,
+                n,
+                db_item.id,
+                db_item.name,
+                uri,
             )
+            existing_asset_names.add(filename)
+            existing_asset_paths.add(uri[1])
 
 
 # ============= EOF =============================================

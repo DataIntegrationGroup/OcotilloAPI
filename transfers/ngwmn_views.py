@@ -29,7 +29,7 @@ from db import (
 )
 from transfers.logger import logger
 from transfers.transferer import Transferer
-from transfers.util import read_csv
+from transfers.util import read_csv, filter_to_valid_point_ids
 
 
 class _BaseNGWMNTransferer(Transferer):
@@ -46,7 +46,8 @@ class _BaseNGWMNTransferer(Transferer):
 
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = read_csv(self.source_table, parse_dates=self.parse_dates)
-        return df, df
+        cleaned_df = filter_to_valid_point_ids(df, self.pointids)
+        return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:
         rows = self._dedupe_rows(

@@ -67,6 +67,9 @@ class SoilRockResultsTransferer(Transferer):
     def _get_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = self._read_csv(self.source_table)
         cleaned_df = replace_nans(df)
+        if self.is_scoped_run():
+            normalized_pointids = cleaned_df["Point_ID"].map(self._normalize_point_id)
+            cleaned_df = cleaned_df[normalized_pointids.isin(self.scoped_pointid_set())]
         return df, cleaned_df
 
     def _transfer_hook(self, session: Session) -> None:

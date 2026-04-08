@@ -58,7 +58,7 @@ class WaterLevelsContinuousTransferer(Transferer):
 
     def _get_dfs(self):
         input_df = read_csv(self.source_table, parse_dates=["DateMeasured"])
-        cleaned_df = filter_to_valid_point_ids(input_df)
+        cleaned_df = filter_to_valid_point_ids(input_df, self.pointids)
         cleaned_df = cleaned_df.sort_values(by=["PointID"])
 
         # remove rows with no date measured
