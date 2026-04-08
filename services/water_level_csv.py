@@ -34,8 +34,8 @@ from schemas.water_level_csv import (
     WATER_LEVEL_IGNORED_FIELDS,
 )
 from sqlalchemy import select
-from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, selectinload
+from services.thing_helper import find_water_wells_by_name
 
 REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
 HEADER_ALIASES: dict[str, str] = dict(WATER_LEVEL_HEADER_ALIASES)
@@ -252,22 +252,18 @@ def _validate_rows(
         well_name = model.well_name_point_id
         well = wells_by_name.get(well_name)
         if well is None:
-            sql = (
-                select(Thing)
-                .options(selectinload(Thing.measuring_points))
-                .where(
-                    Thing.name == well_name,
-                    Thing.thing_type == "water well",
-                )
+            matches = find_water_wells_by_name(
+                session,
+                well_name,
+                options=(selectinload(Thing.measuring_points),),
             )
-            try:
-                well = session.scalars(sql).one_or_none()
-            except MultipleResultsFound:
+            if len(matches) > 1:
                 errors.append(
                     f"Row {idx}: Multiple wells found for well_name_point_id "
                     f"'{well_name}'"
                 )
                 continue
+            well = matches[0] if matches else None
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
                 continue

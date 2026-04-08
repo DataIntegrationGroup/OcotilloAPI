@@ -51,7 +51,7 @@ from schemas.thing import CreateWell
 from schemas.well_inventory import WellInventoryRow
 from services.contact_helper import add_contact
 from services.exceptions_helper import PydanticStyleException
-from services.thing_helper import add_thing
+from services.thing_helper import add_thing, find_water_wells_by_name
 from services.util import transform_srid, convert_ft_to_m
 
 AUTOGEN_DEFAULT_PREFIX = "NM-"
@@ -671,15 +671,8 @@ def _add_csv_row(session: Session, group: Group, model: WellInventoryRow, user) 
     if existing_well is not None:
         return existing_well.name
 
-    existing_named_well = session.scalars(
-        select(Thing)
-        .where(
-            Thing.name == model.well_name_point_id,
-            Thing.thing_type == "water well",
-        )
-        .order_by(Thing.id.asc())
-    ).first()
-    if existing_named_well is not None:
+    existing_named_wells = find_water_wells_by_name(session, model.well_name_point_id)
+    if existing_named_wells:
         raise ValueError(
             f"Well already exists in database for well_name_point_id '{model.well_name_point_id}'"
         )

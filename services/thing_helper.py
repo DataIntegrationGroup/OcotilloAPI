@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
 import logging
 import time
+from datetime import datetime
+from typing import Sequence
 from zoneinfo import ZoneInfo
 
 from fastapi import Request, HTTPException
@@ -76,6 +77,26 @@ WATER_WELL_LOADER_OPTIONS = [
 ]
 
 WATER_WELL_THING_TYPE = "water well"
+
+
+def find_water_wells_by_name(
+    session: Session,
+    name: str,
+    *,
+    options: Sequence | None = None,
+) -> list[Thing]:
+    sql = (
+        select(Thing)
+        .where(
+            Thing.name == name,
+            Thing.thing_type == WATER_WELL_THING_TYPE,
+        )
+        .order_by(Thing.id.asc())
+    )
+    if options:
+        sql = sql.options(*options)
+
+    return session.scalars(sql).all()
 
 
 def wkb_to_geojson(wkb_element):
