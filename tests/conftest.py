@@ -133,7 +133,10 @@ def location():
         loc = Location(
             point="POINT(-107.949533 33.809665)",
             elevation=2464.9,
+            county="Sierra",
             release_status="draft",
+            state="NM",
+            quad_name="Hillsboro Peak",
         )
 
         session.add(loc)

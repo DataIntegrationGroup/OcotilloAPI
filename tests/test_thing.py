@@ -668,6 +668,45 @@ def test_get_water_well_details_payload_404_not_found():
     assert response.json()["detail"] == "Thing with ID 999999 not found."
 
 
+def test_get_water_well_by_id_includes_location_properties(
+    water_well_thing,
+):
+    response = client.get(f"/thing/water-well/{water_well_thing.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["current_location"]["properties"]["county"] == "Sierra"
+    assert data["current_location"]["properties"]["state"] == "NM"
+    assert data["current_location"]["properties"]["quad_name"] == "Hillsboro Peak"
+
+
+def test_get_water_wells_includes_contact_summary(
+    water_well_thing,
+    contact,
+):
+    response = client.get("/thing/water-well")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    well = next(
+        (item for item in data["items"] if item["id"] == water_well_thing.id), None
+    )
+    assert well is not None, f"Well {water_well_thing.id} not found in response"
+    assert well["contacts"] == [
+        {
+            "id": contact.id,
+            "created_at": contact.created_at.astimezone(timezone.utc).strftime(DT_FMT),
+            "release_status": contact.release_status,
+            "name": contact.name,
+            "organization": contact.organization,
+            "contact_type": contact.contact_type,
+            "role": contact.role,
+        }
+    ]
+
+
 def test_get_water_well_by_id_404_not_found(water_well_thing):
     bad_id = 99999
     response = client.get(f"/thing/water-well/{bad_id}")
