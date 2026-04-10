@@ -191,6 +191,133 @@ def transfer_results(
     typer.echo(f"Transfer comparisons: {len(results.results)}")
 
 
+@cli.command("scoped-transfer")
+def scoped_transfer(
+    pointid: list[str] = typer.Option(
+        ...,
+        "--pointid",
+        help="Legacy PointID to transfer. Repeat --pointid for multiple values.",
+    ),
+    only: list[str] = typer.Option(
+        None,
+        "--only",
+        help="Optional transfer family to include. Repeat for multiple values.",
+    ),
+    skip: list[str] = typer.Option(
+        None,
+        "--skip",
+        help="Optional transfer family to skip. Repeat for multiple values.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Plan the scoped transfer without writing any records.",
+    ),
+    output_format: OutputFormat | None = typer.Option(
+        None,
+        "--output",
+        help="Optional output format",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from services.scoped_transfer import (
+        ScopedTransferError,
+        ScopedTransferOptions,
+        format_scoped_transfer_json,
+        run_scoped_transfer,
+    )
+
+    colors = _palette(theme)
+    normalized_pointids = [
+        pid.strip().upper() for pid in pointid if pid and pid.strip()
+    ]
+
+    if output_format != OutputFormat.json:
+        # Print a quick status line so a long scoped run does not look stuck.
+        verb = "Planning" if dry_run else "Starting"
+        phase = "planning" if dry_run else "execution"
+        typer.secho(
+            f"{verb} scoped transfer for PointIDs: {', '.join(normalized_pointids)}",
+            fg=colors["accent"],
+            bold=True,
+        )
+        typer.secho(
+            f"Validating requested scope and preparing {phase}...",
+            fg=colors["muted"],
+        )
+
+    try:
+        result = run_scoped_transfer(
+            ScopedTransferOptions(
+                pointids=pointid,
+                only=only or [],
+                skip=skip or [],
+                dry_run=dry_run,
+            )
+        )
+    except ScopedTransferError as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    if output_format == OutputFormat.json:
+        typer.echo(format_scoped_transfer_json(result))
+        raise typer.Exit(result.exit_code)
+
+    header = "[SCOPED TRANSFER] DRY RUN" if result.dry_run else "[SCOPED TRANSFER]"
+    header_color = colors["ok"] if result.exit_code == 0 else colors["issue"]
+    typer.secho(header, fg=header_color, bold=True)
+    typer.secho("=" * 72, fg=colors["accent"])
+    typer.secho(
+        f"Requested PointIDs: {', '.join(result.pointids)}",
+        fg=colors["accent"],
+    )
+    typer.secho(
+        f"Selected families: {', '.join(result.selected_families)}",
+        fg=colors["accent"],
+    )
+    if result.added_prerequisites:
+        typer.secho(
+            f"Auto-added prerequisites: {', '.join(result.added_prerequisites)}",
+            fg=colors["muted"],
+        )
+    typer.echo()
+
+    typer.secho("FAMILY SUMMARY", fg=colors["accent"], bold=True)
+    for family_result in result.family_results:
+        detail_parts = [f"rows={family_result.applicable_source_rows}"]
+        if family_result.created is not None:
+            detail_parts.append(f"created={family_result.created}")
+        if family_result.skipped_existing is not None:
+            detail_parts.append(f"skipped_existing={family_result.skipped_existing}")
+        if family_result.added_as_prerequisite:
+            detail_parts.append("prerequisite")
+        if family_result.detail:
+            detail_parts.append(family_result.detail)
+        typer.secho(
+            f"  {family_result.family:<28} {family_result.status:<10} {'  '.join(detail_parts)}",
+            fg=(
+                colors["ok"]
+                if family_result.status in ("completed", "planned")
+                else colors["muted"]
+            ),
+        )
+
+    if result.validation_errors:
+        typer.echo()
+        typer.secho("VALIDATION ERRORS", fg=colors["issue"], bold=True)
+        for error in result.validation_errors:
+            typer.secho(f"  - {error}", fg=colors["issue"])
+
+    if result.execution_error:
+        typer.echo()
+        typer.secho("EXECUTION ERROR", fg=colors["issue"], bold=True)
+        typer.secho(result.execution_error, fg=colors["issue"])
+
+    raise typer.Exit(result.exit_code)
+
+
 @cli.command("compare-duplicated-welldata")
 def compare_duplicated_welldata(
     pointid: list[str] = typer.Option(
