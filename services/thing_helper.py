@@ -16,7 +16,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import Sequence
+from typing import Sequence, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import Request, HTTPException
@@ -116,9 +116,10 @@ def get_db_things(
     query,
     session,
     sort,
-    thing_type: str = None,
-    within: str = None,
-    name: str = None,
+    thing_type: Optional[str] = None,
+    within: Optional[str] = None,
+    name: Optional[str] = None,
+    include_contacts: bool = False,
 ) -> list:
 
     if query:
@@ -134,6 +135,12 @@ def get_db_things(
     else:
         # add all eager loads for generic thing query until/unless GET /thing is deprecated
         sql = sql.options(*WATER_WELL_LOADER_OPTIONS)
+
+    if include_contacts:
+        sql = sql.options(
+            selectinload(Thing.contact_associations)
+            .selectinload(ThingContactAssociation.contact)
+        )
 
     if name:
         sql = sql.where(Thing.name == name)

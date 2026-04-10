@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
+from typing import Optional
 from fastapi import APIRouter, Query, Request
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
@@ -153,19 +154,18 @@ async def get_water_wells(
     user: viewer_dependency,
     session: session_dependency,
     request: Request,
-    sort: str = None,
-    order: str = None,
+    sort: Optional[str] = None,
+    order: Optional[str] = None,
     filter_: str = Query(alias="filter", default=None),
-    query: str = None,
-    name: str = None,
+    query: Optional[str] = None,
+    name: Optional[str] = None,
+    include_contacts: bool = False,
 ) -> CustomPage[WellResponse]:
     """
     Retrieve all wells from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(
-        filter_, order, query, session, sort, name=name, thing_type=thing_type
-    )
+    return get_db_things(filter_, order, query, session, sort, name=name, thing_type=thing_type, include_contacts=include_contacts)
 
 
 @router.get(
@@ -348,11 +348,11 @@ async def get_thing_id_links(
 async def get_things(
     user: viewer_dependency,
     session: session_dependency,
-    # thing_id: int = None,
-    within: str = None,
-    query: str = None,
-    sort: str = None,
-    order: str = None,
+    within: Optional[str] = None,
+    query: Optional[str] = None,
+    sort: Optional[str] = None,
+    order: Optional[str] = None,
+    include_contacts: bool = False,
     filter_: str = Query(
         default=None,
         alias="filter",
@@ -369,6 +369,7 @@ async def get_things(
         session,
         sort,
         within=within,
+        include_contacts=include_contacts,
     )
 
 
