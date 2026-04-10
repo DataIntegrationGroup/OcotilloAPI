@@ -43,6 +43,7 @@ from db import (
     ThingIdLink,
     MonitoringFrequencyHistory,
     StatusHistory,
+    search,
 )
 from services.audit_helper import audit_add
 from services.crud_helper import model_patcher
@@ -123,7 +124,11 @@ def get_db_things(
 ) -> list:
 
     if query:
-        sql = select(Thing).where(make_query(Thing, query))
+        sql = search(
+            select(Thing),
+            query,
+            vector=Thing.search_vector,
+        )
     else:
         sql = select(Thing)
 
