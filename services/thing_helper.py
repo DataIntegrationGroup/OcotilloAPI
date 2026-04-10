@@ -143,8 +143,9 @@ def get_db_things(
 
     if include_contacts:
         sql = sql.options(
-            selectinload(Thing.contact_associations)
-            .selectinload(ThingContactAssociation.contact)
+            selectinload(Thing.contact_associations).selectinload(
+                ThingContactAssociation.contact
+            )
         )
 
     if name:

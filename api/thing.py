@@ -165,7 +165,16 @@ async def get_water_wells(
     Retrieve all wells from the database.
     """
     thing_type = request.url.path.split("/")[2].replace("-", " ")
-    return get_db_things(filter_, order, query, session, sort, name=name, thing_type=thing_type, include_contacts=include_contacts)
+    return get_db_things(
+        filter_,
+        order,
+        query,
+        session,
+        sort,
+        name=name,
+        thing_type=thing_type,
+        include_contacts=include_contacts,
+    )
 
 
 @router.get(
