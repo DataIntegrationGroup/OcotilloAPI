@@ -55,7 +55,7 @@ dependencies = [
   "multidict==6.7.1",
   "numpy==2.4.4",
   "packaging==26.0",
-  "pandas==2.3.2",
+  "pandas==3.0.2",
   "pandas-stubs~=2.3.2",
   "pg8000==1.31.5",
   "phonenumbers==9.0.26",
