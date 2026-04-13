@@ -833,6 +833,42 @@ class TestWellInventoryErrorHandling:
             errors = result.payload.get("validation_errors", [])
             assert any("Duplicate" in str(e) for e in errors)
 
+    def test_upload_fails_when_well_name_already_exists_in_database(self, tmp_path):
+        """Upload fails when a water well with the same Thing.name already exists."""
+        row = _minimal_valid_well_inventory_row()
+
+        with session_ctx() as session:
+            session.add(Thing(name=row["well_name_point_id"], thing_type="water well"))
+            session.commit()
+
+        file_path = tmp_path / "well-inventory-existing-db-well.csv"
+        with file_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+            writer.writeheader()
+            writer.writerow(row)
+
+        result = well_inventory_csv(file_path)
+
+        assert result.exit_code == 1, result.stderr
+        errors = result.payload.get("validation_errors", [])
+        assert errors
+        assert errors[0]["field"] == "well_name_point_id"
+        assert (
+            errors[0]["error"]
+            == "Well already exists in database for well_name_point_id 'TEST-0001'"
+        )
+
+        with session_ctx() as session:
+            things = (
+                session.query(Thing)
+                .filter(
+                    Thing.name == row["well_name_point_id"],
+                    Thing.thing_type == "water well",
+                )
+                .all()
+            )
+            assert len(things) == 1
+
     def test_upload_blank_well_name_point_id_autogenerates(self, tmp_path):
         """Upload succeeds when well_name_point_id is blank and auto-generates IDs."""
         source_path = Path("tests/features/data/well-inventory-valid.csv")
