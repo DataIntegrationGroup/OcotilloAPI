@@ -76,7 +76,7 @@ dependencies = [
   "pygeoapi==0.22.0",
   "pyproj==3.7.2",
   "pyshp==2.3.1",
-  "pytest==9.0.2",
+  "pytest==9.0.3",
   "pytest-cov==6.2.1",
   "python-dateutil==2.9.0.post0",
   "python-jose>=3.5.0",
@@ -138,7 +138,7 @@ dev = [
   "faker>=25.0.0",
   "flake8>=7.3.0",
   "pyhamcrest>=2.0.3",
-  "pytest>=8.4.0",
+  "pytest>=9.0.3",
   "python-dotenv>=1.1.1",
   "requests>=2.32.5",
 ]
