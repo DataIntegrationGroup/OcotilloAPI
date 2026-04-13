@@ -44,7 +44,10 @@ def upgrade() -> None:
     # Remove any rows that cannot be linked to a Thing, then enforce NOT NULL
     op.execute('DELETE FROM "NMA_SurfaceWaterData" WHERE thing_id IS NULL')
     op.alter_column(
-        "NMA_SurfaceWaterData", "thing_id", existing_type=sa.Integer(), nullable=False
+        "NMA_SurfaceWaterData",
+        "thing_id",
+        existing_type=sa.Integer(),
+        nullable=False,
     )
 
 

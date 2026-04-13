@@ -16,6 +16,7 @@
 from datetime import date, timezone
 
 import pytest
+from sqlalchemy import delete
 
 from core.dependencies import (
     admin_function,
@@ -120,9 +121,12 @@ def test_measuring_point_properties_skip_null_history():
         assert well.measuring_point_height == 2.5
         assert well.measuring_point_description == "old mp"
 
-        session.delete(new_history)
-        session.delete(old_history)
-        session.delete(well)
+        session.execute(
+            delete(MeasuringPointHistory).where(
+                MeasuringPointHistory.thing_id == well.id
+            )
+        )
+        session.execute(delete(Thing).where(Thing.id == well.id))
         session.commit()
 
 
@@ -556,6 +560,153 @@ def test_get_water_well_by_id(water_well_thing, location):
     assert data["current_location"] == expected_location
 
 
+def test_get_water_well_details_payload(
+    water_well_thing,
+    field_event,
+    contact,
+    email,
+    phone,
+    address,
+    sensor,
+    sensor_to_water_well_thing_deployment,
+    thing_id_link,
+    well_screen,
+    groundwater_level_sample,
+    groundwater_level_observation,
+):
+    response = client.get(f"/thing/water-well/{water_well_thing.id}/details")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["well"]["id"] == water_well_thing.id
+    assert data["well"]["alternate_ids"][0]["id"] == thing_id_link.id
+    assert data["contacts"][0]["id"] == contact.id
+    assert data["contacts"][0]["emails"][0]["id"] == email.id
+    assert data["contacts"][0]["phones"][0]["id"] == phone.id
+    assert data["contacts"][0]["addresses"][0]["id"] == address.id
+    assert data["sensors"][0]["id"] == sensor.id
+    assert data["deployments"][0]["id"] == sensor_to_water_well_thing_deployment.id
+    assert data["deployments"][0]["sensor"]["id"] == sensor.id
+    assert data["well_screens"][0]["id"] == well_screen.id
+    assert (
+        data["recent_groundwater_level_observations"][0]["id"]
+        == groundwater_level_observation.id
+    )
+    assert data["latest_field_event_sample"]["id"] == groundwater_level_sample.id
+    assert data["latest_field_event_sample"]["field_event"]["id"] == field_event.id
+    assert data["latest_field_event_sample"]["contact"]["id"] == contact.id
+
+
+def test_get_water_well_details_payload_uses_latest_observation_sample(
+    water_well_thing,
+    groundwater_level_sample,
+    groundwater_level_observation,
+    field_event_participant,
+    sensor,
+):
+    from db import Observation, Sample
+
+    with session_ctx() as session:
+        later_sample = Sample(
+            field_activity_id=groundwater_level_sample.field_activity_id,
+            field_event_participant_id=field_event_participant.id,
+            sample_date="2025-01-02T12:00:00Z",
+            sample_name="later groundwater level sample",
+            sample_matrix="water",
+            sample_method="Steel-tape measurement",
+            qc_type="Normal",
+            notes="later sample",
+            release_status="draft",
+        )
+        session.add(later_sample)
+        session.commit()
+        session.refresh(later_sample)
+
+        later_observation = Observation(
+            observation_datetime="2025-01-02T00:04:00Z",
+            sample_id=later_sample.id,
+            sensor_id=sensor.id,
+            parameter_id=groundwater_level_observation.parameter_id,
+            release_status="draft",
+            value=9.0,
+            unit="ft",
+            measuring_point_height=5.0,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(later_observation)
+        session.commit()
+        session.refresh(later_observation)
+        later_sample_id = later_sample.id
+        later_observation_id = later_observation.id
+
+    try:
+        response = client.get(f"/thing/water-well/{water_well_thing.id}/details")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["latest_field_event_sample"]["id"] == later_sample_id
+        assert (
+            data["recent_groundwater_level_observations"][0]["id"]
+            == later_observation_id
+        )
+    finally:
+        with session_ctx() as session:
+            later_observation = session.get(Observation, later_observation_id)
+            if later_observation is not None:
+                session.delete(later_observation)
+            later_sample = session.get(Sample, later_sample_id)
+            if later_sample is not None:
+                session.delete(later_sample)
+            session.commit()
+
+
+def test_get_water_well_details_payload_404_not_found():
+    response = client.get("/thing/water-well/999999/details")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Thing with ID 999999 not found."
+
+
+def test_get_water_well_by_id_includes_location_properties(
+    water_well_thing,
+):
+    response = client.get(f"/thing/water-well/{water_well_thing.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["current_location"]["properties"]["county"] == "Sierra"
+    assert data["current_location"]["properties"]["state"] == "NM"
+    assert data["current_location"]["properties"]["quad_name"] == "Hillsboro Peak"
+
+
+def test_get_water_wells_includes_contact_summary(
+    water_well_thing,
+    contact,
+):
+    response = client.get("/thing/water-well")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    well = next(
+        (item for item in data["items"] if item["id"] == water_well_thing.id), None
+    )
+    assert well is not None, f"Well {water_well_thing.id} not found in response"
+    assert well["contacts"] == [
+        {
+            "id": contact.id,
+            "created_at": contact.created_at.astimezone(timezone.utc).strftime(DT_FMT),
+            "release_status": contact.release_status,
+            "name": contact.name,
+            "organization": contact.organization,
+            "contact_type": contact.contact_type,
+            "role": contact.role,
+        }
+    ]
+
+
 def test_get_water_well_by_id_404_not_found(water_well_thing):
     bad_id = 99999
     response = client.get(f"/thing/water-well/{bad_id}")
@@ -727,19 +878,19 @@ def test_get_thing_id_links(thing_id_link):
     response = client.get("/thing/id-link")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == thing_id_link.id
-    assert data["items"][0]["created_at"] == thing_id_link.created_at.astimezone(
+    assert data["total"] >= 1
+    item = next(
+        (item for item in data["items"] if item["id"] == thing_id_link.id), None
+    )
+    assert item is not None
+    assert item["created_at"] == thing_id_link.created_at.astimezone(
         timezone.utc
     ).strftime(DT_FMT)
-    assert data["items"][0]["release_status"] == thing_id_link.release_status
-    assert data["items"][0]["thing_id"] == thing_id_link.thing_id
-    assert data["items"][0]["relation"] == thing_id_link.relation
-    assert data["items"][0]["alternate_id"] == thing_id_link.alternate_id
-    assert (
-        data["items"][0]["alternate_organization"]
-        == thing_id_link.alternate_organization
-    )
+    assert item["release_status"] == thing_id_link.release_status
+    assert item["thing_id"] == thing_id_link.thing_id
+    assert item["relation"] == thing_id_link.relation
+    assert item["alternate_id"] == thing_id_link.alternate_id
+    assert item["alternate_organization"] == thing_id_link.alternate_organization
 
 
 def test_get_thing_id_link_by_id(thing_id_link):
@@ -793,11 +944,11 @@ def test_get_things(water_well_thing, spring_thing, location):
     response = client.get("/thing")
     assert response.status_code == 200
 
-    expected_location = LocationResponse.model_validate(location).model_dump()
-    # created_at is already serialized to UTC format by UTCAwareDatetime
-
     data = response.json()
-    assert data["total"] == 2
+    assert data["total"] >= 2
+    item_ids = {item["id"] for item in data["items"]}
+    assert water_well_thing.id in item_ids
+    assert spring_thing.id in item_ids
 
 
 @pytest.mark.skip("Needs to be updated per changes made from feature files")

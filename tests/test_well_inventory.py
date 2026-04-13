@@ -14,10 +14,15 @@ from pathlib import Path
 import pytest
 from cli.service_adapter import well_inventory_csv
 from core.constants import SRID_UTM_ZONE_13N, SRID_WGS84
+from core.enums import Role, ContactType
 from db import (
+    Base,
     Location,
     LocationThingAssociation,
     Thing,
+    Group,
+    Sample,
+    Observation,
     Contact,
     ThingContactAssociation,
     FieldEvent,
@@ -25,11 +30,46 @@ from db import (
     FieldEventParticipant,
 )
 from db.engine import session_ctx
+from schemas.well_inventory import WellInventoryRow
 from services.util import transform_srid, convert_ft_to_m
 from shapely import Point
 
 
-def test_well_inventory_db_contents():
+def _minimal_valid_well_inventory_row():
+    return {
+        "project": "Test Project",
+        "well_name_point_id": "TEST-0001",
+        "site_name": "Test Site",
+        "date_time": "2025-02-15T10:30:00",
+        "field_staff": "Test Staff",
+        "utm_easting": 357000,
+        "utm_northing": 3784000,
+        "utm_zone": "13N",
+        "elevation_ft": 5000,
+        "elevation_method": "Global positioning system (GPS)",
+        "measuring_point_height_ft": 3.5,
+    }
+
+
+def _reset_well_inventory_tables() -> None:
+    with session_ctx() as session:
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name in ("alembic_version", "parameter"):
+                continue
+            if table.name.startswith("lexicon"):
+                continue
+            session.execute(table.delete())
+        session.commit()
+
+
+@pytest.fixture(autouse=True)
+def isolate_well_inventory_tables():
+    _reset_well_inventory_tables()
+    yield
+    _reset_well_inventory_tables()
+
+
+def test_well_inventory_db_contents_no_waterlevels():
     """
     Test that the well inventory upload creates the correct database contents.
 
@@ -132,6 +172,7 @@ def test_well_inventory_db_contents():
                 [
                     file_content["well_measuring_notes"],
                     file_content["sampling_scenario_notes"],
+                    f"Sample possible: {file_content['sample_possible']}",
                 ]
             )
             assert sorted(c.content for c in thing._get_notes("Historical")) == sorted(
@@ -417,16 +458,328 @@ def test_well_inventory_db_contents():
                 else:
                     assert participant.participant.name == file_content["field_staff_2"]
 
-        # CLEAN UP THE DATABASE AFTER TESTING
-        session.query(FieldEventParticipant).delete()
-        session.query(FieldActivity).delete()
-        session.query(FieldEvent).delete()
-        session.query(ThingContactAssociation).delete()
-        session.query(LocationThingAssociation).delete()
-        session.query(Contact).delete()
-        session.query(Location).delete()
-        session.query(Thing).delete()
-        session.commit()
+
+def test_well_inventory_db_contents_with_waterlevels(tmp_path):
+    """
+    Tests that the following records are made:
+
+    - field event
+    - field activity for well inventory
+    - field activity for water level measurement
+    - field participants
+    - contact
+    - location
+    - thing
+    - sample
+    - observation
+
+    """
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+            "mp_height_ft": 3.5,
+            "level_status": "Water level not affected",
+        }
+    )
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        field_events = session.query(FieldEvent).all()
+        field_activities = session.query(FieldActivity).all()
+        field_event_participants = session.query(FieldEventParticipant).all()
+        contacts = session.query(Contact).all()
+        locations = session.query(Location).all()
+        things = session.query(Thing).all()
+        samples = session.query(Sample).all()
+        observations = session.query(Observation).all()
+
+        assert len(field_events) == 1
+        assert len(field_activities) == 2
+        activity_types = {fa.activity_type for fa in field_activities}
+        assert activity_types == {
+            "well inventory",
+            "groundwater level",
+        }, f"Unexpected activity types: {activity_types}"
+        gwl_field_activity = next(
+            (fa for fa in field_activities if fa.activity_type == "groundwater level"),
+            None,
+        )
+        assert gwl_field_activity is not None
+
+        assert len(field_event_participants) == 1
+        assert len(contacts) == 1
+        assert len(locations) == 1
+        assert len(things) == 1
+        assert len(samples) == 1
+        sample = samples[0]
+        assert sample.field_activity == gwl_field_activity
+        assert len(observations) == 1
+        observation = observations[0]
+        assert observation.sample == sample
+
+
+def test_measuring_point_height_ft_used_for_thing_and_observation(tmp_path):
+    """When measuring_point_height_ft is provided it is used for the thing's (MeasuringPointHistory) and observation's measuring_point_height values."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": 3.5,
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height == 3.5
+        assert len(observations) == 1
+        assert observations[0].measuring_point_height == 3.5
+
+
+def test_mp_height_used_for_thing_and_observation_when_measuring_point_height_ft_blank(
+    tmp_path,
+):
+    """When depth to water is provided and measuring_point_height_ft is blank the mp_height value should be used for the thing's (MeasuringPointHistory) and observation's measuring_point_height."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": "",
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "8",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+            "mp_height": 4.0,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height == 4.0
+        assert len(observations) == 1
+        assert observations[0].measuring_point_height == 4.0
+
+
+def test_null_mp_height_allowed(tmp_path):
+    """A null measuring_point_height_ft and mp_height are allowed when depth to water is provided, and results in null measuring_point_height for the thing and observation."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "measuring_point_height_ft": "",
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": 8,
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        things = session.query(Thing).all()
+        observations = session.query(Observation).all()
+
+        assert len(things) == 1
+        assert things[0].measuring_point_height is None
+        assert len(observations) == 1
+        assert observations[0].value == 8
+        assert observations[0].measuring_point_height is None
+
+
+def test_conflicting_mp_heights_raises_error(tmp_path):
+    """
+    When both measuring_point_height_ft and mp_height are provided, an inequality (conflict) should raise an error.
+    """
+    row = _minimal_valid_well_inventory_row()
+
+    row.update(
+        {
+            "measuring_point_height_ft": 3.5,
+            "mp_height": 4.0,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 1, result.stderr
+    assert (
+        result.payload["validation_errors"][0]["error"]
+        == "Conflicting values for measuring point height: mp_height and measuring_point_height_ft"
+    )
+
+
+def test_blank_depth_to_water_still_creates_water_level_records(tmp_path):
+    """Blank depth-to-water is treated as missing while preserving the attempted measurement."""
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "water_level_date_time": "2025-02-15T10:30:00",
+            "depth_to_water_ft": "",
+            "sample_method": "Steel-tape measurement",
+            "data_quality": "Water level accurate to within two hundreths of a foot",
+            "water_level_notes": "Attempted measurement",
+            "mp_height_ft": 3.5,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-blank-depth.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        samples = session.query(Sample).all()
+        observations = session.query(Observation).all()
+
+        assert len(samples) == 1
+        assert len(observations) == 1
+        assert samples[0].sample_date == datetime.fromisoformat("2025-02-15T10:30:00Z")
+        assert observations[0].observation_datetime == datetime.fromisoformat(
+            "2025-02-15T10:30:00Z"
+        )
+        assert observations[0].value is None
+        assert observations[0].measuring_point_height == 3.5
+
+
+def test_rerunning_same_well_inventory_csv_is_idempotent():
+    """Re-importing the same CSV should not create duplicate well inventory records."""
+    file = Path("tests/features/data/well-inventory-valid.csv")
+    assert file.exists(), "Test data file does not exist."
+
+    first = well_inventory_csv(file)
+    assert first.exit_code == 0, first.stderr
+
+    with session_ctx() as session:
+        counts_after_first = {
+            "things": session.query(Thing).count(),
+            "field_events": session.query(FieldEvent).count(),
+            "field_activities": session.query(FieldActivity).count(),
+            "samples": session.query(Sample).count(),
+            "observations": session.query(Observation).count(),
+        }
+
+    second = well_inventory_csv(file)
+    assert second.exit_code == 0, second.stderr
+
+    with session_ctx() as session:
+        counts_after_second = {
+            "things": session.query(Thing).count(),
+            "field_events": session.query(FieldEvent).count(),
+            "field_activities": session.query(FieldActivity).count(),
+            "samples": session.query(Sample).count(),
+            "observations": session.query(Observation).count(),
+        }
+
+    assert counts_after_second == counts_after_first
+
+
+def test_failed_project_rows_do_not_create_empty_group(tmp_path):
+    row = _minimal_valid_well_inventory_row()
+    row.update(
+        {
+            "project": "Project Without Successful Rows",
+            "repeat_measurement_permission": True,
+        }
+    )
+
+    file_path = tmp_path / "well-inventory-failed-project.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 1, result.stderr
+
+    with session_ctx() as session:
+        group = (
+            session.query(Group)
+            .filter(
+                Group.name == "Project Without Successful Rows",
+                Group.group_type == "Monitoring Plan",
+            )
+            .one_or_none()
+        )
+
+        assert group is None
+
+
+def test_complete_monitoring_frequency_sets_not_currently_monitored_without_frequency(
+    tmp_path,
+):
+    row = _minimal_valid_well_inventory_row()
+    row["monitoring_frequency"] = "Complete"
+
+    file_path = tmp_path / "well-inventory-complete-monitoring-frequency.csv"
+    with file_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+        writer.writeheader()
+        writer.writerow(row)
+
+    result = well_inventory_csv(file_path)
+    assert result.exit_code == 0, result.stderr
+
+    with session_ctx() as session:
+        thing = session.query(Thing).one()
+
+        assert thing.monitoring_status == "Not currently monitored"
+        assert thing.monitoring_frequencies == []
 
 
 # =============================================================================
@@ -479,6 +832,42 @@ class TestWellInventoryErrorHandling:
             assert result.exit_code == 1
             errors = result.payload.get("validation_errors", [])
             assert any("Duplicate" in str(e) for e in errors)
+
+    def test_upload_fails_when_well_name_already_exists_in_database(self, tmp_path):
+        """Upload fails when a water well with the same Thing.name already exists."""
+        row = _minimal_valid_well_inventory_row()
+
+        with session_ctx() as session:
+            session.add(Thing(name=row["well_name_point_id"], thing_type="water well"))
+            session.commit()
+
+        file_path = tmp_path / "well-inventory-existing-db-well.csv"
+        with file_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(row.keys()))
+            writer.writeheader()
+            writer.writerow(row)
+
+        result = well_inventory_csv(file_path)
+
+        assert result.exit_code == 1, result.stderr
+        errors = result.payload.get("validation_errors", [])
+        assert errors
+        assert errors[0]["field"] == "well_name_point_id"
+        assert (
+            errors[0]["error"]
+            == "Well already exists in database for well_name_point_id 'TEST-0001'"
+        )
+
+        with session_ctx() as session:
+            things = (
+                session.query(Thing)
+                .filter(
+                    Thing.name == row["well_name_point_id"],
+                    Thing.thing_type == "water well",
+                )
+                .all()
+            )
+            assert len(things) == 1
 
     def test_upload_blank_well_name_point_id_autogenerates(self, tmp_path):
         """Upload succeeds when well_name_point_id is blank and auto-generates IDs."""
@@ -582,7 +971,7 @@ class TestWellInventoryErrorHandling:
             result = well_inventory_csv(file_path)
             assert result.exit_code == 1
 
-    def test_upload_missing_contact_type(self):
+    def test_upload_missing_contact_role(self):
         """Upload fails when contact is provided without role."""
         file_path = Path("tests/features/data/well-inventory-missing-contact-role.csv")
         if file_path.exists():
@@ -682,8 +1071,8 @@ class TestWellInventoryHelpers:
         model.contact_special_requests_notes = "Call before visiting"
         model.contact_1_name = "John Doe"
         model.contact_1_organization = "Test Org"
-        model.contact_1_role = "Owner"
-        model.contact_1_type = "Primary"
+        model.contact_1_role = Role.Owner
+        model.contact_1_type = ContactType.Primary
         model.contact_1_email_1 = "john@example.com"
         model.contact_1_email_1_type = "Work"
         model.contact_1_email_2 = None
@@ -719,15 +1108,38 @@ class TestWellInventoryHelpers:
         assert len(contact_dict["addresses"]) == 1
         assert len(contact_dict["notes"]) == 2
 
-    def test_make_contact_with_no_name(self):
-        """Test contact dict returns None when name is empty."""
+    def test_make_contact_with_no_name_or_organization(self):
+        """Test contact dict returns None when name and organization are empty."""
         from services.well_inventory_csv import _make_contact
         from unittest.mock import MagicMock
 
         model = MagicMock()
         model.result_communication_preference = None
         model.contact_special_requests_notes = None
-        model.contact_1_name = None  # No name provided
+        model.contact_1_name = None
+        model.contact_1_organization = None
+        model.contact_1_role = None
+        model.contact_1_type = None
+        model.contact_1_email_1 = None
+        model.contact_1_email_1_type = None
+        model.contact_1_email_2 = None
+        model.contact_1_email_2_type = None
+        model.contact_1_phone_1 = None
+        model.contact_1_phone_1_type = None
+        model.contact_1_phone_2 = None
+        model.contact_1_phone_2_type = None
+        model.contact_1_address_1_line_1 = None
+        model.contact_1_address_1_line_2 = None
+        model.contact_1_address_1_city = None
+        model.contact_1_address_1_state = None
+        model.contact_1_address_1_postal_code = None
+        model.contact_1_address_1_type = None
+        model.contact_1_address_2_line_1 = None
+        model.contact_1_address_2_line_2 = None
+        model.contact_1_address_2_city = None
+        model.contact_1_address_2_state = None
+        model.contact_1_address_2_postal_code = None
+        model.contact_1_address_2_type = None
 
         well = MagicMock()
         well.id = 1
@@ -735,6 +1147,53 @@ class TestWellInventoryHelpers:
         contact_dict = _make_contact(model, well, 1)
 
         assert contact_dict is None
+
+    def test_make_contact_with_organization_only(self):
+        """Test contact dict creation when organization is present without a name."""
+        from services.well_inventory_csv import _make_contact
+        from unittest.mock import MagicMock
+
+        model = MagicMock()
+        model.result_communication_preference = None
+        model.contact_special_requests_notes = None
+        model.contact_1_name = None
+        model.contact_1_organization = "Test Org"
+        model.contact_1_role = Role.Owner
+        model.contact_1_type = ContactType.Primary
+        model.contact_1_email_1 = None
+        model.contact_1_email_1_type = None
+        model.contact_1_email_2 = None
+        model.contact_1_email_2_type = None
+        model.contact_1_phone_1 = None
+        model.contact_1_phone_1_type = None
+        model.contact_1_phone_2 = None
+        model.contact_1_phone_2_type = None
+        model.contact_1_address_1_line_1 = None
+        model.contact_1_address_1_line_2 = None
+        model.contact_1_address_1_city = None
+        model.contact_1_address_1_state = None
+        model.contact_1_address_1_postal_code = None
+        model.contact_1_address_1_type = None
+        model.contact_1_address_2_line_1 = None
+        model.contact_1_address_2_line_2 = None
+        model.contact_1_address_2_city = None
+        model.contact_1_address_2_state = None
+        model.contact_1_address_2_postal_code = None
+        model.contact_1_address_2_type = None
+
+        well = MagicMock()
+        well.id = 1
+
+        contact_dict = _make_contact(model, well, 1)
+
+        assert contact_dict is not None
+        assert contact_dict["name"] is None
+        assert contact_dict["organization"] == "Test Org"
+        assert contact_dict["thing_id"] == 1
+        assert contact_dict["emails"] == []
+        assert contact_dict["phones"] == []
+        assert contact_dict["addresses"] == []
+        assert contact_dict["notes"] == []
 
     def test_make_well_permission(self):
         """Test well permission creation."""
@@ -831,10 +1290,12 @@ class TestWellInventoryHelpers:
         assert _extract_autogen_prefix("XY-") == "XY-"
         assert _extract_autogen_prefix("AB-") == "AB-"
 
-        # New supported form (2-3 uppercase letter prefixes)
+        # Placeholder tokens are accepted case-insensitively and normalized.
         assert _extract_autogen_prefix("WL-XXXX") == "WL-"
         assert _extract_autogen_prefix("SAC-XXXX") == "SAC-"
         assert _extract_autogen_prefix("ABC -xxxx") == "ABC-"
+        assert _extract_autogen_prefix("wl-xxxx") == "WL-"
+        assert _extract_autogen_prefix("abc - XXXX") == "ABC-"
 
         # Blank values use default prefix
         assert _extract_autogen_prefix("") == "NM-"
@@ -846,7 +1307,6 @@ class TestWellInventoryHelpers:
         assert _extract_autogen_prefix("X-") is None
         assert _extract_autogen_prefix("123-") is None
         assert _extract_autogen_prefix("USER-XXXX") is None
-        assert _extract_autogen_prefix("wl-xxxx") is None
 
     def test_make_row_models_missing_well_name_point_id_column_errors(self):
         """Missing well_name_point_id column should fail validation (blank cell is separate)."""
@@ -907,6 +1367,112 @@ class TestWellInventoryHelpers:
             session.commit()
 
 
+class TestWellInventoryRowAliases:
+    """Schema alias handling for well inventory CSV field names."""
+
+    def test_well_status_accepts_well_hole_status_alias(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "Abandoned"
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status.value == "Abandoned"
+
+    def test_invalid_well_status_alias_raises_validation_error(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "NotARealWellHoleStatus"
+
+        with pytest.raises(ValueError, match="Input should be"):
+            WellInventoryRow(**row)
+
+    def test_water_level_aliases_are_mapped(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "measuring_person": "Tech 1",
+                "sample_method": "Steel-tape measurement",
+                "water_level_date_time": "2025-02-15T10:30:00",
+                "mp_height_ft": 2.5,
+                "level_status": "Other conditions exist that would affect the level (remarks)",
+                "depth_to_water_ft": 11.2,
+                "data_quality": "Water level accurate to within two hundreths of a foot",
+                "water_level_notes": "Initial reading",
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.sampler == "Tech 1"
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T10:30:00"
+        )
+        assert model.mp_height == 2.5
+        assert model.depth_to_water_ft == 11.2
+        assert model.water_level_notes == "Initial reading"
+
+    def test_blank_depth_to_water_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row.update(
+            {
+                "water_level_date_time": "2025-02-15T10:30:00",
+                "depth_to_water_ft": "",
+            }
+        )
+
+        model = WellInventoryRow(**row)
+
+        assert model.measurement_date_time == datetime.fromisoformat(
+            "2025-02-15T10:30:00"
+        )
+        assert model.depth_to_water_ft is None
+
+    def test_blank_contact_organization_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["contact_1_name"] = "Test Contact"
+        row["contact_1_organization"] = ""
+        row["contact_1_role"] = "Owner"
+        row["contact_1_type"] = "Primary"
+
+        model = WellInventoryRow(**row)
+
+        assert model.contact_1_name == "Test Contact"
+        assert model.contact_1_organization is None
+
+    def test_blank_well_status_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = ""
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status is None
+
+    def test_complete_monitoring_frequency_is_normalized(self):
+        row = _minimal_valid_well_inventory_row()
+        row["monitoring_frequency"] = "Complete"
+
+        model = WellInventoryRow(**row)
+
+        assert model.monitoring_frequency is None
+        assert model.monitoring_status.value == "Not currently monitored"
+
+    def test_whitespace_only_well_status_is_treated_as_none(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_hole_status"] = "   "
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status is None
+
+    def test_canonical_name_wins_when_alias_and_canonical_present(self):
+        row = _minimal_valid_well_inventory_row()
+        row["well_status"] = "Abandoned"
+        row["well_hole_status"] = "Inactive, exists but not used"
+
+        model = WellInventoryRow(**row)
+
+        assert model.well_status.value == "Abandoned"
+
+
 class TestWellInventoryAPIEdgeCases:
     """Additional edge case tests for API endpoints."""
 
@@ -965,16 +1531,6 @@ class TestWellInventoryAPIEdgeCases:
             result = well_inventory_csv(file_path)
             # Should succeed - commas in quoted fields are valid CSV
             assert result.exit_code in (0, 1)  # 1 if other validation fails
-
-            # Clean up if records were created
-            if result.exit_code == 0:
-                with session_ctx() as session:
-                    session.query(Thing).delete()
-                    session.query(Location).delete()
-                    session.query(Contact).delete()
-                    session.query(FieldEvent).delete()
-                    session.query(FieldActivity).delete()
-                    session.commit()
 
 
 # ============= EOF =============================================

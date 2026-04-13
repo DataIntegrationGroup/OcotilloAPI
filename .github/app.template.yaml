@@ -1,8 +1,13 @@
 service: ${SERVICE_NAME}
 runtime: python313
-entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
-instance_class: F4
+entrypoint: ${ENTRYPOINT}
 service_account: "${CLOUD_SQL_USER}.gserviceaccount.com"
+instance_class: F4
+inbound_services:
+  - warmup
+automatic_scaling:
+  min_instances: ${MIN_INSTANCES}
+  max_instances: ${MAX_INSTANCES}
 handlers:
   - url: /.*
     secure: always

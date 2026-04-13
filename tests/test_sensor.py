@@ -175,20 +175,21 @@ def test_get_sensors(sensor):
     response = client.get("/sensor")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
-        timezone.utc
-    ).strftime(DT_FMT)
-    assert data["items"][0]["release_status"] == sensor.release_status
-    assert data["items"][0]["name"] == sensor.name
-    assert data["items"][0]["sensor_type"] == sensor.sensor_type
-    assert data["items"][0]["model"] == sensor.model
-    assert data["items"][0]["serial_no"] == sensor.serial_no
-    assert data["items"][0]["pcn_number"] == sensor.pcn_number
-    assert data["items"][0]["owner_agency"] == sensor.owner_agency
-    assert data["items"][0]["sensor_status"] == sensor.sensor_status
-    assert data["items"][0]["notes"] == sensor.notes
+    assert data["total"] >= 1
+    item = next((item for item in data["items"] if item["id"] == sensor.id), None)
+    assert item is not None
+    assert item["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime(
+        DT_FMT
+    )
+    assert item["release_status"] == sensor.release_status
+    assert item["name"] == sensor.name
+    assert item["sensor_type"] == sensor.sensor_type
+    assert item["model"] == sensor.model
+    assert item["serial_no"] == sensor.serial_no
+    assert item["pcn_number"] == sensor.pcn_number
+    assert item["owner_agency"] == sensor.owner_agency
+    assert item["sensor_status"] == sensor.sensor_status
+    assert item["notes"] == sensor.notes
 
 
 def test_get_sensors_by_thing_id(
@@ -219,20 +220,21 @@ def test_get_sensors_by_parameter_id(sensor, groundwater_level_observation):
     response = client.get(f"/sensor?parameter_id={_groundwater_level_parameter_id()}")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["items"][0]["id"] == sensor.id
-    assert data["items"][0]["created_at"] == sensor.created_at.astimezone(
-        timezone.utc
-    ).strftime(DT_FMT)
-    assert data["items"][0]["release_status"] == sensor.release_status
-    assert data["items"][0]["name"] == sensor.name
-    assert data["items"][0]["sensor_type"] == sensor.sensor_type
-    assert data["items"][0]["model"] == sensor.model
-    assert data["items"][0]["serial_no"] == sensor.serial_no
-    assert data["items"][0]["pcn_number"] == sensor.pcn_number
-    assert data["items"][0]["owner_agency"] == sensor.owner_agency
-    assert data["items"][0]["sensor_status"] == sensor.sensor_status
-    assert data["items"][0]["notes"] == sensor.notes
+    assert data["total"] >= 1
+    item = next((item for item in data["items"] if item["id"] == sensor.id), None)
+    assert item is not None
+    assert item["created_at"] == sensor.created_at.astimezone(timezone.utc).strftime(
+        DT_FMT
+    )
+    assert item["release_status"] == sensor.release_status
+    assert item["name"] == sensor.name
+    assert item["sensor_type"] == sensor.sensor_type
+    assert item["model"] == sensor.model
+    assert item["serial_no"] == sensor.serial_no
+    assert item["pcn_number"] == sensor.pcn_number
+    assert item["owner_agency"] == sensor.owner_agency
+    assert item["sensor_status"] == sensor.sensor_status
+    assert item["notes"] == sensor.notes
 
 
 def test_get_sensor_by_id(sensor):

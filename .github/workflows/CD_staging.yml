@@ -20,7 +20,7 @@ jobs:
             fetch-depth: 0
 
         - name: Install uv in container
-          uses: astral-sh/setup-uv@v7.3.1
+          uses: astral-sh/setup-uv@v8.0.0
           with:
             version: "latest"
 
@@ -47,6 +47,16 @@ jobs:
           run: |
             uv run alembic upgrade head
 
+        - name: Refresh materialized views on staging database
+          env:
+            DB_DRIVER: "cloudsql"
+            CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
+            CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
+            CLOUD_SQL_USER: "${{ secrets.CLOUD_SQL_USER }}"
+            CLOUD_SQL_IAM_AUTH: true
+          run: |
+            uv run python -m cli.cli refresh-pygeoapi-materialized-views
+
         - name: Ensure envsubst is available
           run: |
             if ! command -v envsubst >/dev/null 2>&1; then
@@ -54,9 +64,8 @@ jobs:
               sudo apt-get install -y gettext-base
             fi
 
-        - name: Render app.yaml
+        - name: Render App Engine configs
           env:
-            SERVICE_NAME: "ocotillo-api-staging"
             ENVIRONMENT: "staging"
             CLOUD_SQL_INSTANCE_NAME: "${{ secrets.CLOUD_SQL_INSTANCE_NAME }}"
             CLOUD_SQL_DATABASE: "${{ vars.CLOUD_SQL_DATABASE }}"
@@ -77,25 +86,59 @@ jobs:
             SESSION_SECRET_KEY: "${{ secrets.SESSION_SECRET_KEY }}"
             APITALLY_CLIENT_ID: "${{ vars.APITALLY_CLIENT_ID }}"
           run: |
+            export MAX_INSTANCES="10"
+            export SERVICE_NAME="ocotillo-api-staging"
+            export ENTRYPOINT="gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app"
+            export MIN_INSTANCES="0"
             envsubst < .github/app.template.yaml > app.yaml
 
         - name: Deploy to Google Cloud
           run: |
-            gcloud app deploy app.yaml --quiet --project ${{ vars.GCP_PROJECT_ID }}
+            gcloud app deploy \
+              app.yaml \
+              --quiet \
+              --project ${{ vars.GCP_PROJECT_ID }}
 
-        # Clean up old versions - delete only the oldest version, one created and one destroyed
-        - name: Clean up oldest version
+        - name: Clean up oldest versions
           run: |
-            OLDEST_VERSION=$(gcloud app versions list --service=ocotillo-api-staging --project=${{ vars.GCP_PROJECT_ID}} --format="value(id)" --sort-by="version.createTime" | head -n 1)
-            if [ ! -z "$OLDEST_VERSION" ]; then
-              echo "Deleting oldest version: $OLDEST_VERSION"
-              gcloud app versions delete $OLDEST_VERSION --service=ocotillo-api-staging --project=${{ vars.GCP_PROJECT_ID }} --quiet
-              echo "Deleted oldest version: $OLDEST_VERSION"
+            SERVICE="ocotillo-api-staging"
+            VERSIONS_JSON="$(gcloud app versions list --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --format=json --sort-by="version.createTime" 2>/dev/null || printf '[]')"
+            export VERSIONS_JSON
+            DELETE_VERSION="$(python - <<'PY'
+            import json
+            import os
+
+            versions = json.loads(os.environ.get("VERSIONS_JSON", "[]") or "[]")
+            if len(versions) <= 1:
+                print("")
+                raise SystemExit(0)
+
+            def traffic_split(version):
+                for key in ("traffic_split", "trafficSplit"):
+                    value = version.get(key)
+                    if value is not None:
+                        try:
+                            return float(value)
+                        except (TypeError, ValueError):
+                            return 0.0
+                return 0.0
+
+            for version in versions:
+                if traffic_split(version) == 0.0:
+                    print(version.get("id", ""))
+                    break
+            else:
+                print("")
+            PY
+            )"
+            if [ -n "$DELETE_VERSION" ]; then
+              echo "Deleting old non-serving version for $SERVICE: $DELETE_VERSION"
+              gcloud app versions delete "$DELETE_VERSION" --service="$SERVICE" --project=${{ vars.GCP_PROJECT_ID }} --quiet
             else
-              echo "No versions to delete"
+              echo "No old non-serving versions to delete for $SERVICE"
             fi
 
-        - name: Remove app.yaml
+        - name: Remove rendered configs
           run: |
             rm app.yaml
 

@@ -14,13 +14,29 @@
 # limitations under the License.
 # ===============================================================================
 import os
+import socket
 from functools import lru_cache
 
 from dotenv import load_dotenv
 
 # Load .env file BEFORE importing anything else
-# Use override=True to override conflicting shell environment variables
-load_dotenv(override=True)
+# Use override=False so explicit shell environment variables can override .env
+load_dotenv(override=False)
+
+
+def _normalize_test_db_host() -> None:
+    """Fallback docker-compose hostnames to localhost for host-run tests."""
+    for env_name in ("POSTGRES_HOST", "PYGEOAPI_POSTGRES_HOST"):
+        host = (os.environ.get(env_name) or "").strip()
+        if host != "db":
+            continue
+        try:
+            socket.gethostbyname(host)
+        except OSError:
+            os.environ[env_name] = "localhost"
+
+
+_normalize_test_db_host()
 
 # for safety don't test on the production database port
 os.environ["POSTGRES_PORT"] = "5432"

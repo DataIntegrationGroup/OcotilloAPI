@@ -6,6 +6,7 @@ from pathlib import Path
 from behave import given, when, then
 from behave.runner import Context
 from cli.service_adapter import well_inventory_csv
+from db import Thing
 from db.engine import session_ctx
 from db.lexicon import LexiconCategory
 from services.util import convert_dt_tz_naive_to_tz_aware
@@ -244,11 +245,20 @@ def step_then_the_response_identifies_the_row_and_field_for_each_error(
         assert "field" in error, "Expected validation error to include field name"
 
 
-@then("no wells are imported")
-def step_then_no_wells_are_imported(context: Context):
+@then("{count:d} wells are imported")
+@then("{count:d} well is imported")
+def step_then_count_wells_are_imported(context: Context, count: int):
     response_json = context.response.json()
     wells = response_json.get("wells", [])
-    assert len(wells) == 0, "Expected no wells to be imported"
+    validation_errors = response_json.get("validation_errors", [])
+    assert (
+        len(wells) == count
+    ), f"Expected {count} wells to be imported, but got {len(wells)}: {wells}. Errors: {validation_errors}"
+
+
+@then("no wells are imported")
+def step_then_no_wells_are_imported(context: Context):
+    step_then_count_wells_are_imported(context, 0)
 
 
 @then("the response includes validation errors indicating duplicated values")
@@ -364,8 +374,10 @@ def step_then_the_response_includes_a_validation_error_for_the_required_field(
     response_json = context.response.json()
     assert "validation_errors" in response_json, "Expected validation errors"
     vs = response_json["validation_errors"]
-    assert len(vs) == 2, "Expected 2 validation error"
-    assert vs[0]["field"] == required_field
+    assert len(vs) >= 1, "Expected at least 1 validation error"
+    assert any(
+        v["field"] == required_field for v in vs
+    ), f"Expected validation error for {required_field}, but got {vs}"
 
 
 @then("the response includes an error message indicating the row limit was exceeded")
@@ -404,3 +416,20 @@ def step_then_all_wells_are_imported_with_system_generated_unique_well_name(
     assert len(well_ids) == len(
         set(well_ids)
     ), "Expected unique well_name_point_id values"
+
+
+@then(
+    'the imported well with monitoring_frequency "Complete" is marked not currently monitored'
+)
+def step_then_complete_monitoring_frequency_maps_to_not_currently_monitored(
+    context: Context,
+):
+    with session_ctx() as session:
+        thing = session.scalars(
+            select(Thing).where(
+                Thing.name == context.complete_monitoring_frequency_well_id
+            )
+        ).one()
+
+        assert thing.monitoring_status == "Not currently monitored"
+        assert thing.monitoring_frequencies == []

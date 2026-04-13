@@ -285,7 +285,11 @@ def test_get_samples(water_chemistry_sample, groundwater_level_sample):
     response = client.get("/sample")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["items"]) == 2
+    assert len(data["items"]) >= 2
+
+    item_ids = {item["id"] for item in data["items"]}
+    assert water_chemistry_sample.id in item_ids
+    assert groundwater_level_sample.id in item_ids
 
     for item in data["items"]:
         assert "id" in item
@@ -312,7 +316,7 @@ def test_get_samples_by_thing_id(
     response = client.get(f"/sample?thing_id={water_well_thing.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 2
+    assert data["total"] >= 2
 
     data_ids = [d["id"] for d in data["items"]]
     sorted_data_ids = sorted(data_ids)

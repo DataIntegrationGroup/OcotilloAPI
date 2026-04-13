@@ -19,7 +19,6 @@ import csv
 import io
 import json
 import re
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -27,43 +26,20 @@ from typing import Any, BinaryIO, Iterable, List
 
 from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
 from db.engine import session_ctx
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import ValidationError
+from schemas.water_level_csv import (
+    WaterLevelCsvRow,
+    WATER_LEVEL_REQUIRED_FIELDS,
+    WATER_LEVEL_HEADER_ALIASES,
+    WATER_LEVEL_IGNORED_FIELDS,
+)
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
+from services.thing_helper import find_water_wells_by_name
 
-# Required CSV columns for the bulk upload
-REQUIRED_FIELDS: List[str] = [
-    "field_staff",
-    "well_name_point_id",
-    "field_event_date_time",
-    "measurement_date_time",
-    "sampler",
-    "sample_method",
-    "mp_height",
-    "level_status",
-    "depth_to_water_ft",
-    "data_quality",
-]
-
-HEADER_ALIASES: dict[str, str] = {
-    "measuring_person": "sampler",
-    "water_level_date_time": "measurement_date_time",
-}
-
-# Allow-list values for validation. These represent early MVP lexicon values.
-VALID_LEVEL_STATUSES = {"stable", "rising", "falling"}
-VALID_DATA_QUALITIES = {"approved", "provisional"}
-VALID_SAMPLERS = {"groundwater team", "consultant"}
-
-# Mapping between human-friendly sample methods provided in CSV uploads and
-# their canonical lexicon terms stored in the database.
-SAMPLE_METHOD_ALIASES = {
-    "electric tape": "Electric tape measurement (E-probe)",
-    "steel tape": "Steel-tape measurement",
-}
-SAMPLE_METHOD_CANONICAL = {
-    value.lower(): value for value in SAMPLE_METHOD_ALIASES.values()
-}
+REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
+HEADER_ALIASES: dict[str, str] = dict(WATER_LEVEL_HEADER_ALIASES)
+IGNORED_FIELDS: set[str] = set(WATER_LEVEL_IGNORED_FIELDS)
 
 
 @dataclass
@@ -84,89 +60,14 @@ class _ValidatedRow:
     sample_method_term: str
     field_event_dt: datetime
     measurement_dt: datetime
-    mp_height: float
-    depth_to_water_ft: float
-    level_status: str
-    data_quality: str
+    mp_height: float | None
+    resolved_mp_height: float | int | None
+    existing_mp_height: float | int | None
+    mp_height_differs_from_history: bool
+    depth_to_water_ft: float | None
+    level_status: str | None
+    data_quality: str | None
     water_level_notes: str | None
-
-
-class WaterLevelCsvRow(BaseModel):
-    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
-
-    field_staff: str
-    well_name_point_id: str
-    field_event_date_time: datetime
-    measurement_date_time: datetime
-    sampler: str
-    sample_method: str
-    mp_height: float
-    level_status: str
-    depth_to_water_ft: float
-    data_quality: str
-    water_level_notes: str | None = None
-
-    @field_validator(
-        "field_staff",
-        "well_name_point_id",
-        "sampler",
-        "sample_method",
-        "level_status",
-        "data_quality",
-    )
-    @classmethod
-    def _require_value(cls, value: str) -> str:
-        if value is None or value == "":
-            raise ValueError("value is required")
-        return value
-
-    @field_validator("sampler")
-    @classmethod
-    def _validate_sampler(cls, value: str) -> str:
-        if value.lower() not in VALID_SAMPLERS:
-            raise ValueError(
-                f"Invalid sampler '{value}'. Expected one of: {sorted(VALID_SAMPLERS)}"
-            )
-        return value
-
-    @field_validator("level_status")
-    @classmethod
-    def _validate_level_status(cls, value: str) -> str:
-        if value.lower() not in VALID_LEVEL_STATUSES:
-            raise ValueError(
-                f"Invalid level_status '{value}'. Expected one of: {sorted(VALID_LEVEL_STATUSES)}"
-            )
-        return value
-
-    @field_validator("data_quality")
-    @classmethod
-    def _validate_data_quality(cls, value: str) -> str:
-        if value.lower() not in VALID_DATA_QUALITIES:
-            raise ValueError(
-                f"Invalid data_quality '{value}'. Expected one of: {sorted(VALID_DATA_QUALITIES)}"
-            )
-        return value
-
-    @field_validator("sample_method")
-    @classmethod
-    def _normalize_sample_method(cls, value: str) -> str:
-        normalized = value.lower()
-        if normalized in SAMPLE_METHOD_ALIASES:
-            return SAMPLE_METHOD_ALIASES[normalized]
-        if normalized in SAMPLE_METHOD_CANONICAL:
-            return SAMPLE_METHOD_CANONICAL[normalized]
-        raise ValueError(
-            f"Invalid sample_method '{value}'. Expected one of: {sorted(SAMPLE_METHOD_ALIASES.keys())}"
-        )
-
-    @field_validator("water_level_notes", mode="before")
-    @classmethod
-    def _empty_to_none(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, str) and value.strip() == "":
-            return None
-        return value
 
 
 def bulk_upload_water_levels(
@@ -180,15 +81,19 @@ def bulk_upload_water_levels(
         msg = f"File not found: {source_file}"
         payload = _build_payload([], [], 0, 0, 1, errors=[msg])
         stdout = _serialize_payload(payload, pretty_json)
-        return BulkUploadResult(exit_code=1, stdout=stdout, stderr=msg, payload=payload)
+        return BulkUploadResult(
+            exit_code=1,
+            stdout=stdout,
+            stderr=msg,
+            payload=payload,
+        )
 
     validation_errors: list[str] = []
     created_rows: list[dict[str, Any]] = []
 
     with session_ctx() as session:
-        parameter_id = _get_groundwater_level_parameter_id(session)
-
-        # Validate headers early so we can short-circuit without touching the DB.
+        # Validate headers early so we can short-circuit
+        # without touching the DB.
         header_errors = _validate_headers(headers)
         if header_errors:
             validation_errors.extend(header_errors)
@@ -196,20 +101,23 @@ def bulk_upload_water_levels(
             valid_rows, row_errors = _validate_rows(session, csv_rows)
             validation_errors.extend(row_errors)
 
-            if not validation_errors:
+            if valid_rows:
                 try:
-                    created_rows = _create_records(session, parameter_id, valid_rows)
+                    parameter_id = _get_groundwater_level_parameter_id(session)
+                    created_rows, persistence_errors = _create_records(
+                        session,
+                        parameter_id,
+                        valid_rows,
+                    )
+                    validation_errors.extend(persistence_errors)
                     session.commit()
                 except Exception as exc:  # pragma: no cover - safety fallback
                     session.rollback()
                     validation_errors.append(str(exc))
 
-        if validation_errors:
-            session.rollback()
-
     summary = {
         "total_rows_processed": len(csv_rows),
-        "total_rows_imported": len(created_rows) if not validation_errors else 0,
+        "total_rows_imported": len(created_rows),
         "validation_errors_or_warnings": _count_rows_with_issues(validation_errors),
     }
     payload = _build_payload(
@@ -217,7 +125,7 @@ def bulk_upload_water_levels(
     )
     stdout = _serialize_payload(payload, pretty_json)
     stderr = "\n".join(validation_errors)
-    exit_code = 0 if not validation_errors else 1
+    exit_code = 0 if created_rows or not validation_errors else 1
     return BulkUploadResult(
         exit_code=exit_code, stdout=stdout, stderr=stderr, payload=payload
     )
@@ -288,16 +196,23 @@ def _read_csv(
         for k, v in row.items():
             if k is None:
                 continue
-            key = HEADER_ALIASES.get(k.strip(), k.strip())
+            stripped_key = k.strip()
+            if stripped_key in IGNORED_FIELDS:
+                continue
+            key = HEADER_ALIASES.get(stripped_key, stripped_key)
             value = v.strip() if isinstance(v, str) else v or ""
-            # If both alias and canonical header are present, preserve first non-empty value.
+            # If both alias and canonical headers are present, keep the later
+            # non-empty value in CSV column order. An empty later value does not
+            # overwrite an earlier non-empty value.
             if key in normalized_row and normalized_row[key] and not value:
                 continue
             normalized_row[key] = value
         rows.append(normalized_row)
 
     headers = [
-        HEADER_ALIASES.get(h.strip(), h.strip()) for h in (reader.fieldnames or [])
+        HEADER_ALIASES.get(h.strip(), h.strip())
+        for h in (reader.fieldnames or [])
+        if h is not None and h.strip() not in IGNORED_FIELDS
     ]
     return headers, rows
 
@@ -337,12 +252,38 @@ def _validate_rows(
         well_name = model.well_name_point_id
         well = wells_by_name.get(well_name)
         if well is None:
-            sql = select(Thing).where(Thing.name == well_name)
-            well = session.scalars(sql).one_or_none()
+            matches = find_water_wells_by_name(
+                session,
+                well_name,
+                options=(selectinload(Thing.measuring_points),),
+            )
+            if len(matches) > 1:
+                errors.append(
+                    f"Row {idx}: Multiple wells found for well_name_point_id "
+                    f"'{well_name}'"
+                )
+                continue
+            well = matches[0] if matches else None
             if well is None:
                 errors.append(f"Row {idx}: Unknown well_name_point_id '{well_name}'")
                 continue
             wells_by_name[well_name] = well
+
+        (
+            resolved_mp_height,
+            existing_mp_height,
+            mp_height_differs_from_history,
+        ) = _resolve_measuring_point_height(well, model.mp_height)
+
+        depth_error = _validate_depth_to_water_against_well(
+            idx,
+            well,
+            model.depth_to_water_ft,
+            resolved_mp_height,
+        )
+        if depth_error:
+            errors.append(depth_error)
+            continue
 
         valid_rows.append(
             _ValidatedRow(
@@ -350,11 +291,14 @@ def _validate_rows(
                 raw={**normalized},
                 well=well,
                 field_staff=model.field_staff,
-                sampler=model.sampler,
+                sampler=model.measuring_person,
                 sample_method_term=model.sample_method,
                 field_event_dt=model.field_event_date_time,
-                measurement_dt=model.measurement_date_time,
+                measurement_dt=model.water_level_date_time,
                 mp_height=model.mp_height,
+                resolved_mp_height=resolved_mp_height,
+                existing_mp_height=existing_mp_height,
+                mp_height_differs_from_history=mp_height_differs_from_history,
                 depth_to_water_ft=model.depth_to_water_ft,
                 level_status=model.level_status,
                 data_quality=model.data_quality,
@@ -365,61 +309,177 @@ def _validate_rows(
     return valid_rows, errors
 
 
+def _resolve_measuring_point_height(
+    well: Thing, csv_mp_height: float | None
+) -> tuple[float | int | None, float | int | None, bool]:
+    existing_mp_height = well.measuring_point_height
+    if existing_mp_height is not None:
+        existing_mp_height = float(existing_mp_height)
+    if csv_mp_height is not None:
+        return (
+            csv_mp_height,
+            existing_mp_height,
+            (existing_mp_height is not None and csv_mp_height != existing_mp_height),
+        )
+
+    return existing_mp_height, existing_mp_height, False
+
+
+def _validate_depth_to_water_against_well(
+    row_index: int,
+    well: Thing,
+    depth_to_water_ft: float | None,
+    resolved_mp_height: float | int | None,
+) -> str | None:
+    well_depth = well.well_depth
+    if well_depth is not None:
+        well_depth = float(well_depth)
+
+    if depth_to_water_ft is None or resolved_mp_height is None or well_depth is None:
+        return None
+
+    corrected_depth_to_water = depth_to_water_ft - resolved_mp_height
+    if corrected_depth_to_water >= well_depth:
+        return (
+            f"Row {row_index}: depth_to_water_ft minus measuring point height "
+            f"({corrected_depth_to_water}) must be less than well depth "
+            f"({well_depth})"
+        )
+
+    return None
+
+
 def _create_records(
     session: Session, parameter_id: int, rows: list[_ValidatedRow]
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     created: list[dict[str, Any]] = []
+    errors: list[str] = []
 
     for row in rows:
-        field_event = FieldEvent(
-            thing=row.well,
-            event_date=row.field_event_dt,
-            notes=_build_field_event_notes(row),
-        )
-        field_activity = FieldActivity(
-            field_event=field_event,
-            activity_type="groundwater level",
-            notes=f"Sampler: {row.sampler}",
-        )
-        sample = Sample(
-            field_activity=field_activity,
-            sample_date=row.measurement_dt,
-            sample_name=f"wl-{uuid.uuid4()}",
-            sample_matrix="water",
-            sample_method=row.sample_method_term,
-            qc_type="Normal",
-            notes=row.water_level_notes,
-        )
-        observation = Observation(
-            sample=sample,
-            observation_datetime=row.measurement_dt,
-            parameter_id=parameter_id,
-            value=row.depth_to_water_ft,
-            unit="ft",
-            measuring_point_height=row.mp_height,
-            groundwater_level_reason=None,
-            notes=_build_observation_notes(row),
-        )
-        session.add(field_event)
-        session.add(field_activity)
-        session.add(sample)
-        session.add(observation)
-        session.flush()
+        savepoint = None
+        try:
+            savepoint = session.begin_nested()
+            sample_name = _build_sample_name(row)
+            sample = _find_existing_imported_sample(session, row, sample_name)
 
-        created.append(
-            {
-                "well_name_point_id": row.raw["well_name_point_id"],
-                "field_event_id": field_event.id,
-                "field_activity_id": field_activity.id,
-                "sample_id": sample.id,
-                "observation_id": observation.id,
-                "measurement_date_time": row.raw["measurement_date_time"],
-                "level_status": row.level_status,
-                "data_quality": row.data_quality,
-            }
-        )
+            if sample is None:
+                field_event = FieldEvent(
+                    thing=row.well,
+                    event_date=row.field_event_dt,
+                    notes=_build_field_event_notes(row),
+                )
+                field_activity = FieldActivity(
+                    field_event=field_event,
+                    activity_type="groundwater level",
+                    notes=f"Sampler: {row.sampler}",
+                )
+                sample = Sample(field_activity=field_activity)
+                observation = Observation(sample=sample)
+                session.add(field_event)
+                session.add(field_activity)
+                session.add(sample)
+                session.add(observation)
+            else:
+                field_activity = sample.field_activity
+                field_event = field_activity.field_event
+                observation = _find_existing_observation(sample, parameter_id)
+                if observation is None:
+                    observation = Observation(sample=sample)
+                    session.add(observation)
 
-    return created
+                field_event.event_date = row.field_event_dt
+                field_event.notes = _build_field_event_notes(row)
+                field_activity.notes = f"Sampler: {row.sampler}"
+
+            _apply_sample_values(sample, row, sample_name)
+            _apply_observation_values(observation, row, parameter_id)
+            session.flush()
+            savepoint.commit()
+
+            if row.mp_height_differs_from_history:
+                errors.append(
+                    "Row "
+                    f"{row.row_index}: CSV mp_height ({row.mp_height}) differs "
+                    "from existing measuring point height "
+                    f"({row.existing_mp_height}); CSV value will be used"
+                )
+
+            created.append(
+                {
+                    "well_name_point_id": row.raw["well_name_point_id"],
+                    "field_event_id": field_event.id,
+                    "field_activity_id": field_activity.id,
+                    "sample_id": sample.id,
+                    "observation_id": observation.id,
+                    "measurement_date_time": row.raw.get("water_level_date_time"),
+                    "level_status": row.level_status,
+                    "data_quality": row.data_quality,
+                }
+            )
+        except Exception as exc:  # pragma: no cover - exercised via DB tests
+            if savepoint is not None and savepoint.is_active:
+                savepoint.rollback()
+            else:
+                session.expire_all()
+            errors.append(f"Row {row.row_index}: {exc}")
+
+    return created, errors
+
+
+def _build_sample_name(row: _ValidatedRow) -> str:
+    return f"{row.well.name}-WL-{row.measurement_dt.strftime('%Y%m%d%H%M')}"
+
+
+def _find_existing_imported_sample(
+    session: Session, row: _ValidatedRow, sample_name: str
+) -> Sample | None:
+    sql = (
+        select(Sample)
+        .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
+        .join(FieldEvent, FieldActivity.field_event_id == FieldEvent.id)
+        .join(Thing, FieldEvent.thing_id == Thing.id)
+        .options(
+            selectinload(Sample.field_activity).selectinload(FieldActivity.field_event),
+            selectinload(Sample.observations),
+        )
+        .where(
+            Thing.name == row.well.name,
+            Thing.thing_type == "water well",
+            FieldActivity.activity_type == "groundwater level",
+            Sample.sample_name == sample_name,
+        )
+        .order_by(Sample.id.asc())
+    )
+    return session.scalars(sql).first()
+
+
+def _find_existing_observation(sample: Sample, parameter_id: int) -> Observation | None:
+    for observation in sample.observations:
+        if observation.parameter_id == parameter_id:
+            return observation
+    return None
+
+
+def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -> None:
+    sample.sample_date = row.measurement_dt
+    sample.sample_name = sample_name
+    sample.sample_matrix = "groundwater"
+    sample.sample_method = row.sample_method_term
+    sample.qc_type = "Normal"
+    sample.notes = row.water_level_notes
+
+
+def _apply_observation_values(
+    observation: Observation, row: _ValidatedRow, parameter_id: int
+) -> None:
+    observation.observation_datetime = row.measurement_dt
+    observation.parameter_id = parameter_id
+    observation.value = row.depth_to_water_ft
+    observation.unit = "ft"
+    observation.measuring_point_height = row.resolved_mp_height
+    observation.groundwater_level_reason = row.level_status
+    observation.nma_data_quality = row.data_quality
+    observation.notes = row.water_level_notes
 
 
 def _build_field_event_notes(row: _ValidatedRow) -> str | None:
@@ -430,18 +490,24 @@ def _build_field_event_notes(row: _ValidatedRow) -> str | None:
     return notes or None
 
 
-def _build_observation_notes(row: _ValidatedRow) -> str | None:
-    parts = [f"Level status: {row.level_status}", f"Data quality: {row.data_quality}"]
-    notes = " | ".join(parts)
-    return notes or None
-
-
 def _get_groundwater_level_parameter_id(session: Session) -> int:
-    sql = select(Parameter.id).where(Parameter.parameter_name == "groundwater level")
+    sql = select(Parameter.id).where(
+        Parameter.parameter_name == "groundwater level",
+        Parameter.matrix == "groundwater",
+    )
     parameter_id = session.scalars(sql).one_or_none()
-    if parameter_id is None:
-        raise RuntimeError("Groundwater level parameter is not initialized")
-    return parameter_id
+    if parameter_id is not None:
+        return parameter_id
+
+    parameter = Parameter(
+        parameter_name="groundwater level",
+        matrix="groundwater",
+        parameter_type="Field Parameter",
+        default_unit="ft",
+    )
+    session.add(parameter)
+    session.flush()
+    return parameter.id
 
 
 # ============= EOF =============================================

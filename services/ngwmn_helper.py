@@ -17,6 +17,11 @@ from xml.etree import ElementTree as etree
 
 from sqlalchemy import text
 
+
+def _as_text(v):
+    return "" if v is None else str(v)
+
+
 # NSMAP = dict(xsi="http://www.w3.org/2001/XMLSchema-instance", xsd="http://www.w3.org/2001/XMLSchema")
 
 
@@ -26,27 +31,36 @@ def make_xml_response(db, sql, point_id, func):
 
     rs = []
     for si in sql:
-
         records = db.execute(text(si), {"point_id": point_id})
         rs.append(records.fetchall())
     return func(*rs)
 
 
 def make_lithology_response(point_id, db):
-    sql = "select * from NMA_view_NGWMN_Lithology where PointID=:point_id"
+    sql = (
+        'select "PointID", "StratTop", "StratBottom", "TERM" '
+        'from "NMA_view_NGWMN_Lithology" where "PointID"=:point_id'
+    )
     return make_xml_response(db, sql, point_id, lithology_xml)
 
 
 def make_well_construction_response(point_id, db):
-    sql = "select * from NMA_view_NGWMN_WellConstruction where PointID=:point_id"
+    sql = (
+        'select "PointID", "CasingTop", "CasingBottom", "CasingDepthUnits", '
+        '"ScreenTop", "ScreenBottom", "ScreenBottomUnit", "ScreenDescription", "CasingDescription" '
+        'from "NMA_view_NGWMN_WellConstruction" where "PointID"=:point_id'
+    )
     return make_xml_response(db, sql, point_id, well_construction_xml)
 
 
 def make_waterlevels_response(point_id, db):
-    sql = "select * from dbo.view_NGWMN_WaterLevels where PointID=:point_id order by DateMeasured"
+    sql = (
+        'select * from "NMA_view_NGWMN_WaterLevels" where "PointID"=:point_id '
+        'order by "DateMeasured"'
+    )
     sql2 = (
-        "select * from NMA_WaterLevelsContinuous_Pressure_Daily where PointID=:point_id and QCed=1 order by "
-        "DateMeasured"
+        'select * from "NMA_WaterLevelsContinuous_Pressure_Daily" where "PointID"=:point_id and "QCed" is true '
+        'order by "DateMeasured"'
     )
 
     return make_xml_response(db, (sql, sql2), point_id, water_levels_xml2)
@@ -182,7 +196,7 @@ def make_continuous_water_level(root, r):
         ("WaterLevelAccuracy", "0.02 ft"),
     ):
         e = etree.SubElement(elem, attr)
-        e.text = str(val)
+        e.text = _as_text(val)
 
 
 def make_water_level(root, r):
@@ -204,37 +218,37 @@ def make_water_level(root, r):
         ("WaterLevelAccuracy", r[5]),
     ):
         e = etree.SubElement(elem, attr)
-        e.text = str(val)
+        e.text = _as_text(val)
 
 
 def make_well_construction(root, r):
     """
-    0        1         2             3          4       5            6,    7,  8
-    pointid, castop, casbottom, cadepthunits, screentop, screenbotom, units,screen description, casing description
+    0        1         2             3          4          5            6               7                  8
+    pointid, castop, casbottom, cadepthunits, screentop, screenbottom, screenbottomunit, screen description, casing description
     :param root:
     :param r:
     :return:
     """
     elem = etree.SubElement(root, "Casing")
-    make_point_id(elem, r)
+    make_point_id(elem, r, idx=0)
 
     e = etree.SubElement(elem, "CasingTop")
-    e.text = str(r[1])
+    e.text = _as_text(r[1])
 
     e = etree.SubElement(elem, "CasingBottom")
-    e.text = str(r[2])
+    e.text = _as_text(r[2])
 
     e = etree.SubElement(elem, "CasingDepthUnits")
-    e.text = str(r[3])
+    e.text = _as_text(r[3])
 
     e = etree.SubElement(elem, "ScreenTop")
-    e.text = str(r[4])
+    e.text = _as_text(r[4])
 
     e = etree.SubElement(elem, "ScreenBottom")
-    e.text = str(r[5])
+    e.text = _as_text(r[5])
 
     e = etree.SubElement(elem, "ScreenDescription")
-    e.text = str(r[7])
+    e.text = _as_text(r[7])
 
     e = etree.SubElement(elem, "ScreenMaterial")
     e.text = "steel"
@@ -242,21 +256,22 @@ def make_well_construction(root, r):
 
 def make_lithology(root, r):
     elem = etree.SubElement(root, "Lithology")
-    make_point_id(elem, r)
+    make_point_id(elem, r, idx=0)
 
     e = etree.SubElement(elem, "TopDepth")
-    e.text = str(r[1])
+    e.text = _as_text(r[1])
 
     e = etree.SubElement(elem, "BottomDepth")
-    e.text = str(r[2])
+    e.text = _as_text(r[2])
 
     e = etree.SubElement(elem, "Units")
     e.text = "feet"
 
     e = etree.SubElement(elem, "Description")
-    e.text = str(r[3])
+    e.text = _as_text(r[3])
 
 
 def make_point_id(elem, r, idx=0):
     e = etree.SubElement(elem, "PointID")
-    e.text = r[idx]
+    v = r[idx]
+    e.text = _as_text(v)

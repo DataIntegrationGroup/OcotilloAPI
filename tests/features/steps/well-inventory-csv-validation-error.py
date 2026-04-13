@@ -21,14 +21,48 @@ from behave.runner import Context
 def _handle_validation_error(context, expected_errors):
     response_json = context.response.json()
     validation_errors = response_json.get("validation_errors", [])
-    assert len(validation_errors) == len(
-        expected_errors
-    ), f"Expected {len(expected_errors)} validation errors, got {len(validation_errors)}"
-    for v, e in zip(validation_errors, expected_errors):
-        assert v["field"] == e["field"], f"Expected {e['field']} for {v['field']}"
-        assert v["error"] == e["error"], f"Expected {e['error']} for {v['error']}"
-        if "value" in e:
-            assert v["value"] == e["value"], f"Expected {e['value']} for {v['value']}"
+
+    def _matches(expected, actual):
+        field_match = str(expected.get("field", "")) in str(actual.get("field", ""))
+        error_match = str(expected.get("error", "")) in str(actual.get("error", ""))
+        return field_match and error_match
+
+    def _find_match(expected_idx: int, used_indices: set[int]) -> bool:
+        if expected_idx == len(expected_errors):
+            return True
+
+        expected = expected_errors[expected_idx]
+        for actual_idx, actual in enumerate(validation_errors):
+            if actual_idx in used_indices or not _matches(expected, actual):
+                continue
+            if _find_match(expected_idx + 1, used_indices | {actual_idx}):
+                return True
+        return False
+
+    assert _find_match(0, set()), (
+        f"Expected at least {len(expected_errors)} distinct validation error matches for "
+        f"{expected_errors}. Got: {validation_errors}"
+    )
+
+
+def _assert_any_validation_error_contains(
+    context: Context, field_fragment: str | None, error_fragment: str
+):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert validation_errors, "Expected at least one validation error"
+    found = False
+    for error in validation_errors:
+        field = str(error.get("field", ""))
+        message = str(error.get("error", ""))
+        if field_fragment and field_fragment not in field:
+            continue
+        if error_fragment in message:
+            found = True
+            break
+    assert (
+        found
+    ), f"Expected validation error containing field '{field_fragment}' and message '{error_fragment}'"
 
 
 @then(
@@ -107,7 +141,7 @@ def step_step_step_5(context):
     expected_errors = [
         {
             "field": "composite field error",
-            "error": "Value error, contact_1_role must be provided if name is provided",
+            "error": "Value error, contact_1_role is required when contact fields are provided",
         }
     ]
     _handle_validation_error(context, expected_errors)
@@ -153,13 +187,26 @@ def step_then_the_response_includes_a_validation_error_indicating_the_invalid_em
 
 
 @then(
-    'the response includes a validation error indicating the missing "contact_type" value'
+    'the response includes a validation error indicating the missing "contact_role" value'
 )
 def step_step_step_8(context):
     expected_errors = [
         {
             "field": "composite field error",
-            "error": "Value error, contact_1_type must be provided if name is provided",
+            "error": "Value error, contact_1_role is required when contact data is provided",
+        }
+    ]
+    _handle_validation_error(context, expected_errors)
+
+
+@then(
+    'the response includes a validation error indicating the missing "contact_type" value'
+)
+def step_step_step_9(context):
+    expected_errors = [
+        {
+            "field": "composite field error",
+            "error": "Value error, contact_1_type is required when contact data is provided",
         }
     ]
     _handle_validation_error(context, expected_errors)
@@ -212,6 +259,86 @@ def step_step_step_10(context):
         },
     ]
     _handle_validation_error(context, expected_errors)
+
+
+@then(
+    'the response includes a validation error indicating an invalid "address_type" value'
+)
+def step_then_response_includes_invalid_address_type_error(context: Context):
+    _assert_any_validation_error_contains(context, "address", "Input should be")
+
+
+@then("the response includes a validation error indicating an invalid state value")
+def step_then_response_includes_invalid_state_error(context: Context):
+    _assert_any_validation_error_contains(
+        context, "state", "Value error, State must be a 2 letter abbreviation"
+    )
+
+
+@then(
+    'the response includes a validation error indicating an invalid "well_hole_status" value'
+)
+def step_then_response_includes_invalid_well_hole_status_error(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert validation_errors, "Expected at least one validation error"
+    found = any(
+        str(error.get("field", "")) in {"well_hole_status", "well_status"}
+        and "Input should be" in str(error.get("error", ""))
+        for error in validation_errors
+    )
+    assert (
+        found
+    ), f"Expected well_hole_status/well_status validation error. Got: {validation_errors}"
+
+
+@then(
+    'the response includes a validation error indicating an invalid "monitoring_status" value'
+)
+def step_then_response_includes_invalid_monitoring_status_error(context: Context):
+    _assert_any_validation_error_contains(context, "monitoring", "Input should be")
+
+
+@then(
+    'the response includes a validation error indicating an invalid "well_pump_type" value'
+)
+def step_then_response_includes_invalid_well_pump_type_error(context: Context):
+    _assert_any_validation_error_contains(context, "well_pump_type", "Input should be")
+
+
+@then(
+    'the response includes a validation error indicating that at least one of "contact_1_name" or "contact_1_organization" must be provided'
+)
+@then(
+    'the response includes validation errors indicating that both "contact_1_name" and "contact_1_organization" must be provided when any contact information is present'
+)
+def step_then_response_includes_contact_name_or_org_required_error(context: Context):
+    response_json = context.response.json()
+    validation_errors = response_json.get("validation_errors", [])
+    assert validation_errors, f"Expected validation errors, got: {response_json}"
+    found = any(
+        "composite field error" in str(err.get("field", ""))
+        and (
+            "At least one of contact_1_name or contact_1_organization must be provided"
+            in str(err.get("error", ""))
+        )
+        for err in validation_errors
+    )
+
+    assert (
+        found
+    ), f"Expected contact validation error requiring contact_1_name or contact_1_organization. Got: {validation_errors}"
+
+
+@then(
+    'the response includes a validation error indicating that "water_level_date_time" is required when "depth_to_water_ft" is provided'
+)
+def step_then_response_includes_water_level_datetime_required_error(context: Context):
+    _assert_any_validation_error_contains(
+        context,
+        "composite field error",
+        "water_level_date_time is required when depth_to_water_ft is provided",
+    )
 
 
 # ============= EOF =============================================

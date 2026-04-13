@@ -101,6 +101,9 @@ class GeoJSONProperties(BaseModel):
     elevation_unit: str = "ft"
     vertical_datum: str = "NAVD88"
     elevation_method: ElevationMethod | None
+    county: str | None = None
+    state: str | None = None
+    quad_name: str | None = None
     utm_coordinates: GeoJSONUTMCoordinates = Field(
         default_factory=GeoJSONUTMCoordinates
     )
@@ -154,6 +157,9 @@ class LocationGeoJSONResponse(BaseModel):
         data_dict["properties"]["notes"] = data_dict.get("notes")
         data_dict["properties"]["elevation"] = convert_m_to_ft(elevation_m)
         data_dict["properties"]["elevation_method"] = data_dict.get("elevation_method")
+        data_dict["properties"]["county"] = data_dict.get("county")
+        data_dict["properties"]["state"] = data_dict.get("state")
+        data_dict["properties"]["quad_name"] = data_dict.get("quad_name")
         data_dict["properties"]["nma_location_notes"] = data_dict.get(
             "nma_location_notes"
         )

@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ===============================================================================
-from datetime import datetime
+from datetime import date, datetime
 from importlib.util import find_spec
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from core.dependencies import (
@@ -27,10 +28,17 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import NMA_Chemistry_SampleInfo, NMA_MajorChemistry
+from core.factory import create_api_app
+from db import (
+    Group,
+    GroupThingAssociation,
+    NMA_Chemistry_SampleInfo,
+    NMA_MajorChemistry,
+    NMA_MinorTraceChemistry,
+    StatusHistory,
+)
 from db.engine import session_ctx
-from main import app
-from tests import client, override_authentication
+from tests import override_authentication
 
 pytestmark = pytest.mark.skipif(
     find_spec("pygeoapi") is None,
@@ -39,7 +47,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module", autouse=True)
-def override_authentication_dependency_fixture():
+def ogc_client():
+    app = create_api_app()
     app.dependency_overrides[admin_function] = override_authentication(
         default={"name": "foobar", "sub": "1234567890"}
     )
@@ -55,29 +64,30 @@ def override_authentication_dependency_fixture():
     )
     app.dependency_overrides[amp_viewer_function] = override_authentication()
 
-    yield
+    with TestClient(app) as client:
+        yield client
 
     app.dependency_overrides = {}
 
 
-def test_ogc_landing():
-    response = client.get("/ogcapi")
+def test_ogc_landing(ogc_client):
+    response = ogc_client.get("/ogcapi")
     assert response.status_code == 200
     payload = response.json()
     assert payload["title"]
     assert any(link["rel"] == "self" for link in payload["links"])
 
 
-def test_ogc_conformance():
-    response = client.get("/ogcapi/conformance")
+def test_ogc_conformance(ogc_client):
+    response = ogc_client.get("/ogcapi/conformance")
     assert response.status_code == 200
     payload = response.json()
     assert "conformsTo" in payload
     assert any("ogcapi-features" in item for item in payload["conformsTo"])
 
 
-def test_ogc_openapi_has_paths():
-    response = client.get("/ogcapi/openapi?f=json")
+def test_ogc_openapi_has_paths(ogc_client):
+    response = ogc_client.get("/ogcapi/openapi?f=json")
     assert response.status_code == 200
     payload = response.json()
     assert payload["openapi"].startswith("3.")
@@ -190,8 +200,311 @@ def test_latest_tds_uses_latest_timestamp_within_same_day(water_well_thing):
         session.commit()
 
 
-def test_ogc_collections():
-    response = client.get("/ogcapi/collections")
+def test_ogc_major_chemistry_results_uses_latest_per_analyte(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MAJNORM01",
+            collection_date=datetime(2024, 3, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Older calcium result
+        calcium_old = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=80.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 1, 9, 0, 0),
+        )
+        # Newer calcium result that should win for calcium + calcium_units
+        calcium_new = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Ca",
+            symbol="",
+            sample_value=95.0,
+            units="mg/L as CaCO3",
+            analysis_date=datetime(2024, 3, 2, 9, 0, 0),
+        )
+        # Separate analyte with even later date to drive latest_chemistry_date
+        chloride = NMA_MajorChemistry(
+            chemistry_sample_info_id=csi.id,
+            analyte="Cl",
+            symbol="",
+            sample_value=40.0,
+            units="mg/L",
+            analysis_date=datetime(2024, 3, 3, 8, 0, 0),
+        )
+
+        session.add_all([calcium_old, calcium_new, chloride])
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_major_chemistry_results"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT calcium, calcium_units, chloride, chloride_units, latest_chemistry_date "
+                "FROM ogc_major_chemistry_results WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.calcium) == 95.0
+        assert row.calcium_units == "mg/L as CaCO3"
+        assert float(row.chloride) == 40.0
+        assert row.chloride_units == "mg/L"
+        assert row.latest_chemistry_date.isoformat() == "2024-03-03"
+
+        session.delete(chloride)
+        session.delete(calcium_new)
+        session.delete(calcium_old)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_major_chemistry_results"))
+        session.commit()
+
+
+def test_ogc_minor_chemistry_wells_uses_latest_per_analyte(water_well_thing):
+    with session_ctx() as session:
+        csi = NMA_Chemistry_SampleInfo(
+            thing_id=water_well_thing.id,
+            nma_sample_point_id="MINRNORM1",
+            collection_date=datetime(2024, 4, 1, 10, 0, 0),
+        )
+        session.add(csi)
+        session.flush()
+
+        # Older barium result
+        barium_old = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="Ba",
+            symbol="",
+            sample_value=0.40,
+            units="mg/L",
+            analysis_date=date(2024, 4, 1),
+        )
+        # Newer barium result that should win for barium + barium_units
+        barium_new = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="Ba",
+            symbol="",
+            sample_value=0.55,
+            units="ug/L",
+            analysis_date=date(2024, 4, 2),
+        )
+        # Separate analyte with even later date to drive latest_chemistry_date
+        fluoride = NMA_MinorTraceChemistry(
+            chemistry_sample_info_id=csi.id,
+            nma_sample_point_id="MINRNORM1",
+            analyte="F",
+            symbol="",
+            sample_value=1.2,
+            units="mg/L",
+            analysis_date=date(2024, 4, 3),
+        )
+
+        session.add_all([barium_old, barium_new, fluoride])
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT barium, barium_units, fluoride, fluoride_units, latest_chemistry_date "
+                "FROM ogc_minor_chemistry_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.barium) == 0.55
+        assert row.barium_units == "ug/L"
+        assert float(row.fluoride) == 1.2
+        assert row.fluoride_units == "mg/L"
+        assert row.latest_chemistry_date.isoformat() == "2024-04-03"
+
+        session.delete(fluoride)
+        session.delete(barium_new)
+        session.delete(barium_old)
+        session.delete(csi)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_minor_chemistry_wells"))
+        session.commit()
+
+
+def test_ogc_water_elevation_wells_computes_elevation_minus_depth_to_water(
+    water_well_thing, groundwater_level_observation
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT elevation_m, depth_to_water_below_ground_surface_ft, water_elevation_ft "
+                "FROM ogc_water_elevation_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert float(row.depth_to_water_below_ground_surface_ft) == 5.0
+        assert float(row.elevation_m) == 2464.9
+        expected_water_elevation_ft = (2464.9 * 3.28084) - 5.0
+        assert abs(float(row.water_elevation_ft) - expected_water_elevation_ft) < 1e-9
+
+
+def test_ogc_water_elevation_wells_normalizes_meter_observations_to_feet(
+    water_well_thing, groundwater_level_observation
+):
+    with session_ctx() as session:
+        meter_observation = groundwater_level_observation.__class__(
+            observation_datetime=datetime(2025, 1, 2, 0, 4, 0),
+            sample_id=groundwater_level_observation.sample_id,
+            sensor_id=groundwater_level_observation.sensor_id,
+            parameter_id=groundwater_level_observation.parameter_id,
+            release_status="draft",
+            value=3.0,
+            unit="m",
+            measuring_point_height=2.0,
+            groundwater_level_reason="Water level not affected",
+        )
+        session.add(meter_observation)
+        session.commit()
+
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT depth_to_water_below_ground_surface_ft, water_elevation_ft "
+                "FROM ogc_water_elevation_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        expected_depth_ft = (3.0 * 3.28084) - 2.0
+        expected_water_elevation_ft = (2464.9 * 3.28084) - expected_depth_ft
+
+        assert (
+            abs(float(row.depth_to_water_below_ground_surface_ft) - expected_depth_ft)
+            < 1e-9
+        )
+        assert abs(float(row.water_elevation_ft) - expected_water_elevation_ft) < 1e-9
+
+        session.delete(meter_observation)
+        session.commit()
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_elevation_wells"))
+        session.commit()
+
+
+def test_ogc_actively_monitored_wells_exposes_water_level_network_group_wells(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.commit()
+
+        group = Group(
+            name="Water Level Network",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        status_history = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add(status_history)
+        session.commit()
+
+        row = session.execute(
+            text(
+                "SELECT group_id, group_name, group_type "
+                "FROM ogc_actively_monitored_wells WHERE id = :thing_id"
+            ),
+            {"thing_id": water_well_thing.id},
+        ).one()
+
+        assert row.group_id == group.id
+        assert row.group_name == "Water Level Network"
+        assert row.group_type == "Monitoring Plan"
+
+        session.delete(status_history)
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
+def test_ogc_actively_monitored_wells_excludes_latest_not_currently_monitored(
+    water_well_thing,
+    groundwater_level_observation,
+):
+    with session_ctx() as session:
+        session.execute(text("REFRESH MATERIALIZED VIEW ogc_water_well_summary"))
+        session.commit()
+
+        group = Group(
+            name="Water Level Network",
+            group_type="Monitoring Plan",
+            release_status="draft",
+        )
+        session.add(group)
+        session.flush()
+
+        group_assoc = GroupThingAssociation(
+            group_id=group.id,
+            thing_id=water_well_thing.id,
+        )
+        session.add(group_assoc)
+        currently_monitored = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Currently monitored",
+            start_date=date(2024, 1, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        not_currently_monitored = StatusHistory(
+            status_type="Monitoring Status",
+            status_value="Not currently monitored",
+            start_date=date(2024, 2, 1),
+            target_id=water_well_thing.id,
+            target_table="thing",
+        )
+        session.add_all([currently_monitored, not_currently_monitored])
+        session.commit()
+
+        row = session.execute(
+            text("SELECT id FROM ogc_actively_monitored_wells WHERE id = :thing_id"),
+            {"thing_id": water_well_thing.id},
+        ).one_or_none()
+
+        assert row is None
+
+        session.delete(not_currently_monitored)
+        session.delete(currently_monitored)
+        session.delete(group_assoc)
+        session.delete(group)
+        session.commit()
+
+
+def test_ogc_collections(ogc_client):
+    response = ogc_client.get("/ogcapi/collections")
     assert response.status_code == 200
     payload = response.json()
     ids = {collection["id"] for collection in payload["collections"]}
@@ -201,41 +514,60 @@ def test_ogc_collections():
         "springs",
         "latest_tds_wells",
         "depth_to_water_trend_wells",
+        "water_elevation_wells",
         "water_well_summary",
+        "major_chemistry_results",
+        "minor_chemistry_wells",
+        "actively_monitored_wells",
+        "project_areas",
     }.issubset(ids)
 
 
-def test_ogc_new_collection_items_endpoints():
+def test_ogc_new_collection_items_endpoints(ogc_client):
     for collection_id in (
         "latest_tds_wells",
         "depth_to_water_trend_wells",
+        "water_elevation_wells",
         "water_well_summary",
+        "major_chemistry_results",
+        "minor_chemistry_wells",
+        "actively_monitored_wells",
+        "project_areas",
     ):
-        response = client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
+        response = ogc_client.get(f"/ogcapi/collections/{collection_id}/items?limit=10")
         assert response.status_code == 200
         payload = response.json()
         assert payload["type"] == "FeatureCollection"
 
 
+def test_ogc_project_areas_items_expose_groups_with_project_areas(ogc_client, group):
+    response = ogc_client.get("/ogcapi/collections/project_areas/items?limit=20")
+
+    assert response.status_code == 200
+    payload = response.json()
+    ids = {str(feature["id"]) for feature in payload["features"]}
+    assert str(group.id) in ids
+
+
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_locations_items_bbox(location):
     bbox = "-107.95,33.80,-107.94,33.81"
-    response = client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
+    response = ogc_client.get(f"/ogcapi/collections/locations/items?bbox={bbox}")
     assert response.status_code == 200
     payload = response.json()
     assert payload["type"] == "FeatureCollection"
     assert payload["numberReturned"] >= 1
 
 
-def test_ogc_wells_items_and_item(water_well_thing):
-    response = client.get("/ogcapi/collections/water_wells/items?limit=20")
+def test_ogc_wells_items_and_item(ogc_client, water_well_thing):
+    response = ogc_client.get("/ogcapi/collections/water_wells/items?limit=20")
     assert response.status_code == 200
     payload = response.json()
     assert payload["numberReturned"] >= 1
     ids = {str(feature["id"]) for feature in payload["features"]}
     assert str(water_well_thing.id) in ids
 
-    response = client.get(
+    response = ogc_client.get(
         f"/ogcapi/collections/water_wells/items/{water_well_thing.id}"
     )
     assert response.status_code == 200
@@ -246,7 +578,7 @@ def test_ogc_wells_items_and_item(water_well_thing):
 @pytest.mark.skip("PostGIS spatial operators not available in CI - see issue #449")
 def test_ogc_polygon_within_filter(location):
     polygon = "POLYGON((-107.95 33.80,-107.94 33.80,-107.94 33.81,-107.95 33.81,-107.95 33.80))"
-    response = client.get(
+    response = ogc_client.get(
         "/ogcapi/collections/locations/items",
         params={
             "filter": f"WITHIN(geometry,{polygon})",

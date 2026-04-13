@@ -1,9 +1,9 @@
 import json
 import logging
-import os
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 import httpx
 import pyproj
 from shapely.ops import transform
@@ -45,22 +45,6 @@ def _get_json(
         if attempt < retries:
             time.sleep(backoff * attempt)
     return None
-
-
-def to_bool(value: str) -> bool | str:
-    """Convert a string to a boolean."""
-    if isinstance(value, bool):
-        return value
-    if value.lower() in ("true", "1", "yes"):
-        return True
-    elif value.lower() in ("false", "0", "no"):
-        return False
-
-    return value
-
-
-def get_bool_env(key, default=False):
-    return to_bool(os.getenv(key, default))
 
 
 def transform_srid(geometry, source_srid, target_srid):

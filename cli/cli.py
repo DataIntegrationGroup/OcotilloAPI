@@ -24,8 +24,8 @@ import pandas as pd
 import typer
 from dotenv import load_dotenv
 
-# CLI should honor local `.env` values, even if shell/container vars already exist.
-load_dotenv(override=True)
+# CLI should load `.env` defaults without clobbering an explicitly prepared environment.
+load_dotenv(override=False)
 os.environ.setdefault("OCO_LOG_CONTEXT", "cli")
 
 cli = typer.Typer(help="Command line interface for managing the application.")
@@ -52,9 +52,12 @@ class SmokePopulation(str, Enum):
 
 PYGEOAPI_MATERIALIZED_VIEWS = (
     "ogc_latest_depth_to_water_wells",
+    "ogc_water_elevation_wells",
     "ogc_avg_tds_wells",
     "ogc_depth_to_water_trend_wells",
     "ogc_water_well_summary",
+    "ogc_major_chemistry_results",
+    "ogc_minor_chemistry_wells",
 )
 
 
@@ -131,6 +134,36 @@ def associate_assets_command(
     associate_assets(root_directory)
 
 
+@cli.command("restore-local-db")
+def restore_local_db(
+    source: str = typer.Argument(
+        ...,
+        help="Local .sql/.sql.gz path or gs://bucket/path.sql[.gz] URI.",
+    ),
+    db_name: str | None = typer.Option(
+        None,
+        "--db-name",
+        help="Override POSTGRES_DB for the restore target.",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from cli.db_restore import LocalDbRestoreError, restore_local_db_from_sql
+
+    try:
+        result = restore_local_db_from_sql(source, db_name=db_name)
+    except LocalDbRestoreError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(
+        "Restored "
+        f"{result.source} into {result.db_name} "
+        f"on {result.host}:{result.port} as {result.user}."
+    )
+
+
 @cli.command("transfer-results")
 def transfer_results(
     summary_path: Path = typer.Option(
@@ -156,6 +189,133 @@ def transfer_results(
     TransferResultsBuilder.write_summary(summary_path, results)
     typer.echo(f"Wrote comparison summary: {summary_path}")
     typer.echo(f"Transfer comparisons: {len(results.results)}")
+
+
+@cli.command("scoped-transfer")
+def scoped_transfer(
+    pointid: list[str] = typer.Option(
+        ...,
+        "--pointid",
+        help="Legacy PointID to transfer. Repeat --pointid for multiple values.",
+    ),
+    only: list[str] = typer.Option(
+        None,
+        "--only",
+        help="Optional transfer family to include. Repeat for multiple values.",
+    ),
+    skip: list[str] = typer.Option(
+        None,
+        "--skip",
+        help="Optional transfer family to skip. Repeat for multiple values.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Plan the scoped transfer without writing any records.",
+    ),
+    output_format: OutputFormat | None = typer.Option(
+        None,
+        "--output",
+        help="Optional output format",
+    ),
+    theme: ThemeMode = typer.Option(
+        ThemeMode.auto, "--theme", help="Color theme: auto, light, dark."
+    ),
+):
+    from services.scoped_transfer import (
+        ScopedTransferError,
+        ScopedTransferOptions,
+        format_scoped_transfer_json,
+        run_scoped_transfer,
+    )
+
+    colors = _palette(theme)
+    normalized_pointids = [
+        pid.strip().upper() for pid in pointid if pid and pid.strip()
+    ]
+
+    if output_format != OutputFormat.json:
+        # Print a quick status line so a long scoped run does not look stuck.
+        verb = "Planning" if dry_run else "Starting"
+        phase = "planning" if dry_run else "execution"
+        typer.secho(
+            f"{verb} scoped transfer for PointIDs: {', '.join(normalized_pointids)}",
+            fg=colors["accent"],
+            bold=True,
+        )
+        typer.secho(
+            f"Validating requested scope and preparing {phase}...",
+            fg=colors["muted"],
+        )
+
+    try:
+        result = run_scoped_transfer(
+            ScopedTransferOptions(
+                pointids=pointid,
+                only=only or [],
+                skip=skip or [],
+                dry_run=dry_run,
+            )
+        )
+    except ScopedTransferError as exc:
+        typer.secho(str(exc), fg=colors["issue"], bold=True, err=True)
+        raise typer.Exit(1) from exc
+
+    if output_format == OutputFormat.json:
+        typer.echo(format_scoped_transfer_json(result))
+        raise typer.Exit(result.exit_code)
+
+    header = "[SCOPED TRANSFER] DRY RUN" if result.dry_run else "[SCOPED TRANSFER]"
+    header_color = colors["ok"] if result.exit_code == 0 else colors["issue"]
+    typer.secho(header, fg=header_color, bold=True)
+    typer.secho("=" * 72, fg=colors["accent"])
+    typer.secho(
+        f"Requested PointIDs: {', '.join(result.pointids)}",
+        fg=colors["accent"],
+    )
+    typer.secho(
+        f"Selected families: {', '.join(result.selected_families)}",
+        fg=colors["accent"],
+    )
+    if result.added_prerequisites:
+        typer.secho(
+            f"Auto-added prerequisites: {', '.join(result.added_prerequisites)}",
+            fg=colors["muted"],
+        )
+    typer.echo()
+
+    typer.secho("FAMILY SUMMARY", fg=colors["accent"], bold=True)
+    for family_result in result.family_results:
+        detail_parts = [f"rows={family_result.applicable_source_rows}"]
+        if family_result.created is not None:
+            detail_parts.append(f"created={family_result.created}")
+        if family_result.skipped_existing is not None:
+            detail_parts.append(f"skipped_existing={family_result.skipped_existing}")
+        if family_result.added_as_prerequisite:
+            detail_parts.append("prerequisite")
+        if family_result.detail:
+            detail_parts.append(family_result.detail)
+        typer.secho(
+            f"  {family_result.family:<28} {family_result.status:<10} {'  '.join(detail_parts)}",
+            fg=(
+                colors["ok"]
+                if family_result.status in ("completed", "planned")
+                else colors["muted"]
+            ),
+        )
+
+    if result.validation_errors:
+        typer.echo()
+        typer.secho("VALIDATION ERRORS", fg=colors["issue"], bold=True)
+        for error in result.validation_errors:
+            typer.secho(f"  - {error}", fg=colors["issue"])
+
+    if result.execution_error:
+        typer.echo()
+        typer.secho("EXECUTION ERROR", fg=colors["issue"], bold=True)
+        typer.secho(result.execution_error, fg=colors["issue"])
+
+    raise typer.Exit(result.exit_code)
 
 
 @cli.command("compare-duplicated-welldata")
@@ -633,9 +793,16 @@ def water_levels_bulk_upload(
     payload = result.payload if isinstance(result.payload, dict) else {}
     summary = payload.get("summary", {})
     validation_errors = payload.get("validation_errors", [])
+    rows_with_issues = summary.get("validation_errors_or_warnings", 0)
 
-    if result.exit_code == 0:
+    if result.exit_code == 0 and not rows_with_issues:
         typer.secho("[WATER LEVEL IMPORT] SUCCESS", fg=colors["ok"], bold=True)
+    elif result.exit_code == 0:
+        typer.secho(
+            "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
+            fg=colors["issue"],
+            bold=True,
+        )
     else:
         typer.secho(
             "[WATER LEVEL IMPORT] COMPLETED WITH ISSUES",
@@ -676,7 +843,6 @@ def water_levels_bulk_upload(
     if summary:
         processed = summary.get("total_rows_processed", 0)
         imported = summary.get("total_rows_imported", 0)
-        rows_with_issues = summary.get("validation_errors_or_warnings", 0)
         typer.secho("SUMMARY", fg=colors["accent"], bold=True)
         label_width = 16
         value_width = 8
@@ -970,6 +1136,32 @@ def refresh_pygeoapi_materialized_views(
             session.commit()
 
     typer.echo(f"Refreshed {len(target_views)} materialized view(s).")
+
+
+@cli.command("import-project-area-boundaries")
+def import_project_area_boundaries_command(
+    layer_url: str = typer.Option(
+        (
+            "https://maps.nmt.edu/server/rest/services/Water/"
+            "Water_Resources/MapServer/17"
+        ),
+        "--layer-url",
+        help="ArcGIS Feature Layer URL for project area boundaries.",
+    ),
+):
+    from cli.project_area_import import import_project_area_boundaries
+
+    result = import_project_area_boundaries(layer_url=layer_url)
+    typer.echo(f"Fetched {result.fetched} feature(s).")
+    typer.echo(f"Matched {result.matched} group row(s).")
+    typer.echo(f"Created {result.created} group(s).")
+    typer.echo(f"Updated {result.updated} group project area(s).")
+    typer.echo(f"Skipped {result.skipped} unchanged group(s).")
+    if result.unmatched_locations:
+        typer.echo(
+            "Unmatched locations: " + ", ".join(result.unmatched_locations),
+            err=True,
+        )
 
 
 if __name__ == "__main__":

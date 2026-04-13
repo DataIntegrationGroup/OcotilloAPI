@@ -7,7 +7,7 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, engine_from_config, pool, text
 
-from services.util import get_bool_env
+from services.env import get_bool_env
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

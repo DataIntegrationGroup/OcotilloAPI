@@ -23,27 +23,50 @@ from behave.runner import Context
 from db import Observation
 from db.engine import session_ctx
 from services.water_level_csv import bulk_upload_water_levels
+from tests.features.environment import (
+    add_location,
+    add_measuring_point_history,
+    add_well,
+)
 
 REQUIRED_FIELDS: List[str] = [
     "field_staff",
     "well_name_point_id",
     "field_event_date_time",
-    "measurement_date_time",
-    "sampler",
+    "water_level_date_time",
+    "measuring_person",
     "sample_method",
+]
+OPTIONAL_FIELDS = [
+    "field_staff_2",
+    "field_staff_3",
     "mp_height",
     "level_status",
     "depth_to_water_ft",
     "data_quality",
+    "water_level_notes",
 ]
-OPTIONAL_FIELDS = ["water_level_notes"]
-VALID_SAMPLERS = ["Groundwater Team", "Consultant"]
-VALID_SAMPLE_METHODS = ["electric tape", "steel tape"]
-VALID_LEVEL_STATUSES = ["stable", "rising", "falling"]
-VALID_DATA_QUALITIES = ["approved", "provisional"]
+VALID_SAMPLE_METHODS = [
+    "Electric tape measurement (E-probe)",
+    "Steel-tape measurement",
+]
+VALID_LEVEL_STATUSES = ["Water level not affected", "Site was dry"]
+VALID_DATA_QUALITIES = [
+    "Water level accurate to within two hundreths of a foot",
+    "None",
+]
 
 
 def _available_well_names(context: Context) -> list[str]:
+    if "wells" not in context.objects or not context.objects["wells"]:
+        with session_ctx() as session:
+            loc_1 = add_location(context, session)
+            loc_2 = add_location(context, session)
+            well_1 = add_well(context, session, loc_1, name_num=101)
+            well_2 = add_well(context, session, loc_2, name_num=102)
+            add_measuring_point_history(context, session, well_1)
+            add_measuring_point_history(context, session, well_2)
+
     if not hasattr(context, "well_names"):
         context.well_names = [well.name for well in context.objects["wells"]]
     return context.well_names
@@ -53,16 +76,19 @@ def _base_row(context: Context, index: int) -> Dict[str, str]:
     well_names = _available_well_names(context)
     well_name = well_names[(index - 1) % len(well_names)]
     measurement_day = 14 + index
+    field_staff = "A Lopez" if index == 1 else "B Chen"
     return {
-        "field_staff": "A Lopez" if index == 1 else "B Chen",
+        "field_staff": field_staff,
+        "field_staff_2": "",
+        "field_staff_3": "",
         "well_name_point_id": well_name,
-        "field_event_date_time": f"2025-02-{measurement_day:02d}T08:00:00-07:00",
-        "measurement_date_time": f"2025-02-{measurement_day:02d}T10:30:00-07:00",
-        "sampler": VALID_SAMPLERS[(index - 1) % len(VALID_SAMPLERS)],
+        "field_event_date_time": f"2025-02-{measurement_day:02d}T08:00:00",
+        "water_level_date_time": f"2025-02-{measurement_day:02d}T10:30:00",
+        "measuring_person": field_staff,
         "sample_method": VALID_SAMPLE_METHODS[(index - 1) % len(VALID_SAMPLE_METHODS)],
         "mp_height": "1.5" if index == 1 else "1.8",
         "level_status": VALID_LEVEL_STATUSES[(index - 1) % len(VALID_LEVEL_STATUSES)],
-        "depth_to_water_ft": "45.2" if index == 1 else "47.0",
+        "depth_to_water_ft": "7.0" if index == 1 else "",
         "data_quality": VALID_DATA_QUALITIES[(index - 1) % len(VALID_DATA_QUALITIES)],
         "water_level_notes": "Initial measurement" if index == 1 else "Follow-up",
     }
@@ -89,6 +115,7 @@ def _write_csv_to_context(context: Context) -> None:
     temp_file.close()
     context.csv_file = str(Path(temp_file.name))
     context.csv_raw_text = csv_text
+    context.file_content = csv_text
 
 
 def _set_rows(
@@ -146,21 +173,53 @@ def step_given_each_well_name_point_id_value_matches_an_existing_well(context: C
 
 
 @given(
-    '"measurement_date_time" values are valid ISO 8601 timestamps with timezone offsets (e.g. "2025-02-15T10:30:00-08:00")'
+    '"field_event_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T08:00:00")'
 )
-def step_step_step(context: Context):
+def step_given_field_event_date_time_values_are_valid_naive_iso_datetimes(
+    context: Context,
+):
     for row in context.csv_rows:
-        assert row["measurement_date_time"].startswith("2025-02")
-        assert "T" in row["measurement_date_time"]
+        assert row["field_event_date_time"].startswith("2025-02")
+        assert "T" in row["field_event_date_time"]
+        assert "+" not in row["field_event_date_time"]
+        assert row["field_event_date_time"].count(":") == 2
 
 
-# @given("the water level CSV includes optional fields when available:")
-# def step_impl(context: Context):
-#     field_name = context.table.headings[0]
-#     optional_fields = [row[field_name].strip() for row in context.table]
-#     headers = set(context.csv_headers)
-#     missing = [field for field in optional_fields if field not in headers]
-#     assert not missing, f"Missing optional headers: {missing}"
+@given(
+    '"water_level_date_time" values are valid ISO 8601 timezone-naive datetime strings (e.g. "2025-02-15T10:30:00")'
+)
+def step_given_water_level_date_time_values_are_valid_naive_iso_datetimes(
+    context: Context,
+):
+    for row in context.csv_rows:
+        assert row["water_level_date_time"].startswith("2025-02")
+        assert "T" in row["water_level_date_time"]
+        assert "+" not in row["water_level_date_time"]
+        assert row["water_level_date_time"].count(":") == 2
+
+
+@given(
+    'when provided, "sample_method", "level_status", and "data_quality" values are valid lexicon values'
+)
+def step_given_lexicon_values_are_valid(context: Context):
+    for row in context.csv_rows:
+        if row.get("sample_method"):
+            assert row["sample_method"] in VALID_SAMPLE_METHODS
+        if row.get("level_status"):
+            assert row["level_status"] in VALID_LEVEL_STATUSES
+        if row.get("data_quality"):
+            assert row["data_quality"] in VALID_DATA_QUALITIES
+
+
+@given("the water level CSV includes optional fields when available:")
+def step_given_the_water_level_csv_includes_optional_fields_when_available(
+    context: Context,
+):
+    field_name = context.table.headings[0]
+    optional_fields = [row[field_name].strip() for row in context.table]
+    headers = set(context.csv_headers)
+    missing = [field for field in optional_fields if field not in headers]
+    assert not missing, f"Missing optional headers: {missing}"
 
 
 @when("I run the CLI command:")
@@ -218,9 +277,25 @@ def step_then_stderr_should_be_empty(context: Context):
 # Scenario: Upload succeeds when required columns are present but reordered
 # ============================================================================
 @given(
+    "my water level CSV file uses legacy alias headers for measurement date, sampler, and measuring point height"
+)
+def step_given_my_water_level_csv_file_uses_legacy_alias_headers(context: Context):
+    rows = _build_valid_rows(context)
+    alias_rows = []
+    for row in rows:
+        alias_row = dict(row)
+        alias_row["measurement_date_time"] = alias_row.pop("water_level_date_time")
+        alias_row["sampler"] = alias_row.pop("measuring_person")
+        alias_row["mp_height_ft"] = alias_row.pop("mp_height")
+        alias_rows.append(alias_row)
+    headers = list(alias_rows[0].keys())
+    _set_rows(context, alias_rows, headers=headers)
+
+
+@given(
     "my water level CSV file contains all required headers but in a different column order"
 )
-def step_step_step_2(context: Context):
+def step_given_my_water_level_csv_file_contains_reordered_headers(context: Context):
     rows = _build_valid_rows(context)
     headers = list(reversed(list(rows[0].keys())))
     _set_rows(context, rows, headers=headers)
@@ -299,13 +374,13 @@ def step_then_stderr_should_contain_a_validation_error_for_the_required_field(
 # Scenario: Upload fails due to invalid date formats
 # ============================================================================
 @given(
-    'my CSV file contains invalid ISO 8601 date values in the "measurement_date_time" field'
+    'my CSV file contains invalid ISO 8601 date values in the "water_level_date_time" field'
 )
 def step_step_step_6(context: Context):
     rows = _build_valid_rows(context, count=1)
-    rows[0]["measurement_date_time"] = "02/15/2025 10:30"
+    rows[0]["water_level_date_time"] = "02/15/2025 10:30"
     _set_rows(context, rows)
-    context.invalid_fields = ["measurement_date_time"]
+    context.invalid_fields = ["water_level_date_time"]
 
 
 @then("stderr should contain validation errors identifying the invalid field and row")
@@ -323,7 +398,7 @@ def step_then_stderr_should_contain_validation_errors_identifying_the_invalid_fi
 # Scenario: Upload fails due to invalid numeric fields
 # ============================================================================
 @given(
-    'my CSV file contains values that cannot be parsed as numeric in numeric-required fields such as "mp_height" or "depth_to_water_ft"'
+    'my CSV file contains values that cannot be parsed as numeric in numeric fields such as "mp_height" or "depth_to_water_ft"'
 )
 def step_step_step_7(context: Context):
     rows = _build_valid_rows(context, count=1)
@@ -337,21 +412,31 @@ def step_step_step_7(context: Context):
 # Scenario: Upload fails due to invalid lexicon values
 # ============================================================================
 @given(
-    'my CSV file contains invalid lexicon values for "sampler", "sample_method", "level_status", or "data_quality"'
+    'my CSV file contains invalid lexicon values for "sample_method", "level_status", or "data_quality"'
 )
 def step_step_step_8(context: Context):
     rows = _build_valid_rows(context, count=1)
-    rows[0]["sampler"] = "Unknown Team"
     rows[0]["sample_method"] = "mystery"
     rows[0]["level_status"] = "supercharged"
     rows[0]["data_quality"] = "bad"
     _set_rows(context, rows)
     context.invalid_fields = [
-        "sampler",
         "sample_method",
         "level_status",
         "data_quality",
     ]
+
+
+@given(
+    "my water level CSV file contains a row where measuring_person is not one of the supplied field staff"
+)
+def step_given_measuring_person_is_not_one_of_the_supplied_field_staff(
+    context: Context,
+):
+    rows = _build_valid_rows(context, count=1)
+    rows[0]["measuring_person"] = "Unexpected Person"
+    _set_rows(context, rows)
+    context.invalid_fields = ["measuring_person"]
 
 
 # ============= EOF =============================================

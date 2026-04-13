@@ -223,6 +223,31 @@ class TestSchemaAfterMigration:
 
         assert postgis == "postgis", "PostGIS extension not enabled"
 
+    def test_water_elevation_materialized_view_has_expected_columns(self):
+        """Water elevation materialized view should match the feet-normalized schema."""
+        with session_ctx() as session:
+            result = session.execute(text("""
+                    SELECT attname
+                    FROM pg_attribute
+                    WHERE attrelid = 'ogc_water_elevation_wells'::regclass
+                      AND attnum > 0
+                      AND NOT attisdropped
+                    ORDER BY attnum
+                    """))
+            columns = [row[0] for row in result.fetchall()]
+
+        assert columns == [
+            "id",
+            "name",
+            "thing_type",
+            "observation_id",
+            "observation_datetime",
+            "elevation_m",
+            "depth_to_water_below_ground_surface_ft",
+            "water_elevation_ft",
+            "point",
+        ]
+
 
 # =============================================================================
 # Foreign Key Integrity Tests
