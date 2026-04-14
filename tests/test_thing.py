@@ -26,7 +26,7 @@ from core.dependencies import (
     viewer_function,
     amp_viewer_function,
 )
-from db import MeasuringPointHistory, Thing, ThingIdLink, WellScreen
+from db import MeasuringPointHistory, StatusHistory, Thing, ThingIdLink, WellScreen
 from db.engine import session_ctx
 from main import app
 from schemas import DT_FMT
@@ -563,6 +563,7 @@ def test_get_water_well_by_id(water_well_thing, location):
 def test_get_water_well_details_payload(
     water_well_thing,
     field_event,
+    field_event_participant,
     contact,
     email,
     phone,
@@ -574,28 +575,87 @@ def test_get_water_well_details_payload(
     groundwater_level_sample,
     groundwater_level_observation,
 ):
+    with session_ctx() as session:
+        well = session.get(type(water_well_thing), water_well_thing.id)
+        session.add(well.add_note("historic depth to water: 12 ft", "Historical"))
+        session.add(well.add_note("historic depth to water: 18 ft", "Historical"))
+        session.add(well.add_note("turn left at the cattle guard", "Access"))
+        session.add(well.add_note("use the south gate", "Access"))
+        location = well.current_location
+        location.release_status = "private"
+
+        second_contact = contact.__class__(
+            name="Second Participant",
+            organization=None,
+            role=contact.role,
+            contact_type=contact.contact_type,
+            release_status="draft",
+        )
+        session.add(second_contact)
+        session.flush()
+        second_participant = field_event_participant.__class__(
+            field_event_id=field_event.id,
+            contact_id=second_contact.id,
+            participant_role="Lead",
+        )
+        session.add(second_participant)
+        session.commit()
+        second_contact_id = second_contact.id
+        second_participant_id = second_participant.id
+
     response = client.get(f"/thing/water-well/{water_well_thing.id}/details")
 
-    assert response.status_code == 200
-    data = response.json()
+    try:
+        assert response.status_code == 200
+        data = response.json()
 
-    assert data["well"]["id"] == water_well_thing.id
-    assert data["well"]["alternate_ids"][0]["id"] == thing_id_link.id
-    assert data["contacts"][0]["id"] == contact.id
-    assert data["contacts"][0]["emails"][0]["id"] == email.id
-    assert data["contacts"][0]["phones"][0]["id"] == phone.id
-    assert data["contacts"][0]["addresses"][0]["id"] == address.id
-    assert data["sensors"][0]["id"] == sensor.id
-    assert data["deployments"][0]["id"] == sensor_to_water_well_thing_deployment.id
-    assert data["deployments"][0]["sensor"]["id"] == sensor.id
-    assert data["well_screens"][0]["id"] == well_screen.id
-    assert (
-        data["recent_groundwater_level_observations"][0]["id"]
-        == groundwater_level_observation.id
-    )
-    assert data["latest_field_event_sample"]["id"] == groundwater_level_sample.id
-    assert data["latest_field_event_sample"]["field_event"]["id"] == field_event.id
-    assert data["latest_field_event_sample"]["contact"]["id"] == contact.id
+        assert data["well"]["id"] == water_well_thing.id
+        assert data["well"]["alternate_ids"][0]["id"] == thing_id_link.id
+        assert data["well"]["historic_depth_to_water"] == [
+            "historic depth to water: 12 ft",
+            "historic depth to water: 18 ft",
+        ]
+        assert data["well"]["well_location_note"] == [
+            "turn left at the cattle guard",
+            "use the south gate",
+        ]
+        assert data["well"]["current_location"]["release_status"] == "private"
+        assert data["contacts"][0]["id"] == contact.id
+        assert data["contacts"][0]["emails"][0]["id"] == email.id
+        assert data["contacts"][0]["phones"][0]["id"] == phone.id
+        assert data["contacts"][0]["addresses"][0]["id"] == address.id
+        assert data["sensors"][0]["id"] == sensor.id
+        assert data["deployments"][0]["id"] == sensor_to_water_well_thing_deployment.id
+        assert data["deployments"][0]["sensor"]["id"] == sensor.id
+        assert data["well_screens"][0]["id"] == well_screen.id
+        assert (
+            data["recent_groundwater_level_observations"][0]["id"]
+            == groundwater_level_observation.id
+        )
+        assert data["latest_field_event_sample"]["id"] == groundwater_level_sample.id
+        assert data["latest_field_event_sample"]["field_event"]["id"] == field_event.id
+        assert data["latest_field_event_sample"]["contact"]["id"] == contact.id
+        assert {
+            participant["id"] for participant in data["field_event_participants"]
+        } == {
+            field_event_participant.id,
+            second_participant_id,
+        }
+        assert {
+            participant["participant"]["id"]
+            for participant in data["field_event_participants"]
+        } == {contact.id, second_contact_id}
+    finally:
+        with session_ctx() as session:
+            second_participant = session.get(
+                field_event_participant.__class__, second_participant_id
+            )
+            if second_participant is not None:
+                session.delete(second_participant)
+            second_contact = session.get(contact.__class__, second_contact_id)
+            if second_contact is not None:
+                session.delete(second_contact)
+            session.commit()
 
 
 def test_get_water_well_details_payload_uses_latest_observation_sample(
@@ -679,6 +739,66 @@ def test_get_water_well_by_id_includes_location_properties(
     assert data["current_location"]["properties"]["county"] == "Sierra"
     assert data["current_location"]["properties"]["state"] == "NM"
     assert data["current_location"]["properties"]["quad_name"] == "Hillsboro Peak"
+
+
+def test_get_water_well_by_id_includes_site_name_from_nmbgmr_link(
+    water_well_thing,
+    thing_id_link,
+):
+    with session_ctx() as session:
+        site_name_link = ThingIdLink(
+            thing_id=water_well_thing.id,
+            relation="same_as",
+            alternate_id="John Smith Well",
+            alternate_organization="NMBGMR",
+            release_status="private",
+        )
+        session.add(site_name_link)
+        session.commit()
+        site_name_link_id = site_name_link.id
+
+    try:
+        response = client.get(f"/thing/water-well/{water_well_thing.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["site_name"] == "John Smith Well"
+    finally:
+        with session_ctx() as session:
+            site_name_link = session.get(ThingIdLink, site_name_link_id)
+            if site_name_link is not None:
+                session.delete(site_name_link)
+            session.commit()
+
+
+def test_get_water_well_by_id_includes_open_status_boolean(water_well_thing):
+    with session_ctx() as session:
+        open_status = StatusHistory(
+            status_type="Open Status",
+            status_value="Open",
+            start_date=date(2025, 1, 1),
+            end_date=None,
+            reason="test open status",
+            target_id=water_well_thing.id,
+            target_table="thing",
+            release_status="draft",
+        )
+        session.add(open_status)
+        session.commit()
+        open_status_id = open_status.id
+
+    try:
+        response = client.get(f"/thing/water-well/{water_well_thing.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["open_status"] is True
+    finally:
+        with session_ctx() as session:
+            open_status = session.get(StatusHistory, open_status_id)
+            if open_status is not None:
+                session.delete(open_status)
+            session.commit()
 
 
 def test_get_water_wells_includes_contact_summary(

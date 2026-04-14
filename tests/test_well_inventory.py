@@ -243,9 +243,9 @@ def test_well_inventory_db_contents_no_waterlevels():
                 else "Datalogger cannot be installed"
             )
             assert (
-                thing.open_status == "Open"
+                thing.open_status is True
                 if file_content["is_open"].lower() == "true"
-                else "Closed"
+                else thing.open_status is False
             )
 
             # LOCATION AND RELATED RECORDS

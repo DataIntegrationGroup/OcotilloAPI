@@ -159,6 +159,10 @@ def get_well_details_payload(
                 joinedload(Sample.field_activity)
                 .joinedload(FieldActivity.field_event)
                 .joinedload(FieldEvent.thing),
+                joinedload(Sample.field_activity)
+                .joinedload(FieldActivity.field_event)
+                .joinedload(FieldEvent.field_event_participants)
+                .joinedload(FieldEventParticipant.participant),
                 joinedload(Sample.field_event_participant).joinedload(
                     FieldEventParticipant.participant
                 ),
@@ -186,6 +190,11 @@ def get_well_details_payload(
         "well_screens": well_screens,
         "recent_groundwater_level_observations": recent_groundwater_level_observations,
         "latest_field_event_sample": latest_field_event_sample,
+        "field_event_participants": (
+            latest_field_event_sample.field_event.field_event_participants
+            if latest_field_event_sample is not None
+            else []
+        ),
     }
 
 

@@ -4,6 +4,7 @@ from schemas.contact import ContactResponse
 from schemas.deployment import DeploymentResponse
 from schemas.observation import GroundwaterLevelObservationResponse
 from schemas.sample import SampleResponse
+from schemas.field import FieldEventParticipantResponse
 from schemas.sensor import SensorResponse
 from schemas.thing import WellResponse, WellScreenResponse
 
@@ -20,3 +21,6 @@ class WellDetailsResponse(BaseModel):
         Field(default_factory=list)
     )
     latest_field_event_sample: SampleResponse | None = None
+    field_event_participants: list[FieldEventParticipantResponse] = Field(
+        default_factory=list
+    )

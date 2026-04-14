@@ -22,6 +22,7 @@ from pydantic import BaseModel, model_validator, field_validator, Field, ConfigD
 
 from core.constants import SRID_WGS84, SRID_UTM_ZONE_13N
 from core.enums import ElevationMethod, CoordinateMethod
+from core.enums import ReleaseStatus
 from schemas import BaseCreateModel, BaseUpdateModel, BaseResponseModel
 from schemas.notes import NoteResponse, CreateNote, UpdateNote
 from services.util import convert_m_to_ft, transform_srid
@@ -122,6 +123,7 @@ class GeoJSONProperties(BaseModel):
 
 class LocationGeoJSONResponse(BaseModel):
     type: str = "Feature"
+    release_status: ReleaseStatus
     geometry: GeoJSONGeometry
     properties: GeoJSONProperties
 
