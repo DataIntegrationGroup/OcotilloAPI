@@ -161,8 +161,8 @@ def get_well_details_payload(
                 .joinedload(FieldEvent.thing),
                 joinedload(Sample.field_activity)
                 .joinedload(FieldActivity.field_event)
-                .joinedload(FieldEvent.field_event_participants)
-                .joinedload(FieldEventParticipant.participant),
+                .selectinload(FieldEvent.field_event_participants)
+                .selectinload(FieldEventParticipant.participant),
                 joinedload(Sample.field_event_participant).joinedload(
                     FieldEventParticipant.participant
                 ),

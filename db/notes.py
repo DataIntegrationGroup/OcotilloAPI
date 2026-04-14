@@ -102,6 +102,7 @@ class NotesMixin:
             cascade="all, delete-orphan",
             lazy="selectin",
             overlaps="notes",
+            order_by=Notes.created_at,
         )
 
     def add_note(
@@ -125,4 +126,5 @@ class NotesMixin:
         )
 
     def _get_notes(self, note_type: str) -> list[Notes]:
-        return [n for n in self.notes if n.note_type == note_type]
+        notes = [n for n in self.notes if n.note_type == note_type]
+        return sorted(notes, key=lambda n: n.created_at)
