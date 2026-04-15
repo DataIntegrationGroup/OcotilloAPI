@@ -197,7 +197,7 @@ def _get_asset_results(session: Session, q: str, limit: int) -> list[dict]:
 
 
 @router.get("")
-async def search_api(
+def search_api(
     user: viewer_dependency,
     session: session_dependency,
     q: str,

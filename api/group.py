@@ -38,7 +38,7 @@ router = APIRouter(prefix="/group", tags=["group"])
 
 
 @router.post("", summary="Create a new group", status_code=HTTP_201_CREATED)
-async def create_group(
+def create_group(
     group_data: CreateGroup, session: session_dependency, user: admin_dependency
 ) -> GroupResponse:
     """
@@ -66,7 +66,7 @@ async def create_group(
 
 # ============= Get =============================================
 @router.get("", summary="Get groups")
-async def get_groups(
+def get_groups(
     user: viewer_dependency,
     session: session_dependency,
     filter_: str = Query(alias="filter", default=None),
@@ -78,7 +78,7 @@ async def get_groups(
 
 
 @router.get("/{group_id}", summary="Get group by ID")
-async def get_group_by_id(
+def get_group_by_id(
     user: viewer_dependency, group_id: int, session: session_dependency
 ) -> GroupResponse:
     """
@@ -100,7 +100,7 @@ async def get_group_by_id(
 
 # ============= Patch =============================================
 @router.patch("/{group_id}", summary="Update a group by ID")
-async def update_group(
+def update_group(
     user: editor_dependency,
     group_id: int,
     group_data: UpdateGroup,
@@ -116,9 +116,7 @@ async def update_group(
 @router.delete(
     "/{group_id}", summary="Delete a group by ID", status_code=HTTP_204_NO_CONTENT
 )
-async def delete_group(
-    user: admin_dependency, group_id: int, session: session_dependency
-):
+def delete_group(user: admin_dependency, group_id: int, session: session_dependency):
     return model_deleter(session, Group, group_id)
 
 

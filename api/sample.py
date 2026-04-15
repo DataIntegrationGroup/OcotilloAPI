@@ -55,11 +55,12 @@ def database_error_handler(
     """
     Handle errors raised by the database when adding or updating a sample.
     """
-    error_message = error.orig.args[0]["M"]
-    if (
-        error_message == "duplicate key value violates unique "
-        'constraint "sample_sample_name_key"'
-    ):
+    orig = getattr(error, "orig", None)
+    if hasattr(orig, "args") and orig.args and isinstance(orig.args[0], dict):
+        error_message = orig.args[0].get("M", "")
+    else:
+        error_message = str(orig or error)
+    if 'constraint "sample_sample_name_key"' in error_message:
         detail = {
             "loc": ["body", "sample_name"],
             "msg": (
@@ -68,11 +69,7 @@ def database_error_handler(
             "type": "value_error",
             "input": {"sample_name": payload.sample_name},
         }
-    elif (
-        error_message
-        == 'insert or update on table "sample" violates foreign key constraint '
-        '"sample_field_activity_id_fkey"'
-    ):
+    elif 'constraint "sample_field_activity_id_fkey"' in error_message:
         detail = {
             "loc": ["body", "field_activity_id"],
             "msg": (
@@ -80,6 +77,13 @@ def database_error_handler(
             ),
             "type": "value_error",
             "input": {"field_activity_id": payload.field_activity_id},
+        }
+    else:
+        detail = {
+            "loc": ["body"],
+            "msg": error_message,
+            "type": "value_error",
+            "input": {},
         }
 
     raise PydanticStyleException(
@@ -90,7 +94,7 @@ def database_error_handler(
 
 # ============= Post =============================================
 @router.post("", status_code=HTTP_201_CREATED)
-async def add_sample(
+def add_sample(
     sample_data: CreateSample,
     session: session_dependency,
     user: admin_dependency,
@@ -108,7 +112,7 @@ async def add_sample(
 
 # ============= Update =============================================
 @router.patch("/{sample_id}", summary="Update Sample")
-async def update_sample(
+def update_sample(
     sample_id: int,
     sample_data: UpdateSample,
     session: session_dependency,
@@ -133,7 +137,7 @@ async def update_sample(
 
 # ============= Get =============================================
 @router.get("", summary="Get Samples")
-async def get_samples(
+def get_samples(
     session: session_dependency,
     user: viewer_dependency,
     thing_id: int | None = None,
@@ -154,7 +158,7 @@ async def get_samples(
 
 
 @router.get("/{sample_id}", summary="Get Sample by ID")
-async def get_sample_by_id(
+def get_sample_by_id(
     sample_id: int,
     session: session_dependency,
     user: viewer_dependency,
@@ -172,7 +176,7 @@ async def get_sample_by_id(
     "/{sample_id}",
     summary="Delete Sample by ID",
 )
-async def delete_sample_by_id(
+def delete_sample_by_id(
     sample_id: int,
     session: session_dependency,
     user: admin_dependency,

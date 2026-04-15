@@ -29,7 +29,7 @@ router = APIRouter(
 @router.post(
     "/add", response_model=PublicationResponse, status_code=status.HTTP_201_CREATED
 )
-async def post_publication(
+def post_publication(
     user: admin_dependency,
     publication_data: CreatePublication,  # Replace with your actual schema
     session: Session = Depends(
