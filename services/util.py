@@ -66,7 +66,7 @@ def transform_srid(geometry, source_srid, target_srid):
 
 def normalize_datetime_to_utc(value: datetime | str) -> datetime:
     dt: datetime
-    
+
     if isinstance(value, str):
         dt = datetime.fromisoformat(value)
     elif isinstance(value, datetime):
@@ -82,6 +82,7 @@ def normalize_datetime_to_utc(value: datetime | str) -> datetime:
         dt = convert_dt_tz_naive_to_tz_aware(dt, "America/Denver")
 
     return dt.astimezone(timezone.utc)
+
 
 def convert_dt_tz_naive_to_tz_aware(
     dt_naive: datetime,

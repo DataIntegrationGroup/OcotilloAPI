@@ -50,6 +50,7 @@ from pydantic import (
 from schemas import past_or_today_validator, PastOrTodayDatetime
 from services.util import normalize_datetime_to_utc
 
+
 def empty_str_to_none(v):
     if isinstance(v, str) and v.strip() == "":
         return None
