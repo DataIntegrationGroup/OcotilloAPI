@@ -419,6 +419,18 @@ class Thing(
         )
 
     @property
+    def site_name(self) -> str | None:
+        nmbgmr_link = next(
+            (
+                link
+                for link in sorted(self.links, key=lambda link: link.id)
+                if link.alternate_organization == "NMBGMR"
+            ),
+            None,
+        )
+        return nmbgmr_link.alternate_id if nmbgmr_link is not None else None
+
+    @property
     def water_notes(self):
         return self._get_notes("Water")
 
@@ -437,6 +449,14 @@ class Thing(
     @property
     def site_notes(self):
         return self._get_notes("Site Notes (legacy)")
+
+    @property
+    def historic_depth_to_water(self) -> list[str]:
+        return [note.content for note in self._get_notes("Historical")]
+
+    @property
+    def well_location_note(self) -> list[str]:
+        return [note.content for note in self._get_notes("Access")]
 
     @property
     def well_status(self) -> str | None:
@@ -465,17 +485,23 @@ class Thing(
         return latest_status.status_value if latest_status else None
 
     @property
-    def open_status(self) -> str | None:
+    def open_status(self) -> bool | None:
         """
-        Returns the open status from the most recent status history entry
-        where status_type is "Open Status".
+        Returns the open status as a boolean derived from the most recent
+        "Open Status" history entry.
 
         Since status_history is eagerly loaded, this should not introduce N+1 query issues.
         """
         latest_status = retrieve_latest_polymorphic_history_table_record(
             self, "status_history", "Open Status"
         )
-        return latest_status.status_value if latest_status else None
+        if latest_status is None:
+            return None
+        if latest_status.status_value == "Open":
+            return True
+        if latest_status.status_value == "Closed":
+            return False
+        return None
 
     @property
     def datalogger_suitability_status(self) -> str | None:

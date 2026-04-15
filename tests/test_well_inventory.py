@@ -160,26 +160,20 @@ def test_well_inventory_db_contents_no_waterlevels():
             assert thing.formation_completion_code is None
 
             assert thing.notes is not None
-            assert sorted(c.content for c in thing._get_notes("Access")) == sorted(
-                [file_content["specific_location_of_well"]]
-            )
-            assert sorted(c.content for c in thing._get_notes("General")) == sorted(
-                [file_content["contact_special_requests_notes"]]
-            )
-            assert sorted(
-                c.content for c in thing._get_notes("Sampling Procedure")
-            ) == sorted(
-                [
-                    file_content["well_measuring_notes"],
-                    file_content["sampling_scenario_notes"],
-                    f"Sample possible: {file_content['sample_possible']}",
-                ]
-            )
-            assert sorted(c.content for c in thing._get_notes("Historical")) == sorted(
-                [
-                    f"historic depth to water: {float(file_content['historic_depth_to_water_ft'])} ft - source: {file_content['depth_source'].lower()}"
-                ]
-            )
+            assert [c.content for c in thing._get_notes("Access")] == [
+                file_content["specific_location_of_well"]
+            ]
+            assert [c.content for c in thing._get_notes("General")] == [
+                file_content["contact_special_requests_notes"]
+            ]
+            assert [c.content for c in thing._get_notes("Sampling Procedure")] == [
+                file_content["well_measuring_notes"],
+                file_content["sampling_scenario_notes"],
+                f"Sample possible: {file_content['sample_possible']}",
+            ]
+            assert [c.content for c in thing._get_notes("Historical")] == [
+                f"historic depth to water: {float(file_content['historic_depth_to_water_ft'])} ft - source: {file_content['depth_source'].lower()}"
+            ]
 
             assert (
                 thing.measuring_point_description
@@ -243,9 +237,9 @@ def test_well_inventory_db_contents_no_waterlevels():
                 else "Datalogger cannot be installed"
             )
             assert (
-                thing.open_status == "Open"
+                thing.open_status is True
                 if file_content["is_open"].lower() == "true"
-                else "Closed"
+                else thing.open_status is False
             )
 
             # LOCATION AND RELATED RECORDS
