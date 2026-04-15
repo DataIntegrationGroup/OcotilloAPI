@@ -310,6 +310,14 @@ def test_bulk_upload_water_levels_creates_field_event_participants(water_well_th
         assert {participant.field_event_id for participant in participants} == {
             field_event.id
         }
+        # Notes now carry only freeform text; staff identity should come from the
+        # structured participant records and the sample participant link.
+        assert field_event.notes == "Initial measurement"
+        assert len(contacts) == 3
+        field_activity = session.scalars(
+            select(FieldActivity).where(FieldActivity.field_event_id == field_event.id)
+        ).one()
+        assert field_activity.notes is None
         sample = session.scalars(
             select(Sample)
             .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)

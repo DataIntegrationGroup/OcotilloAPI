@@ -696,10 +696,12 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             "Water level accurate to within two hundreths of a foot,"
             f"{notes}"
         )
-        csv_text = textwrap.dedent(f"""\
+        csv_text = textwrap.dedent(
+            f"""\
             {header}
             {row}
-            """)
+            """
+        )
         path.write_text(csv_text)
 
     unique_notes = f"pytest-{uuid.uuid4()}"
@@ -742,9 +744,8 @@ def test_water_levels_cli_persists_observations(tmp_path, water_well_thing):
             observation.nma_data_quality
             == "Water level accurate to within two hundreths of a foot"
         )
-        assert (
-            field_event.notes == f"Field staff: CLI Tester | {unique_notes}"
-        ), "Field event notes should capture field staff and notes"
+        assert field_event.notes == unique_notes
+        assert field_activity.notes is None
 
         created_ids = {
             "observation_id": observation.id,

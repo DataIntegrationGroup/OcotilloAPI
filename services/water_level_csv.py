@@ -386,7 +386,9 @@ def _create_records(
                 field_activity = FieldActivity(
                     field_event=field_event,
                     activity_type="groundwater level",
-                    notes=f"Sampler: {row.sampler}",
+                    # Measuring staff now lives on structured participants and the
+                    # sample participant link, not in field_activity.notes.
+                    notes=None,
                 )
                 sample = Sample(field_activity=field_activity)
                 observation = Observation(sample=sample)
@@ -404,7 +406,9 @@ def _create_records(
 
                 field_event.event_date = row.field_event_dt
                 field_event.notes = _build_field_event_notes(row)
-                field_activity.notes = f"Sampler: {row.sampler}"
+                # Clear any legacy sampler note text so downstream readers use
+                # structured participant data as the authoritative source.
+                field_activity.notes = None
 
             _apply_sample_values(sample, row, sample_name)
             _apply_observation_values(observation, row, parameter_id)
@@ -605,11 +609,8 @@ def _apply_observation_values(
 
 
 def _build_field_event_notes(row: _ValidatedRow) -> str | None:
-    parts = [f"Field staff: {row.field_staff}"]
-    if row.water_level_notes:
-        parts.append(row.water_level_notes)
-    notes = " | ".join(part for part in parts if part)
-    return notes or None
+    """Return only freeform field-event notes; staff lives in structured participants."""
+    return row.water_level_notes or None
 
 
 def _get_groundwater_level_parameter_id(session: Session) -> int:
