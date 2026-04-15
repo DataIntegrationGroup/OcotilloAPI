@@ -23,6 +23,7 @@ from contextlib import contextmanager
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import (
     sessionmaker,
 )
@@ -114,50 +115,63 @@ max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
 pool_timeout = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
 
 
-if driver == "cloudsql":
-    from google.cloud.sql.connector import Connector
+def get_cloudsql_socket_host(instance_name: str | None = None) -> str:
+    instance = instance_name or os.environ.get("CLOUD_SQL_INSTANCE_NAME", "")
+    if not instance:
+        message = "CLOUD_SQL_INSTANCE_NAME must be set for DB_DRIVER=cloudsql"
+        raise RuntimeError(message)
+    socket_dir = os.environ.get("CLOUD_SQL_SOCKET_DIR", "/cloudsql")
+    socket_dir = socket_dir.rstrip("/")
+    return f"{socket_dir}/{instance}"
 
-    def init_connection_pool(connector):
-        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
-        user = os.environ.get("CLOUD_SQL_USER")
-        password = os.environ.get("CLOUD_SQL_PASSWORD")
-        database = os.environ.get("CLOUD_SQL_DATABASE")
-        use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
-        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
 
-        def getconn():
-            connect_kwargs = {
-                "user": user,
-                "db": database,
-                "ip_type": ip_type,
-                "enable_iam_auth": use_iam_auth,
-            }
-            if use_iam_auth:
-                connect_kwargs["password"] = get_iam_login_token()
-            else:
-                connect_kwargs["password"] = password
+def build_cloudsql_url(password: str | None = None) -> URL:
+    user = os.environ.get("CLOUD_SQL_USER", "")
+    database = os.environ.get("CLOUD_SQL_DATABASE", "")
+    if not user:
+        raise RuntimeError("CLOUD_SQL_USER must be set for DB_DRIVER=cloudsql")
+    if not database:
+        message = "CLOUD_SQL_DATABASE must be set for DB_DRIVER=cloudsql"
+        raise RuntimeError(message)
+    socket_host = get_cloudsql_socket_host()
+    return URL.create(
+        "postgresql+psycopg2",
+        username=user,
+        password=password,
+        database=database,
+        query={"host": socket_host},
+    )
 
-            conn = connector.connect(
-                instance_name,  # The Cloud SQL instance name
-                "psycopg2",
-                **connect_kwargs,
-            )
-            return conn
 
-        engine = create_engine(
-            "postgresql+psycopg2://",
-            creator=getconn,
-            echo=False,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_timeout=pool_timeout,
-            pool_pre_ping=True,
+def init_cloudsql_engine():
+    use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
+    password = None if use_iam_auth else os.environ.get("CLOUD_SQL_PASSWORD")
+    if not use_iam_auth and not password:
+        raise RuntimeError(
+            "CLOUD_SQL_PASSWORD must be set when CLOUD_SQL_IAM_AUTH is false"
         )
-        _install_pool_logging(engine)
-        return engine
 
-    connector = Connector()
-    engine = init_connection_pool(connector)
+    engine = create_engine(
+        build_cloudsql_url(password=password),
+        echo=False,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        pool_timeout=pool_timeout,
+        pool_pre_ping=True,
+    )
+
+    if use_iam_auth:
+
+        @event.listens_for(engine, "do_connect")
+        def inject_iam_token(dialect, conn_rec, cargs, cparams):
+            cparams["password"] = get_iam_login_token()
+
+    _install_pool_logging(engine)
+    return engine
+
+
+if driver == "cloudsql":
+    engine = init_cloudsql_engine()
 
 else:
     password = os.environ.get("POSTGRES_PASSWORD", "")

@@ -144,12 +144,12 @@ The system uses **Authentik** for OAuth2 authentication with role-based access c
 
 The application supports two database modes (configured via `DB_DRIVER` in `.env`):
 
-1. **Google Cloud SQL** (`DB_DRIVER=cloudsql`): Uses Cloud SQL Python Connector
-2. **Standard PostgreSQL** (default): Direct pg8000/asyncpg connection
+1. **Google Cloud SQL** (`DB_DRIVER=cloudsql`): Uses psycopg2 over the mounted Cloud SQL Unix socket
+2. **Standard PostgreSQL** (default): Direct psycopg2 connection
 
 **Connection String Format** (standard mode):
 ```
-postgresql+pg8000://{user}:{password}@{host}:{port}/{database}
+postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}
 ```
 
 **Important**: `db/engine.py` uses `load_dotenv(override=False)` so that environment variables set before import (e.g., by the test framework) are preserved.

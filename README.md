@@ -153,6 +153,13 @@ Minimum vars to set in `.env` for local development:
 * `MODE` (`development` recommended locally)
 * `SESSION_SECRET_KEY` (required if you want to use `/admin`)
 
+Cloud SQL vars (used when `DB_DRIVER=cloudsql`):
+* `CLOUD_SQL_INSTANCE_NAME`
+* `CLOUD_SQL_DATABASE`
+* `CLOUD_SQL_USER`
+* `CLOUD_SQL_PASSWORD` or `CLOUD_SQL_IAM_AUTH=true`
+* `CLOUD_SQL_SOCKET_DIR` (optional, defaults to `/cloudsql`)
+
 Auth-related vars (required when auth is enabled, optional when `AUTHENTIK_DISABLE_AUTHENTICATION=1`):
 * `AUTHENTIK_DISABLE_AUTHENTICATION`
 * `AUTHENTIK_URL`

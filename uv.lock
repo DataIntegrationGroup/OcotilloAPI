@@ -529,23 +529,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cloud-sql-python-connector"
-version = "1.20.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiofiles" },
-    { name = "aiohttp" },
-    { name = "cryptography" },
-    { name = "dnspython" },
-    { name = "google-auth" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/cd/e54ca42ea4f386571ab99cb363e15d45b2c1228dc6f8120101e6cd6db9e1/cloud_sql_python_connector-1.20.1.tar.gz", hash = "sha256:7e826875c5c284e1dfd872ab81d8c75eb82dd67ad1bbf43b9e74489342765255", size = 44235, upload-time = "2026-03-16T16:53:04.927Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/5b/4eaf81d926b65247b3ff9376f71cf3aac287b3d8af1b2a12fd2605fd8534/cloud_sql_python_connector-1.20.1-py3-none-any.whl", hash = "sha256:c00f9d81205eb658fe06f9f353e00646eb3f55d2d86de01dc1222eec1f5f2fc9", size = 50100, upload-time = "2026-03-16T16:53:03.475Z" },
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1463,7 +1446,6 @@ dependencies = [
     { name = "cffi" },
     { name = "charset-normalizer" },
     { name = "click" },
-    { name = "cloud-sql-python-connector" },
     { name = "cryptography" },
     { name = "dnspython" },
     { name = "dotenv" },
@@ -1578,7 +1560,6 @@ requires-dist = [
     { name = "cffi", specifier = "==2.0.0" },
     { name = "charset-normalizer", specifier = "==3.4.6" },
     { name = "click", specifier = "==8.3.1" },
-    { name = "cloud-sql-python-connector", specifier = "==1.20.1" },
     { name = "cryptography", specifier = "==46.0.7" },
     { name = "dnspython", specifier = "==2.8.0" },
     { name = "dotenv", specifier = "==0.9.9" },

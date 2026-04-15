@@ -5,8 +5,11 @@ from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, engine_from_config, pool, text
+from sqlalchemy import create_engine, engine_from_config, event, pool, text
+from sqlalchemy.engine import URL
 
+from db import Base
+from db.initialization import grant_app_read_members
 from services.env import get_bool_env
 
 # this is the Alembic Config object, which provides
@@ -31,10 +34,6 @@ else:
 # for 'autogenerate' support
 # from myapp import mymodel
 
-# from db import Base  # Import your Base from models/__init__.py
-from db import Base
-from db.initialization import grant_app_read_members
-
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 model_tables = set(target_metadata.tables.keys())
@@ -50,20 +49,27 @@ load_dotenv()
 def build_database_url():
     """
     Build a SQLAlchemy URL based on driver/env vars.
-    For cloudsql we still return a pg8000 URL (hostless) so Alembic can render
-    offline migrations; the actual connection uses a Connector creator in
-    run_migrations_online.
+    For cloudsql we return a psycopg2 URL that targets the mounted Cloud SQL
+    Unix socket.
     """
     db_driver = os.environ.get("DB_DRIVER", "").lower()
     if db_driver == "cloudsql":
         user = os.environ.get("CLOUD_SQL_USER", "")
-        password = os.environ.get("CLOUD_SQL_PASSWORD", "")
         database = os.environ.get("CLOUD_SQL_DATABASE", "")
         use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
-        # Host is provided by connector, so leave blank.
-        if use_iam_auth:
-            return f"postgresql+pg8000://{user}@/{database}"
-        return f"postgresql+pg8000://{user}:{password}@/{database}"
+        socket_dir = os.environ.get("CLOUD_SQL_SOCKET_DIR", "/cloudsql")
+        socket_dir = socket_dir.rstrip("/")
+        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME", "")
+        password = None
+        if not use_iam_auth:
+            password = os.environ.get("CLOUD_SQL_PASSWORD", "")
+        return URL.create(
+            "postgresql+psycopg2",
+            username=user,
+            password=password,
+            database=database,
+            query={"host": f"{socket_dir}/{instance_name}"},
+        ).render_as_string(hide_password=False)
 
     # Default/Postgres
     user = os.environ.get("POSTGRES_USER", "")
@@ -79,7 +85,8 @@ config.set_main_option("sqlalchemy.url", url)
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    # only include tables in sql alchemy model, not auto-generated tables from PostGIS or TIGER
+    # only include tables in sql alchemy model, not auto-generated tables from
+    # PostGIS or TIGER
     # Handle None names for unnamed constraints
     if name is None:
         return True
@@ -113,19 +120,10 @@ def run_migrations_online() -> None:
     db_driver = os.environ.get("DB_DRIVER", "").lower()
 
     if db_driver == "cloudsql":
-        # Use the Cloud SQL Python Connector for direct Cloud SQL access.
-        from google.cloud.sql.connector import Connector
         from google.auth import default
         from google.auth.transport.requests import Request
 
-        instance_name = os.environ.get("CLOUD_SQL_INSTANCE_NAME")
-        user = os.environ.get("CLOUD_SQL_USER")
-        password = os.environ.get("CLOUD_SQL_PASSWORD")
-        database = os.environ.get("CLOUD_SQL_DATABASE")
         use_iam_auth = get_bool_env("CLOUD_SQL_IAM_AUTH", False)
-        ip_type = os.environ.get("CLOUD_SQL_IP_TYPE", "public")
-
-        connector = Connector()
 
         def get_iam_login_token() -> str:
             scopes = ["https://www.googleapis.com/auth/sqlservice.login"]
@@ -140,29 +138,17 @@ def run_migrations_online() -> None:
                 raise RuntimeError("Unable to acquire IAM DB auth token.")
             return creds.token
 
-        def getconn():
-            connect_kwargs = {
-                "user": user,
-                "db": database,
-                "ip_type": ip_type,
-                "enable_iam_auth": use_iam_auth,
-            }
-            if use_iam_auth:
-                connect_kwargs["password"] = get_iam_login_token()
-            else:
-                connect_kwargs["password"] = password
-            return connector.connect(
-                instance_name,
-                "pg8000",
-                **connect_kwargs,
-            )
-
         connectable = create_engine(
-            "postgresql+pg8000://",
-            creator=getconn,
+            build_database_url(),
             pool_pre_ping=True,
             poolclass=pool.NullPool,
         )
+        if use_iam_auth:
+
+            @event.listens_for(connectable, "do_connect")
+            def inject_iam_token(dialect, conn_rec, cargs, cparams):
+                cparams["password"] = get_iam_login_token()
+
     else:
         connectable = engine_from_config(
             config.get_section(config.config_ini_section, {}),
@@ -190,7 +176,8 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
-    alembic_logger.info("Alembic migrations completed; applying app_read grants")
+    completion_message = "Alembic migrations completed; " "applying app_read grants"
+    alembic_logger.info(completion_message)
     with connectable.connect() as grant_connection:
         autocommit_grants = grant_connection.execution_options(
             isolation_level="AUTOCOMMIT"
