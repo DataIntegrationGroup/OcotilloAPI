@@ -20,7 +20,7 @@ import time
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlalchemy import select
-from sqlalchemy.exc import ProgrammingError, IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from starlette.concurrency import run_in_threadpool
 from starlette.status import (
     HTTP_201_CREATED,
@@ -75,9 +75,12 @@ def get_storage_bucket():
             )
 
 
-def database_error_handler(payload: CreateAsset, error: ProgrammingError) -> None:
+def database_error_handler(
+    payload: CreateAsset,
+    error: IntegrityError | ProgrammingError,
+) -> None:
     """
-    Handle errors raised by the database when adding or updating a asset.
+    Handle errors raised by the database when adding or updating an asset.
     """
 
     orig = getattr(error, "orig", None)

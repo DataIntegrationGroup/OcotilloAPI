@@ -2,13 +2,13 @@
 
 ## Summary
 
-This document describes a verified FastAPI concurrency issue in the current API stack and recommends a two-phase remediation plan for maintainers.
+This document describes a verified FastAPI concurrency issue in the API stack and recommends a two-phase remediation plan for maintainers.
 
-The current API uses synchronous SQLAlchemy sessions backed by `psycopg2`, while many route handlers are declared as `async def`. That combination causes blocking database work to run on the event loop thread when those handlers call synchronous ORM helpers directly. The lowest-risk immediate fix is to convert database-bound route handlers that do not perform asynchronous work into plain `def`. The longer-term fix is to introduce a real async SQLAlchemy stack and migrate the affected handlers and helpers incrementally.
+The API uses synchronous SQLAlchemy sessions backed by `psycopg2`. When those sessions are consumed from `async def` route handlers, blocking database work runs on the event loop thread if the handlers call synchronous ORM helpers directly. The lowest-risk immediate fix is to convert database-bound route handlers that do not perform asynchronous work into plain `def`. The longer-term fix is to introduce a real async SQLAlchemy stack and migrate the affected handlers and helpers incrementally.
 
 ## Problem
 
-FastAPI supports synchronous generator dependencies such as `get_db_session()`. The issue is not the dependency shape itself. The issue is that the injected object is a synchronous SQLAlchemy `Session`, and many API handlers consume it from `async def` routes while executing synchronous ORM queries directly.
+FastAPI supports synchronous generator dependencies such as `get_db_session()`. The issue is not the dependency shape itself. The issue is that the injected object is a synchronous SQLAlchemy `Session`, and any `async def` route that consumes it while executing synchronous ORM queries directly will block the event loop thread.
 
 In this configuration, FastAPI runs the `async def` route body on the event loop thread. If that body performs blocking database I/O through the synchronous session, the worker cannot make progress on other requests assigned to that event loop until the database call returns. A slow well query can therefore delay unrelated lightweight requests handled by the same worker.
 
@@ -16,13 +16,13 @@ This is a concurrency problem, not a correctness problem. The endpoints can stil
 
 ## Evidence In This Repo
 
-- [`db/engine.py`](/Users/jross/Programming/DIG/OcotilloAPI/db/engine.py:186) creates `database_sessionmaker = sessionmaker(engine, expire_on_commit=False)` and [`get_db_session()`](/Users/jross/Programming/DIG/OcotilloAPI/db/engine.py:189) yields a regular synchronous `Session`.
-- [`db/engine.py`](/Users/jross/Programming/DIG/OcotilloAPI/db/engine.py:172) builds a `postgresql+psycopg2://...` URL for the default engine, confirming that the active database path is synchronous.
-- [`core/dependencies.py`](/Users/jross/Programming/DIG/OcotilloAPI/core/dependencies.py:24) injects that session through `session_dependency`.
-- [`api/thing.py`](/Users/jross/Programming/DIG/OcotilloAPI/api/thing.py:153) defines representative `async def` route handlers such as `get_water_wells(...)` that pass the synchronous session into helper functions without awaiting database work.
-- [`services/well_details_helper.py`](/Users/jross/Programming/DIG/OcotilloAPI/services/well_details_helper.py:50) performs synchronous ORM operations such as `session.scalars(...).all()` and related query chains.
-- [`api/asset.py`](/Users/jross/Programming/DIG/OcotilloAPI/api/asset.py:113) shows a contrasting safe pattern for non-database blocking work by wrapping synchronous GCS calls in `run_in_threadpool(...)`.
-- A repo scan of `api/` found 114 `async def` handlers, 111 of which contain no `await`. That is strong evidence that most handlers are currently synchronous in practice even though they are declared async.
+- [`db/engine.py`](db/engine.py) creates `database_sessionmaker = sessionmaker(engine, expire_on_commit=False)` and `get_db_session()` yields a regular synchronous `Session`.
+- [`db/engine.py`](db/engine.py) builds `postgresql+psycopg2` engines for both the default PostgreSQL path and the Cloud SQL path, confirming that the active database layer is synchronous.
+- [`core/dependencies.py`](core/dependencies.py) injects that session through `session_dependency`.
+- [`services/well_details_helper.py`](services/well_details_helper.py) performs synchronous ORM operations such as `session.scalars(...).all()` and related query chains.
+- [`api/thing.py`](api/thing.py) contains representative database-backed routes that pass the synchronous session into helper functions such as `get_db_things(...)` and `get_well_details_payload(...)`.
+- [`api/asset.py`](api/asset.py) shows a contrasting safe pattern for non-database blocking work by wrapping synchronous GCS calls in `run_in_threadpool(...)`.
+- The short-term fix described in this ADR converts database-bound routes from `async def` to `def` where they do not need `await`, but the helper/query layer remains synchronous until a real async session stack is introduced.
 
 ## Short-Term Fix
 

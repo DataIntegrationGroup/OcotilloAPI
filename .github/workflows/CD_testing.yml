@@ -1,4 +1,4 @@
-name: CD (Staging)
+name: CD (testing)
 
 on:
   push:

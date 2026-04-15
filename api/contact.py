@@ -16,7 +16,7 @@
 from fastapi import APIRouter, Query
 from sqlalchemy import select
 from starlette import status
-from sqlalchemy.exc import ProgrammingError, IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from api.pagination import CustomPage
 from fastapi_pagination.ext.sqlalchemy import paginate
 
@@ -65,10 +65,11 @@ def missing_contact_detail(contact_id: int) -> dict:
 
 
 def database_error_handler(
-    payload: CreateEmail | CreateContact | CreatePhone, error: ProgrammingError
+    payload: CreateAddress | CreateEmail | CreateContact | CreatePhone,
+    error: IntegrityError | ProgrammingError,
 ) -> None:
     """
-    Handle errors raised by the database when adding or updating a sample.
+    Handle errors raised by the database when adding or updating a contact.
     """
 
     orig = getattr(error, "orig", None)
