@@ -15,7 +15,7 @@
 # ===============================================================================
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 
 from core.enums import DataQuality, GroundwaterLevelReason, SampleMethod
@@ -29,7 +29,7 @@ from pydantic import (
 )
 from pydantic.functional_validators import BeforeValidator
 
-from services.util import convert_dt_tz_naive_to_tz_aware
+from services.util import normalize_datetime_to_utc
 
 WATER_LEVEL_REQUIRED_FIELDS = [
     "well_name_point_id",
@@ -82,18 +82,6 @@ def empty_str_to_none(value):
 
 OptionalText = Annotated[str | None, BeforeValidator(empty_str_to_none)]
 OptionalFloat = Annotated[float | None, BeforeValidator(empty_str_to_none)]
-
-
-def _normalize_datetime_to_utc(value: datetime | str) -> datetime:
-    if isinstance(value, str):
-        value = datetime.fromisoformat(value)
-    elif not isinstance(value, datetime):
-        raise ValueError("value must be a datetime or ISO format string")
-
-    if value.tzinfo is None:
-        value = convert_dt_tz_naive_to_tz_aware(value, "America/Denver")
-
-    return value.astimezone(timezone.utc)
 
 
 def _canonicalize_enum_value(
@@ -182,7 +170,7 @@ class WaterLevelCsvRow(BaseModel):
     )
     @classmethod
     def normalize_datetime_field(cls, value: datetime | str) -> datetime:
-        return _normalize_datetime_to_utc(value)
+        return normalize_datetime_to_utc(value)
 
     @field_validator("depth_to_water_ft")
     @classmethod
