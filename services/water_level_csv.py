@@ -24,7 +24,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, List
 
-from db import Thing, FieldEvent, FieldActivity, Sample, Observation, Parameter
+from db import (
+    Thing,
+    FieldEvent,
+    FieldActivity,
+    Sample,
+    Observation,
+    Parameter,
+    Contact,
+    FieldEventParticipant,
+)
 from db.engine import session_ctx
 from pydantic import ValidationError
 from schemas.water_level_csv import (
@@ -35,6 +44,7 @@ from schemas.water_level_csv import (
 )
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+from services.contact_helper import add_contact
 from services.thing_helper import find_water_wells_by_name
 
 REQUIRED_FIELDS: List[str] = list(WATER_LEVEL_REQUIRED_FIELDS)
@@ -56,6 +66,8 @@ class _ValidatedRow:
     raw: dict[str, str]
     well: Thing
     field_staff: str
+    field_staff_2: str | None
+    field_staff_3: str | None
     sampler: str
     sample_method_term: str
     field_event_dt: datetime
@@ -291,6 +303,8 @@ def _validate_rows(
                 raw={**normalized},
                 well=well,
                 field_staff=model.field_staff,
+                field_staff_2=model.field_staff_2,
+                field_staff_3=model.field_staff_3,
                 sampler=model.measuring_person,
                 sample_method_term=model.sample_method,
                 field_event_dt=model.field_event_date_time,
@@ -352,6 +366,7 @@ def _validate_depth_to_water_against_well(
 def _create_records(
     session: Session, parameter_id: int, rows: list[_ValidatedRow]
 ) -> tuple[list[dict[str, Any]], list[str]]:
+    """Create or update field-event, sample, and observation rows for each CSV row."""
     created: list[dict[str, Any]] = []
     errors: list[str] = []
 
@@ -393,6 +408,12 @@ def _create_records(
 
             _apply_sample_values(sample, row, sample_name)
             _apply_observation_values(observation, row, parameter_id)
+            # Add participants after required sample/observation fields are populated
+            # so the contact lookup does not trigger an autoflush of incomplete rows.
+            participants = _ensure_field_event_participants(session, field_event, row)
+            sample.field_event_participant = _resolve_measuring_participant(
+                row, participants
+            )
             session.flush()
             savepoint.commit()
 
@@ -427,12 +448,14 @@ def _create_records(
 
 
 def _build_sample_name(row: _ValidatedRow) -> str:
+    """Build the deterministic sample identifier used for create/update matching."""
     return f"{row.well.name}-WL-{row.measurement_dt.strftime('%Y%m%d%H%M')}"
 
 
 def _find_existing_imported_sample(
     session: Session, row: _ValidatedRow, sample_name: str
 ) -> Sample | None:
+    """Return the previously imported groundwater-level sample for this row, if any."""
     sql = (
         select(Sample)
         .join(FieldActivity, Sample.field_activity_id == FieldActivity.id)
@@ -454,13 +477,111 @@ def _find_existing_imported_sample(
 
 
 def _find_existing_observation(sample: Sample, parameter_id: int) -> Observation | None:
+    """Return the groundwater-level observation already linked to the sample, if any."""
     for observation in sample.observations:
         if observation.parameter_id == parameter_id:
             return observation
     return None
 
 
+def _ensure_field_event_participants(
+    session: Session, field_event: FieldEvent, row: _ValidatedRow
+) -> list[FieldEventParticipant]:
+    """Return event participants for imported staff names, creating any missing ones."""
+    participant_specs = (
+        (row.field_staff, "Lead"),
+        (row.field_staff_2, "Participant"),
+        (row.field_staff_3, "Participant"),
+    )
+    existing_participants = session.scalars(
+        select(FieldEventParticipant)
+        .options(selectinload(FieldEventParticipant.participant))
+        .where(FieldEventParticipant.field_event_id == field_event.id)
+        .order_by(FieldEventParticipant.id.asc())
+    ).all()
+
+    for staff_name, role in participant_specs:
+        if not staff_name:
+            continue
+
+        contact = _get_or_create_field_staff_contact(session, staff_name)
+        participant = next(
+            (
+                existing
+                for existing in existing_participants
+                if existing.contact_id == contact.id
+                and existing.participant_role == role
+            ),
+            None,
+        )
+        if participant is None:
+            participant = FieldEventParticipant(
+                field_event=field_event,
+                contact_id=contact.id,
+                participant_role=role,
+            )
+            session.add(participant)
+            # Attach the resolved contact eagerly so downstream matching can use
+            # participant.participant.name without an extra lookup.
+            participant.participant = contact
+            existing_participants.append(participant)
+
+    return existing_participants
+
+
+def _get_or_create_field_staff_contact(session: Session, staff_name: str) -> Contact:
+    """Resolve or create the contact record used by field event participants."""
+    contact_type = "Field Event Participant"
+    organization = "NMBGMR"
+    contact = session.scalars(
+        select(Contact)
+        .where(Contact.name == staff_name)
+        .where(Contact.organization == organization)
+        .where(Contact.contact_type == contact_type)
+    ).first()
+
+    if contact is None:
+        payload = {
+            "name": staff_name,
+            "role": "Technician",
+            "organization": organization,
+            "contact_type": contact_type,
+        }
+        contact = add_contact(session, payload, None, commit=False)
+
+    return contact
+
+
+def _resolve_measuring_participant(
+    row: _ValidatedRow, participants: list[FieldEventParticipant]
+) -> FieldEventParticipant:
+    """Return the unique participant matching measuring_person or raise a row error."""
+    matching_participants = [
+        participant
+        for participant in participants
+        if participant.participant is not None
+        and participant.participant.name == row.sampler
+    ]
+    if len(matching_participants) == 1:
+        return matching_participants[0]
+
+    if not matching_participants:
+        raise ValueError(
+            "measuring_person "
+            f"'{row.sampler}' could not be matched to a field event participant"
+        )
+
+    raise ValueError(
+        "measuring_person "
+        f"'{row.sampler}' matched multiple field event participants; "
+        # Ambiguous staff rows should fail so the importer never guesses which
+        # participant performed the measurement.
+        "field_staff values must identify exactly one measuring person"
+    )
+
+
 def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -> None:
+    """Apply normalized sample values from the validated CSV row."""
     sample.sample_date = row.measurement_dt
     sample.sample_name = sample_name
     sample.sample_matrix = "groundwater"
@@ -472,6 +593,7 @@ def _apply_sample_values(sample: Sample, row: _ValidatedRow, sample_name: str) -
 def _apply_observation_values(
     observation: Observation, row: _ValidatedRow, parameter_id: int
 ) -> None:
+    """Apply normalized observation values from the validated CSV row."""
     observation.observation_datetime = row.measurement_dt
     observation.parameter_id = parameter_id
     observation.value = row.depth_to_water_ft
