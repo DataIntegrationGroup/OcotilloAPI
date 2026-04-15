@@ -81,7 +81,7 @@ def build_database_url():
 
 
 url = build_database_url()
-config.set_main_option("sqlalchemy.url", url)
+config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 
 
 def include_object(object, name, type_, reflected, compare_to):

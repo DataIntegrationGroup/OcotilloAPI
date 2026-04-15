@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-    staging-deploy:
+    testing-deploy:
 
         runs-on: ubuntu-latest
         environment: staging
